@@ -1,0 +1,43 @@
+{
+    "name": "jiannius/atom",
+    "description": "Atom UI components",
+    "type": "library",
+    "require": {
+        "doctrine/dbal": "^3.6",
+        "laravel/pail": "^1.0",
+        "livewire/livewire": "^3.0",
+        "livewire/volt": "^1.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^10.0"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Jiannius\\Atom\\": "src/"
+        },
+        "files": [
+            "src/Helpers.php"
+        ]
+    },
+    "authors": [
+        {
+            "name": "TJ",
+            "email": "tj@jiannius.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Jiannius\\Atom\\AtomServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": false,
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    }
+}

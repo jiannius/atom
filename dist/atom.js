@@ -1,0 +1,710 @@
+const Ft=t=>new Promise((e,n)=> {
+dispatchEvent(new CustomEvent("atom-alert-show", {
+detail: {
+...t,onDismissed:()=>e()
+}
+}))
+}),Mt=t=> {
+dispatchEvent(new CustomEvent("atom-toast-show", {
+detail:t
+}))
+},$t=(t=null)=>( {
+show() {
+return dispatchEvent(new CustomEvent("atom-modal-show", {
+detail: {
+name:t
+}
+}))
+},slide(e=null) {
+return dispatchEvent(new CustomEvent("atom-modal-show", {
+detail: {
+name:t,position:e,variant:"slide"
+}
+}))
+},close() {
+return dispatchEvent(new CustomEvent("atom-modal-close", {
+detail: {
+name:t
+}
+}))
+}
+}),Bt=t=>new Promise((e,n)=> {
+dispatchEvent(new CustomEvent("atom-confirm-show", {
+detail: {
+...t,onAccepted:(o=null,i=null)=>e( {
+password:o,passphrase:i
+}),onRejected:()=>n()
+}
+}))
+}),Nt=(t=null)=> {
+let e=()=>document.documentElement.classList.add("dark"),n=()=>document.documentElement.classList.remove("dark");
+if(t=t||window.localStorage.getItem("darkmode")||"system",t==="system") {
+let o=window.matchMedia("(prefers-color-scheme: dark)");
+window.localStorage.removeItem("darkmode"),o.matches?e():n()
+}else t==="dark"?(window.localStorage.setItem("darkmode","dark"),e()):t==="light"&&(window.localStorage.setItem("darkmode","light"),n())
+},U=Math.min,M=Math.max,G=Math.round,X=Math.floor,O=t=>( {
+x:t,y:t
+}),Vt= {
+left:"right",right:"left",bottom:"top",top:"bottom"
+},Wt= {
+start:"end",end:"start"
+};
+function pt(t,e,n) {
+return M(t,U(e,n))
+}function Q(t,e) {
+return typeof t=="function"?t(e):t
+}function $(t) {
+return t.split("-")[0]
+}function Z(t) {
+return t.split("-")[1]
+}function vt(t) {
+return t==="x"?"y":"x"
+}function bt(t) {
+return t==="y"?"height":"width"
+}function T(t) {
+return["top","bottom"].includes($(t))?"y":"x"
+}function At(t) {
+return vt(T(t))
+}function It(t,e,n) {
+n===void 0&&(n=!1);
+const o=Z(t),i=At(t),s=bt(i);
+let r=i==="x"?o===(n?"end":"start")?"right":"left":o==="start"?"bottom":"top";
+return e.reference[s]>e.floating[s]&&(r=J(r)),[r,J(r)]
+}function Ht(t) {
+const e=J(t);
+return[rt(t),e,rt(e)]
+}function rt(t) {
+return t.replace(/start|end/g,e=>Wt[e])
+}function _t(t,e,n) {
+const o=["left","right"],i=["right","left"],s=["top","bottom"],r=["bottom","top"];
+switch(t) {
+case"top":case"bottom":return n?e?i:o:e?o:i;
+case"left":case"right":return e?s:r;
+default:return[]
+}
+}function jt(t,e,n,o) {
+const i=Z(t);
+let s=_t($(t),n==="start",o);
+return i&&(s=s.map(r=>r+"-"+i),e&&(s=s.concat(s.map(rt)))),s
+}function J(t) {
+return t.replace(/left|right|bottom|top/g,e=>Vt[e])
+}function zt(t) {
+return {
+top:0,right:0,bottom:0,left:0,...t
+}
+}function qt(t) {
+return typeof t!="number"?zt(t): {
+top:t,right:t,bottom:t,left:t
+}
+}function K(t) {
+const {
+x:e,y:n,width:o,height:i
+}=t;
+return {
+width:o,height:i,top:n,left:e,right:e+o,bottom:n+i,x:e,y:n
+}
+}function gt(t,e,n) {
+let {
+reference:o,floating:i
+}=t;
+const s=T(e),r=At(e),c=bt(r),l=$(e),a=s==="y",d=o.x+o.width/2-i.width/2,f=o.y+o.height/2-i.height/2,m=o[c]/2-i[c]/2;
+let u;
+switch(l) {
+case"top":u= {
+x:d,y:o.y-i.height
+};
+break;
+case"bottom":u= {
+x:d,y:o.y+o.height
+};
+break;
+case"right":u= {
+x:o.x+o.width,y:f
+};
+break;
+case"left":u= {
+x:o.x-i.width,y:f
+};
+break;
+default:u= {
+x:o.x,y:o.y
+}
+}switch(Z(e)) {
+case"start":u[r]-=m*(n&&a?-1:1);
+break;
+case"end":u[r]+=m*(n&&a?-1:1);
+break
+}return u
+}const Yt=async(t,e,n)=> {
+const {
+placement:o="bottom",strategy:i="absolute",middleware:s=[],platform:r
+}=n,c=s.filter(Boolean),l=await(r.isRTL==null?void 0:r.isRTL(e));
+let a=await r.getElementRects( {
+reference:t,floating:e,strategy:i
+}), {
+x:d,y:f
+}=gt(a,o,l),m=o,u= {
+},h=0;
+for(let g=0;
+g<c.length;
+g++) {
+const {
+name:w,fn:p
+}=c[g], {
+x,y,data:b,reset:v
+}=await p( {
+x:d,y:f,initialPlacement:o,placement:m,strategy:i,middlewareData:u,rects:a,platform:r,elements: {
+reference:t,floating:e
+}
+});
+d=x??d,f=y??f,u= {
+...u,[w]: {
+...u[w],...b
+}
+},v&&h<=50&&(h++,typeof v=="object"&&(v.placement&&(m=v.placement),v.rects&&(a=v.rects===!0?await r.getElementRects( {
+reference:t,floating:e,strategy:i
+}):v.rects), {
+x:d,y:f
+}=gt(a,m,l)),g=-1)
+}return {
+x:d,y:f,placement:m,strategy:i,middlewareData:u
+}
+};
+async function Rt(t,e) {
+var n;
+e===void 0&&(e= {
+});
+const {
+x:o,y:i,platform:s,rects:r,elements:c,strategy:l
+}=t, {
+boundary:a="clippingAncestors",rootBoundary:d="viewport",elementContext:f="floating",altBoundary:m=!1,padding:u=0
+}=Q(e,t),h=qt(u),w=c[m?f==="floating"?"reference":"floating":f],p=K(await s.getClippingRect( {
+element:(n=await(s.isElement==null?void 0:s.isElement(w)))==null||n?w:w.contextElement||await(s.getDocumentElement==null?void 0:s.getDocumentElement(c.floating)),boundary:a,rootBoundary:d,strategy:l
+})),x=f==="floating"? {
+x:o,y:i,width:r.floating.width,height:r.floating.height
+}:r.reference,y=await(s.getOffsetParent==null?void 0:s.getOffsetParent(c.floating)),b=await(s.isElement==null?void 0:s.isElement(y))?await(s.getScale==null?void 0:s.getScale(y))|| {
+x:1,y:1
+}: {
+x:1,y:1
+},v=K(s.convertOffsetParentRelativeRectToViewportRelativeRect?await s.convertOffsetParentRelativeRectToViewportRelativeRect( {
+elements:c,rect:x,offsetParent:y,strategy:l
+}):x);
+return {
+top:(p.top-v.top+h.top)/b.y,bottom:(v.bottom-p.bottom+h.bottom)/b.y,left:(p.left-v.left+h.left)/b.x,right:(v.right-p.right+h.right)/b.x
+}
+}const Xt=function(t) {
+return t===void 0&&(t= {
+}), {
+name:"flip",options:t,async fn(e) {
+var n,o;
+const {
+placement:i,middlewareData:s,rects:r,initialPlacement:c,platform:l,elements:a
+}=e, {
+mainAxis:d=!0,crossAxis:f=!0,fallbackPlacements:m,fallbackStrategy:u="bestFit",fallbackAxisSideDirection:h="none",flipAlignment:g=!0,...w
+}=Q(t,e);
+if((n=s.arrow)!=null&&n.alignmentOffset)return {
+};
+const p=$(i),x=T(c),y=$(c)===c,b=await(l.isRTL==null?void 0:l.isRTL(a.floating)),v=m||(y||!g?[J(c)]:Ht(c)),_=h!=="none";
+!m&&_&&v.push(...jt(c,g,h,b));
+const N=[c,...v],ot=await Rt(e,w),Y=[];
+let V=((o=s.flip)==null?void 0:o.overflows)||[];
+if(d&&Y.push(ot[p]),f) {
+const P=It(i,r,b);
+Y.push(ot[P[0]],ot[P[1]])
+}if(V=[...V, {
+placement:i,overflows:Y
+}],!Y.every(P=>P<=0)) {
+var dt,mt;
+const P=(((dt=s.flip)==null?void 0:dt.index)||0)+1,it=N[P];
+if(it&&(!(f==="alignment"?x!==T(it):!1)||V.every(R=>R.overflows[0]>0&&T(R.placement)===x)))return {
+data: {
+index:P,overflows:V
+},reset: {
+placement:it
+}
+};
+let j=(mt=V.filter(F=>F.overflows[0]<=0).sort((F,R)=>F.overflows[1]-R.overflows[1])[0])==null?void 0:mt.placement;
+if(!j)switch(u) {
+case"bestFit": {
+var ht;
+const F=(ht=V.filter(R=> {
+if(_) {
+const S=T(R.placement);
+return S===x||S==="y"
+}return!0
+}).map(R=>[R.placement,R.overflows.filter(S=>S>0).reduce((S,Pt)=>S+Pt,0)]).sort((R,S)=>R[1]-S[1])[0])==null?void 0:ht[0];
+F&&(j=F);
+break
+}case"initialPlacement":j=c;
+break
+}if(i!==j)return {
+reset: {
+placement:j
+}
+}
+}return {
+}
+}
+}
+};
+async function Ut(t,e) {
+const {
+placement:n,platform:o,elements:i
+}=t,s=await(o.isRTL==null?void 0:o.isRTL(i.floating)),r=$(n),c=Z(n),l=T(n)==="y",a=["left","top"].includes(r)?-1:1,d=s&&l?-1:1,f=Q(e,t);
+let {
+mainAxis:m,crossAxis:u,alignmentAxis:h
+}=typeof f=="number"? {
+mainAxis:f,crossAxis:0,alignmentAxis:null
+}: {
+mainAxis:f.mainAxis||0,crossAxis:f.crossAxis||0,alignmentAxis:f.alignmentAxis
+};
+return c&&typeof h=="number"&&(u=c==="end"?h*-1:h),l? {
+x:u*d,y:m*a
+}: {
+x:m*a,y:u*d
+}
+}const Gt=function(t) {
+return t===void 0&&(t=0), {
+name:"offset",options:t,async fn(e) {
+var n,o;
+const {
+x:i,y:s,placement:r,middlewareData:c
+}=e,l=await Ut(e,t);
+return r===((n=c.offset)==null?void 0:n.placement)&&(o=c.arrow)!=null&&o.alignmentOffset? {
+}: {
+x:i+l.x,y:s+l.y,data: {
+...l,placement:r
+}
+}
+}
+}
+},Jt=function(t) {
+return t===void 0&&(t= {
+}), {
+name:"shift",options:t,async fn(e) {
+const {
+x:n,y:o,placement:i
+}=e, {
+mainAxis:s=!0,crossAxis:r=!1,limiter:c= {
+fn:w=> {
+let {
+x:p,y:x
+}=w;
+return {
+x:p,y:x
+}
+}
+},...l
+}=Q(t,e),a= {
+x:n,y:o
+},d=await Rt(e,l),f=T($(i)),m=vt(f);
+let u=a[m],h=a[f];
+if(s) {
+const w=m==="y"?"top":"left",p=m==="y"?"bottom":"right",x=u+d[w],y=u-d[p];
+u=pt(x,u,y)
+}if(r) {
+const w=f==="y"?"top":"left",p=f==="y"?"bottom":"right",x=h+d[w],y=h-d[p];
+h=pt(x,h,y)
+}const g=c.fn( {
+...e,[m]:u,[f]:h
+});
+return {
+...g,data: {
+x:g.x-n,y:g.y-o,enabled: {
+[m]:s,[f]:r
+}
+}
+}
+}
+}
+};
+function tt() {
+return typeof window<"u"
+}function H(t) {
+return Et(t)?(t.nodeName||"").toLowerCase():"#document"
+}function A(t) {
+var e;
+return(t==null||(e=t.ownerDocument)==null?void 0:e.defaultView)||window
+}function k(t) {
+var e;
+return(e=(Et(t)?t.ownerDocument:t.document)||window.document)==null?void 0:e.documentElement
+}function Et(t) {
+return tt()?t instanceof Node||t instanceof A(t).Node:!1
+}function E(t) {
+return tt()?t instanceof Element||t instanceof A(t).Element:!1
+}function L(t) {
+return tt()?t instanceof HTMLElement||t instanceof A(t).HTMLElement:!1
+}function wt(t) {
+return!tt()||typeof ShadowRoot>"u"?!1:t instanceof ShadowRoot||t instanceof A(t).ShadowRoot
+}function q(t) {
+const {
+overflow:e,overflowX:n,overflowY:o,display:i
+}=C(t);
+return/auto|scroll|overlay|hidden|clip/.test(e+o+n)&&!["inline","contents"].includes(i)
+}function Kt(t) {
+return["table","td","th"].includes(H(t))
+}function et(t) {
+return[":popover-open",":modal"].some(e=> {
+try {
+return t.matches(e)
+}catch {
+return!1
+}
+})
+}function lt(t) {
+const e=at(),n=E(t)?C(t):t;
+return["transform","translate","scale","rotate","perspective"].some(o=>n[o]?n[o]!=="none":!1)||(n.containerType?n.containerType!=="normal":!1)||!e&&(n.backdropFilter?n.backdropFilter!=="none":!1)||!e&&(n.filter?n.filter!=="none":!1)||["transform","translate","scale","rotate","perspective","filter"].some(o=>(n.willChange||"").includes(o))||["paint","layout","strict","content"].some(o=>(n.contain||"").includes(o))
+}function Qt(t) {
+let e=D(t);
+for(;
+L(e)&&!I(e);
+) {
+if(lt(e))return e;
+if(et(e))return null;
+e=D(e)
+}return null
+}function at() {
+return typeof CSS>"u"||!CSS.supports?!1:CSS.supports("-webkit-backdrop-filter","none")
+}function I(t) {
+return["html","body","#document"].includes(H(t))
+}function C(t) {
+return A(t).getComputedStyle(t)
+}function nt(t) {
+return E(t)? {
+scrollLeft:t.scrollLeft,scrollTop:t.scrollTop
+}: {
+scrollLeft:t.scrollX,scrollTop:t.scrollY
+}
+}function D(t) {
+if(H(t)==="html")return t;
+const e=t.assignedSlot||t.parentNode||wt(t)&&t.host||k(t);
+return wt(e)?e.host:e
+}function Ct(t) {
+const e=D(t);
+return I(e)?t.ownerDocument?t.ownerDocument.body:t.body:L(e)&&q(e)?e:Ct(e)
+}function z(t,e,n) {
+var o;
+e===void 0&&(e=[]),n===void 0&&(n=!0);
+const i=Ct(t),s=i===((o=t.ownerDocument)==null?void 0:o.body),r=A(i);
+if(s) {
+const c=ct(r);
+return e.concat(r,r.visualViewport||[],q(i)?i:[],c&&n?z(c):[])
+}return e.concat(i,z(i,[],n))
+}function ct(t) {
+return t.parent&&Object.getPrototypeOf(t.parent)?t.frameElement:null
+}function Ot(t) {
+const e=C(t);
+let n=parseFloat(e.width)||0,o=parseFloat(e.height)||0;
+const i=L(t),s=i?t.offsetWidth:n,r=i?t.offsetHeight:o,c=G(n)!==s||G(o)!==r;
+return c&&(n=s,o=r), {
+width:n,height:o,$:c
+}
+}function ft(t) {
+return E(t)?t:t.contextElement
+}function W(t) {
+const e=ft(t);
+if(!L(e))return O(1);
+const n=e.getBoundingClientRect(), {
+width:o,height:i,$:s
+}=Ot(e);
+let r=(s?G(n.width):n.width)/o,c=(s?G(n.height):n.height)/i;
+return(!r||!Number.isFinite(r))&&(r=1),(!c||!Number.isFinite(c))&&(c=1), {
+x:r,y:c
+}
+}const Zt=O(0);
+function Lt(t) {
+const e=A(t);
+return!at()||!e.visualViewport?Zt: {
+x:e.visualViewport.offsetLeft,y:e.visualViewport.offsetTop
+}
+}function te(t,e,n) {
+return e===void 0&&(e=!1),!n||e&&n!==A(t)?!1:e
+}function B(t,e,n,o) {
+e===void 0&&(e=!1),n===void 0&&(n=!1);
+const i=t.getBoundingClientRect(),s=ft(t);
+let r=O(1);
+e&&(o?E(o)&&(r=W(o)):r=W(t));
+const c=te(s,n,o)?Lt(s):O(0);
+let l=(i.left+c.x)/r.x,a=(i.top+c.y)/r.y,d=i.width/r.x,f=i.height/r.y;
+if(s) {
+const m=A(s),u=o&&E(o)?A(o):o;
+let h=m,g=ct(h);
+for(;
+g&&o&&u!==h;
+) {
+const w=W(g),p=g.getBoundingClientRect(),x=C(g),y=p.left+(g.clientLeft+parseFloat(x.paddingLeft))*w.x,b=p.top+(g.clientTop+parseFloat(x.paddingTop))*w.y;
+l*=w.x,a*=w.y,d*=w.x,f*=w.y,l+=y,a+=b,h=A(g),g=ct(h)
+}
+}return K( {
+width:d,height:f,x:l,y:a
+})
+}function ut(t,e) {
+const n=nt(t).scrollLeft;
+return e?e.left+n:B(k(t)).left+n
+}function kt(t,e,n) {
+n===void 0&&(n=!1);
+const o=t.getBoundingClientRect(),i=o.left+e.scrollLeft-(n?0:ut(t,o)),s=o.top+e.scrollTop;
+return {
+x:i,y:s
+}
+}function ee(t) {
+let {
+elements:e,rect:n,offsetParent:o,strategy:i
+}=t;
+const s=i==="fixed",r=k(o),c=e?et(e.floating):!1;
+if(o===r||c&&s)return n;
+let l= {
+scrollLeft:0,scrollTop:0
+},a=O(1);
+const d=O(0),f=L(o);
+if((f||!f&&!s)&&((H(o)!=="body"||q(r))&&(l=nt(o)),L(o))) {
+const u=B(o);
+a=W(o),d.x=u.x+o.clientLeft,d.y=u.y+o.clientTop
+}const m=r&&!f&&!s?kt(r,l,!0):O(0);
+return {
+width:n.width*a.x,height:n.height*a.y,x:n.x*a.x-l.scrollLeft*a.x+d.x+m.x,y:n.y*a.y-l.scrollTop*a.y+d.y+m.y
+}
+}function ne(t) {
+return Array.from(t.getClientRects())
+}function oe(t) {
+const e=k(t),n=nt(t),o=t.ownerDocument.body,i=M(e.scrollWidth,e.clientWidth,o.scrollWidth,o.clientWidth),s=M(e.scrollHeight,e.clientHeight,o.scrollHeight,o.clientHeight);
+let r=-n.scrollLeft+ut(t);
+const c=-n.scrollTop;
+return C(o).direction==="rtl"&&(r+=M(e.clientWidth,o.clientWidth)-i), {
+width:i,height:s,x:r,y:c
+}
+}function ie(t,e) {
+const n=A(t),o=k(t),i=n.visualViewport;
+let s=o.clientWidth,r=o.clientHeight,c=0,l=0;
+if(i) {
+s=i.width,r=i.height;
+const a=at();
+(!a||a&&e==="fixed")&&(c=i.offsetLeft,l=i.offsetTop)
+}return {
+width:s,height:r,x:c,y:l
+}
+}function se(t,e) {
+const n=B(t,!0,e==="fixed"),o=n.top+t.clientTop,i=n.left+t.clientLeft,s=L(t)?W(t):O(1),r=t.clientWidth*s.x,c=t.clientHeight*s.y,l=i*s.x,a=o*s.y;
+return {
+width:r,height:c,x:l,y:a
+}
+}function xt(t,e,n) {
+let o;
+if(e==="viewport")o=ie(t,n);
+else if(e==="document")o=oe(k(t));
+else if(E(e))o=se(e,n);
+else {
+const i=Lt(t);
+o= {
+x:e.x-i.x,y:e.y-i.y,width:e.width,height:e.height
+}
+}return K(o)
+}function St(t,e) {
+const n=D(t);
+return n===e||!E(n)||I(n)?!1:C(n).position==="fixed"||St(n,e)
+}function re(t,e) {
+const n=e.get(t);
+if(n)return n;
+let o=z(t,[],!1).filter(c=>E(c)&&H(c)!=="body"),i=null;
+const s=C(t).position==="fixed";
+let r=s?D(t):t;
+for(;
+E(r)&&!I(r);
+) {
+const c=C(r),l=lt(r);
+!l&&c.position==="fixed"&&(i=null),(s?!l&&!i:!l&&c.position==="static"&&!!i&&["absolute","fixed"].includes(i.position)||q(r)&&!l&&St(t,r))?o=o.filter(d=>d!==r):i=c,r=D(r)
+}return e.set(t,o),o
+}function ce(t) {
+let {
+element:e,boundary:n,rootBoundary:o,strategy:i
+}=t;
+const r=[...n==="clippingAncestors"?et(e)?[]:re(e,this._c):[].concat(n),o],c=r[0],l=r.reduce((a,d)=> {
+const f=xt(e,d,i);
+return a.top=M(f.top,a.top),a.right=U(f.right,a.right),a.bottom=U(f.bottom,a.bottom),a.left=M(f.left,a.left),a
+},xt(e,c,i));
+return {
+width:l.right-l.left,height:l.bottom-l.top,x:l.left,y:l.top
+}
+}function le(t) {
+const {
+width:e,height:n
+}=Ot(t);
+return {
+width:e,height:n
+}
+}function ae(t,e,n) {
+const o=L(e),i=k(e),s=n==="fixed",r=B(t,!0,s,e);
+let c= {
+scrollLeft:0,scrollTop:0
+};
+const l=O(0);
+function a() {
+l.x=ut(i)
+}if(o||!o&&!s)if((H(e)!=="body"||q(i))&&(c=nt(e)),o) {
+const u=B(e,!0,s,e);
+l.x=u.x+e.clientLeft,l.y=u.y+e.clientTop
+}else i&&a();
+s&&!o&&i&&a();
+const d=i&&!o&&!s?kt(i,c):O(0),f=r.left+c.scrollLeft-l.x-d.x,m=r.top+c.scrollTop-l.y-d.y;
+return {
+x:f,y:m,width:r.width,height:r.height
+}
+}function st(t) {
+return C(t).position==="static"
+}function yt(t,e) {
+if(!L(t)||C(t).position==="fixed")return null;
+if(e)return e(t);
+let n=t.offsetParent;
+return k(t)===n&&(n=n.ownerDocument.body),n
+}function Tt(t,e) {
+const n=A(t);
+if(et(t))return n;
+if(!L(t)) {
+let i=D(t);
+for(;
+i&&!I(i);
+) {
+if(E(i)&&!st(i))return i;
+i=D(i)
+}return n
+}let o=yt(t,e);
+for(;
+o&&Kt(o)&&st(o);
+)o=yt(o,e);
+return o&&I(o)&&st(o)&&!lt(o)?n:o||Qt(t)||n
+}const fe=async function(t) {
+const e=this.getOffsetParent||Tt,n=this.getDimensions,o=await n(t.floating);
+return {
+reference:ae(t.reference,await e(t.floating),t.strategy),floating: {
+x:0,y:0,width:o.width,height:o.height
+}
+}
+};
+function ue(t) {
+return C(t).direction==="rtl"
+}const de= {
+convertOffsetParentRelativeRectToViewportRelativeRect:ee,getDocumentElement:k,getClippingRect:ce,getOffsetParent:Tt,getElementRects:fe,getClientRects:ne,getDimensions:le,getScale:W,isElement:E,isRTL:ue
+};
+function Dt(t,e) {
+return t.x===e.x&&t.y===e.y&&t.width===e.width&&t.height===e.height
+}function me(t,e) {
+let n=null,o;
+const i=k(t);
+function s() {
+var c;
+clearTimeout(o),(c=n)==null||c.disconnect(),n=null
+}function r(c,l) {
+c===void 0&&(c=!1),l===void 0&&(l=1),s();
+const a=t.getBoundingClientRect(), {
+left:d,top:f,width:m,height:u
+}=a;
+if(c||e(),!m||!u)return;
+const h=X(f),g=X(i.clientWidth-(d+m)),w=X(i.clientHeight-(f+u)),p=X(d),y= {
+rootMargin:-h+"px "+-g+"px "+-w+"px "+-p+"px",threshold:M(0,U(1,l))||1
+};
+let b=!0;
+function v(_) {
+const N=_[0].intersectionRatio;
+if(N!==l) {
+if(!b)return r();
+N?r(!1,N):o=setTimeout(()=> {
+r(!1,1e-7)
+},1e3)
+}N===1&&!Dt(a,t.getBoundingClientRect())&&r(),b=!1
+}try {
+n=new IntersectionObserver(v, {
+...y,root:i.ownerDocument
+})
+}catch {
+n=new IntersectionObserver(v,y)
+}n.observe(t)
+}return r(!0),s
+}function he(t,e,n,o) {
+o===void 0&&(o= {
+});
+const {
+ancestorScroll:i=!0,ancestorResize:s=!0,elementResize:r=typeof ResizeObserver=="function",layoutShift:c=typeof IntersectionObserver=="function",animationFrame:l=!1
+}=o,a=ft(t),d=i||s?[...a?z(a):[],...z(e)]:[];
+d.forEach(p=> {
+i&&p.addEventListener("scroll",n, {
+passive:!0
+}),s&&p.addEventListener("resize",n)
+});
+const f=a&&c?me(a,n):null;
+let m=-1,u=null;
+r&&(u=new ResizeObserver(p=> {
+let[x]=p;
+x&&x.target===a&&u&&(u.unobserve(e),cancelAnimationFrame(m),m=requestAnimationFrame(()=> {
+var y;
+(y=u)==null||y.observe(e)
+})),n()
+}),a&&!l&&u.observe(a),u.observe(e));
+let h,g=l?B(t):null;
+l&&w();
+function w() {
+const p=B(t);
+g&&!Dt(g,p)&&n(),g=p,h=requestAnimationFrame(w)
+}return n(),()=> {
+var p;
+d.forEach(x=> {
+i&&x.removeEventListener("scroll",n),s&&x.removeEventListener("resize",n)
+}),f==null||f(),(p=u)==null||p.disconnect(),u=null,l&&cancelAnimationFrame(h)
+}
+}const pe=Gt,ge=Jt,we=Xt,xe=(t,e,n)=> {
+const o=new Map,i= {
+platform:de,...n
+},s= {
+...i.platform,_c:o
+};
+return Yt(t,e, {
+...i,platform:s
+})
+},ye=(t,e,n= {
+})=>(n= {
+placement:"bottom-start",offset:2,...n
+},he(t,e,()=> {
+xe(t,e, {
+placement:n.placement,middleware:[pe(n.offset),we(),ge( {
+padding:5
+})]
+}).then(( {
+x:i,y:s
+})=> {
+Object.assign(e.style, {
+left:i+"px",top:s+"px"
+})
+})
+})),ve= {
+alert:Ft,toast:Mt,modal:$t,confirm:Bt,darkmode:Nt,floatingui:ye,json:t=>JSON.stringify(t,null,2)
+},be=t=>( {
+name:t.name,scope:t.scope,dismissible:t.dismissible,showModal(e) {
+this.name===e.detail.name&&(this.scope===e.detail.scope||!e.detail.scope)&&(this.$root.showModal(),this.$root.setAttribute("data-open",""))
+},closeModal(e) {
+(this.name===e.detail.name&&(this.scope===e.detail.scope||!e.detail.scope)||!e.detail.name&&this.$root.contains(e.target))&&(this.$root.close(),this.$root.removeAttribute("data-open"))
+},backdropClick(e) {
+if(!this.dismissible||e.target.tagName!=="DIALOG")return;
+const n=e.target.getBoundingClientRect();
+n.top<=e.clientY&&e.clientY<=n.top+n.height&&n.left<=e.clientX&&e.clientX<=n.left+n.width||this.closeModal(e)
+}
+}),Ae=t=>( {
+cleanup:null,locked:t.locked,placement:t.placement,get trigger() {
+return this.$el.querySelector("[data-atom-dropdown-trigger]")||this.$el.querySelector("button")
+},get popover() {
+return this.$el.querySelector("[data-atom-dropdown-popover]")||this.$el.querySelector("[data-atom-menu]")
+},init() {
+var e;
+(e=this.trigger)==null||e.addEventListener("click",()=>this.open()),this.locked||document.addEventListener("click",n=> {
+this.trigger.contains(n.target)||this.open(!1)
+}),this.popover.hasAttribute("popover")||(this.popover.setAttribute("popover",""),this.$root.classList.remove("[:where(&_[data-atom-menu])]:hidden"))
+},open(e=!0) {
+var n;
+e?(this.popover.showPopover(),this.$root.setAttribute("data-open",""),this.cleanup=atom.floatingui(this.trigger,this.popover, {
+placement:this.placement
+})):(this.popover.hidePopover(),this.$root.removeAttribute("data-open"),(n=this.cleanup)==null||n.call(this))
+}
+});
+document.addEventListener("alpine:init",()=> {
+Alpine.data("modal",be),Alpine.data("dropdown",Ae)
+});
+window.dd=console.log.bind(console);
+window.atom=ve;

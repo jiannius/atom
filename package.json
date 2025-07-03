@@ -1,0 +1,16 @@
+{
+  "name": "atom",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "@floating-ui/dom": "^1.7.1"
+  }
+}

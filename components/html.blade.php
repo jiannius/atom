@@ -1,0 +1,142 @@
+@props([
+    'noindex' => false,
+    'title' => '',
+    'description' => '',
+    'image' => '',
+    'jsonld' => '',
+    'hreflang' => '',
+    'canonical' => '',
+    'gtm' => '',
+    'ga' => '',
+    'fbp' => '',
+    'fonts' => 'inter',
+    'dark' => false,
+    'styles' => [],
+    'scripts' => [],
+    'editor' => false,
+    'vite' => ['resources/css/app.css', 'resources/js/app.js'],
+])
+
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<head>
+<title>{{ $title ?? config('app.name') }}</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+@if ($noindex)
+<meta name="robots" content="noindex, nofollow" />
+@else
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="{{ url()->current() }}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ $title }}">
+<meta property="og:description" content="{{ $description }}">
+<meta property="og:image" content="{{ $image }}">
+<meta property="og:image:alt" content="{{ $title }}">
+<meta property="og:site_name" content="{{ $title }}">
+<meta name="twitter:card" content="summary" />
+<meta name="twitter:title" content="{{ $title }}">
+<meta name="twitter:description" content="{{ $description }}">
+<meta name="twitter:image" content="{{ $image }}">
+<meta name="twitter:image:alt" content="{{ $title }}">
+@endif
+
+@stack('meta')
+
+@if (!$noindex && $jsonld)<script type="application/ld+json">@json($jsonld)</script>@endif
+@if (!$noindex && $hreflang)<link rel="alternate" href="{{ url()->current() }}" hreflang="{{ $hreflang }}"/>@endif
+@if (!$noindex && $canonical)<link rel="canonical" href="{{ $canonical }}" />@endif
+
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+@if (!$noindex && $gtm)
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','{{ $gtm }}');</script>
+<!-- End Google Tag Manager -->
+@endif
+
+@if (!$noindex && $ga)
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ $ga }}"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+</script>
+@endif
+
+@if (!$noindex && $fbp)
+<!-- Facebook Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '{{ $fbp }}');
+fbq('track', 'PageView');
+</script>
+<!-- End Facebook Pixel Code -->
+@endif
+
+@if ($styles)
+@foreach ($styles as $style)
+<link rel="stylesheet" href="{{ $style }}">
+@endforeach
+@endif
+
+<link rel="stylesheet" href="/atom/atom.css?id={{ app('atom-asset')->version('/atom.css') }}">
+
+@vite($vite)
+
+@stack('styles')
+
+@if ($dark)
+<style>
+    :root.dark {
+        color-scheme: dark;
+    }
+</style>
+<script>
+    document.addEventListener('livewire:navigated', () => atom.darkmode())
+</script>
+@endif
+</head>
+
+<body {{ $attributes->only('class') }}>
+    @if (!$noindex && $gtm)
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ $gtm }}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    @endif
+    
+    @if (!$noindex && $fbp)
+    <img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id={{ $fbp }}&ev=PageView&noscript=1" />
+    @endif
+    
+    {{ $slot }}    
+</body>
+
+@if ($fonts)
+<link rel="preconnect" href="https://fonts.bunny.net">
+<link href="https://fonts.bunny.net/css?family={{ $fonts }}:400,500,600" rel="stylesheet" />
+@endif
+
+<script src="/atom/atom.js?id={{ app('atom-asset')->version('/atom.js') }}" data-navigate-once></script>
+
+@if ($editor)
+<script src="/atom/editor.js?id={{ app('atom-asset')->version('/editor.js') }}" data-navigate-once></script>
+@endif
+
+@stack('scripts')
+</html>
