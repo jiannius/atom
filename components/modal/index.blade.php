@@ -1,6 +1,7 @@
 @props([
     'name' => null,
     'dismissible' => true,
+    'closeable' => true,
 ])
 
 @php
@@ -75,6 +76,7 @@ x-data="modal({
     name: @js($name),
     scope: @js(($__livewire ?? null)?->getId()),
     dismissible: @js($dismissible),
+    closeable: @js($closeable),
 })"
 x-on:atom-modal-show.window="showModal"
 x-on:atom-modal-close.window="closeModal"
@@ -82,7 +84,7 @@ x-on:click="backdropClick"
 x-on:keydown.esc.prevent="dismissible && closeModal"
 {{ $attributes->class($classes) }}
 data-atom-modal>
-    @if ($dismissible)
+    @if ($closeable)
         <div class="absolute top-0 end-0 mt-4 me-4">
             <button
             type="button"

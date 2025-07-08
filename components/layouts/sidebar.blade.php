@@ -76,7 +76,7 @@ class="min-h-screen bg-white dark:bg-zinc-800">
                     @else
                         <div class="grow flex items-center truncate">
                             <div class="shrink-0 size-10 text-lg bg-zinc-200 dark:bg-zinc-700 rounded-lg flex items-center justify-center">
-                                @if ($avatar = auth()->user()->avatar)
+                                @if ($avatar = auth()->user()->avatar ?? null)
                                     <img src="{{ $avatar }}" alt="{{ $name }}" class="w-full h-full object-cover">
                                 @else
                                     {{ auth()->user()->initials() }}
@@ -127,7 +127,7 @@ class="min-h-screen bg-white dark:bg-zinc-800">
                 <atom:dropdown>
                     <button type="button" class="w-full rounded-lg flex items-center gap-2 p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-700">
                         <div class="shrink-0 size-10 bg-zinc-200 dark:bg-zinc-700 rounded-lg flex items-center justify-center">
-                            @if ($avatar = auth()->user()->avatar)
+                            @if ($avatar)
                                 <img src="{{ $avatar }}" alt="{{ $name }}" class="w-full h-full object-cover">
                             @else
                                 {{ auth()->user()->initials() }}
@@ -144,7 +144,7 @@ class="min-h-screen bg-white dark:bg-zinc-800">
                             @else
                                 <div class="flex items-center truncate">
                                     <div class="shrink-0 size-10 text-lg bg-zinc-200 dark:bg-zinc-700 rounded-lg flex items-center justify-center">
-                                        @if ($avatar = auth()->user()->avatar)
+                                        @if ($avatar)
                                             <img src="{{ $avatar }}" alt="{{ $name }}" class="w-full h-full object-cover">
                                         @else
                                             {{ auth()->user()->initials() }}
@@ -172,23 +172,27 @@ class="min-h-screen bg-white dark:bg-zinc-800">
         </div>
 
         <div class="min-h-14 lg:min-h-16 flex items-center">
-            @persist('breadcrumbs')
-                <atom:breadcrumbs class="grow"/>
-            @endpersist
+            <div class="grow">
+                @persist('breadcrumbs')
+                    <atom:breadcrumbs/>
+                @endpersist
+            </div>
 
             <div id="header-actions" class="shrink-0"></div>
         </div>
     </header>
 
-    {{ $slot }}
+    <main class="[grid-area:main] p-6 lg:p-8 lg:pt-0" data-atom-main>
+        {{ $slot }}
+    </main>
 
-    <footer class="[grid-area:footer] z-10 flex items-center p-6 lg:px-8">
+    <footer class="[grid-area:footer] z-10 flex items-center gap-3 p-6 lg:px-8">
         <div class="grow">
             {{ $footer ?? '' }}
         </div>
 
         <div class="shrink-0 hidden lg:block">
-            <atom:darkmode-toggle/>
+            <atom:darkmode-toggle />
         </div>
     </footer>
 

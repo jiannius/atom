@@ -2,9 +2,12 @@
     'expandable' => false,
     'expanded' => true,
     'heading' => null,
+    'hiddenIfEmpty' => true,
 ])
 
-@if ($expandable && $heading)
+@if ($hiddenIfEmpty && $slot->isEmpty())
+
+@elseif ($expandable && $heading)
 
 <ui-disclosure
 {{ $attributes->class('group/disclosure') }}

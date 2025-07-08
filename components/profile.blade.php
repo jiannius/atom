@@ -1,7 +1,7 @@
 @props([
     'name' => auth()->user()->name,
     'initials' => auth()->user()->initials(),
-    'avatar' => auth()->user()->avatar,
+    'avatar' => auth()->user()->avatar ?? null,
     'email' => auth()->user()->email,
 ])
 

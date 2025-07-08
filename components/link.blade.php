@@ -15,6 +15,8 @@ $classes = Arr::toCssClasses([
 ]);
 
 $merges = [
+    'href' => $href,
+    'rel' => $rel,
     'target' => $newtab ? '_blank' : null,
     'aria-label' => strip_tags($slot->toHtml()),
 ];
