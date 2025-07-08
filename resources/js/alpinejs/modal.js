@@ -3,11 +3,13 @@ export default (config) => {
         name: config.name,
         scope: config.scope,
         dismissible: config.dismissible,
+        closeable: config.closeable,
 
         showModal (e) {
             if (this.name === e.detail.name && (this.scope === e.detail.scope || !e.detail.scope)) {
                 this.$root.showModal();
                 this.$root.setAttribute('data-open', '')
+                this.$dispatch('opened')
             }
         },
 
@@ -18,6 +20,7 @@ export default (config) => {
             ) {
                 this.$root.close();
                 this.$root.removeAttribute('data-open');
+                this.$dispatch('closed')
             }
         },
 

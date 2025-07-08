@@ -4,11 +4,11 @@ detail: {
 ...t,onDismissed:()=>e()
 }
 }))
-}),Mt=t=> {
+}),$t=t=> {
 dispatchEvent(new CustomEvent("atom-toast-show", {
 detail:t
 }))
-},$t=(t=null)=>( {
+},Mt=(t=null)=>( {
 show() {
 return dispatchEvent(new CustomEvent("atom-modal-show", {
 detail: {
@@ -42,7 +42,7 @@ if(t=t||window.localStorage.getItem("darkmode")||"system",t==="system") {
 let o=window.matchMedia("(prefers-color-scheme: dark)");
 window.localStorage.removeItem("darkmode"),o.matches?e():n()
 }else t==="dark"?(window.localStorage.setItem("darkmode","dark"),e()):t==="light"&&(window.localStorage.setItem("darkmode","light"),n())
-},U=Math.min,M=Math.max,G=Math.round,X=Math.floor,O=t=>( {
+},U=Math.min,$=Math.max,G=Math.round,X=Math.floor,O=t=>( {
 x:t,y:t
 }),Vt= {
 left:"right",right:"left",bottom:"top",top:"bottom"
@@ -50,10 +50,10 @@ left:"right",right:"left",bottom:"top",top:"bottom"
 start:"end",end:"start"
 };
 function pt(t,e,n) {
-return M(t,U(e,n))
+return $(t,U(e,n))
 }function Q(t,e) {
 return typeof t=="function"?t(e):t
-}function $(t) {
+}function M(t) {
 return t.split("-")[0]
 }function Z(t) {
 return t.split("-")[1]
@@ -62,7 +62,7 @@ return t==="x"?"y":"x"
 }function bt(t) {
 return t==="y"?"height":"width"
 }function T(t) {
-return["top","bottom"].includes($(t))?"y":"x"
+return["top","bottom"].includes(M(t))?"y":"x"
 }function At(t) {
 return vt(T(t))
 }function It(t,e,n) {
@@ -84,7 +84,7 @@ default:return[]
 }
 }function jt(t,e,n,o) {
 const i=Z(t);
-let s=_t($(t),n==="start",o);
+let s=_t(M(t),n==="start",o);
 return i&&(s=s.map(r=>r+"-"+i),e&&(s=s.concat(s.map(rt)))),s
 }function J(t) {
 return t.replace(/left|right|bottom|top/g,e=>Vt[e])
@@ -107,7 +107,7 @@ width:o,height:i,top:n,left:e,right:e+o,bottom:n+i,x:e,y:n
 let {
 reference:o,floating:i
 }=t;
-const s=T(e),r=At(e),c=bt(r),l=$(e),a=s==="y",d=o.x+o.width/2-i.width/2,f=o.y+o.height/2-i.height/2,m=o[c]/2-i[c]/2;
+const s=T(e),r=At(e),c=bt(r),l=M(e),a=s==="y",d=o.x+o.width/2-i.width/2,f=o.y+o.height/2-i.height/2,m=o[c]/2-i[c]/2;
 let u;
 switch(l) {
 case"top":u= {
@@ -204,7 +204,7 @@ mainAxis:d=!0,crossAxis:f=!0,fallbackPlacements:m,fallbackStrategy:u="bestFit",f
 }=Q(t,e);
 if((n=s.arrow)!=null&&n.alignmentOffset)return {
 };
-const p=$(i),x=T(c),y=$(c)===c,b=await(l.isRTL==null?void 0:l.isRTL(a.floating)),v=m||(y||!g?[J(c)]:Ht(c)),_=h!=="none";
+const p=M(i),x=T(c),y=M(c)===c,b=await(l.isRTL==null?void 0:l.isRTL(a.floating)),v=m||(y||!g?[J(c)]:Ht(c)),_=h!=="none";
 !m&&_&&v.push(...jt(c,g,h,b));
 const N=[c,...v],ot=await Rt(e,w),Y=[];
 let V=((o=s.flip)==null?void 0:o.overflows)||[];
@@ -250,7 +250,7 @@ placement:j
 async function Ut(t,e) {
 const {
 placement:n,platform:o,elements:i
-}=t,s=await(o.isRTL==null?void 0:o.isRTL(i.floating)),r=$(n),c=Z(n),l=T(n)==="y",a=["left","top"].includes(r)?-1:1,d=s&&l?-1:1,f=Q(e,t);
+}=t,s=await(o.isRTL==null?void 0:o.isRTL(i.floating)),r=M(n),c=Z(n),l=T(n)==="y",a=["left","top"].includes(r)?-1:1,d=s&&l?-1:1,f=Q(e,t);
 let {
 mainAxis:m,crossAxis:u,alignmentAxis:h
 }=typeof f=="number"? {
@@ -297,7 +297,7 @@ x:p,y:x
 },...l
 }=Q(t,e),a= {
 x:n,y:o
-},d=await Rt(e,l),f=T($(i)),m=vt(f);
+},d=await Rt(e,l),f=T(M(i)),m=vt(f);
 let u=a[m],h=a[f];
 if(s) {
 const w=m==="y"?"top":"left",p=m==="y"?"bottom":"right",x=u+d[w],y=u-d[p];
@@ -467,10 +467,10 @@ width:n.width*a.x,height:n.height*a.y,x:n.x*a.x-l.scrollLeft*a.x+d.x+m.x,y:n.y*a
 }function ne(t) {
 return Array.from(t.getClientRects())
 }function oe(t) {
-const e=k(t),n=nt(t),o=t.ownerDocument.body,i=M(e.scrollWidth,e.clientWidth,o.scrollWidth,o.clientWidth),s=M(e.scrollHeight,e.clientHeight,o.scrollHeight,o.clientHeight);
+const e=k(t),n=nt(t),o=t.ownerDocument.body,i=$(e.scrollWidth,e.clientWidth,o.scrollWidth,o.clientWidth),s=$(e.scrollHeight,e.clientHeight,o.scrollHeight,o.clientHeight);
 let r=-n.scrollLeft+ut(t);
 const c=-n.scrollTop;
-return C(o).direction==="rtl"&&(r+=M(e.clientWidth,o.clientWidth)-i), {
+return C(o).direction==="rtl"&&(r+=$(e.clientWidth,o.clientWidth)-i), {
 width:i,height:s,x:r,y:c
 }
 }function ie(t,e) {
@@ -520,7 +520,7 @@ element:e,boundary:n,rootBoundary:o,strategy:i
 }=t;
 const r=[...n==="clippingAncestors"?et(e)?[]:re(e,this._c):[].concat(n),o],c=r[0],l=r.reduce((a,d)=> {
 const f=xt(e,d,i);
-return a.top=M(f.top,a.top),a.right=U(f.right,a.right),a.bottom=U(f.bottom,a.bottom),a.left=M(f.left,a.left),a
+return a.top=$(f.top,a.top),a.right=U(f.right,a.right),a.bottom=U(f.bottom,a.bottom),a.left=$(f.left,a.left),a
 },xt(e,c,i));
 return {
 width:l.right-l.left,height:l.bottom-l.top,x:l.left,y:l.top
@@ -600,7 +600,7 @@ left:d,top:f,width:m,height:u
 }=a;
 if(c||e(),!m||!u)return;
 const h=X(f),g=X(i.clientWidth-(d+m)),w=X(i.clientHeight-(f+u)),p=X(d),y= {
-rootMargin:-h+"px "+-g+"px "+-w+"px "+-p+"px",threshold:M(0,U(1,l))||1
+rootMargin:-h+"px "+-g+"px "+-w+"px "+-p+"px",threshold:$(0,U(1,l))||1
 };
 let b=!0;
 function v(_) {
@@ -675,12 +675,12 @@ left:i+"px",top:s+"px"
 })
 })
 })),ve= {
-alert:Ft,toast:Mt,modal:$t,confirm:Bt,darkmode:Nt,floatingui:ye,json:t=>JSON.stringify(t,null,2)
+alert:Ft,toast:$t,modal:Mt,confirm:Bt,darkmode:Nt,floatingui:ye,json:t=>JSON.stringify(t,null,2)
 },be=t=>( {
-name:t.name,scope:t.scope,dismissible:t.dismissible,showModal(e) {
-this.name===e.detail.name&&(this.scope===e.detail.scope||!e.detail.scope)&&(this.$root.showModal(),this.$root.setAttribute("data-open",""))
+name:t.name,scope:t.scope,dismissible:t.dismissible,closeable:t.closeable,showModal(e) {
+this.name===e.detail.name&&(this.scope===e.detail.scope||!e.detail.scope)&&(this.$root.showModal(),this.$root.setAttribute("data-open",""),this.$dispatch("opened"))
 },closeModal(e) {
-(this.name===e.detail.name&&(this.scope===e.detail.scope||!e.detail.scope)||!e.detail.name&&this.$root.contains(e.target))&&(this.$root.close(),this.$root.removeAttribute("data-open"))
+(this.name===e.detail.name&&(this.scope===e.detail.scope||!e.detail.scope)||!e.detail.name&&this.$root.contains(e.target))&&(this.$root.close(),this.$root.removeAttribute("data-open"),this.$dispatch("closed"))
 },backdropClick(e) {
 if(!this.dismissible||e.target.tagName!=="DIALOG")return;
 const n=e.target.getBoundingClientRect();
