@@ -106,7 +106,7 @@ class="min-h-screen bg-white dark:bg-zinc-800">
         @endif
     </div>
 
-    <header class="[grid-area:header] z-10 px-6 lg:px-8" data-atom-header>
+    <header class="[grid-area:header] z-10 px-6 lg:px-8 lg:py-3" data-atom-header>
         <div class="min-h-14 lg:hidden flex items-center">
             <button
             type="button"
@@ -174,7 +174,7 @@ class="min-h-screen bg-white dark:bg-zinc-800">
         <div class="min-h-14 lg:min-h-16 flex items-center">
             <div class="grow">
                 @persist('breadcrumbs')
-                    <atom:breadcrumbs/>
+                    <atom:breadcrumbs />
                 @endpersist
             </div>
 

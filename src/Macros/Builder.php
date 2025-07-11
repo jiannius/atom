@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\DB;
 
 class Builder
 {
+    /**
+     * Go to specific page number in paginator
+     */
     public function toPage()
     {
         return function ($page = 1, $rows = 50) {
@@ -13,6 +16,32 @@ class Builder
         };
     }
 
+    /**
+     * Build paginator for data table
+     */
+    public function toTable()
+    {
+        return function ($filters = null, $maxRows = null) {
+            $config = app('livewire')->current()?->_table;
+            $sortColumn = data_get($config, 'sort.column');
+            $sortDirection = data_get($config, 'sort.direction') ?? 'asc';
+            $showTrashed = data_get($config, 'show_trashed');
+            $maxRows ??= data_get($config, 'max_rows') ?? 100;
+
+            if ($sortColumn) $this->orderBy($sortColumn, $sortDirection);
+            else if (!$this->query->orders) $this->latest('id');
+
+            if ($showTrashed) $this->onlyTrashed();
+
+            if ($filters) $this->filter($filters);
+
+            return $this->paginate($maxRows);
+        };
+    }
+
+    /**
+     * Get table columns
+     */
     public function tableColumns()
     {
         return function () {
@@ -26,6 +55,9 @@ class Builder
         };
     }
 
+    /**
+     * Check if table has column
+     */
     public function tableHasColumn()
     {
         return function ($column) {
@@ -34,6 +66,9 @@ class Builder
         };
     }
 
+    /**
+     * Get table column type
+     */
     public function tableColumnType()
     {
         return function ($column, $checker = null) {
@@ -45,6 +80,9 @@ class Builder
         };
     }
 
+    /**
+     * Filter query
+     */
     public function filter()
     {
         return function (...$filters) {
@@ -95,7 +133,7 @@ class Builder
                             }
                         }
                     }
-                    else if (($cast = get($this->getModel()->getCasts(), $col)) && enum_exists($cast)) {
+                    else if (($cast = data_get($this->getModel()->getCasts(), $col)) && enum_exists($cast)) {
                         $value = is_string($value) ? collect(explode(',', $value)) : collect($value);
                         $value = $value->map(fn ($val) => is_enum($val) ? $val->value : trim($val))->filter();
 
@@ -134,15 +172,18 @@ class Builder
         };
     }
 
+    /**
+     * Generate random code
+     */
     public function randomCode()
     {
-        return function ($length = 6) {
+        return function ($length = 6, $column = 'code') {
             $code = null;
             $dup = true;
     
             while ($dup) {
                 $code = str()->upper(str()->random($length));
-                $dup = $this->where('code', $code)->count() > 0;
+                $dup = $this->where($column, $code)->exists();
             }
     
             return $code;                

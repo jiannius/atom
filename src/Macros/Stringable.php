@@ -26,9 +26,18 @@ class Stringable
 
     public function interval()
     {
-        return function (string $delimiter = '') {
+        return function () {
             return new \Illuminate\Support\Stringable (
                 \Illuminate\Support\Str::interval($this->value)
+            );
+        };
+    }
+
+    public function initials()
+    {
+        return function (int $len = 2) {
+            return new \Illuminate\Support\Stringable (
+                \Illuminate\Support\Str::initials($this->value, $len)
             );
         };
     }

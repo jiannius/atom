@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Auth;
 
 class Carbon extends \Carbon\CarbonImmutable
 {
+    /**
+     * Convert carbon instance to local timezone
+     */
     public function local()
     {
         $tz = self::getLocalTimezone();
@@ -13,6 +16,9 @@ class Carbon extends \Carbon\CarbonImmutable
         return $tz ? $this->timezone($tz) : $this;
     }
 
+    /**
+     * Prettify carbon string
+     */
     public function pretty ($option = null)
     {
         $option = $option ?? 'date';
@@ -27,6 +33,9 @@ class Carbon extends \Carbon\CarbonImmutable
         return $this->local()->format($format);
     }
 
+    /**
+     * Get recent carbon string
+     */
     public function recent ($days = 1)
     {
         if ($this->isToday()) return $this->pretty('time');
@@ -35,11 +44,17 @@ class Carbon extends \Carbon\CarbonImmutable
         return $this->pretty('datetime');
     }
 
+    /**
+     * Get local timezone
+     */
     public static function getLocalTimezone()
     {
         return optional(Auth::user())->timezone ?? env('TIMEZONE') ?? 'Asia/Kuala_Lumpur';
     }
 
+    /**
+     * Get range of carbon instance
+     */
     public static function getRange($range)
     {
         $range = $range ?? '1970-01-01 00:00:00 to '.now()->toDateTimeString();

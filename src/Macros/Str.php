@@ -6,6 +6,9 @@ use Illuminate\Support\Arr;
 
 class Str
 {
+    /**
+     * Convert dot annotation to namespace
+     */
     public function namespace()
     {
         return function ($string) {
@@ -17,6 +20,9 @@ class Str
         };
     }
 
+    /**
+     * Convert namespace to dot annotation
+     */
     public function dotpath()
     {
         return function ($string) {
@@ -29,6 +35,9 @@ class Str
         };
     }
 
+    /**
+     * Convert interval to human readable string
+     */
     public function interval()
     {
         return function($string) {
@@ -52,6 +61,20 @@ class Str
             if ($interval === 'week') return t('week-count', $count);
             if ($interval === 'month') return t('month-count', $count);
             if ($interval === 'year') return t('year-count', $count);
+        };
+    }
+
+    /**
+     * Get initials from string
+     */
+    public function initials()
+    {
+        return function ($string, $len = 2) {
+            return str($string)
+                ->explode(' ')
+                ->take($len)
+                ->map(fn ($word) => str($word)->substr(0, 1))
+                ->implode('');
         };
     }
 }

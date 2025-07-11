@@ -4,6 +4,9 @@ namespace Jiannius\Atom;
 
 class Atom
 {
+    /**
+     * Trigger modal from anywhere in the application
+     */
     public function modal($name)
     {
         return new class ($name) {
@@ -26,6 +29,9 @@ class Atom
         };
     }
 
+    /**
+     * Trigger toast from anywhere in the application
+     */
     public function toast(
         $message = null,
         $variant = null,
@@ -58,6 +64,9 @@ class Atom
         app('livewire')->current()->dispatch('atom-toast-show', ...$params);
     }
 
+    /**
+     * Trigger alert from anywhere in the application
+     */
     public function alert(
         $message = null,
         $variant = null,
@@ -89,6 +98,9 @@ class Atom
         ]);
     }
 
+    /**
+     * Trigger confirm from anywhere in the application
+     */
     public function confirm(
         $message = null,
         $variant = null,
@@ -130,38 +142,41 @@ class Atom
         ]);
     }
 
+    /**
+     * Build the breadcrumbs object
+     */
     public function breadcrumbs()
     {
         return new class () {
-            public $create = false;
-            public $home = null;
+            public $home;
             public $items = [];
+            public $replace = false;
 
             public function home($title, $url = null)
             {
-                $this->home = compact('title', 'url');
+                $this->home = ['title' => t($title), 'url' => $url];
                 return $this;
             }
 
             public function push($title, $url = null, $icon = null)
             {
-                $this->items[] = compact('title', 'url', 'icon');
+                $this->items[] = ['title' => t($title), 'url' => $url, 'icon' => $icon];
                 return $this;
             }
 
-            public function create()
+            public function replace()
             {
-                $this->create = true;
+                $this->replace = true;
                 return $this;
             }
 
-            public function dispatch()
+            public function build()
             {
-                app('livewire')->current()->dispatch('atom-breadcrumbs',
-                    items: $this->items,
-                    home: $this->home,
-                    create: $this->create,
-                );
+                return [
+                    'home' => $this->home,
+                    'items' => $this->items,
+                    'replace' => $this->replace,
+                ];
             }
         };
     }

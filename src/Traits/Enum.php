@@ -45,6 +45,17 @@ trait Enum
             default => 'gray',
         };
     }
+
+    /**
+     * Get enum value as option
+     */
+    public function option() : array
+    {
+        return [
+            'value' => $this->value,
+            'label' => $this->label(),
+        ];
+    }
     
     /**
      * Convert enum to array with value, label, and color
