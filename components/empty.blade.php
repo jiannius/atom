@@ -8,8 +8,8 @@
 @if ($size === 'sm')
     <div class="flex items-center justify-center w-full" data-atom-empty>
         <div class="flex justify-center gap-3 py-5">
-            <div class="shrink-0 flex justify-center text-zinc-400">
-                <x-dynamic-component :component="'atom::icon.'.$icon" class="size-8" />
+            <div class="shrink-0 flex justify-center text-zinc-400 size-8">
+                <x-dynamic-component :component="'atom::icon.'.$icon" />
             </div>
 
             <div class="grow self-center">
@@ -24,8 +24,8 @@
     </div>
 @else
     <div class="flex flex-col items-center justify-center gap-3 py-8" data-atom-empty>
-        <div class="text-zinc-300">
-            <x-dynamic-component :component="'atom::icon.'.$icon" class="size-10" />
+        <div class="text-zinc-300 size-14">
+            <x-dynamic-component :component="'atom::icon.'.$icon" />
         </div>
 
         @if ($slot->isNotEmpty())

@@ -58,7 +58,7 @@ $error = $attributes->get('error') ?? $errors?->first($name);
 
     $classes = $attributes->classes()
         ->add('w-full py-2 no-spinner rounded-lg shadow-sm outline-offset-1')
-        ->add('text-zinc-700 text-primary dark:text-zinc-200')
+        ->add('text-zinc-700 dark:text-zinc-200')
         ->add('bg-white dark:bg-white/10')
         ->add('dark:placeholder-zinc-400')
         ->add('focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2 hover:outline-1 hover:outline-zinc-100/50')
