@@ -24,6 +24,11 @@ export default (config) => {
         push (items) {
             items.forEach(item => this.trail.push({ key: atom.random(), ...item }))
         },
+
+        back () {
+            let idx = this.breadcrumbs.length - 2
+            if (idx > -1) Livewire.navigate(this.breadcrumbs[idx].url)
+        },
     
         build () {
             let data = this.retrieve()

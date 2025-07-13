@@ -2,7 +2,11 @@
     'heading' => true,
 ])
 
-<div x-data="breadcrumbs({ heading: @js($heading) })" x-on:livewire:navigated.window="build()" data-atom-breadcrumbs>
+<div
+x-data="breadcrumbs({ heading: @js($heading) })"
+x-on:navigate-back.window="back()"
+x-on:livewire:navigated.window="build()"
+data-atom-breadcrumbs>
     <template x-if="breadcrumbs.length === 1 && heading" hidden>
         <atom:heading size="xl" x-text="breadcrumbs[0].title" class="font-bold"></atom:heading>
     </template>
