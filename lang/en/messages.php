@@ -13,4 +13,6 @@ return [
     'showing-trashed' => 'Showing :count trashed',
     'table-rows-count' => 'Showing :count row|Showing :count rows',
     'table-page' => 'page',
+    'permanently-delete-record' => 'Permanently Delete Record',
+    'are-you-sure-to-delete-this-record' => 'Are you sure to DELETE this record? This action CANNOT BE UNDONE.',
 ];

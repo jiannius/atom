@@ -1,3 +1,7 @@
+@props([
+    'popover' => false,
+])
+
 @php
 $classes = Arr::toCssClasses([
     '[:where(&)]:min-w-48 p-[.3125rem]',
@@ -8,6 +12,6 @@ $classes = Arr::toCssClasses([
 ]);
 @endphp
 
-<div {{ $attributes->class($classes) }} data-atom-menu>
+<div {{ $attributes->class($classes) }} data-atom-menu {{ $popover ? 'popover' : '' }}>
     {{ $slot }}
 </div>

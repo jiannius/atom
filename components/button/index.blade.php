@@ -53,7 +53,7 @@ else {
     $classes[] = 'focus:outline-1';
 
     if ($variant === 'ghost') {
-        $classes[] = 'bg-transparent text-zinc-600 border border-transparent focus:outline-zinc-200 hover:bg-zinc-100 hover:text-zinc-800';
+        $classes[] = 'bg-transparent text-zinc-600 dark:text-zinc-400 border border-transparent focus:outline-zinc-200 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-700 dark:hover:text-zinc-300';
     }
     else if ($inverted) {
         $classes[] = 'inset-shadow-xs inset-shadow-zinc-100/30';
@@ -153,7 +153,14 @@ if (!$attributes->wire('loading')->value() && $attributes->wire('click')->value(
 if ($type === 'delete' && !$attributes->wire('click')->value() && !$attributes->has('x-on:click')) {
     $merges = [
         ...$merges,
-        'x-on:click' => "atom.confirm({ type: 'delete', phrase: '$phrase' }).then(() => \$dispatch('confirmed'))",
+
+        'x-on:click' => "atom.confirm({
+            variant: 'danger',
+            heading: '".t('atom::messages.permanently-delete-record')."',
+            message: '".t('atom::messages.are-you-sure-to-delete-this-record')."',
+            phrase: '$phrase',
+        }).then(() => \$dispatch('confirmed')).catch(() => {})",
+
         'x-on:confirmed' => "\$wire.delete()",
     ];
 }
