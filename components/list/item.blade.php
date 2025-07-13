@@ -15,7 +15,7 @@ $removeable = $attributes->hasAny('wire:remove', 'x-on:remove');
     </div>
 
     @if ($removeable)
-        <div x-on:click.stop="$dispatch('remove')" class="shrink-0 w-8 h-6 flex items-center justify-center text-muted-more cursor-pointer">
+        <div x-on:click.stop="$dispatch('remove')" class="shrink-0 size-4 text-muted-foreground flex items-center justify-center cursor-pointer">
             <atom:icon.delete />
         </div>
     @endif

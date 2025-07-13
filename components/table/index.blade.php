@@ -33,7 +33,7 @@ $filtered = isset($this->filters)
                                 <atom:icon.dropdown />
                             </button>
 
-                            <atom:menu>
+                            <atom:menu popover>
                                 @foreach ($maxRows as $maxRow)
                                     <atom:menu.item wire:click="$set('_table.max_rows', {{ $maxRow }})">
                                         {{ $maxRow }} / {{ t('atom::messages.table-page') }}
@@ -90,7 +90,7 @@ $filtered = isset($this->filters)
                                     </button>
                                 </atom:tooltip>
 
-                                <atom:menu class="min-w-sm">
+                                <atom:menu class="min-w-sm" popover>
                                     <div class="p-3 space-y-3">
                                         <div class="text-xs text-muted-foreground uppercase font-medium">
                                             {{ t('atom::messages.filters') }}
