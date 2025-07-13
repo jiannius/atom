@@ -7,13 +7,9 @@
         <atom:icon.darkmode-toggle class="size-5"/>
     </button>
 
-    <atom:menu x-data="{
-        setMode (mode) {
-            atom.darkmode(mode)
-        },
-    }">
-        <atom:menu.item icon="sun" x-on:click="setMode('light')">{{ t('Light') }}</atom:menu.item>
-        <atom:menu.item icon="moon" x-on:click="setMode('dark')">{{ t('Dark') }}</atom:menu.item>
-        <atom:menu.item icon="laptop" x-on:click="setMode('system')">{{ t('System') }}</atom:menu.item>
+    <atom:menu popover>
+        <atom:menu.item icon="sun" x-on:click="window.darkmode('light')">{{ t('Light') }}</atom:menu.item>
+        <atom:menu.item icon="moon" x-on:click="window.darkmode('dark')">{{ t('Dark') }}</atom:menu.item>
+        <atom:menu.item icon="laptop" x-on:click="window.darkmode('system')">{{ t('System') }}</atom:menu.item>
     </atom:menu>
 </atom:dropdown>

@@ -22,6 +22,7 @@
 <head>
 <title>{{ $title ?? config('app.name') }}</title>
 <meta charset="utf-8" />
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
 @if ($noindex)
@@ -108,7 +109,28 @@ fbq('track', 'PageView');
     }
 </style>
 <script>
-    document.addEventListener('livewire:navigated', () => atom.darkmode())
+    window.darkmode = (mode = null) => {
+        let applyDark = () => document.documentElement.classList.add('dark')
+        let applyLight = () => document.documentElement.classList.remove('dark')
+
+        mode = mode || window.localStorage.getItem('darkmode') || 'system'
+
+        if (mode === 'system') {
+            let media = window.matchMedia('(prefers-color-scheme: dark)')
+            window.localStorage.removeItem('darkmode')
+            media.matches ? applyDark() : applyLight()
+        } else if (mode === 'dark') {
+            window.localStorage.setItem('darkmode', 'dark')
+            applyDark()
+        } else if (mode === 'light') {
+            window.localStorage.setItem('darkmode', 'light')
+            applyLight()
+        }
+    }
+
+    darkmode()
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => darkmode())
+    document.addEventListener('livewire:navigated', () => darkmode())
 </script>
 @endif
 </head>
