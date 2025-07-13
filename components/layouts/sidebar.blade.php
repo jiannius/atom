@@ -98,7 +98,7 @@ class="min-h-screen bg-white dark:bg-zinc-800">
                 </button>
 
                 @isset ($dropdown)
-                    <atom:menu class="w-[220px]">
+                    <atom:menu class="w-[220px]" popover>
                         {{ $dropdown }}
                     </atom:menu>
                 @endisset
@@ -138,7 +138,7 @@ class="min-h-screen bg-white dark:bg-zinc-800">
                     </button>
 
                     @isset ($dropdown)
-                        <atom:menu class="w-[220px]">
+                        <atom:menu class="w-[220px]" popover>
                             @isset ($profile)
                                 {{ $profile }}
                             @else

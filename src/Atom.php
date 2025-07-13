@@ -2,8 +2,28 @@
 
 namespace Jiannius\Atom;
 
+use Illuminate\Support\Arr;
+
 class Atom
 {
+    /**
+     * Trigger action from anywhere in the application
+     */
+    public function action($name, $params = [])
+    {
+        $name = str($name)->namespace()->toString();
+        $method = Arr::pull($params, 'method') ?? 'handle';
+
+        $class = collect([
+            "App\Actions\\$name",
+            "Jiannius\Atom\Actions\\$name",
+        ])->first(fn ($ns) => class_exists($ns));
+
+        throw_if(!$class, \Exception::class, "\App\Actions\\$name not found");
+
+        return app($class)->$method($params);
+    }
+
     /**
      * Trigger modal from anywhere in the application
      */

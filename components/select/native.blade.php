@@ -26,7 +26,7 @@ $classes = Arr::toCssClasses([
     $multiple ? 'min-h-10 py-2' : 'h-10 py-1.5',
     $icon ? 'pl-10' : 'pl-3',
     'has-[option.placeholder:checked]:text-zinc-400',
-    // 'group-has-[[data-atom-error]]/field:border-red-400',
+    'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
     '[[data-atom-input-prefix]+[data-atom-select-native]>&]:rounded-l-none',
     '[[data-atom-input-suffix]+[data-atom-select-native]>&]:rounded-r-none',
 ]);
@@ -156,10 +156,7 @@ $merges = ['required' => $required];
                     @endif
                 @endforeach
             @elseif (is_string($options))
-                @foreach (\Jiannius\Atom\Atom::action('get-options', [
-                    'name' => $options,
-                    'filters' => $filters,
-                ]) as $item)
+                @foreach (app('atom')->action('get-options', ['name' => $options, 'filters' => $filters]) as $item)
                     <atom:select.option
                     :value="data_get($item, 'value')"
                     :disabled="data_get($item, 'is_group') ?? false"

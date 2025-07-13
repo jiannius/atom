@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Support\Stringable;
@@ -40,6 +41,12 @@ class AtomServiceProvider extends ServiceProvider
         $this->registerMacros();
 
         Asset::boot();
+
+        Route::post('/atom/action/{name}', function ($name) {
+            $result = app('atom')->action($name, request()->all());
+            $isResponseObject = $result instanceof \Illuminate\Http\JsonResponse || $result instanceof \Illuminate\Http\Response;
+            return $isResponseObject ? $result : response()->json($result);
+        })->middleware('web');
     }
 
     /**
