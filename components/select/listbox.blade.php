@@ -126,9 +126,9 @@ class="group/select w-full"
                     </template>
 
                     <template x-if="!isEmpty" hidden>
-                        <button type="button" x-on:click.stop="clear()" class="cursor-pointer flex items-center justify-center pl-3 pr-2 last:pr-3 text-muted-foreground">
+                        <div x-on:click.stop="clear()" class="cursor-pointer flex items-center justify-center pl-3 pr-2 last:pr-3 text-muted-foreground">
                             <atom:icon.close />
-                        </button>
+                        </div>
                     </template>
                 @else
                     <div class="pointer-events-none flex items-center justify-center pl-3 pr-2 last:pr-3">
@@ -142,11 +142,11 @@ class="group/select w-full"
                     </div>
                 @elseif ($hasAddButton)
                     <atom:tooltip content="Add New">
-                        <button type="button" x-on:click.stop="$dispatch('add')" class="p-1 cursor-pointer">
-                            <div class="p-2 h-[2.05rem] bg-zinc-100 rounded">
+                        <div x-on:click.stop="$dispatch('add')" class="p-1 cursor-pointer">
+                            <div class="p-2 h-[2.05rem] bg-zinc-100 dark:bg-zinc-600 rounded-md">
                                 <atom:icon.add />
                             </div>
-                        </button>
+                        </div>
                     </atom:tooltip>
                 @endif
             </div>

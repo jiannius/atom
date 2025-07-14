@@ -41,7 +41,7 @@ $icon = [
 $classes = [
     'group/button relative items-center justify-center',
     $block ? 'flex w-full' : 'inline-flex',
-    'whitespace-nowrap rounded-md font-medium transition-colors outline-offset-1',
+    'whitespace-nowrap font-medium transition-colors outline-offset-1',
     'disabled:pointer-events-none disabled:cursor-default disabled:opacity-50',
     'group-[]/buttons:-ml-[1px] group-[]/buttons:first:ml-0',
 ];
@@ -91,19 +91,19 @@ else {
 
 if ($slot->isEmpty() && data_get($icon, 'start')) {
     $classes[] = match ($size) {
-        'lg' => 'size-12',
-        'sm' => 'size-8',
-        'xs' => 'size-6',
-        default => 'size-10',
+        'lg' => 'size-12 rounded-lg',
+        'sm' => 'size-8 rounded-md',
+        'xs' => 'size-6 rounded-md',
+        default => 'size-10 rounded-lg',
     };
 }
 else {
     $classes[] = match ($size) {
-        'lg' => 'text-lg h-14 px-5 gap-2',
-        'md' => 'text-base h-12 px-4 gap-2',
-        'sm' => 'text-sm h-8 px-3 gap-1',
-        'xs' => 'text-xs h-6 px-2 gap-1',
-        default => 'h-10 px-4 gap-2',
+        'lg' => 'text-lg h-14 px-5 gap-2 rounded-lg',
+        'md' => 'text-base h-12 px-4 gap-2 rounded-lg',
+        'sm' => 'text-sm h-8 px-3 gap-1 rounded-md',
+        'xs' => 'text-xs h-6 px-2 gap-1 rounded-md',
+        default => 'h-10 px-4 gap-2 rounded-lg',
     };
 }
 

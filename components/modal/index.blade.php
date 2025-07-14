@@ -6,7 +6,7 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'p-6 [:where(&)]:max-w-xl shadow-lg rounded-xl',
+    'p-6 [:where(&)]:max-w-xl min-w-sm shadow-lg rounded-xl',
     'bg-white dark:bg-zinc-800 border border-transparent dark:border-zinc-700',
 
     '[data-atom-modal-slide]:fixed',
