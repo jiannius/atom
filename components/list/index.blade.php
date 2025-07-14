@@ -1,7 +1,15 @@
 @props([
-    'sortable' => false,
+    'heading' => null,
 ])
 
-<div {{ $attributes->class(['border-l border-zinc-200 px-1 space-y-1']) }}>
-    {{ $slot }}
+<div class="space-y-2" data-atom-list>
+    @if ($heading)
+        <div class="text-sm font-medium text-muted uppercase">{{ $heading }}</div>
+    @endif
+
+    <div {{ $attributes->class(['border-l border-zinc-200 px-1 space-y-1']) }}>
+        {{ $slot }}
+    </div>
+
+    {{ $actions ?? null }}
 </div>
