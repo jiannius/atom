@@ -18,9 +18,9 @@ trait AtomComponent
     ];
 
     /**
-     * Booting the atom component
+     * Mount the atom component
      */
-    public function bootAtomComponent()
+    public function mountAtomComponent()
     {
         if (method_exists($this, 'breadcrumbs')) {
             $this->_breadcrumbs = $this->breadcrumbs(app('atom')->breadcrumbs())->build();

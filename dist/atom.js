@@ -829,8 +829,8 @@ let e=this.retrieve(),i=[ {
 },...e.items].filter(Boolean),o=e.replace;
 if(!this.trail.length)this.push(i);
 else if(i.length) {
-let s=i[i.length-1],r=this.trail.findIndex(l=>l.title===s.title&&l.url===s.url);
-r===-1?this.push([s]):o?this.trail.splice(r,1,s):this.trail.splice(r+1)
+let s=i[i.length-1],r=this.trail.findIndex(l=>l.url===s.url);
+r===-1?this.push([s]):o?this.trail.splice(r,1,s):(this.trail.splice(r),this.push([s]))
 }
 }
 });
