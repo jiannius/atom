@@ -19,7 +19,32 @@ $merges = [
 ];
 @endphp
 
-@if (in_array($type, ['text', 'password', 'number', 'email', 'tel', 'color']))
+@if (in_array($type, ['text', 'password', 'number', 'email']))
+    @if ($label || $caption)
+        <atom:input.field
+        :label="$label"
+        :caption="$caption"
+        :required="$required"
+        :error="$error">
+            <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
+                {{ $slot }}
+                <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
+            </x-dynamic-component>
+        </atom:input.field>
+    @elseif ($prefix || $suffix)
+        <atom:input.prefix :prefix="$prefix" :suffix="$suffix">
+            <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
+                {{ $slot }}
+                <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
+            </x-dynamic-component>
+        </atom:input.prefix>
+    @else
+        <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
+            {{ $slot }}
+            <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
+        </x-dynamic-component>
+    @endif
+@elseif (in_array($type, ['tel', 'color']))
     @if ($label || $caption)
         <atom:input.field
         :label="$label"
@@ -31,13 +56,6 @@ $merges = [
                 <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
             </x-dynamic-component>
         </atom:input.field>
-    @elseif ($prefix || $suffix)
-        <atom:input.prefix :prefix="$prefix" :suffix="$suffix">
-            <x-dynamic-component :component="'atom::input.'.$type" :attributes="$attributes->merge($merges)">
-                {{ $slot }}
-                <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
-            </x-dynamic-component>
-        </atom:input.prefix>
     @else
         <x-dynamic-component :component="'atom::input.'.$type" :attributes="$attributes->merge($merges)">
             {{ $slot }}

@@ -18,7 +18,8 @@ $removeable = $attributes->hasAny('wire:remove', 'x-on:remove');
 @elseif ($attributes->has('x-sort:item')) 
     {{ $attributes->only('x-sort:item') }}
 @endif
-class="py-2 pr-1 flex rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-700"
+class="group/list-item py-2 pr-1 flex rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-700"
+{{ $attributes->only(['wire:remove', 'x-on:remove']) }}
 data-atom-list-item>
     @if ($sortable)
         <div x-sort:handle class="shrink-0 w-8 h-6 flex items-center justify-center text-muted-more cursor-move">
@@ -39,7 +40,7 @@ data-atom-list-item>
     </{{ $el }}>
 
     @if ($removeable)
-        <div x-on:click.stop="$dispatch('remove')" class="shrink-0 size-4 text-muted-foreground flex items-center justify-center cursor-pointer">
+        <div x-on:click.stop="$dispatch('remove')" class="shrink-0 size-4 text-muted-foreground flex items-center justify-center cursor-pointer py-3">
             <atom:icon.delete />
         </div>
     @endif

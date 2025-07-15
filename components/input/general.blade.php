@@ -1,4 +1,5 @@
 @props([
+    'type' => 'text',
     'invalid' => false,
     'copyable' => false,
     'clearable' => false,
@@ -6,9 +7,11 @@
     'icon' => null,
     'iconSuffix' => null,
     'invalid' => false,
+    'step' => null,
 ])
 
 @php
+$step = $type === 'number' ? 'any' : null;
 $classes = Arr::toCssClasses([
     'h-10 w-full py-2 no-spinner rounded-lg shadow-sm outline-offset-1',
     'text-zinc-700 dark:text-zinc-200',
@@ -29,9 +32,24 @@ $classes = Arr::toCssClasses([
         </div>
     @endif
 
-    <input {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)]) }}>
+    <input {{ $attributes->class($classes)->merge([
+        'type' => $type,
+        'step' => $step,
+        'placeholder' => t($placeholder),
+    ]) }}>
 
-    @if ($copyable || $clearable || $iconSuffix)
+    @if ($type === 'password')
+        <div
+        x-data="{ show: false }"
+        x-init="$watch('show', show => {
+            $el.closest('[data-atom-input]').querySelector('input').setAttribute('type', show ? 'text' : 'password')
+        })"
+        x-on:click.stop="show = !show"
+        class="w-full h-full flex items-center justify-center cursor-pointer">
+            <atom:icon.eye-slash x-show="show" class="size-4"/>
+            <atom:icon.eye x-show="!show" class="size-4"/>
+        </div>
+    @elseif ($copyable || $clearable || $iconSuffix)
         <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pr-3 right-0">
             @if ($copyable)
                 <div
