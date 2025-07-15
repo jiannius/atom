@@ -79,27 +79,31 @@ $filtered = isset($this->filters)
                 @if ($trashed || isset($filters))
                     <div class="flex items-center gap-1 flex-wrap">
                         @isset ($filters)
-                            <atom:dropdown locked>
-                                <atom:tooltip content="atom::messages.filters">
-                                    <button type="button" class="relative flex items-center justify-center rounded-md p-1 mx-1 hover:bg-zinc-200 dark:hover:bg-zinc-700">
-                                        <atom:icon.filter class="size-5"/>
+                            <div {{ $filters->attributes->merge(['wire:ignore' => true]) }}>
+                                <atom:dropdown locked>
+                                    <atom:tooltip content="atom::messages.filters">
+                                        <button type="button" class="relative flex items-center justify-center rounded-md p-1 mx-1 hover:bg-zinc-200 dark:hover:bg-zinc-700">
+                                            <atom:icon.filter class="size-5"/>
 
-                                        @if ($filtered)
-                                            <span class="size-2.5 rounded-full bg-red-500 absolute top-0 right-0"></span>
-                                        @endif
-                                    </button>
-                                </atom:tooltip>
+                                            @if ($filtered)
+                                                <span class="size-2.5 rounded-full bg-red-500 absolute top-0 right-0"></span>
+                                            @endif
+                                        </button>
+                                    </atom:tooltip>
 
-                                <atom:menu class="min-w-sm" popover>
-                                    <div class="p-3 space-y-3">
-                                        <div class="text-xs text-muted-foreground uppercase font-medium">
-                                            {{ t('atom::messages.filters') }}
+                                    <atom:menu class="min-w-sm" popover>
+                                        <div class="p-3">
+                                            <div class="text-xs text-muted-foreground uppercase font-medium mb-3">
+                                                {{ t('atom::messages.filters') }}
+                                            </div>
+
+                                            <div class="space-y-6">
+                                                {{ $filters }}
+                                            </div>
                                         </div>
-
-                                        {{ $filters }}
-                                    </div>
-                                </atom:menu>
-                            </atom:dropdown>
+                                    </atom:menu>
+                                </atom:dropdown>
+                            </div>
                         @endisset
 
                         <div @class([
