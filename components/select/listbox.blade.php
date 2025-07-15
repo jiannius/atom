@@ -154,16 +154,17 @@ class="group/select w-full"
 
         <atom:menu x-show="!loading" class="max-w-xl min-w-sm max-h-[400px] overflow-auto" popover>
             <template x-if="searchable" hidden>
-                <div class="py-3 px-4 flex items-center gap-2 border-b">
+                <div class="py-3 px-4 flex items-center gap-2 border-b dark:border-zinc-500">
                     <atom:icon.search class="text-zinc-400 shrink-0"/>
 
                     <input
                     type="text"
-                    x-ref="search"
                     x-model.debounce.300="text"
                     x-on:input.stop=""
+                    x-on:click.stop=""
                     class="appearance-none grow w-full focus:outline-none"
-                    placeholder="{{ t('Search') }}">
+                    placeholder="{{ t('Search') }}"
+                    data-atom-select-search>
 
                     <div
                     x-show="!loading && text"

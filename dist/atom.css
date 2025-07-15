@@ -25,6 +25,15 @@ dialog[data-atom-modal][data-open], dialog[data-atom-modal][data-open]::backdrop
     transform: translate(0) scale(1);
 }
 
+input.no-spinner {
+    -moz-appearance: textfield;
+}
+input.no-spinner::-webkit-outer-spin-button,
+input.no-spinner::-webkit-inner-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
 *:has(>[data-atom-main]) {
     display: grid;
     grid-area: body;

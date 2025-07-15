@@ -28,8 +28,11 @@ export default (config) => {
         init () {
             this.wiresync()
             this.$wire.$watch(config.wiremodel, () => this.wiresync())
+
             this.$watch('visible', () => this.fetch())
             this.$watch('text', () => this.fetch())
+
+            if (this.value || this.value?.length) this.fetch()
         },
 
         wiresync () {
@@ -52,7 +55,13 @@ export default (config) => {
                     search: this.text,
                     value: this.value,
                     ...config.filters,
-                }}).then(res => this.options = [...res]).then(() => this.loading = false).then(() => this.setWidth())
+                }})
+                    .then(res => this.options = [...res])
+                    .then(() => this.loading = false)
+                    .then(() => {
+                        this.setWidth()
+                        this.$nextTick(() => this.$root.querySelector('[data-atom-select-search]').focus())
+                    })
             }
             else {
                 this.options = this.text
@@ -60,6 +69,7 @@ export default (config) => {
                     : [...(config.options || [])]
 
                 this.setWidth()
+                this.$nextTick(() => this.$root.querySelector('[data-atom-select-search]').focus())
             }
         },
 
