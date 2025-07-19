@@ -1,0 +1,23 @@
+<div data-atom-date-picker-calendar @class([
+    '[&_.pika-lendar]:relative [&_.pika-lendar]:p-4 [&_.pika-lendar]:space-y-4 [&_.pika-lendar]:w-full',
+    '[&_.pika-title]:inline-flex [&_.pika-title]:items-center [&_.pika-title]:gap-2',
+    '[&_.pika-label]:grow [&_.pika-label]:relative [&_.pika-label]:w-max [&_.pika-label]:text-xl [&_.pika-label]:has-[.pika-select-month]:font-bold',
+    '[&_.pika-select]:appearance-none [&_.pika-select]:absolute [&_.pika-select]:top-0 [&_.pika-select]:left-0 [&_.pika-select]:z-1 [&_.pika-select]:text-transparent',
+    '[&_.pika-select]:focus:outline-none [&_.pika-select]:active:outline-none',
+    '[&_.pika-title_button]:absolute [&_.pika-title_button]:top-4 [&_.pika-title_button]:w-6 [&_.pika-title_button]:indent-10',
+    '[&_.pika-title_button]:block [&_.pika-title_button]:cursor-pointer [&_.pika-title_button]:whitespace-nowrap [&_.pika-title_button]:overflow-hidden',
+    '[&_.pika-title_button]:bg-no-repeat [&_.pika-title_button]:bg-center [&_.pika-title_button]:bg-transparent [&_.pika-title_button]:opacity-50',
+    'dark:[&_.pika-title_button]:invert',
+    '[&_.pika-title_.pika-next]:right-4 [&_.pika-title_.pika-next]:bg-size-6',
+    '[&_.pika-title_.pika-prev]:right-12 [&_.pika-title_.pika-prev]:bg-size-6',
+    '[&_.pika-table]:w-full [&_.pika-table_th]:text-sm [&_.pika-table_th]:font-medium [&_.pika-table_th]:p-2 [&_.pika-table_th_abbr]:no-underline',
+    '[&_.pika-table_td]:p-px [&_.pika-table_td]:text-center [&_.pika-table_td_button]:size-10 [&_.pika-table_td_button]:text-center [&_.pika-table_td_button]:rounded-md',
+    '[&_.pika-table_td.is-disabled_button]:text-zinc-400 [&_.pika-table_td.is-disabled_button]:cursor-default',
+    '[&_.pika-table_td:not(.is-disabled):not(.is-selected)_button:hover]:bg-zinc-100 dark:[&_.pika-table_td:not(.is-disabled):not(.is-selected)_button:hover]:bg-zinc-800',
+    '[&_.pika-table_td.is-inrange_button]:bg-zinc-800 [&_.pika-table_td.is-inrange_button]:text-zinc-100 dark:[&_.pika-table_td.is-inrange_button]:bg-zinc-800 dark:[&_.pika-table_td.is-inrange_button]:text-current',
+    '[&_.pika-table_td.is-selected_button]:bg-zinc-800 [&_.pika-table_td.is-selected_button]:text-zinc-100 [&_.pika-table_td.is-selected_button]:font-medium',
+    '[&_.pika-table_td.is-selected_button:hover]:bg-zinc-800 [&_.pika-table_td.is-selected_button:hover]:text-zinc-100 [&_.pika-table_td.is-selected_button:hover]:font-medium',
+    '[&_.pika-table_td.is-today:not(.is-selected)_button]:font-semibold',
+    '[&_.pika-table_td.is-today:not(.is-selected)_button]:border [&_.pika-table_td.is-today:not(.is-selected)_button]:border-dashed',
+    '[&_.pika-table_td.is-today:not(.is-selected)_button]:border-black dark:[&_.pika-table_td.is-today:not(.is-selected)_button]:border-white'
+])></div>

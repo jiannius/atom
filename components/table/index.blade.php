@@ -91,7 +91,7 @@ $filtered = isset($this->filters)
                                         </button>
                                     </atom:tooltip>
 
-                                    <atom:menu class="min-w-sm" popover>
+                                    <atom:menu class="min-w-sm max-w-lg" popover>
                                         <div class="p-3">
                                             <div class="text-xs text-muted-foreground uppercase font-medium mb-3">
                                                 {{ t('atom::messages.filters') }}

@@ -96,7 +96,7 @@ fbq('track', 'PageView');
 @endforeach
 @endif
 
-<link rel="stylesheet" href="/atom/atom.css?id={{ app('atom-asset')->version('/atom.css') }}">
+<link rel="stylesheet" href="/atom/atom.css?id={{ app('atom-asset')->version('atom.css') }}">
 
 @vite($vite)
 
@@ -154,10 +154,10 @@ fbq('track', 'PageView');
 <link href="https://fonts.bunny.net/css?family={{ $fonts }}:400,500,600" rel="stylesheet" />
 @endif
 
-<script src="/atom/atom.js?id={{ app('atom-asset')->version('/atom.js') }}" data-navigate-once></script>
+<script src="/atom/atom.js?id={{ app('atom-asset')->version('atom.js') }}" data-navigate-once></script>
 
 @if ($editor)
-<script src="/atom/editor.js?id={{ app('atom-asset')->version('/editor.js') }}" data-navigate-once></script>
+<script src="/atom/editor.js?id={{ app('atom-asset')->version('editor.js') }}" data-navigate-once></script>
 @endif
 
 @stack('scripts')

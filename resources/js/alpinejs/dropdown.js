@@ -7,6 +7,7 @@ export default (config) => {
         get trigger() {
             return this.$root.querySelector('[data-atom-dropdown-trigger]')
                 || this.$root.querySelector('button')
+                || this.$root.querySelector(':scope > *')
         },
 
         get popover() {

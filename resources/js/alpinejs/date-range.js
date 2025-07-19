@@ -1,0 +1,147 @@
+import Pikaday from 'pikaday'
+import dayjs from 'dayjs'
+
+export default (config) => {
+    return {
+        pikaday: [],
+        visible: false,
+        endValue: null,
+        startValue: null,
+        dateRangeValue: null,
+
+        get dateRangeString () {
+            let start = config.time ? this.dateObjects[0]?.format('DD MMM YYYY hh:mm A') : this.dateObjects[0]?.format('DD MMM YYYY')
+            let end = config.time ? this.dateObjects[1]?.format('DD MMM YYYY hh:mm A') : this.dateObjects[1]?.format('DD MMM YYYY')
+
+            if (start || end) {
+                start = start || '∞'
+                end = end || '∞'
+                return `${start} to ${end}`
+            }
+
+            return ''
+        },
+
+        get calendars () {
+            return this.$root.querySelectorAll('[data-atom-date-picker-calendar]')
+        },
+
+        get dateObjects () {
+            let split = (this.dateRangeValue || '').split('to').map(str => str.trim()).filter(Boolean)
+
+            return [
+                split[0] ? dayjs(split[0]) : null,
+                split[1] ? dayjs(split[1]) : null,
+            ]
+        },
+
+        init () {
+            this.$watch('visible', () => {
+                if (this.visible) {
+                    this.$nextTick(() => {
+                        this.parse()
+                        this.setCalendar()
+                    })
+                }
+                else this.destroyCalendar()
+            })
+
+            this.$watch('startValue', () => this.updateValue())
+            this.$watch('endValue', () => this.updateValue())
+        },
+
+        parse () {
+            this.startValue = this.dateObjects[0]?.toISOString()
+            this.endValue = this.dateObjects[1]?.toISOString()
+        },
+
+        preset (name) {
+            let presets = {
+                'today': [dayjs().startOf('day'), dayjs().endOf('day')],
+                'yesterday': [dayjs().subtract(1, 'day').startOf('day'), dayjs().subtract(1, 'day').endOf('day')],
+                'last-7-days': [dayjs().subtract(6, 'day').startOf('day'), dayjs().endOf('day')],
+                'last-30-days': [dayjs().subtract(29, 'day').startOf('day'), dayjs().endOf('day')],
+                'last-180-days': [dayjs().subtract(179, 'day').startOf('day'), dayjs().endOf('day')],
+                'this-month': [dayjs().startOf('month').startOf('day'), dayjs().endOf('month').endOf('day')],
+                'last-month': [dayjs().startOf('month').subtract(1, 'day').startOf('month').startOf('day'), dayjs().startOf('month').subtract(1, 'day').endOf('month').endOf('day')],
+                'this-year': [dayjs().startOf('year').startOf('day'), dayjs().endOf('year').endOf('day')],
+                'last-year': [dayjs().startOf('year').subtract(1, 'day').startOf('year').startOf('day'), dayjs().startOf('year').subtract(1, 'day').endOf('year').endOf('day')],
+            }
+
+            if (presets[name]) {
+                this.startValue = presets[name][0].toISOString()
+                this.endValue = presets[name][1].toISOString()
+                this.$nextTick(() => {
+                    this.setCalendarDates()
+                    this.setCalendarRange()
+                })
+            }
+        },
+
+        updateValue () {
+            let start = this.startValue || ''
+            let end = this.endValue || ''
+            this.dateRangeValue = start || end ? `${start} to ${end}` : ''
+            this.setCalendarRange()
+        },
+
+        pickedDate (key, value) {
+            let obj = value ? dayjs(value) : null
+            let idx = key === 'start' ? 0 : 1
+
+            if (this.dateObjects[idx]) {
+                this[key + 'Value'] = this.dateObjects[idx]
+                    .set('year', obj.get('year'))
+                    .set('month', obj.get('month'))
+                    .set('date', obj.get('date'))
+                    .toISOString()
+            }
+            else {
+                this[key + 'Value'] = obj.toISOString()
+            }
+        },
+
+        setCalendar () {
+            this.pikaday[0] = new Pikaday({ onSelect: (value) => this.pickedDate('start', value) })
+            this.pikaday[1] = new Pikaday({ onSelect: (value) => this.pickedDate('end', value) })
+
+            this.calendars[0].prepend(this.pikaday[0].el)
+            this.calendars[1].prepend(this.pikaday[1].el)
+
+            this.setCalendarDates()
+            this.setCalendarRange()
+        },
+
+        setCalendarDates () {
+            if (this.dateObjects[0]) this.pikaday[0].setDate(this.dateObjects[0].toDate(), true)
+            if (this.dateObjects[1]) this.pikaday[1].setDate(this.dateObjects[1].toDate(), true)
+
+            if (this.dateObjects[0] && !this.dateObjects[1]) this.pikaday[1].setMinDate(this.dateObjects[0].toDate())
+            if (!this.dateObjects[0] && this.dateObjects[1]) this.pikaday[0].setMaxDate(this.dateObjects[1].toDate())
+        },
+
+        setCalendarRange () {
+            if (!this.dateObjects[0] || !this.dateObjects[1]) return
+            if (!this.pikaday[0] || !this.pikaday[1]) return
+
+            this.pikaday[0].hide()
+            this.pikaday[0].setStartRange(this.pikaday[0].getDate())
+            this.pikaday[0].setEndRange(this.pikaday[1].getDate())
+
+            this.pikaday[1].hide()
+            this.pikaday[1].setStartRange(this.pikaday[0].getDate())
+            this.pikaday[1].setEndRange(this.pikaday[1].getDate())
+
+            this.pikaday[0].show()
+            this.pikaday[1].show()
+        },
+
+        destroyCalendar () {
+            this.pikaday[0]?.destroy()
+            this.pikaday[1]?.destroy()
+            this.pikaday = []
+            this.calendars[0].innerHTML = ''
+            this.calendars[1].innerHTML = ''
+        },
+    }
+}

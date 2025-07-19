@@ -1,4 +1,13 @@
 {
-  "/atom.js": "0e71acc7",
-  "/atom.css": "a484f946"
+  "resources/css/atom.css": {
+    "file": "assets/atom-bN0bjHyF.css",
+    "src": "resources/css/atom.css",
+    "isEntry": true
+  },
+  "resources/js/atom.js": {
+    "file": "assets/atom-_nIscdBZ.js",
+    "name": "atom",
+    "src": "resources/js/atom.js",
+    "isEntry": true
+  }
 }

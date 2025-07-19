@@ -114,7 +114,9 @@ class="group/select w-full"
             @endif
 
             <div x-show="loading" class="z-1 absolute top-0 bottom-0 pr-3 right-0 text-primary py-3">
-                <atom:icon.loading />
+                <div class="flex">
+                    <atom:icon.loading />
+                </div>
             </div>
 
             <div class="z-1 absolute top-0 bottom-0 right-0 flex items-center justify-center">
