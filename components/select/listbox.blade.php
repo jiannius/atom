@@ -145,7 +145,7 @@ class="group/select w-full"
                 @elseif ($hasAddButton)
                     <atom:tooltip content="Add New">
                         <div x-on:click.stop="$dispatch('add')" class="p-1 cursor-pointer">
-                            <div class="p-2 h-[2.05rem] bg-zinc-100 dark:bg-zinc-600 rounded-md">
+                            <div class="p-2 h-[2.05rem] bg-zinc-100 dark:bg-zinc-800 rounded-md">
                                 <atom:icon.add />
                             </div>
                         </div>

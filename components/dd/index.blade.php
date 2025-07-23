@@ -12,6 +12,6 @@ $classes = Arr::toCssClasses([
 @endphp
 
 <div {{ $attributes->class($classes) }} data-atom-dd>
-    <dt class="md:col-span-2 text-muted">{{ t($label) }}</dt>
+    <dt class="md:col-span-2 text-muted dark:text-muted-foreground">{{ t($label) }}</dt>
     <dd class="md:col-span-3">{{ $slot->isEmpty() && $filler ? $filler : $slot }}</dd>
 </div>

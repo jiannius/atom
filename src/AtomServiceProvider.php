@@ -2,16 +2,10 @@
 
 namespace Jiannius\Atom;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
-use Illuminate\Support\Stringable;
-use Illuminate\View\ComponentAttributeBag;
 use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\TagCompiler;
 use Livewire\Volt\Volt;
@@ -81,11 +75,12 @@ class AtomServiceProvider extends ServiceProvider
 
     protected function registerMacros() : void
     {
-        Builder::mixin(new \Jiannius\Atom\Macros\Builder());
-        ComponentAttributeBag::mixin(new \Jiannius\Atom\Macros\ComponentAttributeBag());
-        Request::mixin(new \Jiannius\Atom\Macros\Request());
-        Str::mixin(new \Jiannius\Atom\Macros\Str());
-        Stringable::mixin(new \Jiannius\Atom\Macros\Stringable());
-        Arr::mixin(new \Jiannius\Atom\Macros\Arr());
+        \Illuminate\Database\Eloquent\Builder::mixin(new \Jiannius\Atom\Macros\Builder());
+        \Illuminate\View\ComponentAttributeBag::mixin(new \Jiannius\Atom\Macros\ComponentAttributeBag());
+        \Illuminate\Http\Request::mixin(new \Jiannius\Atom\Macros\Request());
+        \Illuminate\Support\Str::mixin(new \Jiannius\Atom\Macros\Str());
+        \Illuminate\Support\Stringable::mixin(new \Jiannius\Atom\Macros\Stringable());
+        \Illuminate\Support\Arr::mixin(new \Jiannius\Atom\Macros\Arr());
+        \Illuminate\Routing\Route::mixin(new \Jiannius\Atom\Macros\Route());
     }
 }

@@ -3,7 +3,7 @@
     'block' => false,
     'href' => null,
     'type' => null,
-    'rel' => 'noopener noreferrer nofollow',
+    'rel' => 'noopener noreferrer',
     'newtab' => false,
     'phrase' => '',
     'inverted' => null,
@@ -173,7 +173,7 @@ if ($slot->isNotEmpty()) {
 }
 @endphp
 
-<{{ $el }} {{ $attributes->merge($merges)->class($classes) }}>
+<{{ $el }} {{ $attributes->merge($merges)->class($classes) }} data-atom-button>
     <div class="absolute inset-0 items-center justify-center hidden group-[.is-loading]/button:flex">
         <atom:icon.loading :class="data_get($icon, 'class')"/>
     </div>
