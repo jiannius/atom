@@ -11,16 +11,15 @@
 ])
 
 @php
-$wiremodel = $attributes->wire('model')->value();
 $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value();
 
 $classes = Arr::toCssClasses([
-    'appearance-none w-full rounded-lg shadow-sm outline-offset-1',
+    'min-h-10 appearance-none w-full rounded-lg shadow-sm outline-offset-1',
     'text-zinc-700 dark:text-zinc-200 text-left pr-10',
     'bg-white dark:bg-white/10',
     'focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
     $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-white/10',
-    $multiple ? 'min-h-10 py-2' : 'h-10 py-1.5',
+    $multiple === true ? 'py-2' : 'py-1.5',
     $icon ? 'pl-10' : 'pl-3',
     'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
 ]);
@@ -28,12 +27,12 @@ $classes = Arr::toCssClasses([
 
 <div
 x-data="select({
-    wiremodel: @js($wiremodel),
     options: @js($options),
     filters: @js($filters),
     multiple: @js($multiple),
     searchable: @js($searchable),
 })"
+x-modelable="selectValue"
 x-on:keydown.up.prevent.stop="keyUp()"
 x-on:keydown.down.prevent.stop="keyDown()"
 x-on:open="visible = true"
@@ -44,7 +43,7 @@ class="group/select w-full"
     @if ($multiple === 'list')
         <template x-if="!isEmpty" hidden>
             <atom:list class="mb-2">
-                <template x-for="item in selected" hidden>
+                <template x-for="item in selectedOptions" hidden>
                     <atom:list.item x-on:remove="deselect(item)" x-on:click.stop="$dispatch('click-selected', item)" class="text-sm">
                         <div x-html="getOptionHtml(item)" class="flex items-center gap-2 truncate cursor-default"></div>
                     </atom:list.item>
@@ -54,105 +53,109 @@ class="group/select w-full"
     @endif
 
     <atom:dropdown :locked="$locked">
-        <button type="button" {{ $attributes->class($classes)->only('class') }}>
-            @if ($icon)
-                <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pl-3 left-0">
-                    <x-dynamic-component :component="'atom::icon.'.$icon" />
-                </div>
-            @endif
-
-            @if ($multiple === true)
-                <template x-if="isEmpty" hidden>
-                    <div class="flex items-center text-zinc-400">{{ t($placeholder) }}</div>
-                </template>
-
-                <template x-if="!isEmpty" hidden>
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <template x-for="item in selected" hidden>
-                            <div class="shrink-0 max-w-56 truncate flex items-center text-sm border-r border-zinc-300 last:border-0">
-                                <div class="flex items-center gap-2 truncate">
-                                    <template x-if="item.color" hidden>
-                                        <div
-                                        x-bind:style="'background-color: '+item.color"
-                                        class="w-3 h-3 rounded-full bg-zinc-100 flex items-center justify-center"></div>
-                                    </template>
-
-                                    <template x-if="item.avatar" hidden>
-                                        <div class="relative flex items-center justify-center size-6 rounded-full bg-zinc-200 text-muted text-xs overflow-hidden">
-                                            <div x-text="item.label.charAt(0).toUpperCase()"></div>
-                                            <template x-if="typeof item.avatar === 'string'" hidden>
-                                                <div class="absolute inset-0 z-1">
-                                                    <img x-bind:src="item.avatar" class="w-full h-full object-cover"/>
-                                                </div>
-                                            </template>
-                                        </div>
-                                    </template>
-
-                                    <div x-text="item.label" class="grow truncate"></div>
-                                </div>
-                                <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center text-muted-foreground pl-2 pr-3 cursor-pointer">
-                                    <atom:icon.minus-circle class="size-4" />
-                                </div>
-                            </div>
-                        </template>
+        @if ($slot->isNotEmpty())
+            {{ $slot }}
+        @else
+            <button type="button" {{ $attributes->class($classes)->only('class') }}>
+                @if ($icon)
+                    <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pl-3 left-0">
+                        <x-dynamic-component :component="'atom::icon.'.$icon" />
                     </div>
-                </template>
-            @elseif ($multiple === 'list')
-                <div class="flex items-center text-zinc-400">{{ t($placeholder) }}</div>
-            @else
-                <template x-if="isEmpty" hidden>
-                    <div class="flex items-center text-zinc-400">{{ t($placeholder) }}</div>
-                </template>
+                @endif
 
-                <template x-if="!isEmpty" hidden>
-                    @isset ($selected)
-                        {{ $selected }}
-                    @else
-                        <div x-html="getOptionHtml(selected)" class="group/select-selected"></div>
-                    @endisset
-                </template>
-            @endif
-
-            <div x-show="loading" class="z-1 absolute top-0 bottom-0 pr-3 right-0 text-primary py-3">
-                <div class="flex">
-                    <atom:icon.loading />
-                </div>
-            </div>
-
-            <div class="z-1 absolute top-0 bottom-0 right-0 flex items-center justify-center">
-                @if ($multiple !== 'list' && $clearable)
+                @if ($multiple === true)
                     <template x-if="isEmpty" hidden>
-                        <div class="pointer-events-none py-3 pr-2 last:pr-3">
-                            <atom:icon.dropdown />
-                        </div>
+                        <div class="flex items-center text-zinc-400">{{ t($placeholder) }}</div>
                     </template>
 
                     <template x-if="!isEmpty" hidden>
-                        <div x-on:click.stop="clear()" class="cursor-pointer flex items-center justify-center pl-3 pr-2 last:pr-3 text-muted-foreground">
-                            <atom:icon.close />
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <template x-for="item in selectedOptions" hidden>
+                                <div class="shrink-0 max-w-56 truncate flex items-center text-sm border-r border-zinc-300 last:border-0">
+                                    <div class="flex items-center gap-2 truncate">
+                                        <template x-if="item.color" hidden>
+                                            <div
+                                            x-bind:style="'background-color: '+item.color"
+                                            class="w-3 h-3 rounded-full bg-zinc-100 flex items-center justify-center"></div>
+                                        </template>
+
+                                        <template x-if="item.avatar" hidden>
+                                            <div class="relative flex items-center justify-center size-6 rounded-full bg-zinc-200 text-muted text-xs overflow-hidden">
+                                                <div x-text="item.label.charAt(0).toUpperCase()"></div>
+                                                <template x-if="typeof item.avatar === 'string'" hidden>
+                                                    <div class="absolute inset-0 z-1">
+                                                        <img x-bind:src="item.avatar" class="w-full h-full object-cover"/>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        <div x-text="item.label" class="grow truncate"></div>
+                                    </div>
+                                    <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center text-muted-foreground pl-2 pr-3 cursor-pointer">
+                                        <atom:icon.minus-circle class="size-4" />
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </template>
+                @elseif ($multiple === 'list')
+                    <div class="flex items-center text-zinc-400">{{ t($placeholder) }}</div>
                 @else
-                    <div class="pointer-events-none flex items-center justify-center pl-3 pr-2 last:pr-3">
-                        <atom:icon.dropdown />
-                    </div>
+                    <template x-if="isEmpty" hidden>
+                        <div class="flex items-center text-zinc-400">{{ t($placeholder) }}</div>
+                    </template>
+
+                    <template x-if="!isEmpty" hidden>
+                        @isset ($selected)
+                            {{ $selected }}
+                        @else
+                            <div x-html="getOptionHtml(selectedOptions)" class="group/select-selected"></div>
+                        @endisset
+                    </template>
                 @endif
 
-                @if (isset($addButton) && $addButton->isNotEmpty())
-                    <div x-on:click.stop class="p-1 cursor-pointer">
-                        {{ $addButton }}
+                <div x-show="loading" class="z-1 absolute top-0 bottom-0 pr-3 right-0 text-primary py-3">
+                    <div class="flex">
+                        <atom:icon.loading />
                     </div>
-                @elseif ($hasAddButton)
-                    <atom:tooltip content="Add New">
-                        <div x-on:click.stop="$dispatch('add')" class="p-1 cursor-pointer">
-                            <div class="p-2 h-[2.05rem] bg-zinc-100 dark:bg-zinc-800 rounded-md">
-                                <atom:icon.add />
+                </div>
+
+                <div class="z-1 absolute top-0 right-0 h-10 flex items-center justify-center">
+                    @if ($multiple !== 'list' && $clearable)
+                        <template x-if="isEmpty" hidden>
+                            <div class="pointer-events-none py-3 pr-2 last:pr-3">
+                                <atom:icon.dropdown />
                             </div>
+                        </template>
+
+                        <template x-if="!isEmpty" hidden>
+                            <div x-on:click.stop="clear()" class="cursor-pointer flex items-center justify-center pl-3 pr-2 last:pr-3 text-muted-foreground">
+                                <atom:icon.close />
+                            </div>
+                        </template>
+                    @else
+                        <div class="pointer-events-none flex items-center justify-center pl-3 pr-2 last:pr-3">
+                            <atom:icon.dropdown />
                         </div>
-                    </atom:tooltip>
-                @endif
-            </div>
-        </button>
+                    @endif
+
+                    @if (isset($addButton) && $addButton->isNotEmpty())
+                        <div x-on:click.stop class="p-1 cursor-pointer">
+                            {{ $addButton }}
+                        </div>
+                    @elseif ($hasAddButton)
+                        <atom:tooltip content="Add New">
+                            <div x-on:click.stop="$dispatch('add')" class="p-1 cursor-pointer">
+                                <div class="p-2 h-[2.05rem] bg-zinc-100 dark:bg-zinc-800 rounded-md">
+                                    <atom:icon.add />
+                                </div>
+                            </div>
+                        </atom:tooltip>
+                    @endif
+                </div>
+            </button>
+        @endif
 
         <atom:menu x-show="!loading" class="max-w-xl min-w-sm max-h-[400px] overflow-auto" popover>
             <template x-if="searchable" hidden>

@@ -1,20 +1,19 @@
 export default (config) => {
     return {
-        value: config.multiple ? [] : null,
-        options: [],
-        callback: typeof config.options === 'string' ? config.options : null,
-        multiple: config.multiple,
         text: null,
         loading: false,
         visible: false,
+        options: [],
+        callback: typeof config.options === 'string' ? config.options : null,
+        selectValue: config.multiple ? [] : null,
 
         get isEmpty () {
-            return !this.selected || (Array.isArray(this.selected) && !this.selected.length)
+            return !this.selectedOptions || (Array.isArray(this.selectedOptions) && !this.selectedOptions.length)
         },
 
-        get selected () {
-            if (Array.isArray(this.value)) return this.value.map(val => this.options.find(opt => opt.value == val))
-            else return this.options.find(opt => opt.value == this.value)
+        get selectedOptions () {
+            if (Array.isArray(this.selectValue)) return this.selectValue.map(val => this.options.find(opt => opt.value == val))
+            else return this.options.find(opt => opt.value == this.selectValue)
         },
 
         get searchable () {
@@ -26,17 +25,12 @@ export default (config) => {
         },
 
         init () {
-            this.wiresync()
-            this.$wire.$watch(config.wiremodel, () => this.wiresync())
-
             this.$watch('visible', () => this.fetch())
             this.$watch('text', () => this.fetch())
 
-            if (this.value || this.value?.length) this.fetch()
-        },
-
-        wiresync () {
-            this.value = this.$wire.get(config.wiremodel)
+            if ((config.multiple && this.selectValue?.length) || (!config.multiple && this.selectedValue)) {
+                this.$nextTick(() => this.fetch())
+            }
         },
 
         show () {
@@ -44,8 +38,8 @@ export default (config) => {
         },
 
         clear () {
-            this.value = this.multiple ? [] : ''
-            this.$dispatch('input', this.value)
+            this.selectValue = config.multiple ? [] : ''
+            this.$dispatch('input', this.selectValue)
         },
 
         fetch () {
@@ -53,14 +47,14 @@ export default (config) => {
                 this.loading = true
                 atom.action('get-options', { name: this.callback, filters: {
                     search: this.text,
-                    value: this.value,
+                    value: this.selectValue,
                     ...config.filters,
                 }})
                     .then(res => this.options = [...res])
                     .then(() => this.loading = false)
                     .then(() => {
                         this.setWidth()
-                        this.$nextTick(() => this.$root.querySelector('[data-atom-select-search]').focus())
+                        this.$nextTick(() => this.$root.querySelector('[data-atom-select-search]')?.focus())
                     })
             }
             else {
@@ -69,7 +63,7 @@ export default (config) => {
                     : [...(config.options || [])]
 
                 this.setWidth()
-                this.$nextTick(() => this.$root.querySelector('[data-atom-select-search]').focus())
+                this.$nextTick(() => this.$root.querySelector('[data-atom-select-search]')?.focus())
             }
         },
 
@@ -80,29 +74,29 @@ export default (config) => {
         },
 
         select (opt) {
-            if (this.multiple) {
+            if (config.multiple) {
                 if (this.isSelected(opt)) return this.deselect(opt)
-                else this.value = [...(this.value || []), ...[opt.value]]
+                else this.selectValue = [...(this.selectValue || []), ...[opt.value]]
             }
             else {
-                this.value = opt.value
+                this.selectValue = opt.value
             }
 
             this.text = null
             this.loading = false
-            this.$dispatch('input', this.value)
+            this.$dispatch('input', this.selectValue)
         },
 
         deselect (opt) {
-            let values = [...this.value]
+            let values = [...this.selectValue]
             let index = values.findIndex(val => (val == opt.value))
 
             if (index > -1) {
                 values.splice(index, 1)
-                this.value = [...values]
+                this.selectValue = [...values]
                 this.text = null
                 this.loading = false
-                this.$dispatch('input', this.value)
+                this.$dispatch('input', this.selectValue)
             }
         },
 
@@ -164,9 +158,9 @@ export default (config) => {
         },
 
         isSelected (opt) {
-            return this.multiple
-                ? (this.value || []).includes(opt.value)
-                : opt.value === this.value
+            return config.multiple
+                ? (this.selectValue || []).includes(opt.value)
+                : opt.value === this.selectValue
         },
 
         scroll () {
@@ -180,7 +174,6 @@ export default (config) => {
             if (index === 0) menu.scrollTop = 0
             else if (index === els.length - 1) menu.scrollTop = menu.scrollHeight
             else {
-                let ceiling = 0
                 let floor = menu.getBoundingClientRect().height
                 let top = focus.getBoundingClientRect().top - menu.getBoundingClientRect().top
                 let height = focus.getBoundingClientRect().height
