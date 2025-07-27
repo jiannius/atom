@@ -98,8 +98,8 @@ $classes = Arr::toCssClasses([
     @elseif (isset($actions) && $actions->isNotEmpty())
         <div {{ $actions->attributes->class([
             'z-1 absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pr-3 right-0',
-            '[&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:text-muted [&_button]:rounded-md  [&_button]:p-1',
-            '[&_button:focus]:outline-none [&_button:focus]:bg-zinc-100',
+            '[&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:text-muted dark:[&_button]:text-muted-foreground [&_button]:rounded-md  [&_button]:p-1',
+            '[&_button:focus]:outline-none [&_button:focus]:bg-zinc-100 dark:[&_button:focus]:bg-zinc-800',
         ]) }}>
             {{ $actions }}
         </div>

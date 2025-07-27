@@ -1,5 +1,5 @@
 <div class="contents relative">
-    <form {{ $attributes->class(['group/form space-y-6'])->merge(['wire:submit' => 'submit']) }} data-atom-form>
+    <form {{ $attributes->class(['group/form flex flex-col gap-6'])->merge(['wire:submit' => 'submit']) }} data-atom-form>
         {{ $slot }}
     </form>
 

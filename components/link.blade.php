@@ -10,7 +10,7 @@
 @php
 $classes = Arr::toCssClasses([
     'underline underline-offset-5 decoration-dotted cursor-pointer',
-    $variant === 'accent' ? 'text-accent' : 'text-sky-600 dark:text-white',
+    $variant === 'accent' ? 'text-accent' : 'text-sky-600 dark:text-zinc-300',
     $icon || $iconSuffix ? 'inline-flex items-center gap-2' : '',
 ]);
 

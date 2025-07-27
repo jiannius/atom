@@ -28,9 +28,11 @@ export default (config) => {
             this.$watch('visible', () => this.fetch())
             this.$watch('text', () => this.fetch())
 
-            if ((config.multiple && this.selectValue?.length) || (!config.multiple && this.selectedValue)) {
-                this.$nextTick(() => this.fetch())
-            }
+            this.$nextTick(() => {
+                if ((config.multiple && this.selectValue?.length) || (!config.multiple && !empty(this.selectValue))) {
+                    this.fetch()
+                }
+            })
         },
 
         show () {
