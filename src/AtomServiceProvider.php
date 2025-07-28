@@ -81,6 +81,5 @@ class AtomServiceProvider extends ServiceProvider
         \Illuminate\Support\Str::mixin(new \Jiannius\Atom\Macros\Str());
         \Illuminate\Support\Stringable::mixin(new \Jiannius\Atom\Macros\Stringable());
         \Illuminate\Support\Arr::mixin(new \Jiannius\Atom\Macros\Arr());
-        \Illuminate\Routing\Route::mixin(new \Jiannius\Atom\Macros\Route());
     }
 }
