@@ -1,27 +1,19 @@
 @props([
-    'action' => null,
     'badge' => null,
     'badgeColor' => null,
     'href' => null,
     'type' => 'button',
     'newtab' => false,
     'target' => null,
-    'variant' => null,
+    'variant' => 'default',  // default, danger, warning, delete, remove
+    'phrase' => null,   // phrase to input when delete
     'icon' => null,
     'iconSuffix' => null,
 ])
 
 @php
-$variant ??= in_array($action, ['delete', 'remove']) ? 'danger' : null;
-
 $icon = [
-    'start' => $icon ?? match ($action) {
-        'edit' => 'edit',
-        'create' => 'add',
-        'delete', 'remove' => 'delete',
-        'duplicate' => 'copy',
-        default => null,
-    },
+    'start' => $icon ?? (in_array($variant, ['delete', 'remove']) ? 'delete' : null),
     'end' => $iconSuffix,
 ];
 
@@ -33,9 +25,11 @@ $classes = Arr::toCssClasses([
     'focus:outline-none',
     'disabled:pointer-events-none disabled:cursor-default',
     '[:where([data-atom-menu]_&)]:my-1 first:[:where([data-atom-menu]_&)]:mt-0 last:[:where([data-atom-menu]_&)]:mb-0',
-    $variant === 'danger'
-        ? 'focus:bg-red-100 hover:text-red-500 hover:bg-red-100'
-        : 'focus:bg-zinc-800/5 hover:bg-zinc-800/5 dark:hover:bg-zinc-600',
+    match ($variant) {
+        'danger', 'delete', 'remove' => 'focus:bg-red-100 hover:text-red-500 hover:bg-red-100',
+        'warning' => 'focus:bg-yellow-100 hover:text-yellow-500 hover:bg-yellow-100',
+        default => 'focus:bg-zinc-800/5 hover:bg-zinc-800/5 dark:hover:bg-zinc-600',
+    },
 ]);
 
 $merges = [
@@ -45,11 +39,18 @@ $merges = [
     'data-atom-menu-item' => true,
 ];
 
-if ($action === 'delete') {
+if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attributes->has('x-on:click')) {
     $merges = [
         ...$merges,
-        'x-on:click' => 'Atom.confirm({ type: \'delete\' }).then(() => $dispatch(\'confirmed\'))',
-        'x-on:confirmed' => '$wire.delete()',
+
+        'x-on:click' => "atom.confirm({
+            variant: 'danger',
+            heading: '".t('atom::messages.permanently-delete-record')."',
+            message: '".t('atom::messages.are-you-sure-to-delete-this-record')."',
+            phrase: '$phrase',
+        }).then(() => \$dispatch('confirmed')).catch(() => {})",
+
+        'x-on:confirmed' => "\$wire.delete()",
     ];
 }
 @endphp
