@@ -180,7 +180,7 @@ class Atom
 
             public function push($title, $url = null, $icon = null)
             {
-                $this->items[] = ['title' => t($title), 'url' => $url, 'icon' => $icon];
+                $this->items[] = ['title' => t($title), 'url' => $url ?? url()->current(), 'icon' => $icon];
                 return $this;
             }
 

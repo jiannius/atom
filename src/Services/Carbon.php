@@ -6,6 +6,11 @@ use Illuminate\Support\Facades\Auth;
 
 class Carbon extends \Carbon\CarbonImmutable
 {
+    public function __toString()
+    {
+        return $this->toIso8601ZuluString();
+    }
+
     /**
      * Convert carbon instance to local timezone
      */
