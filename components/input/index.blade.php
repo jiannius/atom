@@ -26,18 +26,20 @@ $merges = [
         :caption="$caption"
         :required="$required"
         :error="$error">
-            <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
-                {{ $slot }}
-                <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
-            </x-dynamic-component>
+            @if ($prefix || $suffix)
+                <atom:input.prefix :prefix="$prefix" :suffix="$suffix">
+                    <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
+                        {{ $slot }}
+                        <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
+                    </x-dynamic-component>
+                </atom:input.prefix>    
+            @else
+                <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
+                    {{ $slot }}
+                    <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
+                </x-dynamic-component>
+            @endif
         </atom:input.field>
-    @elseif ($prefix || $suffix)
-        <atom:input.prefix :prefix="$prefix" :suffix="$suffix">
-            <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
-                {{ $slot }}
-                <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
-            </x-dynamic-component>
-        </atom:input.prefix>
     @else
         <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
             {{ $slot }}

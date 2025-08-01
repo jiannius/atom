@@ -9,6 +9,7 @@
 
         '[&:has([data-atom-button]:not(:only-child))_[data-atom-button]]:rounded-none',
         '[&:has([data-atom-button]:not(:only-child))_[data-atom-button]]:shadow-none',
+        '[&:has([data-atom-button]:not(:only-child))_[data-atom-button]]:focus:outline-none',
 
         '[&_[data-atom-button]:not(:first-child)]:-ml-px',
         '[&_[data-atom-dropdown]:not(:first-child)]:-ml-px',

@@ -21,7 +21,7 @@ $classes = Arr::toCssClasses([
     $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-white/10',
     'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
     $icon ? 'pl-10' : 'pl-3',
-    $iconSuffix ? 'pr-10' : 'pr-3',
+    $copyable || $clearable || $iconSuffix ? 'pr-10' : 'pr-3',
 ]);
 @endphp
 
@@ -52,23 +52,13 @@ $classes = Arr::toCssClasses([
     @elseif ($copyable || $clearable || $iconSuffix)
         <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pr-3 right-0">
             @if ($copyable)
-                <div
-                x-cloak
-                x-data="{ copied: false }"
-                x-tooltip="{{ js(t('copy')) }}"
-                x-on:click.stop="() => {
-                    let input = $el.closest('[data-atom-input]').querySelector('input')
-                    if (!input.value) return
-
-                    $clipboard(input.value)
-                        .then(() => copied = true)
-                        .then(() => input.select())
-                        .then(() => setTimeout(() => copied = false, 1000))
-                }"
-                class="w-full h-full flex items-center justify-center cursor-pointer">
-                    <atom:icon.copy x-show="!copied" class="size-4"/>
-                    <atom:icon.check x-show="copied" class="size-4"/>
-                </div>
+                <atom:tooltip content="Copy to clipboard">
+                    <atom:copy x-bind:data-copy-value="$el.closest('[data-atom-input]').querySelector('input').value">
+                        <div class="w-full h-full flex items-center justify-center cursor-pointer">
+                            <atom:icon.copy />
+                        </div>
+                    </atom:copy>
+                </atom:tooltip>
             @elseif ($clearable)
                 <div
                 x-cloak

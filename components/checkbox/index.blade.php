@@ -1,10 +1,15 @@
+@props([
+    'name' => null,
+    'label' => null,
+    'caption' => null,
+    'required' => false,
+    'error' => null,
+])
+
 @php
-$label = $attributes->get('label');
-$caption = $attributes->get('caption');
-$size = $attributes->get('size');
-$field = $attributes->get('field') ?? $attributes->wire('model')->value();
-$error = $attributes->get('error') ?? $this->errors[$field] ?? null;
-$attrs = $attributes->except(['label', 'caption', 'error', 'field']);
+$name ??= $attributes->wire('model')->value();
+$error ??= $errors?->first($name);
+$merges = ['name' => $name];
 @endphp
 
 <label class="group/checkbox inline-block space-y-2" data-atom-checkbox>

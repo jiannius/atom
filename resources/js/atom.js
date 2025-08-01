@@ -7,6 +7,7 @@ import modal from './alpinejs/modal'
 import select from './alpinejs/select'
 import tooltip from './alpinejs/tooltip'
 import dropdown from './alpinejs/dropdown'
+import clipboard from './alpinejs/clipboard'
 import datePicker from './alpinejs/date-picker'
 import dateRange from './alpinejs/date-range'
 import timePicker from './alpinejs/time-picker'
@@ -23,6 +24,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('datePicker', datePicker)
     Alpine.data('timePicker', timePicker)
     Alpine.data('dateRange', dateRange)
+    Alpine.magic('clipboard', clipboard)
     Alpine.plugin(Autosize)
 })
 
