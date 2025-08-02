@@ -22,7 +22,7 @@ $classes = Arr::toCssClasses([
 @endphp
 
 <div
-x-data="tel({ code: @js($code) })"
+x-data="telInput({ code: @js($code) })"
 x-modelable="telValue"
 class="group/input relative w-full"
 {{ $attributes->except('class', 'placeholder', 'required', 'invalid', 'disabled', 'readonly') }}

@@ -19,7 +19,7 @@ $merges = [
 ];
 @endphp
 
-@if (in_array($type, ['text', 'password', 'number', 'email']))
+@if (in_array($type, ['text', 'password', 'number']))
     @if ($label || $caption)
         <atom:input.field
         :label="$label"
@@ -63,6 +63,32 @@ $merges = [
             {{ $slot }}
             <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
         </x-dynamic-component>
+    @endif
+@elseif ($type === 'email')
+    @if ($label || $caption)
+        <atom:input.field
+        :label="$label"
+        :caption="$caption"
+        :required="$required"
+        :error="$error">
+            @if ($attributes->get('options') || $attributes->get('multiple'))
+                <atom:input.email :attributes="$attributes->merge($merges)">
+                    {{ $slot }}
+                </atom:input.email>
+            @else
+                <atom:input.general :attributes="$attributes->merge($merges)">
+                    {{ $slot }}
+                </atom:input.general>
+            @endif
+        </atom:input.field>
+    @elseif ($attributes->has('options'))
+        <atom:input.email :attributes="$attributes->merge($merges)">
+            {{ $slot }}
+        </atom:input.email>
+    @else
+        <atom:input.general :attributes="$attributes->merge($merges)">
+            {{ $slot }}
+        </atom:input.general>
     @endif
 @elseif ($type === 'file')
     <atom:input.file :attributes="$attributes->merge($merges)">

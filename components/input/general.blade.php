@@ -1,6 +1,5 @@
 @props([
     'type' => 'text',
-    'invalid' => false,
     'copyable' => false,
     'clearable' => false,
     'placeholder' => null,
