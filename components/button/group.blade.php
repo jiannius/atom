@@ -5,7 +5,8 @@
 <div {{ $attributes->class($gap
     ? ['group/group flex items-center flex-wrap gap-3']
     : [
-        'group/group flex items-center rounded-md overflow-hidden shadow-sm',
+        'group/group flex items-center rounded-md overflow-hidden',
+        '[&:has([data-atom-button]:not(:only-child))]:shadow-sm',
 
         '[&:has([data-atom-button]:not(:only-child))_[data-atom-button]]:rounded-none',
         '[&:has([data-atom-button]:not(:only-child))_[data-atom-button]]:shadow-none',

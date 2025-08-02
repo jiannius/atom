@@ -70,7 +70,10 @@ data-atom-input-email>
     </atom:dropdown>
 
     @if ($clearable)
-        <div class="z-1 absolute top-0 right-0 h-10 flex items-center justify-center text-zinc-400 pr-3 cursor-pointer hover:text-muted text-muted-foreground">
+        <div
+        x-show="emailInputValue?.length"
+        x-on:click="emailInputValue = []"
+        class="z-1 absolute top-0 right-0 h-10 flex items-center justify-center text-zinc-400 pr-3 cursor-pointer hover:text-muted text-muted-foreground">
             <atom:icon.close />
         </div>
     @endif
