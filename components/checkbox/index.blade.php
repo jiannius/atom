@@ -16,7 +16,7 @@ $merges = ['name' => $name];
     <div>
         <div class="flex gap-2 items-center">
             <div class="shrink-0">
-                <input type="checkbox" class="hidden peer" {{ $attrs }}>
+                <input type="checkbox" class="hidden peer" {{ $attributes }}>
 
                 <div
                 tabindex="0"

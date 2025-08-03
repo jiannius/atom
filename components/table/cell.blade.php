@@ -18,7 +18,7 @@ $classes = Arr::toCssClasses([
 
 @if ($checkbox)
     <td x-on:click.stop valign="{{ $valign }}">
-        <div {{ $attrs }}>
+        <div {{ $attributes }}>
             <div
             x-on:click="checkboxes.toggle(@js($checkbox))"
             x-on:select="checkboxes.push(@js($checkbox))"
