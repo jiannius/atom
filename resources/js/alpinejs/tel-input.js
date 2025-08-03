@@ -1,6 +1,6 @@
 export default (config) => {
     return {
-        code: null,
+        code: config.code,
         number: null,
         telValue: null,
 

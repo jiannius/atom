@@ -41,8 +41,8 @@ export default (config) => {
                 let current = items[items.length - 1]
                 let index = this.trail.findIndex(item => item.url === current.url)
     
-                if (index === -1) this.push([current])
-                else if (replace) this.trail.splice(index, 1, current)
+                if (replace) this.trail.splice(this.trail.length - 1, 1, current)
+                else if (index === -1) this.push([current])
                 else {
                     this.trail.splice(index)
                     this.push([current])
