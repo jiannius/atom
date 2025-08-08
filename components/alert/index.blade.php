@@ -42,8 +42,20 @@ $config = [
                 </div>
             </template>
 
-            <template x-if="config.subheading || config.message" hidden>
-                <div x-text="config.subheading || config.message" class="text-zinc-500"></div>
+            <template x-if="config.subheading" hidden>
+                <div x-text="config.subheading" class="text-zinc-400"></div>
+            </template>
+
+            <template x-if="typeof config.message === 'string'" hidden>
+                <div x-text="config.message" class="text-zinc-400"></div>
+            </template>
+
+            <template x-if="Array.isArray(config.message) && config.message.length" hidden>
+                <ul class="list-disc list-outside ml-6 text-zinc-400">
+                    <template x-for="message in config.message">
+                        <li x-text="message"></li>
+                    </template>
+                </ul>
             </template>
 
             <template x-if="config.html" hidden>

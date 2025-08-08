@@ -1,5 +1,6 @@
 import './prototypes/array'
 import './prototypes/number'
+import './prototypes/string'
 
 import helpers from './helpers'
 import modal from './alpinejs/modal'

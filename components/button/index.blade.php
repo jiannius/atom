@@ -44,6 +44,7 @@ $classes = [
     'whitespace-nowrap font-medium transition-colors outline-offset-1',
     'disabled:pointer-events-none disabled:cursor-default disabled:opacity-50',
     'group-[]/buttons:-ml-[1px] group-[]/buttons:first:ml-0',
+    '[&.is-loading]:opacity-50 [&.is-loading]:pointer-events-none',
 ];
 
 if ($variant === 'link') {
@@ -139,7 +140,7 @@ else {
 if (!$attributes->wire('loading')->value() && $attributes->wire('click')->value()) {
     $merges = [
         ...$merges,
-        'wire:loading.class' => 'opacity-50 pointer-events-none is-loading',
+        'wire:loading.class' => 'is-loading',
     ];
 
     if (!$attributes->wire('target')->value()) {

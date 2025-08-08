@@ -79,7 +79,7 @@ class Atom
 
         if (data_get($params, 'heading')) $params['heading'] = t($params['heading']);
         if (data_get($params, 'subheading')) $params['subheading'] = t($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = t($params['message']);
+        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => t($m));
 
         app('livewire')->current()->dispatch('atom-toast-show', ...$params);
     }
@@ -108,7 +108,7 @@ class Atom
 
         if (data_get($params, 'heading')) $params['heading'] = t($params['heading']);
         if (data_get($params, 'subheading')) $params['subheading'] = t($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = t($params['message']);
+        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => t($m));
 
         $component = app('livewire')->current();
 
@@ -152,7 +152,7 @@ class Atom
 
         if (data_get($params, 'heading')) $params['heading'] = t($params['heading']);
         if (data_get($params, 'subheading')) $params['subheading'] = t($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = t($params['message']);
+        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => t($m));
 
         $component = app('livewire')->current();
 

@@ -38,15 +38,17 @@ $classes = Arr::toCssClasses([
     ]) }}>
 
     @if ($type === 'password')
-        <div
-        x-data="{ show: false }"
-        x-init="$watch('show', show => {
-            $el.closest('[data-atom-input]').querySelector('input').setAttribute('type', show ? 'text' : 'password')
-        })"
-        x-on:click.stop="show = !show"
-        class="w-full h-full flex items-center justify-center cursor-pointer">
-            <atom:icon.eye-slash x-show="show" class="size-4"/>
-            <atom:icon.eye x-show="!show" class="size-4"/>
+        <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pr-3 right-0">
+            <div
+            x-data="{ show: false }"
+            x-init="$watch('show', show => {
+                $el.closest('[data-atom-input]').querySelector('input').setAttribute('type', show ? 'text' : 'password')
+            })"
+            x-on:click.stop="show = !show"
+            class="w-full h-full flex items-center justify-center cursor-pointer">
+                <atom:icon.eye-slash x-show="show" class="size-4"/>
+                <atom:icon.eye x-show="!show" class="size-4"/>
+            </div>
         </div>
     @elseif ($copyable || $clearable || $iconSuffix)
         <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pr-3 right-0">

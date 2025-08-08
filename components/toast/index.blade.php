@@ -66,10 +66,22 @@ popover="manual">
                         <div x-text="config.heading" class="text-zinc-100 font-medium"></div>
                     </div>
 
-                    <template x-if="config.subheading || config.message" hidden>
-                        <div x-text="config.subheading || config.message" class="text-sm text-zinc-300"></div>
+                    <template x-if="config.subheading" hidden>
+                        <div x-text="config.subheading" class="text-sm text-zinc-300"></div>
                     </template>
-
+        
+                    <template x-if="typeof config.message === 'string'" hidden>
+                        <div x-text="config.message" class="text-sm text-zinc-300"></div>
+                    </template>
+        
+                    <template x-if="Array.isArray(config.message) && config.message.length" hidden>
+                        <ul class="list-disc list-outside ml-6 text-sm text-zinc-300">
+                            <template x-for="message in config.message">
+                                <li x-text="message"></li>
+                            </template>
+                        </ul>
+                    </template>
+        
                     <template x-if="config.html" hidden>
                         <div x-html="config.html"></div>
                     </template>
