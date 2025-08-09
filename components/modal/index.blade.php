@@ -5,6 +5,7 @@
 ])
 
 @php
+$name ??= app('livewire')->current()->getName();
 $classes = Arr::toCssClasses([
     'p-6 [:where(&)]:max-w-xl min-w-md shadow-lg rounded-xl',
     'bg-white dark:bg-zinc-800 border border-transparent dark:border-zinc-700',

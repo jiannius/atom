@@ -78,7 +78,7 @@ $merges = [
         :caption="$caption"
         :required="$required"
         :error="$error">
-            @if ($attributes->get('options') || $attributes->get('multiple'))
+            @if ($attributes->get('multiple'))
                 <atom:input.email :attributes="$attributes->merge($merges)">
                     {{ $slot }}
                 </atom:input.email>

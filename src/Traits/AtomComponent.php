@@ -30,9 +30,9 @@ trait AtomComponent
     /**
      * Show modal in front end
      */
-    public function modal($name)
+    public function modal($name = null)
     {
-        return app('atom')->modal($name);
+        return app('atom')->modal($name ?? app('livewire')->current()->getName());
     }
 
     /**

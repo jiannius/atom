@@ -47,7 +47,7 @@ $filtered = isset($this->filters)
 
             <div class="flex flex-wrap items-center gap-3">
                 @if ($search)
-                    <div x-data="{ text: '' }" class="flex items-center justify-center gap-2">
+                    <div x-data="{ text: '' }" x-cloak class="flex items-center justify-center gap-2">
                         <atom:icon.search class="shrink-0 size-5"/>
 
                         <input
@@ -93,7 +93,7 @@ $filtered = isset($this->filters)
 
                                     <atom:menu class="min-w-sm max-w-lg" popover>
                                         <div class="p-3">
-                                            <div class="text-xs text-muted-foreground uppercase font-medium mb-3">
+                                            <div class="text-sm text-muted-foreground uppercase font-medium mb-3">
                                                 {{ t('atom::messages.filters') }}
                                             </div>
 
