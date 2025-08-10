@@ -8,6 +8,7 @@
     'accent' => true,
     'badge' => null,
     'current' => null,
+    'count' => null,
 ])
 
 @php
@@ -82,6 +83,10 @@ $classes = Arr::toCssClasses([
     @endif
 
     @if ($badge)
-        <atom:navlist.badge :color="$badgeColor">{{ $badge }}</atom:navlist.badge>
+        <atom:navlist.badge :color="$badgeColor" class="-mr-1.5">{{ $badge }}</atom:navlist.badge>
+    @elseif ($count)
+        <div class="text-xs text-right text-muted dark:text-muted-foreground">
+            {{ $count }}
+        </div>
     @endif
 </{{ $el }}>

@@ -39,9 +39,28 @@ trait Enum
     public function color() : string
     {
         return match($this->value) {
-            'active', 'published', 'approved', 'completed', 'success', 'onboarded', 'verified' => 'green',
-            'new', 'pending', 'processing' => 'yellow',
-            'cancelled', 'rejected', 'failed', 'error', 'blocked' => 'red',
+            'active',
+            'published',
+            'approved',
+            'completed',
+            'success',
+            'onboarded',
+            'paid',
+            'verified' => 'green',
+
+            'new',
+            'pending',
+            'processing' => 'yellow',
+
+            'partially-paid' => 'blue',
+
+            'cancelled',
+            'rejected',
+            'failed',
+            'error',
+            'blocked',
+            'due' => 'red',
+
             default => 'gray',
         };
     }

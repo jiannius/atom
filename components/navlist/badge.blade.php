@@ -4,7 +4,7 @@
 
 @php
 $class = Arr::toCssClasses([
-    'text-xs font-medium rounded-sm px-1 py-0.5',
+    'text-xs text-center font-medium rounded-sm px-1 py-0.5 min-w-4',
 
     match ($color) {
         default => 'text-zinc-700 dark:text-zinc-200 bg-zinc-400/15 dark:bg-white/10',
