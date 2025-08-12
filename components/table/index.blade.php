@@ -13,7 +13,7 @@ $filtered = isset($this->filters)
     : false;
 @endphp
 
-<div {{ $attributes->class('group/table rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm divide-y dark:divide-zinc-700') }} data-atom-table>
+<div {{ $attributes->class('group/table rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-xs divide-y dark:divide-zinc-700') }} data-atom-table>
     @if (isset($header))
         <div class="relative py-3 px-4" data-atom-table-header>
             {{ $header }}

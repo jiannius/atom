@@ -14,7 +14,7 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'relative rounded-xl bg-white dark:bg-zinc-900 border dark:border-zinc-800 shadow-sm',
+    'relative rounded-xl bg-white dark:bg-zinc-800 border dark:border-zinc-800 shadow-xs',
     $inset ? '' : 'p-6',
     $subtle ? 'bg-zinc-100 border-transparent' : 'border-zinc-200',
     match ($variant) {

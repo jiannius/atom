@@ -14,7 +14,7 @@
 :styles="$styles"
 :scripts="$scripts"
 :editor="$editor"
-class="min-h-screen bg-white dark:bg-zinc-800">
+class="min-h-screen bg-white dark:bg-zinc-900">
     {{-- stashed sidebar backdrop --}}
     <div
     x-data
@@ -106,7 +106,7 @@ class="min-h-screen bg-white dark:bg-zinc-800">
         @endif
     </div>
 
-    <header class="[grid-area:header] z-10 px-6 lg:px-8 lg:py-3" data-atom-header>
+    <header class="[grid-area:header] z-10 px-6 lg:px-8" data-atom-header>
         <div class="min-h-14 lg:hidden flex items-center">
             <button
             type="button"
@@ -170,23 +170,13 @@ class="min-h-screen bg-white dark:bg-zinc-800">
                 </atom:dropdown>
             @endif
         </div>
-
-        <div class="min-h-14 lg:min-h-16 flex items-center">
-            <div class="grow">
-                @persist('breadcrumbs')
-                    <atom:breadcrumbs />
-                @endpersist
-            </div>
-
-            <div id="header-actions" class="shrink-0"></div>
-        </div>
     </header>
 
-    <main class="[grid-area:main] p-6 lg:p-8 lg:pt-0" data-atom-main>
+    <main class="[grid-area:main]" data-atom-main>
         {{ $slot }}
     </main>
 
-    <footer class="[grid-area:footer] z-10 flex items-center gap-3 p-6 lg:px-8">
+    <footer class="[grid-area:footer] z-10 flex items-center gap-3 p-4 lg:border-t dark:lg:border-zinc-700">
         <div class="grow">
             {{ $footer ?? '' }}
         </div>

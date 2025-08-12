@@ -19,7 +19,7 @@ $clearable = $clearable && !$disabled;
 $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value();
 
 $classes = Arr::toCssClasses([
-    'w-full rounded-lg shadow-sm flex items-center gap-1 flex-wrap',
+    'w-full rounded-lg shadow-xs flex items-center gap-1 flex-wrap',
     'bg-white dark:bg-white/10 pr-10',
     'has-focus:outline-1 has-focus:outline-zinc-200 dark:has-focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
     '[&_select]:w-full [&_select]:flex-1 [&_select]:appearance-none [&_select]:outline-offset-1',

@@ -23,8 +23,8 @@ $newtab ??= data_get($tab, 'newtab');
 $element = $href ? 'a' : 'button';
 
 $classes = Arr::toCssClasses([
-    'transition-colors duration-200 hover:bg-zinc-50 dark:hover:bg-zinc-600 md:grow',
-    $icon ? 'flex items-center gap-2' : '',
+    'self-stretch transition-colors duration-200 hover:bg-zinc-50 dark:hover:bg-zinc-600 md:grow',
+    'flex items-center gap-2 justify-center',
     'data-[active]:bg-white dark:data-[active]:bg-zinc-500',
     'data-[active]:shadow-sm',
     'data-[active]:font-medium',

@@ -14,7 +14,7 @@
 $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value();
 
 $classes = Arr::toCssClasses([
-    'min-h-10 appearance-none w-full rounded-lg shadow-sm outline-offset-1',
+    'min-h-10 appearance-none w-full rounded-lg shadow-xs outline-offset-1',
     'text-zinc-700 dark:text-zinc-200 text-left pr-10',
     'bg-white dark:bg-white/10',
     'focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',

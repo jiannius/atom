@@ -12,7 +12,7 @@
 @php
 $step = $type === 'number' ? 'any' : null;
 $classes = Arr::toCssClasses([
-    'h-10 w-full py-2 no-spinner rounded-lg shadow-sm outline-offset-1',
+    'h-10 w-full py-2 no-spinner rounded-lg shadow-xs outline-offset-1',
     'text-zinc-700 dark:text-zinc-200',
     'bg-white dark:bg-white/10',
     'dark:placeholder-zinc-400',

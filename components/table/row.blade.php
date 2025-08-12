@@ -12,7 +12,7 @@ $clickable = $href || $attributes->hasLike('x-on:click*', 'wire:click*');
 @elseif ($href)
     x-on:click="() => window.location.href = @js($href)"
 @endif
-{{ $attributes->class(['hover:bg-zinc-50 dark:hover:bg-zinc-800/50', $clickable ? 'cursor-pointer' : ''])->except('wire:navigate') }}
+{{ $attributes->class(['hover:bg-zinc-50 dark:hover:bg-zinc-700/20', $clickable ? 'cursor-pointer' : ''])->except('wire:navigate') }}
 data-atom-table-row>
     {{ $slot }}
 </tr>
