@@ -202,5 +202,5 @@ $filtered = isset($this->filters)
         </div>
     </div>
 
-    {{ $paginate->links('atom::pagination') }}
+    {{ $paginate?->links('atom::pagination') }}
 </div>
