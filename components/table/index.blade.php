@@ -76,7 +76,7 @@ $filtered = isset($this->filters)
                     </div>
                 @endif
 
-                @if ($trashed || isset($filters))
+                @if ($trashed || isset($filters) || isset($actions))
                     <div class="flex items-center gap-1 flex-wrap">
                         @isset ($filters)
                             <div {{ $filters->attributes->merge(['wire:ignore' => true]) }}>
