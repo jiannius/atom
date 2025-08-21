@@ -2,24 +2,20 @@ html {
     font-size: 14px;
 }
 
-dialog, ::backdrop {
+dialog[data-atom-modal]::backdrop,
+dialog[data-atom-modal-slide]::backdrop,
+dialog[data-atom-modal-slide-left]::backdrop,
+dialog[data-atom-modal-slide-bottom]::backdrop {
     margin: auto;
-}
-
-dialog[data-atom-modal] {
-    transform: scale(.75);
-}
-
-dialog[data-atom-modal]::backdrop {
-    background: rgba(0, 0, 0, 0.5);
-}
-
-dialog[data-atom-modal], dialog[data-atom-modal]::backdrop {
     opacity: 0;
+    background: rgba(0, 0, 0, 0.5);
     transition: all 75ms allow-discrete;
 }
 
-dialog[data-atom-modal][data-open], dialog[data-atom-modal][data-open]::backdrop {
+dialog[data-atom-modal][data-open]::backdrop,
+dialog[data-atom-modal-slide][data-open]::backdrop,
+dialog[data-atom-modal-slide-left][data-open]::backdrop,
+dialog[data-atom-modal-slide-bottom][data-open]::backdrop {
     opacity: 1;
     transition: all .15s allow-discrete;
     transform: translate(0) scale(1);

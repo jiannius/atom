@@ -8,39 +8,49 @@
 $name ??= app('livewire')->current()->getName();
 $classes = Arr::toCssClasses([
     'p-6 [:where(&)]:max-w-xl min-w-md shadow-lg rounded-xl',
-    'bg-white dark:bg-zinc-800 border border-transparent dark:border-zinc-700',
+    'bg-white dark:bg-zinc-800 border border-transparent dark:border-zinc-700 transition-transform',
 
-    '[data-atom-modal-slide]:fixed',
-    '[data-atom-modal-slide]:m-0',
-    '[data-atom-modal-slide]:p-8',
-    '[data-atom-modal-slide]:max-h-dvh',
-    '[data-atom-modal-slide]:min-h-dvh',
-    '[data-atom-modal-slide]:md:[:where(&)]:min-w-[25rem]',
-    '[data-atom-modal-slide]:overflow-y-auto',
-    '[data-atom-modal-slide]:ml-auto',
-    '[data-atom-modal-slide]:border-s',
-    '[data-atom-modal-slide]:rtl:ml-0',
-    '[data-atom-modal-slide]:rtl:mr-auto',
+    '[&[data-atom-modal]]:m-auto',
+    '[&[data-atom-modal]]:scale-75',
+    '[&[data-atom-modal][data-open]]:scale-100',
 
-    '[data-atom-modal-slide-left]:fixed',
-    '[data-atom-modal-slide-left]:m-0',
-    '[data-atom-modal-slide-left]:p-8',
-    '[data-atom-modal-slide-left]:max-h-dvh',
-    '[data-atom-modal-slide-left]:min-h-dvh',
-    '[data-atom-modal-slide-left]:md:[:where(&)]:min-w-[25rem]',
-    '[data-atom-modal-slide-left]:overflow-y-auto',
-    '[data-atom-modal-slide-left]:mr-auto',
-    '[data-atom-modal-slide-left]:border-e',
-    '[data-atom-modal-slide-left]:rtl:mr-0',
-    '[data-atom-modal-slide-left]:rtl:ml-auto',
+    '[&[data-atom-modal-slide]]:fixed',
+    '[&[data-atom-modal-slide]]:ml-auto',
+    '[&[data-atom-modal-slide]]:rounded-none',
+    '[&[data-atom-modal-slide]]:max-h-dvh',
+    '[&[data-atom-modal-slide]]:min-h-dvh',
+    '[&[data-atom-modal-slide]]:border-y-0',
+    '[&[data-atom-modal-slide]]:border-r-0',
+    '[&[data-atom-modal-slide]]:overflow-auto',
+    '[&[data-atom-modal-slide]]:rtl:ml-0',
+    '[&[data-atom-modal-slide]]:rtl:mr-auto',
+    '[&[data-atom-modal-slide]]:translate-x-full',
+    '[&[data-atom-modal-slide][data-open]]:translate-x-0',
 
-    '[data-atom-modal-slide-bottom]:fixed',
-    '[data-atom-modal-slide-bottom]:m-0',
-    '[data-atom-modal-slide-bottom]:p-8',
-    '[data-atom-modal-slide-bottom]:min-w-[100vw]',
-    '[data-atom-modal-slide-bottom]:overflow-y-auto',
-    '[data-atom-modal-slide-bottom]:mt-auto',
-    '[data-atom-modal-slide-bottom]:border-t',
+    '[&[data-atom-modal-slide-left]]:fixed',
+    '[&[data-atom-modal-slide-left]]:mr-auto',
+    '[&[data-atom-modal-slide-left]]:rounded-none',
+    '[&[data-atom-modal-slide-left]]:max-h-dvh',
+    '[&[data-atom-modal-slide-left]]:min-h-dvh',
+    '[&[data-atom-modal-slide-left]]:border-y-0',
+    '[&[data-atom-modal-slide-left]]:border-l-0',
+    '[&[data-atom-modal-slide-left]]:overflow-auto',
+    '[&[data-atom-modal-slide-left]]:rtl:mr-0',
+    '[&[data-atom-modal-slide-left]]:rtl:ml-auto',
+    '[&[data-atom-modal-slide-left]]:-translate-x-full',
+    '[&[data-atom-modal-slide-left][data-open]]:translate-x-0',
+
+    '[&[data-atom-modal-slide-bottom]]:fixed',
+    '[&[data-atom-modal-slide-bottom]]:mt-auto',
+    '[&[data-atom-modal-slide-bottom]]:rounded-none',
+    '[&[data-atom-modal-slide-bottom]]:max-w-full',
+    '[&[data-atom-modal-slide-bottom]]:min-h-100',
+    '[&[data-atom-modal-slide-bottom]]:border-t',
+    '[&[data-atom-modal-slide-bottom]]:border-x-0',
+    '[&[data-atom-modal-slide-bottom]]:border-b-0',
+    '[&[data-atom-modal-slide-bottom]]:overflow-auto',
+    '[&[data-atom-modal-slide-bottom]]:translate-y-full',
+    '[&[data-atom-modal-slide-bottom][data-open]]:translate-y-0',
 ]);
 
 // Flux::classes()
@@ -83,8 +93,7 @@ x-on:atom-modal-show.window="showModal"
 x-on:atom-modal-close.window="closeModal"
 x-on:click="backdropClick"
 x-on:keydown.esc.prevent="dismissible && closeModal"
-{{ $attributes->class($classes) }}
-data-atom-modal>
+{{ $attributes->class($classes) }}>
     @if ($closeable)
         <div class="absolute top-0 end-0 mt-4 me-4">
             <button

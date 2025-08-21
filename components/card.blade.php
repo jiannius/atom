@@ -1,6 +1,7 @@
 @props([
     'inset' => false,
     'subtle' => false,
+    'divided' => false,
     'variant' => null,
     'heading' => null,
     'data' => null,
@@ -14,9 +15,13 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'relative rounded-xl bg-white dark:bg-zinc-800 border dark:border-zinc-800 shadow-xs',
-    $inset ? '' : 'p-6',
+    'relative rounded-xl bg-white dark:bg-zinc-800 border dark:border-zinc-800 shadow-xs overflow-auto',
+    $divided
+        ? 'divide-y divide-zinc-200 dark:divide-zinc-700 '.($inset ? '' : '[&>div]:p-6')
+        : ($inset ? '' : 'p-6'),
+
     $subtle ? 'bg-zinc-100 border-transparent' : 'border-zinc-200',
+
     match ($variant) {
         'stats' => 'h-36 overflow-hidden',
         'chart' => 'h-[350px]',

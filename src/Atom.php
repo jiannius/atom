@@ -37,9 +37,9 @@ class Atom
                 app('livewire')->current()->dispatch('atom-modal-show', name: $this->name);
             }
 
-            public function slide($slide)
+            public function slide($position = null)
             {
-                app('livewire')->current()->dispatch('atom-modal-slide', name: $this->name, slide: $slide);
+                app('livewire')->current()->dispatch('atom-modal-show', name: $this->name, variant: 'slide', position: $position);
             }
 
             public function close()

@@ -14,7 +14,8 @@ import dateRange from './alpinejs/date-range'
 import timePicker from './alpinejs/time-picker'
 import emailInput from './alpinejs/email-input'
 import breadcrumbs from './alpinejs/breadcrumbs'
-import Autosize from '@marcreichel/alpine-autosize';
+import Autosize from '@marcreichel/alpine-autosize'
+import intersect from '@alpinejs/intersect'
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('modal', modal)
@@ -29,6 +30,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('dateRange', dateRange)
     Alpine.magic('clipboard', clipboard)
     Alpine.plugin(Autosize)
+    Alpine.plugin(intersect)
 })
 
 window.dd = console.log.bind(console)
