@@ -40,6 +40,7 @@ trait Enum
     {
         return match($this->value) {
             'active',
+            'accepted',
             'published',
             'approved',
             'completed',

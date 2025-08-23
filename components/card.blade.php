@@ -15,12 +15,12 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'relative rounded-xl bg-white dark:bg-zinc-800 border dark:border-zinc-800 shadow-xs overflow-auto',
+    'relative rounded-xl border shadow-xs overflow-auto',
     $divided
         ? 'divide-y divide-zinc-200 dark:divide-zinc-700 '.($inset ? '' : '[&>div]:p-6')
         : ($inset ? '' : 'p-6'),
 
-    $subtle ? 'bg-zinc-100 border-transparent' : 'border-zinc-200',
+    $subtle ? 'bg-zinc-100 dark:bg-zinc-700/30 border-transparent' : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700',
 
     match ($variant) {
         'stats' => 'h-36 overflow-hidden',

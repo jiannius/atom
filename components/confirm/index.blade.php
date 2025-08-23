@@ -71,7 +71,11 @@ $config = [
                 <div x-text="config.message" class="text-zinc-400"></div>
             </template>
 
-            <template x-if="Array.isArray(config.message) && config.message.length" hidden>
+            <template x-if="Array.isArray(config.message) && config.message.length === 1" hidden>
+                <div x-text="config.message[0]" class="text-zinc-400"></div>
+            </template>
+
+            <template x-if="Array.isArray(config.message) && config.message.length > 1" hidden>
                 <ul class="list-disc list-outside ml-6 text-zinc-400">
                     <template x-for="message in config.message">
                         <li x-text="message"></li>

@@ -18,6 +18,11 @@ if (!function_exists('num')) {
                 return Number::{$method}($this->value, ...$args);
             }
 
+            public function filesize($precision = 2) : string
+            {
+                return Number::filesize($this->value * 1024, $precision);
+            }
+
             public function currency($in = null, $rounding = false, $bracket = false, $short = false) : string
             {
                 if (!is_numeric($this->value)) return $this->value ?? '';

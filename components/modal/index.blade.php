@@ -44,6 +44,7 @@ $classes = Arr::toCssClasses([
     '[&[data-atom-modal-slide-bottom]]:mt-auto',
     '[&[data-atom-modal-slide-bottom]]:rounded-none',
     '[&[data-atom-modal-slide-bottom]]:max-w-full',
+    '[&[data-atom-modal-slide-bottom]]:min-w-full',
     '[&[data-atom-modal-slide-bottom]]:min-h-100',
     '[&[data-atom-modal-slide-bottom]]:border-t',
     '[&[data-atom-modal-slide-bottom]]:border-x-0',

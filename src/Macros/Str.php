@@ -50,17 +50,17 @@ class Str
                 'year' => in_array($interval, ['year', 'years']),
             ]);
 
-            if ($count == 1 && $interval === 'day') return t('daily');
-            if ($count == 1 && $interval === 'month') return t('monthly');
-            if ($count == 3 && $interval === 'month') return t('quarterly');
-            if ($count == 6 && $interval === 'month') return t('half-yearly');
-            if ($count == 1 && $interval === 'week') return t('weekly');
-            if ($count == 1 && $interval === 'year') return t('yearly');
+            if ($count == 1 && $interval === 'day') return t('Daily');
+            if ($count == 1 && $interval === 'month') return t('Monthly');
+            if ($count == 3 && $interval === 'month') return t('Quarterly');
+            if ($count == 6 && $interval === 'month') return t('Half yearly');
+            if ($count == 1 && $interval === 'week') return t('Weekly');
+            if ($count == 1 && $interval === 'year') return t('Yearly');
 
-            if ($interval === 'day') return t('day-count', $count);
-            if ($interval === 'week') return t('week-count', $count);
-            if ($interval === 'month') return t('month-count', $count);
-            if ($interval === 'year') return t('year-count', $count);
+            if ($interval === 'day') return t(':count day', $count);
+            if ($interval === 'week') return t(':count week', $count);
+            if ($interval === 'month') return t(':count month', $count);
+            if ($interval === 'year') return t(':count year', $count);
         };
     }
 
