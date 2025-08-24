@@ -78,8 +78,10 @@ $merges = [
     @else
         @isset($cover)
             <figure {{ $cover->attributes->class([
-                'first:rounded-t-lg last:rounded-b-lg bg-zinc-100 overflow-hidden',
+                'first:rounded-t-lg last:rounded-b-lg overflow-hidden',
                 '[&>*:not(video)]:transistion-transform [&>*:not(video)]:duration-200 [&>*:not(video):hover]:scale-105',
+                $subtle ? 'bg-zinc-200 dark:bg-zinc-700/60' : 'bg-zinc-100 dark:bg-zinc-700/30',
+                $inset ? '' : '-mx-6 -mt-6 mb-6',
             ]) }}>
                 {{ $cover }}
             </figure>
