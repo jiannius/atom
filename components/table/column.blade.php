@@ -48,15 +48,31 @@ $classes = Arr::toCssClasses([
     {{ $attributes->class($classes) }}>
         <div class="grow">
             @if ($checkbox)
-                <div
-                x-on:click="() => {
-                    if (toggled) checkboxes = []
-                    else checkables.forEach(row => row.dispatch('select', null, false))
+                <atom:table.checkbox
+                x-data="{
+                    isToggled: false,
+
+                    get checkboxes () {
+                        return this.$el.closest('table').querySelectorAll('tbody [data-atom-table-checkbox]')
+                    },
+
+                    init () {
+                        this.$watch('isToggled', () => this.toggle())
+                    },
+
+                    toggle () {
+                        this.checkboxes.forEach(checkbox => {
+                            if (
+                                (this.isToggled && !checkbox.getAttribute('data-checked'))
+                                || (!this.isToggled && checkbox.getAttribute('data-checked'))
+                            ) {
+                                checkbox.click()
+                            }
+                        })
+                    },
                 }"
-                x-bind:class="toggled ? 'border-primary bg-primary' : 'border-zinc-300 bg-white'"
-                class="w-6 h-6 rounded-md border flex items-center justify-center cursor-pointer">
-                    <atom:icon.check size="14" class="text-white"/>
-                </div>
+                x-on:click="isToggled = !isToggled"
+                x-bind:data-checked="$wire._table.checkboxes.length > 0 && $wire._table.checkboxes.length === checkboxes.length" />
             @else
                 {{ $slot }}
             @endif

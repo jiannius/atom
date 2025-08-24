@@ -32,7 +32,7 @@ data-atom-navlist-group>
 
 @elseif ($heading)
 
-<div {{ $attributes->class('block space-y-[2px]') }}>
+<div {{ $attributes->class('block space-y-[2px] mb-3') }}>
     <div class="px-1 py-2">
         <div class="text-sm leading-none text-zinc-400">{{ t($heading) }}</div>
     </div>

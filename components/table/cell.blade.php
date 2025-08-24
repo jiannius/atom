@@ -18,18 +18,10 @@ $classes = Arr::toCssClasses([
 @endphp
 
 @if ($checkbox)
-    <td x-on:click.stop valign="{{ $valign }}">
-        <div {{ $attributes }}>
-            <div
-            x-on:click="checkboxes.toggle(@js($checkbox))"
-            x-on:select="checkboxes.push(@js($checkbox))"
-            x-bind:class="checkboxes.includes(@js($checkbox)) ? 'border-primary bg-primary' : 'border-zinc-300 bg-white'"
-            x-bind:data-checked="checkboxes.includes(@js($checkbox))"
-            data-atom-cell-checkbox
-            class="w-6 h-6 rounded-md border flex items-center justify-center cursor-pointer">
-                <atom:icon.check class="text-white size-4"/>
-            </div>
-        </div>
+    <td x-on:click.stop {{ $attributes->class($classes) }}>
+        <atom:table.checkbox
+        x-on:click="$wire._table.checkboxes.toggle({{ js($checkbox) }})"
+        x-bind:data-checked="$wire._table.checkboxes.includes({{ js($checkbox) }})" />
     </td>
 @else
     <td {{ $attributes->class($classes) }}>

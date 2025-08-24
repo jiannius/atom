@@ -194,7 +194,7 @@ $filtered = isset($this->filters)
                 </table>
 
                 @isset ($footer)
-                    <div class="border-t border-zinc-200 p-3">
+                    <div class="border-t border-zinc-200 dark:border-zinc-700 p-3">
                         {{ $footer }}
                     </div>
                 @endisset

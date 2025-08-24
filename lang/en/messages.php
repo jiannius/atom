@@ -15,4 +15,7 @@ return [
     'table-page' => 'page',
     'permanently-delete-record' => 'Permanently Delete Record',
     'are-you-sure-to-delete-this-record' => 'Are you sure to DELETE this record? This action CANNOT BE UNDONE.',
+    'selected' => 'Selected',
+    'select-all' => 'Select all',
+    'deselect-all' => 'Deselect all',
 ];

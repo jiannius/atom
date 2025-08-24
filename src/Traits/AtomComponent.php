@@ -28,6 +28,30 @@ trait AtomComponent
     }
 
     /**
+     * Get the checkboxes of the table
+     */
+    public function getTableCheckboxes()
+    {
+        return data_get($this->_table, 'checkboxes', []);
+    }
+
+    /**
+     * Reset the checkboxes of the table
+     */
+    public function resetTableCheckboxes()
+    {
+        $this->_table['checkboxes'] = [];
+    }
+
+    /**
+     * Check if the table is showing trashed
+     */
+    public function isTableShowTrashed()
+    {
+        return data_get($this->_table, 'show_trashed', false);
+    }
+
+    /**
      * Show modal in front end
      */
     public function modal($name = null)
