@@ -48,7 +48,7 @@ $merges = [
 @if ($current) data-active @endif
 {{ $attributes->class($classes)->merge($merges) }}>
     @if ($icon)
-        <x-dynamic-component :component="'atom:icon.'.$icon" class="shrink-0" />
+        <x-dynamic-component :component="'atom::icon.'.$icon" class="shrink-0" />
     @endif
 
     @if ($slot->isNotEmpty())
