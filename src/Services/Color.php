@@ -76,12 +76,53 @@ class Color
         return json_decode(file_get_contents(__DIR__.'/../../json/colors.json'), true);
     }
 
-    // public function minimal()
-    // {
-    //     $options = $this->options;
+    /**
+     * Get minimal colors
+     */
+    public static function minimal() : array
+    {
+        return collect(self::all())->map(fn ($key) => data_get($key, 5))->filter()->toArray();
+    }
 
-    //     return $options->keys()->map(fn ($key) => get($options->get($key), 5))->filter();
-    // }
+    /**
+     * Shade a color
+     */
+    public static function shade($color, $percent) : string
+    {
+        $color = str_replace('#', '', $color);
+        $rgb = '';
+
+        if (strlen($color) == 3) {
+            $r = hexdec(substr($color, 0, 1) . substr($color, 0, 1));
+            $g = hexdec(substr($color, 1, 1) . substr($color, 1, 1));
+            $b = hexdec(substr($color, 2, 1) . substr($color, 2, 1));
+        } else {
+            $r = hexdec(substr($color, 0, 2));
+            $g = hexdec(substr($color, 2, 2));
+            $b = hexdec(substr($color, 4, 2));
+        }
+
+        $rgb = array($r, $g, $b);
+
+        return '#' . implode('', array_map(function ($x) use ($percent) {
+            $hex = dechex($x);
+            return str_pad(
+                dechex(
+                    round(
+                        hexdec($hex) +
+                            round(
+                                (
+                                    (255 - hexdec($hex)) * $percent
+                                ) / 100
+                            )
+                    )
+                ),
+                2,
+                '0',
+                STR_PAD_LEFT
+            );
+        }, $rgb));
+    }
 
     // // convert input to hex
     // public function convertInputToHex() : void

@@ -52,6 +52,14 @@ trait AtomComponent
     }
 
     /**
+     * Generate a wire key
+     */
+    public function wirekey(...$args)
+    {
+        return md5(json_encode($args));
+    }
+
+    /**
      * Show modal in front end
      */
     public function modal($name = null)

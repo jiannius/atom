@@ -12,7 +12,7 @@ export default (config) => {
         },
 
         get selectedOptions () {
-            if (Array.isArray(this.selectValue)) return this.selectValue.map(val => this.options.find(opt => opt.value == val))
+            if (Array.isArray(this.selectValue)) return this.selectValue.map(val => this.options.find(opt => opt.value == val)).filter(Boolean)
             else return this.options.find(opt => opt.value == this.selectValue)
         },
 

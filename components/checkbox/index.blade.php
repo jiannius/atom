@@ -34,13 +34,15 @@ $merges = ['name' => $name];
                 </div>
             </div>
 
-            <div class="dark:text-white">
-                @if ($slot->isNotEmpty())
+            @if ($slot->isNotEmpty())
+                <div class="dark:text-white">
                     {{ $slot }}
-                @elseif ($label)
+                </div>
+            @elseif ($label)
+                <div class="dark:text-white">
                     {!! t($label) !!}
-                @endif
-            </div>
+                </div>
+            @endif
         </div>
 
         @if ($caption)
