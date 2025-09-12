@@ -1,5 +1,6 @@
 @props([
     'name' => null,
+    'inset' => false,
     'dismissible' => true,
     'closeable' => true,
 ])
@@ -7,8 +8,9 @@
 @php
 $name ??= app('livewire')->current()->getName();
 $classes = Arr::toCssClasses([
-    'p-6 [:where(&)]:max-w-xl min-w-md shadow-lg rounded-xl',
+    '[:where(&):max-w-full] min-w-sm shadow-lg rounded-xl',
     'bg-white dark:bg-zinc-800 border border-transparent dark:border-zinc-700 transition-transform',
+    $inset ? 'p-0' : 'p-6',
 
     '[&[data-atom-modal]]:m-auto',
     '[&[data-atom-modal]]:scale-75',
@@ -93,7 +95,7 @@ x-data="modal({
 x-on:atom-modal-show.window="showModal"
 x-on:atom-modal-close.window="closeModal"
 x-on:click="backdropClick"
-x-on:keydown.esc.prevent="dismissible && closeModal"
+x-on:keydown.esc.stop.prevent="dismissible && closeModal"
 {{ $attributes->class($classes) }}>
     @if ($closeable)
         <div class="absolute top-0 end-0 mt-4 me-4">

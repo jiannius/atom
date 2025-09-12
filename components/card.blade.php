@@ -15,7 +15,7 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'relative rounded-xl border shadow-xs overflow-auto',
+    'relative rounded-lg border shadow-xs overflow-auto',
     $divided
         ? 'divide-y divide-zinc-200 dark:divide-zinc-700 '.($inset ? '' : '[&>div]:p-6')
         : ($inset ? '' : 'p-6'),
@@ -23,7 +23,7 @@ $classes = Arr::toCssClasses([
     $subtle ? 'bg-zinc-100 dark:bg-zinc-700/30 border-transparent' : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700',
 
     match ($variant) {
-        'stats' => 'h-36 overflow-hidden',
+        'stats' => 'h-32 overflow-hidden transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-700/50 hover:outline-1 outline-offset-1 outline-zinc-200 dark:outline-zinc-700',
         'chart' => 'h-[350px]',
         default => '',
     },

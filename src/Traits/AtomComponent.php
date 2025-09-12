@@ -56,7 +56,7 @@ trait AtomComponent
      */
     public function wirekey(...$args)
     {
-        return md5(json_encode($args));
+        return md5(json_encode(array_filter($args)));
     }
 
     /**

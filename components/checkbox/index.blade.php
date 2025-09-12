@@ -26,11 +26,11 @@ $merges = ['name' => $name];
                     'bg-white dark:bg-white/10',
                     'border border-zinc-300 dark:border-white/10',
                     'text-zinc-300 dark:text-transparent',
-                    'peer-checked:bg-accent peer-checked:border-accent peer-checked:text-zinc-300',
+                    'peer-checked:bg-zinc-800 peer-checked:border-zinc-800 peer-checked:text-zinc-100',
                     'dark:peer-checked:bg-white dark:peer-checked:border-white dark:peer-checked:text-black',
                     'group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-red-500 group-has-[.error]/checkbox:outline-offset-1',
                 ])>
-                    <atom:icon.check class="size-3"/>
+                    <atom:icon.check class="size-2.5"/>
                 </div>
             </div>
 

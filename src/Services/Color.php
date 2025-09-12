@@ -87,8 +87,10 @@ class Color
     /**
      * Shade a color
      */
-    public static function shade($color, $percent) : string
+    public static function shade($color, $percent)
     {
+        if (!$color) return;
+
         $color = str_replace('#', '', $color);
         $rgb = '';
 

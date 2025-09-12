@@ -4,10 +4,24 @@
     "src": "resources/css/atom.css",
     "isEntry": true
   },
+  "resources/css/editor.css": {
+    "file": "assets/editor-BvckUfzh.css",
+    "src": "resources/css/editor.css",
+    "isEntry": true
+  },
   "resources/js/atom.js": {
-    "file": "assets/atom-CstJnDRM.js",
+    "file": "assets/atom-J6TzO4QD.js",
     "name": "atom",
     "src": "resources/js/atom.js",
-    "isEntry": true
+    "isEntry": true,
+    "dynamicImports": [
+      "resources/js/tiptap.js"
+    ]
+  },
+  "resources/js/tiptap.js": {
+    "file": "assets/tiptap-CSMIRE8v.js",
+    "name": "tiptap",
+    "src": "resources/js/tiptap.js",
+    "isDynamicEntry": true
   }
 }

@@ -2,7 +2,6 @@
 
 namespace Jiannius\Atom\Services;
 
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Route;
 
 class Asset
@@ -21,27 +20,32 @@ class Asset
         $manifest = json_decode(file_get_contents(__DIR__.'/../../dist/manifest.json'), true);
         $data = collect($manifest)->where(fn ($value, $key) => str($key)->is('*/'.$name))->values()->first();
         $file = data_get($data, 'file');
-        $hash = str($file)->remove('assets/')->remove('atom-')->remove('.css')->remove('.js')->toString();
 
-        return $hash;
+        return str($file)->remove('assets/')->start('/atom/')->toString();
     }
 
+    /**
+     * Register the routes for the assets
+     */
     protected function registerRoutes(): void
     {
-        foreach ([
-            'atom.css' => 'text/css',
-            'atom.js' => 'text/javascript',
-            'editor.js' => 'text/javascript',
-        ] as $script => $type) {
-            Route::get("/atom/{$script}", function () use ($script, $type) {
-                $id = request()->query('id');
-                $script = str($script)->replaceLast('.js', '-'.$id.'.js')->replaceLast('.css', '-'.$id.'.css')->toString();
+        Route::get('/atom/{file}', function ($file) {
+            $ext = str($file)->afterLast('.')->toString();
 
-                return response()->file(__DIR__.'/../../dist/assets/'.$script, [
-                    'Content-Type' => $type,
-                    'Cache-Control' => 'public, max-age=31536000, immutable',
-                ]);
-            });
-        }
+            $type = match ($ext) {
+                'css' => 'text/css',
+                'js' => 'text/javascript',
+                default => 'text/plain',
+            };
+
+            $path = __DIR__.'/../../dist/assets/'.$file;
+
+            if (!file_exists($path)) abort(404);
+
+            return response()->file($path, [
+                'Content-Type' => $type,
+                'Cache-Control' => 'public, max-age=31536000, immutable',
+            ]);
+        });
     }
 }

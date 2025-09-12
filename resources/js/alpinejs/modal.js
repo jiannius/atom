@@ -40,6 +40,7 @@ export default (config) => {
 
         backdropClick (e) {
             if (!this.dismissible) return
+            if (e.target !== this.$root) return
             if (e.target.tagName !== 'DIALOG') return
 
             const rect = e.target.getBoundingClientRect()
