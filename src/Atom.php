@@ -3,9 +3,18 @@
 namespace Jiannius\Atom;
 
 use Illuminate\Support\Arr;
+use Jiannius\Atom\Services\Broadcast;
 
 class Atom
 {
+    /**
+     * Broadcast a message
+     */
+    public function broadcast()
+    {
+        return new Broadcast();
+    }
+
     /**
      * Trigger action from anywhere in the application
      */
