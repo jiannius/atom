@@ -6,13 +6,18 @@ export default (config) => {
 
     return {
         ts: Date.now(), // force Alpine to rerender on selection change
-        content: '',
         loading: true,
+        editorContent: '',
+
+        // for chat
+        files: [],
+        progress: 0,
+        uploading: false,
 
         init () {
             import('../tiptap.js').then(() => this.createTiptap())
 
-            this.$watch('content', value => {
+            this.$watch('editorContent', value => {
                 if (!tiptap) return
                 if (value === tiptap.getHTML()) return
                 this.commands().setContent(value, false)
@@ -24,36 +29,63 @@ export default (config) => {
 
             tiptap = Tiptap({
                 element: this.$refs.editor,
-                tiptapConfig: {
-                    content: this.content,
+
+                config: {
+                    content: this.editorContent,
                     placeholder: config.placeholder,
                     editable: !config.readonly,
                     autofocus: config.autofocus,
-                    editorProps: { attributes: { class: config.class }},
-                    onCreate () { _this.loading = false; _this.ts = Date.now() },
-                    onSelectionUpdate () { _this.ts = Date.now() },
-                    ...(config.lazy
-                        ? { onBlur: () => _this.sync() }
-                        : { onUpdate: () => _this.sync() }),
+
+                    editorProps: {
+                        attributes: {
+                            class: config.class
+                        },
+
+                        ...(config.chat ? {
+                            // disable pasting and handle using x-on:paste
+                            transformPasted () {
+                                return ''
+                            },
+                            // disable drop and handle using x-on:drop
+                            handleDrop () {
+                                return true
+                            },
+                        } : {}),
+                    },
+
+                    onCreate ({ editor }) {
+                        _this.loading = false
+                        _this.ts = Date.now()
+
+                        // for chat, only sync when press enter
+                        if (config.chat && editor.options.element) {
+                            editor.options.element.addEventListener('editor-enter', () => _this.sync())
+                        }
+                    },
+
+                    onSelectionUpdate () {
+                        _this.ts = Date.now()
+                    },
+
+                    ...(!config.chat && config.lazy ? { onBlur: () => _this.sync() } : {}),
+                    ...(!config.chat && !config.lazy ? { onUpdate: () => _this.sync() } : {}),
                 },
+
                 bubbleMenus: {
                     linkMenu: this.$root.querySelector('.editor-menu .link-menu'),
                     imageMenu: this.$root.querySelector('.editor-menu .image-menu'),
                     tableMenu: this.$root.querySelector('.editor-menu .table-menu'),
                     youtubeMenu: this.$root.querySelector('.editor-menu .youtube-menu'),
                 },
+
                 mentionTemplate: this.$root.querySelector('.editor-mention'),
+
+                ...(config.chat ? { disableEnterKey: true } : {}),
             })
         },
 
         editor () {
             return tiptap
-        },
-
-        sync () {
-            if (!tiptap.isEditable) return
-            if (tiptap.isEmpty) this.content = ''
-            else this.content = tiptap.getHTML()
         },
 
         can () {
@@ -66,8 +98,81 @@ export default (config) => {
         },
 
         isEmpty () {
-            if (typeof this.content === 'string') return empty(this.content.striptags())
-            else return empty(this.content)
+            if (typeof this.editorContent === 'string') return empty(this.editorContent.striptags())
+            else return empty(this.editorContent)
+        },
+
+        // paste files into the editor
+        // only work in chat mode
+        paste (e) {
+            if (!this.chat) return
+            let clipboard = e.clipboardData
+            let files = Array.from(clipboard.items).filter(item => (item.kind === 'file')).map(item => (item.getAsFile()))
+            let text = clipboard.getData('text')
+
+            if (files.length) this.readFiles(files)
+            else if (text) this.editor().chain().focus().insertContent(text).run()
+        },
+
+        // drag and drop files into the editor
+        // only work in chat mode
+        drop (e) {
+            if (!this.chat) return
+            let files = e.dataTransfer.files
+            this.readFiles(files)
+        },
+
+        // read files from input
+        // only work in chat mode
+        readFiles (files) {
+            if (!files || !files.length) return
+
+            this.files = [
+                ...this.files,
+                ...Array.from(files).map(file => ({
+                    file,
+                    src: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+                })),
+            ]
+
+            this.$nextTick(() => this.commands().focus())
+        },
+
+        sync () {
+            if (!tiptap.isEditable) return
+
+            if (config.chat) {
+                let model = this.$refs.fileInput.getAttribute('data-model')
+
+                if (!this.files?.length || !model) {
+                    this.emitUpdate()
+                }
+                else {
+                    this.uploading = true
+                    this.$wire.uploadMultiple(
+                        model,
+                        this.files.map(file => file.file),
+                        () => this.emitUpdate(),
+                        () => atom.alert({ heading: 'Unable to upload files', message: 'Please try again.', variant: 'danger' }),
+                        (event) => this.progress = event.detail.progress,
+                    )
+                }
+            }
+            else {
+                this.emitUpdate()
+            }
+        },
+
+        emitUpdate () {
+            if (tiptap.isEmpty) this.editorContent = ''
+            else this.editorContent = tiptap.getHTML()
+
+            if (config.chat) {
+                this.uploading = false
+                this.progress = 0
+                this.files = []
+                this.$nextTick(() => tiptap.commands.clearContent())
+            }
         },
     }
 }

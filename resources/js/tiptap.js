@@ -205,7 +205,7 @@ const DisableEnterKeyExtension = Extension.create({
 
 window.Tiptap = ({
     element,
-    tiptapConfig,
+    config,
     bubbleMenus = {},
     disableEnterKey = false,
     mentionTemplate,
@@ -218,7 +218,7 @@ window.Tiptap = ({
         Highlight.configure({ multicolor: true }),
         ImageExtended,
         Link.configure({ openOnClick: false }),
-        Placeholder.configure({ placeholder: tiptapConfig.placeholder }),
+        Placeholder.configure({ placeholder: config.placeholder }),
         Subscript,
         Superscript,
         StarterKit,
@@ -245,7 +245,7 @@ window.Tiptap = ({
         element,
         autofocus: false,
         extensions,
-        ...tiptapConfig,
+        ...config,
     })
 
     return editor

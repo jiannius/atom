@@ -2,11 +2,13 @@
 
 namespace Jiannius\Atom\Traits;
 
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 trait AtomComponent
 {
     use WithPagination;
+    use WithFileUploads;
 
     public $_breadcrumbs = [];
 

@@ -5,12 +5,12 @@
     "isEntry": true
   },
   "resources/css/editor.css": {
-    "file": "assets/editor-BvckUfzh.css",
+    "file": "assets/editor-bjbI0zjC.css",
     "src": "resources/css/editor.css",
     "isEntry": true
   },
   "resources/js/atom.js": {
-    "file": "assets/atom-J6TzO4QD.js",
+    "file": "assets/atom-2wKvSFNe.js",
     "name": "atom",
     "src": "resources/js/atom.js",
     "isEntry": true,
@@ -19,7 +19,7 @@
     ]
   },
   "resources/js/tiptap.js": {
-    "file": "assets/tiptap-CSMIRE8v.js",
+    "file": "assets/tiptap-a8riXn1a.js",
     "name": "tiptap",
     "src": "resources/js/tiptap.js",
     "isDynamicEntry": true

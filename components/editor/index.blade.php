@@ -9,7 +9,7 @@
     'variant' => null,
     'mention' => null,
     'placeholder' => 'Write something...',
-    'buttons' => null,
+    'toolbar' => null,
 ])
 
 @php
@@ -46,7 +46,8 @@ $toolbar ??= ['heading', 'text', 'font-size', 'text-align', 'text-color', 'text-
             $attributes->get('class', 'min-h-10'),
         ])),
     })"
-    x-modelable="content"
+    x-modelable="editorContent"
+    class="group/editor"
     @if ($model && $lazy) wire:model.live="{{ $model }}"
     @else {{ $attributes->except(['class']) }}
     @endif>
@@ -55,7 +56,7 @@ $toolbar ??= ['heading', 'text', 'font-size', 'text-align', 'text-color', 'text-
         </div>
 
         <div x-show="!loading" @class([
-            'group/editor editor relative rounded-lg',
+            'editor relative rounded-lg',
             'outline-offset-1 hover:outline-1 hover:outline-zinc-100/50',
             'shadow-sm bg-white dark:bg-white/10' => !$transparent,
             'has-focus:outline-1 has-focus:outline-zinc-200 dark:has-focus:outline-2' => !$transparent,
@@ -95,7 +96,7 @@ $toolbar ??= ['heading', 'text', 'font-size', 'text-align', 'text-color', 'text-
                 <atom:editor.mention :options="data_get($mention, 'options')" :filters="data_get($mention, 'filters')" />
             @endif
 
-            <div x-ref="editor"></div>
+            <div x-ref="editor" class="grow"></div>
         </div>
     </div>
 @endif

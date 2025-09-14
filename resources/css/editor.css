@@ -176,3 +176,7 @@
     box-shadow: 0 0 0 4px #60a5fa;
     outline-offset: 1px;
 }
+
+.editor-content.editor-chat-content p {
+    margin: 0;
+}
