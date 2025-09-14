@@ -1,6 +1,6 @@
 {
   "resources/css/atom.css": {
-    "file": "assets/atom-D2z7MV0Z.css",
+    "file": "assets/atom-BtIvdPuU.css",
     "src": "resources/css/atom.css",
     "isEntry": true
   },
@@ -10,7 +10,7 @@
     "isEntry": true
   },
   "resources/js/atom.js": {
-    "file": "assets/atom-2wKvSFNe.js",
+    "file": "assets/atom-CIKJvc-Z.js",
     "name": "atom",
     "src": "resources/js/atom.js",
     "isEntry": true,

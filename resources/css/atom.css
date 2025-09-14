@@ -5,17 +5,23 @@ html {
 dialog[data-atom-modal]::backdrop,
 dialog[data-atom-modal-slide]::backdrop,
 dialog[data-atom-modal-slide-left]::backdrop,
-dialog[data-atom-modal-slide-bottom]::backdrop {
+dialog[data-atom-modal-slide-bottom]::backdrop,
+dialog[data-atom-lightbox]::backdrop {
     margin: auto;
     opacity: 0;
     background: rgba(0, 0, 0, 0.5);
     transition: all 75ms allow-discrete;
 }
 
+dialog[data-atom-lightbox]::backdrop {
+    background: rgba(0, 0, 0, 0.8);
+}
+
 dialog[data-atom-modal][data-open]::backdrop,
 dialog[data-atom-modal-slide][data-open]::backdrop,
 dialog[data-atom-modal-slide-left][data-open]::backdrop,
-dialog[data-atom-modal-slide-bottom][data-open]::backdrop {
+dialog[data-atom-modal-slide-bottom][data-open]::backdrop,
+dialog[data-atom-lightbox][data-open]::backdrop {
     opacity: 1;
     transition: all .15s allow-discrete;
     transform: translate(0) scale(1);

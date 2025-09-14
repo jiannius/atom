@@ -1,13 +1,15 @@
-@php
-$filters = $attributes->get('filters') ?? [];
+@props([
+    'options' => null,
+])
 
-if (is_string($attributes->get('options'))) {
+@php
+if (is_string($options)) {
+    $callback = $options;
     $options = [];
-    $callback = $attributes->get('options');
 }
 else {
-    $options = $attributes->get('options') ?? [];
     $callback = null;
+    $options ??= [];
 }
 @endphp
 
@@ -18,7 +20,6 @@ x-data="{
     timer: null,
     pointer: 0,
     options: @js($options),
-    filters: @js($filters),
     callback: @js($callback),
     filteredOptions: [],
 
@@ -121,13 +122,11 @@ x-data="{
 
         if (this.callback) {
             clearTimeout(this.timer)
-            this.timer = setTimeout(() => (Atom.action('get-options', {
-                name: this.callback,
-                filters: { ...this.filters, search: this.props.query },
-            })
-                .then(res => this.filteredOptions = [...res])
-                .then(() => this.align())
-            ), 300)
+            this.timer = setTimeout(() => {
+                this.$wire.$call(this.callback, this.props.query)
+                    .then(res => this.filteredOptions = [...res])
+                    .then(() => this.align())
+            }, 300)
         }
         else {
             this.filteredOptions = this.options.filter(opt => {
@@ -147,7 +146,7 @@ x-data="{
         else {
             this.props.command({
                 id: opt.id,
-                label: opt.mention_render || opt.label || opt.value,
+                label: opt.render || opt.label || opt.value,
             })
         }
 
@@ -172,7 +171,23 @@ class="editor-mention">
                         @if ($slot->isNotEmpty())
                             {{ $slot }}
                         @else
-                            <div x-text="opt"></div>
+                            <template x-if="typeof opt === 'string'" hidden>
+                                <div x-text="opt"></div>
+                            </template>
+
+                            <template x-if="typeof opt === 'object'" hidden>
+                                <div class="flex flex-col gap-1">
+                                    <div class="flex items-center gap-2">
+                                        <div
+                                            x-text="opt.type"
+                                            class="uppercase bg-zinc-100 border rounded font-medium text-zinc-500"
+                                            style="font-size: 0.65rem; padding: 1px 3px;">
+                                        </div>
+                                        <div x-text="opt.label" class="font-medium text-sm"></div>
+                                    </div>
+                                    <div x-show="opt.caption" x-text="opt.caption" class="text-sm text-zinc-500"></div>
+                                </div>
+                            </template>
                         @endif
                     </div>
                 </li>

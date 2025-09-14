@@ -8,6 +8,7 @@ import editor from './alpinejs/editor'
 import select from './alpinejs/select'
 import tooltip from './alpinejs/tooltip'
 import dropdown from './alpinejs/dropdown'
+import lightbox from './alpinejs/lightbox'
 import telInput from './alpinejs/tel-input'
 import clipboard from './alpinejs/clipboard'
 import datePicker from './alpinejs/date-picker'
@@ -24,6 +25,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('select', select)
     Alpine.data('tooltip', tooltip)
     Alpine.data('dropdown', dropdown)
+    Alpine.data('lightbox', lightbox)
     Alpine.data('telInput', telInput)
     Alpine.data('emailInput', emailInput)
     Alpine.data('breadcrumbs', breadcrumbs)
