@@ -27,7 +27,9 @@ $toolbar ??= ['heading', 'text', 'font-size', 'text-align', 'text-color', 'text-
     :caption="$caption"
     :required="$required"
     :error="$error">
-        <atom:editor :attributes="$attributes->merge(compact('variant', 'readonly', 'autofocus', 'mention', 'placeholder', 'buttons'))" />
+        <atom:editor
+        :toolbar="$toolbar"
+        :attributes="$attributes->merge(compact('name', 'variant', 'readonly', 'autofocus', 'mention', 'placeholder'))" />
     </atom:input.field>
 @else
     <link rel="stylesheet" href="{{ app('atom-asset')->version('editor.css') }}">
@@ -70,7 +72,7 @@ $toolbar ??= ['heading', 'text', 'font-size', 'text-align', 'text-color', 'text-
                         'sticky top-0 z-1 p-1',
                         'hidden group-has-focus/editor:block' => $transparent,
                     ])>
-                        <div class="flex gap-1 items-center flex-wrap border-b pb-1">
+                        <div class="flex gap-1 items-center flex-wrap border-b dark:border-white/10 pb-1">
                             @foreach ($toolbar as $button)
                                 <x-dynamic-component :component="'editor.button.'.$button"/>
                             @endforeach
