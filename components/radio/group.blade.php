@@ -19,12 +19,12 @@ $error ??= $errors?->first($name);
     :inline="$inline"
     :required="$required"
     :error="$error">
-        <atom:radio.group :attributes="$attributes->merge(['name' => $name])">
+        <atom:radio.group :attributes="$attributes">
             {{ $slot }}
         </atom:radio.group>
     </atom:input.field>
 @else
-    <div x-data="{ groupName: @js($name) }" {{ $attributes->class(['space-y-2']) }}>
+    <div {{ $attributes->class(['space-y-2'])->only('class') }}>
         {{ $slot }}
     </div>
 @endif

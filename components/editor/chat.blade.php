@@ -31,7 +31,7 @@ $transparent = $variant === 'transparent';
     })"
     x-modelable="editorContent"
     class="group/editor"
-    @if ($attributes->wire('model')->value()) wire:model.live="{{ $attributes->wire('model')->value() }}" @endif>
+    {{ $attributes->except(['class']) }}>
         <div x-show="loading">
             <atom:skeleton />
         </div>
@@ -56,15 +56,11 @@ $transparent = $variant === 'transparent';
             @endif
 
             <div class="flex items-end">
-                <div x-ref="editor" class="grow"></div>
+                <div x-ref="editor" x-on:input.stop="" class="grow"></div>
 
-                <div x-show="!uploading" class="shrink-0 p-2 flex items-center group-[.is-loading]/editor:hidden">
+                <div class="shrink-0 p-2 flex items-center group-[.is-loading]/editor:hidden">
                     <atom:editor.button.chat-formatting />
-
-                    @isset ($upload)
-                        <atom:editor.button.chat-upload :attributes="$upload->attributes" />
-                    @endisset
-
+                    <atom:editor.button.chat-upload />
                     <atom:editor.button label="Submit" x-on:click="sync()">
                         <svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-corner-down-left-icon lucide-corner-down-left"><path d="M20 4v7a4 4 0 0 1-4 4H4"/><path d="m9 10-5 5 5 5"/></svg>
                     </atom:editor.button>
@@ -83,19 +79,12 @@ $transparent = $variant === 'transparent';
 
                         <button
                         type="button"
-                        x-show="!uploading"
                         x-on:click="files.splice(i, 1)"
                         class="shrink-0 flex items-center justify-center text-muted-foreground">
                             <atom:icon.delete class="size-4" />
                         </button>
                     </div>
                 </template>
-            </div>
-
-            <div x-show="uploading" class="absolute inset-0 opacity-50 bg-white rounded-lg flex items-end justify-end">
-                <div class="text-sm font-medium p-2 flex items-center gap-2">
-                    <atom:icon.loading class="size-4" /> <span x-text="`${progress}%`"></span>
-                </div>
             </div>
         </div>
     </div>

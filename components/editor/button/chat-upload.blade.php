@@ -8,8 +8,8 @@
     type="file"
     x-ref="fileInput"
     x-on:click.stop=""
+    x-on:input.stop=""
     x-on:change="readFiles($event.target.files)"
-    data-model="{{ $attributes->wire('model')->value() }}"
     accept="{{ $accept }}"
     @if ($multiple) multiple @endif
     class="hidden">

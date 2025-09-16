@@ -6,13 +6,9 @@ export default (config) => {
 
     return {
         ts: Date.now(), // force Alpine to rerender on selection change
+        files: [], // for chat
         loading: true,
         editorContent: '',
-
-        // for chat
-        files: [],
-        progress: 0,
-        uploading: false,
 
         init () {
             import('../tiptap.js').then(() => this.createTiptap())
@@ -140,39 +136,17 @@ export default (config) => {
 
         sync () {
             if (!tiptap.isEditable) return
-
-            if (config.chat) {
-                let model = this.$refs.fileInput.getAttribute('data-model')
-
-                if (!this.files?.length || !model) {
-                    this.emitUpdate()
-                }
-                else {
-                    this.uploading = true
-                    this.$wire.uploadMultiple(
-                        model,
-                        this.files.map(file => file.file),
-                        () => this.emitUpdate(),
-                        () => atom.alert({ heading: 'Unable to upload files', message: 'Please try again.', variant: 'danger' }),
-                        (event) => this.progress = event.detail.progress,
-                    )
-                }
-            }
-            else {
-                this.emitUpdate()
-            }
-        },
-
-        emitUpdate () {
             if (tiptap.isEmpty) this.editorContent = ''
             else this.editorContent = tiptap.getHTML()
 
             if (config.chat) {
-                this.uploading = false
-                this.progress = 0
-                this.files = []
-                this.$nextTick(() => tiptap.commands.clearContent())
+                this.$dispatch('input', { body: this.editorContent, files: this.files.map(file => file.file) })
+                this.$nextTick(() => {
+                    tiptap.commands.clearContent()
+                    this.files = []
+                })
             }
+            else this.$dispatch('input', this.editorContent)
         },
     }
 }
