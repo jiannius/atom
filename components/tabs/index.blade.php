@@ -1,17 +1,21 @@
 @props([
     'tabs' => [],
     'size' => null,
+    'variant' => null,
 ])
 
 @php
 $classes = Arr::toCssClasses([
-    'inline-flex flex-wrap md:flex-nowrap items-center gap-1 select-none',
-    'p-1 bg-zinc-100 dark:bg-zinc-700',
+    'flex items-center select-none',
 
-    match ($size) {
-        'sm' => 'min-h-8 rounded *:rounded-sm *:text-sm *:py-1 *:px-3',
-        default => 'min-h-10 rounded-lg *:rounded-md *:px-4',
-    },
+    'p-1 bg-zinc-100 dark:bg-zinc-700' => $variant === 'button',
+    'border-b border-zinc-300 dark:border-zinc-700' => !$variant,
+
+    'h-8' => $size === 'sm',
+    'h-10' => !$size,
+
+    'rounded' => $variant === 'button' && $size === 'sm',
+    'rounded-md' => $variant === 'button' && !$size,
 ]);
 @endphp
 
