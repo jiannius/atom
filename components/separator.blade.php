@@ -2,7 +2,7 @@
     'align' => 'center',
 ])
 
-<div role="none" class="w-full flex items-center" data-atom-separator>
+<div role="none" {{ $attributes->class('w-full flex items-center') }} data-atom-separator>
     @if (in_array($align, ['center', 'right']))
         <div class="border-0 bg-zinc-200 h-px w-full dark:bg-zinc-600"></div>
     @endif

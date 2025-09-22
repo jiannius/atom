@@ -5,7 +5,7 @@
     'type' => null,
     'rel' => 'noopener noreferrer',
     'newtab' => false,
-    'phrase' => '',
+    'passphrase' => '',
     'inverted' => null,
     'social' => null,
     'variant' => null,
@@ -159,7 +159,7 @@ if ($type === 'delete' && !$attributes->wire('click')->value() && !$attributes->
             variant: 'danger',
             heading: '".t('atom::messages.permanently-delete-record')."',
             message: '".t('atom::messages.are-you-sure-to-delete-this-record')."',
-            phrase: '$phrase',
+            passphrase: '$passphrase',
         }).then(() => \$dispatch('confirmed')).catch(() => {})",
 
         'x-on:confirmed' => "\$wire.delete()",

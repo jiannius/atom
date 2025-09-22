@@ -35,9 +35,9 @@ $config = [
         <div class="space-y-3">
             <template x-if="config.heading" hidden>
                 <div class="flex items-center gap-3">
-                    <atom:icon.error x-show="config.variant === 'danger'" class="text-red-500" variant="solid" />
-                    <atom:icon.check-circle x-show="config.variant === 'success'" class="text-green-500" variant="solid" />
-                    <atom:icon.warning x-show="config.variant === 'warning'" class="text-yellow-500" variant="solid" />
+                    <atom:icon.error x-show="config.variant === 'danger'" class="size-8 text-red-500" variant="solid" />
+                    <atom:icon.check-circle x-show="config.variant === 'success'" class="size-8 text-green-500" variant="solid" />
+                    <atom:icon.warning x-show="config.variant === 'warning'" class="size-8 text-yellow-500" variant="solid" />
                     <div x-text="config.heading" class="text-lg font-medium"></div>
                 </div>
             </template>

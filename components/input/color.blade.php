@@ -6,10 +6,13 @@
 @php
 $wiremodel = $attributes->wire('model')->value();
 $classes = Arr::toCssClasses([
-    'h-10 w-full py-2 pl-10 pr-10 text-zinc-700 cursor-default',
+    'h-10 w-full py-2 px-10 shadow-xs outline-offset-1 cursor-default',
+    'text-zinc-700 dark:text-zinc-200',
+    'bg-white dark:bg-white/10',
     'border border-zinc-200 border-b-zinc-300/80 rounded-lg shadow-sm bg-white',
-    'focus:outline-none focus:border-primary group-focus/input:border-primary hover:border-primary-300',
-    $invalid ? 'border-red-400' : 'group-has-[[data-atom-error]]/field:border-red-400',
+    'focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
+    $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-white/10',
+    'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
 ]);
 @endphp
 

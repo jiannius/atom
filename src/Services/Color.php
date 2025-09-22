@@ -1,6 +1,7 @@
 <?php
-
 namespace Jiannius\Atom\Services;
+
+use Illuminate\Support\Arr;
 
 class Color
 {
@@ -87,7 +88,7 @@ class Color
     /**
      * Shade a color
      */
-    public static function shade($color, $percent)
+    public static function shade($color, $percent, $alpha = 1)
     {
         if (!$color) return;
 
@@ -104,26 +105,14 @@ class Color
             $b = hexdec(substr($color, 4, 2));
         }
 
-        $rgb = array($r, $g, $b);
+        $rgb = [$r, $g, $b];
+        $rgb = Arr::map($rgb, fn ($x) => dechex($x));
+        $rgb = Arr::map($rgb, fn ($x) => round(hexdec($x) + round(((255 - hexdec($x)) * $percent) / 100)));
 
-        return '#' . implode('', array_map(function ($x) use ($percent) {
-            $hex = dechex($x);
-            return str_pad(
-                dechex(
-                    round(
-                        hexdec($hex) +
-                            round(
-                                (
-                                    (255 - hexdec($hex)) * $percent
-                                ) / 100
-                            )
-                    )
-                ),
-                2,
-                '0',
-                STR_PAD_LEFT
-            );
-        }, $rgb));
+        if ($alpha < 1) $rgb = 'rgba(' . implode(',', $rgb) . ', ' . $alpha . ')';
+        else $rgb = '#'.implode('',Arr::map($rgb, fn ($x) => str_pad(dechex($x), 2, '0', STR_PAD_LEFT)));
+
+        return $rgb;
     }
 
     // // convert input to hex

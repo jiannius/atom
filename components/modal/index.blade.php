@@ -8,6 +8,7 @@
 @php
 $name ??= app('livewire')->current()->getName();
 $classes = Arr::toCssClasses([
+    'group/modal',
     '[:where(&):max-w-full] min-w-sm shadow-lg rounded-xl',
     'bg-white dark:bg-zinc-800 border border-transparent dark:border-zinc-700 transition-transform',
     $inset ? 'p-0' : 'p-6',

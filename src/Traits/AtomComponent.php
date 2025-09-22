@@ -58,7 +58,9 @@ trait AtomComponent
      */
     public function wirekey(...$args)
     {
-        return md5(json_encode(array_filter($args)));
+        return $args
+            ? md5(json_encode(array_filter($args)))
+            : md5((string) str()->ulid());
     }
 
     /**

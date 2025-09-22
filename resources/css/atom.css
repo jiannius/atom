@@ -2,6 +2,14 @@ html {
     font-size: 14px;
 }
 
+html:has([data-atom-modal][data-open]),
+html:has([data-atom-modal-slide][data-open]),
+html:has([data-atom-modal-slide-left][data-open]),
+html:has([data-atom-modal-slide-bottom][data-open]),
+html:has([data-atom-lightbox][data-open]) {
+    overflow: hidden;
+}
+
 dialog[data-atom-modal]::backdrop,
 dialog[data-atom-modal-slide]::backdrop,
 dialog[data-atom-modal-slide-left]::backdrop,
