@@ -23,13 +23,13 @@ if (!function_exists('num')) {
                 return Number::filesize($this->value * 1024, $precision);
             }
 
-            public function currency($in = null, $rounding = false, $bracket = false, $short = false) : string
+            public function currency($in = null, $rounding = false, $bracket = false, $abbreviate = false) : string
             {
                 if (!is_numeric($this->value)) return $this->value ?? '';
         
                 $value = (float) $this->value;
         
-                if ($short) {
+                if ($abbreviate) {
                     $amount = Number::abbreviate($value);
                     $currency = $in ? "$in $amount" : $amount;
                 }

@@ -1,4 +1,10 @@
 {
+  "node_modules/apexcharts/dist/apexcharts.esm.js": {
+    "file": "assets/apexcharts.esm-CSdPuxWS.js",
+    "name": "apexcharts.esm",
+    "src": "node_modules/apexcharts/dist/apexcharts.esm.js",
+    "isDynamicEntry": true
+  },
   "resources/css/atom.css": {
     "file": "assets/atom-BpaLJRnc.css",
     "src": "resources/css/atom.css",
@@ -10,12 +16,15 @@
     "isEntry": true
   },
   "resources/js/atom.js": {
-    "file": "assets/atom-CnuQVVsg.js",
+    "file": "assets/atom-DG2BOvXt.js",
     "name": "atom",
     "src": "resources/js/atom.js",
     "isEntry": true,
     "dynamicImports": [
-      "resources/js/tiptap.js"
+      "resources/js/tiptap.js",
+      "node_modules/apexcharts/dist/apexcharts.esm.js",
+      "node_modules/apexcharts/dist/apexcharts.esm.js",
+      "node_modules/apexcharts/dist/apexcharts.esm.js"
     ]
   },
   "resources/js/tiptap.js": {

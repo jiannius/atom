@@ -54,11 +54,14 @@ $merges = [
 
         @if ($trend)
             <div class="absolute left-0 right-0 bottom-0 h-1/2" style="z-index: 1">
-                <div x-data x-chart="{
-                    type: 'trend',
+                <div x-data="chartTrend({
                     data: @js($trend),
-                    color: @js($indicator > 0 ? 'green' : ($indicator < 0 ? 'red' : null)),
-                }"></div>
+                    color: @js(match (true) {
+                        $indicator > 0 => 'green',
+                        $indicator < 0 => 'red',
+                        default => 'gray',
+                    }),
+                })"></div>
             </div>
         @endif
     @elseif ($variant === 'chart')
@@ -66,13 +69,21 @@ $merges = [
             <atom:subheading>{{ t($heading) }}</atom:subheading>
 
             <div class="grow">
-                <div x-data x-chart="{
-                    type: @js($type),
-                    data: @js($data),
-                    color: @js($color),
-                    max: @js($max),
-                    min: @js($min),
-                }"></div>
+                @if ($type === 'area')
+                    <div x-data="chartArea({
+                        data: @js($data),
+                        color: @js($color),
+                        max: @js($max),
+                        min: @js($min),
+                    })"></div>
+                @else
+                    <div x-data="chartBar({
+                        data: @js($data),
+                        color: @js($color),
+                        max: @js($max),
+                        min: @js($min),
+                    })"></div>
+                @endif
             </div>
         </div>
     @else

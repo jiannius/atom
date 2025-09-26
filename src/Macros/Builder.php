@@ -7,6 +7,33 @@ use Illuminate\Support\Facades\DB;
 class Builder
 {
     /**
+     * Where date between
+     */
+    public function whereDateBetween()
+    {
+        return function ($column, $range) {
+            $range = is_string($range)
+                ? collect(explode('to', $range))->map(fn ($val) => str($val)->replace('to', ''))->map(fn ($val) => trim($val))->toArray()
+                : $range;
+
+            $from = data_get($range, '0', '');
+            $to = data_get($range, '1', '');
+
+            if ($from) {
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) $this->whereDate($column, '>=', $from); // date in YYYY-MM-DD
+                else $this->where($column, '>=', $from);
+            }
+
+            if ($to) {
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) $this->whereDate($column, '<=', $to); // date in YYYY-MM-DD
+                else $this->where($column, '<=', $to);
+            }
+
+            return $this;
+        };
+    }
+
+    /**
      * Go to specific page number in paginator
      */
     public function toPage()
@@ -186,7 +213,71 @@ class Builder
                 $dup = $this->where($column, $code)->exists();
             }
     
-            return $code;                
+            return $code;
+        };
+    }
+
+    /**
+     * Breakdown the query by date
+     * this function will automatically detect to breakdown the query by year, month or days
+     */
+    public function breakdown()
+    {
+        return function ($diff, $start, $dateColumn = 'date', $totalColumn = 'total') {
+            $breakdown = collect();
+        
+            if ($diff['y'] > 1) {
+                $grouped = DB::query()->fromSub($this, 'data')
+                    ->selectRaw("
+                        year(`$dateColumn`) AS `year`,
+                        sum(`$totalColumn`) AS `total`
+                    ")
+                    ->groupBy('year')
+                    ->get();
+
+                foreach (range(0, $diff['y']) as $n) {
+                    $carbon = $start->copy()->local()->addYears($n);
+                    $label = $carbon->year;
+                    $value = $grouped->where('year', $carbon->year)->first();
+                    $breakdown->put($label, data_get($value, 'total', 0));
+                }
+            }
+            else if ($diff['m'] > 1) {
+                $grouped = DB::query()->fromSub($this, 'data')
+                    ->selectRaw("
+                        date_format(`$dateColumn`, \"%c\") AS `month`,
+                        year(`$dateColumn`) AS `year`,
+                        sum(`$totalColumn`) AS `total`
+                    ")
+                    ->groupBy(['month', 'year'])
+                    ->get();
+
+                foreach (range(0, $diff['m']) as $n) {
+                    $carbon = $start->copy()->local()->addMonths($n);
+                    $label = $carbon->shortEnglishMonth.' '.$carbon->format('y');
+                    $value = $grouped->where('month', $carbon->month)->where('year', $carbon->year)->first();
+                    $breakdown->put($label, data_get($value, 'total', 0));
+                }
+            }
+            else {
+                $grouped = DB::query()->fromSub($this, 'data')
+                    ->selectRaw("
+                        day(`$dateColumn`) as `day`,
+                        date_format(`$dateColumn`, \"%c\") AS `month`,
+                        sum(`$totalColumn`) as `total`
+                    ")
+                    ->groupBy(['day', 'month'])
+                    ->get();
+
+                foreach (range(0, $diff['d']) as $n) {
+                    $carbon = $start->copy()->local()->addDays($n);
+                    $label = $carbon->day;
+                    $value = $grouped->where('month', $carbon->month)->where('day', $carbon->day)->first();
+                    $breakdown->put($label, data_get($value, 'total', 0));
+                }
+            }
+
+            return $breakdown;
         };
     }
 }

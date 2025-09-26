@@ -16,6 +16,9 @@ import dateRange from './alpinejs/date-range'
 import timePicker from './alpinejs/time-picker'
 import emailInput from './alpinejs/email-input'
 import breadcrumbs from './alpinejs/breadcrumbs'
+import chartBar from './alpinejs/chart/bar'
+import chartArea from './alpinejs/chart/area'
+import chartTrend from './alpinejs/chart/trend'
 import Autosize from '@marcreichel/alpine-autosize'
 import intersect from '@alpinejs/intersect'
 
@@ -32,6 +35,9 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('datePicker', datePicker)
     Alpine.data('timePicker', timePicker)
     Alpine.data('dateRange', dateRange)
+    Alpine.data('chartBar', chartBar)
+    Alpine.data('chartArea', chartArea)
+    Alpine.data('chartTrend', chartTrend)
     Alpine.magic('clipboard', clipboard)
     Alpine.plugin(Autosize)
     Alpine.plugin(intersect)

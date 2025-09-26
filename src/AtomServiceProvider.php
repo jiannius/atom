@@ -76,6 +76,7 @@ class AtomServiceProvider extends ServiceProvider
     protected function registerMacros() : void
     {
         \Illuminate\Database\Eloquent\Builder::mixin(new \Jiannius\Atom\Macros\Builder());
+        \Illuminate\Database\Query\Builder::mixin(new \Jiannius\Atom\Macros\Builder());
         \Illuminate\View\ComponentAttributeBag::mixin(new \Jiannius\Atom\Macros\ComponentAttributeBag());
         \Illuminate\Http\Request::mixin(new \Jiannius\Atom\Macros\Request());
         \Illuminate\Support\Str::mixin(new \Jiannius\Atom\Macros\Str());
