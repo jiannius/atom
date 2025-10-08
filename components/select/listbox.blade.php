@@ -157,9 +157,9 @@ class="group/select w-full"
             </button>
         @endif
 
-        <atom:menu x-show="!loading" class="max-w-xl min-w-sm max-h-[400px] overflow-auto" popover>
+        <atom:menu x-show="!loading" class="max-w-xl min-w-sm" popover>
             <template x-if="searchable" hidden>
-                <div class="py-3 px-4 flex items-center gap-2 border-b dark:border-zinc-500">
+                <div class="px-3 pt-2 pb-3 flex items-center gap-2 border-b dark:border-zinc-700">
                     <atom:icon.search class="text-zinc-400 shrink-0"/>
 
                     <input
@@ -188,25 +188,29 @@ class="group/select w-full"
                 <atom:empty size="sm"/>
             </template>
 
-            <template x-for="(option, i) in options" x-bind:key="`option-${option.value}-${i}`" hidden>
-                <atom:menu.item
-                x-on:mouseover="moveTo($el)"
-                x-on:mouseout="moveTo($el, false)"
-                x-on:click="select(option)"
-                x-bind:class="isSelected(option) && 'bg-zinc-100 dark:bg-zinc-600'"
-                data-atom-option>
-                    <div class="flex gap-3">
-                        <div x-bind:class="!isSelected(option) && 'opacity-0'" class="shrink-0 flex items-center justify-center">
-                            <atom:icon.check class="size-4 text-zinc-400 dark:text-zinc-200" />
-                        </div>
+            <template x-if="options.length" hidden>
+                <div class="max-h-[400px] overflow-auto">
+                    <template x-for="(option, i) in options" x-bind:key="`option-${option.value}-${i}`" hidden>
+                        <atom:menu.item
+                        x-on:mouseover="moveTo($el)"
+                        x-on:mouseout="moveTo($el, false)"
+                        x-on:click="select(option)"
+                        x-bind:class="isSelected(option) && 'bg-zinc-100 dark:bg-zinc-600'"
+                        data-atom-option>
+                            <div class="flex gap-3">
+                                <div x-bind:class="!isSelected(option) && 'opacity-0'" class="shrink-0 flex items-center justify-center">
+                                    <atom:icon.check class="size-4 text-zinc-400 dark:text-zinc-200" />
+                                </div>
 
-                        <div x-html="getOptionHtml(option)" class="grow" data-option-content></div>
-                    </div>
-                </atom:menu.item>
+                                <div x-html="getOptionHtml(option)" class="grow" data-option-content></div>
+                            </div>
+                        </atom:menu.item>
+                    </template>
+                </div>
             </template>
 
             @if (isset($actions) && $actions->isNotEmpty())
-                <div class="border-t pt-1">
+                <div class="border-t mt-1 pt-1 dark:border-zinc-700">
                     {{ $actions }}
                 </div>
             @endif

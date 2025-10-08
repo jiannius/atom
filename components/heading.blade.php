@@ -43,7 +43,7 @@ $merges = [
     {{ $slot }}
 
     @isset ($actions)
-        <div class="flex items-center gap-2 flex-wrap" data-atom-heading-actions>
+        <div class="flex items-center gap-2 flex-wrap text-base" data-atom-heading-actions>
             {{ $actions }}
         </div>
     @endisset

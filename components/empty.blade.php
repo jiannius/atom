@@ -1,11 +1,16 @@
 @props([
     'icon' => 'inbox',
     'size' => null,
+    'subtle' => false,
     'heading' => 'No Results',
     'subheading' => 'We could not find anything.',
 ])
 
-@if ($size === 'sm')
+@if ($subtle)
+    <div class="bg-zinc-100 dark:bg-zinc-700/30 rounded-lg p-3 text-sm text-muted text-center">
+        {{ t($heading) }}
+    </div>
+@elseif ($size === 'sm')
     <div class="flex items-center justify-center w-full" data-atom-empty>
         <div class="flex justify-center gap-3 py-5">
             <div class="shrink-0 flex justify-center text-zinc-300">

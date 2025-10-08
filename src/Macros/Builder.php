@@ -55,8 +55,17 @@ class Builder
             $showTrashed = data_get($config, 'show_trashed');
             $maxRows ??= data_get($config, 'max_rows') ?? 100;
 
-            if ($sortColumn) $this->orderBy($sortColumn, $sortDirection);
-            else if (!$this->query->orders) $this->latest('id');
+            if ($sortColumn) {
+                if (str($sortColumn)->startsWith('raw:')) {
+                    $this->orderByRaw(implode(' ', array_filter([str($sortColumn)->replace('raw:', ''), $sortDirection])));
+                }
+                else {
+                    $this->orderBy($sortColumn, $sortDirection);
+                }
+            }
+            else if (!$this->query->orders) {
+                $this->latest('id');
+            }
 
             if ($showTrashed) $this->onlyTrashed();
 
