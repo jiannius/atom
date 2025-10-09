@@ -9,7 +9,7 @@
     @endif
 
     <div {{ $attributes->class([
-        'border-l border-zinc-200 px-1 space-y-1 overflow-auto',
+        'border-l border-zinc-200 dark:border-zinc-700 px-1 space-y-1 overflow-auto',
         'max-h-96' => $scrollable,
     ]) }}>
         {{ $slot }}

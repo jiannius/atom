@@ -34,7 +34,7 @@ export default (config) => {
                 this.$root.removeAttribute('data-atom-modal-slide-bottom');
                 this.$root.removeAttribute('data-atom-modal-slide');
                 this.$root.removeAttribute('data-atom-modal');
-                this.$dispatch('closed')
+                this.$dispatch('closed', config.name)
             }
         },
 
