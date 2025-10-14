@@ -15,7 +15,7 @@
             <atom:tooltip.content :$kbd>{{ t($content) }}</atom:tooltip.content>
         @endif
     </ui-dropdown>
-@else
+@elseif ($content || $slot->isNotEmpty())
     <div x-data="tooltip({
         placement: @js($position.'-'.$align),
         interactive: @js($interactive),

@@ -18,7 +18,7 @@
 ])
 
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @if ($dark) class="dark" @endif>
 <head>
 <title>{{ $title ?? config('app.name') }}</title>
 <meta charset="utf-8" />

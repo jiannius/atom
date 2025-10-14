@@ -7,7 +7,7 @@
 @php
 $classes = Arr::toCssClasses([
     'space-y-1',
-    'md:space-y-0 md:grid md:grid-cols-5 md:items-start' => !$block,
+    'md:space-y-0 md:grid md:gap-2 md:grid-cols-5 md:items-start' => !$block,
 ]);
 @endphp
 
