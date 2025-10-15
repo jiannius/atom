@@ -71,9 +71,9 @@ class Carbon extends \Carbon\CarbonImmutable
         $to = $to ? new self($to) : now();
 
         $diff = [
-            'd' => $from->diffInDays($to),
-            'm' => $from->diffInMonths($to),
-            'y' => $from->diffInYears($to),
+            'd' => round($from->diffInDays($to)),
+            'm' => round($from->diffInMonths($to)),
+            'y' => round($from->diffInYears($to)),
         ];
 
         $past = data_get($diff, 'd') > 0 ? [

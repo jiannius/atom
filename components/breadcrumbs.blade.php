@@ -16,7 +16,7 @@ data-atom-breadcrumbs>
 
     <template x-if="breadcrumbs.length > 1" hidden>
         <ol {{ $attributes->class(['flex flex-wrap items-center gap-2 overflow-hidden']) }}>
-            <template x-for="(item, i) in breadcrumbs" x-bind:key="item.url">
+            <template x-for="(item, i) in breadcrumbs" x-bind:key="`${item.title}-${item.url}-${i}`">
                 <li class="shrink-0 max-w-40 lg:max-w-64">
                     <div class="flex items-center gap-2 truncate text-zinc-800">
                         <template x-if="i !== breadcrumbs.length - 1">

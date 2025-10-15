@@ -50,7 +50,14 @@ export default (config) => {
                 let current = items[items.length - 1]
 
                 if (data.replace) {
-                    this.trails.splice(this.trails.length - 1, 1, current)
+                    let index = this.trails.findIndex(item => item.title === current.title && item.url === current.url)
+
+                    if (index === -1) {
+                        this.trails.splice(this.trails.length - 1, 1, current)
+                    }
+                    else {
+                        this.trails.splice(index + 1)
+                    }
                 }
                 else {
                     let index = this.trails.findIndex(item => item.url === current.url)
