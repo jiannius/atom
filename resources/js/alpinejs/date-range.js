@@ -4,7 +4,6 @@ import dayjs from 'dayjs'
 export default (config) => {
     return {
         pikaday: [],
-        visible: false,
         endValue: null,
         startValue: null,
         dateRangeValue: null,
@@ -22,7 +21,7 @@ export default (config) => {
             return ''
         },
 
-        get calendars () {
+        get calendarElements () {
             return this.$root.querySelectorAll('[data-atom-date-picker-calendar]')
         },
 
@@ -36,15 +35,8 @@ export default (config) => {
         },
 
         init () {
-            this.$watch('visible', () => {
-                if (this.visible) {
-                    this.$nextTick(() => {
-                        this.parse()
-                        this.setCalendar()
-                    })
-                }
-                else this.destroyCalendar()
-            })
+            this.parse()
+            this.$nextTick(() => this.setCalendar())
 
             this.$watch('startValue', () => this.updateValue())
             this.$watch('endValue', () => this.updateValue())
@@ -81,7 +73,9 @@ export default (config) => {
         updateValue () {
             let start = this.startValue || ''
             let end = this.endValue || ''
-            this.dateRangeValue = start || end ? `${start} to ${end}` : ''
+            if (!start || !end) return
+
+            this.dateRangeValue = `${start} to ${end}`
             this.setCalendarRange()
         },
 
@@ -105,8 +99,8 @@ export default (config) => {
             this.pikaday[0] = new Pikaday({ onSelect: (value) => this.pickedDate('start', value) })
             this.pikaday[1] = new Pikaday({ onSelect: (value) => this.pickedDate('end', value) })
 
-            this.calendars[0].prepend(this.pikaday[0].el)
-            this.calendars[1].prepend(this.pikaday[1].el)
+            this.calendarElements[0].prepend(this.pikaday[0].el)
+            this.calendarElements[1].prepend(this.pikaday[1].el)
 
             this.setCalendarDates()
             this.setCalendarRange()
@@ -134,14 +128,6 @@ export default (config) => {
 
             this.pikaday[0].show()
             this.pikaday[1].show()
-        },
-
-        destroyCalendar () {
-            this.pikaday[0]?.destroy()
-            this.pikaday[1]?.destroy()
-            this.pikaday = []
-            this.calendars[0].innerHTML = ''
-            this.calendars[1].innerHTML = ''
         },
     }
 }

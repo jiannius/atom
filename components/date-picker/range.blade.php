@@ -17,12 +17,13 @@ $classes = Arr::toCssClasses([
 @endphp
 
 <div
+wire:ignore
 x-data="dateRange({ time: @js($time) })"
 x-modelable="dateRangeValue"
 class="group/date-range relative w-full"
 data-atom-date-range
 {{ $attributes->except(['class', 'placeholder']) }}>
-    <atom:dropdown x-on:open="visible = true" x-on:close="visible = false" locked>
+    <atom:dropdown x-on:open="setCalendarDates(); setCalendarRange();" locked>
         <button type="button" class="relative w-full">
             <input
             type="text"
@@ -30,7 +31,7 @@ data-atom-date-range
             {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}
             readonly>
 
-            <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">
+            <div x-cloak class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">
                 <div x-show="dateRangeValue" x-on:click.stop="dateRangeValue = null; parse()" class="flex items-center justify-center w-full h-full text-muted-foreground hover:text-muted">
                     <atom:icon.close />
                 </div>
