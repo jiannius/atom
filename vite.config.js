@@ -9,6 +9,7 @@ export default defineConfig({
       input: [
         'resources/css/atom.css',
         'resources/css/editor.css',
+        'resources/css/calendar.css',
         'resources/js/atom.js',
       ],
       refresh: true,
@@ -16,5 +17,12 @@ export default defineConfig({
   ],
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'calendar': ['@event-calendar/core']
+        }
+      }
+    }
   },
 });

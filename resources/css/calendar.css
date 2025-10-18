@@ -1,0 +1,6 @@
+@import '@event-calendar/core/index.css';
+
+.ec {
+    --ec-event-bg-color: oklch(44.2% 0.017 285.786);
+    --ec-event-text-color: oklch(92% 0.004 286.32);
+}

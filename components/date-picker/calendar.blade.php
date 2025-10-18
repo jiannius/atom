@@ -13,10 +13,12 @@
     '[&_.pika-table]:w-full [&_.pika-table_th]:text-sm [&_.pika-table_th]:font-medium [&_.pika-table_th]:p-2 [&_.pika-table_th_abbr]:no-underline',
     '[&_.pika-table_td]:p-px [&_.pika-table_td]:text-center [&_.pika-table_td_button]:size-10 [&_.pika-table_td_button]:text-center [&_.pika-table_td_button]:rounded-md',
     '[&_.pika-table_td.is-disabled_button]:text-zinc-400 [&_.pika-table_td.is-disabled_button]:cursor-default',
-    '[&_.pika-table_td:not(.is-disabled):not(.is-selected)_button:hover]:bg-zinc-100 dark:[&_.pika-table_td:not(.is-disabled):not(.is-selected)_button:hover]:bg-zinc-800',
+    '[&_.pika-table_td:not(.is-disabled):not(.is-selected)_button:hover]:bg-zinc-100 dark:[&_.pika-table_td:not(.is-disabled):not(.is-selected)_button:hover]:bg-zinc-700',
     '[&_.pika-table_td.is-inrange_button]:bg-zinc-800 [&_.pika-table_td.is-inrange_button]:text-zinc-100 dark:[&_.pika-table_td.is-inrange_button]:bg-zinc-800 dark:[&_.pika-table_td.is-inrange_button]:text-current',
     '[&_.pika-table_td.is-selected_button]:bg-zinc-800 [&_.pika-table_td.is-selected_button]:text-zinc-100 [&_.pika-table_td.is-selected_button]:font-medium',
+    'dark:[&_.pika-table_td.is-selected_button]:bg-zinc-200 dark:[&_.pika-table_td.is-selected_button]:text-zinc-800',
     '[&_.pika-table_td.is-selected_button:hover]:bg-zinc-800 [&_.pika-table_td.is-selected_button:hover]:text-zinc-100 [&_.pika-table_td.is-selected_button:hover]:font-medium',
+    'dark:[&_.pika-table_td.is-selected_button:hover]:bg-zinc-200 dark:[&_.pika-table_td.is-selected_button:hover]:text-zinc-800',
     '[&_.pika-table_td.is-today:not(.is-selected)_button]:font-semibold',
     '[&_.pika-table_td.is-today:not(.is-selected)_button]:border [&_.pika-table_td.is-today:not(.is-selected)_button]:border-dashed',
     '[&_.pika-table_td.is-today:not(.is-selected)_button]:border-black dark:[&_.pika-table_td.is-today:not(.is-selected)_button]:border-white'

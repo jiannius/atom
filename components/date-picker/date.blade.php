@@ -23,23 +23,29 @@ class="group/date-picker relative w-full"
 data-atom-date-picker
 {{ $attributes->except(['class', 'placeholder']) }}>
     <atom:dropdown x-on:open="visible = true" x-on:close="visible = false" locked>
-        <div class="relative">
-            <input
-            type="text"
-            x-bind:value="datePickerString"
-            {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}
-            readonly>
+        @if ($slot->isNotEmpty())
+            <div class="relative">
+                {{ $slot }}
+            </div>
+        @else
+            <div class="relative">
+                <input
+                type="text"
+                x-bind:value="datePickerString"
+                {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}
+                readonly>
 
-            <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">
-                <div x-show="datePickerValue" x-on:click.stop="datePickerValue = null" class="flex items-center justify-center w-full h-full text-muted-foreground hover:text-muted">
-                    <atom:icon.close />
-                </div>
+                <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">
+                    <div x-show="datePickerValue" x-on:click.stop="datePickerValue = null" class="flex items-center justify-center w-full h-full text-muted-foreground hover:text-muted">
+                        <atom:icon.close />
+                    </div>
 
-                <div x-show="!datePickerValue" class="pointer-events-none flex items-center justify-center w-full h-full text-muted">
-                    <atom:icon.calendar />
+                    <div x-show="!datePickerValue" class="pointer-events-none flex items-center justify-center w-full h-full text-muted">
+                        <atom:icon.calendar />
+                    </div>
                 </div>
             </div>
-        </div>
+        @endif
 
         <atom:menu class="w-[300px]" popover>
             <atom:date-picker.calendar />

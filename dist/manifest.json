@@ -1,4 +1,10 @@
 {
+  "node_modules/@event-calendar/core/dist/index.js": {
+    "file": "assets/calendar-jpBoPgZ1.js",
+    "name": "calendar",
+    "src": "node_modules/@event-calendar/core/dist/index.js",
+    "isDynamicEntry": true
+  },
   "node_modules/apexcharts/dist/apexcharts.esm.js": {
     "file": "assets/apexcharts.esm-CSdPuxWS.js",
     "name": "apexcharts.esm",
@@ -10,18 +16,24 @@
     "src": "resources/css/atom.css",
     "isEntry": true
   },
+  "resources/css/calendar.css": {
+    "file": "assets/calendar-PIGz_ZDk.css",
+    "src": "resources/css/calendar.css",
+    "isEntry": true
+  },
   "resources/css/editor.css": {
     "file": "assets/editor-bjbI0zjC.css",
     "src": "resources/css/editor.css",
     "isEntry": true
   },
   "resources/js/atom.js": {
-    "file": "assets/atom-DeG2Ku8s.js",
+    "file": "assets/atom-BMe8J14I.js",
     "name": "atom",
     "src": "resources/js/atom.js",
     "isEntry": true,
     "dynamicImports": [
       "resources/js/tiptap.js",
+      "node_modules/@event-calendar/core/dist/index.js",
       "node_modules/apexcharts/dist/apexcharts.esm.js",
       "node_modules/apexcharts/dist/apexcharts.esm.js",
       "node_modules/apexcharts/dist/apexcharts.esm.js"
