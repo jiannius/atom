@@ -103,42 +103,33 @@ export default (config) => {
             this.date = dayjs().toISOString()
         },
 
-        updateEvents (e) {
+        addEvents (e) {
             if (config.name && config.name !== e.name) return
 
-            let events = e.events || []
+            let events = Array.isArray(e.events) ? e.events : [e.events]
 
             events.forEach(event => {
-                event = {
-                    id: event.id,
-                    allDay: event.all_day,
-                    start: event.start_at ? dayjs(event.start_at).toDate() : null,
-                    end: event.end_at ? dayjs(event.end_at).toDate() : null,
-                    title: event.title,
-                    resourceIds: event.resources,
-                    editable: typeof event.editable === 'boolean' ? event.editable : true,
-                    startEditable: typeof event.draggable === 'boolean' ? event.draggable : true,
-                    durationEditable: typeof event.resizable === 'boolean' ? event.resizable : true,
-                    backgroundColor: event.bg_color || event.background_color,
-                    textColor: event.text_color,
-                    classNames: Array.isArray(event.class) ? event.class : event.class,
-                    styles: Array.isArray(event.style) ? event.style : event.style,
-                    extendedProps: event.meta,
-                }
-                
-                Object.keys(event).forEach(key => (event[key] === null || event[key] === undefined) && delete event[key])
-                
                 let idx = this.calendar.getEvents().findIndex(item => item.id === event.id)
-
-                if (idx > -1) this.calendar.updateEvent(event)
-                else this.calendar.addEvent(event)
+                if (idx > -1) this.calendar.updateEvent(this.getEventResource(event))
+                else this.calendar.addEvent(this.getEventResource(event))
             })
         },
 
-        removeEvents (ids) {
+        updateEvents (e) {
             if (config.name && config.name !== e.name) return
 
-            ids = Array.isArray(ids) ? ids : [ids]
+            let events = Array.isArray(e.events) ? e.events : [e.events]
+
+            events.forEach(event => {
+                let idx = this.calendar.getEvents().findIndex(item => item.id === event.id)
+                if (idx > -1) this.calendar.updateEvent(this.getEventResource(event))
+            })
+        },
+
+        removeEvents (e) {
+            if (config.name && config.name !== e.name) return
+
+            let ids = Array.isArray(e.id) ? e.id : [e.id]
 
             ids.forEach(id => {
                 let idx = this.calendar.getEvents().findIndex(item => item.id === id)
@@ -146,10 +137,40 @@ export default (config) => {
             })
         },
 
-        emit (event, data) {
-            if (data.start) data.startUtc = dayjs(data.start).utc().toISOString()
-            if (data.end) data.endUtc = dayjs(data.end).utc().toISOString()
-            this.$dispatch(event, { ...data, calendar: this.calendar })
+        getEventResource (data) {
+            let event = {
+                id: data.id,
+                allDay: data.all_day,
+                start: data.start_at ? dayjs(data.start_at).toDate() : null,
+                end: data.end_at ? dayjs(data.end_at).toDate() : null,
+                title: data.title,
+                resourceIds: data.resources,
+                editable: typeof data.editable === 'boolean' ? data.editable : true,
+                startEditable: typeof data.draggable === 'boolean' ? data.draggable : true,
+                durationEditable: typeof data.resizable === 'boolean' ? data.resizable : true,
+                backgroundColor: data.bg_color || data.background_color,
+                textColor: data.text_color,
+                classNames: Array.isArray(data.class) ? data.class : data.class,
+                styles: Array.isArray(data.style) ? data.style : data.style,
+                extendedProps: data.meta,
+            }
+
+            Object.keys(event).forEach(key => (event[key] === null || event[key] === undefined) && delete event[key])
+
+            return event
+        },
+
+        emit (event, info) {
+            if (info.date) info.dateUtc = dayjs(info.date).utc().toISOString()
+            if (info.start) info.startUtc = dayjs(info.start).utc().toISOString()
+            if (info.end) info.endUtc = dayjs(info.end).utc().toISOString()
+
+            this.$dispatch(event, {
+                info,
+                mode: this.mode,
+                period: this.period,
+                calendar: this.calendar,
+            })
         },
     }
 }

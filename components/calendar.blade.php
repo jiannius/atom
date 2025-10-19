@@ -18,9 +18,21 @@ x-data="calendar({
     period: @js(head($periods)),
 })"
 x-modelable="date"
+x-on:add-calendar-events.window="addEvents($event.detail)"
 x-on:update-calendar-events.window="updateEvents($event.detail)"
 x-on:remove-calendar-events.window="removeEvents($event.detail)"
-{{ $attributes->except(['class']) }}>
+data-atom-calendar
+{{ $attributes->class([
+    'group/calendar',
+    '[&_.ec-sidebar]:rounded-l-lg',
+    '[&_.ec-header]:rounded-t-lg [&_.ec-header]:bg-white dark:[&_.ec-header]:bg-zinc-800',
+    '[&_.ec-body]:rounded-b-lg [&_.ec-body]:bg-white dark:[&_.ec-body]:bg-zinc-800',
+
+    '[&_.ec-event]:h-full',
+    '[&_.ec-event]:bg-red-800',
+    '[&_.ec-event]:rounded-none',
+    '[&_.ec-timeline_.ec-events]:h-[110px]',
+]) }}>
     <div class="flex flex-wrap items-center gap-3">
         <div class="grow flex items-center gap-3">
             <div @class([
@@ -54,6 +66,10 @@ x-on:remove-calendar-events.window="removeEvents($event.detail)"
                         <atom:icon.dropdown />
                     </button>
                 </atom:date-picker>
+            </div>
+
+            <div class="shrink-0 flex items-center justify-center opacity-0 group-[.is-loading]/calendar:opacity-100 transition-opacity duration-300 delay-500">
+                <atom:icon.loading />
             </div>
         </div>
 
@@ -106,14 +122,5 @@ x-on:remove-calendar-events.window="removeEvents($event.detail)"
         </div>
     </div>
 
-    <div x-ref="calendar" {{ $attributes->class([
-        '[&_.ec-sidebar]:rounded-l-lg',
-        '[&_.ec-header]:rounded-t-lg [&_.ec-header]:bg-white dark:[&_.ec-header]:bg-zinc-800',
-        '[&_.ec-body]:rounded-b-lg [&_.ec-body]:bg-white dark:[&_.ec-body]:bg-zinc-800',
-
-        '[&_.ec-event]:h-full',
-        '[&_.ec-event]:bg-red-800',
-        '[&_.ec-event]:rounded-none',
-        '[&_.ec-timeline_.ec-events]:h-[110px]',
-    ])->only('class') }}></div>
+    <div x-ref="calendar"></div>
 </div>
