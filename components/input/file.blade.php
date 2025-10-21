@@ -26,7 +26,7 @@ $attrs = $attributes
             <div class="space-y-2">
                 <div class="flex items-center gap-3 font-medium">
                     <div data-atom-uploader-trigger class="underline decoration-dotted flex items-center gap-2 cursor-pointer">
-                        <atom:icon upload class="text-muted-more"/> @t('browse-device')
+                        <atom:icon.upload class="text-muted-more"/> @t('browse-device')
                     </div>
                     <span class="text-muted-more"> / </span>
                     <div x-on:click.stop="Atom.modal('app.file.library').show()" class="underline decoration-dotted flex items-center gap-2 lowercase cursor-pointer">
@@ -40,14 +40,14 @@ $attrs = $attributes
             </div>
 
             <div class="hidden group-has-[.is-loading]:flex absolute inset-0 bg-white/50 rounded-md p-3 justify-end">
-                <atom:icon loading class="text-primary"/>
+                <atom:icon.loading class="text-primary"/>
             </div>
         </div>
     @else
         <div data-atom-uploader-trigger class="group p-4 rounded relative">
             <div class="space-y-2">
                 <div class="underline decoration-dotted flex items-center gap-2 cursor-pointer">
-                    <atom:icon upload class="text-muted-more"/> @t('browse-device')
+                    <atom:icon.upload class="text-muted-more"/> @t('browse-device')
                 </div>
                 <div class="font-medium text-muted">
                     @t('or-drop-paste-to-upload')
@@ -55,7 +55,7 @@ $attrs = $attributes
             </div>
 
             <div class="hidden group-[.is-loading]:flex absolute inset-0 bg-white/50 rounded-md p-3 justify-end">
-                <atom:icon loading class="text-primary"/>
+                <atom:icon.loading class="text-primary"/>
             </div>
         </div>
     @endif
