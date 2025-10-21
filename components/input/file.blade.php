@@ -14,7 +14,7 @@ $attrs = $attributes
     ;
 @endphp
 
-<atom:uploader tabindex="0" :attributes="$attrs">
+{{-- <atom:uploader tabindex="0" :attributes="$attrs">
     @if ($slot->isNotEmpty())
         <div class="bg-white p-1 rounded-t-lg border-b border-zinc-200">
             {{ $slot }}
@@ -59,4 +59,4 @@ $attrs = $attributes
             </div>
         </div>
     @endif
-</atom:uploader>
+</atom:uploader> --}}
