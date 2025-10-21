@@ -31,21 +31,17 @@ data-atom-navlist-group>
 </ui-disclosure>
 
 @elseif ($heading)
-
-<div {{ $attributes->class('block space-y-[2px] mb-3') }}>
-    <div class="px-1 py-2">
-        <div class="text-sm leading-none text-zinc-400">{{ t($heading) }}</div>
-    </div>
-
     <div>
+        <div class="py-2 px-3">
+            <div class="text-sm leading-none text-zinc-400">{{ t($heading) }}</div>
+        </div>
+
+        <div {{ $attributes->class(['flex flex-col']) }}>
+            {{ $slot }}
+        </div>
+    </div>
+@else
+    <div {{ $attributes }}>
         {{ $slot }}
     </div>
-</div>
-
-@else
-
-<div {{ $attributes->class('block space-y-[2px]') }}>
-    {{ $slot }}
-</div>
-
 @endif

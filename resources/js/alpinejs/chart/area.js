@@ -1,5 +1,7 @@
 export default (config) => {
     return {
+        chart: null,
+
         colors: {
             red: '#fda4af',
             green: '#0f766e',
@@ -9,7 +11,7 @@ export default (config) => {
 
         init () {
             import('apexcharts').then(ApexCharts => {
-                let chart = new ApexCharts.default(this.$el, {
+                this.chart = new ApexCharts.default(this.$el, {
                     chart: {
                         type: 'area',
                         height: '100%',
@@ -28,7 +30,6 @@ export default (config) => {
                         width: 1,
                         curve: 'smooth',
                     },
-                    colors: [this.getColor()],
                     tooltip: {
                         custom: ({ series, seriesIndex, dataPointIndex, w }) => {
                             let data = config.data[dataPointIndex]
@@ -64,16 +65,53 @@ export default (config) => {
                     } : {}),
                 })
 
-                setTimeout(() => chart.render(), 200)
+                this.$nextTick(() => {
+                    chart.render()
+                    this.setColors()
+                })
             })
         },
 
-        getColor () {
-            let color = config.color || ''
+        setColors () {
+            if (!this.chart) return
 
-            if (color.startsWith('#')) return color
+            let dark = document.documentElement.classList.contains('dark')
 
-            return this.colors[color || 'gray']
+            let dataColor = config.color || ''
+            if (!dataColor || !dataColor.startsWith('#')) dataColor = this.colors[dataColor || 'gray']
+
+            this.chart.updateOptions({
+                colors: [dataColor],
+                xaxis: {
+                    labels: {
+                        style: {
+                            colors: config.data.map(() => (dark ? 'white' : 'black')),
+                        },
+                    },
+                },
+                ...config.max?.value ? {
+                    yaxis: {
+                        min: (config.min?.value || 0) * 1.12,
+                        max: config.max.value * 1.12,  // add buffer to yaxis to prevent annotation being cut off
+                    },
+                    annotations: {
+                        yaxis: [{
+                            y: config.max.value,
+                            borderColor: dark ? 'white' : 'black',
+                            label: {
+                                borderColor: dark ? 'white' : 'black',
+                                style: {
+                                    color: dark ? 'black' : 'white',
+                                    background: dark ? 'white' : 'black',
+                                    fontSize: '12px',
+                                },
+                                position: 'center',
+                                text: config.max.label,
+                            },
+                        }],
+                    },
+                } : {}
+            })
         },
     }
 }

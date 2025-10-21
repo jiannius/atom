@@ -126,6 +126,8 @@ fbq('track', 'PageView');
             window.localStorage.setItem('darkmode', 'light')
             applyLight()
         }
+
+        document.dispatchEvent(new CustomEvent('darkmode-changed', { detail: mode }))
     }
 
     darkmode()

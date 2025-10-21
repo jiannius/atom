@@ -23,25 +23,29 @@ class="min-h-screen bg-white dark:bg-zinc-900">
 
     {{-- sidebar --}}
     <div 
-    x-data="{ screenLg: window.innerWidth >= 1024 }"
+    x-data="{
+        isHidden: false,
+        screenLg: window.innerWidth >= 1024
+    }"
     x-resize.document="screenLg = window.innerWidth >= 1024"
     x-init="() => {
         $el.classList.add('-translate-x-full', 'rtl:translate-x-full')
         $el.removeAttribute('data-mobile-cloak')
-        $el.classList.add('transition-transform')
     }"
-    x-bind:data-stashed="!screenLg"
+    x-on:toggle-sidebar.window="isHidden = !isHidden" {{--hide sidebar on large screen, only work in large screen --}}
+    x-bind:data-stashed="!screenLg || isHidden"
     x-bind:style="{
         position: 'sticky',
         top: $el.offsetTop+'px',
         'max-height': 'calc(100dvh - '+$el.offsetTop+'px)'
     }"
+    x-bind:class="isHidden ? '' : 'lg:translate-x-0!'"
     @class([
-        '[grid-area:sidebar] z-1 flex flex-col gap-4 [:where(&)]:w-64 p-4',
-        'max-h-dvh overflow-y-auto overscroll-contain',
+        '[grid-area:sidebar] z-1 flex flex-col gap-4 [:where(&)]:w-2xs p-4',
+        'max-h-dvh overflow-y-auto overscroll-contain transition-transform',
         'border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900',
         'max-lg:data-mobile-cloak:hidden',
-        '[[data-show-stashed-sidebar]_&]:translate-x-0! lg:translate-x-0!',
+        '[[data-show-stashed-sidebar]_&]:translate-x-0!',
         'z-20! data-stashed:start-0! data-stashed:fixed! data-stashed:top-0! data-stashed:min-h-dvh! data-stashed:max-h-dvh!',
     ])
     data-mobile-cloak
@@ -108,12 +112,13 @@ class="min-h-screen bg-white dark:bg-zinc-900">
 
     <header class="[grid-area:header] z-10 px-6 lg:px-8" data-atom-header>
         <div class="min-h-14 lg:hidden flex items-center">
+            {{-- toggle sidebar in small screen, only work in small screen --}}
             <button
             type="button"
             x-data
             x-on:click="document.body.hasAttribute('data-show-stashed-sidebar') ? document.body.removeAttribute('data-show-stashed-sidebar') : document.body.setAttribute('data-show-stashed-sidebar', '')"
             class="shrink-0 flex items-center justify-center rounded-lg size-10 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-            aria-label="{{ t('Toggle sidebar') }}"
+            aria-label="{{ t('Show sidebar') }}"
             data-atom-sidebar-toggle>
                 <atom:icon.menu class="size-5"/>
             </button>

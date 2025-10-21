@@ -1,5 +1,7 @@
 export default (config) => {
     return {
+        chart: null,
+
         colors: {
             red: '#fda4af',
             green: '#0f766e',
@@ -9,7 +11,7 @@ export default (config) => {
 
         init () {
             import('apexcharts').then(ApexCharts => {
-                let chart = new ApexCharts.default(this.$el, {
+                this.chart = new ApexCharts.default(this.$el, {
                     chart: {
                         type: 'bar',
                         height: '100%',
@@ -31,7 +33,6 @@ export default (config) => {
                     legend: {
                         show: false,
                     },
-                    colors: [this.getColor()],
                     tooltip: {
                         custom: ({ series, seriesIndex, dataPointIndex, w }) => {
                             let data = config.data[dataPointIndex]
@@ -43,9 +44,6 @@ export default (config) => {
                             return tooltip.outerHTML
                         },
                     },
-                    grid: {
-                        borderColor: '#f4f4f5',
-                    },
                     xaxis: {
                         axisTicks: { show: false },
                         axisBorder: { show: false },
@@ -56,36 +54,55 @@ export default (config) => {
                         axisTicks: { show: false },
                         axisBorder: { show: false },
                     },
-                    ...(config.max?.value ? {
-                        annotations: {
-                            yaxis: [{
-                                y: config.max.value,
-                                borderColor: 'black',
-                                label: {
-                                    borderColor: 'black',
-                                    style: {
-                                        color: 'white',
-                                        background: 'black',
-                                        fontSize: '12px',
-                                    },
-                                    position: 'center',
-                                    text: config.max.label,
-                                },
-                            }],
-                        },
-                    } : {}),
                 })
 
-                setTimeout(() => chart.render(), 200)
+                this.$nextTick(() => {
+                    this.chart.render()
+                    this.setColors()
+                })
+
+                document.addEventListener('darkmode-changed', () => this.setColors())
+
             })
         },
 
-        getColor () {
-            let color = config.color || ''
+        setColors () {
+            if (!this.chart) return
 
-            if (color.startsWith('#')) return color
+            let dark = document.documentElement.classList.contains('dark')
 
-            return this.colors[color || 'gray']
+            let dataColor = config.color || ''
+            if (!dataColor || !dataColor.startsWith('#')) dataColor = this.colors[dataColor || 'gray']
+
+            this.chart.updateOptions({
+                colors: [dataColor],
+                grid: { borderColor: dark ? '#52525D' : '#f4f4f5' },
+                xaxis: {
+                    labels: {
+                        style: {
+                            colors: config.data.map(() => (dark ? 'white' : 'black')),
+                        },
+                    },
+                },
+                ...config.max?.value ? {
+                    annotations: {
+                        yaxis: [{
+                            y: config.max.value,
+                            borderColor: dark ? 'white' : 'black',
+                            label: {
+                                borderColor: dark ? 'white' : 'black',
+                                style: {
+                                    color: dark ? 'black' : 'white',
+                                    background: dark ? 'white' : 'black',
+                                    fontSize: '12px',
+                                },
+                                position: 'center',
+                                text: config.max.label,
+                            },
+                        }],
+                    },
+                } : {}
+            })
         },
     }
 }

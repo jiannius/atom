@@ -34,23 +34,14 @@ $isCurrent = function () use ($href, $current) {
 };
 
 $classes = Arr::toCssClasses([
-    'h-10 relative flex items-center gap-3 rounded-lg',
+    'relative flex items-center gap-3 rounded-lg',
     'px-2.5!' => $square,
-    'py-0 text-start w-full px-3 my-px',
+    'py-2 px-3 text-start w-full border border-transparent',
     'text-zinc-500 dark:text-white/80',
-    ...match ($accent) {
-        true => [
-            'data-current:text-(--color-accent-content) hover:data-current:text-(--color-accent-content)',
-            'data-current:bg-white dark:data-current:bg-white/[7%] data-current:border data-current:border-zinc-200 dark:data-current:border-transparent',
-            'hover:text-zinc-800 dark:hover:text-white dark:hover:bg-white/[7%] hover:bg-zinc-800/5 ',
-            'border border-transparent',
-        ],
-        false => [
-            'data-current:text-zinc-800 dark:data-current:text-zinc-100 data-current:border-zinc-200',
-            'data-current:bg-white dark:data-current:bg-white/10 data-current:border data-current:border-zinc-200 dark:data-current:border-white/10 data-current:shadow-xs',
-            'hover:text-zinc-800 dark:hover:text-white',
-        ],
-    },
+    'hover:bg-zinc-100 dark:hover:bg-zinc-800',
+    'hover:text-zinc-800 dark:hover:text-white',
+    'data-current:bg-zinc-100 data-current:text-zinc-800 data-current:border-zinc-200 data-current:px-3',
+    'dark:data-current:bg-zinc-700 dark:data-current:text-white dark:data-current:border-transparent',
 ]);
 @endphp
 
