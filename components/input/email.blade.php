@@ -51,6 +51,7 @@ data-atom-input-email>
             <input
             type="email"
             x-model="text"
+            x-on:blur="keyEnter()"
             class="flex-1 focus:outline-none appearance-none bg-transparent"
             {{ $attributes->merge([
                 'invalid' => $invalid,
