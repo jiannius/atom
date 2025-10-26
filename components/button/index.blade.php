@@ -39,7 +39,7 @@ $icon = [
 ];
 
 $classes = [
-    'group/button relative items-center justify-center',
+    'group/button relative items-center justify-center overflow-hidden',
     $block ? 'flex w-full' : 'inline-flex',
     'whitespace-nowrap font-medium transition-colors outline-offset-1',
     'disabled:pointer-events-none disabled:cursor-default disabled:opacity-50',
