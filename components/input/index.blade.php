@@ -98,7 +98,19 @@ $merges = [
         </atom:input.general>
     @endif
 @elseif ($type === 'file')
-    <atom:input.file :attributes="$attributes->merge($merges)">
-        {{ $slot }}
-    </atom:input.file>
+    @if ($label || $caption)
+        <atom:input.field
+        :label="$label"
+        :caption="$caption"
+        :required="$required"
+        :error="$error">
+            <atom:uploader :attributes="$attributes->merge([...$merges, 'variant' => 'ghost', 'size' => 'sm'])">
+                {{ $slot }}
+            </atom:uploader>
+        </atom:input.field>
+    @else
+        <atom:uploader :attributes="$attributes->merge([...$merges, 'variant' => 'ghost', 'size' => 'sm'])">
+            {{ $slot }}
+        </atom:uploader>
+    @endif
 @endif

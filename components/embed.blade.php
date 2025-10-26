@@ -45,6 +45,8 @@ $merges = [
     <iframe src="{{ $src }}" {{ $attributes->class($classes)->merge($merges) }}></iframe>
 @elseif ($type === 'icon')
     <div {{ $attributes->class($classes)->merge($merges) }}>
-        <x-dynamic-component :component="'atom::icon.'.$icon" class="size-10" />
+        @if (str($icon)->startsWith('<svg')) {!! $icon !!}
+        @else <x-dynamic-component :component="'atom::icon.'.$icon" />
+        @endif
     </div>
 @endif

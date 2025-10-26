@@ -79,7 +79,7 @@ $classes = Arr::toCssClasses([
         </div>
 
         @if ($sort)
-            <div class="shrink-0 flex items-center justify-center text-zinc-500 size-3">
+            <div x-show="$wire._table.sort.column" class="shrink-0 flex items-center justify-center text-zinc-500 size-3">
                 <atom:icon.arrow-down x-show="$wire._table.sort.column === '{{ $sort }}' && $wire._table.sort.direction === 'asc'"/>
                 <atom:icon.arrow-up x-show="$wire._table.sort.column === '{{ $sort }}' && $wire._table.sort.direction === 'desc'"/>
             </div>

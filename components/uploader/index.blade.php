@@ -1,6 +1,7 @@
 @props([
     'label' => 'Upload',
     'variant' => null,
+    'size' => null,
 ])
 
 <div
@@ -17,9 +18,13 @@ class="group/uploader relative">
     @if ($slot->isNotEmpty())
         {{ $slot }}
     @else
-        <div class="flex items-center gap-2">
+        <div @class([
+            'flex items-center gap-2',
+            '[&_[data-atom-icon]]:size-4' => $size === 'sm',
+        ])>
             <atom:button
             :variant="$variant"
+            :size="$size"
             x-bind:class="uploading && 'opacity-50 pointer-events-none'"
             x-on:click="$refs.fileinput.click()">
                 <div x-show="!uploading" class="flex items-center gap-2">
