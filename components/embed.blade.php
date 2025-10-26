@@ -1,13 +1,11 @@
 @props([
     'src' => null,
-    'optimized' => null,
     'icon' => null,
     'file' => null,
 ])
 
 @php
-$src ??= $file?->endpoint;
-$optimized ??= $file?->endpoint_o;
+$src ??= $file?->url;
 $icon ??= 'file';
 
 $url = parse_url($src);
@@ -38,13 +36,7 @@ $merges = [
 @endphp
 
 @if ($type === 'image')
-    @if ($optimized)
-        <object data="{!! $optimized !!}" {{ $attributes->class($classes)->only('class') }}>
-            <img src="{!! $src !!}" {{ $attributes->class($classes)->only('class') }}>
-        </object>
-    @else
-        <img src="{!! $src !!}" {{ $attributes->class($classes)->only('class') }}>
-    @endif
+    <img src="{!! $src !!}" {{ $attributes->class($classes)->only('class') }}>
 @elseif ($type === 'video')
     <video {{ $attributes->class($classes)->merge($merges) }}>
         <source src="{{ $src }}" type="video/mp4">
