@@ -6,20 +6,25 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Jiannius\Atom\Commands\PurgeEditorImages;
 use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\TagCompiler;
 use Livewire\Volt\Volt;
 
 class AtomServiceProvider extends ServiceProvider
 {
-    // register
+    /**
+     * Register the service provider
+     */
     public function register() : void
     {
         $this->app->alias(Atom::class, 'atom');
         $this->app->alias(Asset::class, 'atom-asset');
     }
 
-    // boot
+    /**
+     * Boot the service provider
+     */
     public function boot() : void
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
@@ -33,6 +38,7 @@ class AtomServiceProvider extends ServiceProvider
         $this->configureDate();
         $this->mountVoltComponents();
         $this->registerMacros();
+        $this->registerCommands();
 
         Asset::boot();
 
@@ -61,11 +67,17 @@ class AtomServiceProvider extends ServiceProvider
         });
     }
 
+    /**
+     * Configure the date
+     */
     protected function configureDate() : void
     {
         Date::use(\Jiannius\Atom\Services\Carbon::class);
     }
 
+    /**
+     * Mount the volt components
+     */
     protected function mountVoltComponents() : void
     {
         $this->app->booted(function() {
@@ -73,6 +85,9 @@ class AtomServiceProvider extends ServiceProvider
         });
     }
 
+    /**
+     * Register the macros
+     */
     protected function registerMacros() : void
     {
         \Illuminate\Database\Eloquent\Builder::mixin(new \Jiannius\Atom\Macros\Builder());
@@ -82,5 +97,15 @@ class AtomServiceProvider extends ServiceProvider
         \Illuminate\Support\Str::mixin(new \Jiannius\Atom\Macros\Str());
         \Illuminate\Support\Stringable::mixin(new \Jiannius\Atom\Macros\Stringable());
         \Illuminate\Support\Arr::mixin(new \Jiannius\Atom\Macros\Arr());
+    }
+
+    /**
+     * Register the commands
+     */
+    protected function registerCommands() : void
+    {
+        $this->commands([
+            PurgeEditorImages::class,
+        ]);
     }
 }

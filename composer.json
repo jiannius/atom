@@ -4,6 +4,7 @@
     "type": "library",
     "require": {
         "doctrine/dbal": "^3.6",
+        "intervention/image": "^3.0",
         "laravel/pail": "^1.0",
         "livewire/livewire": "^3.0",
         "livewire/volt": "^1.0"

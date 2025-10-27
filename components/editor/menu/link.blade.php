@@ -53,7 +53,7 @@ x-data="{
     },
 }"
 x-on:link-menu-edit="link = null; edit()"
-class="link-menu">
+class="link-menu bg-white dark:bg-zinc-700 rounded-lg shadow-sm border dark:border-zinc-600">
     <template x-if="link && !isEditing">
         <div class="py-2 px-3 flex items-center gap-4 cursor-pointer max-w-xl">
             <div class="grow flex items-center gap-2">

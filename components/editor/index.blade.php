@@ -72,7 +72,7 @@ $toolbar ??= ['heading', 'text', 'font-size', 'text-align', 'text-color', 'text-
                         'sticky top-0 z-1 p-1',
                         'hidden group-has-focus/editor:block' => $transparent,
                     ])>
-                        <div class="flex gap-1 items-center flex-wrap border-b dark:border-white/10 pb-1">
+                        <div class="flex gap-1 items-center flex-wrap p-1 bg-white rounded-md dark:bg-zinc-800 border dark:border-zinc-700">
                             @foreach ($toolbar as $button)
                                 <x-dynamic-component :component="'editor.button.'.$button"/>
                             @endforeach

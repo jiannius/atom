@@ -1,4 +1,4 @@
-<div class="image-menu" x-init="$el.shouldShow = (editor) => (editor?.isActive('image'))">
+<div class="image-menu bg-white dark:bg-zinc-700 rounded-lg shadow-sm border dark:border-zinc-600" x-init="$el.shouldShow = (editor) => (editor?.isActive('image'))">
     <div class="flex items-center flex-wrap p-1">
         @foreach ([
             [
