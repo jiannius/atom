@@ -9,6 +9,7 @@ $classes = Arr::toCssClasses([
     'py-1.5 px-3 inline-flex items-center gap-2',
     'whitespace-nowrap uppercase text-sm text-zinc-500 font-medium',
     'leading-6 tracking-wider',
+    $checkbox ? 'w-10' : '',
 
     match ($align) {
         'left' => 'justify-start',

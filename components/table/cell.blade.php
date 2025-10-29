@@ -9,6 +9,7 @@
 $classes = Arr::toCssClasses([
     'py-3 px-4 whitespace-nowrap',
     $muted ? 'text-muted dark:text-muted-foreground' :'text-zinc-800 dark:text-zinc-200',
+    $checkbox ? 'w-10' : '',
     match ($align) {
         'left' => 'text-left justify-start',
         'center' => 'text-center justify-center',
