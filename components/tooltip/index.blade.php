@@ -22,7 +22,7 @@
     })" {{ $attributes }} data-atom-tooltip>
         {{ $slot }}
 
-        @if ($content !== null)
+        @if ($content)
             <atom:tooltip.content :$kbd>{{ t($content) }}</atom:tooltip.content>
         @endif
     </div>
