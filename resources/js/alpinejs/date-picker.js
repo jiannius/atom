@@ -54,6 +54,8 @@ export default (config) => {
                         this.datePickerValue = obj.toISOString()
                     }
 
+                    this.$nextTick(() => this.$dispatch('input', this.datePickerValue))
+
                     !config.time && this.popover.hidePopover()
                 },
             })
