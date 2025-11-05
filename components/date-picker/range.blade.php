@@ -6,7 +6,7 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'h-10 w-full py-2 pl-3 pr-10 no-spinner rounded-lg shadow-sm outline-offset-1 cursor-default',
+    'h-10 w-full py-2 pl-3 pr-10 no-spinner rounded-lg shadow-xs outline-offset-1 cursor-default',
     'text-zinc-700 dark:text-zinc-200',
     'bg-white dark:bg-white/10',
     'dark:placeholder-zinc-400',
@@ -20,7 +20,7 @@ $classes = Arr::toCssClasses([
 wire:ignore
 x-data="dateRange({ time: @js($time) })"
 x-modelable="dateRangeValue"
-class="group/date-range relative w-full"
+class="group/date-range relative"
 data-atom-date-range
 {{ $attributes->except(['class', 'placeholder']) }}>
     <atom:dropdown x-on:open="setCalendarDates(); setCalendarRange();" locked>

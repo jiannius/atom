@@ -104,12 +104,12 @@ $merges = [
         :caption="$caption"
         :required="$required"
         :error="$error">
-            <atom:uploader :attributes="$attributes->merge([...$merges, 'variant' => 'ghost', 'size' => 'sm'])">
+            <atom:uploader :attributes="$attributes->merge($merges)">
                 {{ $slot }}
             </atom:uploader>
         </atom:input.field>
     @else
-        <atom:uploader :attributes="$attributes->merge([...$merges, 'variant' => 'ghost', 'size' => 'sm'])">
+        <atom:uploader :attributes="$attributes->merge($merges)">
             {{ $slot }}
         </atom:uploader>
     @endif

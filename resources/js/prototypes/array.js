@@ -32,7 +32,7 @@ Array.prototype.sum = function (attr = null) {
         if (typeof attr === 'function') value = attr(value)
         else if (attr) value = value[attr]
 
-        return value + acc
+        return +value + acc
     }, 0)
 }
 

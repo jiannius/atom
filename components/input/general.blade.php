@@ -15,6 +15,7 @@ $classes = Arr::toCssClasses([
     'h-10 w-full py-2 no-spinner rounded-lg shadow-xs outline-offset-1',
     'text-zinc-700 dark:text-zinc-200',
     'bg-white dark:bg-white/10',
+    'disabled:bg-zinc-100 disabled:opacity-70 disabled:text-zinc-400 dark:disabled:bg-zinc-800/50 hover:disabled:outline-none',
     'dark:placeholder-zinc-400',
     'focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
     $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-white/10',
@@ -24,7 +25,7 @@ $classes = Arr::toCssClasses([
 ]);
 @endphp
 
-<div class="group/input relative w-full block" data-atom-input>
+<div class="group/input relative" data-atom-input>
     @if ($icon)
         <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pl-3 left-0">
             <x-dynamic-component :component="'atom::icon.'.$icon" class="size-5" />
@@ -73,8 +74,9 @@ $classes = Arr::toCssClasses([
                 }"
                 x-show="show"
                 x-on:click.stop="() => {
+                    show = false
                     input.value = ''
-                    input.dispatch('input', '')
+                    $dispatch('input', '')
                     $nextTick(() => input.focus())
                 }"
                 class="w-full h-full flex items-center justify-center cursor-pointer">

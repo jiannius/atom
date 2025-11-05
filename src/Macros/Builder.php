@@ -192,7 +192,7 @@ class Builder
                             if ($coltype === 'json') $this->whereJsonContains($col, $value);
                             else $this->whereIn($col, $value);
                         }
-                        else if (!is_array($value)) {
+                        else if (!is_array($value) && $value) {
                             if ($operator) {
                                 $this->where($col, $operator, $value);
                             }
