@@ -28,7 +28,7 @@ $classes = Arr::toCssClasses([
     match ($variant) {
         'danger', 'delete', 'remove' => 'focus:bg-red-100 hover:text-red-500 hover:bg-red-100',
         'warning' => 'focus:bg-yellow-100 hover:text-yellow-500 hover:bg-yellow-100',
-        default => 'focus:bg-zinc-800/5 hover:bg-zinc-800/5 dark:hover:bg-zinc-600',
+        default => 'focus:bg-zinc-800/5 dark:focus:bg-zinc-700 hover:bg-zinc-800/5 dark:hover:bg-zinc-600',
     },
 ]);
 

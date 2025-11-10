@@ -1,6 +1,7 @@
 export default (config) => {
     return {
         text: null,
+        timer: null,
         loading: false,
         visible: false,
         options: [],
@@ -25,9 +26,6 @@ export default (config) => {
         },
 
         init () {
-            this.$watch('visible', () => this.fetch())
-            this.$watch('text', () => this.fetch())
-
             this.$nextTick(() => {
                 if ((config.multiple && this.selectValue?.length) || (!config.multiple && !empty(this.selectValue))) {
                     this.fetch()
@@ -134,28 +132,26 @@ export default (config) => {
         },
 
         keyUp () {
-            if (!this.visible) this.show()
-            else {
-                let els = this.getOptionsElements()
-                let active = this.getFocusedElementIndex()
-                let prev = active <= 0 ? (els.length - 1) : (active - 1)
-                if (prev > -1) {
-                    this.moveTo(els[prev])
-                    this.scroll()
-                }
+            this.show()
+
+            let els = this.getOptionsElements()
+            let active = this.getFocusedElementIndex()
+            let prev = active <= 0 ? (els.length - 1) : (active - 1)
+            if (prev > -1) {
+                this.moveTo(els[prev])
+                this.scroll()
             }
         },
 
         keyDown () {
-            if (!this.visible) this.show()
-            else {
-                let els = this.getOptionsElements()
-                let active = this.getFocusedElementIndex()
-                let next = active >= els.length - 1 ? 0 : (active + 1)
-                if (next > -1) {
-                    this.moveTo(els[next])
-                    this.scroll()
-                }
+            this.show()
+
+            let els = this.getOptionsElements()
+            let active = this.getFocusedElementIndex()
+            let next = active >= els.length - 1 ? 0 : (active + 1)
+            if (next > -1) {
+                this.moveTo(els[next])
+                this.scroll()
             }
         },
 

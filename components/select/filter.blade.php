@@ -32,10 +32,10 @@ x-data="select({
     searchable: @js($searchable),
 })"
 x-modelable="selectValue"
-x-on:open="visible = true"
-x-on:close="visible = false"
+x-on:open="$nextTick(() => fetch())"
 x-on:keydown.up.prevent.stop="keyUp()"
 x-on:keydown.down.prevent.stop="keyDown()"
+x-on:keydown.escape.stop=""
 class="group/select"
 {{ $attributes->except('class') }}>
     <atom:dropdown>
@@ -50,12 +50,8 @@ class="group/select"
                 {{ t($label) }}
             </div>
 
-            <div x-show="!loading" class="shrink-0">
+            <div class="shrink-0">
                 <atom:icon.dropdown />
-            </div>
-
-            <div x-show="loading" class="shrink-0 flex items-center justify-center">
-                <atom:icon.loading class="size-4" />
             </div>
 
             @if ($multiple === true)
@@ -87,60 +83,64 @@ class="group/select"
             @endif
         </button>
 
-        <atom:menu x-show="!loading" class="max-w-xl min-w-sm" popover>
-            <template x-if="searchable" hidden>
-                <div class="px-3 pt-2 pb-3 flex items-center gap-2 border-b dark:border-zinc-700">
-                    <atom:icon.search class="text-zinc-400 shrink-0"/>
+        <atom:menu class="max-w-xl min-w-sm" popover>
+            <div
+            x-show="searchable"
+            x-on:input.stop="() => {
+                clearTimeout(timer)
+                timer = setTimeout(() => fetch(), 300)
+            }"
+            class="px-3 pt-2 pb-3 flex items-center gap-2 border-b dark:border-zinc-700">
+                <atom:icon.search class="text-zinc-400 shrink-0"/>
 
-                    <input
-                    type="text"
-                    x-model.debounce.300="text"
-                    x-on:input.stop=""
-                    x-on:click.stop=""
-                    class="appearance-none grow w-full focus:outline-none"
-                    placeholder="{{ t('Search') }}"
-                    data-atom-select-search>
+                <input
+                type="text"
+                x-model="text"
+                x-on:click.stop=""
+                class="appearance-none grow w-full focus:outline-none"
+                placeholder="{{ t('Search') }}"
+                autofocus
+                data-atom-select-search>
 
-                    <div
-                    x-show="!loading && text"
-                    x-on:click.stop="text = null"
-                    class="shrink-0 flex items-center justify-center text-zinc-400 hover:text-zinc-800 cursor-pointer">
-                        <atom:icon.close />
-                    </div>
-
-                    <div x-show="loading" class="shrink-0 flex items-center justify-center">
-                        <atom:icon.loading />
-                    </div>
+                <div
+                x-show="!loading && text"
+                x-on:click.stop="text = null; $dispatch('input')"
+                class="shrink-0 flex items-center justify-center text-zinc-400 hover:text-zinc-800 cursor-pointer">
+                    <atom:icon.close />
                 </div>
-            </template>
 
-            <template x-if="!options.length" hidden>
+                <div x-show="loading" class="shrink-0 flex items-center justify-center">
+                    <atom:icon.loading />
+                </div>
+            </div>
+
+            <div x-show="!searchable && loading" class="p-2 flex items-center justify-center gap-2 opacity-50">
+                <atom:icon.loading /> {{ t('Loading') }}...
+            </div>
+
+            <div x-show="!loading && !options.length">
                 <atom:empty size="sm"/>
-            </template>
+            </div>
 
-            <template x-if="options.length" hidden>
-                <div class="max-h-[400px] overflow-auto">
-                    <template x-for="(option, i) in options" x-bind:key="`option-${option.value}-${i}`" hidden>
-                        <atom:menu.item
-                        x-on:mouseover="moveTo($el)"
-                        x-on:mouseout="moveTo($el, false)"
-                        x-on:click="select(option)"
-                        x-bind:class="isSelected(option) && 'bg-zinc-100 dark:bg-zinc-600'"
-                        data-atom-option>
-                            <div class="flex gap-3">
-                                <div x-bind:class="!isSelected(option) && 'opacity-0'" class="shrink-0 flex items-center justify-center">
-                                    <atom:icon.check class="size-4 text-zinc-400 dark:text-zinc-200" />
-                                </div>
-
-                                <div x-html="getOptionHtml(option)" class="grow" data-option-content></div>
+            <div x-show="options.length" class="max-h-[400px] overflow-auto">
+                <template x-for="(option, i) in options" x-bind:key="`option-${option.value}-${i}`" hidden>
+                    <atom:menu.item
+                    x-on:click="select(option)"
+                    x-bind:class="isSelected(option) && 'bg-zinc-100 dark:bg-zinc-600'"
+                    data-atom-option>
+                        <div class="flex gap-3">
+                            <div x-bind:class="!isSelected(option) && 'opacity-0'" class="shrink-0 flex items-center justify-center">
+                                <atom:icon.check class="size-4 text-zinc-400 dark:text-zinc-200" />
                             </div>
-                        </atom:menu.item>
-                    </template>
-                </div>
-            </template>
+
+                            <div x-html="getOptionHtml(option)" class="grow" data-option-content></div>
+                        </div>
+                    </atom:menu.item>
+                </template>
+            </div>
 
             @if (isset($actions) && $actions->isNotEmpty())
-                <div class="border-t mt-1 pt-1 dark:border-zinc-700">
+                <div x-show="options.length || !loading" class="border-t mt-1 pt-1 dark:border-zinc-700">
                     {{ $actions }}
                 </div>
             @endif
