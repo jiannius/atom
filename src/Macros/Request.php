@@ -4,12 +4,21 @@ namespace Jiannius\Atom\Macros;
 
 class Request
 {
+    /**
+     * Get the portal of the current request
+     */
     public function portal()
     {
         return function ($is = null) {
             $route = $this->route()?->getName();
 
-            if (in_array($route, ['login', 'logout', 'register', 'password.forgot', 'password.reset'])) {
+            if (in_array($route, [
+                'login',
+                'logout',
+                'register',
+                'password.forgot',
+                'password.reset',
+            ])) {
                 $portal = 'auth';
             }
             else if ($route) {
@@ -24,6 +33,9 @@ class Request
         };
     }
 
+    /**
+     * Get the subdomain of the current request
+     */
     public function subdomain()
     {
         return function () {
@@ -34,6 +46,9 @@ class Request
         };
     }
 
+    /**
+     * Get the host without the subdomain
+     */
     public function hostWithoutSubdomain()
     {
         return function () {
@@ -41,6 +56,9 @@ class Request
         };
     }
 
+    /**
+     * Check if the current request is a Livewire request
+     */
     public function isLivewireRequest()
     {
         return function () {

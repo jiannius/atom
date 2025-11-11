@@ -137,17 +137,16 @@ else {
     $merges = ['type' => $type === 'submit' ? 'submit' : 'button'];
 }
 
-if (!$attributes->wire('loading')->value() && $attributes->wire('click')->value()) {
-    $merges = [
-        ...$merges,
-        'wire:loading.class' => 'is-loading',
-    ];
+if (!$attributes->wire('loading')->value()) {
+    if ($attributes->wire('click')->value()) {
+        $merges = [...$merges, 'wire:loading.class' => 'is-loading'];
 
-    if (!$attributes->wire('target')->value()) {
-        $merges = [
-            ...$merges,
-            'wire:target' => $attributes->wire('click')->value(),
-        ];
+        if (!$attributes->wire('target')->value()) {
+            $merges = [...$merges, 'wire:target' => $attributes->wire('click')->value()];
+        }
+    }
+    else if ($type === 'submit') {
+        $merges = [...$merges, 'wire:loading.class' => 'is-loading', 'wire:target' => 'submit'];
     }
 }
 

@@ -14,8 +14,8 @@ $merges = ['name' => $name];
 
 <label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
     <div>
-        <div class="flex gap-2 items-center">
-            <div class="shrink-0">
+        <div class="flex gap-2">
+            <div class="shrink-0 pt-1">
                 <input type="checkbox" class="hidden peer" {{ $attributes }}>
 
                 <div
