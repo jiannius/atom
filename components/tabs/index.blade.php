@@ -21,7 +21,6 @@ $classes = Arr::toCssClasses([
 
     'rounded' => $variant === 'button' && $size === 'sm',
     'rounded-md' => $variant === 'button' && !$size,
-
 ]) data-atom-tabs>
     <div {{ $attributes->class(['inline-flex items-center h-full']) }}>
         @foreach ($tabs as $tab)

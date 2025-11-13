@@ -7,7 +7,7 @@
 @php
 if (!is_bool($empty)) {
     if ($paginate) $empty = !$paginate->total();
-    else $empty = isset($rows) && $rows->isEmpty();
+    else $empty = isset($rows) && !strip_tags($rows->toHtml());
 }
 @endphp
 
