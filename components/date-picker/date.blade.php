@@ -51,7 +51,7 @@ data-atom-date-picker
             <atom:date-picker.calendar />
 
             @if ($time)
-                <div x-show="datePickerString" class="px-2 pb-2">
+                <div x-bind:class="!datePickerString && 'opacity-50 pointer-events-none'" class="px-2 pb-2">
                     <div class="text-sm text-muted-foreground mb-2 uppercase">{{ t('Time') }}</div>
                     <atom:time-picker x-model="datePickerValue" />
                 </div>

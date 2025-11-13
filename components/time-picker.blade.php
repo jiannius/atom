@@ -42,7 +42,7 @@ $error ??= $errors?->first($name);
             <input
             type="number"
             x-model.lazy="hr"
-            x-on:click.stop="$el.select()"
+            x-on:click.stop="up('hr')"
             x-on:keydown.up.stop.prevent="up('hr')"
             x-on:keydown.down.stop.prevent="down('hr')"
             x-on:keydown.left.stop.prevent="down('hr')"
@@ -55,7 +55,7 @@ $error ??= $errors?->first($name);
             <input
             type="number"
             x-model.lazy="min"
-            x-on:click.stop="$el.select()"
+            x-on:click.stop="up('min')"
             x-on:keydown.up.stop.prevent="up('min')"
             x-on:keydown.down.stop.prevent="down('min')"
             x-on:keydown.left.stop.prevent="down('min')"
