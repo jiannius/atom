@@ -4,6 +4,7 @@
     'caption' => null,
     'required' => false,
     'error' => null,
+    'align' => 'center',
 ])
 
 @php
@@ -14,8 +15,16 @@ $merges = ['name' => $name];
 
 <label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
     <div>
-        <div class="flex gap-2">
-            <div class="shrink-0 pt-1">
+        <div @class([
+            'flex gap-2',
+            'items-center' => $align === 'center',
+            'items-start' => $align === 'start',
+            'items-end' => $align === 'end',
+        ])>
+            <div @class([
+                'shrink-0',
+                'pt-1' => $align === 'start',
+            ])>
                 <input type="checkbox" class="hidden peer" {{ $attributes }}>
 
                 <div
