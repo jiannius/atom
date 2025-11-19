@@ -1,14 +1,14 @@
 @props([
     'noindex' => false,
-    'title' => '',
-    'description' => '',
-    'image' => '',
-    'jsonld' => '',
-    'hreflang' => '',
-    'canonical' => '',
-    'gtm' => '',
-    'ga' => '',
-    'fbp' => '',
+    'title' => null,
+    'description' => null,
+    'image' => null,
+    'jsonld' => null,
+    'hreflang' => null,
+    'canonical' => null,
+    'gtm' => null,
+    'ga' => null,
+    'fbp' => null,
     'fonts' => 'inter',
     'dark' => false,
     'styles' => [],
@@ -17,10 +17,23 @@
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
 ])
 
+@php
+$title ??= config('page.title') ?? config('app.name');
+$description ??= config('page.description');
+$image ??= config('page.image') ?? asset('storage/img/logo.png');
+$jsonld ??= config('page.jsonld');
+$hreflang ??= config('page.hreflang');
+$canonical ??= config('page.canonical');
+$gtm ??= config('page.gtm');
+$ga ??= config('page.ga');
+$fbp ??= config('page.fbp');
+$fonts ??= config('page.fonts');
+@endphp
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @if ($dark) class="dark" @endif>
 <head>
-<title>{{ $title ?? config('app.name') }}</title>
+<title>{{ $title }}</title>
 <meta charset="utf-8" />
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -153,7 +166,7 @@ fbq('track', 'PageView');
 
 @if ($fonts)
 <link rel="preconnect" href="https://fonts.bunny.net">
-<link href="https://fonts.bunny.net/css?family={{ $fonts }}:400,500,600" rel="stylesheet" />
+<link href="https://fonts.bunny.net/css?family={{ $fonts }}:400,500,600,700,800,900" rel="stylesheet" />
 @endif
 
 <script src="{{ app('atom-asset')->version('atom.js') }}" data-navigate-once></script>

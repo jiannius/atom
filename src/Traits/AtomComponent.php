@@ -119,4 +119,14 @@ trait AtomComponent
     {
         app('atom')->confirm(...$args);
     }
+
+    /**
+     * Trigger action
+     */
+    public function action($name, $params = [], $render = false)
+    {
+        if (!$render) $this->skipRender();
+
+        return app('atom')->action($name, $params);
+    }
 }
