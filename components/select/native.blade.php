@@ -22,6 +22,7 @@ $classes = Arr::toCssClasses([
     'w-full rounded-lg shadow-xs flex items-center gap-1 flex-wrap',
     'bg-white dark:bg-white/10 pr-10',
     'has-focus:outline-1 has-focus:outline-zinc-200 dark:has-focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
+    'has-disabled:bg-zinc-100 has-disabled:opacity-70 has-disabled:text-zinc-400 dark:has-disabled:bg-zinc-800/50 hover:has-disabled:outline-none',
     '[&_select]:w-full [&_select]:flex-1 [&_select]:appearance-none [&_select]:outline-offset-1',
     '[&_select]:text-zinc-700 [&_select]:dark:text-zinc-200 [&_select]:text-left',
     '[&_select]:has-[option.placeholder:checked]:text-zinc-400',
@@ -96,7 +97,7 @@ data-atom-select-native>
 
         <select
         @if (!$multiple) x-bind:value="value" @endif
-        {{ $attributes->only(['disabled', 'required', 'readonly']) }}>
+        {{ $attributes->merge($merges)->only(['disabled', 'required', 'readonly']) }}>
             @if ($placeholder)
                 <atom:select.option value="" selected class="placeholder">
                     {{ t($placeholder) }}
@@ -136,6 +137,7 @@ data-atom-select-native>
     <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center right-0">
         @if ($clearable)
             <div
+            x-cloak
             x-data="{
                 get show () {
                     return !empty(value)
