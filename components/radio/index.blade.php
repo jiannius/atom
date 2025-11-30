@@ -1,21 +1,21 @@
-@aware(['variant'])
-
 @props([
     'label' => null,
     'caption' => null,
+    'align' => 'center',
 ])
 
-<label
-@class([
-    'group/radio',
-    $variant === 'card'
-        ? 'py-3 px-4 border border-zinc-200 dark:border-zinc-700 shadow-sm rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 has-checked:bg-zinc-100 dark:has-checked:bg-zinc-700'
-        : 'block',
-])
-data-atom-radio>
-    <div class="flex gap-2 items-center">
-        <div class="shrink-0">
-            <input type="radio" class="peer hidden" {{ $attributes->except('class') }}>
+<label class="group/radio inline-block" data-atom-radio>
+    <div @class([
+        'flex gap-2',
+        'items-center' => $align === 'center',
+        'items-start' => $align === 'start',
+        'items-end' => $align === 'end',
+    ])>
+        <div @class([
+            'shrink-0',
+            'pt-1' => $align === 'start',
+        ])>
+            <input type="radio" class="hidden peer" {{ $attributes }}>
 
             <div
             tabindex="0"
@@ -33,20 +33,20 @@ data-atom-radio>
             </div>
         </div>
 
-        <div class="dark:text-white">
-            @if ($label instanceof \Illuminate\View\ComponentSlot)
-                {{ $label }}
-            @elseif ($label)
+        @if ($slot->isNotEmpty())
+            <div class="dark:text-white">
+                {{ $slot }}
+            </div>
+        @elseif ($label)
+            <div class="dark:text-white">
                 {!! t($label) !!}
-            @endif
-        </div>
+            </div>
+        @endif
     </div>
 
     @if ($caption)
         <div class="inline-flex ml-6.5">
             <atom:caption>{{ t($caption) }}</atom:caption>
         </div>
-    @elseif ($slot->isNotEmpty())
-        {{ $slot }}
     @endif
 </label>
