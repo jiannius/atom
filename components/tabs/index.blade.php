@@ -4,11 +4,6 @@
     'variant' => null,
 ])
 
-@php
-$classes = Arr::toCssClasses([
-]);
-@endphp
-
 <div @class([
     'select-none',
 

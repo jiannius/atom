@@ -23,8 +23,9 @@ class GetOptions
         $this->selected = $this->filters ? (array)Arr::pull($this->filters, 'value') : [];
         $this->exclude = $this->filters ? (array)Arr::pull($this->filters, 'exclude') : [];
 
-        $options = method_exists($this, $this->name)
-            ? $this->{$this->name}()
+        $method = str($this->name)->camel()->toString();
+        $options = method_exists($this, $method)
+            ? $this->{$method}()
             : $this->getFromJson();
 
         return Arr::map($options, fn ($option) => $this->getOptionHtml($option));
