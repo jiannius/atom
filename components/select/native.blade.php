@@ -107,28 +107,32 @@ data-atom-select-native>
             @if ($slot->isNotEmpty())
                 {{ $slot }}
             @elseif (is_array($options) || $options instanceof \Illuminate\Support\Collection)
-                @foreach ($options as $item)
-                    @if (is_enum($item))
-                        <atom:select.option :value="data_get($item->option(), 'value')" class="py-3">
-                            {!! data_get($item->option(), 'label') !!}
+                @foreach ($options as $option)
+                    @if (is_enum($option))
+                        <atom:select.option :value="data_get($option->option(), 'value')" class="py-3">
+                            {!! data_get($option->option(), 'label') !!}
                         </atom:select.option>
+                    @elseif (data_get($option, 'group'))
+                        <atom:select.group :label="data_get($option, 'group')">
+                            @foreach (data_get($option, 'options') as $item)
+                                <atom:select.option :value="data_get($item, 'value')">{!! data_get($item, 'label') !!}</atom:select.option>
+                            @endforeach
+                        </atom:select.group>
                     @else
-                        <atom:select.option
-                        :value="data_get($item, 'value')"
-                        :disabled="data_get($item, 'is_group') ?? false"
-                        class="{{ data_get($item, 'is_group') ? 'py-3' : '' }}">
-                            {!! data_get($item, 'label') !!}
-                        </atom:select.option>
+                        <atom:select.option :value="data_get($option, 'value')">{!! data_get($option, 'label') !!}</atom:select.option>
                     @endif
                 @endforeach
             @elseif (is_string($options))
-                @foreach (app('atom')->action('get-options', ['name' => $options, 'filters' => $filters]) as $item)
-                    <atom:select.option
-                    :value="data_get($item, 'value')"
-                    :disabled="data_get($item, 'is_group') ?? false"
-                    class="{{ data_get($item, 'is_group') ? 'py-3' : '' }}">
-                        {!! data_get($item, 'label') !!}
-                    </atom:select.option>
+                @foreach (app('atom')->action('get-options', ['name' => $options, 'filters' => $filters]) as $option)
+                    @if (data_get($option, 'group'))
+                        <atom:select.group :label="data_get($option, 'group')">
+                            @foreach (data_get($option, 'options') as $item)
+                                <atom:select.option :value="data_get($item, 'value')">{!! data_get($item, 'label') !!}</atom:select.option>
+                            @endforeach
+                        </atom:select.group>
+                    @else
+                        <atom:select.option :value="data_get($option, 'value')">{!! data_get($option, 'label') !!}</atom:select.option>
+                    @endif
                 @endforeach
             @endif
         </select>
