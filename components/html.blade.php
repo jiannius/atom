@@ -62,9 +62,17 @@ $fonts ??= config('page.fonts');
 @if (!$noindex && $hreflang)<link rel="alternate" href="{{ url()->current() }}" hreflang="{{ $hreflang }}"/>@endif
 @if (!$noindex && $canonical)<link rel="canonical" href="{{ $canonical }}" />@endif
 
-<link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+@if (file_exists(storage_path('app/public/img/favicon.ico')))
+<link rel="icon" href="{{ asset('storage/img/favicon.ico') }}" sizes="any">
+@endif
+
+@if (file_exists(storage_path('app/public/img/favicon.svg')))
+<link rel="icon" href="{{ asset('storage/img/favicon.svg') }}" type="image/svg+xml">
+@endif
+
+@if (file_exists(storage_path('app/public/img/apple-touch-icon.png')))
+<link rel="apple-touch-icon" href="{{ asset('storage/img/apple-touch-icon.png') }}">
+@endif
 
 @if (!$noindex && $gtm)
 <!-- Google Tag Manager -->
