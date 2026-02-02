@@ -41,8 +41,8 @@ class Generic extends Mailable
     {
         return new Envelope(
             from: new Address(
-                data_get($this->settings, 'sender_email') ?? env('MAIL_FROM_ADDRESS'),
-                data_get($this->settings, 'sender_name') ?? env('MAIL_FROM_NAME'),
+                data_get($this->settings, 'sender_email') ?? config('mail.from.address'),
+                data_get($this->settings, 'sender_name') ?? config('mail.from.name'),
             ),
             replyTo: collect([data_get($this->settings, 'reply_to')])->filter()->map(fn($val) => new Address($val))->values()->all(),
             subject: data_get($this->settings, 'subject'),
