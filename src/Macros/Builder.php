@@ -63,7 +63,10 @@ class Builder
                     $this->orderBy($sortColumn, $sortDirection);
                 }
             }
-            else if (!$this->query->orders) {
+            else if (
+                ($this instanceof \Illuminate\Database\Query\Builder && !$this->orders)
+                || ($this instanceof \Illuminate\Database\Eloquent\Builder && !$this->query->orders)
+            ) {
                 $this->latest('id');
             }
 
