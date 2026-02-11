@@ -46,5 +46,5 @@ $classes = Arr::toCssClasses([
         'x-init' => $autoresize ? '$autosize()' : null,
         'required' => $required,
         'placeholder' => t($placeholder),
-    ]) }} data-atom-textarea></textarea>
+    ]) }} data-atom-textarea>{{ $slot }}</textarea>
 @endif
