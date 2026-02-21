@@ -36,10 +36,15 @@ export default (config) => {
 
         init () {
             this.parse()
-            this.$nextTick(() => this.setCalendar())
 
-            this.$watch('startValue', () => this.updateValue())
-            this.$watch('endValue', () => this.updateValue())
+            this.$nextTick(() => {
+                this.setCalendar()
+                this.startValue = this.dateObjects[0]?.toISOString()
+                this.endValue = this.dateObjects[1]?.toISOString()
+
+                this.$watch('startValue', () => this.updateValue())
+                this.$watch('endValue', () => this.updateValue())
+            })
         },
 
         parse () {
