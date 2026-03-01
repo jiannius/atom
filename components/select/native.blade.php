@@ -97,7 +97,8 @@ data-atom-select-native>
 
         <select
         @if (!$multiple) x-bind:value="value" @endif
-        {{ $attributes->merge($merges)->only(['disabled', 'required', 'readonly']) }}>
+        @if (!$multiple && $attributes->get('required')) required @endif
+        {{ $attributes->merge($merges)->only(['disabled', 'readonly']) }}>
             @if ($placeholder)
                 <atom:select.option value="" selected class="placeholder">
                     {{ t($placeholder) }}
