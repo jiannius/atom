@@ -95,8 +95,7 @@ x-data="modal({
 })"
 x-on:atom-modal-show.window="showModal"
 x-on:atom-modal-close.window="closeModal"
-x-on:click="backdropClick"
-x-on:keydown.esc.stop.prevent="dismissible && closeModal"
+@if ($dismissible) x-on:click="backdropClick" @endif
 {{ $attributes->class($classes) }}>
     @if ($closeable)
         <div class="absolute top-0 end-0 mt-4 me-4">

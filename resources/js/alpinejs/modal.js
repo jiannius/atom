@@ -2,8 +2,6 @@ export default (config) => {
     return {
         name: config.name,
         scope: config.scope,
-        dismissible: config.dismissible,
-        closeable: config.closeable,
 
         showModal (e) {
             if (this.name === e.detail.name && (this.scope === e.detail.scope || !e.detail.scope)) {
@@ -39,7 +37,6 @@ export default (config) => {
         },
 
         backdropClick (e) {
-            if (!this.dismissible) return
             if (e.target !== this.$root) return
             if (e.target.tagName !== 'DIALOG') return
 
