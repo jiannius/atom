@@ -119,7 +119,7 @@ fbq('track', 'PageView');
 
 <link rel="stylesheet" href="{{ app('atom-asset')->version('atom.css') }}">
 
-@vite(collect($vite)->filter(fn ($val) => str($val)->endsWith('.css'))->values()->all())
+@vite($vite)
 
 @stack('styles')
 
@@ -179,6 +179,5 @@ fbq('track', 'PageView');
 
 <script src="{{ app('atom-asset')->version('atom.js') }}" data-navigate-once></script>
 
-@vite(collect($vite)->filter(fn ($val) => str($val)->endsWith('.js'))->values()->all())
 @stack('scripts')
 </html>
