@@ -21,9 +21,10 @@ export default (config) => {
             }
         },
 
-        closeModal (e) {
+        closeModal (e = null) {
             if (
-                (this.name === e.detail.name && (this.scope === e.detail.scope || !e.detail.scope))
+                !e
+                || (this.name === e.detail.name && (this.scope === e.detail.scope || !e.detail.scope))
                 || (!e.detail.name && this.$root.contains(e.target))
             ) {
                 this.$root.close();

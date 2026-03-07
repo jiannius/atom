@@ -84,25 +84,20 @@ export default (config) => {
             this.setCalendarRange()
         },
 
-        pickedDate (key, value) {
-            let obj = value ? dayjs(value) : null
-            let idx = key === 'start' ? 0 : 1
-
-            if (this.dateObjects[idx]) {
-                this[key + 'Value'] = this.dateObjects[idx]
-                    .set('year', obj.get('year'))
-                    .set('month', obj.get('month'))
-                    .set('date', obj.get('date'))
-                    .toISOString()
-            }
-            else {
-                this[key + 'Value'] = obj.toISOString()
-            }
-        },
-
         setCalendar () {
-            this.pikaday[0] = new Pikaday({ onSelect: (value) => this.pickedDate('start', value) })
-            this.pikaday[1] = new Pikaday({ onSelect: (value) => this.pickedDate('end', value) })
+            this.pikaday[0] = new Pikaday({ onSelect: (value) => {
+                let dj = dayjs(value)
+                this.startValue = this.dateObjects[0]
+                    ? this.dateObjects[0].set('year', dj.get('year')).set('month', dj.get('month')).set('date', dj.get('date')).startOf('day').toISOString()
+                    : dj.startOf('day').toISOString()
+            }})
+
+            this.pikaday[1] = new Pikaday({ onSelect: (value) => {
+                let dj = dayjs(value)
+                this.endValue = this.dateObjects[1]
+                    ? this.dateObjects[1].set('year', dj.get('year')).set('month', dj.get('month')).set('date', dj.get('date')).endOf('day').toISOString()
+                    : dj.endOf('day').toISOString()
+            }})
 
             this.calendarElements[0].prepend(this.pikaday[0].el)
             this.calendarElements[1].prepend(this.pikaday[1].el)
