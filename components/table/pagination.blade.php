@@ -63,16 +63,35 @@ class="py-2 px-4 flex flex-wrap items-center justify-between gap-3">
                 @foreach (data_get($paginate->links()->getData(), 'elements', []) as $element)
                     {{-- "Three Dots" Separator --}}
                     @if (is_string($element))
-                        <span aria-disabled="true">
-                            <span class="relative inline-flex items-center px-4 py-2 -ml-px text-sm font-medium text-gray-700 bg-white border border-gray-300 cursor-default leading-5 dark:bg-gray-800 dark:border-gray-600">{{ $element }}</span>
-                        </span>
+                        <atom:dropdown locked>
+                            <button type="button" class="relative inline-flex items-center px-2 text-sm font-medium text-gray-700 bg-white cursor-pointer leading-5 dark:text-zinc-400 dark:bg-zinc-800" aria-label="{{ t('Has more pages') }}">
+                                {{ $element }}
+                            </button>
+
+                            <atom:menu popover>
+                                <div
+                                x-data="{ page: null }"
+                                x-intersect="$root.querySelector('input').focus()"
+                                class="flex items-center gap-2 px-3 text-sm">
+                                    <div class="shrink-0">{{ t('Go to page') }}</div>
+                                    <div class="grow">
+                                        <input
+                                        type="number"
+                                        x-model="page"
+                                        x-on:keydown.enter.stop.prevent="$wire.gotoPage(page, '{{ $paginate->getPageName() }}'); $root.parentNode.hidePopover()"
+                                        class="w-20 px-2 py-1 text-sm"
+                                        placeholder="1" />
+                                    </div>
+                                </div>
+                            </atom:menu>
+                        </atom:dropdown>
                     @endif
 
                     {{-- Array Of Links --}}
                     @if (is_array($element))
                         @foreach ($element as $page => $url)
                             @if ($page == $paginate->currentPage())
-                                <span aria-current="page" class="relative inline-flex items-center size-8 text-sm font-medium cursor-default rounded-md leading-5 bg-zinc-200 dark:text-white dark:bg-zinc-800">
+                                <span aria-current="page" class="relative inline-flex items-center size-8 text-sm font-medium cursor-default rounded-md leading-5 underline underline-offset-4 decoration-dotted bg-zinc-200 dark:text-white dark:bg-zinc-800">
                                     <span class="m-auto">{{ $page }}</span>
                                 </span>
                             @else
