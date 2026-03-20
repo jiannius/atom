@@ -17,7 +17,7 @@ $transparent = $variant === 'transparent';
         <atom:editor.chat :attributes="$attributes->merge(compact('autofocus', 'mention', 'placeholder'))" />
     </atom:input.field>
 @else
-    <link rel="stylesheet" href="{{ app('atom-asset')->version('editor.css') }}">
+    <link rel="stylesheet" href="{{ app('atom')->asset()->version('editor.css') }}">
 
     <div
     wire:ignore

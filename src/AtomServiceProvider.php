@@ -19,7 +19,6 @@ class AtomServiceProvider extends ServiceProvider
     public function register() : void
     {
         $this->app->alias(Atom::class, 'atom');
-        $this->app->alias(Asset::class, 'atom-asset');
     }
 
     /**

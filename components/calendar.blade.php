@@ -9,7 +9,7 @@ $modes = (array) $modes;
 $periods = (array) $periods;
 @endphp
 
-<link rel="stylesheet" href="{{ app('atom-asset')->version('calendar.css') }}">
+<link rel="stylesheet" href="{{ app('atom')->asset()->version('calendar.css') }}">
 
 <div
 x-data="calendar({

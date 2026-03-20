@@ -3,16 +3,34 @@
 namespace Jiannius\Atom;
 
 use Illuminate\Support\Arr;
+use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\Broadcast;
+use Jiannius\Atom\Services\Sitemap;
 
 class Atom
 {
+    /**
+     * Asset manager
+     */
+    public function asset()
+    {
+        return new Asset();
+    }
+
     /**
      * Broadcast a message
      */
     public function broadcast()
     {
         return new Broadcast();
+    }
+
+    /**
+     * Sitemap generator
+     */
+    public function sitemap()
+    {
+        return new Sitemap();
     }
 
     /**

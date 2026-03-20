@@ -32,7 +32,7 @@ $toolbar ??= ['heading', 'text', 'font-size', 'text-align', 'text-color', 'text-
         :attributes="$attributes->merge(compact('name', 'variant', 'readonly', 'autofocus', 'mention', 'placeholder'))" />
     </atom:input.field>
 @else
-    <link rel="stylesheet" href="{{ app('atom-asset')->version('editor.css') }}">
+    <link rel="stylesheet" href="{{ app('atom')->asset()->version('editor.css') }}">
 
     <div
     wire:ignore
