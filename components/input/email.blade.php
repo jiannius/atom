@@ -51,7 +51,7 @@ data-atom-input-email>
             <input
             type="email"
             x-model="text"
-            x-on:blur="keyEnter()"
+            x-on:blur="text && keyEnter()"
             class="flex-1 focus:outline-none appearance-none bg-transparent"
             {{ $attributes->merge([
                 'invalid' => $invalid,
@@ -64,7 +64,7 @@ data-atom-input-email>
                 <atom:menu.item
                 x-on:click="select(opt)"
                 x-bind:class="pointer === i ? 'bg-zinc-100 dark:bg-zinc-800' : ''">
-                    <div x-text="`${opt.name} <${opt.email}>`"></div>
+                    <div x-text="`${opt.name} <${opt.email}>`" class="text-sm"></div>
                 </atom:menu.item>
             </template>
         </atom:menu>
