@@ -7,11 +7,11 @@
 ])
 
 @php
-$initial ??= $name ? str($name)->initials(match ($size) {
+$initial ??= $name ? str($name)->initials()->take(match ($size) {
     'sm' => 1,
     'xs' => 1,
     default => 2,
-}) : null;
+})->toString() : null;
 
 $classes = [
     'flex items-center justify-center',

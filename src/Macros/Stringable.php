@@ -32,13 +32,4 @@ class Stringable
             );
         };
     }
-
-    public function initials()
-    {
-        return function (int $len = 2) {
-            return new \Illuminate\Support\Stringable (
-                \Illuminate\Support\Str::initials($this->value, $len)
-            );
-        };
-    }
 }
