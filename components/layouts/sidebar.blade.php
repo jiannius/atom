@@ -181,15 +181,11 @@ class="min-h-screen bg-white dark:bg-zinc-900">
         {{ $slot }}
     </main>
 
-    <footer class="[grid-area:footer] z-10 flex items-center gap-3 p-4 lg:border-t dark:lg:border-zinc-700">
-        <div class="grow">
+    @isset ($footer)
+        <footer class="[grid-area:footer] z-10 p-4 lg:border-t dark:lg:border-zinc-700">
             {{ $footer ?? '' }}
-        </div>
-
-        <div class="shrink-0 hidden lg:block">
-            <atom:darkmode-toggle />
-        </div>
-    </footer>
+        </footer>
+    @endisset
 
     <atom:alert />
     <atom:toast />
