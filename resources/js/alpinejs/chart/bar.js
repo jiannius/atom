@@ -9,6 +9,10 @@ export default (config) => {
             gray: '#d4d4d8',
         },
 
+        get isDarkMode () {
+            return document.documentElement.classList.contains('dark')
+        },
+
         init () {
             import('apexcharts').then(ApexCharts => {
                 this.chart = new ApexCharts.default(this.$el, {
@@ -38,9 +42,9 @@ export default (config) => {
                             let data = config.data[dataPointIndex]
                             let tooltip = document.createElement('div')
 
-                            tooltip.setAttribute('class', 'bg-black/80 text-sm text-white rounded-md px-3 py-1 shadow-lg')
+                            tooltip.setAttribute('class', 'bg-zinc-800 text-white text-sm rounded-md px-3 py-1 shadow-lg')
                             tooltip.innerText = data.tooltip
-                                        
+
                             return tooltip.outerHTML
                         },
                     },
@@ -62,25 +66,22 @@ export default (config) => {
                 })
 
                 document.addEventListener('darkmode-changed', () => this.setColors())
-
             })
         },
 
         setColors () {
             if (!this.chart) return
 
-            let dark = document.documentElement.classList.contains('dark')
-
             let dataColor = config.color || ''
             if (!dataColor || !dataColor.startsWith('#')) dataColor = this.colors[dataColor || 'gray']
 
             this.chart.updateOptions({
                 colors: [dataColor],
-                grid: { borderColor: dark ? '#52525D' : '#f4f4f5' },
+                grid: { borderColor: this.isDarkMode ? '#52525D' : '#f4f4f5' },
                 xaxis: {
                     labels: {
                         style: {
-                            colors: config.data.map(() => (dark ? 'white' : 'black')),
+                            colors: config.data.map(() => (this.isDarkMode ? 'white' : 'black')),
                         },
                     },
                 },
@@ -88,12 +89,12 @@ export default (config) => {
                     annotations: {
                         yaxis: [{
                             y: config.max.value,
-                            borderColor: dark ? 'white' : 'black',
+                            borderColor: this.isDarkMode ? 'white' : 'black',
                             label: {
-                                borderColor: dark ? 'white' : 'black',
+                                borderColor: this.isDarkMode ? 'white' : 'black',
                                 style: {
-                                    color: dark ? 'black' : 'white',
-                                    background: dark ? 'white' : 'black',
+                                    color: this.isDarkMode ? 'black' : 'white',
+                                    background: this.isDarkMode ? 'white' : 'black',
                                     fontSize: '12px',
                                 },
                                 position: 'center',
