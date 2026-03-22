@@ -38,7 +38,7 @@ export default (config) => {
         },
 
         clear () {
-            this.selectValue = config.multiple ? [] : ''
+            this.selectValue = config.multiple ? [] : null
             this.$dispatch('input', this.selectValue)
         },
 
