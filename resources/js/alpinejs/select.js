@@ -13,8 +13,14 @@ export default (config) => {
         },
 
         get selectedOptions () {
-            if (Array.isArray(this.selectValue)) return this.selectValue.map(val => this.options.find(opt => opt.value == val)).filter(Boolean)
-            else return this.options.find(opt => opt.value == this.selectValue)
+            let options = [].concat(this.selectValue).map(val => {
+                let option = this.options.find(opt => opt.value == val || opt.options?.some(groupOpt => groupOpt.value == val))
+                return option?.hasOwnProperty('options')  // if the options is a grouped options
+                    ? option.options.find(groupOpt => groupOpt.value == val)
+                    : option
+            }).filter(Boolean)
+
+            return Array.isArray(this.selectValue) ? options : options[0]
         },
 
         get searchable () {
@@ -58,9 +64,13 @@ export default (config) => {
                     })
             }
             else {
-                this.options = this.text
-                    ? config.options.filter(opt => (opt.label.toLowerCase().includes(this.text.toLowerCase())))
-                    : [...(config.options || [])]
+                this.options = config.options.filter(opt => {
+                    if (opt.hasOwnProperty('options')) {  // if the options is a grouped options
+                        opt.options = opt.options.filter(option => this.isOptionMatched(option))
+                        return true
+                    }
+                    else return this.isOptionMatched(opt)
+                })
 
                 this.setWidth()
                 this.$nextTick(() => this.$root.querySelector('[data-atom-select-search]')?.focus())
@@ -110,6 +120,10 @@ export default (config) => {
             else {
                 el.removeAttribute('data-option-focus')
             }
+        },
+
+        isOptionMatched (option) {
+            return !this.text || option.label.toLowerCase().includes(this.text.toLowerCase())
         },
 
         getOptionHtml (option) {

@@ -6,9 +6,23 @@ use Illuminate\Support\Facades\Auth;
 
 class Carbon extends \Carbon\CarbonImmutable
 {
+    /**
+     * Convert carbon instance to string
+     */
     public function __toString()
     {
         return $this->toIso8601ZuluString();
+    }
+
+    /**
+     * Convert carbon instance to date range string
+     */
+    public function toDateRangeString($to = null)
+    {
+        $fr = $this->toDateTimeString();
+        $to = ($to ?? now())->toDateTimeString();
+
+        return $fr . ' to ' . $to;
     }
 
     /**

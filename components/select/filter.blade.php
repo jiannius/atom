@@ -46,7 +46,7 @@ class="group/select"
                 </div>
             @endif
 
-            <div class="font-medium">
+            <div class="font-medium text-muted">
                 {{ t($label) }}
             </div>
 
@@ -124,18 +124,42 @@ class="group/select"
 
             <div x-show="options.length" class="max-h-[400px] overflow-auto">
                 <template x-for="(option, i) in options" x-bind:key="`option-${option.value}-${i}`" hidden>
-                    <atom:menu.item
-                    x-on:click="select(option)"
-                    x-bind:class="isSelected(option) && 'bg-zinc-100 dark:bg-zinc-600'"
-                    data-atom-option>
-                        <div class="flex gap-3">
-                            <div x-bind:class="!isSelected(option) && 'opacity-0'" class="shrink-0 flex items-center justify-center">
-                                <atom:icon.check class="size-4 text-zinc-400 dark:text-zinc-200" />
-                            </div>
+                    <div>
+                        <template x-if="option.group" hidden>
+                            <div>
+                                <div x-text="option.group" class="text-sm text-zinc-500 dark:text-zinc-400 py-1.5 px-3"></div>
+                                <template x-for="(groupOption, j) in option.options" x-bind:key="`group-option-${groupOption.value}-${j}`" hidden>
+                                    <atom:menu.item
+                                    x-on:click="select(groupOption)"
+                                    x-bind:class="isSelected(groupOption) && 'bg-zinc-100 dark:bg-zinc-600'"
+                                    data-atom-option>
+                                        <div class="flex gap-3">
+                                            <div x-bind:class="!isSelected(groupOption) && 'opacity-0'" class="shrink-0 flex items-center justify-center">
+                                                <atom:icon.check class="size-4 text-zinc-400 dark:text-zinc-200" />
+                                            </div>
 
-                            <div x-html="getOptionHtml(option)" class="grow" data-option-content></div>
-                        </div>
-                    </atom:menu.item>
+                                            <div x-html="getOptionHtml(groupOption)" class="grow" data-option-content></div>
+                                        </div>
+                                    </atom:menu.item>
+                                </template>
+                            </div>
+                        </template>
+
+                        <template x-if="!option.group" hidden>
+                            <atom:menu.item
+                            x-on:click="select(option)"
+                            x-bind:class="isSelected(option) && 'bg-zinc-100 dark:bg-zinc-600'"
+                            data-atom-option>
+                                <div class="flex gap-3">
+                                    <div x-bind:class="!isSelected(option) && 'opacity-0'" class="shrink-0 flex items-center justify-center">
+                                        <atom:icon.check class="size-4 text-zinc-400 dark:text-zinc-200" />
+                                    </div>
+
+                                    <div x-html="getOptionHtml(option)" class="grow" data-option-content></div>
+                                </div>
+                            </atom:menu.item>
+                        </template>
+                    </div>
                 </template>
             </div>
 
