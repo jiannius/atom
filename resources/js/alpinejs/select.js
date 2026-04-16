@@ -126,8 +126,13 @@ export default (config) => {
             return !this.text || option.label.toLowerCase().includes(this.text.toLowerCase())
         },
 
-        getOptionHtml (option) {
-            if (option.html) return option.html
+        getOptionHtml (option, selected = false) {
+            if (selected && option.selected_html) {
+                return option.selected_html
+            }
+            else if (option.html) {
+                return option.html
+            }
 
             let color = option.color
                 ? '<div style="background-color: '+option.color+'" class="shrink-0 w-3 h-3 rounded-full bg-zinc-100 flex items-center justify-center"></div>'

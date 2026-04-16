@@ -45,7 +45,7 @@ class="group/select w-full"
             <atom:list class="mb-2">
                 <template x-for="item in selectedOptions" hidden>
                     <atom:list.item x-on:remove="deselect(item)" x-on:click.stop="$dispatch('click-selected', item)" class="text-sm">
-                        <div x-html="getOptionHtml(item)" class="flex items-center gap-2 truncate cursor-default"></div>
+                        <div x-html="getOptionHtml(item, true)" class="flex items-center gap-2 truncate cursor-default"></div>
                     </atom:list.item>
                 </template>
             </atom:list>
@@ -110,7 +110,7 @@ class="group/select w-full"
                         @isset ($selected)
                             {{ $selected }}
                         @else
-                            <div x-html="getOptionHtml(selectedOptions)" class="group/select-selected"></div>
+                            <div x-html="getOptionHtml(selectedOptions, true)" class="group/select-selected"></div>
                         @endisset
                     </template>
                 @endif
