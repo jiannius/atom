@@ -37,7 +37,9 @@ $classes = Arr::toCssClasses([
     :caption="$caption"
     :required="$required"
     :error="$error">
-        <atom:textarea :attributes="$attributes->merge(compact('rows', 'variant', 'autoresize', 'placeholder', 'required', 'invalid'))" />
+        <atom:textarea :attributes="$attributes->merge(compact('rows', 'variant', 'autoresize', 'placeholder', 'required', 'invalid'))">
+            {{ $slot }}
+        </atom:textarea>
     </atom:input.field>
 @else
     <textarea {{ $attributes->class($classes)->merge([
