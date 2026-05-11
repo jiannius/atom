@@ -10,6 +10,9 @@ $config = [
     'password' => false,
     'passphrase' => null,
     'passphraseLabel' => t('Please type :passphrase to continue'),
+    'reason' => false,
+    'reasonLabel' => t('Reason'),
+    'reasonPlaceholder' => null,
 ];
 @endphp
 
@@ -19,6 +22,7 @@ $config = [
         config: {},
         password: '',
         passphrase: '',
+        reason: '',
 
         showConfirm (e) {
             this.config = { ...@js($config), ...e.detail }
@@ -30,10 +34,11 @@ $config = [
                 Livewire.find(this.config.wireId).call(this.config.onAccepted, {
                     password: this.password,
                     passphrase: this.passphrase,
+                    reason: this.reason,
                 })
             }
             else {
-                this.config.onAccepted?.(this.password, this.passphrase)
+                this.config.onAccepted?.(this.password, this.passphrase, this.reason)
             }
 
             atom.modal('atom-confirm').close()
@@ -96,6 +101,13 @@ $config = [
             <atom:input.field>
                 <atom:label><span x-text="config.passphraseLabel.replace(':passphrase', `&quot;${config.passphrase}&quot;`)"></span></atom:label>
                 <atom:input x-model="passphrase" required />
+            </atom:input.field>
+        </template>
+
+        <template x-if="config.reason" hidden>
+            <atom:input.field>
+                <atom:label><span x-text="config.reasonLabel"></span></atom:label>
+                <atom:textarea x-model="reason" x-bind:placeholder="config.reasonPlaceholder" rows="3" />
             </atom:input.field>
         </template>
 
