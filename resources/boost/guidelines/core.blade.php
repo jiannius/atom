@@ -2,6 +2,7 @@
 
 Atom (`jiannius/atom`) is a Tailwind + Alpine + Livewire component library for Laravel. The component catalogue is at `vendor/jiannius/atom/components/` — always check it before writing custom markup.
 
+@verbatim
 ### Tag syntax
 
 Use `<atom:name>` for every Atom component. Dot-paths map to subdirectories:
@@ -17,6 +18,7 @@ Never write `<x-atom::name>`, `<x-icon />`, or bespoke equivalents when an Atom 
 - Always `<atom:icon.name />`. Names live in `vendor/jiannius/atom/components/icon/`.
 - Default size is `size-5`. Override with `class="size-4"` etc.
 - Some icons accept `variant="solid"`. Pass any other Tailwind classes via `class`.
+@endverbatim
 
 ### Livewire components — `AtomComponent` trait
 
@@ -66,11 +68,15 @@ new class extends Component {
 
 ### Forms
 
+@verbatim
 `<atom:form>` wires `wire:submit="submit"` and renders an automatic loading indicator. Use `<atom:input.*>`, `<atom:select>`, `<atom:textarea>`, `<atom:checkbox>`, `<atom:radio>`, `<atom:date-picker>`, `<atom:time-picker>`, `<atom:uploader>`. Submit with `<atom:button type="submit">`.
+@endverbatim
 
 ### Modals
 
+@verbatim
 - When `<atom:modal>` is the **root** of a Volt component, omit `name` — methods auto-resolve to the component name.
+@endverbatim
 - For multiple modals in one component, give each `name="..."` and target with `$this->modal('confirm')->show()`.
 - Props: `:closeable="false"` hides the × button; `:dismissible="false"` disables backdrop-close.
 - Close client-side:
@@ -85,7 +91,9 @@ From PHP, `$this->toast(...)` / `$this->alert(...)` / `$this->confirm(...)` (or 
 - `alert`: `variant`, `heading`, `subheading`, `message`, `button`, `onDismissed`.
 - `confirm`: `variant`, `heading`, `subheading`, `message`, `buttonConfirm`, `buttonCancel`, `password`, `passphrase`, `onAccepted`, `onRejected`.
 
+@verbatim
 For confirm-before-action in Blade, use `<atom:confirm.trigger>`:
+@endverbatim
 
 @verbatim
 <code-snippet name="Confirm trigger" lang="blade">
@@ -99,17 +107,23 @@ For confirm-before-action in Blade, use `<atom:confirm.trigger>`:
 </code-snippet>
 @endverbatim
 
+@verbatim
 `<atom:button type="delete">` auto-wires a danger confirm dialog and dispatches `confirmed` → `$wire.delete()` by default. Override by setting your own `wire:click` or `x-on:click`.
+@endverbatim
 
 ### Tooltip
 
+@verbatim
 `<atom:tooltip content="Save" position="top" align="center" kbd="⌘S" :interactive="false" :toggleable="false">` — wraps a single trigger element as its slot child. `content` is auto-translated.
+@endverbatim
 
 ### Select with options
 
+@verbatim
 - Static: `<atom:select :options="[['value' => 1, 'label' => 'One']]" wire:model="x" />`.
 - Dynamic (database / large lists): create `app/Actions/GetOptions.php` with a camelCase method matching the option `name`. The app-side class overrides the package's `Jiannius\Atom\Actions\GetOptions`. Reach it via `<atom:select name="users" />` (the select component will POST to `/atom/action/GetOptions` with the name).
 - Enums: `<atom:select :options="ClientType::all()->map->option()->all()" />`.
+@endverbatim
 
 ### Actions
 
@@ -236,8 +250,10 @@ Event name is prefixed with `.` when listening. Private channels require auth in
 These are the conventions Atom-using projects should adopt unless they have a reason not to:
 
 - **Spacing scale.** Default to `6` (`space-y-6`, `p-6`, `gap-6`). Use `3` only when intentionally tighter.
+@verbatim
 - **Dense business forms.** Two-column by default: `grid gap-6 md:grid-cols-2`. Separate logical groups with `<atom:separator>` and short titles (e.g. "Address", "Registration & Tax").
 - **Section separation.** Prefer `<atom:separator>` over ad-hoc `<hr>` or border classes.
+@endverbatim
 - **Volt method order** (top of class to bottom):
     1. Validation (`$rules`, `$messages`, `#[Rule]` properties)
     2. `mount()`
