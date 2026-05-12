@@ -33,7 +33,6 @@ php artisan atom:purge-editor-images --force # empties the editor-purged backup 
 
 - Loads `routes/web.php`, `database/migrations` (no directory exists yet — referenced for future use), `lang/`, and `resources/views/` under the `atom` view namespace.
 - Registers anonymous Blade components in `components/` under the `atom` namespace, so `components/button/index.blade.php` is reachable as `<x-atom::button>` **or** as `<atom:button>` (see Tag compiler below).
-- Mounts every Volt component in `resources/views/livewire/` automatically.
 - Swaps Laravel's `Date` facade to use `Jiannius\Atom\Services\Carbon`.
 - Mixes in macros onto Eloquent `Builder`, Query `Builder`, `ComponentAttributeBag`, `Request`, `Str`, `Stringable`, `Arr` (`src/Macros/*`). These macros are how component blade files get methods like `$attributes->modifier()`, `$attributes->size()`, etc. — if you see an unfamiliar method on an attribute bag in a component, check `src/Macros/ComponentAttributeBag.php` before assuming it's framework.
 - Boots `Services\Asset`, which exposes the public route `GET /atom/{file}` serving files from `dist/assets/` with `Cache-Control: immutable`. `atom()->asset()->version($name)` looks up the hashed filename in `dist/manifest.json`. Consuming apps reference assets by name, not path.
@@ -67,8 +66,8 @@ Helper methods on the trait (`modal()`, `toast()`, `alert()`, `confirm()`, `acti
 
 A subtle, two-phase flow worth understanding before touching the editor:
 
-1. While the user types, image uploads land in Livewire's temporary disk and are echoed back into `_editor.images` as `temporaryUrl()` strings (handled in `updatedAtomComponent`). The editor HTML carries `<img src="/livewire/preview-file/...">` URLs.
-2. Only when the editor's HTML column is *saved* through Eloquent does `Casts\AsEditorContent::set()` regex out each `/livewire/preview-file/` URL, resize via Intervention Image (max width 1000, q=80), persist to `Storage::disk(env('FILESYSTEM_DISK'))` under `<configured folder>/editor/`, rewrite the URL in the HTML, and serialize the result.
+1. While the user types, image uploads land in Livewire's temporary disk and are echoed back into `_editor.images` as `temporaryUrl()` strings (handled in `updatedAtomComponent`). The editor HTML carries `<img src="/livewire-{hash}/preview-file/...">` URLs (Livewire 4 prefixes internal URLs with an APP_KEY-derived hash).
+2. Only when the editor's HTML column is *saved* through Eloquent does `Casts\AsEditorContent::set()` regex out each `/livewire-{hash}/preview-file/` URL, resize via Intervention Image (max width 1000, q=80), persist to `Storage::disk(env('FILESYSTEM_DISK'))` under `<configured folder>/editor/`, rewrite the URL in the HTML, and serialize the result.
 3. Stored values are `serialize()`d strings; `get()` unserializes lazily, falling back to the raw value if it isn't serialized.
 4. `atom:purge-editor-images` walks `App\Models\*`, finds columns cast as `AsEditorContent`, extracts every `<img src>`, and moves anything in the editor folder that isn't referenced to `editor-purged/` on the local disk before deleting from the configured disk.
 
