@@ -6,8 +6,7 @@
         "php": "^8.3",
         "illuminate/support": "^13.0",
         "intervention/image": "^3.0",
-        "livewire/livewire": "^3.0",
-        "livewire/volt": "^1.0"
+        "livewire/livewire": "^4.0"
     },
     "require-dev": {
         "orchestra/testbench": "^11.0"
