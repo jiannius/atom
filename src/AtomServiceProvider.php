@@ -9,7 +9,6 @@ use Illuminate\Support\ServiceProvider;
 use Jiannius\Atom\Commands\PurgeEditorImages;
 use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\TagCompiler;
-use Livewire\Volt\Volt;
 
 class AtomServiceProvider extends ServiceProvider
 {
@@ -35,7 +34,6 @@ class AtomServiceProvider extends ServiceProvider
 
         $this->tagCompiler();
         $this->configureDate();
-        $this->mountVoltComponents();
         $this->registerMacros();
         $this->registerCommands();
 
@@ -72,16 +70,6 @@ class AtomServiceProvider extends ServiceProvider
     protected function configureDate() : void
     {
         Date::use(\Jiannius\Atom\Services\Carbon::class);
-    }
-
-    /**
-     * Mount the volt components
-     */
-    protected function mountVoltComponents() : void
-    {
-        $this->app->booted(function() {
-            Volt::mount(__DIR__.'/../resources/views/livewire');
-        });
     }
 
     /**
