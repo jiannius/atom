@@ -85,7 +85,11 @@ class Builder
     {
         return function () {
             $table = $this->getModel()->getTable();
-            $columns = cache()->remember('table_'.$table.'_columns', now()->addDays(7), fn() => DB::select("show columns from `$table`"));
+            $columns = cache()->remember('table_'.$table.'_columns', now()->addDays(7), function () use ($table) {
+                return collect(DB::select("show columns from `$table`"))
+                    ->map(fn ($row) => (array) $row)
+                    ->all();
+            });
 
             return collect($columns)->map(fn($val) => [
                 'name' => data_get($val, 'Field'),
