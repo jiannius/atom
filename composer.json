@@ -3,14 +3,14 @@
     "description": "Atom UI components",
     "type": "library",
     "require": {
-        "doctrine/dbal": "^3.6",
+        "php": "^8.3",
+        "illuminate/support": "^13.0",
         "intervention/image": "^3.0",
-        "laravel/pail": "^1.0",
         "livewire/livewire": "^3.0",
         "livewire/volt": "^1.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^10.0"
+        "orchestra/testbench": "^11.0"
     },
     "license": "MIT",
     "autoload": {
