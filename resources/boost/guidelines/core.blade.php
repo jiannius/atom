@@ -20,7 +20,7 @@ Never write `<x-atom::name>`, `<x-icon />`, or bespoke equivalents when an Atom 
 
 ### Livewire components — `AtomComponent` trait
 
-Volt is the default. Mix `Jiannius\Atom\Traits\AtomComponent` into every Volt class component. It provides `WithPagination` + `WithFileUploads`, reserved state buckets (`$_breadcrumbs`, `$_table`, `$_editor`), and helper methods:
+Livewire 4 single-file components are the default. Mix `Jiannius\Atom\Traits\AtomComponent` into every single-file Livewire component class. It provides `WithPagination` + `WithFileUploads`, reserved state buckets (`$_breadcrumbs`, `$_table`, `$_editor`), and helper methods:
 
 - `$this->modal($name = null)->show() / ->slide() / ->close()` — `$name` defaults to the current component name.
 - `$this->toast(...)`, `$this->alert(...)`, `$this->confirm(...)` — dispatch UI events.
@@ -30,9 +30,9 @@ Volt is the default. Mix `Jiannius\Atom\Traits\AtomComponent` into every Volt cl
 Define a `breadcrumbs(Breadcrumbs $b)` method to populate `$_breadcrumbs` automatically on mount.
 
 @verbatim
-<code-snippet name="Volt component with Atom" lang="php">
+<code-snippet name="Single-file Livewire component with Atom" lang="php">
 <?php
-use Livewire\Volt\Component;
+use Livewire\Component;
 use Jiannius\Atom\Traits\AtomComponent;
 
 new class extends Component {
@@ -70,7 +70,7 @@ new class extends Component {
 
 ### Modals
 
-- When `<atom:modal>` is the **root** of a Volt component, omit `name` — methods auto-resolve to the component name.
+- When `<atom:modal>` is the **root** of a single-file Livewire component, omit `name` — methods auto-resolve to the component name.
 - For multiple modals in one component, give each `name="..."` and target with `$this->modal('confirm')->show()`.
 - Props: `:closeable="false"` hides the × button; `:dismissible="false"` disables backdrop-close.
 - Close client-side:
@@ -238,7 +238,7 @@ These are the conventions Atom-using projects should adopt unless they have a re
 - **Spacing scale.** Default to `6` (`space-y-6`, `p-6`, `gap-6`). Use `3` only when intentionally tighter.
 - **Dense business forms.** Two-column by default: `grid gap-6 md:grid-cols-2`. Separate logical groups with `<atom:separator>` and short titles (e.g. "Address", "Registration & Tax").
 - **Section separation.** Prefer `<atom:separator>` over ad-hoc `<hr>` or border classes.
-- **Volt method order** (top of class to bottom):
+- **Component method order** (top of class to bottom):
     1. Validation (`$rules`, `$messages`, `#[Rule]` properties)
     2. `mount()`
     3. `breadcrumbs()`
