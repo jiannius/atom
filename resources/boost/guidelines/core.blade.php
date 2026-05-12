@@ -235,7 +235,9 @@ Event name is prefixed with `.` when listening. Private channels require auth in
 ### Blade helpers
 
 - `t($str, $count, $params)` — wraps `__()` / `trans_choice` and gracefully handles empty strings. Use throughout in place of `__()` for consistency with the package's components.
+@verbatim
 - `js($value)` — safe PHP-to-JS in Blade attributes: `wire:click="delete({{ js($row->id) }})"`.
+@endverbatim
 - `num($value)->currency('USD')` / `->filesize()` / `->format()` — Laravel Number helper shorthand.
 - `carbon($value)` — produces `Jiannius\Atom\Services\Carbon` (also installed globally via `Date::use()`).
 
