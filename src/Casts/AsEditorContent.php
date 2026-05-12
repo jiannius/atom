@@ -33,11 +33,11 @@ class AsEditorContent implements CastsAttributes
      */
     public function set(Model $model, string $key, mixed $value, array $attributes): mixed
     {
-        // Use regex to find all img tags with src containing "/livewire/preview-file/"
+        // Use regex to find all img tags with src containing "/livewire-{hash}/preview-file/"
         $tmps = [];
 
         if (is_string($value)) {
-            if (preg_match_all('/<img\s[^>]*src=[\'"]([^\'"]*\/livewire\/preview-file\/[^\'"\?]+(?:\?[^\'"]*)?)[\'"][^>]*>/i', $value, $matches)) {
+            if (preg_match_all('/<img\s[^>]*src=[\'"]([^\'"]*\/livewire-[^\/]+\/preview-file\/[^\'"\?]+(?:\?[^\'"]*)?)[\'"][^>]*>/i', $value, $matches)) {
                 // $matches[1] contains the full URLs
                 foreach ($matches[1] as $fullUrl) {
                     $tmps[] = $fullUrl;
