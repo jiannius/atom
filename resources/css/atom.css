@@ -51,7 +51,14 @@ button {
 *:has(>[data-atom-main]) {
     display: grid;
     grid-area: body;
-    grid-template-rows: auto 1fr auto;
+    /* Pin the grid container to the viewport height and clamp the main row
+       to its share. Without `height` the grid has no definite size to
+       distribute, so `1fr` (which is shorthand for `minmax(auto, 1fr)`)
+       grows with content and the body overflows past `min-h-screen`, giving
+       the browser an outer scrollbar even though scrollable inner regions
+       (e.g. x-partials.section's overflow-auto) are waiting to scroll. */
+    height: 100dvh;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     grid-template-columns: min-content minmax(0, 1fr) min-content;
     grid-template-areas:
         "header  header  header"
