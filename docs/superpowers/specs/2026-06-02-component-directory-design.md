@@ -13,7 +13,7 @@ A browsable component directory for the Atom package: every component listed, wi
 | --- | --- |
 | Audience / where it lives | Package-mounted routes (Telescope/Horizon-style) — every consuming app gets it locally |
 | Page content | Flux-style: live rendered previews + code snippets |
-| Coverage | Framework + ~19 priority components hand-authored; all others get auto-generated fallback pages |
+| Coverage | Framework + 22 priority components hand-authored; all others get auto-generated fallback pages |
 | Access | Routes register only when `app()->environment('local')`; no config, no gate in v1 |
 | Layout | Persistent sidebar (search + 6 categories), content swaps in place |
 | Content structure | Blade demo partials as source-of-truth — each example partial is both rendered live and read as text for the code snippet |
@@ -73,14 +73,14 @@ Sidebar search and gallery search are client-side Alpine filters over the alread
 
 ## Priority set (hand-authored in v1)
 
-- **Form:** input, textarea, select, checkbox, radio, toggle, date-picker, uploader, editor, form
+- **Form:** input, textarea, select, checkbox, radio, toggle, date-picker, time-picker, uploader, editor, form
 - **Buttons:** button, link
 - **Feedback:** modal, toast, alert, confirm, tooltip
 - **Layout/display:** table, tabs, card, badge
 
-Plus icon and logo galleries (auto-generated). Remaining ~28 components launch with fallback pages.
+Plus icon and logo galleries (auto-generated). Remaining ~27 components launch with fallback pages.
 
-(21 names listed; "~19" was the working estimate during brainstorming — the list above is canonical.)
+(22 names listed; "~19" was the working estimate during brainstorming — the list above is canonical.)
 
 ## v1 boundaries
 
