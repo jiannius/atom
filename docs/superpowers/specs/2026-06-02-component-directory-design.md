@@ -38,14 +38,20 @@ Follows the `Services\Asset` pattern. Responsibilities:
 - `props($component)` — extract the `@props([...])` array from the component's blade file (index.blade.php or the flat file) for the auto prop table.
 - `source($view)` — return a demo partial's raw blade source for code display.
 
-### Views (`resources/views/docs/`)
+### Views
+
+Reusable docs chrome lives in `components/docs/` so the `<atom:docs.*>` tag syntax works (anonymous components only resolve from `components/`); the scanner excludes the `docs` entry. Routable pages and demo partials live in `resources/views/docs/` under the `atom` view namespace.
 
 ```
-docs/
-├── layout.blade.php        # docs chrome: <atom:html> + atom navlist sidebar (dogfoods atom itself)
-├── index.blade.php         # landing: overview in the content area
+components/docs/
+├── layout.blade.php        # docs chrome: <atom:layouts.sidebar> + navlist (dogfoods atom itself)
+├── example.blade.php       # example section: live render + source code block + copy
+└── props.blade.php         # auto prop table
+
+resources/views/docs/
+├── index.blade.php         # landing: overview + category grid
 ├── show.blade.php          # shell: hand-authored demo view if present, else fallback
-├── fallback.blade.php      # auto page: tag + prop table + source link + "examples pending"
+├── fallback.blade.php      # auto page: "examples pending" callout
 ├── gallery/
 │   ├── icon.blade.php      # searchable glyph grid, click-to-copy tag
 │   └── logo.blade.php
