@@ -1,0 +1,1 @@
+<atom:table :empty="true"/>

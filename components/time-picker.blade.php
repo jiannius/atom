@@ -20,7 +20,7 @@ $error ??= $errors?->first($name);
     :inline="$inline"
     :required="$required"
     :error="$error">
-        <atom:time-picker :attributes="$attribute" />
+        <atom:time-picker :invalid="$invalid" :attributes="$attributes" />
     </atom:input.field>
 @else
     @php

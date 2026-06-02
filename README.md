@@ -75,6 +75,10 @@ Useful `<atom:html>` props (all optional):
 
 The package's own JS/CSS bundle is served from `/atom/{file}` (immutable, hashed via `dist/manifest.json`); you do **not** need to add it to your Vite config.
 
+### Component directory
+
+With the package installed and `APP_ENV=local`, visit **`/atom/docs`** in your app for a browsable directory of every component: live previews, copyable code snippets, auto-generated prop tables, and searchable icon/logo galleries. The routes are not registered outside the local environment.
+
 ### Service provider entry points (reference)
 
 If something feels magic, the answer is almost always in `src/AtomServiceProvider.php` (boot order: routes → migrations → translations → views → components → tag compiler → date facade swap → macros → asset routes → `/atom/action/{name}` POST endpoint).

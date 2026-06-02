@@ -21,6 +21,7 @@
 - `window.atom` JS helpers (from `resources/js/helpers/`): `atom.toast(config)`, `atom.alert(config)` (Promise), `atom.confirm(config)` (Promise), `atom.modal(name).show()/.slide()/.close()`. All dispatch window `CustomEvent`s (`atom-toast-show` etc.) that the `<atom:toast/>`, `<atom:alert/>`, `<atom:confirm/>` components listen for. `<atom:layouts.sidebar>` already mounts all three (components/layouts/sidebar.blade.php:190-192) — demo partials must NOT mount them again.
 - `<atom:copy :value="...">` (components/copy.blade.php) is an existing click-to-copy component using the `$clipboard` Alpine magic. Slot optional (defaults to a copy icon).
 - `<atom:layouts.sidebar>` props: `title`, `dark`, `editor`, `noindex`, `scripts`, `styles`; slots: `brand`, `nav`, `navfoot`, `dropdown`, `profile`, `footer`. Without `dropdown`/`profile` slots it never touches `auth()` — safe on guest routes.
+- NEVER name a Blade view/loop variable $component — inside any component-tag slot, Blade's compiled code shadows it with the AnonymousComponent instance. Docs views use $entry/$item instead. Also: docs pages render no Livewire component, so the docs layout includes @livewireScripts explicitly (Alpine ships with Livewire).
 
 ---
 
@@ -124,6 +125,7 @@ class Docs
         if (!preg_match('/@props\(\[(.*?)\]\)/s', $content, $matches)) return [];
 
         try {
+            // evaluates the package's own committed @props source (not user input); docs routes are local-env only
             $props = eval('return ['.$matches[1].'];');
         } catch (\Throwable $e) {
             // fall back to prop names only
@@ -284,13 +286,13 @@ These live in `components/` so the `<atom:docs.*>` tag syntax works; the scanner
             <atom:input placeholder="Search components..." x-model="q"/>
 
             <atom:navlist>
-                @foreach (app(\Jiannius\Atom\Services\Docs::class)->grouped() as $category => $components)
+                @foreach (app(\Jiannius\Atom\Services\Docs::class)->grouped() as $category => $items)
                     <atom:navlist.group :heading="$category">
-                        @foreach ($components as $component)
+                        @foreach ($items as $item)
                             <atom:navlist.item
-                            :href="route('atom.docs.show', $component['name'])"
-                            x-show="!q || @js($component['name']).includes(q.toLowerCase())">
-                                {{ $component['name'] }}
+                            :href="route('atom.docs.show', $item['name'])"
+                            :x-show="'!q || '.js($item['name']).'.includes(q.toLowerCase())'">
+                                {{ $item['name'] }}
                             </atom:navlist.item>
                         @endforeach
                     </atom:navlist.group>
@@ -302,6 +304,10 @@ These live in `components/` so the `<atom:docs.*>` tag syntax works; the scanner
     <div class="max-w-3xl p-6 lg:p-8">
         {{ $slot }}
     </div>
+
+    {{-- docs pages render no Livewire component, so Livewire never auto-injects its
+         assets — but atom.js needs Livewire's bundled Alpine (alpine:init) to start --}}
+    @livewireScripts
 </atom:layouts.sidebar>
 ```
 
@@ -319,7 +325,7 @@ $source = app(\Jiannius\Atom\Services\Docs::class)->source($view);
 @endphp
 
 <section class="mb-12">
-    <atom:heading size="sm">{{ $title }}</atom:heading>
+    <atom:heading>{{ $title }}</atom:heading>
 
     @if ($description)
         <atom:caption class="mt-1">{{ $description }}</atom:caption>
@@ -396,16 +402,16 @@ git commit -m "feat(docs): add docs chrome components - layout, example, prop ta
         Pages with authored examples show live previews; the rest show an auto-generated prop reference.
     </atom:caption>
 
-    @foreach ($docs->grouped() as $category => $components)
+    @foreach ($docs->grouped() as $category => $items)
         <div class="mt-10">
-            <atom:heading size="sm">{{ $category }}</atom:heading>
+            <atom:heading>{{ $category }}</atom:heading>
 
             <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                @foreach ($components as $component)
+                @foreach ($items as $item)
                     <a
-                    href="{{ route('atom.docs.show', $component['name']) }}"
+                    href="{{ route('atom.docs.show', $item['name']) }}"
                     class="rounded-lg border border-zinc-200 px-4 py-3 font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
-                        {{ $component['name'] }}
+                        {{ $item['name'] }}
                     </a>
                 @endforeach
             </div>
@@ -414,35 +420,35 @@ git commit -m "feat(docs): add docs chrome components - layout, example, prop ta
 </atom:docs.layout>
 ```
 
-- [ ] **Step 2: Create `resources/views/docs/show.blade.php`** (receives `$component` array from the route)
+- [ ] **Step 2: Create `resources/views/docs/show.blade.php`** (receives `$entry` array from the route)
 
 ```blade
-<atom:docs.layout :title="str($component['name'])->headline()" :editor="$component['name'] === 'editor'">
-    <atom:heading size="xl">{{ str($component['name'])->headline() }}</atom:heading>
+<atom:docs.layout :title="str($entry['name'])->headline()" :editor="$entry['name'] === 'editor'">
+    <atom:heading size="xl">{{ str($entry['name'])->headline() }}</atom:heading>
 
     <div class="mt-2 flex items-center gap-2">
-        <code class="rounded bg-zinc-100 px-2 py-1 text-sm dark:bg-zinc-800">{{ $component['tag'] }}</code>
-        <atom:copy :value="$component['tag']"/>
+        <code class="rounded bg-zinc-100 px-2 py-1 text-sm dark:bg-zinc-800">{{ $entry['tag'] }}</code>
+        <atom:copy :value="$entry['tag']"/>
     </div>
 
     <div class="mt-10">
-        @if ($component['isGallery'])
-            @include('atom::docs.gallery.'.$component['name'])
-        @elseif (view()->exists('atom::docs.demos.'.$component['name']))
-            @include('atom::docs.demos.'.$component['name'])
+        @if ($entry['isGallery'])
+            @include('atom::docs.gallery.'.$entry['name'])
+        @elseif (view()->exists('atom::docs.demos.'.$entry['name']))
+            @include('atom::docs.demos.'.$entry['name'])
         @else
             @include('atom::docs.fallback')
         @endif
     </div>
 
-    @unless ($component['isGallery'])
+    @unless ($entry['isGallery'])
         <div class="mt-12">
-            <atom:heading size="sm">Props</atom:heading>
-            <atom:docs.props :props="$component['props']"/>
+            <atom:heading>Props</atom:heading>
+            <atom:docs.props :props="$entry['props']"/>
         </div>
 
         <div class="mt-6">
-            <atom:caption>Source: {{ $component['path'] }}</atom:caption>
+            <atom:caption>Source: {{ $entry['path'] }}</atom:caption>
         </div>
     @endunless
 </atom:docs.layout>
@@ -454,7 +460,7 @@ git commit -m "feat(docs): add docs chrome components - layout, example, prop ta
 <atom:callout
 icon="info"
 heading="Examples pending"
-content="This component doesn't have authored examples yet. The prop reference below is generated from its @props declaration."/>
+content="This component doesn't have authored examples yet. The prop reference below is generated from its props declaration."/>
 ```
 
 - [ ] **Step 4: Cross-check `<atom:callout>` props against `components/callout.blade.php`** — expected `icon`, `heading`, `content`. Adjust if they differ.
@@ -492,8 +498,8 @@ if (app()->environment('local')) {
 
             abort_unless((bool) $data, 404);
 
-            return view('atom::docs.show', ['component' => $data]);
-        })->where('component', '[a-z0-9\-]+')->name('atom.docs.show');
+            return view('atom::docs.show', ['entry' => $data]);
+        })->where('component', '[a-z0-9-]+')->name('atom.docs.show');
     });
 }
 ```
@@ -679,7 +685,7 @@ view="atom::docs.demos.button.icons"/>
 
 <atom:docs.example
 title="Submit & delete types"
-description="type=submit styles as primary with loading state on wire submit. type=delete auto-wires the confirm dialog and dispatches confirmed → \$wire.delete() unless you override wire:click or x-on:click."
+description="type=submit styles as primary with loading state on wire submit. type=delete auto-wires the confirm dialog and dispatches confirmed → $wire.delete() unless you override wire:click or x-on:click."
 view="atom::docs.demos.button.delete"/>
 ```
 
@@ -843,21 +849,27 @@ git commit -m "feat(docs): add textarea demo page"
 `resources/views/docs/demos/select/listbox.blade.php`:
 
 ```blade
-<atom:select variant="listbox" label="Assignee">
-    <atom:select.option value="1" label="Jane Cooper"/>
-    <atom:select.option value="2" label="Wade Warren"/>
-    <atom:select.option value="3" label="Esther Howard"/>
-</atom:select>
+<atom:select
+variant="listbox"
+label="Assignee"
+:options="[
+    ['value' => 1, 'label' => 'Jane Cooper'],
+    ['value' => 2, 'label' => 'Wade Warren'],
+    ['value' => 3, 'label' => 'Esther Howard'],
+]"/>
 ```
 
 `resources/views/docs/demos/select/filter.blade.php`:
 
 ```blade
-<atom:select variant="filter" label="Customer">
-    <atom:select.option value="1" label="Acme Sdn Bhd"/>
-    <atom:select.option value="2" label="Globex Pte Ltd"/>
-    <atom:select.option value="3" label="Initech Bhd"/>
-</atom:select>
+<atom:select
+variant="filter"
+label="Customer"
+:options="[
+    ['value' => 1, 'label' => 'Acme Sdn Bhd'],
+    ['value' => 2, 'label' => 'Globex Pte Ltd'],
+    ['value' => 3, 'label' => 'Initech Bhd'],
+]"/>
 ```
 
 `resources/views/docs/demos/select/groups.blade.php`:
@@ -888,12 +900,12 @@ view="atom::docs.demos.select.native"/>
 
 <atom:docs.example
 title="Listbox"
-description="Custom-rendered dropdown with keyboard navigation."
+description="Custom-rendered dropdown with keyboard navigation. Options are passed as an array of value/label pairs, not slot children."
 view="atom::docs.demos.select.listbox"/>
 
 <atom:docs.example
 title="Filter"
-description="Listbox with a search input for long option lists."
+description="Listbox with a search input for long option lists. Takes the same options array as listbox."
 view="atom::docs.demos.select.filter"/>
 
 <atom:docs.example
@@ -970,10 +982,10 @@ git commit -m "feat(docs): add checkbox demo page"
 `resources/views/docs/demos/radio/group.blade.php`:
 
 ```blade
-<atom:radio.group name="plan" label="Plan" caption="Switch anytime.">
-    <atom:radio label="Starter" value="starter"/>
-    <atom:radio label="Growth" value="growth"/>
-    <atom:radio label="Enterprise" value="enterprise"/>
+<atom:radio.group label="Plan" caption="Switch anytime.">
+    <atom:radio name="plan" label="Starter" value="starter"/>
+    <atom:radio name="plan" label="Growth" value="growth"/>
+    <atom:radio name="plan" label="Enterprise" value="enterprise"/>
 </atom:radio.group>
 ```
 
@@ -984,7 +996,7 @@ git commit -m "feat(docs): add checkbox demo page"
 ```blade
 <atom:docs.example
 title="Group"
-description="Radios share the group's name; the group carries the label, caption and error."
+description="Each radio carries the shared name (or a wire:model binding); the group provides the label, caption and error."
 view="atom::docs.demos.radio.group"/>
 ```
 
@@ -1051,7 +1063,6 @@ git commit -m "feat(docs): add toggle demo page"
 - Create: `resources/views/docs/demos/date-picker.blade.php`
 - Create: `resources/views/docs/demos/date-picker/date.blade.php`
 - Create: `resources/views/docs/demos/date-picker/range.blade.php`
-- Create: `resources/views/docs/demos/date-picker/calendar.blade.php`
 
 - [ ] **Step 1: Create the example partials**
 
@@ -1065,12 +1076,6 @@ git commit -m "feat(docs): add toggle demo page"
 
 ```blade
 <atom:date-picker variant="range" label="Reporting period"/>
-```
-
-`resources/views/docs/demos/date-picker/calendar.blade.php`:
-
-```blade
-<atom:date-picker variant="calendar" label="Appointment"/>
 ```
 
 - [ ] **Step 2: Create the demo page**
@@ -1087,10 +1092,6 @@ view="atom::docs.demos.date-picker.date"/>
 title="Range"
 description="Start and end date in one control. Pairs with the whereDateBetween builder macro."
 view="atom::docs.demos.date-picker.range"/>
-
-<atom:docs.example
-title="Calendar"
-view="atom::docs.demos.date-picker.calendar"/>
 ```
 
 - [ ] **Step 3: Cross-check props** (file: `components/date-picker/index.blade.php` — name, variant, label, caption, inline, required, error, prefix, suffix)
@@ -1151,20 +1152,13 @@ git commit -m "feat(docs): add time-picker demo page"
 **Files:**
 - Create: `resources/views/docs/demos/uploader.blade.php`
 - Create: `resources/views/docs/demos/uploader/basic.blade.php`
-- Create: `resources/views/docs/demos/uploader/dropzone.blade.php`
 
-- [ ] **Step 1: Create the example partials**
+- [ ] **Step 1: Create the example partial**
 
 `resources/views/docs/demos/uploader/basic.blade.php`:
 
 ```blade
 <atom:uploader label="Upload attachment"/>
-```
-
-`resources/views/docs/demos/uploader/dropzone.blade.php`:
-
-```blade
-<atom:uploader.dropzone/>
 ```
 
 - [ ] **Step 2: Create the demo page**
@@ -1176,13 +1170,9 @@ git commit -m "feat(docs): add time-picker demo page"
 title="Basic"
 description="Actual uploads go through Livewire's WithFileUploads (included in AtomComponent) — bind with wire:model. This preview renders the trigger UI only."
 view="atom::docs.demos.uploader.basic"/>
-
-<atom:docs.example
-title="Dropzone"
-view="atom::docs.demos.uploader.dropzone"/>
 ```
 
-- [ ] **Step 3: Cross-check props** (files: `components/uploader/index.blade.php` — label, variant, size; `components/uploader/dropzone.blade.php` — no `@props`)
+- [ ] **Step 3: Cross-check props** (file: `components/uploader/index.blade.php` — label, variant, size)
 
 - [ ] **Step 4: Commit**
 
@@ -1236,17 +1226,21 @@ git commit -m "feat(docs): add editor demo page"
 `resources/views/docs/demos/form/basic.blade.php`:
 
 ```blade
-<atom:form>
-    <atom:input label="Name" required/>
-    <atom:input type="email" label="Email" required/>
-    <atom:textarea label="Message" rows="3"/>
+<div x-data>
+    <atom:form x-on:submit.prevent>
+        <atom:input label="Name" required/>
+        <atom:input type="email" label="Email" required/>
+        <atom:textarea label="Message" rows="3"/>
 
-    <atom:button.group>
-        <atom:button>Cancel</atom:button>
-        <atom:button type="submit">Send</atom:button>
-    </atom:button.group>
-</atom:form>
+        <atom:button.group>
+            <atom:button>Cancel</atom:button>
+            <atom:button type="submit">Send</atom:button>
+        </atom:button.group>
+    </atom:form>
+</div>
 ```
+
+Note: `x-on:submit.prevent` prevents the native GET reload on docs pages (no Livewire). The `<div x-data>` wrapper provides the Alpine scope required for the prevent modifier.
 
 - [ ] **Step 2: Create the demo page**
 
@@ -1367,7 +1361,7 @@ git commit -m "feat(docs): add link demo page"
 ```blade
 <atom:docs.example
 title="Basic"
-description="name is required so triggers can find the modal. Open from JS (atom.modal(name).show()), from a trigger component (<atom:modal.trigger name>), or from PHP (atom()->modal(name)->show())."
+description="name is required so triggers can find the modal. Open from JS (atom.modal(name).show()), from a trigger component (atom:modal.trigger), or from PHP (atom()->modal(name)->show())."
 view="atom::docs.demos.modal.basic"/>
 
 <atom:docs.example
@@ -1407,11 +1401,12 @@ git commit -m "feat(docs): add modal demo page"
 
 ```blade
 <div x-data class="flex flex-wrap items-center gap-3">
-    <atom:button x-on:click="atom.toast({ message: 'Top (default).' })">Top</atom:button>
-    <atom:button x-on:click="atom.toast({ message: 'Bottom.', position: 'bottom' })">Bottom</atom:button>
+    <atom:button x-on:click="atom.toast({ message: 'Bottom (default).' })">Bottom</atom:button>
     <atom:button x-on:click="atom.toast({ message: 'Center.', position: 'center' })">Center</atom:button>
 </div>
 ```
+
+Note: The component default position is `bottom`; there is no `top` position mapping.
 
 - [ ] **Step 2: Create the demo page**
 
@@ -1420,11 +1415,12 @@ git commit -m "feat(docs): add modal demo page"
 ```blade
 <atom:docs.example
 title="Variants"
-description="Drop <atom:toast/> once in your root layout (atom:layouts.sidebar already includes it), then fire from JS with atom.toast(config) or from PHP with atom()->toast(...). Config keys: message, variant, delay (default 3000), position, align."
+description="Drop the toast component once in your root layout (atom:layouts.sidebar already includes it), then fire from JS with atom.toast(config) or from PHP with atom()->toast(...). Config keys: message, variant, delay (default 3000), position, align."
 view="atom::docs.demos.toast.variants"/>
 
 <atom:docs.example
 title="Positions"
+description="position defaults to bottom; center is also supported."
 view="atom::docs.demos.toast.positions"/>
 ```
 
@@ -1528,7 +1524,7 @@ git commit -m "feat(docs): add alert demo page"
 ```blade
 <atom:docs.example
 title="Basic"
-description="atom.confirm(config) returns a Promise — resolves on accept (with { password, passphrase, reason }), rejects on cancel; always chain .catch. From PHP: atom()->confirm(..., onAccepted: 'method'). <atom:button type=delete> wires this automatically."
+description="atom.confirm(config) returns a Promise — resolves on accept (with { password, passphrase, reason }), rejects on cancel; always chain .catch. From PHP: atom()->confirm(..., onAccepted: 'method'). Buttons with type=delete wire this automatically."
 view="atom::docs.demos.confirm.basic"/>
 
 <atom:docs.example
@@ -1652,12 +1648,12 @@ git commit -m "feat(docs): add tooltip demo page"
 ```blade
 <atom:docs.example
 title="Basic"
-description="Static rows shown here. In Livewire, sorting, checkboxes, max rows and pagination are driven by the \$_table state from AtomComponent plus the toTable() builder macro."
+description="Static rows shown here. In Livewire, sorting, checkboxes, max rows and pagination are driven by the $_table state from AtomComponent plus the toTable() builder macro."
 view="atom::docs.demos.table.basic"/>
 
 <atom:docs.example
 title="Empty state"
-description="empty=true renders <atom:empty/>; with a paginator it is derived automatically."
+description="empty=true renders the empty-state component; with a paginator it is derived automatically."
 view="atom::docs.demos.table.empty"/>
 ```
 
@@ -1685,7 +1681,7 @@ git commit -m "feat(docs): add table demo page"
 <atom:tabs>
     <atom:tabs.item label="Profile" current/>
     <atom:tabs.item label="Billing"/>
-    <atom:tabs.item label="Team" count="4"/>
+    <atom:tabs.item label="Team"/>
 </atom:tabs>
 ```
 
@@ -1735,9 +1731,15 @@ git commit -m "feat(docs): add tabs demo page"
 `resources/views/docs/demos/card/basic.blade.php`:
 
 ```blade
-<atom:card heading="Team members">
-    <p>Invite teammates to collaborate on this workspace.</p>
-</atom:card>
+<div class="grid gap-4 sm:grid-cols-2">
+    <atom:card>
+        <p>Default card. Content goes in the default slot.</p>
+    </atom:card>
+
+    <atom:card subtle>
+        <p>Subtle card with muted chrome.</p>
+    </atom:card>
+</div>
 ```
 
 `resources/views/docs/demos/card/stats.blade.php`:
@@ -1758,7 +1760,7 @@ git commit -m "feat(docs): add tabs demo page"
 ```blade
 <atom:docs.example
 title="Basic"
-description="inset, subtle and divided modify padding and chrome."
+description="Content renders in the default slot. subtle, inset and divided modify the padding and chrome. heading renders in the stats and chart variants."
 view="atom::docs.demos.card.basic"/>
 
 <atom:docs.example
@@ -1804,7 +1806,6 @@ git commit -m "feat(docs): add card demo page"
     <atom:badge label="Extra small" size="xs"/>
     <atom:badge label="Default"/>
     <atom:badge label="Large" size="lg"/>
-    <atom:badge label="With icon" icon="check"/>
 </div>
 ```
 
@@ -1827,11 +1828,11 @@ git commit -m "feat(docs): add card demo page"
 ```blade
 <atom:docs.example
 title="Colors"
-description="status accepts an enum using the Atom Enum trait and derives label and color automatically."
+description="Named colors (red, blue, yellow, orange, green, purple, black) plus any hex value via the color prop."
 view="atom::docs.demos.badge.colors"/>
 
 <atom:docs.example
-title="Sizes & icon"
+title="Sizes"
 view="atom::docs.demos.badge.sizes"/>
 
 <atom:docs.example

@@ -82,6 +82,10 @@ JS calls `atom.action('Foo.Bar', params)` (= `POST /atom/action/Foo.Bar`), which
 
 `Actions\GetOptions` is the in-package example. It also demonstrates the JSON lookup convention: `getFromJson($name)` reads `resource_path('json/'.$name.'.json')` from the consuming app and merges it (recursively) over `json/{$name}.json` from this package. Results are cached under `_options` in the default cache store. Adding a new option set means adding a JSON file in both places (or just one).
 
+### Component directory (`/atom/docs`)
+
+Local-env-only routes (registered in `routes/web.php`) serve a browsable component directory. `Services\Docs` scans `components/` (excluding `docs/`), parses `@props` blocks for prop tables, and lists icon/logo glyphs. Docs chrome lives in `components/docs/` (layout, example, props); pages and demo partials live in `resources/views/docs/`. Each example partial is BOTH rendered live AND displayed as its own source — when editing a demo, remember the file text is the documentation. Undocumented components automatically get a fallback page, so new components need no docs work to appear.
+
 ### Front-end (`resources/js/atom.js`)
 
 Entry point bundled by Vite. It:
