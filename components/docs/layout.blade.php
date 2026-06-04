@@ -33,8 +33,13 @@
         </div>
     </x-slot:nav>
 
-    <div class="max-w-3xl p-6 lg:p-8">
-        {{ $slot }}
+    {{-- The body grid pins itself to 100dvh and clamps the main row, so the docs
+         content needs its own scroll region — otherwise the whole document scrolls
+         and the sticky sidebar background stops short of long pages. --}}
+    <div class="h-full overflow-y-auto overscroll-contain">
+        <div class="max-w-3xl p-6 lg:p-8">
+            {{ $slot }}
+        </div>
     </div>
 
     {{-- docs pages render no Livewire component, so Livewire never auto-injects its

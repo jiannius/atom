@@ -31,9 +31,9 @@ data-atom-navlist-group>
 </ui-disclosure>
 
 @elseif ($heading)
-    <div>
-        <div class="py-2 px-3">
-            <div class="text-sm leading-none text-muted">{{ t($heading) }}</div>
+    <div class="mt-5 first:mt-0">
+        <div class="px-3 pb-1.5">
+            <div class="text-xs font-semibold uppercase tracking-wider text-muted">{{ t($heading) }}</div>
         </div>
 
         <div {{ $attributes->class(['flex flex-col']) }}>
