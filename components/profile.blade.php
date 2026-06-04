@@ -1,7 +1,7 @@
 @props([
-    'name' => auth()->user()->name,
-    'avatar' => auth()->user()->avatar ?? null,
-    'email' => auth()->user()->email,
+    'name' => auth()->user()?->name,
+    'avatar' => auth()->user()?->avatar,
+    'email' => auth()->user()?->email,
     'size' => null,
 ])
 
