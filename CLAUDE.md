@@ -102,3 +102,54 @@ The Vite config builds `resources/css/atom.css`, `resources/css/editor.css`, `re
 - Components prefer `Arr::toCssClasses([...])` over conditional class strings; conditional/utility classes are grouped by variant in plain `match` expressions (see `components/button/index.blade.php` for the canonical pattern).
 - Many components dispatch and listen for window-level Livewire events prefixed `atom-` (`atom-modal-show`, `atom-toast-show`, `atom-confirm-show`, `atom-alert-show`). Search by this prefix when tracing UI state changes.
 - The `confirm` flow for `<atom:button type="delete">` is auto-wired in the button component: it dispatches `confirmed` on accept and that translates to `$wire.delete()` unless the caller overrides `wire:click` or `x-on:click`.
+
+## Development guidelines
+
+Curated from the jiannius package skeleton (`skeleton-package`) — the subset that applies to atom. The skeleton's Pest/Testbench, Models & data, and Pint guidelines are intentionally omitted: atom has no test suite or Pint config (Orchestra Testbench is a dev dep but unused) and ships no models. Front-end changes still require `npm run build` + committing `dist/` (see Front-end above).
+
+### Conventions
+
+- Follow the existing code conventions; when creating or editing a file, check sibling files for the correct structure, approach, and naming.
+- Use descriptive names for variables and methods (`isRegisteredForDiscounts`, not `discount()`).
+- Stick to the existing directory structure — don't create new base folders without approval.
+- Don't change the package's dependencies without approval.
+- Only create documentation files if explicitly requested.
+- Be concise in explanations — focus on what's important rather than obvious details.
+
+### PHP style
+
+- Always use curly braces for control structures, even single-line bodies.
+- Use PHP 8 constructor property promotion (`public function __construct(public GitHub $github) {}`); no empty zero-parameter constructors unless private.
+- Explicit return types and type hints on all parameters: `function isAccessible(User $user, ?string $path = null): bool`.
+- Prefer PHPDoc over inline comments; every public/private method gets a one-line PHPDoc. Use array-shape definitions in PHPDoc where useful.
+- Backed enums mix in `Jiannius\Atom\Traits\Enum`; cases are `FULL_UPPERCASE`. The trait provides `all()`, `option()`, `label()`, `get()`, `is()`/`isNot()`, plus `color()`, `str()`, `snake()`, `slug()`.
+
+### Workflow
+
+- Always squash-merge when exiting a worktree, then remove the worktree.
+- Plan mode: no need to use the superpowers skills.
+- Session close: when closing or clearing the session, save important gotchas/findings to memory and clear any stale data pieces from it.
+
+## Working Guidelines
+
+Behavioral guidelines to reduce common LLM coding mistakes. For trivial tasks, use judgment.
+
+### 1. Think Before Coding
+
+Don't assume. Don't hide confusion. Surface tradeoffs. State assumptions explicitly; if multiple interpretations exist, present them rather than picking silently. If something is unclear, stop, name what's confusing, and ask.
+
+### 2. Simplicity First
+
+Minimum code that solves the problem. No features beyond what was asked, no abstractions for single-use code, no "configurability" that wasn't requested, no error handling for impossible scenarios.
+
+### 3. Surgical Changes
+
+Touch only what you must. Don't "improve" adjacent code or refactor things that aren't broken. Match existing style. Remove imports/variables your change orphaned; leave pre-existing dead code unless asked.
+
+### 4. Goal-Driven Execution
+
+Transform the task into a verifiable goal ("write a test that reproduces the bug, then make it pass") and loop until verified.
+
+### 5. Caveman
+
+Talk normally in discussion; talk like a caveman (caveman skill) during coding work.
