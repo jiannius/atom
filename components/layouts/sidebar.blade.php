@@ -5,6 +5,7 @@
     'editor' => false,
     'scripts' => [],
     'styles' => [],
+    'vite' => ['resources/css/app.css', 'resources/js/app.js'],
 ])
 
 <atom:html
@@ -13,6 +14,7 @@
 :dark="$dark"
 :styles="$styles"
 :scripts="$scripts"
+:vite="$vite"
 :editor="$editor"
 class="min-h-screen bg-white dark:bg-zinc-900">
     {{-- stashed sidebar backdrop --}}

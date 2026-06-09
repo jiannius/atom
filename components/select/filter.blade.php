@@ -9,6 +9,8 @@
 ])
 
 @php
+$filterKey = $attributes->wire('model')->value() ?: $attributes->get('data-filter-key');
+
 $options = is_array($options) || $options instanceof \Illuminate\Support\Collection
     ? collect($options)->map(fn ($option) => is_enum($option) ? $option->option() : $option)->toArray()
     : $options;
@@ -37,6 +39,20 @@ x-on:keydown.up.prevent.stop="keyUp()"
 x-on:keydown.down.prevent.stop="keyDown()"
 x-on:keydown.escape.stop=""
 class="group/select"
+@if ($filterKey)
+x-init="
+    const emit = () => $dispatch('table-filter:set', {
+        key: @js($filterKey),
+        label: @js(t($label)),
+        display: isEmpty ? null : (@js($multiple)
+            ? (selectedOptions.length > 1 ? selectedOptions.length + ' {{ t('selected') }}' : (selectedOptions[0]?.label ?? null))
+            : (selectedOptions?.label ?? null)),
+    });
+    $nextTick(emit);
+    $watch('selectValue', () => $nextTick(emit));
+"
+x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clear()"
+@endif
 {{ $attributes->except('class') }}>
     <atom:dropdown>
         <button type="button" {{ $attributes->class($classes)->only('class') }}>

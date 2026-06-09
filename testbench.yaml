@@ -1,0 +1,2 @@
+providers:
+  - Jiannius\Atom\AtomServiceProvider

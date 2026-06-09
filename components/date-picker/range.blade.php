@@ -5,6 +5,8 @@
 ])
 
 @php
+$filterKey = $attributes->wire('model')->value();
+
 $classes = Arr::toCssClasses([
     'h-10 w-full py-2 pl-3 pr-10 no-spinner rounded-lg shadow-xs outline-offset-1 cursor-default',
     'text-zinc-700 dark:text-zinc-200',
@@ -22,6 +24,14 @@ x-data="dateRange({ time: @js($time) })"
 x-modelable="dateRangeValue"
 class="group/date-range relative"
 data-atom-date-range
+@if ($filterKey)
+x-init="
+    const emit = () => $dispatch('table-filter:set', { key: @js($filterKey), label: @js(t($placeholder)), display: dateRangeValue ? dateRangeString : null });
+    $nextTick(emit);
+    $watch('dateRangeValue', () => $nextTick(emit));
+"
+x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dateRangeValue = null, parse())"
+@endif
 {{ $attributes->except(['class', 'placeholder']) }}>
     <atom:dropdown x-on:open="setCalendarDates(); setCalendarRange();" locked>
         <button type="button" class="relative w-full">

@@ -38,7 +38,14 @@ if (!is_bool($empty)) {
     @endisset
     
     <div class="overflow-hidden rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-xs divide-y dark:divide-zinc-700">
-        <div class="overflow-x-auto">
+        <div class="relative overflow-x-auto">
+            <div
+            wire:loading.flex
+            wire:target="gotoPage,nextPage,previousPage,_table.sort.column,_table.sort.direction"
+            class="absolute inset-0 z-10 items-center justify-center bg-white/60 dark:bg-zinc-800/60">
+                <atom:icon.loading class="size-6 text-zinc-500" />
+            </div>
+
             @if ($empty)
                 <atom:empty />
             @else

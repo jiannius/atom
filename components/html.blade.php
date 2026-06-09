@@ -119,7 +119,9 @@ fbq('track', 'PageView');
 
 <link rel="stylesheet" href="{{ app('atom')->asset()->version('atom.css') }}">
 
+@if ($vite)
 @vite($vite)
+@endif
 
 @stack('styles')
 

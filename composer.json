@@ -9,7 +9,13 @@
         "livewire/livewire": "^4.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^11.0"
+        "orchestra/testbench": "^11.0",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0"
+    },
+    "scripts": {
+        "post-autoload-dump": "@php vendor/bin/testbench package:discover --ansi",
+        "test": "@php vendor/bin/pest"
     },
     "license": "MIT",
     "autoload": {
@@ -19,6 +25,11 @@
         "files": [
             "src/Helpers.php"
         ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Jiannius\\Atom\\Tests\\": "tests/"
+        }
     },
     "authors": [
         {
@@ -37,7 +48,8 @@
     "prefer-stable": false,
     "config": {
         "allow-plugins": {
-            "php-http/discovery": true
+            "php-http/discovery": true,
+            "pestphp/pest-plugin": true
         },
         "platform": {
             "php": "8.3.0"

@@ -6,6 +6,7 @@ node_modules/
 .env
 .env.backup
 .phpunit.result.cache
+.phpunit.cache
 docker-compose.override.yml
 Homestead.json
 Homestead.yaml
@@ -15,3 +16,6 @@ yarn-error.log
 /.vscode
 # Superpowers brainstorm sessions
 .superpowers/
+test-results/
+playwright-report/
+/playwright/.cache/

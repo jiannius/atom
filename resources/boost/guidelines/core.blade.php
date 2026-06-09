@@ -93,6 +93,18 @@ new class extends Component {
   - From inside the modal: `$dispatch('atom-modal-close')` (DOM containment closes the enclosing modal).
   - From outside: `$dispatch('atom-modal-close', { name: 'modal-name' })` — targeting by name is required when the dispatcher isn't inside the modal DOM.
 
+### Tables (admin listings)
+
+`<atom:table :paginate="$this->rows">` with `x-slot:columns` / `x-slot:rows` is the data table. Drive sort, pagination and checkboxes through the `$_table` state (from `AtomComponent`) plus the `toTable($filters)` Eloquent builder macro on a `#[Computed]` method.
+
+@verbatim
+- **Search:** `<atom:table.search wire:model="filters.search" />` — the standard listing search (search icon, Enter to run). Don't hand-roll an input.
+- **Filters:** wrap the filter controls in `<atom:table.filters>`; it auto-renders active-filter chips + a "Clear all". Use `<atom:select variant="filter">`, `<atom:date-picker variant="range">`, or custom selects inside it — each control needs a `wire:model` (that is the chip's key; without it no chip registers). Put overflow filters in `<x-slot:more>` — a "More filters" popover by default, or set `overflow="card"` for an expandable row.
+- **Trashed:** `<atom:table.trashed />` inside the filters bar toggles `$_table.show_trashed`; `toTable()` then applies `onlyTrashed()`.
+- **Row actions:** `<atom:table.actions>` as the last cell of a row renders a ⋯ menu — put `<atom:menu.item>`s inside. It stops row-click propagation, so it works inside a clickable `<atom:table.row>`. Delete items use the confirm pattern (`type="delete"` or `<atom:confirm.trigger>`).
+- **Loading:** built in — a dim overlay keeps the rows visible (no jarring wipe) during pagination and sort. No extra markup needed.
+@endverbatim
+
 ### Toast / Alert / Confirm
 
 From PHP, `$this->toast(...)` / `$this->alert(...)` / `$this->confirm(...)` (or `app('atom')->...()` outside Livewire). All translate `heading`, `subheading`, `message` through `t()`.
