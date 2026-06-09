@@ -1,5 +1,6 @@
 @props([
     'inset' => false,
+    'cols' => null,
 ])
 
 <div class="contents relative">
@@ -8,7 +9,11 @@
         'flex flex-col gap-6' => !$inset,
     ])->merge(['wire:submit' => 'submit']) }}
     data-atom-form>
-        {{ $slot }}
+        @if ($cols)
+            <atom:form.grid :cols="$cols">{{ $slot }}</atom:form.grid>
+        @else
+            {{ $slot }}
+        @endif
     </form>
 
     <div

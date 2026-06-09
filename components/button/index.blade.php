@@ -9,6 +9,7 @@
     'inverted' => null,
     'social' => null,
     'variant' => null,
+    'color' => null,
     'icon' => null,
     'iconSuffix' => null,
 ])
@@ -54,7 +55,15 @@ else {
     $classes[] = 'focus:outline-1';
 
     if ($variant === 'ghost') {
-        $classes[] = 'bg-transparent text-zinc-600 dark:text-zinc-400 border border-transparent focus:outline-zinc-200 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-700 dark:hover:text-zinc-300';
+        $classes[] = 'bg-transparent border border-transparent';
+        $classes[] = match ($color) {
+            'primary' => 'text-primary focus:outline-primary hover:bg-primary hover:text-primary-foreground',
+            'accent' => 'text-accent focus:outline-accent hover:bg-accent hover:text-accent-foreground',
+            'warning' => 'text-yellow-500 focus:outline-yellow-300 hover:bg-yellow-500 hover:text-yellow-800',
+            'danger', 'error' => 'text-red-500 focus:outline-red-300 hover:bg-red-500 hover:text-red-100',
+            'success' => 'text-green-600 focus:outline-green-300 hover:bg-green-600 hover:text-green-100',
+            default => 'text-zinc-600 dark:text-zinc-400 focus:outline-zinc-200 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-700 dark:hover:text-zinc-300',
+        };
     }
     else if ($inverted) {
         $classes[] = 'inset-shadow-xs inset-shadow-zinc-100/30';

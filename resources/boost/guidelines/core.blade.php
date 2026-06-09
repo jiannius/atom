@@ -263,8 +263,13 @@ These are the conventions Atom-using projects should adopt unless they have a re
 
 - **Spacing scale.** Default to `6` (`space-y-6`, `p-6`, `gap-6`). Use `3` only when intentionally tighter.
 @verbatim
-- **Dense business forms.** Two-column by default: `grid gap-6 md:grid-cols-2`. Separate logical groups with `<atom:separator>` and short titles (e.g. "Address", "Registration & Tax").
-- **Section separation.** Prefer `<atom:separator>` over ad-hoc `<hr>` or border classes.
+- **Form columns.** Choose columns to keep the form from scrolling much — a single column should roughly fit its container without heavy scrolling. Wrap field groups in `<atom:form.grid cols="auto">` (a container query: 1 column in a narrow container, 2 once it is wide enough — never 2 columns below ~`max-w-2xl`; this is enforced by CSS, not viewport). Operationally: ~≤5 fields → 1 column; longer/scrolly → 2 columns, pairing related fields. For a single-group form, put `cols` on `<atom:form>`. Force a fixed layout with `cols="2"`/`cols="3"`. Never use bare `grid-cols-2` (it will not collapse on mobile).
+- **Modal width.** Match width to the form: 1-col & ≤4 simple fields → `max-w-lg`; 1-col with more/wider fields → `max-w-xl`; 1-col dense/settings → `max-w-2xl`–`max-w-3xl`; 2-col → minimum `max-w-2xl`, scaling to `max-w-4xl` (~10 fields) and `max-w-5xl` (15+). Reserve `max-w-6xl`/`7xl` for builder/full-tool screens, not forms. `<atom:form.modal>` sets a sensible width from `cols` automatically.
+- **Form footer.** Use `<atom:form.actions>`: Save on the left (`<atom:button type="submit">`, label "Save"), Delete on the right (`<atom:button type="delete" variant="ghost" color="danger">`). No Cancel button — modal dismiss handles it.
+- **`<atom:form.modal>`.** Composes modal + form + footer (Save + optional `delete` slot). Fields go in the default slot; width derives from `cols`. Like all `<atom:form>`, it wires `wire:submit="submit"` — the Livewire component must define a `submit()` method.
+- **Checkboxes.** Multiple related checkboxes → always `<atom:checkbox.group>` (never loose stacked `<atom:checkbox>`). Default variant; use `variant="card"` only when each option needs its own description or icon.
+- **Description lists (show pages).** Group label/value pairs in `<atom:dd.group>`; use `cols="2"` only for many fields on a wide page — same density logic as forms.
+- **Section separation.** Prefer `<atom:separator>` over ad-hoc `<hr>` or border classes; separate logical field groups with a separator and a short title (e.g. "Address", "Registration & Tax").
 @endverbatim
 - **Component method order** (top of class to bottom):
     1. Validation (`$rules`, `$messages`, `#[Rule]` properties)
