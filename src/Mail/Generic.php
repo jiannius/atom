@@ -10,28 +10,16 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Schema;
 
 class Generic extends Mailable
 {
     use Queueable, SerializesModels;
-
-    public $tracker;
 
     /**
      * Create a new message instance.
      */
     public function __construct(public $settings)
     {
-        if (data_get($this->settings, 'track')) {
-            $this->tracker = \App\Models\SentMail::create([
-                'subject' => data_get($this->settings, 'subject'),
-                'data' => [
-                    'tags' => data_get($this->settings, 'tags'),
-                    'metadata' => data_get($this->settings, 'metadata'),
-                ],
-            ]);
-        }
     }
 
     /**

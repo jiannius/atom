@@ -247,7 +247,6 @@ class Atom
         $tags = [],
         $metadata = [],
         $attachments = [],
-        $track = false,
         $queue = false,
         $later = null,
         $logo = null,
@@ -270,7 +269,6 @@ class Atom
             'tags' => $tags,
             'metadata' => $metadata,
             'attachments' => $attachments,
-            'track' => $track,
             'logo' => $logo,
         ]);
 
