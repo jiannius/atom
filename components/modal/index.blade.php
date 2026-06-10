@@ -6,10 +6,12 @@
 ])
 
 @php
-$name ??= app('livewire')->current()->getName();
+// current() returns false (not null) when no component is on the stack,
+// so the nullsafe operator alone isn't enough.
+$name ??= (app('livewire')->current() ?: null)?->getName();
 $classes = Arr::toCssClasses([
     'group/modal',
-    '[:where(&):max-w-full] min-w-sm shadow-lg rounded-xl',
+    '[:where(&)]:max-w-full min-w-sm shadow-lg rounded-xl',
     'bg-white dark:bg-zinc-900 border border-transparent dark:border-zinc-700 transition-transform',
     $inset ? 'p-0' : 'p-6',
 
@@ -91,17 +93,17 @@ x-data="modal({
     name: @js($name),
     scope: @js(($__livewire ?? null)?->getId()),
     dismissible: @js($dismissible),
-    closeable: @js($closeable),
 })"
 x-on:atom-modal-show.window="showModal"
 x-on:atom-modal-close.window="closeModal"
-x-on:keydown.escape.stop.prevent="closeModal()"
+x-on:keydown.escape.stop.prevent="escapeClose"
 @if ($dismissible) x-on:click="backdropClick" @endif
 {{ $attributes->class($classes) }}>
     @if ($closeable)
         <div class="absolute top-0 end-0 mt-4 me-4">
             <button
             type="button"
+            aria-label="{{ t('Close') }}"
             class="flex items-center justify-center text-zinc-400! hover:text-zinc-800! dark:hover:text-white! focus:outline-none"
             x-on:click="closeModal">
                 <atom:icon.close />

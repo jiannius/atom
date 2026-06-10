@@ -6,3 +6,8 @@ view="atom::docs.demos.modal.basic"/>
 <atom:docs.example
 title="Slide-over"
 view="atom::docs.demos.modal.slide"/>
+
+<atom:docs.example
+title="Persistent"
+description="dismissible=false keeps the modal open on ESC and backdrop clicks."
+view="atom::docs.demos.modal.persistent"/>

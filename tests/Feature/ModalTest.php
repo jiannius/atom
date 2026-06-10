@@ -1,0 +1,189 @@
+<?php
+
+use Illuminate\Support\ViewErrorBag;
+
+beforeEach(function () {
+    view()->share('errors', new ViewErrorBag);
+});
+
+/**
+ * Build a stand-in for a Livewire component on the stack — modal name
+ * defaults only need getName().
+ */
+function fakeLivewireComponent(string $name = 'fixture-component'): object
+{
+    return new class ($name) {
+        public function __construct(public string $name) {}
+
+        public function getName(): string
+        {
+            return $this->name;
+        }
+    };
+}
+
+describe('modal', function () {
+    it('renders a dialog wired to the modal alpine component', function () {
+        $html = renderBlade('<atom:modal name="test-modal">Body</atom:modal>');
+
+        expect($html)
+            ->toContain('<dialog')
+            ->toContain('x-data="modal({')
+            ->toContain("name: 'test-modal'")
+            ->toContain('x-on:atom-modal-show.window="showModal"')
+            ->toContain('x-on:atom-modal-close.window="closeModal"')
+            ->toContain('x-on:keydown.escape.stop.prevent="escapeClose"')
+            ->toContain('wire:ignore.self')
+            ->toContain('Body');
+    });
+
+    it('defaults the name to the current Livewire component name', function () {
+        $html = withLivewireContext(
+            fakeLivewireComponent('my-page'),
+            fn () => renderBlade('<atom:modal>Body</atom:modal>'),
+        );
+
+        expect($html)->toContain("name: 'my-page'");
+    });
+
+    it('renders without a name outside a Livewire context', function () {
+        // Regression: app('livewire')->current() returns false outside a
+        // component render — getName() on it was a fatal error.
+        $html = renderBlade('<atom:modal>Body</atom:modal>');
+
+        expect($html)->toContain('name: null');
+    });
+
+    it('is dismissible by default', function () {
+        $html = renderBlade('<atom:modal name="m">Body</atom:modal>');
+
+        expect($html)
+            ->toContain('dismissible: true')
+            ->toContain('x-on:click="backdropClick"');
+    });
+
+    it('drops backdrop dismissal when dismissible is false', function () {
+        $html = renderBlade('<atom:modal name="m" :dismissible="false">Body</atom:modal>');
+
+        expect($html)
+            ->toContain('dismissible: false')
+            ->not->toContain('backdropClick');
+    });
+
+    it('renders a labelled close button by default', function () {
+        $html = renderBlade('<atom:modal name="m">Body</atom:modal>');
+
+        expect($html)
+            ->toContain('aria-label="Close"')
+            ->toContain('x-on:click="closeModal"');
+    });
+
+    it('omits the close button when closeable is false', function () {
+        $html = renderBlade('<atom:modal name="m" :closeable="false">Body</atom:modal>');
+
+        expect($html)->not->toContain('aria-label="Close"');
+    });
+
+    it('caps width at the viewport with a zero-specificity default', function () {
+        // Regression: the class was written as [:where(&):max-w-full], which
+        // Tailwind silently drops — no max-width ever shipped in the CSS.
+        $html = renderBlade('<atom:modal name="m">Body</atom:modal>');
+
+        expect($html)->toContain(')]:max-w-full');
+    });
+
+    it('merges consumer classes onto the dialog', function () {
+        $html = renderBlade('<atom:modal name="m" class="max-w-2xl">Body</atom:modal>');
+
+        expect($html)
+            ->toContain('max-w-2xl')
+            ->toContain('group/modal');
+    });
+
+    it('removes padding when inset', function () {
+        expect(renderBlade('<atom:modal name="m" inset>Body</atom:modal>'))->toContain('p-0');
+        expect(renderBlade('<atom:modal name="m">Body</atom:modal>'))->toContain('p-6');
+    });
+});
+
+describe('modal.trigger', function () {
+    it('shows the modal by name on click', function () {
+        $html = renderBlade('<atom:modal.trigger name="m"><button>Open</button></atom:modal.trigger>');
+
+        expect($html)
+            ->toContain('data-atom-modal-trigger')
+            ->toContain("atom.modal('m').show()")
+            ->toContain('$el.querySelector(\'button[disabled]\')')
+            ->toContain('<button>Open</button>');
+    });
+
+    it('slides the modal when the slide prop is set', function () {
+        $html = renderBlade('<atom:modal.trigger name="m" slide="left"><button>Open</button></atom:modal.trigger>');
+
+        expect($html)->toContain("atom.modal('m').slide('left')");
+    });
+
+    it('binds a document-level keyboard shortcut', function () {
+        $html = renderBlade('<atom:modal.trigger name="m" shortcut="meta.k"><button>Open</button></atom:modal.trigger>');
+
+        expect($html)
+            ->toContain('x-on:keydown.meta.k.document')
+            ->toContain("atom.modal('m').show()");
+    });
+
+    it('uses the slide variant for the shortcut too', function () {
+        $html = renderBlade('<atom:modal.trigger name="m" slide="bottom" shortcut="meta.k"><button>Open</button></atom:modal.trigger>');
+
+        expect($html)->toContain("x-on:keydown.meta.k.document=\"\$event.preventDefault(); atom.modal('m').slide('bottom')\"");
+    });
+
+    it('defaults the name to the current Livewire component name', function () {
+        // Mirrors the modal's own default so a bare trigger pairs with a
+        // bare modal in the same component.
+        $html = withLivewireContext(
+            fakeLivewireComponent('my-page'),
+            fn () => renderBlade('<atom:modal.trigger><button>Open</button></atom:modal.trigger>'),
+        );
+
+        expect($html)->toContain("atom.modal('my-page').show()");
+    });
+});
+
+describe('form.modal', function () {
+    it('renders a form inside a modal with a submit button', function () {
+        $html = renderBlade('<atom:form.modal name="m"><div>Fields</div></atom:form.modal>');
+
+        expect($html)
+            ->toContain('<dialog')
+            ->toContain('<form')
+            ->toContain('type="submit"')
+            ->toContain('Save')
+            ->toContain('Fields');
+    });
+
+    it('maps cols to a max width', function () {
+        expect(renderBlade('<atom:form.modal name="m">F</atom:form.modal>'))->toContain('max-w-2xl');
+        expect(renderBlade('<atom:form.modal name="m" cols="3">F</atom:form.modal>'))->toContain('max-w-4xl');
+        expect(renderBlade('<atom:form.modal name="m" cols="1">F</atom:form.modal>'))->toContain('max-w-xl');
+    });
+
+    it('renders the delete slot next to the submit button', function () {
+        $html = renderBlade(<<<'HTML'
+            <atom:form.modal name="m">
+                <div>Fields</div>
+                <x-slot:delete><button type="button">Remove</button></x-slot:delete>
+            </atom:form.modal>
+        HTML);
+
+        expect($html)->toContain('Remove');
+    });
+
+    it('forwards dismissible and closeable to the modal', function () {
+        $html = renderBlade('<atom:form.modal name="m" :dismissible="false" :closeable="false">F</atom:form.modal>');
+
+        expect($html)
+            ->toContain('dismissible: false')
+            ->not->toContain('backdropClick')
+            ->not->toContain('aria-label="Close"');
+    });
+});

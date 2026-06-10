@@ -3,26 +3,6 @@
 use Jiannius\Atom\Tests\Fixtures\Item;
 use Jiannius\Atom\Tests\Fixtures\TableFixture;
 use Livewire\Livewire;
-use Livewire\Mechanisms\HandleComponents\HandleComponents;
-
-/**
- * Helper: call a #[Computed] method on a Livewire component instance while
- * the component is on the Livewire stack so that toTable() can read $_table
- * via app('livewire')->current().
- *
- * app('livewire')->current() calls last(HandleComponents::$componentStack),
- * which returns false (not null) when the stack is empty — the ?-> operator
- * does not protect against false, so we must push/pop the component manually.
- */
-function withLivewireContext(object $component, callable $callback): mixed
-{
-    array_push(HandleComponents::$componentStack, $component);
-    try {
-        return $callback($component);
-    } finally {
-        array_pop(HandleComponents::$componentStack);
-    }
-}
 
 it('defaults to latest id ordering when unsorted', function () {
     $a = Item::factory()->create();

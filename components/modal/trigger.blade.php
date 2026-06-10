@@ -4,6 +4,13 @@
     'shortcut' => null,
 ])
 
+@php
+// Mirror the modal's own name default so a bare trigger pairs with a bare
+// modal inside the same Livewire component. current() returns false (not
+// null) when no component is on the stack.
+$name ??= (app('livewire')->current() ?: null)?->getName();
+@endphp
+
 <div
 {{ $attributes->class('contents') }}
 x-data

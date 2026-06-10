@@ -2,12 +2,15 @@ export default (config) => {
     return {
         name: config.name,
         scope: config.scope,
+        dismissible: config.dismissible,
 
         showModal (e) {
             if (this.name === e.detail.name && (this.scope === e.detail.scope || !e.detail.scope)) {
+                if (this.$root.open) return // showModal() throws on an already-open dialog
+
                 let variant = e.detail.variant
                 let position = e.detail.position
-                
+
                 if (variant === 'slide') {
                     if (position === 'left') this.$root.setAttribute('data-atom-modal-slide-left', true)
                     else if (position === 'bottom') this.$root.setAttribute('data-atom-modal-slide-bottom', true)
@@ -35,6 +38,13 @@ export default (config) => {
                 this.$root.removeAttribute('data-atom-modal');
                 this.$dispatch('closed', config.name)
             }
+        },
+
+        escapeClose () {
+            // keydown.escape is always prevented in the template so the native
+            // cancel/close never bypasses our attribute cleanup; only close
+            // when the modal is dismissible.
+            if (this.dismissible) this.closeModal()
         },
 
         backdropClick (e) {
