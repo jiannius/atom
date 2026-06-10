@@ -86,9 +86,10 @@ new class extends Component {
 
 @verbatim
 - When `<atom:modal>` is the **root** of a single-file Livewire component, omit `name` — methods auto-resolve to the component name.
+- For multiple modals in one component, give each `name="..."` and target with `$this->modal('confirm')->show()` — modals are matched by name only.
+- Three independent close switches, all default true: `:dismissible="false"` blocks backdrop-close, `:escapable="false"` blocks ESC, `:closeable="false"` hides the × button. Combine the first two for a persistent modal.
+- `<atom:modal.trigger name="...">` wraps any clickable to open the modal on click; `name` defaults to the component name like the modal itself. Optional `slide` (`left`/`bottom`, or empty for right) and `shortcut` (e.g. `meta.k`) props.
 @endverbatim
-- For multiple modals in one component, give each `name="..."` and target with `$this->modal('confirm')->show()`.
-- Props: `:closeable="false"` hides the × button; `:dismissible="false"` disables backdrop-close.
 - Close client-side:
   - From inside the modal: `$dispatch('atom-modal-close')` (DOM containment closes the enclosing modal).
   - From outside: `$dispatch('atom-modal-close', { name: 'modal-name' })` — targeting by name is required when the dispatcher isn't inside the modal DOM.
