@@ -1,8 +1,9 @@
 @props([
     'name' => null,
     'inset' => false,
-    'dismissible' => true,
-    'closeable' => true,
+    'dismissible' => true, // backdrop click closes
+    'escapable' => true,   // ESC closes
+    'closeable' => true,   // close (X) button shown
 ])
 
 @php
@@ -91,8 +92,7 @@ $classes = Arr::toCssClasses([
 wire:ignore.self {{-- This needs to be here because the dialog element adds a "close" attribute that isn't durable... --}}
 x-data="modal({
     name: @js($name),
-    scope: @js(($__livewire ?? null)?->getId()),
-    dismissible: @js($dismissible),
+    escapable: @js($escapable),
 })"
 x-on:atom-modal-show.window="showModal"
 x-on:atom-modal-close.window="closeModal"

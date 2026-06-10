@@ -1,11 +1,10 @@
 export default (config) => {
     return {
         name: config.name,
-        scope: config.scope,
-        dismissible: config.dismissible,
+        escapable: config.escapable,
 
         showModal (e) {
-            if (this.name === e.detail.name && (this.scope === e.detail.scope || !e.detail.scope)) {
+            if (this.name === e.detail.name) {
                 if (this.$root.open) return // showModal() throws on an already-open dialog
 
                 let variant = e.detail.variant
@@ -27,7 +26,7 @@ export default (config) => {
         closeModal (e = null) {
             if (
                 !e
-                || (this.name === e.detail.name && (this.scope === e.detail.scope || !e.detail.scope))
+                || this.name === e.detail.name
                 || (!e.detail.name && this.$root.contains(e.target))
             ) {
                 this.$root.close();
@@ -43,8 +42,8 @@ export default (config) => {
         escapeClose () {
             // keydown.escape is always prevented in the template so the native
             // cancel/close never bypasses our attribute cleanup; only close
-            // when the modal is dismissible.
-            if (this.dismissible) this.closeModal()
+            // when the modal is escapable.
+            if (this.escapable) this.closeModal()
         },
 
         backdropClick (e) {

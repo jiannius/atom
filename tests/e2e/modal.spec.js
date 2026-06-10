@@ -80,7 +80,8 @@ test('persistent modal ignores escape and backdrop clicks', async ({ page }) => 
   await page.mouse.click(5, 5)
   await expect(dialog).toBeVisible()
 
-  await dialog.getByRole('button', { name: 'Close', exact: true }).filter({ hasText: 'Close' }).click()
+  // closeable is independent of the two disabled switches — the X still works
+  await dialog.locator('button[aria-label="Close"]:not([data-atom-button])').click()
   await expect(dialog).toBeHidden()
 })
 

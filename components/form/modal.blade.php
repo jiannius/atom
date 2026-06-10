@@ -3,6 +3,7 @@
     'cols' => 'auto',
     'submit' => 'Save',
     'dismissible' => true,
+    'escapable' => true,
     'closeable' => true,
 ])
 
@@ -14,7 +15,7 @@ $width = match ((string) $cols) {
 };
 @endphp
 
-<atom:modal :name="$name" :dismissible="$dismissible" :closeable="$closeable" {{ $attributes->class($width) }}>
+<atom:modal :name="$name" :dismissible="$dismissible" :escapable="$escapable" :closeable="$closeable" {{ $attributes->class($width) }}>
     <atom:form>
         <atom:form.grid :cols="$cols">
             {{ $slot }}

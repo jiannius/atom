@@ -9,5 +9,5 @@ view="atom::docs.demos.modal.slide"/>
 
 <atom:docs.example
 title="Persistent"
-description="dismissible=false keeps the modal open on ESC and backdrop clicks."
+description="Three independent close switches: dismissible (backdrop click), escapable (ESC key), closeable (X button)."
 view="atom::docs.demos.modal.persistent"/>

@@ -34,7 +34,8 @@ describe('modal', function () {
             ->toContain('x-on:atom-modal-close.window="closeModal"')
             ->toContain('x-on:keydown.escape.stop.prevent="escapeClose"')
             ->toContain('wire:ignore.self')
-            ->toContain('Body');
+            ->toContain('Body')
+            ->not->toContain('scope:'); // targeting is by name only
     });
 
     it('defaults the name to the current Livewire component name', function () {
@@ -54,11 +55,11 @@ describe('modal', function () {
         expect($html)->toContain('name: null');
     });
 
-    it('is dismissible by default', function () {
+    it('is dismissible and escapable by default', function () {
         $html = renderBlade('<atom:modal name="m">Body</atom:modal>');
 
         expect($html)
-            ->toContain('dismissible: true')
+            ->toContain('escapable: true')
             ->toContain('x-on:click="backdropClick"');
     });
 
@@ -66,8 +67,23 @@ describe('modal', function () {
         $html = renderBlade('<atom:modal name="m" :dismissible="false">Body</atom:modal>');
 
         expect($html)
-            ->toContain('dismissible: false')
-            ->not->toContain('backdropClick');
+            ->not->toContain('backdropClick')
+            // the other two switches are independent
+            ->toContain('escapable: true')
+            ->toContain('aria-label="Close"');
+    });
+
+    it('keeps ESC from closing when escapable is false', function () {
+        $html = renderBlade('<atom:modal name="m" :escapable="false">Body</atom:modal>');
+
+        expect($html)
+            ->toContain('escapable: false')
+            // the keydown stays bound (and prevented) so the native dialog
+            // cancel can't bypass cleanup; the JS side gates the close
+            ->toContain('x-on:keydown.escape.stop.prevent="escapeClose"')
+            // the other two switches are independent
+            ->toContain('x-on:click="backdropClick"')
+            ->toContain('aria-label="Close"');
     });
 
     it('renders a labelled close button by default', function () {
@@ -178,11 +194,11 @@ describe('form.modal', function () {
         expect($html)->toContain('Remove');
     });
 
-    it('forwards dismissible and closeable to the modal', function () {
-        $html = renderBlade('<atom:form.modal name="m" :dismissible="false" :closeable="false">F</atom:form.modal>');
+    it('forwards the close switches to the modal', function () {
+        $html = renderBlade('<atom:form.modal name="m" :dismissible="false" :escapable="false" :closeable="false">F</atom:form.modal>');
 
         expect($html)
-            ->toContain('dismissible: false')
+            ->toContain('escapable: false')
             ->not->toContain('backdropClick')
             ->not->toContain('aria-label="Close"');
     });
