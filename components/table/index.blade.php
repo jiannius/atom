@@ -2,10 +2,16 @@
     'empty' => null,
     'paginate' => null,
     'maxRows' => [50, 100, 200, 400],
+    'skeleton' => false,
 ])
 
 @php
-if (!is_bool($empty)) {
+// First-load skeleton: opt-in, and only while a paginator hasn't loaded yet.
+// Gated behind $skeleton so static/synchronous tables are completely unaffected.
+$showSkeleton = $skeleton && is_null($paginate);
+$skeletonRows = $skeleton === true ? 5 : (int) $skeleton;
+
+if (!$showSkeleton && !is_bool($empty)) {
     if ($paginate) $empty = !$paginate->total();
     else $empty = isset($rows) && !strip_tags($rows->toHtml());
 }
@@ -46,7 +52,15 @@ if (!is_bool($empty)) {
                 <atom:icon.loading class="size-6 text-zinc-500" />
             </div>
 
-            @if ($empty)
+            @if ($showSkeleton)
+                <div class="animate-pulse divide-y divide-zinc-150 dark:divide-zinc-700" data-atom-table-skeleton>
+                    @for ($i = 0; $i < $skeletonRows; $i++)
+                        <div class="py-4 px-4" data-atom-table-skeleton-row>
+                            <atom:placeholder-bar size="{{ [45, 70, 55, 80, 50][$i % 5] }}%/x/10" />
+                        </div>
+                    @endfor
+                </div>
+            @elseif ($empty)
                 <atom:empty />
             @else
                 <table class="min-w-full table-fixed text-zinc-800 divide-y divide-zinc-150 dark:divide-zinc-700">

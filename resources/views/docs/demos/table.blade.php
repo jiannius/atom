@@ -27,3 +27,8 @@ view="atom::docs.demos.table.trashed"/>
 title="Filters bar"
 description="atom:table.filters wraps your filter controls (atom:select variant=filter, atom:date-picker variant=range, custom selects) and auto-derives active-filter chips + Clear all from each control's label and selected value. Put overflow filters in x-slot:more — a 'More filters' popover by default, or set overflow=card for an expandable row."
 view="atom::docs.demos.table.filters"/>
+
+<atom:docs.example
+title="Loading skeleton"
+description="Pass skeleton (or :skeleton=N for a row count) to show placeholder rows on first load while a lazy/deferred table fetches its data. Opt-in: a table without the flag is unaffected. Filter/search shows a spinner in the search box (rows stay); pagination/sort use a dim overlay."
+view="atom::docs.demos.table.skeleton"/>

@@ -102,7 +102,7 @@ new class extends Component {
 - **Filters:** wrap the filter controls in `<atom:table.filters>`; it auto-renders active-filter chips + a "Clear all". Use `<atom:select variant="filter">`, `<atom:date-picker variant="range">`, or custom selects inside it — each control needs a `wire:model` (that is the chip's key; without it no chip registers). Put overflow filters in `<x-slot:more>` — a "More filters" popover by default, or set `overflow="card"` for an expandable row.
 - **Trashed:** `<atom:table.trashed />` inside the filters bar toggles `$_table.show_trashed`; `toTable()` then applies `onlyTrashed()`.
 - **Row actions:** `<atom:table.actions>` as the last cell of a row renders a ⋯ menu — put `<atom:menu.item>`s inside. It stops row-click propagation, so it works inside a clickable `<atom:table.row>`. Delete items use the confirm pattern (`type="delete"` or `<atom:confirm.trigger>`).
-- **Loading:** built in — a dim overlay keeps the rows visible (no jarring wipe) during pagination and sort. No extra markup needed.
+- **Loading:** built in — pagination/sort show a dim overlay (rows stay put); search shows a spinner in the search box (rows stay). For a lazy/deferred table, add the `skeleton` prop (or `:skeleton="N"`) to `<atom:table>` to show placeholder rows on first load until the data resolves.
 @endverbatim
 
 ### Toast / Alert / Confirm

@@ -10,3 +10,12 @@ it('renders a search input with the enter-to-search handler', function () {
         ->and($html)->toContain('keyup.enter')
         ->and($html)->toContain('filters.search');
 });
+
+it('renders a scoped loading spinner that keeps rows visible', function () {
+    view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+    $html = Blade::render('<atom:table.search wire:model="filters.search" />');
+
+    expect($html)->toContain('wire:loading')
+        ->and($html)->toContain('wire:target="$refresh"')
+        ->and($html)->toContain('data-atom-table-search');
+});
