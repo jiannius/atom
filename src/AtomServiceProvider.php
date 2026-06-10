@@ -18,6 +18,13 @@ class AtomServiceProvider extends ServiceProvider
     public function register() : void
     {
         $this->app->alias(Atom::class, 'atom');
+
+        // Register the <atom:...> tag precompiler during register() (not boot()) so
+        // it runs BEFORE Livewire's wire:key precompiler (registered in Livewire's
+        // boot()). All register() run before all boot(), so atom converts its tags
+        // to component form first — letting Livewire handle wire:key via its normal
+        // component path instead of mangling the raw <atom:...> tag.
+        $this->tagCompiler();
     }
 
     /**
@@ -32,7 +39,6 @@ class AtomServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'atom');
         Blade::anonymousComponentPath(__DIR__.'/../components', 'atom');
 
-        $this->tagCompiler();
         $this->configureDate();
         $this->registerMacros();
         $this->registerCommands();
