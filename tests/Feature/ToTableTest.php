@@ -77,3 +77,14 @@ it('resetTableCheckboxes empties the selection', function () {
 
     expect($component->get('_table.checkboxes'))->toBe([]);
 });
+
+it('runs outside a livewire component without crashing (current() false-guard)', function () {
+    Item::factory()->count(2)->create();
+
+    // No component on the Livewire stack (no withLivewireContext) — app('livewire')
+    // ->current() returns false. Before the guard this threw "property on false";
+    // now it falls back to defaults (no $_table config) and just works.
+    $page = Item::query()->toTable();
+
+    expect($page->total())->toBe(2);
+});

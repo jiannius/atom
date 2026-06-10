@@ -49,7 +49,9 @@ class Builder
     public function toTable()
     {
         return function ($filters = null, $maxRows = null) {
-            $config = app('livewire')->current()?->_table;
+            // current() returns false (not null) when no component is on the stack,
+            // e.g. toTable() called from a job/console/test — guard so ?-> works.
+            $config = (app('livewire')->current() ?: null)?->_table;
             $sortColumn = data_get($config, 'sort.column');
             $sortDirection = data_get($config, 'sort.direction') ?? 'asc';
             $showTrashed = data_get($config, 'show_trashed');
