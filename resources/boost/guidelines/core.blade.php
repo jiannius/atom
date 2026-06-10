@@ -95,9 +95,9 @@ new class extends Component {
 
 ### Tables (admin listings)
 
+@verbatim
 `<atom:table :paginate="$this->rows">` with `x-slot:columns` / `x-slot:rows` is the data table. Drive sort, pagination and checkboxes through the `$_table` state (from `AtomComponent`) plus the `toTable($filters)` Eloquent builder macro on a `#[Computed]` method.
 
-@verbatim
 - **Search:** `<atom:table.search wire:model="filters.search" />` — the standard listing search (search icon, Enter to run). Don't hand-roll an input.
 - **Filters:** wrap the filter controls in `<atom:table.filters>`; it auto-renders active-filter chips + a "Clear all". Use `<atom:select variant="filter">`, `<atom:date-picker variant="range">`, or custom selects inside it — each control needs a `wire:model` (that is the chip's key; without it no chip registers). Put overflow filters in `<x-slot:more>` — a "More filters" popover by default, or set `overflow="card"` for an expandable row.
 - **Trashed:** `<atom:table.trashed />` inside the filters bar toggles `$_table.show_trashed`; `toTable()` then applies `onlyTrashed()`.
