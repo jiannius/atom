@@ -84,14 +84,24 @@ class Builder
     public function tableColumns()
     {
         return function () {
+            // Memoize per table for the lifetime of the request, so filtering
+            // multiple raw columns on the same table costs at most one cache
+            // read (which is itself a DB query when cache.driver=database).
+            static $memo = [];
+
             $table = $this->getModel()->getTable();
+
+            if (isset($memo[$table])) {
+                return $memo[$table];
+            }
+
             $columns = cache()->remember('table_'.$table.'_columns', now()->addDays(7), function () use ($table) {
                 return collect(DB::select("show columns from `$table`"))
                     ->map(fn ($row) => (array) $row)
                     ->all();
             });
 
-            return collect($columns)->map(fn($val) => [
+            return $memo[$table] = collect($columns)->map(fn($val) => [
                 'name' => data_get($val, 'Field'),
                 'type' => data_get($val, 'Type'),
             ])->values();
@@ -137,6 +147,14 @@ class Builder
             else {
                 $key = head($filters);
                 $value = last($filters);
+
+                // A blank value (null / '' / []) means "no constraint" — skip it
+                // entirely. This avoids the column-type introspection below for
+                // unset filters, and prevents whereIn([]) returning zero rows.
+                if (blank($value)) {
+                    return $this;
+                }
+
                 $table = $this->getModel()->getTable();
 
                 if ($key === 'search' && $this->hasNamedScope('search') && $value) {
