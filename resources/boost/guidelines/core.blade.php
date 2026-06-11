@@ -139,7 +139,7 @@ For confirm-before-action in Blade, use `<atom:confirm.trigger>`:
 ### Tooltip
 
 @verbatim
-`<atom:tooltip content="Save" position="top" align="center" kbd="⌘S" :interactive="false" :toggleable="false">` — wraps a single trigger element as its slot child. `content` is auto-translated.
+`<atom:tooltip content="Save" position="top" align="center" kbd="⌘S" :interactive="false">` — wraps a single trigger element as its slot child. `content` is auto-translated. Shows on hover **and** keyboard focus, and links the trigger via `aria-describedby`. Set `interactive` when the content has links/buttons (the tooltip stays open while the pointer is over it). For click-to-open panels use `<atom:dropdown>`, not a tooltip.
 @endverbatim
 
 ### Select with options

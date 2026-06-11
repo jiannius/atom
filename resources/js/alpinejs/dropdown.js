@@ -17,11 +17,20 @@ export default (config) => {
         },
 
         init() {
+            this.trigger?.setAttribute('aria-haspopup', 'menu')
+            this.trigger?.setAttribute('aria-expanded', 'false')
+
             this.trigger?.addEventListener('click', () => this.show())
             this.popover?.addEventListener('toggle', (e) => {
-                if (e.newState === 'open') this.$dispatch('open')
+                if (e.newState === 'open') {
+                    this.$dispatch('open')
+                }
                 else if (e.newState === 'closed') {
+                    // Single source of truth for "closed" so a native dismiss
+                    // (ESC / outside-click) cleans up state too, not just hide().
                     this.$dispatch('close')
+                    this.$root.removeAttribute('data-open')
+                    this.trigger?.setAttribute('aria-expanded', 'false')
                     this.cleanup?.()
                 }
             })
@@ -34,12 +43,12 @@ export default (config) => {
         show() {
             this.popover.showPopover()
             this.$root.setAttribute('data-open', '')
+            this.trigger?.setAttribute('aria-expanded', 'true')
             this.cleanup = atom.floatingui(this.trigger, this.popover, { placement: this.placement })
         },
 
         hide() {
             this.popover.hidePopover()
-            this.$root.removeAttribute('data-open')
         },
     }
 }

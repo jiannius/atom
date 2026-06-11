@@ -12,6 +12,6 @@ $classes = Arr::toCssClasses([
 ]);
 @endphp
 
-<div {{ $attributes->class($classes) }} data-atom-menu {{ $popover ? 'popover' : '' }}>
+<div {{ $attributes->class($classes)->merge(['role' => 'menu']) }} data-atom-menu {{ $popover ? 'popover' : '' }}>
     {{ $slot }}
 </div>

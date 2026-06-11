@@ -12,7 +12,7 @@
 ])
 
 @php
-$icon = [
+$icons = [
     'start' => $icon ?? (in_array($variant, ['delete', 'remove']) ? 'delete' : null),
     'end' => $iconSuffix,
 ];
@@ -36,6 +36,7 @@ $merges = [
     'href' => $el === 'button' ? null : $href,
     'type' => $el === 'button' ? $type : false,
     'target' => $el === 'button' ? false : ($target ?? ($href && $newtab ? '_blank' : false)),
+    'role' => 'menuitem',
     'data-atom-menu-item' => true,
 ];
 
@@ -56,8 +57,8 @@ if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attribute
 @endphp
 
 <{{ $el }} {{ $attributes->class($classes)->merge($merges) }}>
-    @if ($icon = data_get($icon, 'start'))
-        <x-dynamic-component :component="'atom::icon.'.$icon" class="shrink-0 opacity-40 size-5"/>
+    @if ($iconStart = data_get($icons, 'start'))
+        <x-dynamic-component :component="'atom::icon.'.$iconStart" class="shrink-0 opacity-40 size-5"/>
     @endif
 
     <div class="grow leading-tight whitespace-nowrap truncate">
@@ -68,7 +69,7 @@ if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attribute
         <atom:navlist.badge :color="$badgeColor" class="shrink-0">{{ $badge }}</atom:navlist.badge>
     @endif
 
-    @if ($icon = data_get($icon, 'end'))
-        <x-dynamic-component :component="'atom::icon.'.$icon" class="shrink-0 opacity-40 group-hover/collapse:hidden"/>
+    @if ($iconEnd = data_get($icons, 'end'))
+        <x-dynamic-component :component="'atom::icon.'.$iconEnd" class="shrink-0 opacity-40 size-5"/>
     @endif
 </{{ $el }}>
