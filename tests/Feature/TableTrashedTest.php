@@ -15,12 +15,15 @@ it('renders an icon-only toggle with a tooltip bound to _table.show_trashed', fu
 it('signals the active state with a solid fill and aria-pressed', function () {
     // The ghost button's hover already lands on bg-zinc-100, so the active
     // (showing-archived) state needs a distinct solid fill plus aria-pressed
-    // for assistive tech.
+    // for assistive tech. The fill/text utilities must be !important — the
+    // ghost variant's base text-zinc-600 otherwise wins on equal specificity
+    // (Tailwind orders by utility, not source), leaving a dark icon on the
+    // dark active fill.
     $html = Blade::render('<atom:table.trashed />');
 
     expect($html)
         ->toContain('aria-pressed')
-        ->toContain('bg-zinc-800 text-white');
+        ->toContain('bg-zinc-800! text-white!');
 });
 
 it('renders the toggle inside the table header via the trashed prop', function () {
