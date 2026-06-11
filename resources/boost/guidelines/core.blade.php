@@ -28,6 +28,8 @@ Never write `<x-atom::name>`, `<x-icon />`, or bespoke equivalents when an Atom 
 - Always `<atom:icon.name />`. Names live in `vendor/jiannius/atom/components/icon/`.
 - Default size is `size-5`. Override with `class="size-4"` etc.
 - Some icons accept `variant="solid"`. Pass any other Tailwind classes via `class`.
+- Icons are decorative by default and marked `aria-hidden`. For a meaningful standalone icon, pass `aria-label` (or `title`) to expose it to assistive tech.
+- An icon-only button (`<atom:button icon="..." />`, no slot) is auto-labelled from the icon name; override with `aria-label="..."`. Don't add a redundant `aria-label` to a button that already has visible text.
 @endverbatim
 
 ### Livewire components — `AtomComponent` trait

@@ -44,12 +44,11 @@ $classes = [
     $block ? 'flex w-full' : 'inline-flex',
     'whitespace-nowrap font-medium transition-colors outline-offset-1',
     'disabled:pointer-events-none disabled:cursor-default disabled:opacity-50',
-    'group-[]/buttons:-ml-[1px] group-[]/buttons:first:ml-0',
     '[&.is-loading]:opacity-50 [&.is-loading]:pointer-events-none',
 ];
 
 if ($variant === 'link') {
-    $classes[] = 'bg-transparent text-zinc-800 border border-transparent underline-offset-5 decoration-dotted hover:underline focus:underline focus:outline-none';
+    $classes[] = 'bg-transparent text-zinc-800 dark:text-zinc-200 border border-transparent underline-offset-5 decoration-dotted hover:underline focus:underline focus:outline-none';
 }
 else {
     $classes[] = 'focus:outline-1';
@@ -76,7 +75,7 @@ else {
             'facebook' => 'bg-blue-100 text-blue-600 border border-transparent focus:outline-blue-300 hover:bg-blue-600 hover:text-blue-100',
             'google' => 'bg-rose-100 text-rose-600 border border-transparent focus:outline-rose-300 hover:bg-rose-600 hover:text-rose-100',
             'linkedin' => 'bg-sky-100 text-sky-600 border border-transparent focus:outline-sky-300 hover:bg-sky-600 hover:text-sky-100',
-            'whatsapp' => 'bg-green-100 text-green-600 border border-transparent focus:outline-green-300 hover:bg-green-600 hover:text-sky-100',
+            'whatsapp' => 'bg-green-100 text-green-600 border border-transparent focus:outline-green-300 hover:bg-green-600 hover:text-green-100',
             'telegram' => 'bg-sky-100 text-sky-600 border border-transparent focus:outline-sky-300 hover:bg-sky-600 hover:text-sky-100',
             default => 'bg-zinc-100 text-zinc-500 border border-transparent focus:outline-zinc-200 hover:bg-white hover:text-zinc-800 hover:border-zinc-200',
         };
@@ -174,10 +173,10 @@ if ($type === 'delete' && !$attributes->wire('click')->value() && !$attributes->
     ];
 }
 
-if ($slot->isNotEmpty()) {
+if ($slot->isEmpty() && data_get($icon, 'start')) {
     $merges = [
         ...$merges,
-        'aria-label' => strip_tags($slot->toHtml()),
+        'aria-label' => str(data_get($icon, 'start'))->headline()->toString(),
     ];
 }
 @endphp
