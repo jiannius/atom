@@ -20,7 +20,7 @@ view="atom::docs.demos.table.actions"/>
 
 <atom:docs.example
 title="Trashed toggle"
-description="atom:table.trashed toggles $_table.show_trashed; toTable() then applies onlyTrashed(). Place it inside atom:table.filters so it also surfaces as an active-filter chip."
+description="Add the trashed prop to atom:table to append an icon toggle (tooltip 'Show archived', solid-filled when active) at the end of the header bar — it toggles $_table.show_trashed and toTable() applies onlyTrashed(). The standalone atom:table.trashed shown here is for custom placement."
 view="atom::docs.demos.table.trashed"/>
 
 <atom:docs.example
