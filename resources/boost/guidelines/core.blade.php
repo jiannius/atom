@@ -136,6 +136,15 @@ For confirm-before-action in Blade, use `<atom:confirm.trigger>`:
 `<atom:button type="delete">` auto-wires a danger confirm dialog and dispatches `confirmed` → `$wire.delete()` by default. Override by setting your own `wire:click` or `x-on:click`.
 @endverbatim
 
+### Dropdown & menu
+
+@verbatim
+- `<atom:dropdown>` wraps a trigger and an `<atom:menu popover>`. The trigger is the first child (or a `[data-atom-dropdown-trigger]` / first `<button>`); clicking it toggles the menu via the native popover API, positioned with Floating UI. Props: `position` (`top`/`bottom`/`left`/`right`), `align` (`start`/`center`/`end`), and `locked` (keep the menu open when an item is clicked — the default closes on inside-click).
+- `<atom:menu>` is the surface — pass `popover` when nesting inside `<atom:dropdown>`, omit it to render inline.
+- `<atom:menu.item>` takes `icon`, `iconSuffix`, `badge`/`badgeColor`, `href` (renders an `<a>`, plus `newtab`/`target`), and `variant` (`default`/`warning`/`danger`/`delete`/`remove`). `variant="delete"` auto-wires a danger confirm → `$wire.delete()` (override with your own `wire:click`/`x-on:click`; pass `phrase` to require a typed confirmation). `remove` uses the same red styling + delete icon but no auto-confirm.
+- Accessibility is automatic: the trigger gets `aria-haspopup`/`aria-expanded`, the surface is `role="menu"`, items are `role="menuitem"`.
+@endverbatim
+
 ### Tooltip
 
 @verbatim

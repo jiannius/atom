@@ -8,7 +8,8 @@
         variant="ghost"
         :aria-label="t($label)"
         wire:click="$toggle('_table.show_trashed')"
-        x-bind:class="$wire._table.show_trashed && 'bg-zinc-100 dark:bg-zinc-700'"
+        x-bind:aria-pressed="$wire._table.show_trashed ? 'true' : 'false'"
+        x-bind:class="$wire._table.show_trashed && 'bg-zinc-800 text-white hover:bg-zinc-800 hover:text-white dark:bg-white dark:text-zinc-800 dark:hover:bg-white dark:hover:text-zinc-800'"
         {{ $attributes }}
         data-atom-table-trashed />
 </atom:tooltip>

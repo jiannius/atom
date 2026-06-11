@@ -10,7 +10,7 @@ view="atom::docs.demos.button.sizes"/>
 
 <atom:docs.example
 title="Icons"
-description="icon prefixes, iconSuffix appends, and a slotless button renders icon-only square."
+description="icon prefixes, iconSuffix appends, and a slotless button renders an icon-only square — auto-labelled for screen readers from the icon name (override with aria-label)."
 view="atom::docs.demos.button.icons"/>
 
 <atom:docs.example
