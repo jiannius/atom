@@ -3,6 +3,7 @@
     'paginate' => null,
     'maxRows' => [50, 100, 200, 400],
     'skeleton' => false,
+    'trashed' => false,
 ])
 
 @php
@@ -35,13 +36,23 @@ if (!$showSkeleton && !is_bool($empty)) {
         </template>
     @endif
 
-    @isset ($header)
+    @if (isset($header) || $trashed)
         <template x-if="!$wire._table.checkboxes.length" hidden>
-            <div {{ $header->attributes->class(['min-h-10', $header->attributes->get('class', 'flex flex-wrap items-center gap-3')]) }}>
-                {{ $header }}
-            </div>
+            @isset ($header)
+                <div {{ $header->attributes->class(['min-h-10', $header->attributes->get('class', 'flex flex-wrap items-center gap-3')]) }}>
+                    {{ $header }}
+
+                    @if ($trashed)
+                        <div class="ml-auto shrink-0"><atom:table.trashed /></div>
+                    @endif
+                </div>
+            @else
+                <div class="min-h-10 flex flex-wrap items-center gap-3">
+                    <div class="ml-auto shrink-0"><atom:table.trashed /></div>
+                </div>
+            @endisset
         </template>
-    @endisset
+    @endif
     
     <div class="overflow-hidden rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-xs divide-y dark:divide-zinc-700">
         <div class="relative overflow-x-auto">
