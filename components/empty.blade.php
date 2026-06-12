@@ -29,8 +29,8 @@
     </div>
 @else
     <div class="flex flex-col items-center justify-center gap-3 py-8" data-atom-empty>
-        <div class="text-zinc-300 size-14">
-            <x-dynamic-component :component="'atom::icon.'.$icon" />
+        <div class="text-zinc-300">
+            <x-dynamic-component :component="'atom::icon.'.$icon" class="size-14" />
         </div>
 
         @if ($slot->isNotEmpty())
