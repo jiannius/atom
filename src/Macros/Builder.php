@@ -58,6 +58,10 @@ class Builder
             $maxRows ??= data_get($config, 'max_rows') ?? 100;
 
             if ($sortColumn) {
+                // a user-chosen sort overrides any default ordering on the query —
+                // appended after existing orderBys it would never win
+                $this->reorder();
+
                 if (str($sortColumn)->startsWith('raw:')) {
                     $this->orderByRaw(implode(' ', array_filter([str($sortColumn)->replace('raw:', ''), $sortDirection])));
                 }

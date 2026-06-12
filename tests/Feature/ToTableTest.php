@@ -68,3 +68,17 @@ it('runs outside a livewire component without crashing (current() false-guard)',
 
     expect($page->total())->toBe(2);
 });
+
+it('lets a user sort override a default query ordering', function () {
+    Item::factory()->create(['amount' => 9, 'name' => 'c']);
+    Item::factory()->create(['amount' => 5, 'name' => 'b']);
+    Item::factory()->create(['amount' => 1, 'name' => 'a']);
+
+    $test = Livewire::test(TableFixture::class)
+        ->set('_table.sort.column', 'name')
+        ->set('_table.sort.direction', 'asc');
+
+    $names = withLivewireContext($test->instance(), fn () => Item::query()->latest('amount')->toTable()->pluck('name')->all());
+
+    expect($names)->toBe(['a', 'b', 'c']);
+});
