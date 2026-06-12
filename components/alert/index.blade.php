@@ -46,11 +46,11 @@ $config = [
                 <div x-text="config.subheading" class="text-zinc-400"></div>
             </template>
 
-            <template x-if="typeof config.message === 'string'" hidden>l
+            <template x-if="typeof config.message === 'string'" hidden>
                 <div x-text="config.message" class="text-zinc-400"></div>
             </template>
 
-            <template x-if="Array.isArray(config.message) && config.message.length === 1" hidden>l
+            <template x-if="Array.isArray(config.message) && config.message.length === 1" hidden>
                 <div x-text="config.message[0]" class="text-zinc-400"></div>
             </template>
 

@@ -36,7 +36,7 @@ x-data="{
     },
 
     onClick () {
-        if (this.config.navigate) Liveiwre.navigate(this.config.navigate)
+        if (this.config.navigate) Livewire.navigate(this.config.navigate)
         else if (this.config.url) window.open(this.config.url, '_blank')
     },
 }"
@@ -111,6 +111,7 @@ popover="manual">
             <button
             type="button"
             x-on:click.stop="closeToast"
+            aria-label="{{ t('Close') }}"
             class="flex items-center justify-center text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200">
                 <atom:icon.close class="size-5"/>
             </button>
