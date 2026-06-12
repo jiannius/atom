@@ -183,7 +183,7 @@ export default (config) => {
         scroll () {
             let menu = this.$root.querySelector('[data-atom-menu]')
             let els = this.getOptionsElements()
-            let index = els.findIndex(node => (node.getAttribute('data-option-focus', true)))
+            let index = els.findIndex(node => (node.hasAttribute('data-option-focus')))
             let focus = index > -1 ? els[index] : null
 
             if (!focus) return

@@ -25,7 +25,7 @@ $merges = ['name' => $name];
                 'shrink-0',
                 'pt-1' => $align === 'start',
             ])>
-                <input type="checkbox" class="hidden peer" {{ $attributes }}>
+                <input type="checkbox" class="hidden peer" {{ $attributes->merge($merges) }}>
 
                 <div
                 tabindex="0"
