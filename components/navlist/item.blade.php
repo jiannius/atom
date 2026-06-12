@@ -52,7 +52,7 @@ $classes = Arr::toCssClasses([
     'data-atom-navlist-item' => true,
 ]) }}>
     @if ($icon)
-        <div class="relative">
+        <div class="relative flex shrink-0 items-center">
             <x-dynamic-component :component="'atom::icon.'.$icon" class="block size-5"/>
 
             @if ($iconDot)

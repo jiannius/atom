@@ -108,6 +108,16 @@ new class extends Component {
 - **Loading:** built in — pagination/sort show a dim overlay (rows stay put); search shows a spinner in the search box (rows stay). For a lazy/deferred table, add the `skeleton` prop (or `:skeleton="N"`) to `<atom:table>` to show placeholder rows on first load until the data resolves.
 @endverbatim
 
+### Navigation & layout shell
+
+@verbatim
+- **App shell:** `<atom:layouts.sidebar>` renders the sidebar + header + main grid. Fill its slots — don't rebuild the chrome: `<x-slot:brand>` (logo/name), `<x-slot:nav>` (main nav), `<x-slot:navfoot>`, `<x-slot:dropdown>` (user menu items) or `<x-slot:profile>`, `<x-slot:footer>`. The page body goes in the default slot.
+- **Sidebar nav:** build the `nav` slot with `<atom:navlist>` — never hand-roll `<a>` tags. Items are `<atom:navlist.item icon="..." :href="route('...')" wire:navigate>Label</atom:navlist.item>`; current-route highlight is automatic (override with `:current="request()->routeIs('x.*')"`). Group with `<atom:navlist.group heading="Section">`; add `expandable` for a collapsible group. Trailing count/badge via `count="3"` or a `<x-slot:badge color="amber">NEW</x-slot:badge>`.
+- **Breadcrumbs:** add a `breadcrumbs(Breadcrumbs $b)` method to the Livewire component (see the AtomComponent section) and drop `<atom:breadcrumbs />` in the page — the trail builds itself from navigation; a single crumb renders as the page heading.
+- **Tabs:** `<atom:tabs :tabs="[...]" wire:model="tab" />` (each tab `['label' => ..., 'value' => ..., 'icon' => ...]`), or compose `<atom:tabs.item>` children. `variant="button"` for the pill style.
+- **Links:** `<atom:link :href="..." />` for inline prose links (dotted underline). Nav/actions use `<atom:navlist.item>` / `<atom:button>`, not link.
+@endverbatim
+
 ### Toast / Alert / Confirm
 
 From PHP, `$this->toast(...)` / `$this->alert(...)` / `$this->confirm(...)` (or `app('atom')->...()` outside Livewire). All translate `heading`, `subheading`, `message` through `t()`.
