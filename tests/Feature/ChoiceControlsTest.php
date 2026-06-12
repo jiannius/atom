@@ -16,8 +16,21 @@ describe('checkbox', function () {
             ->toContain('data-atom-checkbox')
             ->toContain('type="checkbox"')
             ->toContain('name="agree"')
-            ->toContain('I agree')
-            ->toContain('role="checkbox"');
+            ->toContain('I agree');
+    });
+
+    it('keeps the real input operable instead of a fake role=checkbox div', function () {
+        // a11y: the input is sr-only (focusable + in the a11y tree, Space
+        // toggles natively); the visual swatch is decorative aria-hidden, not
+        // a role/tabindex div that no keyboard handler ever wired up.
+        $html = renderBlade('<atom:checkbox label="x" />');
+
+        expect($html)
+            ->toContain('class="sr-only peer"')
+            ->toContain('aria-hidden="true"')
+            ->toContain('peer-focus-visible:outline-1')
+            ->not->toContain('role="checkbox"')
+            ->not->toContain('tabindex');
     });
 
     it('renders a caption', function () {
@@ -28,14 +41,17 @@ describe('checkbox', function () {
 });
 
 describe('radio', function () {
-    it('uses role=radio (not checkbox) and the matching error group', function () {
+    it('renders a native radio with the decorative swatch hidden from AT', function () {
         $html = renderBlade('<atom:radio label="Option A" />');
 
         expect($html)
             ->toContain('data-atom-radio')
             ->toContain('type="radio"')
-            ->toContain('role="radio"')
+            ->toContain('class="sr-only peer"')
+            ->toContain('aria-hidden="true"')
             ->not->toContain('role="checkbox"')
+            ->not->toContain('role="radio"')   // native input carries the role
+            ->not->toContain('tabindex')
             ->toContain('group-has-[.error]/radio:outline-1')
             ->not->toContain('group-has-[.error]/checkbox');
     });
@@ -50,5 +66,16 @@ describe('toggle', function () {
             ->toContain('type="checkbox"')
             ->toContain('name="enabled"')
             ->toContain('Enabled');
+    });
+
+    it('keeps the real input operable instead of a fake role=checkbox div', function () {
+        $html = renderBlade('<atom:toggle label="x" />');
+
+        expect($html)
+            ->toContain('class="peer sr-only"')
+            ->toContain('aria-hidden="true"')
+            ->toContain('peer-focus-visible:ring-1')
+            ->not->toContain('role="checkbox"')
+            ->not->toContain('tabindex');
     });
 });

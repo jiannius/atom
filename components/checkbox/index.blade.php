@@ -25,18 +25,18 @@ $merges = ['name' => $name];
                 'shrink-0',
                 'pt-1' => $align === 'start',
             ])>
-                <input type="checkbox" class="hidden peer" {{ $attributes->merge($merges) }}>
+                <input type="checkbox" class="sr-only peer" {{ $attributes->merge($merges) }}>
 
                 <div
-                tabindex="0"
-                role="checkbox"
+                aria-hidden="true"
                 @class([
-                    'size-4.5 rounded-md flex items-center justify-center focus:outline-none',
+                    'size-4.5 rounded-md flex items-center justify-center',
                     'bg-white dark:bg-white/10',
                     'border border-zinc-300 dark:border-white/10',
                     'text-zinc-300 dark:text-black',
                     'peer-checked:border-zinc-800 peer-checked:shadow-sm peer-checked:*:opacity-100',
                     'dark:peer-checked:border-white',
+                    'peer-focus-visible:outline-1 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-zinc-400',
                     'group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-red-500 group-has-[.error]/checkbox:outline-offset-1',
                 ])>
                     <div class="size-3 opacity-0 rounded bg-zinc-700 dark:bg-white flex items-center justify-center">
