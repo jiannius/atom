@@ -4,6 +4,10 @@
     'variant' => null,
 ])
 
+@php
+$model = $attributes->wire('model')->value();
+@endphp
+
 <div @class([
     'select-none',
 
@@ -17,10 +21,16 @@
     'rounded' => $variant === 'button' && $size === 'sm',
     'rounded-md' => $variant === 'button' && !$size,
 ]) data-atom-tabs>
-    <div {{ $attributes->class(['inline-flex items-center h-full']) }}>
+    <div {{ $attributes->class(['inline-flex items-center h-full']) }}
+        @if ($model)
+            x-data="{ value: $wire.{{ $model }} }"
+            x-modelable="value"
+            x-on:tabs-input="value = $event.detail"
+        @endif
+    >
         @foreach ($tabs as $tab)
-            @if ($attributes->wire('model') && data_get($tab, 'value'))
-                <atom:tabs.item :tab="$tab" x-bind:data-active="$wire.{{ $attributes->wire('model')->value() }} === {{ js(data_get($tab, 'value')) }}" />
+            @if ($model && data_get($tab, 'value'))
+                <atom:tabs.item :tab="$tab" x-bind:data-active="value === {{ js(data_get($tab, 'value')) }}" />
             @else
                 <atom:tabs.item :tab="$tab" />
             @endif

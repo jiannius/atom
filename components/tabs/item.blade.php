@@ -33,7 +33,7 @@ $merges = [
 @endphp
 
 <{{ $element }}
-@if ($value) x-on:click.stop="$dispatch('input', {{ js($value) }})" @endif
+@if ($value) x-on:click.stop="$dispatch('tabs-input', {{ js($value) }})" @endif
 @if ($current) data-active @endif
 @class([
     'grow self-stretch transition-colors duration-200 text-muted-foreground dark:text-muted',
