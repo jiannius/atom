@@ -43,12 +43,12 @@ if (!$showSkeleton && !is_bool($empty)) {
                     {{ $header }}
 
                     @if ($trashed)
-                        <div class="ml-auto shrink-0"><atom:table.trashed /></div>
+                        <div class="ml-auto shrink-0"><atom:table.trashed :variant="is_string($trashed) ? $trashed : 'archived'" /></div>
                     @endif
                 </div>
             @else
                 <div class="min-h-10 flex flex-wrap items-center gap-3">
-                    <div class="ml-auto shrink-0"><atom:table.trashed /></div>
+                    <div class="ml-auto shrink-0"><atom:table.trashed :variant="is_string($trashed) ? $trashed : 'archived'" /></div>
                 </div>
             @endisset
         </template>

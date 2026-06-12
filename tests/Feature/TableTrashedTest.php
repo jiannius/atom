@@ -48,3 +48,18 @@ it('does not render the toggle without the trashed prop', function () {
 
     expect($html)->not->toContain('data-atom-table-trashed');
 });
+
+it('renders the voided variant with the trash icon and label', function () {
+    $html = Blade::render('<atom:table.trashed variant="voided" />');
+
+    expect($html)->toContain('aria-label="Show voided"')
+        ->and($html)->toContain('Show voided')
+        ->and($html)->not->toContain('Show archived');
+});
+
+it('forwards a string trashed prop as the variant', function () {
+    $html = renderBlade('<atom:table trashed="voided"></atom:table>');
+
+    expect($html)->toContain('data-atom-table-trashed')
+        ->and($html)->toContain('aria-label="Show voided"');
+});

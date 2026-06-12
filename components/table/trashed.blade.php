@@ -1,10 +1,17 @@
 @props([
-    'label' => 'Show archived',
+    'variant' => 'archived',   // archived | voided
+    'label' => null,
+    'icon' => null,
 ])
+
+@php
+$label ??= $variant === 'voided' ? 'Show voided' : 'Show archived';
+$icon ??= $variant === 'voided' ? 'delete' : 'archive';
+@endphp
 
 <atom:tooltip :content="$label">
     <atom:button
-        icon="archive"
+        :icon="$icon"
         variant="ghost"
         :aria-label="t($label)"
         wire:click="$toggle('_table.show_trashed')"
