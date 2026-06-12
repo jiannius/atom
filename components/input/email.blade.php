@@ -42,9 +42,9 @@ data-atom-input-email>
                 : 'bg-red-100 dark:bg-red-800/10 border-red-400 text-red-500 dark:text-red-400'"
                 class="shrink-0 rounded-md border text-sm py-0.5 pl-2 inline-flex items-center -ml-1">
                     <div x-text="`${val.name} <${val.email}>`"></div>
-                    <div x-on:click="remove(val.email)" class="shrink-0 flex items-center justify-center px-2">
+                    <button type="button" x-on:click="remove(val.email)" x-bind:aria-label="`{{ t('Remove') }} ${val.email}`" class="shrink-0 flex items-center justify-center px-2">
                         <atom:icon.close class="size-4" />
-                    </div>
+                    </button>
                 </div>
             </template>
 
@@ -71,11 +71,13 @@ data-atom-input-email>
     </atom:dropdown>
 
     @if ($clearable)
-        <div
+        <button
+        type="button"
         x-show="emailInputValue?.length"
         x-on:click="emailInputValue = []"
+        aria-label="{{ t('Clear all') }}"
         class="z-1 absolute top-0 right-0 h-10 flex items-center justify-center text-zinc-400 pr-3 cursor-pointer hover:text-muted text-muted-foreground">
             <atom:icon.close />
-        </div>
+        </button>
     @endif
 </div>

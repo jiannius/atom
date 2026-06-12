@@ -4,7 +4,6 @@
     'copyable' => false,
     'clearable' => false,
     'placeholder' => null,
-    'invalid' => false,
 ])
 
 @php

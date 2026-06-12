@@ -40,16 +40,19 @@ $classes = Arr::toCssClasses([
 
     @if ($type === 'password')
         <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pr-3 right-0">
-            <div
+            <button
+            type="button"
             x-data="{ show: false }"
             x-init="$watch('show', show => {
                 $el.closest('[data-atom-input]').querySelector('input').setAttribute('type', show ? 'text' : 'password')
             })"
             x-on:click.stop="show = !show"
+            x-bind:aria-label="show ? '{{ t('Hide password') }}' : '{{ t('Show password') }}'"
+            x-bind:aria-pressed="show ? 'true' : 'false'"
             class="w-full h-full flex items-center justify-center cursor-pointer">
                 <atom:icon.eye-slash x-show="show" class="size-4"/>
                 <atom:icon.eye x-show="!show" class="size-4"/>
-            </div>
+            </button>
         </div>
     @elseif ($copyable || $clearable || $iconSuffix)
         <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pr-3 right-0">
@@ -62,7 +65,8 @@ $classes = Arr::toCssClasses([
                     </atom:copy>
                 </atom:tooltip>
             @elseif ($clearable)
-                <div
+                <button
+                type="button"
                 x-cloak
                 x-data="{
                     input: null,
@@ -79,9 +83,10 @@ $classes = Arr::toCssClasses([
                     $dispatch('input', '')
                     $nextTick(() => input.focus())
                 }"
+                aria-label="{{ t('Clear') }}"
                 class="w-full h-full flex items-center justify-center cursor-pointer">
                     <atom:icon.close class="size-4"/>
-                </div>
+                </button>
             @elseif ($iconSuffix)
                 <div class="w-full h-full flex items-center justify-center pointer-events-none">
                     <x-dynamic-component :component="'atom::icon.'.$iconSuffix" class="size-4"/>
