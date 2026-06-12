@@ -159,6 +159,9 @@ class Atom
         $password = false,
         $passphrase = null,
         $passphraseLabel = null,
+        $reason = false,
+        $reasonLabel = null,
+        $reasonPlaceholder = null,
         $onAccepted = null,
         $onRejected = null,
     ) {
@@ -173,6 +176,9 @@ class Atom
             'password',
             'passphrase',
             'passphraseLabel',
+            'reason',
+            'reasonLabel',
+            'reasonPlaceholder',
             'onAccepted',
             'onRejected',
         ));

@@ -114,7 +114,7 @@ From PHP, `$this->toast(...)` / `$this->alert(...)` / `$this->confirm(...)` (or 
 
 - `toast`: `message`, `variant` (`success|danger|warning|...`), `heading`, `subheading`, `html`, `position`, `delay`, `navigate`, `url`.
 - `alert`: `variant`, `heading`, `subheading`, `message`, `html`, `button`, `onDismissed`.
-- `confirm`: `variant`, `heading`, `subheading`, `message`, `html`, `buttonConfirm`, `buttonCancel`, `password`, `passphrase`, `onAccepted`, `onRejected`.
+- `confirm`: `variant`, `heading`, `subheading`, `message`, `html`, `buttonConfirm`, `buttonCancel`, `password`, `passphrase`, `reason` (with `reasonLabel`/`reasonPlaceholder`), `onAccepted`, `onRejected`.
 
 @verbatim
 For confirm-before-action in Blade, use `<atom:confirm.trigger>`:
