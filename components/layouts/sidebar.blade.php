@@ -8,6 +8,12 @@
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
 ])
 
+@php
+$user = auth()->user();
+$avatar = $user?->avatar;
+$name = $user?->name;
+@endphp
+
 <atom:html
 :noindex="$noindex"
 :title="$title"
@@ -82,19 +88,19 @@ class="min-h-screen bg-white dark:bg-zinc-900">
                     @else
                         <div class="grow flex items-center truncate">
                             <div class="shrink-0 size-10 text-lg bg-zinc-200 dark:bg-zinc-700 rounded-lg flex items-center justify-center">
-                                @if ($avatar = auth()->user()->avatar ?? null)
+                                @if ($avatar)
                                     <img src="{{ $avatar }}" alt="{{ $name }}" class="w-full h-full object-cover">
                                 @else
-                                    {{ auth()->user()->initials() }}
+                                    {{ $user?->initials() }}
                                 @endif
                             </div>
 
                             <div class="mx-2 text-zinc-500 text-left dark:text-white truncate">
                                 <div class="font-medium truncate">
-                                    {{ auth()->user()->name }}
+                                    {{ $user?->name }}
                                 </div>
                                 <div class="text-sm text-zinc-500 truncate dark:text-white/50">
-                                    {{ auth()->user()->email }}
+                                    {{ $user?->email }}
                                 </div>
                             </div>
                         </div>
@@ -137,7 +143,7 @@ class="min-h-screen bg-white dark:bg-zinc-900">
                             @if ($avatar)
                                 <img src="{{ $avatar }}" alt="{{ $name }}" class="w-full h-full object-cover">
                             @else
-                                {{ auth()->user()->initials() }}
+                                {{ $user?->initials() }}
                             @endif
                         </div>
 
@@ -154,16 +160,16 @@ class="min-h-screen bg-white dark:bg-zinc-900">
                                         @if ($avatar)
                                             <img src="{{ $avatar }}" alt="{{ $name }}" class="w-full h-full object-cover">
                                         @else
-                                            {{ auth()->user()->initials() }}
+                                            {{ $user?->initials() }}
                                         @endif
                                     </div>
 
                                     <div class="mx-2 text-zinc-500 text-left dark:text-white truncate">
                                         <div class="font-medium truncate">
-                                            {{ auth()->user()->name }}
+                                            {{ $user?->name }}
                                         </div>
                                         <div class="text-sm text-zinc-500 truncate dark:text-white/50">
-                                            {{ auth()->user()->email }}
+                                            {{ $user?->email }}
                                         </div>
                                     </div>
                                 </div>
