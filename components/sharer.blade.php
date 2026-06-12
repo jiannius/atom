@@ -20,10 +20,12 @@
     <div x-data x-init="Sharer.init()" class="flex items-center gap-2 flex-wrap">
         @foreach ($sites as $site)
             <atom:tooltip :content="str($site)->headline()->toString()">
-                <div
+                <button
+                type="button"
                 data-sharer="{{ $site }}"
                 data-url="{!! $url !!}"
                 data-title="{!! $title !!}"
+                aria-label="{{ str($site)->headline()->toString() }}"
                 class="size-10 rounded flex text-2xl cursor-pointer hover:bg-slate-100 hover:border">
                     <x-dynamic-component :component="'atom::icon.'.$site" size="24" @class([
                         'm-auto',
@@ -36,16 +38,18 @@
                             default => 'text-zinc-800',
                         }
                     ]) />
-                </div>
+                </button>
             </atom:tooltip>
         @endforeach
 
         <atom:tooltip :content="t('Copy Link')">
-            <div
+            <button
+            type="button"
             x-on:click.stop="$clipboard({{ js($url) }})"
+            aria-label="{{ t('Copy Link') }}"
             class="size-10 rounded flex text-lg cursor-pointer hover:bg-slate-100 hover:border">
                 <atom:icon.link size="24" class="m-auto" />
-            </div>
+            </button>
         </atom:tooltip>
     </div>
 </div>

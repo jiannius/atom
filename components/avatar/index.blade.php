@@ -47,7 +47,7 @@ $classes = [
 }]) data-atom-avatar>
     <atom:tooltip :content="$name" class="w-full h-full">
         @if ($src)
-            <img src="{{ $src }}" class="w-full h-full object-cover">
+            <img src="{{ $src }}" alt="{{ $name }}" class="w-full h-full object-cover">
         @else
             <div class="w-full h-full flex items-center justify-center cursor-default">
                 {{ $initial }}

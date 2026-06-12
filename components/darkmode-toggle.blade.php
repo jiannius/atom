@@ -2,8 +2,8 @@
     <button
     type="button"
     class="shrink-0 flex items-center justify-center rounded-lg size-10 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-    aria-label="{{ t('Toggle sidebar') }}"
-    data-atom-sidebar-toggle>
+    aria-label="{{ t('Toggle dark mode') }}"
+    data-atom-darkmode-toggle>
         <atom:icon.darkmode-toggle class="size-5"/>
     </button>
 

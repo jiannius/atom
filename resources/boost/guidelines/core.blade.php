@@ -161,6 +161,19 @@ For confirm-before-action in Blade, use `<atom:confirm.trigger>`:
 `<atom:tooltip content="Save" position="top" align="center" kbd="⌘S" :interactive="false">` — wraps a single trigger element as its slot child. `content` is auto-translated. Shows on hover **and** keyboard focus, and links the trigger via `aria-describedby`. Set `interactive` when the content has links/buttons (the tooltip stays open while the pointer is over it). For click-to-open panels use `<atom:dropdown>`, not a tooltip.
 @endverbatim
 
+### Status & display primitives
+
+Reach for these instead of hand-rolling coloured pills, notice boxes, or empty states.
+
+@verbatim
+- **Status pills:** `<atom:badge status="$order->status" />` derives colour + label from an enum (or any `['color' => ..., 'label' => ...]`); or pass `color` (a named colour or `#hex`) + `label` directly. `size` is `xs`/`default`/`lg`. Stack many with `<atom:badge.group max="3">` (collapses the overflow to `+N`).
+- **Notice boxes:** `<atom:callout variant="info" heading="..." content="..." closeable />` — `variant` is `info`/`success`/`warning`/`danger`; the icon + colours follow it. Never build your own coloured alert `<div>`.
+- **Empty states:** `<atom:empty heading="No invoices" subheading="..." icon="inbox" />`; `subtle` for a one-line box, `size="sm"` for an inline row.
+- **People:** `<atom:avatar name="Jane" :src="$url" size="sm" />` (falls back to initials; `<atom:avatar.group max="4">` for stacks); `<atom:profile :name="..." :email="..." :avatar="..." />` for an avatar + name/email chip (defaults to the authed user).
+- **Description lists:** `<atom:dd.group cols="2"><atom:dd label="Email">{{ $user->email }}</atom:dd></atom:dd.group>` — empty values show a `--` filler.
+- **Loading placeholders:** `<atom:skeleton />` (paragraph) and `<atom:placeholder-bar size="60%x12" />` (`WIDTHxHEIGHT`, width may be `%`). Tables render their own loading skeleton, so you rarely place these by hand.
+@endverbatim
+
 ### Select with options
 
 @verbatim

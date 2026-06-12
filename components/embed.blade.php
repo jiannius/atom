@@ -8,8 +8,7 @@
 $src ??= $file?->url;
 $icon ??= 'file';
 
-$url = parse_url($src);
-$urlpath = $url['path'];
+$urlpath = $src ? (parse_url($src)['path'] ?? '') : '';
 $type = Arr::pick([
     'image' => str($urlpath)->endsWith(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.tiff']),
     'video' => str($urlpath)->endsWith(['.mp4', '.ogg', '.mpeg', '.avi']),
@@ -25,6 +24,7 @@ $classes = Arr::toCssClasses([
 
 $merges = [
     ...($type === 'youtube' ? [
+        'title' => t('Embedded video'),
         'frameborder' => '0',
         'referrerpolicy' => 'strict-origin-when-cross-origin',
         'allowfullscreen' => true,

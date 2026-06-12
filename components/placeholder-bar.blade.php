@@ -7,11 +7,8 @@ $split = str($size)->split('/x/')->filter();
 $width = $split->first() ?? '100%';
 $height = $split->count() > 1 ? $split->last() : null;
 
-if (str($width)->is('*%')) $width = $width;
-elseif ($width) $width = $width.'px';
-
-if (str($height)->is('*%')) $height = $height;
-elseif ($height) $height = $height.'px';
+if ($width && ! str($width)->is('*%')) $width = $width.'px';
+if ($height && ! str($height)->is('*%')) $height = $height.'px';
 @endphp
 
 <div 

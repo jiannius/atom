@@ -34,8 +34,8 @@ data-atom-list-item>
     </{{ $el }}>
 
     @if ($removeable)
-        <div x-on:click.stop="$dispatch('remove')" class="shrink-0 size-4 text-muted-foreground flex items-center justify-center cursor-pointer py-3 ml-1 mr-2">
+        <button type="button" x-on:click.stop="$dispatch('remove')" aria-label="{{ t('Remove') }}" class="shrink-0 size-4 text-muted-foreground flex items-center justify-center cursor-pointer py-3 ml-1 mr-2">
             <atom:icon.delete />
-        </div>
+        </button>
     @endif
 </div>

@@ -67,7 +67,7 @@ if (!$showSkeleton && !is_bool($empty)) {
                 <div class="animate-pulse divide-y divide-zinc-150 dark:divide-zinc-700" data-atom-table-skeleton>
                     @for ($i = 0; $i < $skeletonRows; $i++)
                         <div class="py-4 px-4" data-atom-table-skeleton-row>
-                            <atom:placeholder-bar size="{{ [45, 70, 55, 80, 50][$i % 5] }}%/x/10" />
+                            <atom:placeholder-bar size="{{ [45, 70, 55, 80, 50][$i % 5] }}%x10" />
                         </div>
                     @endfor
                 </div>

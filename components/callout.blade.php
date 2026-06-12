@@ -56,6 +56,7 @@ $classes = Arr::toCssClasses([
         <button
         type="button"
         x-on:click.stop="show = false"
+        aria-label="{{ t('Dismiss') }}"
         class="absolute top-3 right-3 p-1 flex items-center justify-center">
             <atom:icon.close class="size-5"/>
         </button>
