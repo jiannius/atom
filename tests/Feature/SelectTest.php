@@ -55,3 +55,49 @@ describe('select', function () use ($options) {
             ->toContain('multiple: true');
     });
 });
+
+describe('select aria', function () use ($options) {
+    it('exposes the listbox variant as an ARIA combobox/listbox', function () use ($options) {
+        $html = renderBlade("<atom:select variant=\"listbox\" :options=\"{$options}\" wire:model=\"pick\" />");
+
+        expect($html)
+            ->toContain('role="listbox"')
+            ->toMatch('/id="atom-select-[^"]+-list"/')
+            ->toContain('role="option"')
+            ->toContain('x-bind:aria-selected')
+            // non-searchable → the trigger button is the combobox host
+            ->toContain('role="combobox"')
+            ->toContain('aria-haspopup="listbox"')
+            ->toContain('data-atom-select-combobox')
+            ->toMatch('/aria-controls="atom-select-[^"]+-list"/')
+            // the old menu semantics + DOM-focus marker are gone
+            ->not->toContain('role="menuitem"')
+            ->not->toContain('data-option-focus');
+    });
+
+    it('moves the combobox role onto the search input when searchable', function () use ($options) {
+        $html = renderBlade("<atom:select variant=\"listbox\" searchable :options=\"{$options}\" wire:model=\"pick\" />");
+
+        expect($html)
+            ->toContain('aria-autocomplete="list"')   // on the search input
+            ->toContain('role="combobox"')
+            // searchable → the trigger button is not the combobox host
+            ->not->toContain('data-atom-select-combobox');
+    });
+
+    it('marks a multiple listbox as multiselectable', function () use ($options) {
+        $html = renderBlade("<atom:select variant=\"listbox\" multiple :options=\"{$options}\" wire:model=\"picks\" />");
+
+        expect($html)->toContain('aria-multiselectable="true"');
+    });
+
+    it('exposes the filter variant as a combobox/listbox too', function () use ($options) {
+        $html = renderBlade("<atom:select variant=\"filter\" label=\"Status\" :options=\"{$options}\" wire:model=\"filters.status\" />");
+
+        expect($html)
+            ->toContain('role="listbox"')
+            ->toContain('role="option"')
+            ->toContain('role="combobox"')
+            ->not->toContain('role="menuitem"');
+    });
+});

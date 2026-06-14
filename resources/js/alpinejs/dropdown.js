@@ -17,7 +17,11 @@ export default (config) => {
         },
 
         init() {
-            this.trigger?.setAttribute('aria-haspopup', 'menu')
+            // Respect a popup role the trigger already declares (e.g. a select
+            // sets aria-haspopup=listbox); only default to menu otherwise.
+            if (!this.trigger?.hasAttribute('aria-haspopup')) {
+                this.trigger?.setAttribute('aria-haspopup', 'menu')
+            }
             this.trigger?.setAttribute('aria-expanded', 'false')
 
             this.trigger?.addEventListener('click', () => this.show())

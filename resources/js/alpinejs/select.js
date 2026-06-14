@@ -2,9 +2,13 @@ export default (config) => {
     return {
         text: null,
         timer: null,
+        open: false,
         loading: false,
-        visible: false,
         options: [],
+        activeIndex: -1,
+        typeahead: '',
+        typeaheadTimer: null,
+        uid: config.uid,
         callback: typeof config.options === 'string' ? config.options : null,
         selectValue: config.multiple ? [] : null,
 
@@ -31,6 +35,15 @@ export default (config) => {
             )
         },
 
+        // The element that owns DOM focus while open and therefore carries
+        // role=combobox + aria-activedescendant: the search input when the
+        // select is searchable, otherwise the trigger button.
+        get focusHost () {
+            return config.searchable
+                ? this.$root.querySelector('[data-atom-select-search]')
+                : this.$root.querySelector('[data-atom-select-combobox]')
+        },
+
         init () {
             this.$nextTick(() => {
                 if ((config.multiple && this.selectValue?.length) || (!config.multiple && !empty(this.selectValue))) {
@@ -41,6 +54,25 @@ export default (config) => {
 
         show () {
             this.$root.querySelector('[data-atom-dropdown] > button').click()
+        },
+
+        // Open only if closed — clicking the trigger while open would
+        // light-dismiss then reopen the popover (a visible flicker).
+        ensureOpen () {
+            if (!this.open) this.show()
+        },
+
+        onOpen () {
+            this.open = true
+            this.$nextTick(() => {
+                this.fetch()
+                this.$nextTick(() => this.resetActive())
+            })
+        },
+
+        onClose () {
+            this.open = false
+            this.setActive(-1)
         },
 
         clear () {
@@ -60,7 +92,10 @@ export default (config) => {
                     .then(() => this.loading = false)
                     .then(() => {
                         this.setWidth()
-                        this.$nextTick(() => this.$root.querySelector('[data-atom-select-search]')?.focus())
+                        this.$nextTick(() => {
+                            this.$root.querySelector('[data-atom-select-search]')?.focus()
+                            this.resetActive()
+                        })
                     })
             }
             else {
@@ -73,7 +108,10 @@ export default (config) => {
                 })
 
                 this.setWidth()
-                this.$nextTick(() => this.$root.querySelector('[data-atom-select-search]')?.focus())
+                this.$nextTick(() => {
+                    this.$root.querySelector('[data-atom-select-search]')?.focus()
+                    this.resetActive()
+                })
             }
         },
 
@@ -110,18 +148,6 @@ export default (config) => {
             }
         },
 
-        moveTo (el, focus = true) {
-            if (focus) {
-                let focused = this.getFocusedElementIndex()
-                if (focused > -1) this.moveTo(this.getOptionsElements(focused), false)
-                el.setAttribute('data-option-focus', '')
-                el.focus()
-            }
-            else {
-                el.removeAttribute('data-option-focus')
-            }
-        },
-
         isOptionMatched (option) {
             return !this.text || option.label.toLowerCase().includes(this.text.toLowerCase())
         },
@@ -146,60 +172,91 @@ export default (config) => {
             return index > -1 ? els[index] : els
         },
 
-        getFocusedElementIndex () {
-            return this.getOptionsElements().findIndex(node => (node.hasAttribute('data-option-focus')))
-        },
-
-        keyUp () {
-            this.show()
-
-            let els = this.getOptionsElements()
-            let active = this.getFocusedElementIndex()
-            let prev = active <= 0 ? (els.length - 1) : (active - 1)
-            if (prev > -1) {
-                this.moveTo(els[prev])
-                this.scroll()
-            }
-        },
-
-        keyDown () {
-            this.show()
-
-            let els = this.getOptionsElements()
-            let active = this.getFocusedElementIndex()
-            let next = active >= els.length - 1 ? 0 : (active + 1)
-            if (next > -1) {
-                this.moveTo(els[next])
-                this.scroll()
-            }
-        },
-
         isSelected (opt) {
             return config.multiple
                 ? (this.selectValue || []).includes(opt.value)
                 : opt.value === this.selectValue
         },
 
-        scroll () {
-            let menu = this.$root.querySelector('[data-atom-menu]')
+        // Virtual focus: move the active option without taking DOM focus off
+        // the combobox host, so the user can keep typing in a searchable list.
+        setActive (index) {
             let els = this.getOptionsElements()
-            let index = els.findIndex(node => (node.hasAttribute('data-option-focus')))
-            let focus = index > -1 ? els[index] : null
+            els.forEach(el => el.removeAttribute('data-active'))
 
-            if (!focus) return
+            this.activeIndex = index
+            let el = els[index]
 
-            if (index === 0) menu.scrollTop = 0
-            else if (index === els.length - 1) menu.scrollTop = menu.scrollHeight
-            else {
-                let floor = menu.getBoundingClientRect().height
-                let top = focus.getBoundingClientRect().top - menu.getBoundingClientRect().top
-                let height = focus.getBoundingClientRect().height
-
-                // sinked below floor, scroll down
-                if (top > floor) menu.scrollTop = menu.scrollTop + (height * 2)
-                // above scroll ceiling, scroll up
-                else if (top < 0) menu.scrollTop = menu.scrollTop + top
+            if (!el) {
+                this.focusHost?.removeAttribute('aria-activedescendant')
+                return
             }
+
+            if (!el.id) el.id = `${this.uid}-opt-${index}`
+            el.setAttribute('data-active', '')
+            this.focusHost?.setAttribute('aria-activedescendant', el.id)
+            el.scrollIntoView({ block: 'nearest' })
+        },
+
+        // On open / refetch, pre-activate the selected option (or none).
+        resetActive () {
+            let els = this.getOptionsElements()
+            let selected = els.findIndex(el => el.getAttribute('aria-selected') === 'true')
+            this.setActive(selected)
+        },
+
+        move (dir) {
+            this.ensureOpen()
+
+            let els = this.getOptionsElements()
+            if (!els.length) return
+
+            let next = this.activeIndex < 0
+                ? (dir > 0 ? 0 : els.length - 1)
+                : (this.activeIndex + dir + els.length) % els.length
+
+            this.setActive(next)
+        },
+
+        keyUp () {
+            this.move(-1)
+        },
+
+        keyDown () {
+            this.move(1)
+        },
+
+        home () {
+            this.ensureOpen()
+            this.setActive(0)
+        },
+
+        end () {
+            this.ensureOpen()
+            this.setActive(this.getOptionsElements().length - 1)
+        },
+
+        enterKey () {
+            if (!this.open) return this.show()
+            if (this.activeIndex < 0) return
+
+            let el = this.getOptionsElements(this.activeIndex)
+            if (el) el.click()
+        },
+
+        // Type-ahead for non-searchable selects: jump to the first option whose
+        // label starts with the buffered keystrokes.
+        typeAhead (e) {
+            if (e.key.length !== 1 || e.metaKey || e.ctrlKey || e.altKey) return
+
+            this.ensureOpen()
+            clearTimeout(this.typeaheadTimer)
+            this.typeahead += e.key.toLowerCase()
+            this.typeaheadTimer = setTimeout(() => this.typeahead = '', 500)
+
+            let els = this.getOptionsElements()
+            let match = els.findIndex(el => (el.getAttribute('data-label') || '').toLowerCase().startsWith(this.typeahead))
+            if (match > -1) this.setActive(match)
         },
     }
 }

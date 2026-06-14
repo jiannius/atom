@@ -11,6 +11,7 @@
 ])
 
 @php
+$uid = uniqid('atom-select-');
 $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value();
 
 $classes = Arr::toCssClasses([
@@ -23,6 +24,15 @@ $classes = Arr::toCssClasses([
     $icon ? 'pl-10' : 'pl-3',
     'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
 ]);
+
+// role=option rows: hover and the virtual-focus "active" state share the same
+// highlight (the option never takes real DOM focus), selection is layered on top.
+$optionClasses = Arr::toCssClasses([
+    'flex items-center gap-3 w-full py-2 px-3 my-1 first:mt-0 last:mb-0 rounded-md',
+    'text-left text-zinc-800 dark:text-white cursor-default',
+    'hover:bg-zinc-800/5 dark:hover:bg-zinc-600',
+    '[&[data-active]]:bg-zinc-800/5 dark:[&[data-active]]:bg-zinc-600',
+]);
 @endphp
 
 <div
@@ -31,11 +41,16 @@ x-data="select({
     filters: @js($filters),
     multiple: @js($multiple),
     searchable: @js($searchable),
+    uid: @js($uid),
 })"
 x-modelable="selectValue"
-x-on:open="$nextTick(() => fetch())"
+x-on:open="onOpen()"
+x-on:close="onClose()"
 x-on:keydown.up.prevent.stop="keyUp()"
 x-on:keydown.down.prevent.stop="keyDown()"
+x-on:keydown.enter.prevent.stop="enterKey()"
+x-on:keydown.home.prevent.stop="home()"
+x-on:keydown.end.prevent.stop="end()"
 x-on:keydown.escape.stop=""
 data-atom-select-listbox
 class="group/select w-full"
@@ -56,7 +71,17 @@ class="group/select w-full"
         @if ($slot->isNotEmpty())
             {{ $slot }}
         @else
-            <button type="button" {{ $attributes->class($classes)->only('class') }}>
+            <button
+            type="button"
+            aria-haspopup="listbox"
+            @if (!$searchable)
+                {{-- aria-expanded on this trigger is managed by dropdown.js --}}
+                role="combobox"
+                aria-controls="{{ $uid }}-list"
+                x-on:keydown="typeAhead($event)"
+                data-atom-select-combobox
+            @endif
+            {{ $attributes->class($classes)->only('class') }}>
                 @if ($icon)
                     <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pl-3 left-0">
                         <x-dynamic-component :component="'atom::icon.'.$icon" />
@@ -151,7 +176,11 @@ class="group/select w-full"
             </button>
         @endif
 
-        <atom:menu class="max-w-xl min-w-sm" popover>
+        <atom:menu
+        role="listbox"
+        id="{{ $uid }}-list"
+        aria-multiselectable="{{ $multiple ? 'true' : 'false' }}"
+        class="max-w-xl min-w-sm" popover>
             <div
             x-show="searchable"
             x-on:input.stop="() => {
@@ -166,6 +195,12 @@ class="group/select w-full"
                 x-model="text"
                 x-on:click.stop=""
                 x-intersect="$nextTick(() => $el.focus())"
+                @if ($searchable)
+                    role="combobox"
+                    aria-controls="{{ $uid }}-list"
+                    aria-autocomplete="list"
+                    x-bind:aria-expanded="open ? 'true' : 'false'"
+                @endif
                 class="appearance-none grow w-full focus:outline-none"
                 placeholder="{{ t('Search') }}"
                 data-atom-select-search>
@@ -192,18 +227,20 @@ class="group/select w-full"
 
             <div x-show="options.length" class="max-h-[400px] overflow-auto">
                 <template x-for="(option, i) in options" x-bind:key="`option-${option.value}-${i}`" hidden>
-                    <atom:menu.item
+                    <div
+                    role="option"
+                    x-bind:aria-selected="isSelected(option) ? 'true' : 'false'"
+                    x-bind:data-label="option.label"
                     x-on:click="select(option)"
                     x-bind:class="isSelected(option) && 'bg-zinc-100 dark:bg-zinc-600'"
-                    data-atom-option>
-                        <div class="flex gap-3">
-                            <div x-bind:class="!isSelected(option) && 'opacity-0'" class="shrink-0 flex items-center justify-center">
-                                <atom:icon.check class="size-4 text-zinc-400 dark:text-zinc-200" />
-                            </div>
-
-                            <div x-html="getOptionHtml(option)" class="grow" data-option-content></div>
+                    data-atom-option
+                    class="{{ $optionClasses }}">
+                        <div x-bind:class="!isSelected(option) && 'opacity-0'" class="shrink-0 flex items-center justify-center">
+                            <atom:icon.check class="size-4 text-zinc-400 dark:text-zinc-200" />
                         </div>
-                    </atom:menu.item>
+
+                        <div x-html="getOptionHtml(option)" class="grow" data-option-content></div>
+                    </div>
                 </template>
             </div>
 
