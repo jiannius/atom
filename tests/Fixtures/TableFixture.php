@@ -14,12 +14,21 @@ class TableFixture extends Component
     public array $filters = ['search' => null, 'status' => []];
 
     /**
+     * The full scoped + filtered query (no pagination) — backs both the table
+     * paginator and $this->tableSelection() for cross-page select-all.
+     */
+    public function tableQuery()
+    {
+        return Item::query()->filter(array_filter($this->filters));
+    }
+
+    /**
      * The paginated items for the table.
      */
     #[Computed]
     public function items()
     {
-        return Item::query()->toTable(array_filter($this->filters));
+        return $this->tableQuery()->toTable();
     }
 
     /**

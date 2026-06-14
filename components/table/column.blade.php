@@ -51,29 +51,38 @@ $classes = Arr::toCssClasses([
             @if ($checkbox)
                 <atom:table.checkbox
                 x-data="{
-                    isToggled: false,
-
-                    get checkboxes () {
-                        return this.$el.closest('table').querySelectorAll('tbody [data-atom-table-checkbox]')
+                    get rowCheckboxes () {
+                        return [...this.$el.closest('table').querySelectorAll('tbody [data-atom-table-checkbox]')]
                     },
 
-                    init () {
-                        this.$watch('isToggled', () => this.toggle())
+                    // ids of the rows on the CURRENT page (data attr, not the
+                    // reactive data-checked — avoids a read race on toggle)
+                    get pageIds () {
+                        return this.rowCheckboxes.map(cb => cb.dataset.checkboxId).filter(id => id != null)
+                    },
+
+                    // checked when every current-page row is selected, so the
+                    // indicator no longer lies across pages (it used to compare
+                    // the total selected count to the current page's row count)
+                    get allChecked () {
+                        if ($wire._table.select_all) return true
+                        let selected = ($wire._table.checkboxes || []).map(String)
+                        return this.pageIds.length > 0 && this.pageIds.every(id => selected.includes(String(id)))
                     },
 
                     toggle () {
-                        this.checkboxes.forEach(checkbox => {
-                            if (
-                                (this.isToggled && !checkbox.getAttribute('data-checked'))
-                                || (!this.isToggled && checkbox.getAttribute('data-checked'))
-                            ) {
-                                checkbox.click()
-                            }
+                        // leaving select-all clears everything in one go
+                        if ($wire._table.select_all) return $wire.resetTableCheckboxes()
+
+                        let target = !this.allChecked
+                        this.rowCheckboxes.forEach(cb => {
+                            let isChecked = cb.hasAttribute('data-checked')
+                            if ((target && !isChecked) || (!target && isChecked)) cb.click()
                         })
                     },
                 }"
-                x-on:click="isToggled = !isToggled"
-                x-bind:data-checked="$wire._table.checkboxes.length > 0 && $wire._table.checkboxes.length === checkboxes.length" />
+                x-on:click="toggle()"
+                x-bind:data-checked="allChecked" />
             @else
                 {{ $slot }}
             @endif

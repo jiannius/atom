@@ -4,6 +4,7 @@
     'maxRows' => [50, 100, 200, 400],
     'skeleton' => false,
     'trashed' => false,
+    'selectAll' => false,
 ])
 
 @php
@@ -11,6 +12,11 @@
 // Gated behind $skeleton so static/synchronous tables are completely unaffected.
 $showSkeleton = $skeleton && is_null($paginate);
 $skeletonRows = $skeleton === true ? 5 : (int) $skeleton;
+
+// "Select all matching" (cross-page) is opt-in and needs a paginator to know
+// the total — the consumer also wires a tableQuery() for $this->tableSelection().
+$total = (int) ($paginate?->total() ?? 0);
+$canSelectAll = $selectAll && $paginate;
 
 if (!$showSkeleton && !is_bool($empty)) {
     if ($paginate) $empty = !$paginate->total();
@@ -20,14 +26,29 @@ if (!$showSkeleton && !is_bool($empty)) {
 
 <div class="group/table space-y-4" data-atom-table>
     @if (isset($checked) && $checked->isNotEmpty())
-        <template x-if="$wire._table.checkboxes.length" hidden>
+        <template x-if="$wire._table.checkboxes.length || $wire._table.select_all" hidden>
             <div class="min-h-10 flex items-center gap-3" data-atom-table-checked>
                 <div class="shrink-0 flex items-center gap-2 text-sm font-medium text-zinc-400">
                     <atom:icon.double-check class="size-5"/>
                     <div>
-                        <span x-text="$wire._table.checkboxes.length"></span> {{ t('atom::messages.selected') }}
+                        <span x-text="$wire._table.select_all ? {{ $total }} : $wire._table.checkboxes.length"></span> {{ t('atom::messages.selected') }}
                     </div>
                 </div>
+
+                @if ($canSelectAll)
+                    {{-- offer cross-page select-all once a subset is chosen, then a way back out --}}
+                    <template x-if="!$wire._table.select_all && $wire._table.checkboxes.length < {{ $total }}" hidden>
+                        <button type="button" wire:click="selectAllTableMatching" class="shrink-0 text-sm font-medium text-primary hover:underline" data-atom-table-select-all>
+                            {{ t('atom::messages.select-all') }} {{ number_format($total) }}
+                        </button>
+                    </template>
+
+                    <template x-if="$wire._table.select_all" hidden>
+                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium text-zinc-500 hover:underline">
+                            {{ t('atom::messages.deselect-all') }}
+                        </button>
+                    </template>
+                @endif
 
                 <div class="grow flex items-center gap-3">
                     {{ $checked }}

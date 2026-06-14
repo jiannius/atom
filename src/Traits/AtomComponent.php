@@ -15,6 +15,7 @@ trait AtomComponent
     public $_table = [
         'sort' => ['column' => null, 'direction' => null],
         'checkboxes' => [],
+        'select_all' => false,
         'max_rows' => 100,
         'show_trashed' => false,
     ];
@@ -65,11 +66,50 @@ trait AtomComponent
     }
 
     /**
-     * Reset the checkboxes of the table
+     * Reset the checkboxes of the table (clears both modes)
      */
     public function resetTableCheckboxes()
     {
         $this->_table['checkboxes'] = [];
+        $this->_table['select_all'] = false;
+    }
+
+    /**
+     * Select every row matching the current table query (cross-page).
+     * Stored as an intent flag, not an id list, so it scales to any size.
+     */
+    public function selectAllTableMatching()
+    {
+        $this->_table['select_all'] = true;
+    }
+
+    /**
+     * Whether "select all matching" is active
+     */
+    public function isTableSelectAll()
+    {
+        return (bool) data_get($this->_table, 'select_all');
+    }
+
+    /**
+     * The query targeting the current table selection — the whole filtered set
+     * when "select all matching" is on, otherwise just the checked ids. Backs
+     * bulk actions: $this->tableSelection()->delete(). Requires a tableQuery()
+     * method on the component (the full scoped + filtered query).
+     */
+    public function tableSelection()
+    {
+        if (!method_exists($this, 'tableQuery')) {
+            throw new \BadMethodCallException(static::class.' must define a tableQuery() method to use tableSelection().');
+        }
+
+        $query = $this->tableQuery();
+
+        if (!$this->isTableSelectAll()) {
+            $query->whereKey($this->getTableCheckboxes());
+        }
+
+        return $query;
     }
 
     /**
