@@ -64,34 +64,44 @@ describe('caption', function () {
 });
 
 describe('form', function () {
-    it('renders a form wired to submit with a loading overlay', function () {
+    it('wires submit and drives loading off the submit method', function () {
         $html = renderBlade('<atom:form><input name="x"/></atom:form>');
 
         expect($html)
             ->toContain('data-atom-form')
-            ->toContain('wire:submit="submit"')
-            ->toContain('flex flex-col gap-6')
-            ->toContain('wire:target="submit"')
-            ->toContain('role="status"')
-            ->toContain('Saving');
-    });
-
-    it('anchors the loading overlay to the form, not a display:contents wrapper', function () {
-        // display:contents nukes position:relative, so the absolute overlay must
-        // sit on a real positioned box — the <form> itself carries `relative`.
-        $html = renderBlade('<atom:form><input name="x"/></atom:form>');
-
-        expect($html)
             ->toContain('group/form relative')
-            ->not->toContain('class="contents relative"');
+            ->toContain('flex flex-col gap-6')
+            ->toContain('wire:submit="submit"')
+            ->toContain('wire:target="submit"')
+            ->toContain('wire:loading.class="is-loading"')
+            // the dead display:contents wrapper + standalone overlay are gone
+            ->not->toContain('class="contents relative"')
+            ->not->toContain('wire:loading.flex');
     });
 
-    it('points the loading overlay at a custom submit handler', function () {
-        $html = renderBlade('<atom:form wire:submit="save"><input name="x"/></atom:form>');
+    it('follows a custom submit method for both wiring and loading', function () {
+        $html = renderBlade('<atom:form wire:submit="create"><input name="x"/></atom:form>');
 
         expect($html)
-            ->toContain('wire:submit="save"')
-            ->toContain('wire:target="save"');
+            ->toContain('wire:submit="create"')
+            ->toContain('wire:target="create"');
+    });
+
+    it('intercepts submit for recaptcha and drops the native wire:submit', function () {
+        $html = renderBlade('<atom:form wire:submit="create" recaptcha><input name="x"/></atom:form>');
+
+        expect($html)
+            ->toContain('window.atom.recaptcha(')
+            ->toContain('() =&gt; $wire.create()')   // blade-escaped arrow; browser decodes it
+            ->toContain('wire:target="create"')       // button still spins on create()
+            ->not->toContain('wire:submit');           // native submit suppressed
+    });
+
+    it('uses the recaptcha action label when given a string', function () {
+        $html = renderBlade('<atom:form wire:submit="register" recaptcha="signup"><input name="x"/></atom:form>');
+
+        // single quotes are blade-escaped in the attribute; the browser decodes them
+        expect($html)->toContain('action: &#039;signup&#039;');
     });
 
     it('lays the slot out in a grid when cols is set', function () {
@@ -104,6 +114,24 @@ describe('form', function () {
         $html = renderBlade('<atom:form inset><input name="x"/></atom:form>');
 
         expect($html)->not->toContain('flex flex-col gap-6');
+    });
+});
+
+describe('button submit-loading', function () {
+    it('mirrors the parent form loading state for type=submit', function () {
+        $html = renderBlade('<atom:button type="submit">Save</atom:button>');
+
+        expect($html)
+            ->toContain('group-[.is-loading]/form:flex')
+            ->toContain('group-[.is-loading]/form:opacity-0')
+            ->toContain('group-[.is-loading]/form:opacity-50')
+            ->toContain('group-[.is-loading]/form:pointer-events-none');
+    });
+
+    it('does not react to form loading for non-submit buttons', function () {
+        $html = renderBlade('<atom:button>Cancel</atom:button>');
+
+        expect($html)->not->toContain('group-[.is-loading]/form');
     });
 });
 

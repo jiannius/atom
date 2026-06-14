@@ -5,6 +5,7 @@ namespace Jiannius\Atom;
 use Illuminate\Support\Arr;
 use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\Broadcast;
+use Jiannius\Atom\Services\Recaptcha;
 use Jiannius\Atom\Services\Sitemap;
 
 class Atom
@@ -15,6 +16,14 @@ class Atom
     public function asset()
     {
         return new Asset();
+    }
+
+    /**
+     * reCAPTCHA verifier
+     */
+    public function recaptcha()
+    {
+        return new Recaptcha();
     }
 
     /**

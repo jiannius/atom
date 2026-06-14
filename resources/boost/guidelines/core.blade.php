@@ -81,7 +81,16 @@ new class extends Component {
 ### Forms
 
 @verbatim
-`<atom:form>` wires `wire:submit="submit"` and renders an automatic loading indicator. Use `<atom:input.*>`, `<atom:select>`, `<atom:textarea>`, `<atom:checkbox>`, `<atom:radio>`, `<atom:date-picker>`, `<atom:time-picker>`, `<atom:uploader>`. Submit with `<atom:button type="submit">`.
+`<atom:form>` wires `wire:submit` (defaults to `submit`) — name the method via `wire:submit="create"` and the matching `<atom:button type="submit">` shows its loading spinner for *that* method automatically (the form drives the loading state, so it works for `create`/`save`/anything, not just `submit`). Use `<atom:input.*>`, `<atom:select>`, `<atom:textarea>`, `<atom:checkbox>`, `<atom:radio>`, `<atom:date-picker>`, `<atom:time-picker>`, `<atom:uploader>`. Submit with `<atom:button type="submit">` — no separate loading overlay needed.
+
+**reCAPTCHA v3.** Add the `recaptcha` prop to protect a submit: `<atom:form wire:submit="create" recaptcha>` (or `recaptcha="signup"` to set the score action). It mints a token client-side, attaches it to the component, then runs the submit. In the Livewire method, verify it (the component must use the `AtomComponent` trait):
+```php
+public function create() {
+    $this->verifyRecaptcha();   // throws a validation error on a bot; no-op if recaptcha is unconfigured
+    // ...
+}
+```
+Requires `config('services.recaptcha.site_key' / 'secret_key' / 'min_score')` and a built site (consumers run their Tailwind/Vite build). With no site key configured the form behaves as a normal `wire:submit` form.
 @endverbatim
 
 ### Modals

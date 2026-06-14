@@ -18,4 +18,5 @@ return [
     'selected' => 'Selected',
     'select-all' => 'Select all',
     'deselect-all' => 'Deselect all',
+    'recaptcha-failed' => 'Verification failed, please try again.',
 ];

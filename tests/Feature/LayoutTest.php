@@ -121,6 +121,16 @@ describe('html', function () {
             ->toContain('data-navigate-once')
             ->toContain('csrf-token');
     });
+
+    it('injects the recaptcha site key meta only when configured', function () {
+        expect(Blade::render('<atom:html :vite="false">x</atom:html>'))
+            ->not->toContain('recaptcha-sitekey');
+
+        config(['services.recaptcha.site_key' => 'site-key-123']);
+
+        expect(Blade::render('<atom:html :vite="false">x</atom:html>'))
+            ->toContain('<meta name="recaptcha-sitekey" content="site-key-123">');
+    });
 });
 
 describe('layouts.sidebar', function () {

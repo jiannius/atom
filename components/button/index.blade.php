@@ -45,6 +45,10 @@ $classes = [
     'whitespace-nowrap font-medium transition-colors outline-offset-1',
     'disabled:pointer-events-none disabled:cursor-default disabled:opacity-50',
     '[&.is-loading]:opacity-50 [&.is-loading]:pointer-events-none',
+    // A submit button also reflects its parent <atom:form>'s loading state
+    // (the form carries .is-loading while its wire:submit method runs), so it
+    // spins regardless of the method name. No-op outside an atom:form.
+    'group-[.is-loading]/form:opacity-50 group-[.is-loading]/form:pointer-events-none' => $type === 'submit',
 ];
 
 if ($variant === 'link') {
@@ -182,11 +186,11 @@ if ($slot->isEmpty() && data_get($icon, 'start')) {
 @endphp
 
 <{{ $el }} {{ $attributes->merge($merges)->class($classes) }} data-atom-button>
-    <div class="absolute inset-0 items-center justify-center hidden group-[.is-loading]/button:flex">
+    <div class="absolute inset-0 items-center justify-center hidden group-[.is-loading]/button:flex {{ $type === 'submit' ? 'group-[.is-loading]/form:flex' : '' }}">
         <atom:icon.loading :class="data_get($icon, 'class')"/>
     </div>
 
-    <div class="inline-flex items-center justify-center gap-2 group-[.is-loading]/button:opacity-0">
+    <div class="inline-flex items-center justify-center gap-2 group-[.is-loading]/button:opacity-0 {{ $type === 'submit' ? 'group-[.is-loading]/form:opacity-0' : '' }}">
         @if (data_get($icon, 'start'))
             <x-dynamic-component :component="'atom::icon.'.data_get($icon, 'start')" class="shrink-0 {{ data_get($icon, 'class') }}"/>
         @endif

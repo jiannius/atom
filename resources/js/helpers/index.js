@@ -5,6 +5,7 @@ import modal from './modal'
 import empty from './empty'
 import confirm from './confirm'
 import floatingui from './floatingui'
+import recaptcha from './recaptcha'
 
 export default {
     alert,
@@ -13,7 +14,8 @@ export default {
     empty,
     confirm,
     floatingui,
-    
+    recaptcha,
+
     ajax: (url, headers = null) => new ajax(url, headers),
     json: (data) => JSON.stringify(data, null, 2),
     action: (name, payload) => new ajax('/atom/action/'+name).post(payload),

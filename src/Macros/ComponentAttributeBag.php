@@ -53,37 +53,6 @@ class ComponentAttributeBag
         };
     }
 
-    // TODO: deprecate this
-    public function submitAction()
-    {
-        return function() {
-            if ($this->hasLike('wire:submit*', 'x-on:submit*', 'x-recaptcha:submit*')) return true;
-            if (is_string($this->get('submit'))) return $this->get('submit');
-            if (is_string($this->get('form'))) return $this->get('form');
-            if ($this->has('submit') || $this->has('form')) return 'submit';
-
-            return false;
-        };
-    }
-
-    public function submit()
-    {
-        return function() {
-            $attrs = collect(
-                $this->filter(fn ($value, $key) => 
-                    str($key)->is('wire:submit*')
-                    || str($key)->is('x-on:submit*')
-                    || str($key)->is('x-recaptcha:submit*')
-                )->getAttributes()
-            );
-
-            $attr = $attrs->keys()->first();
-            $value = $attrs->values()->first();
-
-            return $attr ? (object) compact('attr', 'value') : false;
-        };
-    }
-
     public function getAny()
     {
         return function(...$args) {
