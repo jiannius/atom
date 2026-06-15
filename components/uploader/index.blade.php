@@ -39,7 +39,7 @@ class="group/uploader relative">
             </atom:button>
 
             <atom:tooltip x-show="uploading" content="Cancel Upload" class="shrink-0 flex items-center justify-center text-muted">
-                <button type="button" x-on:click="$wire.cancelUpload({{ js($attributes->wire('model')->value()) }})" class="flex items-center justify-center" />
+                <button type="button" x-on:click="$wire.cancelUpload({{ js($attributes->wire('model')->value()) }})" aria-label="{{ t('Cancel upload') }}" class="flex items-center justify-center">
                     <atom:icon.stop class="size-4" />
                 </button>
             </atom:tooltip>

@@ -81,7 +81,7 @@ new class extends Component {
 ### Forms
 
 @verbatim
-`<atom:form>` wires `wire:submit` (defaults to `submit`) — name the method via `wire:submit="create"` and the matching `<atom:button type="submit">` shows its loading spinner for *that* method automatically (the form drives the loading state, so it works for `create`/`save`/anything, not just `submit`). Use `<atom:input.*>`, `<atom:select>`, `<atom:textarea>`, `<atom:checkbox>`, `<atom:radio>`, `<atom:date-picker>`, `<atom:time-picker>`, `<atom:uploader>`. Submit with `<atom:button type="submit">` — no separate loading overlay needed.
+`<atom:form>` wires `wire:submit` (defaults to `submit`) — name the method via `wire:submit="create"` and the matching `<atom:button type="submit">` shows its loading spinner for *that* method automatically (the form drives the loading state, so it works for `create`/`save`/anything, not just `submit`). Use `<atom:input.*>`, `<atom:select>`, `<atom:textarea>`, `<atom:checkbox>`, `<atom:radio>`, `<atom:date-picker>`, `<atom:time-picker>`, `<atom:uploader>` (or `<atom:uploader.dropzone>` for a drag-and-drop drop target — both bind via `wire:model`). Submit with `<atom:button type="submit">` — no separate loading overlay needed.
 
 **reCAPTCHA v3.** Add the `recaptcha` prop to protect a submit: `<atom:form wire:submit="create" recaptcha>` (or `recaptcha="signup"` to set the score action). It mints a token client-side, attaches it to the component, then runs the submit. In the Livewire method, verify it (the component must use the `AtomComponent` trait):
 ```php
