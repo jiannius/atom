@@ -7,7 +7,7 @@ use Illuminate\Support\Collection;
 class Docs
 {
     const CATEGORIES = [
-        'Form inputs' => ['input', 'textarea', 'select', 'checkbox', 'radio', 'toggle', 'date-picker', 'time-picker', 'uploader', 'editor'],
+        'Form inputs' => ['input', 'textarea', 'select', 'checkbox', 'radio', 'toggle', 'date-picker', 'time-picker', 'uploader', 'editor', 'tiptap'],
         'Buttons & links' => ['button', 'link'],
         'Display & typography' => ['heading', 'subheading', 'caption', 'label', 'avatar', 'badge', 'card', 'callout', 'skeleton', 'placeholder-bar', 'empty', 'profile', 'icon', 'logo'],
         'Feedback & overlays' => ['modal', 'alert', 'toast', 'confirm', 'tooltip', 'dropdown', 'lightbox'],

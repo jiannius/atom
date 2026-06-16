@@ -26,8 +26,13 @@
     "src": "resources/css/editor.css",
     "isEntry": true
   },
+  "resources/css/tiptap.css": {
+    "file": "assets/editor-bjbI0zjC.css",
+    "src": "resources/css/editor.css",
+    "isEntry": true
+  },
   "resources/js/atom.js": {
-    "file": "assets/atom-DEy4md0b.js",
+    "file": "assets/atom-kAKbYQRT.js",
     "name": "atom",
     "src": "resources/js/atom.js",
     "isEntry": true,
@@ -40,9 +45,12 @@
     ]
   },
   "resources/js/tiptap.js": {
-    "file": "assets/tiptap-a8riXn1a.js",
+    "file": "assets/tiptap-B6CLI9f1.js",
     "name": "tiptap",
     "src": "resources/js/tiptap.js",
-    "isDynamicEntry": true
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/atom.js"
+    ]
   }
 }

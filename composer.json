@@ -6,7 +6,8 @@
         "php": "^8.3",
         "illuminate/support": "^13.0",
         "intervention/image": "^3.0",
-        "livewire/livewire": "^4.0"
+        "livewire/livewire": "^4.0",
+        "ueberdosis/tiptap-php": "^2.1"
     },
     "require-dev": {
         "orchestra/testbench": "^11.0",

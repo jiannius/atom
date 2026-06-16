@@ -9,6 +9,7 @@ export default defineConfig({
       input: [
         'resources/css/atom.css',
         'resources/css/editor.css',
+        'resources/css/tiptap.css',
         'resources/css/calendar.css',
         'resources/js/atom.js',
       ],

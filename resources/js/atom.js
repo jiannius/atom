@@ -4,7 +4,8 @@ import './prototypes/string'
 
 import helpers from './helpers'
 import modal from './alpinejs/modal'
-import editor from './alpinejs/editor'
+import tiptap from './alpinejs/tiptap'
+import mention from './alpinejs/mention'
 import select from './alpinejs/select'
 import tooltip from './alpinejs/tooltip'
 import dropdown from './alpinejs/dropdown'
@@ -25,7 +26,8 @@ import intersect from '@alpinejs/intersect'
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('modal', modal)
-    Alpine.data('editor', editor)
+    Alpine.data('tiptap', tiptap)
+    Alpine.data('mention', mention)
     Alpine.data('select', select)
     Alpine.data('tooltip', tooltip)
     Alpine.data('dropdown', dropdown)

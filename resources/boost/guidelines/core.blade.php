@@ -248,7 +248,13 @@ The trait provides `all()`, `option()`, `label()`, and other helpers — read `v
 
 ### Editor content
 
-For columns storing Tiptap editor HTML, cast with `Jiannius\Atom\Casts\AsEditorContent`. On save, the cast walks `<img>` tags, persists Livewire temporary uploads to `Storage::disk(env('FILESYSTEM_DISK'))` under `<folder>/editor/` (resized to 1000px, q=80), and rewrites URLs. Run `php artisan atom:purge-editor-images` periodically to clean orphaned images.
+@verbatim
+Rich text uses `<atom:tiptap>` (editor), `<atom:tiptap.chat>` (chat composer: enter-to-send, attachments), and `<atom:tiptap.content>` (server-side render of stored content). Bind with `wire:model` — the stored value is **Tiptap JSON**. Choose toolbar buttons with a preset (`toolbar="full|basic|minimal|none"`) or compose your own via a `<x-slot:toolbar>` of `<atom:tiptap.*>` buttons. Mentions: `mention="searchMethod"` (live `$wire` search, debounced) or `:mention="['Alice','Bob']"` (static).
+
+Cast the storage column with `Jiannius\Atom\Casts\AsTiptapContent` — it stores Tiptap JSON and dual-reads legacy serialized-HTML, so existing rows keep rendering and migrate to JSON on next save. Images: the cast persists Livewire temporary uploads to `config('atom.editor.disk')` (falls back to the default filesystem disk), or define `tiptapStoreImage(string $tmpPath, string $key): string` on the model to control persistence. Display stored content with `<atom:tiptap.content :content="$model->body"/>`. Convert legacy HTML columns to JSON with `php artisan atom:tiptap-migrate` (switch the cast to `AsTiptapContent` first). `<atom:editor>`, `<atom:editor.chat>`, `<atom:editor.content>` remain as back-compat aliases.
+
+**Upgrading to v3.6.0 (editor):** `atom.js` now loads as an ES module — if you include it via your own `<script>` tag instead of `<atom:html>`, add `type="module"`. Switch editor columns from `AsEditorContent` to `AsTiptapContent`, then run `php artisan atom:tiptap-migrate`. Run `npm run build` to pick up new Tailwind utilities. `<atom:editor>` keeps working as an alias for `<atom:tiptap>`.
+@endverbatim
 
 ### Mail
 

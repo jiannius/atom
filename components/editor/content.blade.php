@@ -1,5 +1,2 @@
-<link rel="stylesheet" href="{{ app('atom')->asset()->version('editor.css') }}">
-
-<div class="editor-content">
-    {{ $slot }}
-</div>
+{{-- Deprecated alias: <atom:editor.content> now forwards to <atom:tiptap.content>. --}}
+<atom:tiptap.content :attributes="$attributes">{{ $slot }}</atom:tiptap.content>
