@@ -42,9 +42,26 @@ export default (config) => {
             if (!this.locked) {
                 this.popover?.addEventListener('click', () => this.hide())
             }
+
+            // The menu lives in the browser top layer; close it on SPA
+            // navigation so it can't outlive a wire:navigate page swap (the
+            // removal of an open popover doesn't reliably fire `toggle`, so the
+            // close handler above wouldn't run cleanup otherwise).
+            this.onNavigate = () => this.hide()
+            document.addEventListener('livewire:navigating', this.onNavigate)
+        },
+
+        destroy() {
+            // Alpine teardown (incl. morph removal): force-close + drop the
+            // positioning loop and the navigation listener.
+            this.hide()
+            this.cleanup?.()
+            document.removeEventListener('livewire:navigating', this.onNavigate)
         },
 
         show() {
+            if (this.popover?.matches(':popover-open')) return
+
             this.popover.showPopover()
             this.$root.setAttribute('data-open', '')
             this.trigger?.setAttribute('aria-expanded', 'true')
@@ -52,7 +69,7 @@ export default (config) => {
         },
 
         hide() {
-            this.popover.hidePopover()
+            if (this.popover?.matches(':popover-open')) this.popover.hidePopover()
         },
     }
 }

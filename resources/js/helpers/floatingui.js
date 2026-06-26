@@ -4,6 +4,12 @@ export default (anchor, element, config = {}) => {
     config = {
         placement: 'bottom-start',
         offset: 2,
+        // autoUpdate keeps the panel glued to its anchor on scroll/resize while
+        // it stays open (right for a menu). Pass false for a transient panel
+        // (e.g. a hover tooltip) that should be positioned once and dismissed
+        // rather than chase the page — avoids a persistent loop that would
+        // outlive a wire:navigate page swap.
+        autoUpdate: true,
         ...config,
     }
 
@@ -19,6 +25,12 @@ export default (anchor, element, config = {}) => {
         }).then(({x, y}) => {
             Object.assign(element.style, { left: x+'px', top: y+'px' })
         })
+    }
+
+    if (!config.autoUpdate) {
+        updatePosition()
+
+        return () => {}
     }
 
     return autoUpdate(anchor, element, updatePosition)

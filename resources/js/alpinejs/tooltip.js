@@ -1,6 +1,5 @@
 export default (config) => {
     return {
-        cleanup: null,
         hideTimer: null,
         placement: config.placement,
         interactive: config.interactive,
@@ -32,6 +31,28 @@ export default (config) => {
                 this.popover?.addEventListener('mouseenter', () => this.cancelHide())
                 this.popover?.addEventListener('mouseleave', () => this.scheduleHide())
             }
+
+            // The content lives in the browser top layer, so it must never
+            // outlive its context. Close it on SPA navigation (wire:navigate
+            // swaps the whole page — a lingering tooltip would orphan), on
+            // scroll (a positioned-once hover label shouldn't chase the page),
+            // and on Escape.
+            this.onNavigate = () => this.hide()
+            this.onScroll = () => this.hide()
+            this.onKeydown = (e) => { if (e.key === 'Escape') this.hide() }
+            document.addEventListener('livewire:navigating', this.onNavigate)
+            window.addEventListener('scroll', this.onScroll, true)
+            document.addEventListener('keydown', this.onKeydown)
+        },
+
+        destroy () {
+            // Alpine teardown (incl. morph removal): drop the document/window
+            // listeners and force-close so nothing lingers in the top layer.
+            this.cancelHide()
+            this.hide()
+            document.removeEventListener('livewire:navigating', this.onNavigate)
+            window.removeEventListener('scroll', this.onScroll, true)
+            document.removeEventListener('keydown', this.onKeydown)
         },
 
         show () {
@@ -39,16 +60,14 @@ export default (config) => {
 
             this.cancelHide()
             if (!this.popover.matches(':popover-open')) this.popover.showPopover()
-            this.cleanup?.()
-            this.cleanup = atom.floatingui(this.$root, this.popover, { placement: this.placement })
+            // Position once on open — no autoUpdate loop to orphan on navigate.
+            // A hover label is transient; scroll dismisses it instead.
+            atom.floatingui(this.$root, this.popover, { placement: this.placement, autoUpdate: false })
         },
 
         hide () {
             if (!this.popover) return
-
-            this.popover.hidePopover()
-            this.cleanup?.()
-            this.cleanup = null
+            if (this.popover.matches(':popover-open')) this.popover.hidePopover()
         },
 
         scheduleHide () {
