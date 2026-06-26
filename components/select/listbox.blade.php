@@ -5,6 +5,7 @@
     'filters' => null,
     'invalid' => false,
     'multiple' => false,
+    'disabled' => false,
     'clearable' => true,
     'searchable' => false,
     'placeholder' => 'Please select...',
@@ -53,7 +54,8 @@ x-on:keydown.home.prevent.stop="home()"
 x-on:keydown.end.prevent.stop="end()"
 x-on:keydown.escape.stop=""
 data-atom-select-listbox
-class="group/select w-full"
+@if ($disabled) aria-disabled="true" @endif
+@class(['group/select w-full', 'pointer-events-none' => $disabled])
 {{ $attributes->except('class') }}>
     @if ($multiple === 'list')
         <template x-if="!isEmpty" hidden>

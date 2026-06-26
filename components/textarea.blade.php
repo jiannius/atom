@@ -1,3 +1,5 @@
+@aware(['disabled' => false])
+
 @props([
     'name' => null,
     'label' => null,
@@ -48,5 +50,6 @@ $classes = Arr::toCssClasses([
         'x-init' => $autoresize ? '$autosize()' : null,
         'required' => $required,
         'placeholder' => t($placeholder),
+        'readonly' => ($disabled ?? false) ?: null,
     ]) }} data-atom-textarea>{{ $slot }}</textarea>
 @endif

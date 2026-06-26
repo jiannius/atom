@@ -1,6 +1,7 @@
 @props([
     'time' => false,
     'invalid' => false,
+    'disabled' => false,
     'placeholder' => 'Select date',
 ])
 
@@ -19,9 +20,10 @@ $classes = Arr::toCssClasses([
 <div
 x-data="datePicker({ time: @js($time) })"
 x-modelable="datePickerValue"
-class="group/date-picker relative"
+@if ($disabled) aria-disabled="true" @endif
+@class(['group/date-picker relative', 'pointer-events-none' => $disabled])
 data-atom-date-picker
-{{ $attributes->except(['class', 'placeholder']) }}>
+{{ $attributes->except(['class', 'placeholder', 'disabled']) }}>
     <atom:dropdown x-on:open="visible = true" x-on:close="visible = false" locked>
         @if ($slot->isNotEmpty())
             <div class="relative">

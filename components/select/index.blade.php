@@ -1,3 +1,5 @@
+@aware(['disabled' => false])
+
 @if ($attributes->get('variant') === 'filter')
     <atom:select.filter :attributes="$attributes">
         {{ $slot }}
@@ -21,6 +23,8 @@
     $merges = [
         'name' => $name,
         'required' => $required,
+        // Inherit a read-only state from an enclosing <atom:form disabled>.
+        'disabled' => ($disabled ?? false) ?: null,
     ];
     @endphp
 

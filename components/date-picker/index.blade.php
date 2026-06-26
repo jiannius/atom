@@ -1,3 +1,5 @@
+@aware(['disabled' => false])
+
 @props([
     'name' => null,
     'variant' => 'date',
@@ -13,7 +15,11 @@
 @php
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
-$merges = ['required' => $required];
+$merges = [
+    'required' => $required,
+    // Inherit a read-only state from an enclosing <atom:form disabled>.
+    'disabled' => ($disabled ?? false) ?: null,
+];
 @endphp
 
 @if ($label || $caption)

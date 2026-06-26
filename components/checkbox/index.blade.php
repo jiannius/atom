@@ -1,3 +1,5 @@
+@aware(['disabled' => false])
+
 @props([
     'name' => null,
     'label' => null,
@@ -11,6 +13,11 @@
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
 $merges = ['name' => $name];
+
+// Inherit a read-only state from an enclosing <atom:form disabled>.
+if ($disabled ?? false) {
+    $merges['disabled'] = true;
+}
 @endphp
 
 <label class="group/checkbox inline-block space-y-2" data-atom-checkbox>

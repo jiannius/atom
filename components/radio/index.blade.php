@@ -1,3 +1,5 @@
+@aware(['disabled' => false])
+
 @props([
     'label' => null,
     'caption' => null,
@@ -15,7 +17,7 @@
             'shrink-0',
             'pt-1' => $align === 'start',
         ])>
-            <input type="radio" class="sr-only peer" {{ $attributes }}>
+            <input type="radio" class="sr-only peer" {{ $attributes->merge(['disabled' => ($disabled ?? false) ?: null]) }}>
 
             <div
             aria-hidden="true"

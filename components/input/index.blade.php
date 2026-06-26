@@ -1,3 +1,5 @@
+@aware(['disabled' => false])
+
 @props([
     'name' => null,
     'type' => 'text',
@@ -17,6 +19,14 @@ $merges = [
     'required' => $required,
     'name' => $name,
 ];
+
+// Inherit a read-only state from an enclosing <atom:form disabled> so the value
+// stays selectable/copyable (unlike a disabled field), but can't be edited.
+// `?? false` keeps it safe where @aware has no parent to read (e.g. isolated
+// component renders).
+if ($disabled ?? false) {
+    $merges['readonly'] = true;
+}
 @endphp
 
 @if (in_array($type, ['text', 'password', 'number']))

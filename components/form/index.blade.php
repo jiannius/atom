@@ -22,10 +22,12 @@ $merges = [
 ];
 
 if ($disabled) {
-    // Read-only form: the `inert` attribute (below) blocks focus, pointer and
-    // keyboard interaction, so drop wire:submit too — Enter can't fire the
-    // action. The reCAPTCHA branch is skipped for the same reason.
+    // Read-only form: fields render themselves readonly/disabled via @aware
+    // (so values stay selectable + links clickable — unlike `inert`). Drop
+    // wire:submit and hard-block native submission so a stray submit button or
+    // Enter can't post. The reCAPTCHA branch is skipped for the same reason.
     $attributes = $attributes->whereDoesntStartWith('wire:submit');
+    $merges['onsubmit'] = 'return false';
 }
 elseif ($recaptcha) {
     // Intercept the submit so reCAPTCHA can mint + attach a token before the
@@ -40,10 +42,10 @@ else {
 }
 @endphp
 
-<form @if ($disabled) inert @endif {{ $attributes->class([
+<form {{ $attributes->class([
     'group/form relative',
     'flex flex-col gap-6' => !$inset,
-    'opacity-60 select-none' => $disabled,
+    'opacity-70' => $disabled,
 ])->merge($merges) }}
 data-atom-form>
     @if ($cols)
