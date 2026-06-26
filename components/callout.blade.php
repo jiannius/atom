@@ -16,7 +16,7 @@ $icon ??= match ($variant) {
 };
 
 $classes = Arr::toCssClasses([
-    'relative w-full rounded-lg border py-4 px-6 flex flex-col gap-2',
+    'relative w-full rounded-lg border py-4 px-6',
     match ($variant) {
         'info' => 'bg-sky-100 dark:bg-sky-900/20 border-sky-200 dark:border-sky-400/50 text-sky-600 dark:text-sky-100/80 [&_[data-atom-icon]]:text-sky-400',
         'success' => 'bg-green-100 dark:bg-green-900/20 border-green-200 dark:border-green-400/50 text-green-600 dark:text-green-100/80 [&_[data-atom-icon]]:text-green-400',
@@ -28,29 +28,27 @@ $classes = Arr::toCssClasses([
 @endphp
 
 <div x-data="{ show: true }" x-show="show" {{ $attributes->class($classes) }}>
-    @if ($heading)
-        <div class="flex items-center gap-3">
-            @if ($icon)
-                <x-dynamic-component :component="'atom::icon.'.$icon" class="shrink-0" variant="solid" />
+    <div class="flex gap-3">
+        @if ($icon)
+            <x-dynamic-component :component="'atom::icon.'.$icon" class="shrink-0 mt-0.5" variant="solid" />
+        @endif
+
+        <div class="flex flex-col gap-2 min-w-0 flex-1">
+            @if ($heading)
+                @if ($heading instanceof \Illuminate\View\ComponentSlot)
+                    {{ $heading }}
+                @else
+                    <div class="font-semibold">{{ t($heading) }}</div>
+                @endif
             @endif
 
-            @if ($heading instanceof \Illuminate\View\ComponentSlot)
-                {{ $heading }}
-            @else
-                <div class="font-semibold">{{ t($heading) }}</div>
+            @if ($slot->isNotEmpty())
+                {{ $slot }}
+            @elseif ($content)
+                {{ t($content) }}
             @endif
         </div>
-    @endif
-
-    @if ($slot->isNotEmpty())
-        <div class="ml-8">
-            {{ $slot }}
-        </div>
-    @elseif ($content)
-        <div class="ml-8">
-            {{ t($content) }}
-        </div>
-    @endif
+    </div>
 
     @if ($closeable)
         <button

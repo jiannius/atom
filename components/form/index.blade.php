@@ -2,6 +2,7 @@
     'inset' => false,
     'cols' => null,
     'recaptcha' => false,
+    'disabled' => false,
 ])
 
 @php
@@ -20,7 +21,13 @@ $merges = [
     'wire:loading.class' => 'is-loading',
 ];
 
-if ($recaptcha) {
+if ($disabled) {
+    // Read-only form: the `inert` attribute (below) blocks focus, pointer and
+    // keyboard interaction, so drop wire:submit too — Enter can't fire the
+    // action. The reCAPTCHA branch is skipped for the same reason.
+    $attributes = $attributes->whereDoesntStartWith('wire:submit');
+}
+elseif ($recaptcha) {
     // Intercept the submit so reCAPTCHA can mint + attach a token before the
     // Livewire action fires. Drop the native wire:submit (it would fire
     // immediately) and call the method ourselves once the token is set.
@@ -33,9 +40,10 @@ else {
 }
 @endphp
 
-<form {{ $attributes->class([
+<form @if ($disabled) inert @endif {{ $attributes->class([
     'group/form relative',
     'flex flex-col gap-6' => !$inset,
+    'opacity-60 select-none' => $disabled,
 ])->merge($merges) }}
 data-atom-form>
     @if ($cols)

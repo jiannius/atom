@@ -4,6 +4,11 @@ description="Wraps a form and auto-wires the submit button's loading state. In L
 view="atom::docs.demos.form.basic"/>
 
 <atom:docs.example
+title="Disabled (read-only)"
+description="Pass disabled to make the whole form inert (no focus, pointer or keyboard) and dimmed, and to drop wire:submit so it can't be submitted. Use for records that are locked / read-only."
+view="atom::docs.demos.form.disabled"/>
+
+<atom:docs.example
 title="Grid columns"
 description="atom:form.grid lays out a field group. cols=auto (default) is a container query: it shows 1 column in a narrow parent and 2 columns once the parent is wide enough (~max-w-2xl), regardless of viewport. Use cols=2 or cols=3 to force a viewport-responsive grid. For a single-group form, put cols on atom:form directly."
 view="atom::docs.demos.form.grid"/>
