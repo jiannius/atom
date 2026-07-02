@@ -33,11 +33,12 @@ $menus = $hasToolbarSlot ? ['link', 'table', 'image', 'youtube'] : $buttons;
 @if ($label || $caption)
     <atom:input.field :label="$label" :caption="$caption" :required="$required" :error="$error">
         @if ($hasToolbarSlot)
-            <atom:tiptap :attributes="$attributes->merge(compact('name', 'variant', 'readonly', 'autofocus', 'mention', 'placeholder'))">
+            {{-- mention passed as an explicit prop, not merged into the bag: an array value would render as an attribute and e() would choke on it --}}
+            <atom:tiptap :mention="$mention" :attributes="$attributes->merge(compact('name', 'variant', 'readonly', 'autofocus', 'placeholder'))">
                 <x-slot:toolbar>{{ $toolbar }}</x-slot:toolbar>
             </atom:tiptap>
         @else
-            <atom:tiptap :toolbar="$toolbar" :attributes="$attributes->merge(compact('name', 'variant', 'readonly', 'autofocus', 'mention', 'placeholder'))" />
+            <atom:tiptap :toolbar="$toolbar" :mention="$mention" :attributes="$attributes->merge(compact('name', 'variant', 'readonly', 'autofocus', 'placeholder'))" />
         @endif
     </atom:input.field>
 @else

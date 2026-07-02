@@ -13,7 +13,8 @@ $transparent = $variant === 'transparent';
 
 @if ($label || $caption)
     <atom:input.field :label="$label" :caption="$caption">
-        <atom:tiptap.chat :attributes="$attributes->merge(compact('autofocus', 'mention', 'placeholder', 'variant'))" />
+        {{-- mention passed as an explicit prop, not merged into the bag: an array value would render as an attribute and e() would choke on it --}}
+        <atom:tiptap.chat :mention="$mention" :attributes="$attributes->merge(compact('autofocus', 'placeholder', 'variant'))" />
     </atom:input.field>
 @else
     <link rel="stylesheet" href="{{ app('atom')->asset()->version('tiptap.css') }}">

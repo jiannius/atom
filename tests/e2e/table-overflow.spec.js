@@ -19,5 +19,6 @@ test('overflow=card toggles an expandable filter panel', async ({ page }) => {
   await more.click()
 
   // After clicking, the overflow panel expands and the Category filter becomes visible
-  await expect(page.getByRole('button', { name: /Category/i })).toBeVisible()
+  // (the select trigger is role=combobox since the v3.5.19 ARIA rewrite; label is child text)
+  await expect(page.getByRole('combobox').filter({ hasText: 'Category' })).toBeVisible()
 })

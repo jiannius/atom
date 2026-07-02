@@ -12,8 +12,9 @@ test('selecting a filter shows a chip; clearing it removes the chip', async ({ p
 
   const bar = page.locator('[data-atom-table-filters]').first()
 
-  // open the Status filter
-  await bar.getByRole('button', { name: /Status/ }).first().click()
+  // open the Status filter (the select trigger is role=combobox since the v3.5.19 ARIA
+  // rewrite; its label is child text, not an accessible name, so match by text)
+  await bar.getByRole('combobox').filter({ hasText: 'Status' }).first().click()
 
   // click the Published option (rendered by Alpine x-for into the dropdown on open)
   await page.locator('[data-atom-option]').filter({ hasText: 'Published' }).first().click()
@@ -40,7 +41,7 @@ test('Clear all removes every chip', async ({ page }) => {
   const bar = page.locator('[data-atom-table-filters]').first()
 
   // select a value to create a chip
-  await bar.getByRole('button', { name: /Status/ }).first().click()
+  await bar.getByRole('combobox').filter({ hasText: 'Status' }).first().click()
   await page.locator('[data-atom-option]').filter({ hasText: 'Published' }).first().click()
 
   // "Clear all" button appears once chips are active

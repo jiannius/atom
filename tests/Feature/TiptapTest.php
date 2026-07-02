@@ -126,6 +126,22 @@ describe('tiptap.mention', function () {
 
         expect($html)->toContain('class="tiptap-mention"');
     });
+
+    it('renders an array mention together with a label (regression: array attr must not e())', function () {
+        // <atom:tiptap label=… :mention="[...]"> went through the input.field recursion,
+        // which merged the array `mention` into the attribute bag and blew up in e().
+        $html = renderBlade('<atom:tiptap label="Note" :mention="[\'Alice\', \'Bob\']" />');
+
+        expect($html)
+            ->toContain('class="tiptap-mention"')
+            ->toContain('Alice');
+    });
+
+    it('renders an array mention with a label in the chat composer', function () {
+        $html = renderBlade('<atom:tiptap.chat label="Message" :mention="[\'Alice\']" />');
+
+        expect($html)->toContain('class="tiptap-mention"');
+    });
 });
 
 describe('editor alias (back-compat)', function () {
