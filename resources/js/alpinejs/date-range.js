@@ -85,14 +85,14 @@ export default (config) => {
         },
 
         setCalendar () {
-            this.pikaday[0] = new Pikaday({ onSelect: (value) => {
+            this.pikaday[0] = new Pikaday({ keyboardInput: false, onSelect: (value) => {
                 let dj = dayjs(value)
                 this.startValue = this.dateObjects[0]
                     ? this.dateObjects[0].set('year', dj.get('year')).set('month', dj.get('month')).set('date', dj.get('date')).startOf('day').toISOString()
                     : dj.startOf('day').toISOString()
             }})
 
-            this.pikaday[1] = new Pikaday({ onSelect: (value) => {
+            this.pikaday[1] = new Pikaday({ keyboardInput: false, onSelect: (value) => {
                 let dj = dayjs(value)
                 this.endValue = this.dateObjects[1]
                     ? this.dateObjects[1].set('year', dj.get('year')).set('month', dj.get('month')).set('date', dj.get('date')).endOf('day').toISOString()
