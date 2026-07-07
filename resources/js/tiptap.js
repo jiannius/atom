@@ -102,7 +102,10 @@ window.Tiptap = ({ element, config, bubbleMenus = {}, disableEnterKey = false, m
     ].filter(Boolean)
 
     Object.keys(bubbleMenus || {}).forEach(key => {
-        if (bubbleMenus[key]) extensions.push(BubbleMenu.configure(BubbleMenuConfiguration(bubbleMenus[key], key)))
+        // each menu needs a UNIQUE extension name — Tiptap v3 dedupes by name, so
+        // registering the shared 'bubbleMenu' name N times collapses to one and the
+        // rest render inline instead of floating on node-selection
+        if (bubbleMenus[key]) extensions.push(BubbleMenu.extend({ name: `bubbleMenu_${key}` }).configure(BubbleMenuConfiguration(bubbleMenus[key], key)))
     })
 
     if (mentionTemplate) extensions.push(Mention.configure(MentionConfiguration(mentionTemplate)))
