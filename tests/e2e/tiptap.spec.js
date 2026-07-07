@@ -118,7 +118,16 @@ test('link toolbar button opens the URL edit form (regression: empty popup)', as
   await editor.locator('.editor-content').first().click()
   await editor.getByRole('button', { name: 'Link' }).click()
 
-  await expect(page.getByPlaceholder('Link URL')).toBeVisible()
+  const urlInput = page.getByPlaceholder('Link URL')
+  await expect(urlInput).toBeVisible()
+
+  // Regression: clicking + typing inside the popup used to close it (the close-on-
+  // inside-click handler fired because x-on:click.stop sat on the popover element,
+  // not a child). The input must stay usable.
+  await urlInput.click()
+  await urlInput.fill('https://example.com')
+  await expect(urlInput).toBeVisible()
+  await expect(urlInput).toHaveValue('https://example.com')
 })
 
 test('link toolbar shows the current link when one is active', async ({ page }) => {
