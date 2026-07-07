@@ -106,3 +106,36 @@ test('mention popup: typing @ filters options and inserts a mention', async ({ p
   // a mention node is inserted as <span class="mention">
   await expect(content.locator('span.mention')).toContainText('Alice')
 })
+
+test('link toolbar button opens the URL edit form (regression: empty popup)', async ({ page }) => {
+  // The open handler used to sit on the child <atom:menu> as x-on:popover-open and
+  // never fired, so the popup rendered empty. It now lives on <atom:dropdown> as
+  // x-on:open and dispatches link-menu-edit → the URL input renders.
+  await page.goto('/atom/docs/tiptap')
+  const editor = basicEditor(page)
+  await waitForEditor(editor)
+
+  await editor.locator('.editor-content').first().click()
+  await editor.getByRole('button', { name: 'Link' }).click()
+
+  await expect(page.getByPlaceholder('Link URL')).toBeVisible()
+})
+
+test('link toolbar shows the current link when one is active', async ({ page }) => {
+  await page.goto('/atom/docs/tiptap')
+  const editor = basicEditor(page)
+  await waitForEditor(editor)
+
+  // create a link on the whole doc, then reopen the toolbar with the link active
+  await editor.locator('.editor-content').first().click()
+  await page.keyboard.type('example')
+  await editor.evaluate((el) => {
+    const ed = el.closest('[x-data]')._x_dataStack[0].editor()
+    ed.chain().focus().selectAll().setLink({ href: 'https://example.com' }).run()
+    ed.commands.focus()
+  })
+
+  await editor.getByRole('button', { name: 'Link' }).click()
+  // link-menu-on → getLink populates the info view with the href
+  await expect(page.getByText('https://example.com')).toBeVisible()
+})
