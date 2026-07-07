@@ -180,3 +180,21 @@
 .editor-content.editor-chat-content p {
     margin: 0;
 }
+
+/*
+ * Bubble-menu popovers (table / image / youtube) start hidden and out of flow.
+ * Tiptap v3's BubbleMenu positions them in place — unlike v2's tippy, which detached
+ * them — and only sets inline visibility/position once a matching node is selected.
+ * These three carry static button content, so without a hidden default they render
+ * inline in the editor, permanently visible, on load. BubbleMenu's inline
+ * `visibility: visible` on show overrides this rule.
+ * (link-menu is intentionally excluded — its content is conditional so it collapses
+ *  to zero height when no link is selected, and its show path is entangled with its
+ *  own x-data; leave it to BubbleMenu.)
+ */
+.table-menu,
+.image-menu,
+.youtube-menu {
+    position: absolute;
+    visibility: hidden;
+}
