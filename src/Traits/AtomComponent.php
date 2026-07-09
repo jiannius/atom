@@ -55,6 +55,12 @@ trait AtomComponent
 
             $this->fill(['_editor.images' => $images]);
         }
+
+        // A trashed-view toggle changes which rows are listed, so a lingering
+        // checkbox selection would point at rows no longer shown. Clear it.
+        if ($property === '_table.show_trashed') {
+            $this->resetTableCheckboxes();
+        }
     }
 
     /**

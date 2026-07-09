@@ -62,7 +62,7 @@ x-init="
             : (selectedOptions?.label ?? null)),
     });
     $nextTick(emit);
-    $watch('selectValue', () => $nextTick(emit));
+    $watch('selectValue', () => { $nextTick(emit); $dispatch('table-filter:changed') });
 "
 x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clear()"
 @endif

@@ -79,3 +79,51 @@ describe('checkbox markup', function () {
         expect($without)->not->toContain('selectAllTableMatching');
     });
 });
+
+describe('clear on trashed toggle', function () {
+    it('clears both selection modes when the trashed view is toggled', function () {
+        $test = Livewire::test(TableFixture::class)
+            ->set('_table.checkboxes', [1, 2])
+            ->set('_table.select_all', true)
+            ->set('_table.show_trashed', true);
+
+        expect($test->get('_table.checkboxes'))->toBe([])
+            ->and($test->get('_table.select_all'))->toBeFalse();
+    });
+
+    it('leaves the selection alone on an unrelated property update', function () {
+        $test = Livewire::test(TableFixture::class)
+            ->set('_table.checkboxes', [1, 2])
+            ->set('_table.sort.column', 'name');
+
+        expect($test->get('_table.checkboxes'))->toBe([1, 2]);
+    });
+});
+
+describe('clear on filter change (wiring)', function () {
+    it('table root listens for table-filter:changed and clears when a selection exists', function () {
+        $html = renderBlade('<atom:table><x-slot:columns><atom:table.column>A</atom:table.column></x-slot:columns></atom:table>');
+
+        expect($html)
+            ->toContain('table-filter:changed.window')
+            ->toContain('resetTableCheckboxes');
+    });
+
+    it('select filter dispatches table-filter:changed on value change', function () {
+        $html = renderBlade('<atom:select.filter wire:model.live="status" label="Status" :options="[]" />');
+
+        expect($html)->toContain('table-filter:changed');
+    });
+
+    it('date range filter dispatches table-filter:changed on value change', function () {
+        $html = renderBlade('<atom:date-picker.range wire:model.live="range" />');
+
+        expect($html)->toContain('table-filter:changed');
+    });
+
+    it('search dispatches table-filter:changed on submit', function () {
+        $html = renderBlade('<atom:table.search wire:model="q" />');
+
+        expect($html)->toContain('table-filter:changed');
+    });
+});

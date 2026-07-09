@@ -24,7 +24,10 @@ if (!$showSkeleton && !is_bool($empty)) {
 }
 @endphp
 
-<div class="group/table space-y-4" data-atom-table>
+<div
+x-data="{}"
+x-on:table-filter:changed.window="if ($wire._table?.checkboxes?.length || $wire._table?.select_all) $wire.resetTableCheckboxes()"
+class="group/table space-y-4" data-atom-table>
     @if (isset($checked) && $checked->isNotEmpty())
         <template x-if="$wire._table.checkboxes.length || $wire._table.select_all" hidden>
             <div class="min-h-10 flex items-center gap-3" data-atom-table-checked>

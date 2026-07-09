@@ -6,7 +6,7 @@
     <atom:input
         icon="search"
         {{ $attributes->merge(['placeholder' => $placeholder]) }}
-        x-on:keyup.enter.prevent="$wire.$refresh()" />
+        x-on:keyup.enter.prevent="$dispatch('table-filter:changed'); $wire.$refresh()" />
 
     {{-- Scoped to the search's own $refresh so it only spins on search, not on
          pagination/sort. Rows stay visible (no skeleton swap). --}}

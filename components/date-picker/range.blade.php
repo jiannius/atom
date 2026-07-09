@@ -28,7 +28,7 @@ data-atom-date-range
 x-init="
     const emit = () => $dispatch('table-filter:set', { key: @js($filterKey), label: @js(t($placeholder)), display: dateRangeValue ? dateRangeString : null });
     $nextTick(emit);
-    $watch('dateRangeValue', () => $nextTick(emit));
+    $watch('dateRangeValue', () => { $nextTick(emit); $dispatch('table-filter:changed') });
 "
 x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dateRangeValue = null, parse())"
 @endif
