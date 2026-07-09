@@ -1,14 +1,14 @@
 {
-  "node_modules/@event-calendar/core/dist/index.js": {
+  "../../../node_modules/@event-calendar/core/dist/index.js": {
     "file": "assets/calendar-jpBoPgZ1.js",
     "name": "calendar",
-    "src": "node_modules/@event-calendar/core/dist/index.js",
+    "src": "../../../node_modules/@event-calendar/core/dist/index.js",
     "isDynamicEntry": true
   },
-  "node_modules/apexcharts/dist/apexcharts.esm.js": {
+  "../../../node_modules/apexcharts/dist/apexcharts.esm.js": {
     "file": "assets/apexcharts.esm-CSdPuxWS.js",
     "name": "apexcharts.esm",
-    "src": "node_modules/apexcharts/dist/apexcharts.esm.js",
+    "src": "../../../node_modules/apexcharts/dist/apexcharts.esm.js",
     "isDynamicEntry": true
   },
   "resources/css/atom.css": {
@@ -32,20 +32,20 @@
     "isEntry": true
   },
   "resources/js/atom.js": {
-    "file": "assets/atom-FFBLuKA9.js",
+    "file": "assets/atom-DcRNBwMx.js",
     "name": "atom",
     "src": "resources/js/atom.js",
     "isEntry": true,
     "dynamicImports": [
       "resources/js/tiptap.js",
-      "node_modules/@event-calendar/core/dist/index.js",
-      "node_modules/apexcharts/dist/apexcharts.esm.js",
-      "node_modules/apexcharts/dist/apexcharts.esm.js",
-      "node_modules/apexcharts/dist/apexcharts.esm.js"
+      "../../../node_modules/@event-calendar/core/dist/index.js",
+      "../../../node_modules/apexcharts/dist/apexcharts.esm.js",
+      "../../../node_modules/apexcharts/dist/apexcharts.esm.js",
+      "../../../node_modules/apexcharts/dist/apexcharts.esm.js"
     ]
   },
   "resources/js/tiptap.js": {
-    "file": "assets/tiptap-CMHZQ6Kq.js",
+    "file": "assets/tiptap-DAmOa-f5.js",
     "name": "tiptap",
     "src": "resources/js/tiptap.js",
     "isDynamicEntry": true,
