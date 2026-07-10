@@ -223,7 +223,12 @@ class Builder
                             if ($coltype === 'json') $this->whereJsonContains($col, $value);
                             else $this->whereIn($col, $value);
                         }
-                        else if (!is_array($value) && $value) {
+                        else if (!is_array($value)) {
+                            // The blank() guard above already dropped null / '' / [],
+                            // so a scalar here is a real constraint even when it's
+                            // PHP-falsy ('0' / 0 / false — e.g. an is_active toggle
+                            // filtered to "inactive"). Re-testing `&& $value` here
+                            // wrongly skipped those, contradicting the guard.
                             if ($operator) {
                                 $this->where($col, $operator, $value);
                             }

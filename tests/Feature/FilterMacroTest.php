@@ -25,3 +25,25 @@ it('skips blank filter values without hitting column introspection', function ()
     // no introspection), so all rows are returned and nothing throws.
     expect(Item::query()->filter(['name' => null, 'status' => '', 'search' => null])->count())->toBe(3);
 });
+
+it('applies a filter whose value is a falsy scalar on a raw column', function () {
+    // The raw-column branch needs tableColumnType(), which runs the MySQL-only
+    // `show columns`. Seed the cache it reads so the branch is reachable on sqlite.
+    cache()->put('table_items_columns', [
+        ['Field' => 'id', 'Type' => 'integer'],
+        ['Field' => 'name', 'Type' => 'varchar(255)'],
+        ['Field' => 'amount', 'Type' => 'integer'],
+    ], now()->addDays(7));
+
+    Item::factory()->create(['amount' => 0]);
+    Item::factory()->create(['amount' => 5]);
+
+    // `amount` is a plain (raw) column — no scope, no enum cast. blank('0') is
+    // false, so '0' is a real constraint. The applier used to re-test `&& $value`
+    // and drop it because '0' is PHP-falsy, contradicting the blank() guard and
+    // silently returning unfiltered rows. The where() must be applied.
+    $results = Item::query()->filter(['amount' => '0'])->get();
+
+    expect($results)->toHaveCount(1)
+        ->and((int) $results->first()->amount)->toBe(0);
+});
