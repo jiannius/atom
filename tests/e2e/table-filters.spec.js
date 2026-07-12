@@ -34,6 +34,20 @@ test('selecting a filter shows a chip; clearing it removes the chip', async ({ p
   await expect(bar.locator('div.inline-flex.items-center').filter({ hasText: 'Published' })).toHaveCount(0)
 })
 
+test('filter options render eagerly, before any dropdown is opened', async ({ page }) => {
+  await page.goto('/atom/e2e/table-filters')
+  await page.waitForLoadState('networkidle')
+
+  // Options are populated by the select() Alpine factory at init() and rendered
+  // by x-for into the (still-closed) popover DOM — NOT lazily on first open.
+  // Before the eager-population fix, this.options stayed [] until onOpen(), so a
+  // concurrent Livewire morph left an un-opened filter empty ("No Results").
+  // Assert the option DOM already exists while every dropdown is still closed.
+  await expect(page.locator('[data-atom-option]').filter({ hasText: 'Published' })).toHaveCount(1)
+  await expect(page.locator('[data-atom-option]').filter({ hasText: 'Type A' })).toHaveCount(1)
+  await expect(page.locator('[data-atom-option]').filter({ hasText: 'Category X' })).toHaveCount(1)
+})
+
 test('Clear all removes every chip', async ({ page }) => {
   await page.goto('/atom/e2e/table-filters')
   await page.waitForLoadState('networkidle')
