@@ -27,6 +27,11 @@ it('skips blank filter values without hitting column introspection', function ()
 });
 
 it('applies a filter whose value is a falsy scalar on a raw column', function () {
+    // Use the array cache store — the seed below (and the macro's own
+    // cache()->remember) must share a store, and testbench's default resolves
+    // to `database`, whose `cache` table isn't migrated here → a write error.
+    config()->set('cache.default', 'array');
+
     // The raw-column branch needs tableColumnType(), which runs the MySQL-only
     // `show columns`. Seed the cache it reads so the branch is reachable on sqlite.
     cache()->put('table_items_columns', [

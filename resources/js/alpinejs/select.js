@@ -45,6 +45,14 @@ export default (config) => {
         },
 
         init () {
+            // Populate static (array) options eagerly so the list survives a
+            // Livewire morph / re-render even before the dropdown is first
+            // opened — otherwise this.options stays [] until onOpen() and an
+            // un-opened filter renders "No Results" after any concurrent morph.
+            // Callback (string) options stay lazy — fetched on open to avoid a
+            // network round-trip per render.
+            if (Array.isArray(config.options)) this.options = this.filterOptions()
+
             this.$nextTick(() => {
                 if ((config.multiple && this.selectValue?.length) || (!config.multiple && !empty(this.selectValue))) {
                     this.fetch()
@@ -99,13 +107,7 @@ export default (config) => {
                     })
             }
             else {
-                this.options = config.options.filter(opt => {
-                    if (opt.hasOwnProperty('options')) {  // if the options is a grouped options
-                        opt.options = opt.options.filter(option => this.isOptionMatched(option))
-                        return true
-                    }
-                    else return this.isOptionMatched(opt)
-                })
+                this.options = this.filterOptions()
 
                 this.setWidth()
                 this.$nextTick(() => {
@@ -113,6 +115,18 @@ export default (config) => {
                     this.resetActive()
                 })
             }
+        },
+
+        // Build the visible option list from the static config, honouring the
+        // current search text. Returns NEW objects — never mutates
+        // config.options (the shared source array), so repeated fetches and
+        // re-renders can't permanently shrink a group's options.
+        filterOptions () {
+            return config.options
+                .map(opt => opt.hasOwnProperty('options')  // grouped options
+                    ? { ...opt, options: opt.options.filter(option => this.isOptionMatched(option)) }
+                    : opt)
+                .filter(opt => opt.hasOwnProperty('options') || this.isOptionMatched(opt))
         },
 
         setWidth () {
