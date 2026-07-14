@@ -3,6 +3,7 @@ import './prototypes/number'
 import './prototypes/string'
 
 import helpers from './helpers'
+import accordion from './alpinejs/accordion'
 import modal from './alpinejs/modal'
 import tiptap from './alpinejs/tiptap'
 import mention from './alpinejs/mention'
@@ -25,6 +26,7 @@ import Autosize from '@marcreichel/alpine-autosize'
 import intersect from '@alpinejs/intersect'
 
 document.addEventListener('alpine:init', () => {
+    Alpine.data('accordion', accordion)
     Alpine.data('modal', modal)
     Alpine.data('tiptap', tiptap)
     Alpine.data('mention', mention)

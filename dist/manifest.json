@@ -12,7 +12,7 @@
     "isDynamicEntry": true
   },
   "resources/css/atom.css": {
-    "file": "assets/atom-DENyF39G.css",
+    "file": "assets/atom-C-sIhaYn.css",
     "src": "resources/css/atom.css",
     "isEntry": true
   },
@@ -32,7 +32,7 @@
     "isEntry": true
   },
   "resources/js/atom.js": {
-    "file": "assets/atom-zUpCP_yK.js",
+    "file": "assets/atom-D6OmviPK.js",
     "name": "atom",
     "src": "resources/js/atom.js",
     "isEntry": true,
@@ -45,7 +45,7 @@
     ]
   },
   "resources/js/tiptap.js": {
-    "file": "assets/tiptap-g3uhUe1x.js",
+    "file": "assets/tiptap-Ch5tJ6eV.js",
     "name": "tiptap",
     "src": "resources/js/tiptap.js",
     "isDynamicEntry": true,
