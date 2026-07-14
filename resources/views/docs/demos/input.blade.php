@@ -16,3 +16,8 @@ view="atom::docs.demos.input.affixes"/>
 title="Required & error"
 description="error accepts a message string; in Livewire it defaults to the validation error for the bound field."
 view="atom::docs.demos.input.states"/>
+
+<atom:docs.example
+title="OTP / one-time code"
+description="input.otp — numeric boxes with auto-advance, paste-to-fill and backspace nav. length, masked and groups props; dispatches otp-completed (and calls the submit method) when full."
+view="atom::docs.demos.input.otp"/>

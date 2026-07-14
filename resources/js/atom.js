@@ -17,6 +17,7 @@ import datePicker from './alpinejs/date-picker'
 import dateRange from './alpinejs/date-range'
 import timePicker from './alpinejs/time-picker'
 import emailInput from './alpinejs/email-input'
+import otp from './alpinejs/otp'
 import breadcrumbs from './alpinejs/breadcrumbs'
 import calendar from './alpinejs/calendar'
 import chartBar from './alpinejs/chart/bar'
@@ -36,6 +37,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('lightbox', lightbox)
     Alpine.data('telInput', telInput)
     Alpine.data('emailInput', emailInput)
+    Alpine.data('otp', otp)
     Alpine.data('breadcrumbs', breadcrumbs)
     Alpine.data('datePicker', datePicker)
     Alpine.data('timePicker', timePicker)
