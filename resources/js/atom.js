@@ -4,6 +4,7 @@ import './prototypes/string'
 
 import helpers from './helpers'
 import accordion from './alpinejs/accordion'
+import command from './alpinejs/command'
 import modal from './alpinejs/modal'
 import tiptap from './alpinejs/tiptap'
 import mention from './alpinejs/mention'
@@ -28,6 +29,7 @@ import intersect from '@alpinejs/intersect'
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('accordion', accordion)
+    Alpine.data('command', command)
     Alpine.data('modal', modal)
     Alpine.data('tiptap', tiptap)
     Alpine.data('mention', mention)

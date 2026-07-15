@@ -86,6 +86,26 @@ class Atom
     }
 
     /**
+     * Trigger command palette from anywhere in the application
+     */
+    public function command($name)
+    {
+        return new class ($name) {
+            public function __construct(public $name) {}
+
+            public function show()
+            {
+                app('livewire')->current()->dispatch('atom-command-show', name: $this->name);
+            }
+
+            public function close()
+            {
+                app('livewire')->current()->dispatch('atom-command-close', name: $this->name);
+            }
+        };
+    }
+
+    /**
      * Trigger toast from anywhere in the application
      */
     public function toast(

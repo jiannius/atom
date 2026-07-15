@@ -145,6 +145,14 @@ trait AtomComponent
     }
 
     /**
+     * Show command palette in front end
+     */
+    public function command($name = null)
+    {
+        return app('atom')->command($name ?? app('livewire')->current()->getName());
+    }
+
+    /**
      * Show toast in front end
      */
     public function toast(...$args)

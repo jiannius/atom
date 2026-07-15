@@ -6,7 +6,8 @@ html:has([data-atom-modal][data-open]),
 html:has([data-atom-modal-slide][data-open]),
 html:has([data-atom-modal-slide-left][data-open]),
 html:has([data-atom-modal-slide-bottom][data-open]),
-html:has([data-atom-lightbox][data-open]) {
+html:has([data-atom-lightbox][data-open]),
+html:has([data-atom-command][data-open]) {
     overflow: hidden;
 }
 
@@ -33,6 +34,17 @@ dialog[data-atom-lightbox][data-open]::backdrop {
     opacity: 1;
     transition: all .15s allow-discrete;
     transform: translate(0) scale(1);
+}
+
+dialog[data-atom-command]::backdrop {
+    opacity: 0;
+    background: rgba(0, 0, 0, 0.4);
+    transition: opacity 75ms allow-discrete;
+}
+
+dialog[data-atom-command][data-open]::backdrop {
+    opacity: 1;
+    transition: opacity .15s allow-discrete;
 }
 
 input.no-spinner {

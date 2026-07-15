@@ -2,6 +2,7 @@ import ajax from './ajax'
 import alert from './alert'
 import toast from './toast'
 import modal from './modal'
+import command from './command'
 import empty from './empty'
 import confirm from './confirm'
 import floatingui from './floatingui'
@@ -11,6 +12,7 @@ export default {
     alert,
     toast,
     modal,
+    command,
     empty,
     confirm,
     floatingui,
