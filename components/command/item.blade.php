@@ -11,7 +11,7 @@ $classes = Arr::toCssClasses([
     'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-start text-sm',
     'text-zinc-700 dark:text-zinc-200',
     'hover:bg-zinc-100 dark:hover:bg-zinc-800',
-    'data-active:bg-zinc-100 dark:data-active:bg-zinc-800',
+    '[&[data-active]]:bg-zinc-100 dark:[&[data-active]]:bg-zinc-800',
 ]);
 @endphp
 

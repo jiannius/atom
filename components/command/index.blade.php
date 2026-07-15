@@ -12,7 +12,6 @@ $placeholder ??= t('Search...');
 $classes = Arr::toCssClasses([
     'group/command m-auto mt-[10vh] w-full max-w-xl overflow-hidden rounded-xl p-0 shadow-lg',
     'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700',
-    'backdrop:bg-black/40',
     '[&[data-open]]:flex [&[data-open]]:flex-col',
 ]);
 @endphp
