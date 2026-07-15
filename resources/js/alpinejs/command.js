@@ -87,7 +87,7 @@ export default (config) => {
                 return
             }
 
-            if (!el.id) el.id = `${config.name || 'command'}-item-${index}`
+            if (!el.id) el.id = `${config.name || 'command'}-item-${this.items().indexOf(el)}`
             el.setAttribute('data-active', '')
             search?.setAttribute('aria-activedescendant', el.id)
             el.scrollIntoView({ block: 'nearest' })
