@@ -8,11 +8,10 @@
 $name ??= (app('livewire')->current() ?: null)?->getName();
 @endphp
 
-<button
-type="button"
+<div
+{{ $attributes->class('contents') }}
 x-data
 x-on:click="atom.command(@js($name)).show()"
-data-atom-command-trigger
-{{ $attributes }}>
+data-atom-command-trigger>
     {{ $slot }}
-</button>
+</div>
