@@ -32,7 +32,7 @@ data-atom-command
         <input
         type="text"
         role="combobox"
-        aria-expanded="true"
+        x-bind:aria-expanded="open"
         aria-controls="{{ $name }}-command-list"
         autocomplete="off"
         data-atom-command-search
@@ -46,7 +46,7 @@ data-atom-command
         class="w-full border-0 bg-transparent py-4 text-base focus:outline-none focus:ring-0"/>
     </div>
 
-    <div id="{{ $name }}-command-list" role="listbox" data-atom-command-list class="max-h-[60vh] overflow-y-auto p-2">
+    <div id="{{ $name }}-command-list" role="listbox" aria-label="{{ t('Commands') }}" data-atom-command-list class="max-h-[60vh] overflow-y-auto p-2">
         {{ $slot }}
 
         <div data-atom-command-empty hidden class="px-3 py-8 text-center text-sm text-zinc-500">
