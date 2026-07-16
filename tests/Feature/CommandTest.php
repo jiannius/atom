@@ -15,6 +15,18 @@ describe('command', function () {
             ->toContain('data-atom-command-empty');
     });
 
+    it('gives the listbox an accessible name and binds the combobox expanded state', function () {
+        $html = renderBlade('<atom:command name="palette"/>');
+
+        expect($html)
+            // the listbox needs an accessible name of its own
+            ->toContain('role="listbox"')
+            ->toContain('aria-label="Commands"')
+            // expanded state reflects the palette open state, not a static true
+            ->toContain('x-bind:aria-expanded="open"')
+            ->not->toContain('aria-expanded="true"');
+    });
+
     it('binds the default meta.k shortcut and disables it with false', function () {
         expect(renderBlade('<atom:command name="p"/>'))
             ->toContain('x-on:keydown.meta.k.window.prevent="toggle"');
@@ -55,13 +67,30 @@ describe('command', function () {
             ->toContain('⌘K');
     });
 
-    it('renders a group heading', function () {
+    it('renders a labelled role=group when a heading is given', function () {
         $html = renderBlade('<atom:command.group heading="Pages"><atom:command.item>Home</atom:command.item></atom:command.group>');
 
         expect($html)
             ->toContain('data-atom-command-group')
             ->toContain('data-atom-command-heading')
-            ->toContain('Pages');
+            ->toContain('Pages')
+            ->toContain('role="group"')
+            // heading id and the wrapper's aria-labelledby share the generated id
+            ->toContain('aria-labelledby="atom-command-group-')
+            ->toContain('id="atom-command-group-');
+
+        // the aria-labelledby value must match the heading's id exactly
+        preg_match('/aria-labelledby="(atom-command-group-\w+)"/', $html, $labelledby);
+        expect($html)->toContain('id="'.$labelledby[1].'"');
+    });
+
+    it('renders a bare role=group with no aria-labelledby when no heading', function () {
+        $html = renderBlade('<atom:command.group><atom:command.item>Home</atom:command.item></atom:command.group>');
+
+        expect($html)
+            ->toContain('role="group"')
+            ->not->toContain('aria-labelledby')
+            ->not->toContain('data-atom-command-heading');
     });
 
     it('overrides the empty state via the empty slot', function () {
