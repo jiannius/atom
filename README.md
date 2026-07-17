@@ -359,6 +359,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:checkbox>` | `name`, `label`, `caption`, `align` (`start`, `center`, `end`). Group with `<atom:checkbox.group>`. |
 | `<atom:radio>` | Same as checkbox. Group with `<atom:radio.group>`. |
 | `<atom:toggle>` | `name`, `label`, `caption`. Group with `<atom:toggle.group>`. |
+| `<atom:rating>` | Star rating input + display. `name`, `label`, `caption`, `count` (5), `value`, `half` (half-step selection), `readonly` (display a fixed/average value), `clearable` (re-click resets to 0), `icon` (swap the star for any atom icon). `wire:model` binds via `x-modelable`. |
 | `<atom:date-picker>` | `name`, `variant` (`date`, `range`, `calendar`), `label`, `caption`, `inline`, `prefix`, `suffix`. Subs: `<atom:date-picker.date>`, `<atom:date-picker.range>`, `<atom:date-picker.calendar>`. |
 | `<atom:time-picker>` | `name`, `label`, `caption`, `invalid`, `inline`. |
 | `<atom:uploader>` | `label` (default `Upload`), `variant`, `size`. Drop variant: `<atom:uploader.dropzone>`. |

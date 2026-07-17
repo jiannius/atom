@@ -102,3 +102,43 @@ button {
         transform: translateX(250%);
     }
 }
+
+/** Rating — two-layer clip fill (base + accent overlay), structural so it works without Tailwind **/
+[data-atom-rating-track] {
+    position: relative;
+    display: inline-flex;
+    cursor: pointer;
+    outline: none;
+}
+
+[data-atom-rating-track][role="img"] {
+    cursor: default;
+}
+
+[data-atom-rating-base],
+[data-atom-rating-fill] {
+    display: flex;
+    gap: 0.125rem;
+}
+
+[data-atom-rating-base] {
+    color: #d4d4d8; /* zinc-300 — empty */
+}
+
+[data-atom-rating-fill] {
+    position: absolute;
+    inset: 0;
+    color: #f59e0b; /* amber-500 — filled */
+    clip-path: inset(0 calc(100% - var(--atom-rating-percent, 0%)) 0 0);
+    pointer-events: none;
+}
+
+html.dark [data-atom-rating-base] {
+    color: #3f3f46; /* zinc-700 */
+}
+
+[data-atom-rating-track]:focus-visible {
+    outline: 2px solid #a1a1aa;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
