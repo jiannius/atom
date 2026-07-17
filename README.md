@@ -403,6 +403,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:confirm>` | Window-bound. Triggered by `atom()->confirm(...)`. Supports `password`, `passphrase`, optional reason field. Wires `onAccepted` / `onRejected` to Livewire methods. |
 | `<atom:tooltip>` | `interactive`, `position` (`top`, `bottom`, `left`, `right`), `align` (`start`, `center`, `end`), `content`, `kbd`, `toggleable`. |
 | `<atom:dropdown>` | `position` (`bottom`, `top`), `align` (`start`, `end`), `locked`. |
+| `<atom:context-menu>` | Right-click menu opened at the cursor. `locked`. Default slot = the right-clickable target; `<x-slot:menu>` holds `<atom:menu.item>`s. Reuses `<atom:menu>`. |
 | `<atom:lightbox>` | Image lightbox; click any `<img>` inside to zoom. |
 
 The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped **once** in your root layout — drop them in `<atom:layouts.sidebar>` or near `<atom:html>` and dispatch from anywhere.

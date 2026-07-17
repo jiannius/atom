@@ -11,6 +11,7 @@ import mention from './alpinejs/mention'
 import select from './alpinejs/select'
 import tooltip from './alpinejs/tooltip'
 import dropdown from './alpinejs/dropdown'
+import contextMenu from './alpinejs/context-menu'
 import lightbox from './alpinejs/lightbox'
 import telInput from './alpinejs/tel-input'
 import clipboard from './alpinejs/clipboard'
@@ -38,6 +39,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('select', select)
     Alpine.data('tooltip', tooltip)
     Alpine.data('dropdown', dropdown)
+    Alpine.data('contextMenu', contextMenu)
     Alpine.data('lightbox', lightbox)
     Alpine.data('telInput', telInput)
     Alpine.data('emailInput', emailInput)
