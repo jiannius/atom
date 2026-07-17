@@ -103,6 +103,19 @@ button {
     }
 }
 
+/** Context menu — the trigger wrapper is layout-transparent; the menu is a
+    popover positioned at the cursor by floating-ui, so reset the UA popover
+    centering (inset:0; margin:auto) that would otherwise fight left/top. **/
+[data-atom-context-menu-trigger] {
+    display: contents;
+}
+
+[data-atom-context-menu] [data-atom-menu] {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+}
+
 /** Rating — two-layer clip fill (base + accent overlay), structural so it works without Tailwind **/
 [data-atom-rating-track] {
     position: relative;

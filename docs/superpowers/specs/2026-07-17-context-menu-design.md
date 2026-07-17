@@ -14,10 +14,11 @@ Branch `worktree-context-menu` (off `main`).
   item component.
 - Positioning at the cursor via `atom.floatingui(virtualAnchor, popover, {placement:'bottom-start',
   offset:0, autoUpdate:false})`. `computePosition` accepts a **virtual element** (`{getBoundingClientRect}`)
-  — a zero-size rect at the pointer `{clientX, clientY}`. Position once (a context menu shouldn't chase
-  scroll — it closes on scroll).
+  — a zero-size rect at the pointer `{clientX, clientY}`. Positioned once at the cursor.
 - Close semantics mirror `dropdown.js`: item click (unless `locked`), native popover light-dismiss
-  (Escape / outside-click), plus **scroll** and `livewire:navigating`.
+  (Escape / outside-click), and `livewire:navigating`. (Scroll-close was dropped — a programmatic
+  scroll-into-view spuriously closed the menu and it conflicts with `locked`; the pinned menu stays
+  put on scroll and is dismissed by Escape / outside-click.)
 - API uses a named `menu` slot so the component owns the `<atom:menu popover>` wrapper and the target
   is unambiguous (no "which child is the trigger" guessing):
 
@@ -44,7 +45,7 @@ Branch `worktree-context-menu` (off `main`).
    - `trigger` getter = `[data-atom-context-menu-trigger]`; `popover` getter = `[data-atom-menu]`.
    - `init()`: `contextmenu` listener on the trigger → `preventDefault()`, capture `x/y`, `show()`;
      `toggle` listener → dispatch `open`/`close` + clear `data-open` + `cleanup()`; item-click close
-     when `!locked`; `scroll` (capture) + `livewire:navigating` → `hide()`.
+     when `!locked`; `livewire:navigating` → `hide()`.
    - `show()`: if already open, just re-run floating-ui with the new cursor anchor (don't re-call
      `showPopover()` — it throws on an open popover); else `showPopover()` + set `data-open`. Build the
      virtual anchor from `x/y` and call `atom.floatingui(anchor, popover, {placement:'bottom-start',
@@ -84,5 +85,5 @@ Squash-per-task on `worktree-context-menu` → `gh pr create --draft`. Tag **v3.
 
 ## Out of scope (v1)
 
-Nested submenus, programmatic open API, touch long-press synthesis (rely on the native `contextmenu`
-event, which most touch platforms already synthesize).
+Nested submenus, programmatic open API, close-on-scroll, touch long-press synthesis (rely on the
+native `contextmenu` event, which most touch platforms already synthesize).
