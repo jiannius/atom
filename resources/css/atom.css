@@ -142,3 +142,103 @@ html.dark [data-atom-rating-base] {
     outline-offset: 2px;
     border-radius: 4px;
 }
+
+/** Slider (range input) — thumb/track are pseudo-elements, not expressible as Tailwind utilities **/
+[data-atom-slider-input] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 9999px;
+    cursor: pointer;
+    outline: none;
+    color: #18181b; /* currentColor drives the fill + thumb; a `text-primary` class overrides it */
+    --atom-slider-track: #e4e4e7;
+    background: linear-gradient(
+        to right,
+        currentColor 0 var(--atom-slider-percent, 0%),
+        var(--atom-slider-track) var(--atom-slider-percent, 0%) 100%
+    );
+}
+
+[data-atom-slider-input]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: #fff;
+    border: 2px solid currentColor;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    transition: box-shadow 0.1s;
+}
+
+[data-atom-slider-input]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    background: #fff;
+    border: 2px solid currentColor;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+}
+
+/* Firefox paints its own track/progress rather than the element background. */
+[data-atom-slider-input]::-moz-range-track {
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--atom-slider-track);
+}
+
+[data-atom-slider-input]::-moz-range-progress {
+    height: 6px;
+    border-radius: 9999px;
+    background: currentColor;
+}
+
+[data-atom-slider-input]:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.12);
+}
+
+[data-atom-slider-input]:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.12);
+}
+
+[data-atom-slider-input]:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Value bubble — positioned by the inherited --atom-slider-percent var, revealed on interaction. */
+[data-atom-slider-bubble] {
+    position: absolute;
+    top: -1.5rem;
+    left: var(--atom-slider-percent, 0%);
+    transform: translateX(-50%);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.3;
+    white-space: nowrap;
+    background: #18181b;
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.1s;
+    pointer-events: none;
+}
+
+[data-atom-slider]:hover [data-atom-slider-bubble],
+[data-atom-slider]:focus-within [data-atom-slider-bubble] {
+    opacity: 1;
+}
+
+html.dark [data-atom-slider-input] {
+    color: #fff;
+    --atom-slider-track: #3f3f46;
+}
+
+html.dark [data-atom-slider-bubble] {
+    background: #fff;
+    color: #18181b;
+}
