@@ -382,6 +382,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:subheading>` | Same as heading, smaller / muted. |
 | `<atom:caption>` | Small muted text. |
 | `<atom:label>` | `icon`, `align`. |
+| `<atom:kbd>` | Keyboard-key caps. `keys` (space/`+`-separated, maps `cmd`→⌘, `shift`→⇧, `alt`→⌥, `ctrl`→⌃, `enter`, `esc`, arrows, …); or a single cap from the slot: `<atom:kbd>Esc</atom:kbd>`. |
 | `<atom:avatar>` | `src`, `name`, `initial`, `square` (default `true`), `size` (`xs`..`xl`). Stack: `<atom:avatar.group>`. |
 | `<atom:badge>` | `status` (enum-aware), `size` (`xs`, `default`, `lg`), `icon`, `color`, `label`. Group: `<atom:badge.group>`. |
 | `<atom:card>` | `inset`, `subtle`, `divided`, `variant` (`stats`, `chart`), `heading`, `data`, `indicator`, `trend`, `color`. |
