@@ -5,7 +5,7 @@ view="atom::docs.demos.chart.bar"/>
 
 <atom:docs.example
 title="Area"
-description="Smooth area chart, same data shape as bar. min and max set the y-axis range and the goal annotation."
+description="Smooth area chart, same data shape as bar. max draws a goal line and annotation; min floors the y-axis (only applied alongside max)."
 view="atom::docs.demos.chart.area"/>
 
 <atom:docs.example
