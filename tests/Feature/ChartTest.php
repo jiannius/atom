@@ -56,4 +56,16 @@ describe('chart', function () {
             ->toContain('Goal')
             ->toContain('100');
     });
+
+    it('is delegated to by card variant=chart', function () {
+        $html = renderBlade(
+            '<atom:card variant="chart" heading="Sales" :data="$data"/>',
+            ['data' => [['label' => 'Mon', 'value' => 10, 'tooltip' => '10 sales']]],
+        );
+
+        expect($html)
+            ->toContain('data-atom-chart')
+            ->toContain('chartBar(')
+            ->toContain('Sales'); // card still renders its own heading
+    });
 });

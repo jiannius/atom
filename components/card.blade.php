@@ -69,21 +69,7 @@ $merges = [
             <atom:subheading>{{ t($heading) }}</atom:subheading>
 
             <div class="grow">
-                @if ($type === 'area')
-                    <div x-data="chartArea({
-                        data: @js($data),
-                        color: @js($color),
-                        max: @js($max),
-                        min: @js($min),
-                    })"></div>
-                @else
-                    <div x-data="chartBar({
-                        data: @js($data),
-                        color: @js($color),
-                        max: @js($max),
-                        min: @js($min),
-                    })"></div>
-                @endif
+                <atom:chart :type="$type ?? 'bar'" :data="$data" :color="$color" :max="$max" :min="$min" class="h-full"/>
             </div>
         </div>
     @else
