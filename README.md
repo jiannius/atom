@@ -386,6 +386,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:avatar>` | `src`, `name`, `initial`, `square` (default `true`), `size` (`xs`..`xl`). Stack: `<atom:avatar.group>`. |
 | `<atom:badge>` | `status` (enum-aware), `size` (`xs`, `default`, `lg`), `icon`, `color`, `label`. Group: `<atom:badge.group>`. |
 | `<atom:card>` | `inset`, `subtle`, `divided`, `variant` (`stats`, `chart`), `heading`, `data`, `indicator`, `trend`, `color`. |
+| `<atom:chart>` | Standalone ApexCharts chart. `type` (`bar`, `area`, `trend`), `data` (bar/area: `label`/`value`/`tooltip` rows; trend: plain number array), `color` (`red`/`green`/`orange`/`gray` or `#hex`), `max` (`['value'=>, 'label'=>]` goal line), `min`. Default height `h-64` (`h-16` for trend), override with a `h-*` class. |
 | `<atom:callout>` | `icon`, `heading`, `content`, `variant` (`info`, `success`, `warning`, `danger`, `error`), `closeable`. |
 | `<atom:skeleton>` | Animated loading block. |
 | `<atom:placeholder-bar>` | `size="100%x20px"`. |

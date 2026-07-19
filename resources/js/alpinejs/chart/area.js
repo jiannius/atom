@@ -66,9 +66,11 @@ export default (config) => {
                 })
 
                 this.$nextTick(() => {
-                    chart.render()
+                    this.chart.render()
                     this.setColors()
                 })
+
+                document.addEventListener('darkmode-changed', () => this.setColors())
             })
         },
 
