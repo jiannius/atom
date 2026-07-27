@@ -51,12 +51,23 @@ export default (config) => {
 
                 if (data.replace) {
                     let index = this.trails.findIndex(item => item.title === current.title && item.url === current.url)
+                    let last = this.trails[this.trails.length - 1]
+                    let rooted = this.trails.some(item => item.home && item.title === home.title && item.url === home.url)
 
-                    if (index === -1) {
-                        this.trails.splice(this.trails.length - 1, 1, current)
+                    // the page is already in the trail, drop everything below it
+                    if (index > -1) {
+                        this.trails.splice(index + 1)
+                    }
+                    // `replace` swaps out the sibling crumb this page stands in for, so it assumes
+                    // the trail ends with that sibling. That only holds while moving within the
+                    // hierarchy — when the crumb we would overwrite is a trail root, or the trail
+                    // belongs to another hierarchy altogether, we are entering from outside, so
+                    // seed the page's own declared trail instead of destroying the root
+                    else if (last?.home || !rooted) {
+                        this.trails = [...items]
                     }
                     else {
-                        this.trails.splice(index + 1)
+                        this.trails.splice(this.trails.length - 1, 1, current)
                     }
                 }
                 else {
