@@ -76,14 +76,15 @@ describe('select aria', function () use ($options) {
 
         expect($html)
             ->toContain('role="listbox"')
-            ->toMatch('/id="atom-select-[^"]+-list"/')
+            // the id is minted client-side, so both ends of the wiring are bound
+            ->toContain('x-bind:id="`${$id(\'atom-select\')}-list`"')
             ->toContain('role="option"')
             ->toContain('x-bind:aria-selected')
             // non-searchable → the trigger button is the combobox host
             ->toContain('role="combobox"')
             ->toContain('aria-haspopup="listbox"')
             ->toContain('data-atom-select-combobox')
-            ->toMatch('/aria-controls="atom-select-[^"]+-list"/')
+            ->toContain('x-bind:aria-controls="`${$id(\'atom-select\')}-list`"')
             // the old menu semantics + DOM-focus marker are gone
             ->not->toContain('role="menuitem"')
             ->not->toContain('data-option-focus');

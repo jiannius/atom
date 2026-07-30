@@ -71,11 +71,32 @@ describe('atom uid', function () {
     });
 });
 
-describe('select uid', function () {
-    // A random id changed on every render, so Livewire's morph replaced the popover
-    // node and re-evaluated x-data — the listbox then never fetched its options
-    // again. The id has to survive a re-render of the same component.
-    it('keeps the listbox popover id stable across re-renders', function () {
+// The selects mint their ids client-side with $id instead of calling uid(): any
+// id baked into the markup lands in the x-data attribute, and a render that mints
+// a different number of ids before this one (a form modal renders one shape on
+// load and another on edit()) changes that attribute. Livewire's morph then
+// applies it, Alpine re-evaluates x-data, and the subtree's effects stay bound to
+// the previous scope — the picker opens on a permanent "No Results".
+describe('select ids', function () {
+    it('mints the listbox id client-side, not in the markup', function () {
+        $html = renderBlade('<atom:select variant="listbox" options="countries" wire:model="pick" />');
+
+        expect($html)
+            ->toContain('x-id="[\'atom-select\']"')
+            ->toContain('x-bind:id="`${$id(\'atom-select\')}-list`"')
+            ->not->toMatch('/\sid="atom-select/');
+    });
+
+    it('mints the filter id client-side too', function () {
+        $html = renderBlade('<atom:select variant="filter" label="Status" options="countries" wire:model="pick" />');
+
+        expect($html)
+            ->toContain('x-id="[\'atom-select\']"')
+            ->toContain('x-bind:id="`${$id(\'atom-select\')}-list`"')
+            ->not->toMatch('/\sid="atom-select/');
+    });
+
+    it('renders a byte-identical x-data on every render', function () {
         $component = new class () {
             public function getId(): string
             {
@@ -83,31 +104,25 @@ describe('select uid', function () {
             }
         };
 
-        $render = fn () => withLivewireContext(
-            $component,
-            fn () => renderBlade('<atom:select variant="listbox" options="countries" wire:model="pick" />')
-        );
+        // $minted stands in for ids handed out earlier in the render: a form modal
+        // renders one shape on load and another on edit(), so the count shifts.
+        $xData = function (int $minted) use ($component) {
+            forgetUids();
 
-        forgetUids();
-        $first = $render();
+            $html = withLivewireContext($component, function () use ($minted) {
+                for ($i = 0; $i < $minted; $i++) {
+                    app('atom')->uid('atom-select');
+                }
 
-        forgetUids();
-        $second = $render();
+                return renderBlade('<div><atom:select variant="listbox" options="countries" /><atom:select variant="listbox" options="countries" /></div>');
+            });
 
-        preg_match('/id="(atom-select-[^"]+)-list"/', $first, $matches);
+            preg_match_all('/x-data="select\((.*?)\)"/s', $html, $matches);
 
-        expect($matches[1] ?? null)->not->toBeNull()
-            ->and($second)->toContain($matches[1]);
-    });
+            return $matches[1];
+        };
 
-    it('gives two listboxes in the same component different ids', function () {
-        forgetUids();
-
-        $html = renderBlade('<div><atom:select variant="listbox" :options="[]" /><atom:select variant="listbox" :options="[]" /></div>');
-
-        preg_match_all('/id="(atom-select-[^"]+)-list"/', $html, $matches);
-
-        expect($matches[1])->toHaveCount(2)
-            ->and($matches[1][0])->not->toBe($matches[1][1]);
+        expect($xData(0))->toHaveCount(2)
+            ->and($xData(8))->toBe($xData(0));
     });
 });
