@@ -21,6 +21,15 @@ async function bump (page) {
   await expect(renders).toHaveText(String(before + 1))
 }
 
+// once the modal is open its dialog blocks the page behind it, so the re-render
+// has to come from a control inside the modal
+async function bumpInModal (page) {
+  const renders = page.locator('[data-renders]')
+  const before = Number(await renders.textContent())
+  await page.locator('[data-bump-modal]').click()
+  await expect(renders).toHaveText(String(before + 1))
+}
+
 test('a callback-backed listbox fetches its options on open', async ({ page }) => {
   await page.goto('/atom/e2e/select-morph')
 
@@ -89,6 +98,68 @@ test('a replaced popover node still drives the fetch', async ({ page }) => {
   })
 
   expect(fetched).toBe(246)
+})
+
+// The option rows are Alpine's, with no counterpart in the server HTML, so a
+// morph over them removes rows x-for still has in its lookup and re-inserts
+// copies outside the loop scope — those error on `option` and the list ends up
+// out of step with `options` (a short list can lose every row, leaving a visible
+// but empty popover). `wire:ignore` on the list container keeps the morph out.
+//
+// The modal here mirrors a consuming app's form: mounted with the page, then
+// populated + opened by an action, which renders the rows through the
+// already-picked value before any later re-render morphs over them.
+test('a morph over rendered option rows leaves the list intact', async ({ page }) => {
+  const scopeErrors = []
+  page.on('console', message => {
+    if (message.text().includes('option is not defined')) scopeErrors.push(message.text())
+  })
+
+  await page.goto('/atom/e2e/select-morph')
+
+  await page.locator('[data-edit]').click()
+  await expect(options(page, 'modal')).toHaveCount(246)
+
+  await bumpInModal(page)
+
+  await expect(options(page, 'modal')).toHaveCount(246)
+  expect(scopeErrors).toEqual([])
+})
+
+test('a morphed listbox in a modal can still be picked from', async ({ page }) => {
+  await page.goto('/atom/e2e/select-morph')
+
+  await page.locator('[data-edit]').click()
+  await expect(options(page, 'modal')).toHaveCount(246)
+  await bumpInModal(page)
+
+  // real mouse clicks are unreliable inside the dialog here: the rig serves no
+  // Tailwind, so the popover has no max-height and its rows land far off-screen
+  await trigger(page, 'modal').dispatchEvent('click')
+  await expect(options(page, 'modal').first()).toBeAttached()
+
+  await options(page, 'modal').filter({ hasText: 'Australia' }).dispatchEvent('click')
+  await expect(trigger(page, 'modal')).toContainText('Australia')
+})
+
+test('x-for keeps tracking the rows it rendered across a morph', async ({ page }) => {
+  await page.goto('/atom/e2e/select-morph')
+
+  await page.locator('[data-edit]').click()
+  await expect(options(page, 'modal')).toHaveCount(246)
+  await bumpInModal(page)
+
+  // every row x-for tracks is still in the document — a stale entry is what
+  // makes a later fetch with the same keys render nothing
+  const tracked = await page.evaluate(() => {
+    const tpl = document.querySelector('[data-select="modal"] [data-atom-menu] template[x-for]')
+    const rows = [...tpl._x_lookup.values()]
+
+    return { total: rows.length, connected: rows.filter(el => el.isConnected).length }
+  })
+
+  expect(tracked.connected).toBe(tracked.total)
+  expect(tracked.total).toBe(246)
 })
 
 test('the listbox popover keeps its id across a re-render', async ({ page }) => {

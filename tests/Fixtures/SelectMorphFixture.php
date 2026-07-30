@@ -13,6 +13,15 @@ class SelectMorphFixture extends Component
 
     public ?string $status = null;
 
+    public ?string $customer = null;
+
+    public ?string $priority = null;
+
+    /** @var array<int,string> */
+    public array $tags = [];
+
+    public ?int $record = null;
+
     public int $renders = 0;
 
     /**
@@ -22,6 +31,19 @@ class SelectMorphFixture extends Component
     public function bump(): void
     {
         $this->renders++;
+    }
+
+    /**
+     * Populate + open the already-mounted modal, the way a consuming app's
+     * create()/edit() action does: the modal markup renders with the page, so this
+     * re-render morphs into the pickers inside it rather than inserting them.
+     */
+    public function edit(int $record): void
+    {
+        $this->record = $record;
+        $this->customer = 'MY';   // an already-picked record, as an edit form has
+        $this->tags = ['a', 'c'];
+        $this->modal('form')->slide();
     }
 
     /**

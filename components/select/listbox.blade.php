@@ -225,7 +225,12 @@ data-atom-select-listbox
                 <atom:empty size="sm"/>
             </div>
 
-            <div x-show="options.length" class="max-h-[400px] overflow-auto">
+            {{-- The option rows are Alpine's, not the server's: they have no
+                 counterpart in the rendered HTML, so a Livewire morph over this
+                 subtree drops rows x-for still has in its lookup (and re-inserts
+                 copies outside the loop scope, which then error on `option`).
+                 The list is populated from JS either way, so let the morph skip it. --}}
+            <div x-show="options.length" class="max-h-[400px] overflow-auto" wire:ignore>
                 <template x-for="(option, i) in options" x-bind:key="`option-${option.value}-${i}`" hidden>
                     <div
                     role="option"
