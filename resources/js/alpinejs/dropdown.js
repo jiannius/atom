@@ -24,8 +24,31 @@ export default (config) => {
             }
             this.trigger?.setAttribute('aria-expanded', 'false')
 
-            this.trigger?.addEventListener('click', () => this.show())
-            this.popover?.addEventListener('toggle', (e) => {
+            // Everything is bound on $root rather than on the trigger / popover
+            // nodes themselves: a Livewire morph replaces those nodes whenever
+            // their markup changes (the select's per-render uid is enough to do
+            // it), which orphans a listener bound to the old node. The popover
+            // then still opened but `open` was never dispatched again, so a
+            // listbox could never fetch its options after any re-render.
+            // Re-binding is idempotent — the controller is kept on the element,
+            // not on `this`, so a morph that re-evaluates x-data (a new data
+            // object) still drops the previous instance's listeners.
+            this.$root._atomDropdownListeners?.abort()
+            let { signal } = this.$root._atomDropdownListeners = new AbortController()
+
+            this.$root.addEventListener('click', (e) => {
+                if (this.trigger?.contains(e.target)) this.show()
+                // Close on a click inside the menu, unless `locked`. Bubble
+                // phase, so `x-on:click.stop` on a child of the popover still
+                // keeps the menu open (form controls rely on that).
+                else if (!this.locked && this.popover?.contains(e.target)) this.hide()
+            }, { signal })
+
+            // `toggle` doesn't bubble, so it is caught on the way down instead —
+            // the popover is always a descendant of $root.
+            this.$root.addEventListener('toggle', (e) => {
+                if (e.target !== this.popover) return
+
                 if (e.newState === 'open') {
                     this.$dispatch('open')
                 }
@@ -37,26 +60,21 @@ export default (config) => {
                     this.trigger?.setAttribute('aria-expanded', 'false')
                     this.cleanup?.()
                 }
-            })
-
-            if (!this.locked) {
-                this.popover?.addEventListener('click', () => this.hide())
-            }
+            }, { capture: true, signal })
 
             // The menu lives in the browser top layer; close it on SPA
             // navigation so it can't outlive a wire:navigate page swap (the
             // removal of an open popover doesn't reliably fire `toggle`, so the
             // close handler above wouldn't run cleanup otherwise).
-            this.onNavigate = () => this.hide()
-            document.addEventListener('livewire:navigating', this.onNavigate)
+            document.addEventListener('livewire:navigating', () => this.hide(), { signal })
         },
 
         destroy() {
             // Alpine teardown (incl. morph removal): force-close + drop the
-            // positioning loop and the navigation listener.
+            // positioning loop and every listener bound in init().
             this.hide()
             this.cleanup?.()
-            document.removeEventListener('livewire:navigating', this.onNavigate)
+            this.$root._atomDropdownListeners?.abort()
         },
 
         show() {

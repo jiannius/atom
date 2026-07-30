@@ -42,4 +42,16 @@ describe('icon', function () {
         expect(renderBlade('<atom:icon.close title="Close"/>'))->not->toContain('aria-hidden');
         expect(renderBlade('<atom:icon.close role="img"/>'))->not->toContain('aria-hidden');
     });
+
+    // dropdown used to hardcode fill="#888" plus an inline 14x20 size, which beat
+    // the wrapper's sizing classes and ignored the surrounding text colour — so it
+    // could not be used as a button suffix like every other glyph in the set.
+    it('lets the dropdown glyph inherit colour and size', function () {
+        $html = renderBlade('<atom:icon.dropdown class="size-4"/>');
+
+        expect($html)
+            ->toContain('fill="currentColor"')
+            ->toContain('size-4')
+            ->not->toContain('style="width');
+    });
 });

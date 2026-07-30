@@ -43,6 +43,28 @@ class Atom
     }
 
     /**
+     * Build a DOM id that is unique on the page but stable across re-renders.
+     *
+     * A random id (uniqid()) changes on every render, which makes Livewire's morph
+     * treat the markup as new: it replaces the node — orphaning any listener bound
+     * to it — and re-evaluates an x-data expression carrying the id, leaving the
+     * component's Alpine effects bound to the discarded data object. Numbering per
+     * Livewire component instead keeps the id identical as long as the component
+     * renders the same widgets in the same order.
+     */
+    public function uid(string $prefix = 'atom') : string
+    {
+        $component = app('livewire')->current() ?: null;
+        $scope = $component ? $component->getId() : 'page';
+        $counts = app()->bound('atom.uids') ? app('atom.uids') : [];
+
+        $counts[$scope] = ($counts[$scope] ?? -1) + 1;
+        app()->instance('atom.uids', $counts);
+
+        return $prefix.'-'.$scope.'-'.$counts[$scope];
+    }
+
+    /**
      * Trigger action from anywhere in the application
      */
     public function action($name, $params = [])

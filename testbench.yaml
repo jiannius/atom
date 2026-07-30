@@ -1,2 +1,9 @@
 providers:
   - Jiannius\Atom\AtomServiceProvider
+  - Jiannius\Atom\Tests\Fixtures\E2EServiceProvider
+
+# `testbench serve` defaults to the database cache store, which the served app has
+# no table for — GetOptions caches its JSON option sets, so the /atom/action
+# endpoint 500s without this.
+env:
+  - CACHE_STORE=array
