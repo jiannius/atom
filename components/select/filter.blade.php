@@ -9,7 +9,7 @@
 ])
 
 @php
-$uid = uniqid('atom-select-');
+$uid = app('atom')->uid('atom-select');
 $filterKey = $attributes->wire('model')->value() ?: $attributes->get('data-filter-key');
 
 $options = is_array($options) || $options instanceof \Illuminate\Support\Collection
@@ -43,8 +43,6 @@ x-data="select({
     uid: @js($uid),
 })"
 x-modelable="selectValue"
-x-on:open="onOpen()"
-x-on:close="onClose()"
 x-on:keydown.up.prevent.stop="keyUp()"
 x-on:keydown.down.prevent.stop="keyDown()"
 x-on:keydown.enter.prevent.stop="enterKey()"

@@ -12,7 +12,7 @@
 ])
 
 @php
-$uid = uniqid('atom-select-');
+$uid = app('atom')->uid('atom-select');
 $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value();
 
 $classes = Arr::toCssClasses([
@@ -45,8 +45,6 @@ x-data="select({
     uid: @js($uid),
 })"
 x-modelable="selectValue"
-x-on:open="onOpen()"
-x-on:close="onClose()"
 x-on:keydown.up.prevent.stop="keyUp()"
 x-on:keydown.down.prevent.stop="keyDown()"
 x-on:keydown.enter.prevent.stop="enterKey()"
@@ -146,7 +144,7 @@ data-atom-select-listbox
                     @if ($multiple !== 'list' && $clearable)
                         <template x-if="isEmpty" hidden>
                             <div class="pointer-events-none py-3 pr-2 last:pr-3">
-                                <atom:icon.dropdown />
+                                <atom:icon.dropdown class="text-muted-foreground" />
                             </div>
                         </template>
 
@@ -157,7 +155,7 @@ data-atom-select-listbox
                         </template>
                     @else
                         <div class="pointer-events-none flex items-center justify-center pl-3 pr-2 last:pr-3">
-                            <atom:icon.dropdown />
+                            <atom:icon.dropdown class="text-muted-foreground" />
                         </div>
                     @endif
 

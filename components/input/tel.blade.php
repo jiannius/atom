@@ -41,7 +41,7 @@ data-atom-input-tel>
             </select>
 
             <div class="pointer-events-none absolute top-0 bottom-0 right-0 pr-2 flex items-center justify-center">
-                <atom:icon.dropdown />
+                <atom:icon.dropdown class="text-muted-foreground" />
             </div>
         </div>
     </div>

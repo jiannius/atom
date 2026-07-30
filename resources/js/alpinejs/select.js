@@ -45,6 +45,19 @@ export default (config) => {
         },
 
         init () {
+            // The dropdown's open/close events are bound here rather than with
+            // x-on in the blade: a Livewire morph can drop Alpine's directive
+            // listeners while keeping this data object alive, which left the
+            // list stuck on "No Results" because onOpen() — the only thing that
+            // fetches callback options — never ran again. The controller lives
+            // on the element so a re-evaluated x-data replaces its listeners
+            // instead of stacking a second set on top.
+            this.$root._atomSelectListeners?.abort()
+            let { signal } = this.$root._atomSelectListeners = new AbortController()
+
+            this.$root.addEventListener('open', () => this.onOpen(), { signal })
+            this.$root.addEventListener('close', () => this.onClose(), { signal })
+
             // Populate static (array) options eagerly so the list survives a
             // Livewire morph / re-render even before the dropdown is first
             // opened — otherwise this.options stays [] until onOpen() and an
