@@ -8,7 +8,6 @@ export default (config) => {
         activeIndex: -1,
         typeahead: '',
         typeaheadTimer: null,
-        uid: config.uid,
         callback: typeof config.options === 'string' ? config.options : null,
         selectValue: config.multiple ? [] : null,
 
@@ -25,6 +24,15 @@ export default (config) => {
             }).filter(Boolean)
 
             return Array.isArray(this.selectValue) ? options : options[0]
+        },
+
+        // We hold a value we cannot yet name — the options are lazy, so the label
+        // for a server-set value only exists once they have been fetched.
+        get hasUnlabelledValue () {
+            let values = [].concat(this.selectValue).filter(val => !empty(val))
+            if (!values.length) return false
+
+            return [].concat(this.selectedOptions ?? []).filter(Boolean).length < values.length
         },
 
         get searchable () {
@@ -67,9 +75,16 @@ export default (config) => {
             if (Array.isArray(config.options)) this.options = this.filterOptions()
 
             this.$nextTick(() => {
-                if ((config.multiple && this.selectValue?.length) || (!config.multiple && !empty(this.selectValue))) {
-                    this.fetch()
-                }
+                if (this.hasUnlabelledValue) this.fetch()
+            })
+
+            // The value can also arrive AFTER init: a form modal is mounted on
+            // its host page while empty, and edit() fills it in on a later
+            // round-trip. Nothing refetches on its own then, so the field shows
+            // a blank picker for a record it is actually holding. Picking from
+            // an open list labels itself locally, so this cannot loop.
+            this.$watch('selectValue', () => {
+                if (this.hasUnlabelledValue) this.fetch()
             })
         },
 
@@ -219,7 +234,7 @@ export default (config) => {
                 return
             }
 
-            if (!el.id) el.id = `${this.uid}-opt-${index}`
+            if (!el.id) el.id = `${this.$id('atom-select')}-opt-${index}`
             el.setAttribute('data-active', '')
             this.focusHost?.setAttribute('aria-activedescendant', el.id)
             el.scrollIntoView({ block: 'nearest' })

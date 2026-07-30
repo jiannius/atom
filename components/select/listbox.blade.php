@@ -12,7 +12,6 @@
 ])
 
 @php
-$uid = app('atom')->uid('atom-select');
 $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value();
 
 $classes = Arr::toCssClasses([
@@ -36,13 +35,19 @@ $optionClasses = Arr::toCssClasses([
 ]);
 @endphp
 
+{{-- The listbox id is minted client-side with $id rather than server-side: a
+     server counter is positional, so the same select gets a different id
+     whenever the render mints a different number of ids before it. That
+     changes the x-data attribute, Livewire's morph re-evaluates it, and the
+     subtree's effects are left on the previous scope — the picker then opens
+     on a permanent "No Results". --}}
 <div
+x-id="['atom-select']"
 x-data="select({
     options: @js($options),
     filters: @js($filters),
     multiple: @js($multiple),
     searchable: @js($searchable),
-    uid: @js($uid),
 })"
 x-modelable="selectValue"
 x-on:keydown.up.prevent.stop="keyUp()"
@@ -77,7 +82,7 @@ data-atom-select-listbox
             @if (!$searchable)
                 {{-- aria-expanded on this trigger is managed by dropdown.js --}}
                 role="combobox"
-                aria-controls="{{ $uid }}-list"
+                x-bind:aria-controls="`${$id('atom-select')}-list`"
                 x-on:keydown="typeAhead($event)"
                 data-atom-select-combobox
             @endif
@@ -178,7 +183,7 @@ data-atom-select-listbox
 
         <atom:menu
         role="listbox"
-        id="{{ $uid }}-list"
+        x-bind:id="`${$id('atom-select')}-list`"
         aria-multiselectable="{{ $multiple ? 'true' : 'false' }}"
         class="max-w-xl min-w-sm" popover>
             <div
@@ -197,7 +202,7 @@ data-atom-select-listbox
                 x-intersect="$nextTick(() => $el.focus())"
                 @if ($searchable)
                     role="combobox"
-                    aria-controls="{{ $uid }}-list"
+                    x-bind:aria-controls="`${$id('atom-select')}-list`"
                     aria-autocomplete="list"
                     x-bind:aria-expanded="open ? 'true' : 'false'"
                 @endif
