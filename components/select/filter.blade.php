@@ -169,7 +169,8 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                 <atom:empty size="sm"/>
             </div>
 
-            <div x-show="options.length" class="max-h-[400px] overflow-auto">
+            {{-- Alpine owns these rows — see the note in select/listbox.blade.php. --}}
+            <div x-show="options.length" class="max-h-[400px] overflow-auto" wire:ignore>
                 <template x-for="(option, i) in options" x-bind:key="`option-${option.value}-${i}`" hidden>
                     <div>
                         <template x-if="option.group" hidden>
