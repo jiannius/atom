@@ -129,7 +129,7 @@ export default (config) => {
                     .then(() => {
                         this.setWidth()
                         this.$nextTick(() => {
-                            this.$root.querySelector('[data-atom-select-search]')?.focus()
+                            this.$root.querySelector('[data-atom-select-search]')?.focus({ preventScroll: true })
                             this.resetActive()
                         })
                     })
@@ -139,7 +139,7 @@ export default (config) => {
 
                 this.setWidth()
                 this.$nextTick(() => {
-                    this.$root.querySelector('[data-atom-select-search]')?.focus()
+                    this.$root.querySelector('[data-atom-select-search]')?.focus({ preventScroll: true })
                     this.resetActive()
                 })
             }
@@ -237,7 +237,33 @@ export default (config) => {
             if (!el.id) el.id = `${this.$id('atom-select')}-opt-${index}`
             el.setAttribute('data-active', '')
             this.focusHost?.setAttribute('aria-activedescendant', el.id)
-            el.scrollIntoView({ block: 'nearest' })
+            this.revealOption(el)
+        },
+
+        // Keep the active option visible by scrolling ONLY the option list.
+        // scrollIntoView() walks every scrollable ancestor up to the document, and
+        // because the list lives in a top-layer popover the browser resolves that by
+        // yanking the page itself — on a long page the whole window jumps.
+        revealOption (el) {
+            let stop = el.closest('[popover]')
+            let list = el.parentElement
+
+            while (list && list.scrollHeight <= list.clientHeight) {
+                if (list === stop) return
+                list = list.parentElement
+            }
+
+            if (!list) return
+
+            let elRect = el.getBoundingClientRect()
+            let listRect = list.getBoundingClientRect()
+
+            if (elRect.top < listRect.top) {
+                list.scrollTop -= listRect.top - elRect.top
+            }
+            else if (elRect.bottom > listRect.bottom) {
+                list.scrollTop += elRect.bottom - listRect.bottom
+            }
         },
 
         // On open / refetch, pre-activate the selected option (or none).

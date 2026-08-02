@@ -199,7 +199,7 @@ data-atom-select-listbox
                 type="text"
                 x-model="text"
                 x-on:click.stop=""
-                x-intersect="$nextTick(() => $el.focus())"
+                x-intersect="$nextTick(() => $el.focus({ preventScroll: true }))"
                 @if ($searchable)
                     role="combobox"
                     x-bind:aria-controls="`${$id('atom-select')}-list`"
