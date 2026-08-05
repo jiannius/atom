@@ -116,6 +116,15 @@ button {
     margin: 0;
 }
 
+/** Select — the option list must be its own scroll container, or a long list
+    runs off the bottom of the viewport with no way to reach the rows below the
+    fold. The blade carries the same cap as a Tailwind class; this is structural
+    so it holds wherever those utilities aren't compiled. **/
+[data-atom-option-list] {
+    max-height: 400px;
+    overflow: auto;
+}
+
 /** Rating — two-layer clip fill (base + accent overlay), structural so it works without Tailwind **/
 [data-atom-rating-track] {
     position: relative;

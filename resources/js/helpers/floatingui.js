@@ -23,7 +23,19 @@ export default (anchor, element, config = {}) => {
             strategy: 'fixed',
             middleware: [offset(config.offset), flip(), shift({ padding: 5 })],
         }).then(({x, y}) => {
-            Object.assign(element.style, { left: x+'px', top: y+'px' })
+            // The panels are native [popover] elements, and the UA stylesheet gives
+            // them `inset: 0; margin: auto` — which centres them in the leftover space
+            // once left/top are set, dragging the panel off its anchor. Neutralise the
+            // margin and release the right/bottom insets so left/top are the only
+            // constraints. Assign right/bottom individually, never via the `inset`
+            // shorthand, which would wipe the left/top set in the same call.
+            Object.assign(element.style, {
+                margin: '0',
+                right: 'auto',
+                bottom: 'auto',
+                left: x+'px',
+                top: y+'px',
+            })
         })
     }
 

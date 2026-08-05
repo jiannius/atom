@@ -171,10 +171,16 @@ describe('form.actions', function () {
             ->not->toContain('Save');
     });
 
+    // -bottom-6 (not bottom-0) parks the bar at the panel edge rather than a
+    // padding's height above it, and the negative margins let it bleed into the
+    // modal's p-6 on the three sides it touches — see the note in the component.
     it('pins to the bottom when sticky', function () {
         $html = renderBlade('<atom:form.actions sticky><button>x</button></atom:form.actions>');
 
-        expect($html)->toContain('sticky bottom-0');
+        expect($html)
+            ->toContain('sticky -bottom-6')
+            ->toContain('-mx-6 px-6')
+            ->toContain('pb-6 -mb-6');
     });
 });
 
