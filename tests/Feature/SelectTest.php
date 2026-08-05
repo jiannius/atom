@@ -60,13 +60,13 @@ describe('select', function () use ($options) {
     it('keeps the morph out of the listbox option list', function () use ($options) {
         $html = renderBlade("<atom:select variant=\"listbox\" :options=\"{$options}\" wire:model=\"pick\" />");
 
-        expect($html)->toContain('x-show="options.length" class="max-h-[400px] overflow-auto" wire:ignore');
+        expect($html)->toContain('x-show="options.length" class="max-h-[400px] overflow-auto" data-atom-option-list wire:ignore');
     });
 
     it('keeps the morph out of the filter option list', function () use ($options) {
         $html = renderBlade("<atom:select variant=\"filter\" label=\"Status\" :options=\"{$options}\" wire:model=\"pick\" />");
 
-        expect($html)->toContain('x-show="options.length" class="max-h-[400px] overflow-auto" wire:ignore');
+        expect($html)->toContain('x-show="options.length" class="max-h-[400px] overflow-auto" data-atom-option-list wire:ignore');
     });
 });
 

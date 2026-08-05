@@ -235,7 +235,7 @@ data-atom-select-listbox
                  subtree drops rows x-for still has in its lookup (and re-inserts
                  copies outside the loop scope, which then error on `option`).
                  The list is populated from JS either way, so let the morph skip it. --}}
-            <div x-show="options.length" class="max-h-[400px] overflow-auto" wire:ignore>
+            <div x-show="options.length" class="max-h-[400px] overflow-auto" data-atom-option-list wire:ignore>
                 <template x-for="(option, i) in options" x-bind:key="`option-${option.value}-${i}`" hidden>
                     <div
                     role="option"
