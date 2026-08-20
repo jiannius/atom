@@ -5,7 +5,7 @@
 
 @if ($variant === 'card')
     <atom:card :subtle="$subtle" inset>
-        <div {{ $attributes->class(['flex flex-col divide-y dark:divide-zinc-700 [&>[data-atom-checkbox]]:py-3 [&>[data-atom-checkbox]]:px-5']) }}>
+        <div {{ $attributes->class(['flex flex-col divide-y divide-zinc-200 dark:divide-zinc-700 [&>[data-atom-checkbox]]:py-3 [&>[data-atom-checkbox]]:px-5']) }}>
             {{ $slot }}
         </div>
     </atom:card>

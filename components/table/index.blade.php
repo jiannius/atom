@@ -78,7 +78,7 @@ class="group/table space-y-4" data-atom-table>
         </template>
     @endif
     
-    <div class="overflow-hidden rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-xs divide-y dark:divide-zinc-700">
+    <div class="overflow-hidden rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-xs divide-y divide-zinc-200 dark:divide-zinc-700">
         <div class="relative overflow-x-auto">
             <div
             wire:loading.flex
@@ -88,7 +88,7 @@ class="group/table space-y-4" data-atom-table>
             </div>
 
             @if ($showSkeleton)
-                <div class="animate-pulse divide-y divide-zinc-150 dark:divide-zinc-700" data-atom-table-skeleton>
+                <div class="animate-pulse divide-y divide-zinc-200 dark:divide-zinc-700" data-atom-table-skeleton>
                     @for ($i = 0; $i < $skeletonRows; $i++)
                         <div class="py-4 px-4" data-atom-table-skeleton-row>
                             <atom:placeholder-bar size="{{ [45, 70, 55, 80, 50][$i % 5] }}%x10" />
@@ -98,7 +98,7 @@ class="group/table space-y-4" data-atom-table>
             @elseif ($empty)
                 <atom:empty />
             @else
-                <table class="min-w-full table-fixed text-zinc-800 divide-y divide-zinc-150 dark:divide-zinc-700">
+                <table class="min-w-full table-fixed text-zinc-800 divide-y divide-zinc-200 dark:divide-zinc-700">
                     @if (isset($columns) && $columns->isNotEmpty())
                         <thead data-atom-table-columns>
                             <tr {{ $columns->attributes }}>
@@ -108,7 +108,7 @@ class="group/table space-y-4" data-atom-table>
                     @endif
 
                     @if (isset($rows) && $rows->isNotEmpty())
-                        <tbody {{ $rows->attributes->class(['divide-y divide-zinc-150 dark:divide-zinc-700']) }} data-atom-table-rows>
+                        <tbody {{ $rows->attributes->class(['divide-y divide-zinc-200 dark:divide-zinc-700']) }} data-atom-table-rows>
                             {{ $rows }}
                         </tbody>
                     @endif
