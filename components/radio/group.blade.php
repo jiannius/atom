@@ -25,7 +25,7 @@ $error ??= $errors?->first($name);
     </atom:input.field>
 @elseif ($attributes->get('variant') === 'card')
     <atom:card :subtle="$attributes->get('subtle')" inset>
-        <div {{ $attributes->class(['flex flex-col divide-y dark:divide-zinc-700 [&>[data-atom-radio]]:py-3 [&>[data-atom-radio]]:px-5']) }}>
+        <div {{ $attributes->class(['flex flex-col divide-y divide-zinc-200 dark:divide-zinc-700 [&>[data-atom-radio]]:py-3 [&>[data-atom-radio]]:px-5']) }}>
             {{ $slot }}
         </div>
     </atom:card>
