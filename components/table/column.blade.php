@@ -21,14 +21,18 @@ $classes = Arr::toCssClasses([
 ]);
 @endphp
 
-<th @class([
+{{-- The caller's attributes belong on the <th>, not on the layout wrapper
+     inside it: a responsive `class="hidden lg:table-cell"` has to hide the
+     header cell itself, or the column leaves an empty gap behind. Matches
+     table/cell.blade.php, which puts the bag on its <td>. --}}
+<th {{ $attributes->class([
     'p-1 bg-zinc-100 dark:bg-transparent border-b border-zinc-200 dark:border-zinc-700 sticky top-0 z-1',
     match ($align) {
         'left' => 'text-left',
         'center' => 'text-center',
         'right' => 'text-right',
-    },    
-])>
+    },
+]) }}>
     <div
     @if ($sort)
         x-data="{ sort: @js($sort) }"
@@ -46,7 +50,7 @@ $classes = Arr::toCssClasses([
             }
         }"
     @endif
-    {{ $attributes->class($classes) }}>
+    class="{{ $classes }}">
         <div class="grow">
             @if ($checkbox)
                 <atom:table.checkbox

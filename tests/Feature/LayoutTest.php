@@ -162,4 +162,20 @@ describe('layouts.sidebar', function () {
             ->toContain('Logout')
             ->toContain('Body');
     });
+
+    // <atom:html> wraps the whole darkmode bootstrap in @if ($dark), so on a
+    // light-only app window.darkmode() is never defined and the switcher's menu
+    // items threw when clicked. The toggle has to follow the same flag.
+    it('renders the darkmode toggle only when dark mode is enabled', function () {
+        $enabled = renderBlade('<atom:layouts.sidebar :vite="false">Body</atom:layouts.sidebar>');
+        $disabled = renderBlade('<atom:layouts.sidebar :vite="false" :dark="false">Body</atom:layouts.sidebar>');
+
+        expect($enabled)
+            ->toContain('data-atom-darkmode-toggle')
+            ->toContain('window.darkmode');
+
+        expect($disabled)
+            ->not->toContain('data-atom-darkmode-toggle')
+            ->not->toContain('window.darkmode');
+    });
 });
