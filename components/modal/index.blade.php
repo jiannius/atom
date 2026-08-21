@@ -10,9 +10,17 @@
 // current() returns false (not null) when no component is on the stack,
 // so the nullsafe operator alone isn't enough.
 $name ??= (app('livewire')->current() ?: null)?->getName();
+
+// A dialog is content-sized, so a caller's max-w-* only ever capped a width
+// nothing had set — <atom:modal class="max-w-screen-lg"> rendered at the
+// min-w-sm floor (336px), with no error to notice. A max-w-* is a statement of
+// intended width, so give it one to cap.
+$hasMaxWidth = str($attributes->get('class'))->contains('max-w-');
+
 $classes = Arr::toCssClasses([
     'group/modal',
     '[:where(&)]:max-w-full min-w-sm shadow-lg rounded-xl',
+    'w-full' => $hasMaxWidth,
     'bg-white dark:bg-zinc-900 border border-transparent dark:border-zinc-700 transition-transform',
     $inset ? 'p-0' : 'p-6',
 

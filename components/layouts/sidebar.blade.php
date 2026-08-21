@@ -191,6 +191,15 @@ class="min-h-screen bg-white dark:bg-zinc-900">
     </header>
 
     <main class="[grid-area:main]" data-atom-main>
+        {{-- The document's outline root. There is no natural <h1> in this
+             layout: the visible page title comes from <atom:breadcrumbs>, which
+             is a nav landmark and emits no heading element, so without this a
+             screen reader gets no outline at all. Hidden visually — the title is
+             already on screen. --}}
+        @if ($title)
+            <h1 class="sr-only" data-atom-page-title>{{ $title }}</h1>
+        @endif
+
         {{ $slot }}
     </main>
 

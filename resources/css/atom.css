@@ -116,6 +116,22 @@ button {
     margin: 0;
 }
 
+/** Page title — the sidebar layout's outline root. A real <h1> for assistive
+    tech, hidden visually because the title is already on screen via the
+    breadcrumbs. Structural (Tailwind's own sr-only definition) so it cannot
+    become a visible duplicate title wherever that utility isn't compiled. **/
+[data-atom-page-title] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+}
+
 /** Select — the option list must be its own scroll container, or a long list
     runs off the bottom of the viewport with no way to reach the rows below the
     fold. The blade carries the same cap as a Tailwind class; this is structural
