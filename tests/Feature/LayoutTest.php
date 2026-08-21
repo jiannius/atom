@@ -29,6 +29,34 @@ describe('heading', function () {
         expect($html)->toContain('text-lg');
     });
 
+    // lg/xl set a size but no weight, so they inherited body weight 400; xs/sm
+    // set neither, so a size="sm" heading was pixel-identical to the paragraph
+    // under it. Every size now carries both halves.
+    it('gives every size both a size and a weight', function (string $size, string $expected) {
+        $html = Blade::render('<atom:heading size="'.$size.'">Title</atom:heading>');
+
+        expect($html)->toContain($expected);
+    })->with([
+        ['xs', 'text-xs font-medium'],
+        ['sm', 'text-sm font-medium'],
+        ['default', 'text-base font-medium'],
+        ['lg', 'text-lg font-semibold'],
+        ['xl', 'text-xl font-semibold'],
+    ]);
+
+    it('lets the call site override the weight', function () {
+        $html = Blade::render('<atom:heading size="lg" class="font-normal">Title</atom:heading>');
+
+        // both land; the bag is merged last so the caller's wins in the cascade
+        expect($html)->toContain('font-normal');
+    });
+
+    it('still renders a numeric size as an inline font-size', function () {
+        $html = Blade::render('<atom:heading size="32">Title</atom:heading>');
+
+        expect($html)->toContain('font-size: 32px');
+    });
+
     it('renders an actions slot', function () {
         $html = renderBlade('<atom:heading>Title<x-slot:actions>Save</x-slot></atom:heading>');
 
@@ -161,6 +189,27 @@ describe('layouts.sidebar', function () {
             ->toContain('data-atom-sidebar')
             ->toContain('Logout')
             ->toContain('Body');
+    });
+
+    // Every atom app rendered zero h1-h3: <atom:heading> defaults to a div and
+    // nothing passed `level`, while the visible page title comes from
+    // <atom:breadcrumbs> — a nav landmark that emits no heading. The layout now
+    // supplies the outline root itself.
+    it('emits one visually-hidden h1 from the page title', function () {
+        $html = renderBlade('<atom:layouts.sidebar :vite="false" title="Checklists">Body</atom:layouts.sidebar>');
+
+        expect($html)
+            ->toContain('data-atom-page-title')
+            ->toContain('>Checklists</h1>')
+            ->toContain('class="sr-only"');
+
+        expect(substr_count($html, '<h1'))->toBe(1);
+    });
+
+    it('emits no empty h1 when the layout has no title', function () {
+        $html = renderBlade('<atom:layouts.sidebar :vite="false">Body</atom:layouts.sidebar>');
+
+        expect($html)->not->toContain('<h1');
     });
 
     // <atom:html> wraps the whole darkmode bootstrap in @if ($dark), so on a

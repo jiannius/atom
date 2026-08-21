@@ -116,6 +116,32 @@ describe('modal', function () {
             ->toContain('group/modal');
     });
 
+    // A dialog is content-sized, so a max-w-* capped a width nothing set: the
+    // modal rendered at the min-w-sm floor (336px) however large the cap, with
+    // no error to notice. Worst inside <atom:form.grid cols="auto">, a
+    // container query that then never reached two columns.
+    // `w-full` as its own class, not the tail of the max-w-full default — a
+    // plain toContain('w-full') passes on the unfixed component.
+    $standaloneWFull = '/(?<![-\w:])w-full/';
+
+    it('gives a max-w-* modal a width to cap', function (string $class) use ($standaloneWFull) {
+        $html = renderBlade('<atom:modal name="m" class="'.$class.'">Body</atom:modal>');
+
+        expect($html)->toMatch($standaloneWFull);
+    })->with(['max-w-2xl', 'max-w-screen-lg', 'max-w-[900px]']);
+
+    it('leaves a content-sized modal alone when no max-w is given', function () use ($standaloneWFull) {
+        $html = renderBlade('<atom:modal name="m" class="rounded-none">Body</atom:modal>');
+
+        // the zero-specificity default is still there; the sizing opt-in is not
+        expect($html)->toContain(')]:max-w-full')->not->toMatch($standaloneWFull);
+    });
+
+    it('sizes the form modal, whose width comes from cols', function () use ($standaloneWFull) {
+        // form.modal sets max-w-2xl itself, so it needs the same treatment
+        expect(renderBlade('<atom:form.modal name="m">F</atom:form.modal>'))->toMatch($standaloneWFull);
+    });
+
     it('removes padding when inset', function () {
         expect(renderBlade('<atom:modal name="m" inset>Body</atom:modal>'))->toContain('p-0');
         expect(renderBlade('<atom:modal name="m">Body</atom:modal>'))->toContain('p-6');

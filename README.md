@@ -378,7 +378,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 
 | Tag | Notable props |
 | --- | ------------- |
-| `<atom:heading>` | `size` (`sm`, `default`, `lg`, `xl`, or `<n>px`), `level` (`h1`..`h6`). |
+| `<atom:heading>` | `size` (`xs`, `sm`, `default`, `lg`, `xl`, or `<n>px`) — each size sets both a font size and a weight. `level` (`1`..`6`) renders a real `<hN>` instead of the default `<div>`; see **Heading levels** below. |
 | `<atom:subheading>` | Same as heading, smaller / muted. |
 | `<atom:caption>` | Small muted text. |
 | `<atom:label>` | `icon`, `align`. |
@@ -394,6 +394,28 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:profile>` | `name`, `avatar`, `email`, `size`. |
 | `<atom:icon.*>` | 200+ icons. Examples: `<atom:icon.check/>`, `<atom:icon.arrow-left/>`, `<atom:icon.delete/>`. Browse `components/icon/`. |
 | `<atom:logo.*>` | Payment / brand marks: `apple-pay`, `fpx`, `google-pay`, `ipay88`, `master`, `senangpay`, `stripe`, `tng`, `visa`. |
+
+#### Heading levels
+
+`<atom:heading>` renders a `<div>` unless you pass `level`, because most headings in an app UI are card titles, stat labels and table captions — visual, not structural. `size` and `level` are deliberately independent: size is how big it looks, level is where it sits in the document outline.
+
+`<atom:layouts.sidebar>` supplies the page's `<h1>` itself, from its `title` prop — visually hidden, since the visible title comes from `<atom:breadcrumbs>`, which is a `nav` landmark and emits no heading element. So you do **not** need an `<h1>` in the page body; start at `level="2"`.
+
+Pass `level` where a section genuinely nests, and leave it off elsewhere:
+
+```blade
+<atom:layouts.sidebar title="Checklists">   {{-- gives the page its <h1> --}}
+    <atom:heading size="lg" level="2">Vehicle details</atom:heading>
+    <atom:heading size="default" level="3">Tyres</atom:heading>
+
+    <atom:card>
+        <atom:heading size="lg">Revenue</atom:heading>   {{-- a card title: no level --}}
+    </atom:card>
+</atom:layouts.sidebar>
+```
+
+A suggested mapping when a heading *is* structural: `xl` → `level="1"` (only outside the sidebar layout), `lg` → `2`, `default` → `3`, `sm`/`xs` → `4`.
+
 
 ### Feedback & overlays
 

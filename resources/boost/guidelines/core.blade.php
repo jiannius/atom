@@ -126,6 +126,7 @@ Requires `config('services.recaptcha.site_key' / 'secret_key' / 'min_score')` an
 - **Breadcrumbs:** add a `breadcrumbs(Breadcrumbs $b)` method to the Livewire component (see the AtomComponent section) and drop `<atom:breadcrumbs />` in the page — the trail builds itself from navigation; a single crumb renders as the page heading.
 - **Tabs:** `<atom:tabs :tabs="[...]" wire:model="tab" />` (each tab `['label' => ..., 'value' => ..., 'icon' => ...]`), or compose `<atom:tabs.item>` children. `variant="button"` for the pill style.
 - **Links:** `<atom:link :href="..." />` for inline prose links (dotted underline). Nav/actions use `<atom:navlist.item>` / `<atom:button>`, not link.
+- **Heading levels:** `<atom:heading>` is a `<div>` unless you pass `level` — most app headings (card titles, stat labels) are visual, not structural. `size` and `level` are independent. `<atom:layouts.sidebar>` already emits the page's `<h1>` from its `title` prop (visually hidden — the visible title comes from the breadcrumbs, a nav landmark with no heading element), so **never add your own `<h1>` in the page body**; start nested sections at `level="2"`.
 @endverbatim
 
 ### Toast / Alert / Confirm
