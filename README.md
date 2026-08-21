@@ -66,7 +66,7 @@ Useful `<atom:html>` props (all optional):
 | `jsonld`      | Raw JSON-LD payload.                                                |
 | `gtm` / `ga` / `fbp` | Tracking IDs for GTM, GA, Facebook Pixel.                   |
 | `fonts`       | Google Font family to preload (default `inter`).                    |
-| `dark`        | Adds `class="dark"` to `<html>`.                                    |
+| `dark`        | Opts the page into dark mode (off by default, on every layout too). Adds `class="dark"` to `<html>` and emits the `window.darkmode()` bootstrap, which then follows the stored preference or, with none, the visitor's `prefers-color-scheme`. Required for `<atom:darkmode-toggle>` to work. |
 | `styles`      | Additional stylesheet URLs.                                         |
 | `scripts`     | Additional script URLs.                                             |
 | `editor`      | Loads the editor CSS chunk (for pages using `<atom:editor>`).       |
@@ -423,15 +423,15 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:breadcrumbs>` | `heading` (default `true`). Reads `$_breadcrumbs` populated by your `breadcrumbs()` method. |
 | `<atom:calendar>` | `name`, `modes` (`calendar`, `timeline`), `periods` (`month`, `week`, `day`). |
 | `<atom:separator>` | `align` (`left`, `center`, `right`). Slot becomes the label. |
-| `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). |
-| `<atom:layouts.sidebar>` | App layout with sidebar + top bar. |
+| `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`. |
+| `<atom:layouts.sidebar>` | App layout with sidebar + top bar. Props: `title`, `noindex`, `dark`, `editor`, `styles`, `scripts`, `vite`. Pass `dark` to get the darkmode bootstrap and the header's switcher. |
 
 ### Miscellaneous
 
 | Tag | Notable props |
 | --- | ------------- |
 | `<atom:copy>` | `value` — copy-to-clipboard button. |
-| `<atom:darkmode-toggle>` | Dark-mode switcher (works with `class="dark"` on `<html>`). |
+| `<atom:darkmode-toggle>` | Dark-mode switcher. Needs the page to pass `dark` to `<atom:html>` or its layout — without it `window.darkmode()` is never defined. The sidebar layout renders its own toggle when `dark` is set. |
 | `<atom:dd>` | Definition list. Child: `<atom:dd.group>`. |
 | `<atom:embed>` | `src`, `icon`, `file` — embeds image / video / YouTube / file preview. |
 | `<atom:error>` | Plain error message slot. |
