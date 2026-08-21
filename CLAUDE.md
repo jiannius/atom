@@ -102,6 +102,7 @@ The Vite config builds `resources/css/atom.css`, `resources/css/editor.css`, `re
 - Components prefer `Arr::toCssClasses([...])` over conditional class strings; conditional/utility classes are grouped by variant in plain `match` expressions (see `components/button/index.blade.php` for the canonical pattern).
 - Many components dispatch and listen for window-level Livewire events prefixed `atom-` (`atom-modal-show`, `atom-toast-show`, `atom-confirm-show`, `atom-alert-show`). Search by this prefix when tracing UI state changes.
 - The `confirm` flow for `<atom:button type="delete">` is auto-wired in the button component: it dispatches `confirmed` on accept and that translates to `$wire.delete()` unless the caller overrides `wire:click` or `x-on:click`.
+- **Icons come from [heroicons.com](https://heroicons.com/) or [lucide.dev/icons](https://lucide.dev/icons/)** — never hand-draw a glyph or invent path data. One file per glyph at `components/icon/<name>.blade.php`: `<atom:icon._wrapper :attributes="$attributes">` wrapping a single-line 24×24 SVG. Normalise lucide's `stroke-width` from `2` to the set's `1.5`; keep its `class="lucide lucide-x-icon lucide-x"` (recent additions do). `Services\Docs::glyphs()` globs the directory and the Boost guidelines point at it rather than listing names, so **adding an icon needs no docs work** — it lists itself in `/atom/docs`.
 
 ## Development guidelines
 
