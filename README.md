@@ -423,7 +423,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:breadcrumbs>` | `heading` (default `true`). Reads `$_breadcrumbs` populated by your `breadcrumbs()` method. |
 | `<atom:calendar>` | `name`, `modes` (`calendar`, `timeline`), `periods` (`month`, `week`, `day`). |
 | `<atom:separator>` | `align` (`left`, `center`, `right`). Slot becomes the label. |
-| `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`. |
+| `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`, `vite`. |
 | `<atom:layouts.sidebar>` | App layout with sidebar + top bar. Props: `title`, `noindex`, `dark`, `editor`, `styles`, `scripts`, `vite`. Pass `dark` to get the darkmode bootstrap and the header's switcher. |
 
 ### Miscellaneous

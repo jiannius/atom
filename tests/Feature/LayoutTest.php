@@ -186,38 +186,48 @@ describe('layouts.sidebar', function () {
 // "supported" resolved to "on" for every visitor whose OS is in dark mode — an
 // app got an unreviewed dark theme without opting in.
 describe('dark mode is opt-in', function () {
-    it('emits no darkmode bootstrap by default', function () {
-        $html = renderBlade('<atom:layouts.sidebar :vite="false">Body</atom:layouts.sidebar>');
+    it('emits no darkmode bootstrap by default', function (string $layout) {
+        $html = renderBlade('<atom:'.$layout.' :vite="false">Body</atom:'.$layout.'>');
 
         expect($html)
             ->not->toContain('window.darkmode')
             ->not->toContain('prefers-color-scheme')
             // the server-rendered opt-in class is gone too
             ->not->toContain('class="dark"');
-    });
+    })->with(['layouts.sidebar', 'layouts.auth']);
 
-    it('emits the bootstrap when a layout opts in', function () {
-        $html = renderBlade('<atom:layouts.sidebar :vite="false" dark>Body</atom:layouts.sidebar>');
+    it('emits the bootstrap when a layout opts in', function (string $layout) {
+        $html = renderBlade('<atom:'.$layout.' :vite="false" dark>Body</atom:'.$layout.'>');
 
         expect($html)
             ->toContain('window.darkmode')
             ->toContain('prefers-color-scheme');
-    });
+    })->with(['layouts.sidebar', 'layouts.auth']);
 
-    it('matches the <atom:html> default it forwards to', function () {
-        $viaLayout = renderBlade('<atom:layouts.sidebar :vite="false">Body</atom:layouts.sidebar>');
+    // now rendered rather than read from source: layouts.auth forwards `vite`,
+    // so it no longer drags in atom's default entries and a missing manifest.
+    it('matches the <atom:html> default it forwards to', function (string $layout) {
+        $viaLayout = renderBlade('<atom:'.$layout.' :vite="false">Body</atom:'.$layout.'>');
         $direct = renderBlade('<atom:html :vite="false">Body</atom:html>');
 
         expect(str_contains($viaLayout, 'window.darkmode'))
             ->toBe(str_contains($direct, 'window.darkmode'));
-    });
+    })->with(['layouts.sidebar', 'layouts.auth']);
+});
 
-    // layouts.auth forwards no `vite` prop, so it can't be rendered against the
-    // testbench rig's missing manifest — assert its declared default instead, so
-    // the two layouts and <atom:html> can't drift apart again.
-    it('declares the same default in every entry point', function (string $component) {
+// layouts.auth declared no `vite` prop and forwarded none, so the <atom:html>
+// inside it always resolved atom's own defaults — an app whose entries differ
+// could not use the layout at all, and it could not be render-tested.
+describe('layout vite entries', function () {
+    it('forwards the callers entries', function (string $layout) {
+        $html = renderBlade('<atom:'.$layout.' :vite="false">Body</atom:'.$layout.'>');
+
+        expect($html)->not->toContain('resources/js/app.js');
+    })->with(['layouts.sidebar', 'layouts.auth']);
+
+    it('defaults to the same entries as <atom:html>', function (string $component) {
         $source = file_get_contents(__DIR__.'/../../components/'.$component.'.blade.php');
 
-        expect($source)->toContain("'dark' => false");
+        expect($source)->toContain("'vite' => ['resources/css/app.css', 'resources/js/app.js']");
     })->with(['html', 'layouts/sidebar', 'layouts/auth']);
 });
