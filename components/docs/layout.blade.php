@@ -3,7 +3,9 @@
     'editor' => false,
 ])
 
-<atom:layouts.sidebar :title="trim(($title ? $title.' — ' : '').'Atom Docs')" :editor="$editor" :vite="[]">
+{{-- `dark` is opt-in now, and the docs are where components get reviewed in
+     both themes — so this one asks for it explicitly. --}}
+<atom:layouts.sidebar :title="trim(($title ? $title.' — ' : '').'Atom Docs')" :editor="$editor" :vite="[]" dark>
     <x-slot:brand>
         <a href="{{ route('atom.docs') }}" class="me-5 flex items-center gap-2 px-1">
             <div class="flex aspect-square size-8 items-center justify-center rounded-md bg-accent-content text-accent-foreground">

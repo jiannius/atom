@@ -1,7 +1,7 @@
 @props([
     'noindex' => true,
     'title' => '',
-    'dark' => true,
+    'dark' => false,
 ])
 
 <atom:html

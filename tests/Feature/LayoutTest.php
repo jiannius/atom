@@ -167,8 +167,8 @@ describe('layouts.sidebar', function () {
     // light-only app window.darkmode() is never defined and the switcher's menu
     // items threw when clicked. The toggle has to follow the same flag.
     it('renders the darkmode toggle only when dark mode is enabled', function () {
-        $enabled = renderBlade('<atom:layouts.sidebar :vite="false">Body</atom:layouts.sidebar>');
-        $disabled = renderBlade('<atom:layouts.sidebar :vite="false" :dark="false">Body</atom:layouts.sidebar>');
+        $enabled = renderBlade('<atom:layouts.sidebar :vite="false" dark>Body</atom:layouts.sidebar>');
+        $disabled = renderBlade('<atom:layouts.sidebar :vite="false">Body</atom:layouts.sidebar>');
 
         expect($enabled)
             ->toContain('data-atom-darkmode-toggle')
@@ -178,4 +178,46 @@ describe('layouts.sidebar', function () {
             ->not->toContain('data-atom-darkmode-toggle')
             ->not->toContain('window.darkmode');
     });
+});
+
+// The layouts used to default dark => true while <atom:html> defaulted it to
+// false, so the same flag meant opposite things depending on the entry point.
+// And because the bootstrap falls back to 'system' when nothing is stored,
+// "supported" resolved to "on" for every visitor whose OS is in dark mode — an
+// app got an unreviewed dark theme without opting in.
+describe('dark mode is opt-in', function () {
+    it('emits no darkmode bootstrap by default', function () {
+        $html = renderBlade('<atom:layouts.sidebar :vite="false">Body</atom:layouts.sidebar>');
+
+        expect($html)
+            ->not->toContain('window.darkmode')
+            ->not->toContain('prefers-color-scheme')
+            // the server-rendered opt-in class is gone too
+            ->not->toContain('class="dark"');
+    });
+
+    it('emits the bootstrap when a layout opts in', function () {
+        $html = renderBlade('<atom:layouts.sidebar :vite="false" dark>Body</atom:layouts.sidebar>');
+
+        expect($html)
+            ->toContain('window.darkmode')
+            ->toContain('prefers-color-scheme');
+    });
+
+    it('matches the <atom:html> default it forwards to', function () {
+        $viaLayout = renderBlade('<atom:layouts.sidebar :vite="false">Body</atom:layouts.sidebar>');
+        $direct = renderBlade('<atom:html :vite="false">Body</atom:html>');
+
+        expect(str_contains($viaLayout, 'window.darkmode'))
+            ->toBe(str_contains($direct, 'window.darkmode'));
+    });
+
+    // layouts.auth forwards no `vite` prop, so it can't be rendered against the
+    // testbench rig's missing manifest — assert its declared default instead, so
+    // the two layouts and <atom:html> can't drift apart again.
+    it('declares the same default in every entry point', function (string $component) {
+        $source = file_get_contents(__DIR__.'/../../components/'.$component.'.blade.php');
+
+        expect($source)->toContain("'dark' => false");
+    })->with(['html', 'layouts/sidebar', 'layouts/auth']);
 });
