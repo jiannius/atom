@@ -133,7 +133,12 @@ class="min-h-screen bg-white dark:bg-zinc-900">
 
             <div class="grow"></div>
 
-            <atom:darkmode-toggle/>
+            {{-- <atom:html> only emits the darkmode bootstrap when $dark, so
+                 window.darkmode() doesn't exist on a light-only app and the
+                 switcher's menu items throw when clicked. --}}
+            @if ($dark)
+                <atom:darkmode-toggle/>
+            @endif
 
             <!-- Mobile User Menu -->
             @if (isset($dropdown) || isset($profile))

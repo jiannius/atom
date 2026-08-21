@@ -55,3 +55,28 @@ describe('icon', function () {
             ->not->toContain('style="width');
     });
 });
+
+describe('icon glyphs', function () {
+    // Added because the consumer had no bike glyph (so "New Vehicle" and "New
+    // Bike" both rendered the car icon), no heavy-equipment glyph (it fell back
+    // to settings, a gear, colliding with the nav item using it) and no camera
+    // (hand-inlined in the app).
+    it('renders the glyphs added for vehicle types and capture', function (string $name, string $marker) {
+        $html = renderBlade('<atom:icon.'.$name.'/>');
+
+        expect($html)
+            ->toContain('data-atom-icon')
+            ->toContain('stroke="currentColor"')
+            ->toContain($marker);
+    })->with([
+        ['motorcycle', 'lucide-motorbike'],
+        ['forklift', 'lucide-forklift'],
+        ['camera', 'lucide-camera'],
+    ]);
+
+    it('lets the new glyphs inherit colour and size', function (string $name) {
+        $html = renderBlade('<atom:icon.'.$name.' class="size-4"/>');
+
+        expect($html)->toContain('size-4')->not->toContain('size-5');
+    })->with(['motorcycle', 'forklift', 'camera']);
+});
