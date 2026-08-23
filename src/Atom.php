@@ -90,8 +90,18 @@ class Atom
         $class = $this->resolveAction($name);
 
         // Same answer for "not opted in" and "does not exist" — otherwise the
-        // endpoint reports which action classes the app has.
+        // endpoint reports which action classes the app has. The refusal is
+        // logged instead, so a silently-dark front-end feature is diagnosable.
         if (!$class || !is_subclass_of($class, WebAction::class)) {
+            if ($class) {
+                logger()->warning(
+                    "[atom] Refused POST /atom/action/$name: $class does not implement ".WebAction::class
+                    .'. Actions are not reachable from the browser until they do — implement the contract if this'
+                    .' action is meant to be called from JS (and give it an authorize() unless it is safe for guests).'
+                    .' An action that overrides a packaged one opts in by extending it.'
+                );
+            }
+
             return response()->json(['message' => 'Not Found.'], 404);
         }
 

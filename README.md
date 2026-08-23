@@ -573,8 +573,18 @@ Before 3.19 the endpoint ran **any** class in `App\Actions\` — unauthenticated
 3. While you are in each file, decide whether it should have been public at all. Add `authorize()` to anything that reads or writes user data — before 3.19 it had no gate, so assume none of them do.
 4. If you have your own `App\Actions\GetOptions`, make it `extends \Jiannius\Atom\Actions\GetOptions` — otherwise it shadows the package class without the contract and every `<atom:select :callback>` in the app 404s.
 5. If any JS passed `method` in the params, split that method into its own action — the endpoint ignores `method` now.
+6. Re-run `php artisan boost:install` in the app. Atom's AI guidelines are copied into the app's `CLAUDE.md`/`AGENTS.md` at install time, not read from `vendor/` — without this, your agents keep working from the pre-3.19 rules and will write actions that 404.
 
 Anything you do *not* opt in stays fully callable from PHP; only the browser path is affected.
+
+**If you miss one, the log says so.** A refused action that exists writes a warning naming the class and the endpoint:
+
+```
+[atom] Refused POST /atom/action/customer.search: App\Actions\Customer\Search does not
+implement Jiannius\Atom\Contracts\WebAction. ...
+```
+
+Requests for actions that don't exist stay silent, so this doesn't turn into noise from probing.
 
 ### `GetOptions`: shared option lists
 
