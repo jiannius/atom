@@ -189,16 +189,22 @@ Reach for these instead of hand-rolling coloured pills, notice boxes, or empty s
 
 @verbatim
 - Static: `<atom:select :options="[['value' => 1, 'label' => 'One']]" wire:model="x" />`.
-- Dynamic (database / large lists): create `app/Actions/GetOptions.php` with a camelCase method matching the option `name`. The app-side class overrides the package's `Jiannius\Atom\Actions\GetOptions`. Reach it via `<atom:select name="users" />` (the select component will POST to `/atom/action/GetOptions` with the name).
+- Dynamic (database / large lists): create `app/Actions/GetOptions.php` with a camelCase method matching the option `name`, `extends \Jiannius\Atom\Actions\GetOptions`. The app-side class overrides the package's. Reach it via `<atom:select name="users" />` (the select component will POST to `/atom/action/GetOptions` with the name). **It must extend the package class** — that is what carries the `WebAction` contract the endpoint requires; a standalone `App\Actions\GetOptions` shadows the package's and the select 404s. The endpoint is public, so scope the query in the method (e.g. to the current tenant) and never return a list a guest should not see.
 - Enums: `<atom:select :options="ClientType::all()->map->option()->all()" />`.
 @endverbatim
 
 ### Actions
 
-`POST /atom/action/{Name}` is publicly mounted by the package. Names are dot-paths that map to namespaces (e.g. `Reports.Generate` → `Reports\Generate`). Resolution order: `App\Actions\{Name}` then `Jiannius\Atom\Actions\{Name}`. The host app's class wins, enabling per-app overrides of package actions.
+PHP classes in `App\Actions\` invoked by name. Names are dot-paths that map to namespaces (e.g. `Reports.Generate` → `Reports\Generate`). Resolution order: `App\Actions\{Name}` then `Jiannius\Atom\Actions\{Name}`. The host app's class wins, enabling per-app overrides of package actions.
+
+**From PHP, any action is callable.** `app('atom')->action('SyncContacts', $params)`, or `$this->action(...)` inside a Livewire component. Pass `method` in `$params` to invoke something other than `handle`.
+
+**From the browser, an action is callable only if it opts in.** `POST /atom/action/{Name}` is mounted publicly — unauthenticated, reachable by anyone who can load the app — so it runs an action only when the class implements `Jiannius\Atom\Contracts\WebAction`. Anything else answers 404, the same answer an unknown action gets. The endpoint always calls `handle()`; `method` is ignored over HTTP.
+
+Default to NOT implementing `WebAction`. Add it only when the browser genuinely needs to call the action, and when it is there, assume the caller is a stranger: validate every param, and add `authorize()` unless the action is safe for the anonymous public.
 
 @verbatim
-<code-snippet name="Custom action" lang="php">
+<code-snippet name="Server-only action (the default)" lang="php">
 <?php
 namespace App\Actions;
 
@@ -213,13 +219,45 @@ class SyncContacts
     }
 }
 
-// PHP
+// PHP only — atom.action('SyncContacts') from JS would 404.
 app('atom')->action('SyncContacts', ['force' => true]);
+</code-snippet>
+
+<code-snippet name="Browser-callable action" lang="php">
+<?php
+namespace App\Actions\Customer;
+
+use Jiannius\Atom\Contracts\WebAction;
+
+class Search implements WebAction
+{
+    /**
+     * Only signed-in staff may search customers.
+     */
+    public function authorize(array $params): bool
+    {
+        return auth()->check() && auth()->user()->isStaff();
+    }
+
+    /**
+     * Search customers by name.
+     */
+    public function handle(array $params): array
+    {
+        return \App\Models\Customer::query()
+            ->where('name', 'like', '%'.$params['q'].'%')
+            ->take(10)
+            ->get(['id', 'name'])
+            ->toArray();
+    }
+}
 
 // JS / Alpine
-atom.action('SyncContacts', { force: true }).then(res => ...);
+atom.action('Customer.Search', { q: 'jane' }).then(res => ...);
 </code-snippet>
 @endverbatim
+
+Two things the endpoint does not do for you: it does not filter what you return (`handle()`'s return value is JSON-encoded straight to the caller, so return columns, not whole models), and it does not rate-limit.
 
 ### Enums
 

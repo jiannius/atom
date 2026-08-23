@@ -3,6 +3,7 @@
 namespace Jiannius\Atom;
 
 use Illuminate\Support\Arr;
+use Jiannius\Atom\Contracts\WebAction;
 use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\Broadcast;
 use Jiannius\Atom\Services\Recaptcha;
@@ -69,17 +70,58 @@ class Atom
      */
     public function action($name, $params = [])
     {
-        $name = str($name)->namespace()->toString();
+        $class = $this->resolveAction($name);
         $method = Arr::pull($params, 'method') ?? 'handle';
 
-        $class = collect([
+        throw_if(!$class, \Exception::class, "\App\Actions\\".str($name)->namespace()." not found");
+
+        return app($class)->$method($params);
+    }
+
+    /**
+     * Trigger action from the public POST /atom/action/{name} endpoint
+     *
+     * Unlike action(), this is reachable by anyone who can hit the app, so it
+     * only runs actions that opted in via the WebAction contract, only ever
+     * calls handle(), and honours an optional authorize() on the action.
+     */
+    public function webAction($name, $params = []) : mixed
+    {
+        $class = $this->resolveAction($name);
+
+        // Same answer for "not opted in" and "does not exist" — otherwise the
+        // endpoint reports which action classes the app has.
+        if (!$class || !is_subclass_of($class, WebAction::class)) {
+            return response()->json(['message' => 'Not Found.'], 404);
+        }
+
+        // method stays reserved over HTTP as it is for action(), so an action's
+        // handle() sees the same payload however it was invoked.
+        Arr::pull($params, 'method');
+
+        $action = app($class);
+
+        if (method_exists($action, 'authorize') && !$action->authorize($params)) {
+            return response()->json(['message' => 'This action is unauthorized.'], 403);
+        }
+
+        return $action->handle($params);
+    }
+
+    /**
+     * Resolve an action's class name from its dot-name
+     *
+     * The host app's App\Actions\{Name} wins over the package's, so an app can
+     * override a packaged action.
+     */
+    protected function resolveAction($name) : ?string
+    {
+        $name = str($name)->namespace()->toString();
+
+        return collect([
             "App\Actions\\$name",
             "Jiannius\Atom\Actions\\$name",
         ])->first(fn ($ns) => class_exists($ns));
-
-        throw_if(!$class, \Exception::class, "\App\Actions\\$name not found");
-
-        return app($class)->$method($params);
     }
 
     /**

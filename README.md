@@ -498,36 +498,83 @@ php artisan atom:purge-editor-images --force  # delete the editor-purged/ backup
 
 ## Actions
 
-JS-callable PHP classes. Atom mounts `POST /atom/action/{name}` automatically, and the front-end exposes `window.atom.action('Foo.Bar', params)`.
+Named PHP classes you can invoke from PHP or, if they opt in, from the browser.
 
-```js
-// in Alpine or any component
-const result = await window.atom.action('Customer.Search', { q: 'jane' });
+Resolution order:
+1. `App\Actions\{Name}` (host app — wins).
+2. `Jiannius\Atom\Actions\{Name}` (package fallback).
+
+### From PHP
+
+Any action, any public method:
+
+```php
+atom()->action('Customer.Search', ['q' => 'jane']);
+atom()->action('Customer.Search', ['method' => 'byEmail', 'email' => 'jane@acme.test']);
 ```
+
+### From the browser
+
+Atom mounts `POST /atom/action/{name}` and the front-end exposes `window.atom.action(name, params)`. **That endpoint is public** — no auth, reachable by anyone who can load the app — so it only runs actions that opt in by implementing `Jiannius\Atom\Contracts\WebAction`:
 
 ```php
 // app/Actions/Customer/Search.php
 namespace App\Actions\Customer;
 
-class Search
+use Jiannius\Atom\Contracts\WebAction;
+
+class Search implements WebAction
 {
     public function handle($params)
     {
         return \App\Models\Customer::query()
             ->where('name', 'like', '%'.$params['q'].'%')
             ->take(10)
-            ->get();
+            ->get(['id', 'name']);
     }
 }
 ```
 
-Resolution order:
-1. `App\Actions\{Name}` (host app — wins).
-2. `Jiannius\Atom\Actions\{Name}` (package fallback).
+```js
+const result = await window.atom.action('Customer.Search', { q: 'jane' });
+```
 
-Pass `method` in `$params` to invoke something other than `handle`.
+The endpoint:
 
-You can also call from PHP: `atom()->action('Customer.Search', ['q' => 'jane'])`.
+- **Answers 404 for anything that did not opt in** — the same answer an unknown action gets, so it cannot be used to enumerate your action classes.
+- **Only ever calls `handle()`.** `method` is a PHP-side convenience; over HTTP it is stripped from the params and ignored.
+- **Encodes the return value straight to the caller.** Return the columns you mean to expose, not whole models.
+- **Does not rate-limit.**
+
+### Gating who may call it
+
+Declare `authorize()` on the action. The endpoint calls it before `handle()` and answers 403 when it returns false:
+
+```php
+class Search implements WebAction
+{
+    public function authorize($params) : bool
+    {
+        return auth()->check();
+    }
+
+    public function handle($params) { /* ... */ }
+}
+```
+
+Actions without `authorize()` are callable by anyone, including guests — which is right for something like `GetOptions` (country and dial-code lists on public forms) and wrong for almost everything else. An action inheriting from an opted-in parent inherits the contract.
+
+### Upgrading to 3.19
+
+Before 3.19 the endpoint ran **any** class in `App\Actions\` — unauthenticated, and with the caller choosing which public method to invoke. It is now closed by default, so any action your JS calls goes dark until you opt it in.
+
+1. Find them: `grep -rn "atom.action(" resources/` (and any `.js` outside `resources/`). Each name maps to a class — `Foo.Bar` → `App\Actions\Foo\Bar`.
+2. For each, add `implements \Jiannius\Atom\Contracts\WebAction`. Nothing else changes.
+3. While you are in each file, decide whether it should have been public at all. Add `authorize()` to anything that reads or writes user data — before 3.19 it had no gate, so assume none of them do.
+4. If you have your own `App\Actions\GetOptions`, make it `extends \Jiannius\Atom\Actions\GetOptions` — otherwise it shadows the package class without the contract and every `<atom:select :callback>` in the app 404s.
+5. If any JS passed `method` in the params, split that method into its own action — the endpoint ignores `method` now.
+
+Anything you do *not* opt in stays fully callable from PHP; only the browser path is affected.
 
 ### `GetOptions`: shared option lists
 
@@ -539,6 +586,26 @@ You can also call from PHP: `atom()->action('Customer.Search', ['q' => 'jane'])`
 with the app-side values taking precedence. Results are cached under `_options`.
 
 Built-in JSON sets: `countries`, `postcodes`, `colors`. Override any of them by creating `resources/json/colors.json` in your host app.
+
+To serve options from your database instead, create `App\Actions\GetOptions` **extending** the package class (it shadows it, and extending is what carries the `WebAction` contract that `<atom:select :callback>` needs) and add a camelCase method matching the option name:
+
+```php
+namespace App\Actions;
+
+class GetOptions extends \Jiannius\Atom\Actions\GetOptions
+{
+    public function users() : array
+    {
+        return \App\Models\User::query()
+            ->where('team_id', auth()->user()?->team_id)
+            ->get()
+            ->map(fn ($user) => ['value' => $user->id, 'label' => $user->name])
+            ->all();
+    }
+}
+```
+
+The endpoint is public, so scope these queries yourself — a bare `User::all()` here is a customer list anyone can download.
 
 ---
 
@@ -558,7 +625,7 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 
 `resources/js/atom.js` is built to `dist/` and served by the package; it boots automatically when `<atom:html>` renders. It exposes:
 
-- `window.atom.action(name, params)` — POST to `/atom/action/{name}`.
+- `window.atom.action(name, params)` — POST to `/atom/action/{name}` (actions implementing `WebAction` only; see [Actions](#actions)).
 - `window.dd(...args)` — `console.log` dump.
 - `window.empty(value)` — truthy-empty helper.
 - Alpine factories: `modal`, `editor`, `select`, `tooltip`, `dropdown`, `lightbox`, `telInput`, `emailInput`, `breadcrumbs`, `datePicker`, `timePicker`, `dateRange`, `calendar`, plus chart variants.

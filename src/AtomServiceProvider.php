@@ -47,7 +47,7 @@ class AtomServiceProvider extends ServiceProvider
         Asset::boot();
 
         Route::post('/atom/action/{name}', function ($name) {
-            $result = app('atom')->action($name, request()->all());
+            $result = app('atom')->webAction($name, request()->all());
             $isResponseObject = $result instanceof \Illuminate\Http\JsonResponse || $result instanceof \Illuminate\Http\Response;
             return $isResponseObject ? $result : response()->json($result);
         })->middleware('web');

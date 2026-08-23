@@ -36,7 +36,7 @@ php artisan atom:purge-editor-images --force # empties the editor-purged backup 
 - Swaps Laravel's `Date` facade to use `Jiannius\Atom\Services\Carbon`.
 - Mixes in macros onto Eloquent `Builder`, Query `Builder`, `ComponentAttributeBag`, `Request`, `Str`, `Stringable`, `Arr` (`src/Macros/*`). These macros are how component blade files get methods like `$attributes->modifier()`, `$attributes->size()`, etc. — if you see an unfamiliar method on an attribute bag in a component, check `src/Macros/ComponentAttributeBag.php` before assuming it's framework.
 - Boots `Services\Asset`, which exposes the public route `GET /atom/{file}` serving files from `dist/assets/` with `Cache-Control: immutable`. `atom()->asset()->version($name)` looks up the hashed filename in `dist/manifest.json`. Consuming apps reference assets by name, not path.
-- Mounts a public `POST /atom/action/{name}` endpoint that the JS uses to invoke actions remotely (see "Actions" below).
+- Mounts a public `POST /atom/action/{name}` endpoint that the JS uses to invoke actions remotely — unauthenticated, and gated per-action by the `WebAction` contract (see "Actions" below).
 
 ### The `<atom:...>` tag syntax (`src/Services/TagCompiler.php`)
 
@@ -48,7 +48,7 @@ Single entry point for cross-cutting UI operations that need to dispatch Livewir
 
 - `atom()->modal($name)->show()/slide()/close()` — dispatches `atom-modal-show` / `atom-modal-close` on the *current* Livewire component.
 - `atom()->toast(...)`, `atom()->alert(...)`, `atom()->confirm(...)` — dispatch the matching `atom-toast-show` / `atom-alert-show` / `atom-confirm-show` events. All `heading`, `subheading`, `message` strings are passed through `t()` (translation helper).
-- `atom()->action($name, $params)` — resolves an Action class from `App\Actions\{Name}` *or* `Jiannius\Atom\Actions\{Name}` and invokes `handle($params)` (or `$params['method']`). Powers the public `/atom/action/{name}` endpoint.
+- `atom()->action($name, $params)` — resolves an Action class from `App\Actions\{Name}` *or* `Jiannius\Atom\Actions\{Name}` and invokes `handle($params)` (or `$params['method']`). Its sibling `webAction()` is the gated version behind the public endpoint (see "Actions" below).
 - `atom()->mail(...)`, `atom()->breadcrumbs()`, `atom()->broadcast()`, `atom()->sitemap()`, `atom()->asset()`.
 
 The `Atom` class is registered both by FQN and by the `'atom'` container alias — both work.
@@ -75,10 +75,12 @@ If you change the cast, also update the purge command's scanning logic — they 
 
 ### Actions pattern
 
-JS calls `atom.action('Foo.Bar', params)` (= `POST /atom/action/Foo.Bar`), which hits `Atom::action()`, which:
-- Converts the dotted name to a namespace via the `str()->namespace()` macro (`Foo.Bar` → `Foo\Bar`).
-- Tries `App\Actions\Foo\Bar` first, then `Jiannius\Atom\Actions\Foo\Bar`. App-level overrides take precedence.
-- Pulls `method` from params (default `handle`).
+Two entry points into the same `App\Actions\*` / `Jiannius\Atom\Actions\*` classes, sharing `Atom::resolveAction()` (dotted name → namespace via the `str()->namespace()` macro; app-level class wins over the package's):
+
+- **`Atom::action()`** — the PHP entry point (`atom()->action()`, `$this->action()` on the trait). Unrestricted: any action, and `method` in `$params` picks the method (default `handle`).
+- **`Atom::webAction()`** — behind the public `POST /atom/action/{name}` endpoint. Runs the action only if it implements `Contracts\WebAction`; 404s otherwise, with the same body an unknown action gets so the endpoint can't enumerate an app's actions. Always calls `handle()` — `method` is stripped, never honoured. Calls the action's `authorize($params)` first if it has one, 403 on false. Denials are JSON so `ajax.js`'s `res.json()` can read them.
+
+The endpoint is unauthenticated by design (guest-facing `<atom:select :callback>` selects hit `GetOptions`), which is why the gate is per-action rather than route middleware. `tests/Feature/ActionEndpointTest.php` + `ActionTest.php` cover both paths; fixtures live in `tests/Fixtures/Actions/` under a dev-only `App\Actions\` PSR-4 mapping.
 
 `Actions\GetOptions` is the in-package example. It also demonstrates the JSON lookup convention: `getFromJson($name)` reads `resource_path('json/'.$name.'.json')` from the consuming app and merges it (recursively) over `json/{$name}.json` from this package. Results are cached under `_options` in the default cache store. Adding a new option set means adding a JSON file in both places (or just one).
 

@@ -29,7 +29,8 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Jiannius\\Atom\\Tests\\": "tests/"
+            "Jiannius\\Atom\\Tests\\": "tests/",
+            "App\\Actions\\": "tests/Fixtures/Actions/"
         }
     },
     "authors": [
