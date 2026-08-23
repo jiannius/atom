@@ -4,8 +4,15 @@ namespace Jiannius\Atom\Actions;
 
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Blade;
+use Jiannius\Atom\Contracts\WebAction;
 
-class GetOptions
+/**
+ * Web-callable: <atom:select :callback> fetches its options from the browser,
+ * and those selects appear on guest-facing forms (country, state, dial code),
+ * so this stays reachable without authentication. It only ever reads option
+ * lists — keep it that way.
+ */
+class GetOptions implements WebAction
 {
     public $name;
     public $filters;
