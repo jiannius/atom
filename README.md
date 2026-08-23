@@ -564,6 +564,20 @@ class Search implements WebAction
 
 Actions without `authorize()` are callable by anyone, including guests — which is right for something like `GetOptions` (country and dial-code lists on public forms) and wrong for almost everything else. An action inheriting from an opted-in parent inherits the contract.
 
+### Upgrading to 3.20
+
+3.20 closes three holes in `GetOptions`, the one action the package ships web-callable without authentication. All three were reachable by an anonymous caller:
+
+- **The option name picked a method.** `{"name":"purge-cache"}` invoked `purgeCache()` on your subclass. `method_exists()` matches private, protected and inherited methods, and the call was made from inside the class, so all of them were reachable.
+- **The option name built a file path.** `{"name":"../../composer"}` escaped `resources/json/` and read the file.
+- **An unknown name threw**, returning 500 with the absolute path in the log — an unauthenticated log flooder that also fired on an honest typo (`country` instead of `countries`).
+
+**What you must do**, in every app with its own `App\Actions\GetOptions`: declare each option set in `$auth` (needs a signed-in caller) or `$guest` (readable by anyone). Undeclared sets return `[]` — the select goes empty — and log a warning naming the set. See [`GetOptions`](#getoptions-shared-option-lists) above.
+
+Assume `$auth` unless you can say why a stranger may read every row. Sets like `contacts`, `users`, `documents` or `taxes` were guest-readable before this release; declaring them `$guest` keeps them that way.
+
+`$auth` gates *who is signed in*, not *which rows they get*. Scope the queries too.
+
 ### Upgrading to 3.19
 
 Before 3.19 the endpoint ran **any** class in `App\Actions\` — unauthenticated, and with the caller choosing which public method to invoke. It is now closed by default, so any action your JS calls goes dark until you opt it in.
@@ -597,13 +611,19 @@ with the app-side values taking precedence. Results are cached under `_options`.
 
 Built-in JSON sets: `countries`, `postcodes`, `colors`. Override any of them by creating `resources/json/colors.json` in your host app.
 
-To serve options from your database instead, create `App\Actions\GetOptions` **extending** the package class (it shadows it, and extending is what carries the `WebAction` contract that `<atom:select :callback>` needs) and add a camelCase method matching the option name:
+To serve options from your database instead, create `App\Actions\GetOptions` **extending** the package class (it shadows it, and extending is what carries the `WebAction` contract that `<atom:select :callback>` needs). Each option set needs two things: a camelCase method, and its name **declared** in `$auth` or `$guest`.
 
 ```php
 namespace App\Actions;
 
 class GetOptions extends \Jiannius\Atom\Actions\GetOptions
 {
+    /** Readable only by a signed-in caller. */
+    protected array $auth = ['users'];
+
+    /** Readable by anyone, guests included. */
+    protected array $guest = ['brands'];
+
     public function users() : array
     {
         return \App\Models\User::query()
@@ -615,7 +635,15 @@ class GetOptions extends \Jiannius\Atom\Actions\GetOptions
 }
 ```
 
-The endpoint is public, so scope these queries yourself — a bare `User::all()` here is a customer list anyone can download.
+Why the declaration: the option name arrives in the request body, and it used to be turned straight into a method call. Anything zero-arg on your subclass was reachable from a browser, authenticated or not. Now the name only selects among the sets you listed, and a name in neither list returns an empty array.
+
+- **`$auth`** — needs a signed-in caller. Everything backed by app data belongs here. A guest gets 403.
+- **`$guest`** — readable by anyone. Only for sets where every row a stranger could pull back is safe to hand over.
+- **Undeclared** — returns `[]`. If a method of that name exists, a warning is logged naming the class and the set, so a select that has gone empty is diagnosable.
+
+The package's own sets (`countries`, `states`, `dialcodes`, `currencies`, `colors`, `postcodes`) are always readable — guest address and phone forms need them — and you don't re-declare them.
+
+`$auth` is a coarse gate: signed in or not. It does **not** scope rows. A signed-in user of tenant A calling a set that returns every tenant's rows still gets every tenant's rows, so scope the query itself as well.
 
 ---
 

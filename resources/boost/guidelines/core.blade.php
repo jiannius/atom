@@ -189,7 +189,10 @@ Reach for these instead of hand-rolling coloured pills, notice boxes, or empty s
 
 @verbatim
 - Static: `<atom:select :options="[['value' => 1, 'label' => 'One']]" wire:model="x" />`.
-- Dynamic (database / large lists): create `app/Actions/GetOptions.php` with a camelCase method matching the option `name`, `extends \Jiannius\Atom\Actions\GetOptions`. The app-side class overrides the package's. Reach it via `<atom:select name="users" />` (the select component will POST to `/atom/action/GetOptions` with the name). **It must extend the package class** — that is what carries the `WebAction` contract the endpoint requires; a standalone `App\Actions\GetOptions` shadows the package's and the select 404s. The endpoint is public, so scope the query in the method (e.g. to the current tenant) and never return a list a guest should not see.
+- Dynamic (database / large lists): create `app/Actions/GetOptions.php` `extends \Jiannius\Atom\Actions\GetOptions`, with a camelCase method matching the option `name`, and **declare that name** in `$auth` or `$guest`. Reach it via `<atom:select name="users" />` (the select component will POST to `/atom/action/GetOptions` with the name). Three rules, all load-bearing:
+  - **It must extend the package class** — that is what carries the `WebAction` contract the endpoint requires; a standalone `App\Actions\GetOptions` shadows the package's and the select 404s.
+  - **Every option set must be declared.** `protected array $auth = ['users'];` needs a signed-in caller; `protected array $guest = ['brands'];` is readable by anyone. An undeclared name returns `[]` (the select renders empty) and logs a warning. Default to `$auth` — the endpoint is public and unauthenticated, so a `$guest` set hands every row it can return to a stranger. The package's own sets (countries, states, dialcodes, currencies, colors, postcodes) are always readable and are not re-declared.
+  - **Scope the query anyway.** `$auth` only asks whether the caller is signed in; it does not restrict rows. Filter to the current org/tenant inside the method — a bare `User::all()` is a customer list any logged-in user can download.
 - Enums: `<atom:select :options="ClientType::all()->map->option()->all()" />`.
 @endverbatim
 
