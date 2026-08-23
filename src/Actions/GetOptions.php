@@ -14,6 +14,24 @@ use Jiannius\Atom\Contracts\WebAction;
  */
 class GetOptions implements WebAction
 {
+    /**
+     * Option sets the package itself serves. Guest-facing address and phone
+     * forms need these, so they are readable by anyone.
+     */
+    const PUBLIC_OPTIONS = ['colors', 'countries', 'currencies', 'dialcodes', 'postcodes', 'states'];
+
+    /**
+     * Option sets this class also serves to any caller, including guests.
+     * Only put a set here if a stranger may read every row it can return.
+     */
+    protected array $guest = [];
+
+    /**
+     * Option sets this class serves only to a signed-in caller. Anything backed
+     * by app data belongs here — the endpoint is public.
+     */
+    protected array $auth = [];
+
     public $name;
     public $filters;
     public $selected = [];
@@ -279,12 +297,74 @@ class GetOptions implements WebAction
         $this->selected = $this->filters ? (array)Arr::pull($this->filters, 'value') : [];
         $this->exclude = $this->filters ? (array)Arr::pull($this->filters, 'exclude') : [];
 
+        // The name comes from the request, so it selects among the sets this
+        // class declared — it never picks a method by itself.
+        if (!$this->serves($this->name)) {
+            $this->warnUndeclaredOption($this->name);
+
+            return [];
+        }
+
         $method = str($this->name)->camel()->toString();
         $options = method_exists($this, $method)
             ? $this->{$method}()
             : $this->getFromJson();
 
         return Arr::map($options, fn ($option) => $this->getOptionHtml($option));
+    }
+
+    /**
+     * Authorise the caller for the requested option set
+     *
+     * Called by the public endpoint only; a server-side atom()->action() call
+     * renders inside an already-authorised page and skips this.
+     */
+    public function authorize($params) : bool
+    {
+        return !in_array(data_get($params, 'name'), $this->auth, true) || auth()->check();
+    }
+
+    /**
+     * Whether this class serves the named option set
+     */
+    protected function serves($name) : bool
+    {
+        return $this->isOptionName($name)
+            && in_array($name, [...self::PUBLIC_OPTIONS, ...$this->guest, ...$this->auth], true);
+    }
+
+    /**
+     * Whether the name is shaped like an option set name
+     *
+     * Guards the method dispatch above and the file reads in getFromJson().
+     */
+    protected function isOptionName($name) : bool
+    {
+        return is_string($name) && preg_match('/^[a-z0-9_-]+$/i', $name) === 1;
+    }
+
+    /**
+     * Warn when a name matches a method but was never declared
+     *
+     * The empty list this returns otherwise looks like an empty select rather
+     * than a mistake. Only logged when a method of that name exists, so the
+     * public endpoint cannot be used to flood the log with invented names.
+     */
+    protected function warnUndeclaredOption($name) : void
+    {
+        if (!$this->isOptionName($name)) {
+            return;
+        }
+
+        if (!method_exists($this, str($name)->camel()->toString())) {
+            return;
+        }
+
+        logger()->warning(
+            '[atom] '.static::class." did not serve the option set '$name' — it is listed in neither"
+            .' $guest nor $auth, so it is not reachable. Add it to $auth if it reads app data, or to'
+            .' $guest only if every row it can return is safe for a stranger to read.'
+        );
     }
 
     /**
@@ -357,15 +437,29 @@ class GetOptions implements WebAction
     public function getFromJson($name = null)
     {
         $name ??= $this->name;
+
+        // Without this the name walks out of both directories: a request for
+        // "../../composer" reads the app's composer.json.
+        if (!$this->isOptionName($name)) {
+            return [];
+        }
+
         $cached = cache('_options') ?? [];
         $options = data_get($cached, $name);
 
         if ($options) return $options;
 
-        $path = resource_path('json/'.$name.'.json');
-        $local = file_exists($path) ? json_decode(file_get_contents($path), true) : [];
-        $atom = json_decode(file_get_contents(__DIR__.'/../../json/'.$name.'.json'), true);
-        $options = array_merge_recursive($atom, $local);
+        $localPath = resource_path('json/'.$name.'.json');
+        $atomPath = __DIR__.'/../../json/'.$name.'.json';
+
+        $local = file_exists($localPath) ? json_decode(file_get_contents($localPath), true) : [];
+        $atom = file_exists($atomPath) ? json_decode(file_get_contents($atomPath), true) : [];
+        $options = array_merge_recursive($atom ?: [], $local ?: []);
+
+        // A name with no file behind it must not write an entry, or the shared
+        // _options cache grows without bound on unknown names.
+        if (!$options) return [];
+
         $cached[$name] = $options;
 
         cache(['_options' => $cached]);
