@@ -355,7 +355,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | --- | ------------------------------ |
 | `<atom:input>` | `name`, `type` (`text`, `email`, `password`, `number`, `tel`, `color`), `label`, `caption`, `prefix`, `suffix`, `required`, `error`. Subs: `<atom:input.text>`, `<atom:input.email>`, `<atom:input.tel>`, `<atom:input.color>`, `<atom:input.field>`, `<atom:input.prefix>`. |
 | `<atom:textarea>` | `name`, `label`, `caption`, `rows` (default 3), `autoresize`, `variant="transparent"`. |
-| `<atom:select>` | `name`, `label`, `caption`, `variant` (`native` (default), `listbox`, `filter`), `required`, `error`, `prefix`, `suffix`, `inline`. Children: `<atom:select.option>`, `<atom:select.group>`. |
+| `<atom:select>` | `options` — an **array** for a static list, or a **string** naming a `GetOptions` set to fetch remotely. Plus `name` (field name, not the option set), `label`, `caption`, `variant` (`native` (default), `listbox`, `filter`), `required`, `error`, `prefix`, `suffix`, `inline`; `filters`, `multiple`, `searchable`, `clearable` on `listbox`. Children: `<atom:select.option>`, `<atom:select.group>`. |
 | `<atom:checkbox>` | `name`, `label`, `caption`, `align` (`start`, `center`, `end`). Group with `<atom:checkbox.group>`. |
 | `<atom:radio>` | Same as checkbox. Group with `<atom:radio.group>`. |
 | `<atom:toggle>` | `name`, `label`, `caption`. Group with `<atom:toggle.group>`. |
@@ -585,9 +585,9 @@ Before 3.19 the endpoint ran **any** class in `App\Actions\` — unauthenticated
 1. Find them: `grep -rn "atom.action(" resources/` (and any `.js` outside `resources/`). Each name maps to a class — `Foo.Bar` → `App\Actions\Foo\Bar`.
 2. For each, add `implements \Jiannius\Atom\Contracts\WebAction`. Nothing else changes.
 3. While you are in each file, decide whether it should have been public at all. Add `authorize()` to anything that reads or writes user data — before 3.19 it had no gate, so assume none of them do.
-4. If you have your own `App\Actions\GetOptions`, make it `extends \Jiannius\Atom\Actions\GetOptions` — otherwise it shadows the package class without the contract and every `<atom:select :callback>` in the app 404s.
+4. If you have your own `App\Actions\GetOptions`, make it `extends \Jiannius\Atom\Actions\GetOptions` — otherwise it shadows the package class without the contract and every remote-option select (`<atom:select options="users">`) in the app 404s.
 5. If any JS passed `method` in the params, split that method into its own action — the endpoint ignores `method` now.
-6. Re-run `php artisan boost:install` in the app. Atom's AI guidelines are copied into the app's `CLAUDE.md`/`AGENTS.md` at install time, not read from `vendor/` — without this, your agents keep working from the pre-3.19 rules and will write actions that 404.
+6. Check the app's `CLAUDE.md`/`AGENTS.md`. Atom's guidelines are **copied** into it rather than read from `vendor/`, and Boost rewrites that file on `composer update` — so the new rules arrive on their own, but any hand-edits you made to the atom section are overwritten at the same time. Re-apply them, or keep them outside that section.
 
 Anything you do *not* opt in stays fully callable from PHP; only the browser path is affected.
 
@@ -611,7 +611,15 @@ with the app-side values taking precedence. Results are cached under `_options`.
 
 Built-in JSON sets: `countries`, `postcodes`, `colors`. Override any of them by creating `resources/json/colors.json` in your host app.
 
-To serve options from your database instead, create `App\Actions\GetOptions` **extending** the package class (it shadows it, and extending is what carries the `WebAction` contract that `<atom:select :callback>` needs). Each option set needs two things: a camelCase method, and its name **declared** in `$auth` or `$guest`.
+To serve options from your database instead, create `App\Actions\GetOptions` **extending** the package class (it shadows it, and extending is what carries the `WebAction` contract that remote-option selects need). Each option set needs two things: a camelCase method, and its name **declared** in `$auth` or `$guest`.
+
+Reach it by passing the set name as a **string** on `options` — that is what makes the select fetch rather than render a static list:
+
+```blade
+<atom:select variant="listbox" options="users" wire:model="user_id" searchable />
+```
+
+`:options="[...]"` (an array) is a static list; `name` is the field name and never selects an option set.
 
 ```php
 namespace App\Actions;
