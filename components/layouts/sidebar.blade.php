@@ -195,7 +195,13 @@ class="min-h-screen bg-white dark:bg-zinc-900">
              layout: the visible page title comes from <atom:breadcrumbs>, which
              is a nav landmark and emits no heading element, so without this a
              screen reader gets no outline at all. Hidden visually — the title is
-             already on screen. --}}
+             already on screen.
+
+             It sits in front of the slot on purpose (the outline root precedes
+             what it labels), which means the Livewire root is NOT the first child
+             of [data-atom-main]. breadcrumbs.js matches on wire:id rather than
+             position for exactly this reason — don't reintroduce a positional
+             selector against this element. --}}
         @if ($title)
             <h1 class="sr-only" data-atom-page-title>{{ $title }}</h1>
         @endif

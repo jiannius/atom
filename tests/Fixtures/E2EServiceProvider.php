@@ -18,7 +18,9 @@ class E2EServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__, 'atom-test');
 
         Livewire::component('atom-e2e-select-morph', SelectMorphFixture::class);
+        Livewire::component('atom-e2e-breadcrumbs', BreadcrumbsFixture::class);
 
         Route::middleware('web')->get('/atom/e2e/select-morph', fn () => view('atom::e2e.select-morph'));
+        Route::middleware('web')->get('/atom/e2e/breadcrumbs', fn () => view('atom::e2e.breadcrumbs'));
     }
 }

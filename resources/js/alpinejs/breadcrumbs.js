@@ -33,7 +33,9 @@ export default (config) => {
         // build the breadcrumbs trail
         build () {
             // retrieve the breadcrumbs data from the atom component
-            let wireId = document.body.querySelector('[data-atom-main] > *')?.getAttribute('wire:id')
+            // match on wire:id rather than position: the sidebar layout puts an
+            // sr-only <h1> in front of the Livewire root when the page has a title
+            let wireId = document.body.querySelector('[data-atom-main] > [wire\\:id]')?.getAttribute('wire:id')
             if (!wireId) return
 
             let component = Livewire.find(wireId)

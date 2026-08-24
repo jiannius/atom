@@ -6,6 +6,12 @@ import breadcrumbs from '../../resources/js/alpinejs/breadcrumbs.js'
 // stubbed globals rather than a real SPA navigation — atom's docs rig has no
 // multi-page Livewire hierarchy to navigate through, and the bug this covers
 // only appears across client-side navigations.
+//
+// SCOPE: merging only. The querySelector stub below answers every selector, so
+// nothing here can see how build() finds the Livewire root — that is how the
+// v3.18.0 breakage (a page-title <h1> taking the root's place as first child of
+// [data-atom-main]) reached three releases. Root resolution is covered against a
+// real DOM in breadcrumbs-dom.spec.js; keep it there.
 
 // Navigate the trail to a page, returning the crumb titles it renders.
 function navigate (trail, page) {
