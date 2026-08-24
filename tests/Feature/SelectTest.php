@@ -116,3 +116,20 @@ describe('select aria', function () use ($options) {
             ->not->toContain('role="menuitem"');
     });
 });
+
+// The contract the docs describe: select.js turns a STRING options prop into the
+// remote option set it fetches from GetOptions. `name` is the field name and has
+// never selected an option set, though the guidelines said so until v3.21.1.
+describe('remote option sets', function () {
+    it('passes a string options prop through as the option set name', function () {
+        $html = renderBlade('<atom:select variant="listbox" options="users" wire:model="user_id" />');
+
+        expect($html)->toContain("options: 'users'");
+    });
+
+    it('does not read the option set from the name prop', function () {
+        $html = renderBlade('<atom:select variant="listbox" name="users" wire:model="user_id" />');
+
+        expect($html)->toContain('options: null');
+    });
+});
