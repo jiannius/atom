@@ -11,6 +11,26 @@ test('renders the trail inside a titled sidebar layout', async ({ page }) => {
   await expect(page.locator('[data-atom-breadcrumbs] [data-atom-heading]')).toHaveText('Dashboard')
 })
 
+test('renders the trail when the component is inside a wrapper div', async ({ page }) => {
+  await page.goto('/atom/e2e/breadcrumbs-wrapped')
+
+  await expect(page.locator('[data-atom-breadcrumbs] [data-atom-heading]')).toHaveText('Dashboard')
+})
+
+test('does not throw on a page whose component declares no breadcrumbs', async ({ page }) => {
+  const errors = []
+  page.on('pageerror', error => errors.push(error.message))
+
+  await page.goto('/atom/e2e/breadcrumbs-untrailed')
+  await page.evaluate(() => {
+    window.dispatchEvent(new CustomEvent('livewire:navigated'))
+    window.dispatchEvent(new CustomEvent('livewire:navigate'))
+  })
+
+  expect(errors).toEqual([])
+  await expect(page.locator('[data-atom-breadcrumbs] [data-atom-heading]')).toHaveCount(0)
+})
+
 test('the page title h1 precedes the Livewire root it labels', async ({ page }) => {
   await page.goto('/atom/e2e/breadcrumbs')
 

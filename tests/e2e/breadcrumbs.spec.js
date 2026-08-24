@@ -125,3 +125,41 @@ test('pushed crumbs still accumulate across navigations', () => {
   expect(titles).toEqual(['Dashboard', 'Customers', 'Customer #5'])
   expect(trail.breadcrumbs.map(item => item.href)).toEqual(['/app', '/app/customers', '/app/customers/5'])
 })
+
+// $_breadcrumbs defaults to [] on the AtomComponent trait, so a page that renders
+// <atom:breadcrumbs> over a component with no breadcrumbs() method reaches build()
+// with an empty payload. Before the root selector was fixed, build() bailed earlier
+// on such pages and never got here.
+test('build does nothing when the component declares no breadcrumbs', () => {
+  globalThis.document = { body: { querySelector: () => ({ getAttribute: () => 'wire-1' }) } }
+  globalThis.Livewire = { find: () => ({ _breadcrumbs: [] }) }
+
+  const trail = breadcrumbs({})
+
+  expect(() => trail.build()).not.toThrow()
+  expect(trail.breadcrumbs).toEqual([])
+})
+
+// getLatestHref is bound to x-on:livewire:navigate.window, so it runs on every
+// client-side navigation whether or not a trail was ever built. An empty trail is
+// a legitimate state — first paint, or a page whose component has no breadcrumbs()
+// method — and throwing from a public handler takes out whatever Livewire's
+// navigate lifecycle was going to run after it.
+test('getLatestHref does nothing when the trail is empty', () => {
+  globalThis.window = { location: { href: 'https://example.test/app' } }
+
+  const trail = breadcrumbs({})
+
+  expect(() => trail.getLatestHref({})).not.toThrow()
+})
+
+test('getLatestHref still records the resolved href when a trail exists', () => {
+  globalThis.window = { location: { href: 'https://example.test/app?tab=open' } }
+
+  const trail = breadcrumbs({})
+  trail.trails = [{ title: 'Dashboard', url: 'https://example.test/app' }]
+
+  trail.getLatestHref({})
+
+  expect(trail.trails[0].href).toBe('https://example.test/app?tab=open')
+})
