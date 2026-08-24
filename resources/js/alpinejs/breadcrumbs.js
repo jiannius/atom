@@ -20,12 +20,15 @@ export default (config) => {
         // so we need to update the href inside the breadcrumb trail
         // whenever the navigation is take place
         getLatestHref (e) {
-            let href = window.location.href
-            let root = href.split('?')[0]
-            let index = this.trails.length - 1
-            let current = this.trails[index]
+            // an empty trail is a legitimate state — first paint, or a page whose
+            // component declares no breadcrumbs() — and this runs on every
+            // navigation, so it must not throw out of the handler
+            let current = this.trails[this.trails.length - 1]
+            if (!current) return
 
-            if (root !== current.url) return
+            let href = window.location.href
+
+            if (href.split('?')[0] !== current.url) return
 
             current.href = href
         },
@@ -33,15 +36,23 @@ export default (config) => {
         // build the breadcrumbs trail
         build () {
             // retrieve the breadcrumbs data from the atom component
-            let wireId = document.body.querySelector('[data-atom-main] > *')?.getAttribute('wire:id')
+            // match on wire:id rather than position: the sidebar layout puts an
+            // sr-only <h1> in front of the Livewire root when the page has a title,
+            // and a consuming app may wrap its component in a plain div. querySelector
+            // returns document order, so a nested component can't outrank the page root.
+            let wireId = document.body.querySelector('[data-atom-main] [wire\\:id]')?.getAttribute('wire:id')
             if (!wireId) return
 
             let component = Livewire.find(wireId)
             if (!component) return
 
+            // $_breadcrumbs is [] until a component declares a breadcrumbs() method,
+            // and a trail with no root can't be merged into anything
             let data = component._breadcrumbs
+            if (!data?.home) return
+
             let home = { ...data.home, home: true }
-            let items = [home, ...data.items].filter(Boolean)
+            let items = [home, ...(data.items ?? [])].filter(Boolean)
 
             if (!this.trails.length) {
                 this.trails = [...items]

@@ -75,3 +75,10 @@ it('allows a signed-in caller an option set declared as auth-only', function () 
 
     expect((new GetOptionsSubclass())->authorize(['name' => 'contacts']))->toBeTrue();
 });
+
+it('does not 500 when the request omits the name entirely', function () {
+    $response = $this->postJson('/atom/action/get-options', []);
+
+    $response->assertOk();
+    expect($response->json())->toBe([]);
+});
