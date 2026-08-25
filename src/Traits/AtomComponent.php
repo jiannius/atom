@@ -81,6 +81,16 @@ trait AtomComponent
     }
 
     /**
+     * Drop "select all matching" but keep the checked ids — what a sticky-selection
+     * table does on a filter change, since the flag is scoped to a query that no
+     * longer exists while the ids still name real rows.
+     */
+    public function clearTableSelectAll()
+    {
+        $this->_table['select_all'] = false;
+    }
+
+    /**
      * Select every row matching the current table query (cross-page).
      * Stored as an intent flag, not an id list, so it scales to any size.
      */
@@ -99,9 +109,10 @@ trait AtomComponent
 
     /**
      * The query targeting the current table selection — the whole filtered set
-     * when "select all matching" is on, otherwise just the checked ids. Backs
-     * bulk actions: $this->tableSelection()->delete(). Requires a tableQuery()
-     * method on the component (the full scoped + filtered query).
+     * when "select all matching" is on, otherwise the checked ids resolved
+     * against tableSelectionQuery(). Backs bulk actions:
+     * $this->tableSelection()->delete(). Requires a tableQuery() method on the
+     * component (the full scoped + filtered query).
      */
     public function tableSelection()
     {
@@ -109,13 +120,34 @@ trait AtomComponent
             throw new \BadMethodCallException(static::class.' must define a tableQuery() method to use tableSelection().');
         }
 
-        $query = $this->tableQuery();
-
-        if (!$this->isTableSelectAll()) {
-            $query->whereKey($this->getTableCheckboxes());
+        if ($this->isTableSelectAll()) {
+            return $this->tableQuery();
         }
 
-        return $query;
+        return $this->tableSelectionQuery()->whereKey($this->getTableCheckboxes());
+    }
+
+    /**
+     * The base query the checked ids resolve against. Defaults to the filtered
+     * query, so an unaware component behaves exactly as before.
+     *
+     * With <atom:table :sticky-selection> the ids outlive the filter that
+     * produced them, and resolving them through tableQuery() would silently
+     * intersect them with the *current* filter — the bar says 3 selected and
+     * the bulk action hits 1. Such a component overrides this with its
+     * scoped-but-unfiltered base:
+     *
+     *   public function tableSelectionQuery() { return Item::query(); }
+     *   public function tableQuery() { return $this->tableSelectionQuery()->filter($this->filters); }
+     *
+     * Deliberately not defaulted to a bare newQuery() off the model: that would
+     * make sticky work with no override, but only for apps whose tenancy is a
+     * global scope. The consuming app is the only party that can safely say what
+     * "unfiltered but still scoped" means.
+     */
+    public function tableSelectionQuery()
+    {
+        return $this->tableQuery();
     }
 
     /**

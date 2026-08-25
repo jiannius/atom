@@ -3,10 +3,17 @@
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\ViewErrorBag;
 use Jiannius\Atom\Tests\Fixtures\Item;
+use Jiannius\Atom\Tests\Fixtures\StickyTableFixture;
 use Jiannius\Atom\Tests\Fixtures\TableFixture;
 use Livewire\Livewire;
 
 beforeEach(fn () => view()->share('errors', new ViewErrorBag));
+
+/** The table root's table-filter:changed handler, on its own. */
+function filterHandler(string $html): string
+{
+    return (string) str($html)->after('x-on:table-filter:changed.window="')->before('"');
+}
 
 describe('selection state', function () {
     it('selectAllTableMatching sets the flag; reset clears both modes', function () {
@@ -104,9 +111,8 @@ describe('clear on filter change (wiring)', function () {
     it('table root listens for table-filter:changed and clears when a selection exists', function () {
         $html = renderBlade('<atom:table><x-slot:columns><atom:table.column>A</atom:table.column></x-slot:columns></atom:table>');
 
-        expect($html)
-            ->toContain('table-filter:changed.window')
-            ->toContain('resetTableCheckboxes');
+        expect($html)->toContain('table-filter:changed.window');
+        expect(filterHandler($html))->toContain('resetTableCheckboxes');
     });
 
     it('select filter dispatches table-filter:changed on value change', function () {
@@ -125,5 +131,83 @@ describe('clear on filter change (wiring)', function () {
         $html = renderBlade('<atom:table.search wire:model="q" />');
 
         expect($html)->toContain('table-filter:changed');
+    });
+});
+
+describe('sticky selection', function () {
+    it('keeps the checked ids on a filter change, but still drops select_all', function () {
+        $html = renderBlade('<atom:table :sticky-selection="true"><x-slot:columns><atom:table.column>A</atom:table.column></x-slot:columns></atom:table>');
+
+        expect(filterHandler($html))
+            ->toContain('clearTableSelectAll')
+            ->not->toContain('resetTableCheckboxes');   // the ids survive the new result set
+    });
+
+    it('clearTableSelectAll drops the flag but keeps the ids', function () {
+        $test = Livewire::test(StickyTableFixture::class)
+            ->set('_table.checkboxes', [1, 2])
+            ->set('_table.select_all', true)
+            ->call('clearTableSelectAll');
+
+        expect($test->get('_table.select_all'))->toBeFalse()
+            ->and($test->get('_table.checkboxes'))->toBe([1, 2]);
+    });
+
+    it('keeps the header on screen so the user can go on searching', function () {
+        $header = '<x-slot:header><atom:table.search wire:model="q" /></x-slot:header>';
+
+        // the checked bar normally takes the header's place — which would make the
+        // tick, search, tick again flow impossible on the very table built for it
+        expect(renderBlade('<atom:table :sticky-selection="true">'.$header.'</atom:table>'))
+            ->toContain('<template x-if="true"');
+
+        expect(renderBlade('<atom:table>'.$header.'</atom:table>'))
+            ->toContain('<template x-if="!$wire._table.checkboxes.length"');
+    });
+
+    it('renders a persistent clear only when sticky', function () {
+        $slot = '<x-slot:checked><button>Delete</button></x-slot:checked>';
+
+        expect(renderBlade('<atom:table :sticky-selection="true">'.$slot.'</atom:table>'))
+            ->toContain('data-atom-table-clear-selection');
+
+        expect(renderBlade('<atom:table>'.$slot.'</atom:table>'))
+            ->not->toContain('data-atom-table-clear-selection');
+    });
+
+    it('resolves checked ids against tableSelectionQuery, ignoring the live filters', function () {
+        Item::factory()->count(3)->create(['status' => 'draft']);
+        Item::factory()->count(2)->create(['status' => 'published']);
+        $ids = Item::pluck('id')->all();
+
+        $test = Livewire::test(StickyTableFixture::class)
+            ->set('filters.status', ['published'])
+            ->set('_table.checkboxes', $ids);
+
+        expect($test->instance()->tableSelection()->count())->toBe(5);
+    });
+
+    it('narrows to the live filters by default, since tableSelectionQuery is tableQuery', function () {
+        Item::factory()->count(3)->create(['status' => 'draft']);
+        Item::factory()->count(2)->create(['status' => 'published']);
+        $ids = Item::pluck('id')->all();
+
+        $test = Livewire::test(TableFixture::class)
+            ->set('filters.status', ['published'])
+            ->set('_table.checkboxes', $ids);
+
+        expect($test->instance()->tableSelectionQuery()->count())->toBe(2)
+            ->and($test->instance()->tableSelection()->count())->toBe(2);
+    });
+
+    it('still targets the whole filtered query in select-all mode', function () {
+        Item::factory()->count(3)->create(['status' => 'draft']);
+        Item::factory()->count(2)->create(['status' => 'published']);
+
+        $test = Livewire::test(StickyTableFixture::class)
+            ->set('filters.status', ['published'])
+            ->call('selectAllTableMatching');
+
+        expect($test->instance()->tableSelection()->count())->toBe(2);
     });
 });

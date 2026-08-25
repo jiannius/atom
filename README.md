@@ -247,7 +247,7 @@ num(1500000)->currency('USD', abbreviate: true);  // → "USD 1.5M"
 - `WithPagination` + `WithFileUploads` automatically.
 - Reserved state buckets:
   - `$_breadcrumbs` — auto-populated from your optional `breadcrumbs($crumbs)` method.
-  - `$_table` — sort, checkboxes, max rows, show-trashed (consumed by `<atom:table>`).
+  - `$_table` — sort, checkboxes, select-all, max rows, show-trashed (consumed by `<atom:table>` — see [Table selection](#table-selection)).
   - `$_editor.images` — temporary upload URLs for the rich text editor.
 - Short methods that delegate to `app('atom')`:
 
@@ -437,7 +437,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | Tag | Notable props |
 | --- | ------------- |
 | `<atom:form>` | `inset`. Wraps form, handles auto loading state on submit. |
-| `<atom:table>` | `empty`, `paginate`, `maxRows` (array of row options). Children: `<atom:table.column>`, `<atom:table.row>`, `<atom:table.cell>`, `<atom:table.checkbox>`, `<atom:table.pagination>`. Driven by `$_table` state on the Livewire component. |
+| `<atom:table>` | `empty`, `paginate`, `maxRows` (array of row options), `skeleton`, `trashed`, `selectAll`, `stickySelection`. Slots: `columns`, `rows`, `header`, `checked` (bulk-action bar), `footer`. Children: `<atom:table.column>`, `<atom:table.row>`, `<atom:table.cell>`, `<atom:table.checkbox>`, `<atom:table.search>`, `<atom:table.filters>`, `<atom:table.trashed>`, `<atom:table.actions>`, `<atom:table.pagination>`. Driven by `$_table` state on the Livewire component. See [Table selection](#table-selection). |
 | `<atom:tabs>` | `tabs` (array), `size` (`sm`), `variant` (`button`, `border`). Child: `<atom:tabs.item>`. |
 | `<atom:list>` | `heading`, `scrollable` (default `true`). Child: `<atom:list.item>`. |
 | `<atom:menu>` | `popover`. Child: `<atom:menu.item>`. |
@@ -460,6 +460,110 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:html>` | Page boilerplate (see [Page boilerplate](#page-boilerplate)). |
 | `<atom:sharer>` | `sites` (array), `url`, `title` — social share buttons. |
 | `<atom:whatsapp>` | `number`, `text` — floating WhatsApp button. |
+
+---
+
+## Table selection
+
+Add `checkbox` to a header column and `:checkbox="$item->id"` to the matching cell:
+
+```blade
+<atom:table.column checkbox />
+...
+<atom:table.cell :checkbox="$item->id" />
+```
+
+Ticked ids collect in `$_table.checkboxes` and **survive pagination and sorting**, so a
+selection can span pages. The header checkbox selects or deselects the current page only.
+Bulk-action buttons go in the `checked` slot — that bar replaces the table header while
+anything is selected and shows the running count.
+
+### Cross-page "Select all N" — `:select-all`
+
+```blade
+<atom:table :paginate="$this->items" :select-all>
+```
+
+Once a subset is ticked, a **Select all N** button appears. It sets a `$_table.select_all`
+flag rather than materialising an id list, so it costs the same for 20 rows or 200,000.
+Ticking an individual row or the header exits the mode.
+
+Requires a `tableQuery()` on the component — the full scoped **and** filtered query:
+
+```php
+public function tableQuery()
+{
+    return Invoice::query()->filter($this->filters);
+}
+
+#[Computed]
+public function items()
+{
+    return $this->tableQuery()->toTable();
+}
+```
+
+Bulk actions then run off `tableSelection()`, which covers both modes:
+
+```php
+public function deleteSelected(): void
+{
+    $this->tableSelection()->delete();
+    $this->resetTableCheckboxes();
+}
+```
+
+### Selection that survives a filter — `:sticky-selection`
+
+By default a filter change, a search, or the trashed toggle **clears the selection** — the
+ticked rows may no longer be on screen, and a bulk action over invisible rows is a nasty
+surprise. Pass `:sticky-selection` for the opposite trade: keep the ids so a user can build
+one batch across several searches (tick 2, search, tick 1 more, act on all 3).
+
+```blade
+<atom:table :paginate="$this->items" :sticky-selection>
+```
+
+`select_all` still drops on a filter change — it means "everything matching *this* query",
+which stops being true the moment the query changes. The trashed toggle still clears
+everything, since live and soft-deleted rows aren't one result set. A persistent **Clear
+selection** appears in the checked bar, because part of the selection is off-screen and the
+user can't untick what they can't see.
+
+The `header` slot also stays on screen instead of being swapped out for the checked bar —
+the two stack. Searching *while holding a selection* is the whole flow, and a table that
+hides its own search box the moment you tick a row can't support it.
+
+**This prop requires `tableSelectionQuery()`** — the scoped but *unfiltered* base the checked
+ids resolve against:
+
+```php
+public function tableSelectionQuery()
+{
+    return Invoice::query();                                      // scoped, no filters
+}
+
+public function tableQuery()
+{
+    return $this->tableSelectionQuery()->filter($this->filters);  // + the live filters
+}
+```
+
+Without it, ids ticked under an earlier filter get silently intersected away by the current
+one: the bar reads *3 selected* and the delete hits 1. It defaults to `tableQuery()`, so a
+table that doesn't opt in is unaffected. It deliberately does **not** default to a bare
+`newQuery()` on the model — that would make the prop work with no override, but stays
+tenant-safe only where scoping is a global scope, and the consuming app is the only party
+that can say what "unfiltered but still scoped" means.
+
+### Clearing from a custom filter control
+
+`<atom:table.search>`, `<atom:select.filter>` and `<atom:date-picker.range>` already dispatch
+the event. A hand-rolled control opts in the same way:
+
+```blade
+<input x-on:input="$dispatch('table-filter:changed')" />
+```
 
 ---
 
