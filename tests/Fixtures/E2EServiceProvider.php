@@ -20,8 +20,10 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-select-morph', SelectMorphFixture::class);
         Livewire::component('atom-e2e-breadcrumbs', BreadcrumbsFixture::class);
         Livewire::component('atom-e2e-breadcrumbs-untrailed', BreadcrumbsUntrailedFixture::class);
+        Livewire::component('atom-e2e-sticky-selection', StickySelectionFixture::class);
 
         Route::middleware('web')->get('/atom/e2e/select-morph', fn () => view('atom::e2e.select-morph'));
+        Route::middleware('web')->get('/atom/e2e/sticky-selection', fn () => view('atom::e2e.sticky-selection'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs', fn () => view('atom::e2e.breadcrumbs'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-wrapped', fn () => view('atom::e2e.breadcrumbs-wrapped'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-untrailed', fn () => view('atom::e2e.breadcrumbs-untrailed'));

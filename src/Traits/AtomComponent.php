@@ -18,6 +18,7 @@ trait AtomComponent
         'select_all' => false,
         'max_rows' => 100,
         'show_trashed' => false,
+        'show_selected' => false,
     ];
 
     public $_editor = [
@@ -78,6 +79,17 @@ trait AtomComponent
     {
         $this->_table['checkboxes'] = [];
         $this->_table['select_all'] = false;
+        $this->_table['show_selected'] = false;
+    }
+
+    /**
+     * Drop "select all matching" but keep the checked ids — what a sticky-selection
+     * table does on a filter change, since the flag is scoped to a query that no
+     * longer exists while the ids still name real rows.
+     */
+    public function clearTableSelectAll()
+    {
+        $this->_table['select_all'] = false;
     }
 
     /**
@@ -99,9 +111,10 @@ trait AtomComponent
 
     /**
      * The query targeting the current table selection — the whole filtered set
-     * when "select all matching" is on, otherwise just the checked ids. Backs
-     * bulk actions: $this->tableSelection()->delete(). Requires a tableQuery()
-     * method on the component (the full scoped + filtered query).
+     * when "select all matching" is on, otherwise the checked ids resolved
+     * against tableSelectionQuery(). Backs bulk actions:
+     * $this->tableSelection()->delete(). Requires a tableQuery() method on the
+     * component (the full scoped + filtered query).
      */
     public function tableSelection()
     {
@@ -109,13 +122,74 @@ trait AtomComponent
             throw new \BadMethodCallException(static::class.' must define a tableQuery() method to use tableSelection().');
         }
 
-        $query = $this->tableQuery();
-
-        if (!$this->isTableSelectAll()) {
-            $query->whereKey($this->getTableCheckboxes());
+        if ($this->isTableSelectAll()) {
+            return $this->tableQuery();
         }
 
-        return $query;
+        return $this->tableSelectionQuery()->whereKey($this->getTableCheckboxes());
+    }
+
+    /**
+     * The query backing the table's rows: the selection while "show selected" is
+     * on, otherwise the normal filtered list. Render from this instead of
+     * tableQuery() to get the toggle:
+     *
+     *   #[Computed] public function items() { return $this->tableRowsQuery()->toTable(); }
+     *
+     * Falls back to the filtered list when the flag outlives the selection it was
+     * showing (the user unticked the last row), which would otherwise leave the
+     * table empty with no visible way back.
+     */
+    public function tableRowsQuery()
+    {
+        if ($this->isTableShowSelected() && ($this->getTableCheckboxes() || $this->isTableSelectAll())) {
+            return $this->tableSelection();
+        }
+
+        return $this->tableQuery();
+    }
+
+    /**
+     * Whether the table is listing the selection rather than the filtered rows
+     */
+    public function isTableShowSelected()
+    {
+        return (bool) data_get($this->_table, 'show_selected');
+    }
+
+    /**
+     * Flip between listing the selection and the filtered rows
+     */
+    public function toggleTableShowSelected()
+    {
+        $this->_table['show_selected'] = !$this->isTableShowSelected();
+
+        // the selection ignores the filters, so the page it was on means nothing
+        // on the other side of the flip
+        $this->resetPage();
+    }
+
+    /**
+     * The base query the checked ids resolve against. Defaults to the filtered
+     * query, so an unaware component behaves exactly as before.
+     *
+     * With <atom:table :sticky-selection> the ids outlive the filter that
+     * produced them, and resolving them through tableQuery() would silently
+     * intersect them with the *current* filter — the bar says 3 selected and
+     * the bulk action hits 1. Such a component overrides this with its
+     * scoped-but-unfiltered base:
+     *
+     *   public function tableSelectionQuery() { return Item::query(); }
+     *   public function tableQuery() { return $this->tableSelectionQuery()->filter($this->filters); }
+     *
+     * Deliberately not defaulted to a bare newQuery() off the model: that would
+     * make sticky work with no override, but only for apps whose tenancy is a
+     * global scope. The consuming app is the only party that can safely say what
+     * "unfiltered but still scoped" means.
+     */
+    public function tableSelectionQuery()
+    {
+        return $this->tableQuery();
     }
 
     /**

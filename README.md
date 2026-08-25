@@ -247,7 +247,7 @@ num(1500000)->currency('USD', abbreviate: true);  // → "USD 1.5M"
 - `WithPagination` + `WithFileUploads` automatically.
 - Reserved state buckets:
   - `$_breadcrumbs` — auto-populated from your optional `breadcrumbs($crumbs)` method.
-  - `$_table` — sort, checkboxes, max rows, show-trashed (consumed by `<atom:table>`).
+  - `$_table` — sort, checkboxes, select-all, max rows, show-trashed (consumed by `<atom:table>` — see [Table selection](#table-selection)).
   - `$_editor.images` — temporary upload URLs for the rich text editor.
 - Short methods that delegate to `app('atom')`:
 
@@ -259,6 +259,39 @@ $this->confirm(message: 'Sure?', onAccepted: 'doIt');
 $this->action('Foo.Bar', $params);
 $this->wirekey('row', $id);     // stable md5 key for wire:key
 ```
+
+#### Names the trait occupies
+
+A trait method loses to a method of the same name on the class itself — with no error. So a
+component that defines one of these shadows atom's version. Whether that matters depends
+entirely on **who calls the name**, and the two halves are not equally risky.
+
+**Safe to shadow** — nothing in atom ever calls these on your component. They're sugar that
+delegates to `app('atom')`, there for you to call and no one else. Define your own `toast()`
+and you get yours; you'll know, because you wrote it.
+
+> `modal`, `command`, `toast`, `alert`, `confirm`, `action`, `wirekey`, `verifyRecaptcha`
+
+**Silent if shadowed** — atom or Livewire invokes these by name, so redefining one kills the
+feature behind it with nothing to show for it. All of them are prefixed for exactly this
+reason; the prefix *is* the protection.
+
+| | Invoked by | Breaks |
+| --- | --- | --- |
+| `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
+| `mountAtomComponent`, `updatedAtomComponent` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear |
+| `resetTableCheckboxes`, `selectAllTableMatching`, `toggleTableShowSelected`, `clearTableSelectAll` | atom's markup, by name | the checked-bar buttons no-op |
+| `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed` | each other, and your own `items()` | bulk actions target the wrong rows |
+| `$paginators`, `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination` | Livewire's `WithPagination` | pagination |
+| `_startUpload`, `_finishUpload`, `_removeUpload`, `_uploadErrored` | Livewire's `WithFileUploads` | file uploads |
+
+**Yours to define:** `breadcrumbs` (optional), `tableQuery` (required for `tableSelection()`),
+`tableSelectionQuery` (override for sticky selection).
+
+Nothing else is reserved. The computed property feeding `<atom:table :paginate="...">` is
+yours to name: atom neither defines nor looks for `items`, `rows`, `records`, `data`, or
+anything like them. `tests/Feature/AtomComponentSurfaceTest.php` pins this list, so it can't
+drift from the trait without a failing test.
 
 ### The `Enum` trait
 
@@ -437,7 +470,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | Tag | Notable props |
 | --- | ------------- |
 | `<atom:form>` | `inset`. Wraps form, handles auto loading state on submit. |
-| `<atom:table>` | `empty`, `paginate`, `maxRows` (array of row options). Children: `<atom:table.column>`, `<atom:table.row>`, `<atom:table.cell>`, `<atom:table.checkbox>`, `<atom:table.pagination>`. Driven by `$_table` state on the Livewire component. |
+| `<atom:table>` | `empty`, `paginate`, `maxRows` (array of row options), `skeleton`, `trashed`, `selectAll`, `stickySelection`. Slots: `columns`, `rows`, `header`, `checked` (bulk-action bar), `footer`. Children: `<atom:table.column>`, `<atom:table.row>`, `<atom:table.cell>`, `<atom:table.checkbox>`, `<atom:table.search>`, `<atom:table.filters>`, `<atom:table.trashed>`, `<atom:table.actions>`, `<atom:table.pagination>`. Driven by `$_table` state on the Livewire component. See [Table selection](#table-selection). |
 | `<atom:tabs>` | `tabs` (array), `size` (`sm`), `variant` (`button`, `border`). Child: `<atom:tabs.item>`. |
 | `<atom:list>` | `heading`, `scrollable` (default `true`). Child: `<atom:list.item>`. |
 | `<atom:menu>` | `popover`. Child: `<atom:menu.item>`. |
@@ -460,6 +493,137 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:html>` | Page boilerplate (see [Page boilerplate](#page-boilerplate)). |
 | `<atom:sharer>` | `sites` (array), `url`, `title` — social share buttons. |
 | `<atom:whatsapp>` | `number`, `text` — floating WhatsApp button. |
+
+---
+
+## Table selection
+
+Add `checkbox` to a header column and `:checkbox="$item->id"` to the matching cell:
+
+```blade
+<atom:table.column checkbox />
+...
+<atom:table.cell :checkbox="$item->id" />
+```
+
+Ticked ids collect in `$_table.checkboxes` and **survive pagination and sorting**, so a
+selection can span pages. The header checkbox selects or deselects the current page only.
+Bulk-action buttons go in the `checked` slot — that bar replaces the table header while
+anything is selected and shows the running count.
+
+### Cross-page "Select all N" — `:select-all`
+
+```blade
+<atom:table :paginate="$this->items" :select-all>
+```
+
+Once a subset is ticked, a **Select all N** button appears. It sets a `$_table.select_all`
+flag rather than materialising an id list, so it costs the same for 20 rows or 200,000.
+Ticking an individual row or the header exits the mode.
+
+Requires a `tableQuery()` on the component — the full scoped **and** filtered query:
+
+```php
+public function tableQuery()
+{
+    return Invoice::query()->filter($this->filters);
+}
+
+#[Computed]
+public function items()
+{
+    return $this->tableQuery()->toTable();
+}
+```
+
+Bulk actions then run off `tableSelection()`, which covers both modes:
+
+```php
+public function deleteSelected(): void
+{
+    $this->tableSelection()->delete();
+    $this->resetTableCheckboxes();
+}
+```
+
+### Selection that survives a filter — `:sticky-selection`
+
+By default a filter change, a search, or the trashed toggle **clears the selection** — the
+ticked rows may no longer be on screen, and a bulk action over invisible rows is a nasty
+surprise. Pass `:sticky-selection` for the opposite trade: keep the ids so a user can build
+one batch across several searches (tick 2, search, tick 1 more, act on all 3).
+
+```blade
+<atom:table :paginate="$this->items" :sticky-selection>
+```
+
+`select_all` still drops on a filter change — it means "everything matching *this* query",
+which stops being true the moment the query changes. The trashed toggle still clears
+everything, since live and soft-deleted rows aren't one result set. A persistent **Clear
+selection** appears in the checked bar, because part of the selection is off-screen and the
+user can't untick what they can't see.
+
+The `header` slot also stays on screen instead of being swapped out for the checked bar —
+the two stack. Searching *while holding a selection* is the whole flow, and a table that
+hides its own search box the moment you tick a row can't support it.
+
+#### Reviewing the batch — "Show selected"
+
+A search hides part of the selection, so the checked bar carries a **Show selected** toggle
+that lists the selection instead of the filtered rows, search ignored. Flipping back
+restores the search results. Render the rows from `tableRowsQuery()` to wire it up:
+
+```php
+#[Computed]
+public function items()          // your name — atom never defines or looks for it
+{
+    return $this->tableRowsQuery()->toTable();   // the selection when the toggle is on
+}
+```
+
+The computed property is yours to name; `<atom:table :paginate="$this->items">` is the only
+thing that has to agree with it. What atom owns is listed under
+[Names the trait occupies](#names-the-trait-occupies).
+
+Ticked rows stay unticked-able while the toggle is on, which is how a user prunes a batch
+they can no longer find by searching. The flag clears with the selection, and falls back to
+the filtered rows if the last row is unticked while it's on — otherwise the table would
+empty out and take its own toggle with it.
+
+Note this is a *filter to* the selection, not a union with it: the search keeps returning
+what actually matches, so a 500-row batch never floods a result set and the paginator total
+stays honest.
+
+**This prop requires `tableSelectionQuery()`** — the scoped but *unfiltered* base the checked
+ids resolve against:
+
+```php
+public function tableSelectionQuery()
+{
+    return Invoice::query();                                      // scoped, no filters
+}
+
+public function tableQuery()
+{
+    return $this->tableSelectionQuery()->filter($this->filters);  // + the live filters
+}
+```
+
+Without it, ids ticked under an earlier filter get silently intersected away by the current
+one: the bar reads *3 selected* and the delete hits 1. It defaults to `tableQuery()`, so a
+table that doesn't opt in is unaffected. It deliberately does **not** default to a bare
+`newQuery()` on the model — that would make the prop work with no override, but stays
+tenant-safe only where scoping is a global scope, and the consuming app is the only party
+that can say what "unfiltered but still scoped" means.
+
+### Clearing from a custom filter control
+
+`<atom:table.search>`, `<atom:select.filter>` and `<atom:date-picker.range>` already dispatch
+the event. A hand-rolled control opts in the same way:
+
+```blade
+<input x-on:input="$dispatch('table-filter:changed')" />
+```
 
 ---
 

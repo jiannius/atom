@@ -5,6 +5,7 @@
     'skeleton' => false,
     'trashed' => false,
     'selectAll' => false,
+    'stickySelection' => false,
 ])
 
 @php
@@ -18,6 +19,24 @@ $skeletonRows = $skeleton === true ? 5 : (int) $skeleton;
 $total = (int) ($paginate?->total() ?? 0);
 $canSelectAll = $selectAll && $paginate;
 
+// A filter change swaps the result set out from under the selection. By default
+// that clears it, because a bulk action over rows the user can no longer see is
+// a surprise. With `sticky-selection` the checked ids are kept instead, so a
+// user can build one batch across several searches — the component then owes a
+// tableSelectionQuery() (see Traits\AtomComponent) or those ids resolve to
+// nothing. select_all always goes: it means "everything matching *this* query",
+// which stops being true the moment the query changes.
+$onFilterChanged = $stickySelection
+    ? 'if ($wire._table?.select_all) $wire.clearTableSelectAll()'
+    : 'if ($wire._table?.checkboxes?.length || $wire._table?.select_all) $wire.resetTableCheckboxes()';
+
+// The checked bar normally takes the header's place while a selection exists —
+// fine when the selection dies at the next filter change anyway. A sticky table
+// has to keep the search and filters reachable instead: holding a selection
+// *while you go on searching* is the entire point, and a swapped-out header
+// makes the flow impossible. The two bars stack there.
+$showHeader = $stickySelection ? 'true' : '!$wire._table.checkboxes.length';
+
 if (!$showSkeleton && !is_bool($empty)) {
     if ($paginate) $empty = !$paginate->total();
     else $empty = isset($rows) && !strip_tags($rows->toHtml());
@@ -26,7 +45,7 @@ if (!$showSkeleton && !is_bool($empty)) {
 
 <div
 x-data="{}"
-x-on:table-filter:changed.window="if ($wire._table?.checkboxes?.length || $wire._table?.select_all) $wire.resetTableCheckboxes()"
+x-on:table-filter:changed.window="{!! $onFilterChanged !!}"
 class="group/table space-y-4" data-atom-table>
     @if (isset($checked) && $checked->isNotEmpty())
         <template x-if="$wire._table.checkboxes.length || $wire._table.select_all" hidden>
@@ -53,6 +72,25 @@ class="group/table space-y-4" data-atom-table>
                     </template>
                 @endif
 
+                @if ($stickySelection)
+                    {{-- the batch is the thing being built, so it needs to be
+                         reviewable: this lists the selection instead of the filtered
+                         rows, ignoring the search that hid half of it. --}}
+                    <button type="button" wire:click="toggleTableShowSelected" class="shrink-0 text-sm font-medium text-primary hover:underline" data-atom-table-show-selected>
+                        <span x-show="!$wire._table.show_selected">{{ t('atom::messages.show-selected') }}</span>
+                        <span x-show="$wire._table.show_selected" x-cloak>{{ t('atom::messages.show-all') }}</span>
+                    </button>
+
+                    {{-- part of the selection can be off-screen once it outlives a
+                         filter, so the way out can't depend on finding the ticked
+                         rows again. Hidden in select-all mode, which brings its own. --}}
+                    <template x-if="!$wire._table.select_all" hidden>
+                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium text-zinc-500 hover:underline" data-atom-table-clear-selection>
+                            {{ t('atom::messages.clear-selection') }}
+                        </button>
+                    </template>
+                @endif
+
                 <div class="grow flex items-center gap-3">
                     {{ $checked }}
                 </div>
@@ -61,7 +99,7 @@ class="group/table space-y-4" data-atom-table>
     @endif
 
     @if (isset($header) || $trashed)
-        <template x-if="!$wire._table.checkboxes.length" hidden>
+        <template x-if="{!! $showHeader !!}" hidden>
             @isset ($header)
                 <div {{ $header->attributes->class(['min-h-10', $header->attributes->get('class', 'flex flex-wrap items-center gap-3')]) }}>
                     {{ $header }}
