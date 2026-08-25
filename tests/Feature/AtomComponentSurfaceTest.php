@@ -78,6 +78,50 @@ it('occupies only the names it documents', function () {
     ]);
 });
 
+/**
+ * The short helpers are documented as safe for a host component to shadow, which
+ * is only true while atom never calls them on the component itself: shadowing one
+ * then swaps out sugar the host was calling anyway, rather than breaking machinery
+ * the host can't see. The moment something in the package starts calling
+ * `$this->toast(...)`, that promise is void — so pin it.
+ */
+it('never calls its own host-facing helpers, so shadowing them stays harmless', function () {
+    // glob()'s ** matches a single level in PHP, which would quietly skip the
+    // deeper components — walk the trees instead
+    $walk = function (string $dir, string $suffix) {
+        $files = [];
+
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir)) as $file) {
+            if (str_ends_with($file->getFilename(), $suffix)) {
+                $files[] = $file->getPathname();
+            }
+        }
+
+        return $files;
+    };
+
+    $files = collect([
+        ...$walk(__DIR__.'/../../src', '.php'),
+        ...$walk(__DIR__.'/../../components', '.blade.php'),
+    ])->reject(fn ($path) => str_contains($path, '/src/Commands/'));   // console Commands have their own confirm()
+
+    // a walk that finds nothing would pass every assertion below it
+    expect($files->count())->toBeGreaterThan(300);
+
+    $helpers = ['modal', 'command', 'toast', 'alert', 'confirm', 'action', 'wirekey', 'verifyRecaptcha'];
+
+    foreach ($files as $path) {
+        $contents = file_get_contents($path);
+
+        foreach ($helpers as $helper) {
+            expect($contents)->not->toContain(
+                '$this->'.$helper.'(',
+                basename($path).' calls $this->'.$helper.'() — that name is documented as safe for a host to shadow',
+            );
+        }
+    }
+});
+
 it('claims no name a host component is likely to want for its own data', function () {
     $reflection = new ReflectionClass(AtomComponent::class);
 

@@ -262,23 +262,31 @@ $this->wirekey('row', $id);     // stable md5 key for wire:key
 
 #### Names the trait occupies
 
-A trait method loses to a method of the same name on the class itself — **silently**, with no
-error. So a component that happens to define one of these shadows atom's version and the
-feature behind it stops working with nothing to show for it. Worth a glance before naming a
-method on a component that uses the trait:
+A trait method loses to a method of the same name on the class itself — with no error. So a
+component that defines one of these shadows atom's version. Whether that matters depends
+entirely on **who calls the name**, and the two halves are not equally risky.
 
-| | |
-| --- | --- |
-| **Properties** | `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` — plus `$paginators` |
-| **Lifecycle** | `mountAtomComponent`, `updatedAtomComponent` |
-| **UI helpers** | `modal`, `command`, `toast`, `alert`, `confirm`, `action`, `wirekey`, `verifyRecaptcha` |
-| **Table** | `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `resetTableCheckboxes`, `clearTableSelectAll`, `selectAllTableMatching`, `isTableSelectAll`, `isTableShowSelected`, `toggleTableShowSelected`, `isTableShowTrashed` |
-| **Via `WithPagination`** | `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination` |
-| **Via `WithFileUploads`** | `_startUpload`, `_finishUpload`, `_removeUpload`, `_uploadErrored` |
-| **Yours to define** | `breadcrumbs` (optional), `tableQuery` (required for `tableSelection()`), `tableSelectionQuery` (override for sticky selection) |
+**Safe to shadow** — nothing in atom ever calls these on your component. They're sugar that
+delegates to `app('atom')`, there for you to call and no one else. Define your own `toast()`
+and you get yours; you'll know, because you wrote it.
 
-The generic ones worth watching are the short UI helpers — `action`, `command`, `modal`,
-`confirm` — and Livewire's paginator methods, `resetPage` above all.
+> `modal`, `command`, `toast`, `alert`, `confirm`, `action`, `wirekey`, `verifyRecaptcha`
+
+**Silent if shadowed** — atom or Livewire invokes these by name, so redefining one kills the
+feature behind it with nothing to show for it. All of them are prefixed for exactly this
+reason; the prefix *is* the protection.
+
+| | Invoked by | Breaks |
+| --- | --- | --- |
+| `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
+| `mountAtomComponent`, `updatedAtomComponent` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear |
+| `resetTableCheckboxes`, `selectAllTableMatching`, `toggleTableShowSelected`, `clearTableSelectAll` | atom's markup, by name | the checked-bar buttons no-op |
+| `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed` | each other, and your own `items()` | bulk actions target the wrong rows |
+| `$paginators`, `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination` | Livewire's `WithPagination` | pagination |
+| `_startUpload`, `_finishUpload`, `_removeUpload`, `_uploadErrored` | Livewire's `WithFileUploads` | file uploads |
+
+**Yours to define:** `breadcrumbs` (optional), `tableQuery` (required for `tableSelection()`),
+`tableSelectionQuery` (override for sticky selection).
 
 Nothing else is reserved. The computed property feeding `<atom:table :paginate="...">` is
 yours to name: atom neither defines nor looks for `items`, `rows`, `records`, `data`, or
