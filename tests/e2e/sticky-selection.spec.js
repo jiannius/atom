@@ -50,6 +50,30 @@ test('a selection survives a search, and later ticks add to it', async ({ page }
   await expect(page.locator('[data-reported]')).toHaveText('3')
 })
 
+test('a row that survives the filter comes back still ticked', async ({ page }) => {
+  await page.goto('/atom/e2e/sticky-selection')
+  await page.waitForLoadState('networkidle')
+
+  await rowCheckbox(page, 'Apple').click()
+  await rowCheckbox(page, 'Banana').click()
+
+  // "an" matches Banana (ticked) and Cranberry (not) — the rows are re-rendered
+  // by the Livewire round-trip, so the tick has to be re-derived from the id list
+  // rather than being whatever the DOM happened to be left holding
+  await search(page, 'an')
+  await expect(page.locator('[data-atom-table-row]')).toHaveCount(2)
+
+  await expect(rowCheckbox(page, 'Banana')).toHaveAttribute('data-checked', /.+/)
+  await expect(rowCheckbox(page, 'Cranberry')).not.toHaveAttribute('data-checked', /.+/)
+
+  // and unticking the re-shown row takes it back out of the batch
+  await rowCheckbox(page, 'Banana').click()
+  await expect(selectedCount(page)).toHaveText('1')
+
+  await page.locator('[data-report]').click()
+  await expect(page.locator('[data-reported]')).toHaveText('1')
+})
+
 test('the persistent clear empties a selection that is off-screen', async ({ page }) => {
   await page.goto('/atom/e2e/sticky-selection')
   await page.waitForLoadState('networkidle')
