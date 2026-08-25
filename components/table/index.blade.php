@@ -73,6 +73,14 @@ class="group/table space-y-4" data-atom-table>
                 @endif
 
                 @if ($stickySelection)
+                    {{-- the batch is the thing being built, so it needs to be
+                         reviewable: this lists the selection instead of the filtered
+                         rows, ignoring the search that hid half of it. --}}
+                    <button type="button" wire:click="toggleTableShowSelected" class="shrink-0 text-sm font-medium text-primary hover:underline" data-atom-table-show-selected>
+                        <span x-show="!$wire._table.show_selected">{{ t('atom::messages.show-selected') }}</span>
+                        <span x-show="$wire._table.show_selected" x-cloak>{{ t('atom::messages.show-all') }}</span>
+                    </button>
+
                     {{-- part of the selection can be off-screen once it outlives a
                          filter, so the way out can't depend on finding the ticked
                          rows again. Hidden in select-all mode, which brings its own. --}}

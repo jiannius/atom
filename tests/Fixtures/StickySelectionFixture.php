@@ -33,12 +33,20 @@ class StickySelectionFixture extends Component
     ];
 
     /**
-     * The rows matching the current search.
+     * The rows to list: the selection while "show selected" is on, otherwise the
+     * ones matching the current search. Stands in for the Eloquent version,
+     * `$this->tableRows()->toTable()`.
      *
      * @return array<int,array{id:int,name:string}>
      */
     public function getRowsProperty(): array
     {
+        $ids = $this->getTableCheckboxes();
+
+        if ($this->isTableShowSelected() && $ids) {
+            return array_values(array_filter(self::ROWS, fn ($row) => in_array($row['id'], $ids)));
+        }
+
         if ($this->search === '') {
             return self::ROWS;
         }

@@ -534,6 +534,29 @@ The `header` slot also stays on screen instead of being swapped out for the chec
 the two stack. Searching *while holding a selection* is the whole flow, and a table that
 hides its own search box the moment you tick a row can't support it.
 
+#### Reviewing the batch — "Show selected"
+
+A search hides part of the selection, so the checked bar carries a **Show selected** toggle
+that lists the selection instead of the filtered rows, search ignored. Flipping back
+restores the search results. Render the rows from `tableRows()` to wire it up:
+
+```php
+#[Computed]
+public function items()
+{
+    return $this->tableRows()->toTable();   // the selection when the toggle is on
+}
+```
+
+Ticked rows stay unticked-able while the toggle is on, which is how a user prunes a batch
+they can no longer find by searching. The flag clears with the selection, and falls back to
+the filtered rows if the last row is unticked while it's on — otherwise the table would
+empty out and take its own toggle with it.
+
+Note this is a *filter to* the selection, not a union with it: the search keeps returning
+what actually matches, so a 500-row batch never floods a result set and the paginator total
+stays honest.
+
 **This prop requires `tableSelectionQuery()`** — the scoped but *unfiltered* base the checked
 ids resolve against:
 

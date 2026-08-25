@@ -121,7 +121,7 @@ Requires `config('services.recaptcha.site_key' / 'secret_key' / 'min_score')` an
 public function tableSelectionQuery() { return Invoice::query(); }              // scoped, no filters
 public function tableQuery() { return $this->tableSelectionQuery()->filter($this->filters); }
 ```
-It defaults to `tableQuery()`, so a table without the prop behaves exactly as before. Don't be tempted to default it to a bare `newQuery()` on the model — that only stays tenant-safe where scoping is a global scope.
+It defaults to `tableQuery()`, so a table without the prop behaves exactly as before. Don't be tempted to default it to a bare `newQuery()` on the model — that only stays tenant-safe where scoping is a global scope. **Also wire the "Show selected" toggle** the bar carries: render rows from `tableRows()` (`#[Computed] items() => $this->tableRows()->toTable()`), which returns the selection while the toggle is on and the filtered list otherwise, so the user can review and prune a batch a search has hidden. It's a filter *to* the selection, not a union with it — the search still returns only what matches, so a big batch never floods a result set.
 @endverbatim
 
 ### Navigation & layout shell

@@ -18,6 +18,7 @@ trait AtomComponent
         'select_all' => false,
         'max_rows' => 100,
         'show_trashed' => false,
+        'show_selected' => false,
     ];
 
     public $_editor = [
@@ -78,6 +79,7 @@ trait AtomComponent
     {
         $this->_table['checkboxes'] = [];
         $this->_table['select_all'] = false;
+        $this->_table['show_selected'] = false;
     }
 
     /**
@@ -125,6 +127,46 @@ trait AtomComponent
         }
 
         return $this->tableSelectionQuery()->whereKey($this->getTableCheckboxes());
+    }
+
+    /**
+     * The query backing the table's rows: the selection while "show selected" is
+     * on, otherwise the normal filtered list. Render from this instead of
+     * tableQuery() to get the toggle:
+     *
+     *   #[Computed] public function items() { return $this->tableRows()->toTable(); }
+     *
+     * Falls back to the filtered list when the flag outlives the selection it was
+     * showing (the user unticked the last row), which would otherwise leave the
+     * table empty with no visible way back.
+     */
+    public function tableRows()
+    {
+        if ($this->isTableShowSelected() && ($this->getTableCheckboxes() || $this->isTableSelectAll())) {
+            return $this->tableSelection();
+        }
+
+        return $this->tableQuery();
+    }
+
+    /**
+     * Whether the table is listing the selection rather than the filtered rows
+     */
+    public function isTableShowSelected()
+    {
+        return (bool) data_get($this->_table, 'show_selected');
+    }
+
+    /**
+     * Flip between listing the selection and the filtered rows
+     */
+    public function toggleTableShowSelected()
+    {
+        $this->_table['show_selected'] = !$this->isTableShowSelected();
+
+        // the selection ignores the filters, so the page it was on means nothing
+        // on the other side of the flip
+        $this->resetPage();
     }
 
     /**

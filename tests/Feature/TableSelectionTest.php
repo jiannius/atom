@@ -134,6 +134,60 @@ describe('clear on filter change (wiring)', function () {
     });
 });
 
+describe('show selected', function () {
+    it('lists the selection instead of the filtered rows while on', function () {
+        Item::factory()->count(3)->create(['status' => 'draft']);
+        Item::factory()->count(2)->create(['status' => 'published']);
+        $drafts = Item::where('status', 'draft')->pluck('id')->all();
+
+        $test = Livewire::test(StickyTableFixture::class)
+            ->set('filters.status', ['published'])       // hides every ticked row
+            ->set('_table.checkboxes', $drafts)
+            ->call('toggleTableShowSelected');
+
+        expect($test->get('_table.show_selected'))->toBeTrue()
+            ->and($test->instance()->tableRows()->count())->toBe(3);
+
+        $test->call('toggleTableShowSelected');
+
+        expect($test->instance()->tableRows()->count())->toBe(2);   // back to the filtered list
+    });
+
+    it('falls back to the filtered rows when the selection is emptied under it', function () {
+        Item::factory()->count(5)->create();
+
+        // the flag can outlive the ids: untick the last row and the bar (with its
+        // toggle) disappears, so an empty table would have no way back
+        $test = Livewire::test(StickyTableFixture::class)
+            ->set('_table.checkboxes', [1])
+            ->call('toggleTableShowSelected')
+            ->set('_table.checkboxes', []);
+
+        expect($test->instance()->tableRows()->count())->toBe(5);
+    });
+
+    it('clearing the selection also clears the flag', function () {
+        $test = Livewire::test(StickyTableFixture::class)
+            ->set('_table.checkboxes', [1, 2])
+            ->call('toggleTableShowSelected')
+            ->call('resetTableCheckboxes');
+
+        expect($test->get('_table.show_selected'))->toBeFalse();
+    });
+
+    it('lists the whole matching set when select-all is on', function () {
+        Item::factory()->count(3)->create(['status' => 'draft']);
+        Item::factory()->count(2)->create(['status' => 'published']);
+
+        $test = Livewire::test(StickyTableFixture::class)
+            ->set('filters.status', ['published'])
+            ->call('selectAllTableMatching')
+            ->call('toggleTableShowSelected');
+
+        expect($test->instance()->tableRows()->count())->toBe(2);
+    });
+});
+
 describe('sticky selection', function () {
     it('keeps the checked ids on a filter change, but still drops select_all', function () {
         $html = renderBlade('<atom:table :sticky-selection="true"><x-slot:columns><atom:table.column>A</atom:table.column></x-slot:columns></atom:table>');
@@ -198,6 +252,17 @@ describe('sticky selection', function () {
 
         expect($test->instance()->tableSelectionQuery()->count())->toBe(2)
             ->and($test->instance()->tableSelection()->count())->toBe(2);
+    });
+
+    it('renders a show-selected toggle only when sticky', function () {
+        $slot = '<x-slot:checked><button>Delete</button></x-slot:checked>';
+
+        expect(renderBlade('<atom:table :sticky-selection="true">'.$slot.'</atom:table>'))
+            ->toContain('data-atom-table-show-selected')
+            ->toContain('toggleTableShowSelected');
+
+        expect(renderBlade('<atom:table>'.$slot.'</atom:table>'))
+            ->not->toContain('data-atom-table-show-selected');
     });
 
     it('still targets the whole filtered query in select-all mode', function () {

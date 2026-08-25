@@ -74,6 +74,35 @@ test('a row that survives the filter comes back still ticked', async ({ page }) 
   await expect(page.locator('[data-reported]')).toHaveText('1')
 })
 
+test('show selected lists the whole batch, filter and all', async ({ page }) => {
+  await page.goto('/atom/e2e/sticky-selection')
+  await page.waitForLoadState('networkidle')
+
+  await rowCheckbox(page, 'Apple').click()
+  await rowCheckbox(page, 'Banana').click()
+
+  // "an" drops Apple out of the list, so the batch is no longer reviewable
+  await search(page, 'an')
+  await expect(page.locator('[data-name="Apple"]')).toHaveCount(0)
+
+  // KEY ASSERTION: the toggle lists the selection, ignoring the search that hid
+  // half of it — Apple is back alongside Banana, and Cranberry is gone
+  await page.locator('[data-atom-table-show-selected]').click()
+  await expect(page.locator('[data-atom-table-row]')).toHaveCount(2)
+  await expect(page.locator('[data-name="Apple"]')).toHaveCount(1)
+  await expect(page.locator('[data-name="Banana"]')).toHaveCount(1)
+  await expect(page.locator('[data-name="Cranberry"]')).toHaveCount(0)
+
+  // every listed row is ticked, and unticking one drops it from the batch
+  await expect(page.locator('[data-atom-table-row] [data-checked]')).toHaveCount(2)
+  await rowCheckbox(page, 'Apple').click()
+  await expect(selectedCount(page)).toHaveText('1')
+
+  // flipping back returns to the search results
+  await page.locator('[data-atom-table-show-selected]').click()
+  await expect(page.locator('[data-name="Cranberry"]')).toHaveCount(1)
+})
+
 test('the persistent clear empties a selection that is off-screen', async ({ page }) => {
   await page.goto('/atom/e2e/sticky-selection')
   await page.waitForLoadState('networkidle')
