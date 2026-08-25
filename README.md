@@ -260,6 +260,31 @@ $this->action('Foo.Bar', $params);
 $this->wirekey('row', $id);     // stable md5 key for wire:key
 ```
 
+#### Names the trait occupies
+
+A trait method loses to a method of the same name on the class itself — **silently**, with no
+error. So a component that happens to define one of these shadows atom's version and the
+feature behind it stops working with nothing to show for it. Worth a glance before naming a
+method on a component that uses the trait:
+
+| | |
+| --- | --- |
+| **Properties** | `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` — plus `$paginators` |
+| **Lifecycle** | `mountAtomComponent`, `updatedAtomComponent` |
+| **UI helpers** | `modal`, `command`, `toast`, `alert`, `confirm`, `action`, `wirekey`, `verifyRecaptcha` |
+| **Table** | `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `resetTableCheckboxes`, `clearTableSelectAll`, `selectAllTableMatching`, `isTableSelectAll`, `isTableShowSelected`, `toggleTableShowSelected`, `isTableShowTrashed` |
+| **Via `WithPagination`** | `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination` |
+| **Via `WithFileUploads`** | `_startUpload`, `_finishUpload`, `_removeUpload`, `_uploadErrored` |
+| **Yours to define** | `breadcrumbs` (optional), `tableQuery` (required for `tableSelection()`), `tableSelectionQuery` (override for sticky selection) |
+
+The generic ones worth watching are the short UI helpers — `action`, `command`, `modal`,
+`confirm` — and Livewire's paginator methods, `resetPage` above all.
+
+Nothing else is reserved. The computed property feeding `<atom:table :paginate="...">` is
+yours to name: atom neither defines nor looks for `items`, `rows`, `records`, `data`, or
+anything like them. `tests/Feature/AtomComponentSurfaceTest.php` pins this list, so it can't
+drift from the trait without a failing test.
+
 ### The `Enum` trait
 
 `use Jiannius\Atom\Traits\Enum;` on backed enums to get the convention used by Atom's status badges and selects:
@@ -538,15 +563,19 @@ hides its own search box the moment you tick a row can't support it.
 
 A search hides part of the selection, so the checked bar carries a **Show selected** toggle
 that lists the selection instead of the filtered rows, search ignored. Flipping back
-restores the search results. Render the rows from `tableRows()` to wire it up:
+restores the search results. Render the rows from `tableRowsQuery()` to wire it up:
 
 ```php
 #[Computed]
-public function items()
+public function items()          // your name — atom never defines or looks for it
 {
-    return $this->tableRows()->toTable();   // the selection when the toggle is on
+    return $this->tableRowsQuery()->toTable();   // the selection when the toggle is on
 }
 ```
+
+The computed property is yours to name; `<atom:table :paginate="$this->items">` is the only
+thing that has to agree with it. What atom owns is listed under
+[Names the trait occupies](#names-the-trait-occupies).
 
 Ticked rows stay unticked-able while the toggle is on, which is how a user prunes a batch
 they can no longer find by searching. The flag clears with the selection, and falls back to

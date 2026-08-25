@@ -134,13 +134,13 @@ trait AtomComponent
      * on, otherwise the normal filtered list. Render from this instead of
      * tableQuery() to get the toggle:
      *
-     *   #[Computed] public function items() { return $this->tableRows()->toTable(); }
+     *   #[Computed] public function items() { return $this->tableRowsQuery()->toTable(); }
      *
      * Falls back to the filtered list when the flag outlives the selection it was
      * showing (the user unticked the last row), which would otherwise leave the
      * table empty with no visible way back.
      */
-    public function tableRows()
+    public function tableRowsQuery()
     {
         if ($this->isTableShowSelected() && ($this->getTableCheckboxes() || $this->isTableSelectAll())) {
             return $this->tableSelection();

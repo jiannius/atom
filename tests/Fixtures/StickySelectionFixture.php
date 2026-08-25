@@ -35,7 +35,7 @@ class StickySelectionFixture extends Component
     /**
      * The rows to list: the selection while "show selected" is on, otherwise the
      * ones matching the current search. Stands in for the Eloquent version,
-     * `$this->tableRows()->toTable()`.
+     * `$this->tableRowsQuery()->toTable()`.
      *
      * @return array<int,array{id:int,name:string}>
      */

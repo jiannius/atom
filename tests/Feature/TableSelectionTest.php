@@ -146,11 +146,11 @@ describe('show selected', function () {
             ->call('toggleTableShowSelected');
 
         expect($test->get('_table.show_selected'))->toBeTrue()
-            ->and($test->instance()->tableRows()->count())->toBe(3);
+            ->and($test->instance()->tableRowsQuery()->count())->toBe(3);
 
         $test->call('toggleTableShowSelected');
 
-        expect($test->instance()->tableRows()->count())->toBe(2);   // back to the filtered list
+        expect($test->instance()->tableRowsQuery()->count())->toBe(2);   // back to the filtered list
     });
 
     it('falls back to the filtered rows when the selection is emptied under it', function () {
@@ -163,7 +163,7 @@ describe('show selected', function () {
             ->call('toggleTableShowSelected')
             ->set('_table.checkboxes', []);
 
-        expect($test->instance()->tableRows()->count())->toBe(5);
+        expect($test->instance()->tableRowsQuery()->count())->toBe(5);
     });
 
     it('clearing the selection also clears the flag', function () {
@@ -184,7 +184,7 @@ describe('show selected', function () {
             ->call('selectAllTableMatching')
             ->call('toggleTableShowSelected');
 
-        expect($test->instance()->tableRows()->count())->toBe(2);
+        expect($test->instance()->tableRowsQuery()->count())->toBe(2);
     });
 });
 

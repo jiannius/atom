@@ -44,6 +44,10 @@ Livewire 4 single-file components are the default. Mix `Jiannius\Atom\Traits\Ato
 Define a `breadcrumbs(Breadcrumbs $b)` method to populate `$_breadcrumbs` automatically on mount.
 
 @verbatim
+**Names the trait occupies** — a class method silently beats a trait method of the same name (no error), so redefining one of these shadows atom's version and quietly kills the feature behind it. Properties: `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha`, `$paginators`. Methods: `mountAtomComponent`, `updatedAtomComponent`, `modal`, `command`, `toast`, `alert`, `confirm`, `action`, `wirekey`, `verifyRecaptcha`; the table family (`tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `resetTableCheckboxes`, `clearTableSelectAll`, `selectAllTableMatching`, `isTableSelectAll`, `isTableShowSelected`, `toggleTableShowSelected`, `isTableShowTrashed`); and, via `WithPagination`/`WithFileUploads`, `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination`, `_startUpload`, `_finishUpload`, `_removeUpload`, `_uploadErrored`. Watch `resetPage` and the short helpers (`action`, `command`, `modal`, `confirm`) in particular. Yours to define: `breadcrumbs`, `tableQuery`, `tableSelectionQuery`. Everything else is free — the `#[Computed]` property feeding `<atom:table :paginate="...">` is yours to name, and atom neither defines nor looks for `items`/`rows`/`records`/`data`.
+@endverbatim
+
+@verbatim
 <code-snippet name="Single-file Livewire component with Atom" lang="php">
 <?php
 use Livewire\Component;
@@ -121,7 +125,7 @@ Requires `config('services.recaptcha.site_key' / 'secret_key' / 'min_score')` an
 public function tableSelectionQuery() { return Invoice::query(); }              // scoped, no filters
 public function tableQuery() { return $this->tableSelectionQuery()->filter($this->filters); }
 ```
-It defaults to `tableQuery()`, so a table without the prop behaves exactly as before. Don't be tempted to default it to a bare `newQuery()` on the model — that only stays tenant-safe where scoping is a global scope. **Also wire the "Show selected" toggle** the bar carries: render rows from `tableRows()` (`#[Computed] items() => $this->tableRows()->toTable()`), which returns the selection while the toggle is on and the filtered list otherwise, so the user can review and prune a batch a search has hidden. It's a filter *to* the selection, not a union with it — the search still returns only what matches, so a big batch never floods a result set.
+It defaults to `tableQuery()`, so a table without the prop behaves exactly as before. Don't be tempted to default it to a bare `newQuery()` on the model — that only stays tenant-safe where scoping is a global scope. **Also wire the "Show selected" toggle** the bar carries: render rows from `tableRowsQuery()` (`#[Computed] items() => $this->tableRowsQuery()->toTable()`), which returns the selection while the toggle is on and the filtered list otherwise, so the user can review and prune a batch a search has hidden. It's a filter *to* the selection, not a union with it — the search still returns only what matches, so a big batch never floods a result set.
 @endverbatim
 
 ### Navigation & layout shell
