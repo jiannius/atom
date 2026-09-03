@@ -475,11 +475,43 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:list>` | `heading`, `scrollable` (default `true`). Child: `<atom:list.item>`. |
 | `<atom:menu>` | `popover`. Child: `<atom:menu.item>`. |
 | `<atom:navlist>` | Sidebar nav container. Children: `<atom:navlist.item>`, `<atom:navlist.group>`, `<atom:navlist.badge>`. |
+| `<atom:navlist.group>` | `heading`, `expandable`, `expanded` (default `true`), `hiddenIfEmpty` (default `true`), `persistKey`. See [Remembering collapsed groups](#remembering-collapsed-groups). |
 | `<atom:breadcrumbs>` | `heading` (default `true`). Reads `$_breadcrumbs` populated by your `breadcrumbs()` method. |
 | `<atom:calendar>` | `name`, `modes` (`calendar`, `timeline`), `periods` (`month`, `week`, `day`). |
 | `<atom:separator>` | `align` (`left`, `center`, `right`). Slot becomes the label. |
 | `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`, `vite`. |
 | `<atom:layouts.sidebar>` | App layout with sidebar + top bar. Props: `title`, `noindex`, `dark`, `editor`, `styles`, `scripts`, `vite`. Pass `dark` to get the darkmode bootstrap and the header's switcher. |
+
+#### Remembering collapsed groups
+
+An expandable group's open state lives in Alpine, so it resets on every page load. Give it a
+`persist-key` and it's remembered in `localStorage` instead:
+
+```blade
+<atom:navlist.group heading="Purchase" expandable persist-key="nav.purchase">
+```
+
+| prop | default | behaviour |
+| --- | --- | --- |
+| `persistKey` | `null` | When `null`, behaves exactly as before — no storage read, no write. |
+
+**`expanded` is only the starting state.** A stored value always wins, so a group rendered
+`:expanded="false"` that the user has expanded stays open across reloads. That precedence is
+the point of the feature, and the answer to "why is my `:expanded="false"` ignored?"
+
+Three things worth knowing:
+
+- **The key is namespaced** under `atom:navlist-group:`, so passing `"sidebar"` can't collide
+  with your app's own `localStorage` entries.
+- **Pass a key that's stable across pages** — never one derived from the current route, or the
+  group forgets itself the moment the user navigates.
+- **Two groups sharing a key sync.** Not guarded, because that's usually what you want when the
+  same nav renders in more than one layout.
+
+Storage access is wrapped both ways: hardened browsers and Safari private mode throw on
+`localStorage`, and an uncaught throw would take the Alpine component down and stop the group
+toggling at all. It degrades to today's behaviour instead. Persistence is per-browser only —
+there's no server-side or cross-device state.
 
 ### Miscellaneous
 

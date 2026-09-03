@@ -3,14 +3,56 @@
     'expanded' => true,
     'heading' => null,
     'hiddenIfEmpty' => true,
+    'persistKey' => null,
 ])
+
+@php
+// Namespaced so a caller's "sidebar" can't collide with the app's own entries.
+$storageKey = $persistKey ? 'atom:navlist-group:'.$persistKey : null;
+@endphp
 
 @if ($hiddenIfEmpty && $slot->isEmpty())
 
 @elseif ($expandable && $heading)
 
 <div
-x-data="{ open: @js($expanded === true) }"
+x-data="{
+    key: @js($storageKey),
+    open: @js($expanded === true),
+
+    init () {
+        if (!this.key) return
+
+        // a stored value always wins over `expanded`, which is only the initial
+        // state for a group the user has never touched
+        let stored = this.read()
+        if (stored !== null) this.open = stored === '1'
+
+        // watching `open` rather than hooking the click means anything else that
+        // flips it — a keyboard shortcut, a programmatic collapse-all — persists
+        // for free, and the button's x-on:click stays as it was
+        this.$watch('open', value => this.write(value ? '1' : '0'))
+    },
+
+    // hardened browsers and Safari private mode throw on localStorage; an
+    // uncaught throw in init() kills the component and the group stops toggling
+    // at all, which is far worse than not remembering
+    read () {
+        try {
+            return window.localStorage.getItem(this.key)
+        }
+        catch (e) {
+            return null
+        }
+    },
+
+    write (value) {
+        try {
+            window.localStorage.setItem(this.key, value)
+        }
+        catch (e) {}
+    },
+}"
 {{ $attributes->class('group/disclosure') }}
 data-atom-navlist-group>
     <button
