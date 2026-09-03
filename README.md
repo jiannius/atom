@@ -884,6 +884,7 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 - Date handling everywhere goes through `Jiannius\Atom\Services\Carbon` because of the `Date::use()` swap in the service provider.
 - Components prefer `Arr::toCssClasses([...])` and `match` over conditional class strings. See `components/button/index.blade.php` for the canonical pattern.
 - The bundled `dist/` directory is **committed**; the package serves it itself. If you fork and edit JS/CSS sources, run `npm run build` and commit `dist/`.
+- `atom.css` defines `[x-cloak] { display: none !important }`, so `x-cloak` works out of the box in any app loading atom's stylesheet — Tailwind ships no such rule, and without one the attribute is inert. The `!important` matters: `[x-cloak]` and a utility like `.flex` have equal specificity, so otherwise the winner is whichever stylesheet loads last. Alpine strips the attribute on init, so the rule only ever hides pre-boot markup — which also means **`x-cloak` must sit on an element Alpine will initialise** (one carrying `x-data`, or inside one), or it stays hidden forever. `tests/Feature/XCloakTest.php` enforces both halves.
 
 ---
 

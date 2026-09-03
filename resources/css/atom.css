@@ -1,3 +1,15 @@
+/* Alpine strips x-cloak once it initialises the element's tree, so this hides
+   the pre-boot markup and nothing after. Tailwind ships no such rule — apps are
+   expected to write it themselves — which left the attribute inert in every
+   consumer that hadn't, and atom's own components use it in nine places.
+
+   !important because [x-cloak] and a utility class like .flex have the same
+   specificity, so without it the winner is whichever stylesheet the consumer
+   happens to load last. */
+[x-cloak] {
+    display: none !important;
+}
+
 html {
     font-size: 14px;
 }
