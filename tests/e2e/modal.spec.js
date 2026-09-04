@@ -98,3 +98,52 @@ test('showing an already-open modal does not throw', async ({ page }) => {
   await expect(dialog).toBeVisible()
   expect(errors).toEqual([])
 })
+
+test('a no-payload close closes the modal without throwing', async ({ page }) => {
+  const errors = []
+  page.on('pageerror', (err) => errors.push(err.message))
+
+  await page.goto('/atom/docs/modal')
+
+  // every modal on the page listens on the window, so one no-payload close is
+  // seen by all of them — the shape that made a single close throw once per modal
+  expect(await page.locator('dialog[x-data*="modal("]').count()).toBeGreaterThan(1)
+
+  const dialog = dialogFor(page, 'demo-basic')
+  await page.getByRole('button', { name: 'Open modal' }).click()
+  await expect(dialog).toBeVisible()
+
+  // $dispatch('atom-modal-close') with no payload — the documented way to close
+  // the enclosing modal from inside it. It arrives with detail NULL, not {}.
+  await dialog.evaluate((el) => el.dispatchEvent(new CustomEvent('atom-modal-close', { bubbles: true })))
+
+  await expect(dialog).toBeHidden()
+  expect(errors).toEqual([])
+})
+
+test('a named close still closes only the modal it names', async ({ page }) => {
+  const errors = []
+  page.on('pageerror', (err) => errors.push(err.message))
+
+  await page.goto('/atom/docs/modal')
+
+  const basic = dialogFor(page, 'demo-basic')
+  const slide = dialogFor(page, 'demo-slide')
+
+  await page.getByRole('button', { name: 'Open modal' }).click()
+  await expect(basic).toBeVisible()
+
+  // dispatched from outside either modal, so only the name can match
+  await page.evaluate(() => window.dispatchEvent(
+    new CustomEvent('atom-modal-close', { detail: { name: 'demo-slide' } })
+  ))
+  await expect(basic).toBeVisible()
+
+  await page.evaluate(() => window.dispatchEvent(
+    new CustomEvent('atom-modal-close', { detail: { name: 'demo-basic' } })
+  ))
+  await expect(basic).toBeHidden()
+
+  await expect(slide).toBeHidden()
+  expect(errors).toEqual([])
+})
