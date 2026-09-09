@@ -60,7 +60,7 @@ Consuming Livewire components mix this in to get `WithPagination + WithFileUploa
 - `$_table` — sort, checkboxes, max_rows, show_trashed (consumed by `<atom:table>`).
 - `$_editor.images` — buffered temporary upload URLs from Tiptap editor (see Editor flow below).
 
-Helper methods on the trait (`modal()`, `toast()`, `alert()`, `confirm()`, `action()`) all delegate to `app('atom')`.
+Helper methods on the trait (`modal()`, `toast()`, `alert()`, `confirm()`, `action()`) all delegate to `app('atom')`. `action()` is `protected` — see "Actions" below.
 
 ### Editor content lifecycle (Tiptap + Livewire uploads)
 
@@ -77,7 +77,7 @@ If you change the cast, also update the purge command's scanning logic — they 
 
 Two entry points into the same `App\Actions\*` / `Jiannius\Atom\Actions\*` classes, sharing `Atom::resolveAction()` (dotted name → namespace via the `str()->namespace()` macro; app-level class wins over the package's):
 
-- **`Atom::action()`** — the PHP entry point (`atom()->action()`, `$this->action()` on the trait). Unrestricted: any action, and `method` in `$params` picks the method (default `handle`).
+- **`Atom::action()`** — the PHP entry point (`atom()->action()`, `$this->action()` on the trait). Unrestricted: any action, and `method` in `$params` picks the method (default `handle`). The trait's helper is `protected` for that reason (v3.25.0): Livewire exposes every public method a component declares, and reflection reports a trait method's declaring class as the *using* class, so a public one was callable as `$wire.action('Any', {method: 'any'})` on every component in every host app — the same caller-picks-the-method hole v3.19.0 closed on the route, open through Livewire. `tests/Feature/AtomComponentSurfaceTest.php` asserts it stays off `Utils::getPublicMethodsDefinedBySubClass()`.
 - **`Atom::webAction()`** — behind the public `POST /atom/action/{name}` endpoint. Runs the action only if it implements `Contracts\WebAction`; 404s otherwise, with the same body an unknown action gets so the endpoint can't enumerate an app's actions. Always calls `handle()` — `method` is stripped, never honoured. Calls the action's `authorize($params)` first if it has one, 403 on false. Denials are JSON so `ajax.js`'s `res.json()` can read them. A refusal of a class that *exists* is logged (the 404 is otherwise indistinguishable from a typo, and the failure mode in a consuming app is a silently dark front-end feature); a refusal of a class that doesn't is silent, so probing can't flood the log.
 
 The endpoint is unauthenticated by design (guest-facing remote-option selects — `<atom:select options="countries">`, a *string* `options` prop — hit `GetOptions`), which is why the gate is per-action rather than route middleware.

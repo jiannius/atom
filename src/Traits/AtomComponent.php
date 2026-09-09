@@ -252,8 +252,16 @@ trait AtomComponent
 
     /**
      * Trigger action
+     *
+     * Protected on purpose: Livewire exposes every public method a component
+     * declares, and a trait method counts as declared by the using class — so a
+     * public one here is callable from the browser as $wire.action(...). This
+     * forwards to Atom::action(), which honours a caller-controlled `method`,
+     * so exposing it reopens on Livewire exactly what the WebAction contract
+     * closed on POST /atom/action. Call it from the browser through that route
+     * (atom.action(...) in JS) with the action opted into WebAction.
      */
-    public function action($name, $params = [], $render = false)
+    protected function action($name, $params = [], $render = false)
     {
         if (!$render) $this->skipRender();
 
