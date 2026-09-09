@@ -1,6 +1,8 @@
 <?php
 
+use Jiannius\Atom\Tests\Fixtures\TableFixture;
 use Jiannius\Atom\Traits\AtomComponent;
+use Livewire\Drawer\Utils;
 
 /**
  * The trait is mixed into every consuming app's Livewire components, and a class
@@ -31,7 +33,8 @@ it('occupies only the names it documents', function () {
         '_uploadErrored',
 
         // atom
-        'action',
+        // NB no 'action' — it is protected so Livewire cannot expose it to the
+        // browser; see the client-surface test at the bottom of this file.
         'alert',
         'clearTableSelectAll',
         'command',
@@ -142,4 +145,21 @@ it('declares its own state under an underscore prefix', function () {
     $properties->each(fn ($name) => expect($name)->toStartWith('_'));
 
     expect($properties->all())->toBe(['_breadcrumbs', '_table', '_editor', '_recaptcha']);
+});
+
+/**
+ * Livewire exposes every public, non-static method a component declares, and
+ * reflection reports a trait method's declaring class as the USING class — so a
+ * public method here is callable from the browser as $wire.<name>() on every
+ * component in every host app.
+ *
+ * action() forwards to the unrestricted Atom::action(), which honours a
+ * caller-controlled `method` param. That is the hole v3.19.0 closed on the
+ * POST /atom/action route (WebAction contract, method stripped, authorize()
+ * honoured) still standing open through Livewire. It must stay off the client
+ * surface; server-side $this->action(...) is unaffected by being protected.
+ */
+it('keeps action() off the browser-callable surface', function () {
+    expect(Utils::getPublicMethodsDefinedBySubClass(new TableFixture))
+        ->not->toContain('action');
 });

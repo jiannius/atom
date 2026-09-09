@@ -272,6 +272,10 @@ and you get yours; you'll know, because you wrote it.
 
 > `modal`, `command`, `toast`, `alert`, `confirm`, `action`, `wirekey`, `verifyRecaptcha`
 
+`action` is `protected` (see [Upgrading to 3.25](#upgrading-to-325)) — shadow it if you
+like, but define yours `protected` too. A `public function action()` on your component is
+callable from the browser as `$wire.action(...)`, which is the exposure 3.25 removed.
+
 **Silent if shadowed** — atom or Livewire invokes these by name, so redefining one kills the
 feature behind it with nothing to show for it. All of them are prefixed for exactly this
 reason; the prefix *is* the protection.
@@ -759,6 +763,40 @@ class Search implements WebAction
 ```
 
 Actions without `authorize()` are callable by anyone, including guests — which is right for something like `GetOptions` (country and dial-code lists on public forms) and wrong for almost everything else. An action inheriting from an opted-in parent inherits the contract.
+
+### Upgrading to 3.25
+
+3.25 makes the trait's `action()` helper `protected`. It was public, and Livewire exposes
+every public method a component declares — a trait method included, because reflection
+reports the *using class* as the declaring class. So on every component using
+`AtomComponent`, in every app:
+
+```js
+$wire.action('SomeAction', { method: 'whicheverMethod', ...params })
+```
+
+reached any `App\Actions\*` class and any method on it, with no `WebAction` contract, no
+`authorize()`, and no allowlist. That is the hole 3.19 closed on `POST /atom/action`,
+standing open through Livewire the whole time. On a guest-facing page it was reachable
+without signing in.
+
+**What breaks:** JS that calls the helper on the wire proxy. Find it with **both** spellings
+— Livewire proxies an exposed method under its own name, so the obvious grep misses most of
+it:
+
+```bash
+grep -rn "\$wire\.action(\|@this\.action(\|call('action'\|call(\"action\"" resources/
+```
+
+**Migration**, per hit: move the call to the public route, which has been the gated path
+since 3.19 — `window.atom.action(name, params)` — and opt the action in with
+`implements \Jiannius\Atom\Contracts\WebAction` plus an `authorize()`. See
+[From the browser](#from-the-browser). If the call passed `method`, split that method into
+its own action; the route ignores `method`.
+
+**What does not change:** server-side `$this->action(...)` inside a component, and
+`atom()->action(...)` from anywhere. Both still reach any action and any method — being
+protected only closes the browser door.
 
 ### Upgrading to 3.20
 
