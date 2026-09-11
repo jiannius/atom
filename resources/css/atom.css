@@ -128,6 +128,21 @@ button {
     margin: 0;
 }
 
+/** Dropdown — same story. The menu is a native [popover], so it renders in the
+    browser top layer, where an *absolutely* positioned box resolves against the
+    initial containing block (the document origin) rather than the viewport. But
+    floating-ui positions it with strategy:'fixed', i.e. in viewport
+    coordinates. The two only agree at scrollTop 0; open a dropdown below the
+    fold and the menu lands off-screen by exactly the scroll distance, silently.
+
+    Structural rather than a utility class on the component: this has to hold
+    whatever positioning utility ends up on the menu in a consuming app, and
+    atom.css is unlayered, so it wins over Tailwind's @layer utilities. Scoped
+    to [popover] so an inline menu inside a dropdown is left alone. **/
+[data-atom-dropdown] [data-atom-menu][popover] {
+    position: fixed;
+}
+
 /** Page title — the sidebar layout's outline root. A real <h1> for assistive
     tech, hidden visually because the title is already on screen via the
     breadcrumbs. Structural (Tailwind's own sr-only definition) so it cannot
