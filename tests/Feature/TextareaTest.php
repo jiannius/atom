@@ -44,3 +44,16 @@ describe('textarea', function () {
             ->toContain('border-0');
     });
 });
+
+describe('textarea label association', function () {
+    it('associates the label with the textarea it labels', function () {
+        $html = renderBlade('<atom:textarea label="Notes" wire:model="notes" />');
+
+        preg_match('/<label[^>]*\bfor="([^"]+)"/', $html, $labelFor);
+        preg_match('/<textarea[^>]*\bid="([^"]+)"/', $html, $id);
+
+        expect($labelFor[1] ?? null)->not->toBeNull('the label has no for attribute')
+            ->and($id[1] ?? null)->not->toBeNull('the textarea has no id')
+            ->and($labelFor[1])->toBe($id[1]);
+    });
+});

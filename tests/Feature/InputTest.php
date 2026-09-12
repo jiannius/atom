@@ -92,3 +92,44 @@ describe('input', function () {
             ->toContain('emailInput(');
     });
 });
+
+describe('input label association', function () {
+    // Reported against smgdms (#65): on the New Client form, 17 of 18 visible inputs had no
+    // label[for], no wrapping <label> and no aria-label, so assistive tech announced them as
+    // an unnamed "edit text". The visible "Name" / "Email" text was presentational only.
+    // Playwright's getByLabel could not resolve a single field, which is a fair proxy for
+    // what a screen reader gets.
+
+    it('associates the label with the input it labels', function () {
+        $html = renderBlade('<atom:input label="Company" wire:model="company" />');
+
+        preg_match('/<label[^>]*\bfor="([^"]+)"/', $html, $labelFor);
+        preg_match('/<input[^>]*\bid="([^"]+)"/', $html, $inputId);
+
+        expect($labelFor[1] ?? null)->not->toBeNull('the label has no for attribute')
+            ->and($inputId[1] ?? null)->not->toBeNull('the input has no id')
+            ->and($labelFor[1])->toBe($inputId[1]);
+    });
+
+    it('keeps an id the caller supplied rather than overwriting it', function () {
+        $html = renderBlade('<atom:input label="Company" id="my-own-id" />');
+
+        expect($html)->toContain('id="my-own-id"')
+            ->and($html)->toContain('for="my-own-id"');
+    });
+
+    it('gives two inputs on the same page different ids', function () {
+        $html = renderBlade('<div><atom:input label="One" wire:model="a" /><atom:input label="Two" wire:model="b" /></div>');
+
+        preg_match_all('/<input[^>]*\bid="([^"]+)"/', $html, $ids);
+
+        expect($ids[1])->toHaveCount(2)
+            ->and($ids[1][0])->not->toBe($ids[1][1]);
+    });
+
+    it('does not emit a for attribute when there is no label', function () {
+        $html = renderBlade('<atom:input wire:model="company" />');
+
+        expect($html)->not->toContain('<label');
+    });
+});

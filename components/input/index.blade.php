@@ -14,10 +14,18 @@
 @php
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
+
+// The label needs something to point at. Without it a screen reader announces every
+// field as an unnamed "edit text" — the visible caption is presentational only. Minted
+// per render rather than derived from $name so two components on one page cannot collide;
+// label and control are rendered together, so they always carry the same value.
+$inputId = $attributes->get('id') ?: 'atom-input-'.str()->random(8);
+
 $merges = [
     'type' => $type,
     'required' => $required,
     'name' => $name,
+    'id' => $inputId,
 ];
 
 // Inherit a read-only state from an enclosing <atom:form disabled> so the value
@@ -32,6 +40,7 @@ if ($disabled ?? false) {
 @if (in_array($type, ['text', 'password', 'number']))
     @if ($label || $caption)
         <atom:input.field
+        :for="$inputId"
         :label="$label"
         :caption="$caption"
         :required="$required"
@@ -66,6 +75,7 @@ if ($disabled ?? false) {
 @elseif (in_array($type, ['tel', 'color']))
     @if ($label || $caption)
         <atom:input.field
+        :for="$inputId"
         :label="$label"
         :caption="$caption"
         :required="$required"
@@ -84,6 +94,7 @@ if ($disabled ?? false) {
 @elseif ($type === 'email')
     @if ($label || $caption)
         <atom:input.field
+        :for="$inputId"
         :label="$label"
         :caption="$caption"
         :required="$required"
@@ -110,6 +121,7 @@ if ($disabled ?? false) {
 @elseif ($type === 'file')
     @if ($label || $caption)
         <atom:input.field
+        :for="$inputId"
         :label="$label"
         :caption="$caption"
         :required="$required"
