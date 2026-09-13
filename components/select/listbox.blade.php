@@ -9,6 +9,7 @@
     'clearable' => true,
     'searchable' => false,
     'placeholder' => 'Please select...',
+    'ariaLabelledby' => null,
 ])
 
 @php
@@ -59,7 +60,7 @@ x-on:keydown.escape.stop=""
 data-atom-select-listbox
 @if ($disabled) aria-disabled="true" @endif
 @class(['group/select w-full', 'pointer-events-none' => $disabled])
-{{ $attributes->except('class') }}>
+{{ $attributes->except('class', 'aria-labelledby') }}>
     @if ($multiple === 'list')
         <template x-if="!isEmpty" hidden>
             <atom:list class="mb-2">
@@ -82,6 +83,7 @@ data-atom-select-listbox
             @if (!$searchable)
                 {{-- aria-expanded on this trigger is managed by dropdown.js --}}
                 role="combobox"
+                @if ($ariaLabelledby) aria-labelledby="{{ $ariaLabelledby }}" @endif
                 x-bind:aria-controls="`${$id('atom-select')}-list`"
                 x-on:keydown="typeAhead($event)"
                 data-atom-select-combobox
@@ -202,6 +204,7 @@ data-atom-select-listbox
                 x-intersect="$nextTick(() => $el.focus({ preventScroll: true }))"
                 @if ($searchable)
                     role="combobox"
+                    @if ($ariaLabelledby) aria-labelledby="{{ $ariaLabelledby }}" @endif
                     x-bind:aria-controls="`${$id('atom-select')}-list`"
                     aria-autocomplete="list"
                     x-bind:aria-expanded="open ? 'true' : 'false'"

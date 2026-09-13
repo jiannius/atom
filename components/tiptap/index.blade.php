@@ -25,20 +25,27 @@ $presets = [
     'minimal' => ['text', 'link'],
     'none'    => [],
 ];
+// The editable surface is a contenteditable, not a form control, so a <label for> has
+// nothing to bind to: it is given a textbox role and named by pointing back at the
+// field's label. The attributes have to be set through the editor's own config because
+// ProseMirror creates the contenteditable itself — see resources/js/alpinejs/tiptap.js.
+// Derived, not minted per render: see ComponentAttributeBag::fieldId().
+$labelId = $label ? $attributes->fieldId('atom-tiptap', $name, $label).'-label' : null;
+
 $hasToolbarSlot = $toolbar instanceof \Illuminate\View\ComponentSlot;
 $buttons = $hasToolbarSlot ? [] : (is_array($toolbar) ? $toolbar : ($presets[$toolbar] ?? $presets['full']));
 $menus = $hasToolbarSlot ? ['link', 'table', 'image', 'youtube'] : $buttons;
 @endphp
 
 @if ($label || $caption)
-    <atom:input.field :label="$label" :caption="$caption" :required="$required" :error="$error">
+    <atom:input.field :label="$label" :caption="$caption" :required="$required" :error="$error" :label-id="$labelId">
         @if ($hasToolbarSlot)
             {{-- mention passed as an explicit prop, not merged into the bag: an array value would render as an attribute and e() would choke on it --}}
-            <atom:tiptap :mention="$mention" :attributes="$attributes->merge(compact('name', 'variant', 'readonly', 'autofocus', 'placeholder'))">
+            <atom:tiptap :mention="$mention" :attributes="$attributes->merge(compact('name', 'variant', 'readonly', 'autofocus', 'placeholder') + ['aria-labelledby' => $labelId])">
                 <x-slot:toolbar>{{ $toolbar }}</x-slot:toolbar>
             </atom:tiptap>
         @else
-            <atom:tiptap :toolbar="$toolbar" :mention="$mention" :attributes="$attributes->merge(compact('name', 'variant', 'readonly', 'autofocus', 'placeholder'))" />
+            <atom:tiptap :toolbar="$toolbar" :mention="$mention" :attributes="$attributes->merge(compact('name', 'variant', 'readonly', 'autofocus', 'placeholder') + ['aria-labelledby' => $labelId])" />
         @endif
     </atom:input.field>
 @else
@@ -53,10 +60,11 @@ $menus = $hasToolbarSlot ? ['link', 'table', 'image', 'youtube'] : $buttons;
         readonly: @js($readonly),
         autofocus: @js($autofocus),
         class: @js(Arr::toCssClasses(['editor-content m-3 focus:outline-none', $attributes->get('class', 'min-h-10')])),
+        labelledby: @js($attributes->get('aria-labelledby')),
     })"
     x-modelable="editorContent"
     class="group/editor"
-    @if ($model && $lazy) wire:model.live="{{ $model }}" @else {{ $attributes->except(['class']) }} @endif>
+    @if ($model && $lazy) wire:model.live="{{ $model }}" @else {{ $attributes->except(['class', 'aria-labelledby']) }} @endif>
         <div x-show="loading"><atom:skeleton /></div>
 
         <div x-show="!loading" @class([
