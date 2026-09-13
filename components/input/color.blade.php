@@ -20,7 +20,7 @@ $classes = Arr::toCssClasses([
 x-data="{ color: @if ($wiremodel) $wire.entangle('{{ $wiremodel }}') @else null @endif }"
 x-modelable="color"
 class="group/input relative w-full block"
-{{ $attributes->except(['class']) }}
+{{ $attributes->except(['id', 'class']) }}
 data-atom-color-input>
     <atom:dropdown>
         <div class="relative" data-atom-dropdown-trigger>
@@ -35,7 +35,7 @@ data-atom-color-input>
                 type="text"
                 x-model="color"
                 readonly
-                {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}>
+                {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['id', 'class', 'placeholder']) }}>
 
                 <div class="absolute top-0 right-0 bottom-0 flex items-center justify-center text-muted-foreground px-3">
                     <atom:icon.brush />

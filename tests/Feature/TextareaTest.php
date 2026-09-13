@@ -56,4 +56,21 @@ describe('textarea label association', function () {
             ->and($id[1] ?? null)->not->toBeNull('the textarea has no id')
             ->and($labelFor[1])->toBe($id[1]);
     });
+
+    // Same reason as <atom:input>: the id doubles as Livewire's morph key, so one that
+    // churns per render makes the morph replace the textarea instead of patching it.
+    it('mints the same id on every render, because the id is a morph key', function () {
+        preg_match('/<textarea[^>]*\bid="([^"]+)"/', renderBlade('<atom:textarea label="Notes" wire:model="notes" />'), $a);
+        preg_match('/<textarea[^>]*\bid="([^"]+)"/', renderBlade('<atom:textarea label="Notes" wire:model="notes" />'), $b);
+
+        expect($a[1] ?? null)->not->toBeNull('the textarea has no id')
+            ->and($b[1] ?? null)->toBe($a[1], 'the id churned between two renders of the same field');
+    });
+
+    it('mints no id when there is no label to point at', function () {
+        $html = renderBlade('<atom:textarea wire:model="notes" />');
+
+        expect($html)->not->toContain('id="atom-textarea-')
+            ->and($html)->not->toContain('for=');
+    });
 });

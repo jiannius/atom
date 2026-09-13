@@ -16,17 +16,24 @@ $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
 
 // The label needs something to point at. Without it a screen reader announces every
-// field as an unnamed "edit text" — the visible caption is presentational only. Minted
-// per render rather than derived from $name so two components on one page cannot collide;
-// label and control are rendered together, so they always carry the same value.
-$inputId = $attributes->get('id') ?: 'atom-input-'.str()->random(8);
+// field as an unnamed "edit text" — the visible caption is presentational only. The id
+// is derived, never random: see ComponentAttributeBag::fieldId(). Only minted where
+// there is a label to carry it, so an unlabelled field keeps the markup it had.
+// `file` is excluded: the uploader's real control is hidden, so a <label for> gives it
+// no accessible name — naming the visible button is a separate ARIA pass.
+$inputId = $label && $type !== 'file'
+    ? $attributes->fieldId('atom-input', $name, $label, $type)
+    : null;
 
 $merges = [
     'type' => $type,
     'required' => $required,
     'name' => $name,
-    'id' => $inputId,
 ];
+
+if ($inputId) {
+    $merges['id'] = $inputId;
+}
 
 // Inherit a read-only state from an enclosing <atom:form disabled> so the value
 // stays selectable/copyable (unlike a disabled field), but can't be edited.
