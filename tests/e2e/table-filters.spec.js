@@ -12,9 +12,9 @@ test('selecting a filter shows a chip; clearing it removes the chip', async ({ p
 
   const bar = page.locator('[data-atom-table-filters]').first()
 
-  // open the Status filter (the select trigger is role=combobox since the v3.5.19 ARIA
-  // rewrite; its label is child text, not an accessible name, so match by text)
-  await bar.getByRole('combobox').filter({ hasText: 'Status' }).first().click()
+  // the trigger carries its name as aria-label since the filter-name fix, so it can be
+  // matched the way assistive tech resolves it
+  await bar.getByRole('combobox', { name: 'Status' }).first().click()
 
   // click the Published option (rendered by Alpine x-for into the dropdown on open)
   await page.locator('[data-atom-option]').filter({ hasText: 'Published' }).first().click()
@@ -66,4 +66,28 @@ test('Clear all removes every chip', async ({ page }) => {
   await clearAll.click()
   await expect(bar.locator('div.inline-flex.items-center').filter({ hasText: 'Published' })).toHaveCount(0)
   await expect(clearAll).toHaveCount(0)
+})
+
+// A filter select takes no `label` prop from <atom:table.filters>, so there is no field
+// label to anchor to, and role="combobox" takes no accessible name from its own content
+// the way a button does. The trigger showed "Status" and announced nothing — reported on
+// three smgdms listings (jiannius/atom#38). Asserting through getByRole checks that the
+// name actually COMPUTES, which is what a screen reader does; the Pest suite can only see
+// that the attribute is present.
+test('every filter trigger resolves an accessible name', async ({ page }) => {
+  await page.goto('/atom/e2e/table-filters')
+  await page.waitForLoadState('networkidle')
+
+  const bar = page.locator('[data-atom-table-filters]').first()
+
+  for (const name of ['Status', 'Type']) {
+    await expect(bar.getByRole('combobox', { name })).toHaveCount(1)
+  }
+
+  // and nothing in the bar is left unnamed
+  const unnamed = await bar.getByRole('combobox').evaluateAll(
+    els => els.filter(el => !el.getAttribute('aria-label') && !el.getAttribute('aria-labelledby')).length
+  )
+
+  expect(unnamed, 'a filter combobox has no accessible name').toBe(0)
 })

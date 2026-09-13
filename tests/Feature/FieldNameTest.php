@@ -104,6 +104,30 @@ describe('accessible names', function () {
             ->toContain('aria-label="AM or PM"');
     });
 
+    // A filter select takes no `label` prop from <atom:table.filters> — the chip is its
+    // own affordance — so there is no field label to anchor to. Its trigger does show the
+    // filter's name, but role="combobox" takes no accessible name from its own content
+    // the way a button does, so it was announced as an unnamed combobox. Reported on
+    // three smgdms listings (jiannius/atom#38).
+    it('names a filter select, whose role takes no name from its own content', function (string $template, string $tag) {
+        $html = renderBlade($template);
+
+        preg_match('/<(button|input)[^<]*role="combobox"[^<]*>/', $html, $combobox);
+
+        expect($combobox[1] ?? null)->toBe($tag)
+            ->and($combobox[0])->toContain('aria-label="Type"');
+    })->with([
+        // searchable moves the combobox role off the trigger and onto the search input
+        'trigger' => ['<atom:select variant="filter" label="Type" wire:model="t" :options="[]" />', 'button'],
+        'searchable' => ['<atom:select variant="filter" searchable label="Type" wire:model="t" :options="[]" />', 'input'],
+    ]);
+
+    it('leaves a filter select with no label unnamed rather than emitting an empty name', function () {
+        $html = renderBlade('<atom:select variant="filter" wire:model="t" :options="[]" />');
+
+        expect($html)->not->toContain('aria-label=""');
+    });
+
     it('names the table search box from its placeholder, having no visible label', function () {
         $html = renderBlade('<atom:table.search />');
 
