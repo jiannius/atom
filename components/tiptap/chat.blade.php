@@ -9,12 +9,17 @@
 
 @php
 $transparent = $variant === 'transparent';
+
+// Same as <atom:tiptap>: ProseMirror creates the contenteditable, so it takes no
+// <label for> and is named through the editor config instead. Derived, not minted per
+// render — see ComponentAttributeBag::fieldId().
+$labelId = $label ? $attributes->fieldId('atom-tiptap-chat', $attributes->wire('model')->value(), $label).'-label' : null;
 @endphp
 
 @if ($label || $caption)
-    <atom:input.field :label="$label" :caption="$caption">
+    <atom:input.field :label="$label" :caption="$caption" :label-id="$labelId">
         {{-- mention passed as an explicit prop, not merged into the bag: an array value would render as an attribute and e() would choke on it --}}
-        <atom:tiptap.chat :mention="$mention" :attributes="$attributes->merge(compact('autofocus', 'placeholder', 'variant'))" />
+        <atom:tiptap.chat :mention="$mention" :aria-labelledby="$labelId" :attributes="$attributes->merge(compact('autofocus', 'placeholder', 'variant'))" />
     </atom:input.field>
 @else
     <link rel="stylesheet" href="{{ app('atom')->asset()->version('tiptap.css') }}">
@@ -27,10 +32,11 @@ $transparent = $variant === 'transparent';
         placeholder: @js($placeholder),
         autofocus: @js($autofocus),
         class: @js(Arr::toCssClasses(['editor-content editor-chat-content m-3 focus:outline-none', $attributes->get('class')])),
+        labelledby: @js($attributes->get('aria-labelledby')),
     })"
     x-modelable="editorContent"
     class="group/editor"
-    {{ $attributes->except(['class']) }}>
+    {{ $attributes->except(['class', 'aria-labelledby']) }}>
         <div x-show="loading"><atom:skeleton /></div>
 
         <div x-show="!loading" @class([

@@ -45,6 +45,9 @@ export default (config) => {
                             class: config.class,
                             role: 'textbox',
                             'aria-multiline': 'true',
+                            // editable is !readonly, so the surface really is a
+                            // non-editable textbox and has to say so
+                            ...(config.readonly ? { 'aria-readonly': 'true' } : {}),
                             ...(config.labelledby ? { 'aria-labelledby': config.labelledby } : {}),
                         },
                         ...(config.chat ? { handlePaste: () => true, handleDrop: () => true } : {}),

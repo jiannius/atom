@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\ViewErrorBag;
+use Symfony\Component\Finder\Finder;
 
 /**
  * Every labelled control has to end up with an accessible name, and there is more than
@@ -95,6 +96,56 @@ describe('accessible names', function () {
         expect($html)->not->toMatch('/<input[^<]*type="file"[^<]*aria-labelledby/');
     });
 
+    it('names the chat editor, which shares the contenteditable mechanism', function () {
+        $html = renderBlade('<atom:tiptap.chat label="Message" wire:model="m" />');
+        $id = labelId($html);
+
+        expect($id)->not->toBeNull()
+            ->and(html_entity_decode($html))->toMatch('/labelledby:\s*[\'"]'.preg_quote($id, '/').'[\'"]/');
+    });
+
+    // These two build their label by hand in input.field's default slot rather than through
+    // the `label` prop, so none of the automatic wiring reaches them.
+    it('names the confirm dialog fields, whose labels are built by hand', function (string $id, string $tag) {
+        $html = renderBlade('<atom:confirm />');
+
+        expect($html)->toMatch('/<label[^<]*for="'.$id.'"/')
+            ->and($html)->toMatch('/<'.$tag.'[^<]*\bid="'.$id.'"/');
+    })->with([
+        'passphrase' => ['atom-confirm-passphrase', 'input'],
+        'reason' => ['atom-confirm-reason', 'textarea'],
+    ]);
+
+    // The audit that catches the NEXT one of these. <atom:input.field> renders a real
+    // <label>, so any component using it owes its control a name — either `for` at a real
+    // form control, or `labelId` for a composed widget to point back at. A new caller that
+    // does neither renders a label that names nothing, which is the whole bug class.
+    it('leaves no input.field caller rendering a label that names nothing', function () {
+        $offenders = [];
+
+        foreach (Finder::create()->files()->in(__DIR__.'/../../components')->name('*.blade.php') as $file) {
+            $contents = $file->getContents();
+
+            if (!str_contains($contents, 'atom:input.field')) {
+                continue;
+            }
+
+            // `for` covers a real control and the hand-wired confirm dialog; `label-id`
+            // covers a composed widget named the other way round with aria-labelledby.
+            // The lookbehind matters: a plain `for="` substring also matches Alpine's
+            // `x-for="`, which made this audit pass for every file using a loop.
+            $named = str_contains($contents, ':for=')
+                || str_contains($contents, ':label-id=')
+                || preg_match('/(?<![\w:-])for="/', $contents);
+
+            if (!$named) {
+                $offenders[] = 'components/'.$file->getRelativePathname();
+            }
+        }
+
+        expect($offenders)->toBe([]);
+    });
+
     it('names the three time-picker inputs separately, since one for cannot reach them', function () {
         $html = renderBlade('<atom:time-picker label="Start time" wire:model="t" />');
 
@@ -132,6 +183,58 @@ describe('accessible names', function () {
         $html = renderBlade('<atom:table.search />');
 
         expect($html)->toContain('aria-label="Search"');
+    });
+
+    // An aria-label WINS over a <label for>, so naming the search box unconditionally made
+    // a caller-supplied label unreachable: the field showed "Filter clients" and announced
+    // "Search". v3.26.0 had just made that label work, so this regressed it.
+    it('lets a caller-supplied label name the search box instead of the placeholder', function () {
+        $html = renderBlade('<atom:table.search label="Filter clients" />');
+
+        expect($html)->not->toContain('aria-label=')
+            ->and(labelFor($html))->not->toBeNull('the visible label names nothing');
+    });
+
+    it('still names the search box when the label is present but empty', function () {
+        $html = renderBlade('<atom:table.search label="" />');
+
+        expect($html)->toContain('aria-label="Search"');
+    });
+
+    // A role="group" with no name is a boundary a screen reader announces carrying
+    // nothing, and the three inputs name themselves regardless.
+    it('groups the time-picker only when the group has a name', function () {
+        expect(renderBlade('<atom:time-picker label="Start time" wire:model="t" />'))->toContain('role="group"')
+            ->and(renderBlade('<atom:time-picker wire:model="t" />'))->not->toContain('role="group"');
+    });
+
+    // readonly makes the surface non-editable, so a bare textbox role would announce an
+    // editable field that cannot be edited.
+    it('marks a readonly tiptap surface readonly rather than plainly editable', function () {
+        $manifest = json_decode(file_get_contents(__DIR__.'/../../dist/manifest.json'), true);
+        $bundle = file_get_contents(__DIR__.'/../../dist/'.$manifest['resources/js/atom.js']['file']);
+
+        expect($bundle)->toContain('aria-readonly');
+    });
+
+    // Deliberate trade-off, pinned so it is a known property rather than a surprise: the
+    // anchors derive from name|label|type, so the SAME field rendered twice on one page
+    // collides. The alternative — minting per render — is what broke Livewire's morph, and
+    // a per-request counter churns the moment one component re-renders on its own. Two
+    // genuinely different fields never collide, which is the case that matters.
+    it('collides only for a field that is literally duplicated on the page', function () {
+        $same = renderBlade('<div><atom:input label="Name" wire:model="name" /><atom:input label="Name" wire:model="name" /></div>');
+        $different = renderBlade('<div><atom:input label="Name" wire:model="name" /><atom:input label="Email" wire:model="email" /></div>');
+
+        $ids = function (string $html) {
+            preg_match_all('/<input[^<]*\bid="([^"]+)"/', $html, $m);
+
+            return $m[1];
+        };
+
+        expect($ids($same))->toHaveCount(2)
+            ->and($ids($same)[0])->toBe($ids($same)[1], 'a duplicated field is expected to share its anchor')
+            ->and($ids($different)[0])->not->toBe($ids($different)[1], 'two different fields must never collide');
     });
 
     it('hands tiptap the anchor through its editor config, since ProseMirror owns the contenteditable', function () {

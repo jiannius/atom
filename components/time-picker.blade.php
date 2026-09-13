@@ -46,8 +46,9 @@ $labelId = $label ? $attributes->fieldId('atom-time-picker', $name, $label).'-la
     x-modelable="timePickerValue"
     {{ $attributes->class($classes) }}>
         <div
-        role="group"
-        @if ($ariaLabelledby) aria-labelledby="{{ $ariaLabelledby }}" @endif
+        {{-- only a NAMED group is worth announcing; without a label this would be a
+             boundary carrying nothing, and the three inputs name themselves anyway --}}
+        @if ($ariaLabelledby) role="group" aria-labelledby="{{ $ariaLabelledby }}" @endif
         x-on:input.stop
         class="flex items-center gap-2">
             <input
