@@ -9,6 +9,15 @@
 @php
 // Namespaced so a caller's "sidebar" can't collide with the app's own entries.
 $storageKey = $persistKey ? 'atom:navlist-group:'.$persistKey : null;
+
+// A group that can start collapsed has markup the server cannot render correctly on its
+// own: `expanded=false` is applied by x-show, and a persisted state is not known until
+// localStorage has been read. Both wait for Alpine, so without a cloak the browser is
+// free to paint the group open and snap it shut once Alpine catches up — measured at
+// 655ms on a held script, and it is only invisible locally because Alpine wins the race.
+// A group that simply starts open needs no correction, so it is left to render at once
+// rather than waiting on Alpine to reveal it.
+$cloak = $persistKey || $expanded !== true;
 @endphp
 
 @if ($hiddenIfEmpty && $slot->isEmpty())
@@ -68,7 +77,7 @@ data-atom-navlist-group>
         <span class="text-sm font-medium leading-none">{{ t($heading) }}</span>
     </button>
 
-    <div x-show="open" class="relative space-y-[2px] ps-7">
+    <div x-show="open" @if ($cloak) x-cloak @endif class="relative space-y-[2px] ps-7">
         <div class="absolute inset-y-[3px] start-0 ms-4 w-px bg-zinc-200 dark:bg-white/30"></div>
         {{ $slot }}
     </div>

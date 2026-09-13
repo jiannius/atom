@@ -82,34 +82,45 @@ test('two groups sharing a key sync on load', async ({ page }) => {
   await expect(body(page, 'mirror')).toBeHidden()
 })
 
-test('a group stored collapsed never paints open', async ({ page }) => {
+// A group whose stored state disagrees with the server-rendered `expanded` can only be
+// corrected once Alpine boots, so until then the markup shows the server's state. If the
+// browser paints before that, the user sees the group open and then snap shut.
+//
+// Holding the script that carries Alpine makes the race deterministic. Without it the
+// assertion is decided by whether Alpine happens to win, which it does locally (~17ms vs
+// a ~20-48ms first paint) and need not on a slow connection. The earlier version of this
+// test sampled computed display every rAF instead, which is not evidence of a paint — a
+// rAF callback can run before a deferred script and read a state that is never rendered —
+// and it matched `[data-group] [x-show]`, the chevron inside the button rather than the
+// disclosure body.
+test('a group stored collapsed is not painted open, even when Alpine boots late', async ({ page }) => {
   await toggle(page, 'persisted').click()
   expect(await stored(page, 'nav.purchase')).toBe('0')
 
-  // sample the disclosure body's computed display on every frame from document
-  // start. If Alpine corrected `open` only after a paint, at least one frame
-  // would catch the group rendered open — which is the flash x-cloak would exist
-  // to hide.
-  await page.addInitScript(() => {
-    window.__frames = []
-
-    const tick = () => {
-      const el = document.querySelector('[data-group="persisted"] [x-show]')
-      if (el) window.__frames.push(getComputedStyle(el).display)
-      if (window.__frames.length < 20) requestAnimationFrame(tick)
-    }
-
-    requestAnimationFrame(tick)
+  await page.route('**/livewire**', async route => {
+    await new Promise(resolve => setTimeout(resolve, 600))
+    await route.continue()
   })
 
-  await page.reload()
+  const reloaded = page.reload()
+
+  // the browser has painted, and Alpine is still held: this is the window a user on a
+  // slow connection sits in, and the group must already be collapsed in it
+  await page.waitForFunction(() => performance.getEntriesByType('paint').length > 0)
+
+  const duringPaint = await page.evaluate(() => {
+    const el = document.querySelector('[data-group="persisted"] > [x-show]')
+
+    return { display: el ? getComputedStyle(el).display : 'NOT FOUND', alpine: !!window.Alpine }
+  })
+
+  // guards the test itself: if Alpine got through, the reading above proves nothing
+  expect(duringPaint.alpine, 'Alpine booted before the paint, so this run tested nothing').toBe(false)
+  expect(duringPaint.display, 'the group was painted open before Alpine could collapse it').toBe('none')
+
+  await reloaded
   await page.waitForLoadState('networkidle')
   await expect(body(page, 'persisted')).toBeHidden()
-
-  const frames = await page.evaluate(() => window.__frames)
-
-  expect(frames.length).toBeGreaterThan(0)          // the probe actually sampled
-  expect(frames.every(display => display === 'none')).toBe(true)
 })
 
 test('still toggles when localStorage throws', async ({ page }) => {

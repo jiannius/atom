@@ -95,3 +95,26 @@ describe('navlist.group persist-key', function () {
         expect($html)->not->toContain('atom:navlist-group:k');
     });
 });
+
+describe('navlist.group flash guard', function () {
+    // A group that can start collapsed is corrected by Alpine, not by the server, so
+    // without x-cloak the browser is free to paint it open first. Measured at 655ms with
+    // the Alpine script held; locally Alpine wins the race, which is why this needs a
+    // structural assertion as well as tests/e2e/navlist-persist.spec.js.
+    it('cloaks a group whose open state is only settled once Alpine runs', function (string $template) {
+        $html = Blade::render($template);
+
+        expect($html)->toContain('x-cloak');
+    })->with([
+        'persisted, so the stored value is unknown server-side' => ['<atom:navlist.group expandable heading="S" persist-key="k"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>'],
+        'expanded=false, applied by x-show' => ['<atom:navlist.group expandable heading="S" :expanded="false"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>'],
+    ]);
+
+    // Cloaking costs a render: the group stays invisible until Alpine boots. A group that
+    // just starts open needs no correction, so it must not pay that.
+    it('does not cloak a group that simply starts open', function () {
+        $html = Blade::render('<atom:navlist.group expandable heading="S"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect($html)->not->toContain('x-cloak');
+    });
+});
