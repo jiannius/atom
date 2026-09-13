@@ -14,11 +14,26 @@
 @php
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
+
+// The label needs something to point at. Without it a screen reader announces every
+// field as an unnamed "edit text" — the visible caption is presentational only. The id
+// is derived, never random: see ComponentAttributeBag::fieldId(). Only minted where
+// there is a label to carry it, so an unlabelled field keeps the markup it had.
+// `file` is excluded: the uploader's real control is hidden, so a <label for> gives it
+// no accessible name — naming the visible button is a separate ARIA pass.
+$inputId = $label && $type !== 'file'
+    ? $attributes->fieldId('atom-input', $name, $label, $type)
+    : null;
+
 $merges = [
     'type' => $type,
     'required' => $required,
     'name' => $name,
 ];
+
+if ($inputId) {
+    $merges['id'] = $inputId;
+}
 
 // Inherit a read-only state from an enclosing <atom:form disabled> so the value
 // stays selectable/copyable (unlike a disabled field), but can't be edited.
@@ -32,6 +47,7 @@ if ($disabled ?? false) {
 @if (in_array($type, ['text', 'password', 'number']))
     @if ($label || $caption)
         <atom:input.field
+        :for="$inputId"
         :label="$label"
         :caption="$caption"
         :required="$required"
@@ -66,6 +82,7 @@ if ($disabled ?? false) {
 @elseif (in_array($type, ['tel', 'color']))
     @if ($label || $caption)
         <atom:input.field
+        :for="$inputId"
         :label="$label"
         :caption="$caption"
         :required="$required"
@@ -84,6 +101,7 @@ if ($disabled ?? false) {
 @elseif ($type === 'email')
     @if ($label || $caption)
         <atom:input.field
+        :for="$inputId"
         :label="$label"
         :caption="$caption"
         :required="$required"
@@ -110,6 +128,7 @@ if ($disabled ?? false) {
 @elseif ($type === 'file')
     @if ($label || $caption)
         <atom:input.field
+        :for="$inputId"
         :label="$label"
         :caption="$caption"
         :required="$required"

@@ -31,7 +31,7 @@ x-on:keydown.enter.stop.prevent="keyEnter()"
 x-on:keydown.space.stop.prevent="keyEnter()"
 x-on:keydown.;.prevent="keyEnter()"
 class="group/input relative w-full block"
-{{ $attributes->except(['type', 'name', 'class', 'placeholder', 'required', 'invalid', 'disabled', 'readonly']) }}
+{{ $attributes->except(['id', 'type', 'name', 'class', 'placeholder', 'required', 'invalid', 'disabled', 'readonly']) }}
 data-atom-input-email>
     <atom:dropdown>
         <div {{ $attributes->class($classes)->only('class') }} data-atom-dropdown-trigger>
@@ -56,7 +56,7 @@ data-atom-input-email>
             {{ $attributes->merge([
                 'invalid' => $invalid,
                 'placeholder' => t($placeholder),
-            ])->only(['placeholder', 'required', 'disabled', 'readonly']) }}>
+            ])->only(['id', 'placeholder', 'required', 'disabled', 'readonly']) }}>
         </div>
 
         <atom:menu x-show="options.length" popover>

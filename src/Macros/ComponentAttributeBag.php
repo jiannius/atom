@@ -46,6 +46,26 @@ class ComponentAttributeBag
         };
     }
 
+    /**
+     * Mint a stable DOM id for a form control, so a <label for> can point at it.
+     *
+     * Derived from the field rather than randomised: Livewire's morph falls back to
+     * `id` as its key (`key: el => ... : el.id`), so an id that changes per render
+     * makes the morph replace the control instead of patching it, losing focus, the
+     * caret and any Alpine state holding a reference to the node. A caller-supplied
+     * id always wins.
+     */
+    public function fieldId()
+    {
+        return function ($prefix, ...$parts) {
+            if (filled($this->get('id'))) {
+                return $this->get('id');
+            }
+
+            return $prefix.'-'.substr(md5(collect($parts)->join('|')), 0, 8);
+        };
+    }
+
     public function field()
     {
         return function() {

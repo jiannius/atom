@@ -18,6 +18,17 @@ $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
 $transparent = $variant === 'transparent';
 
+// Same association as <atom:input>: without an id to point at, the label is decoration
+// and a screen reader announces the field unnamed. Derived, never random — see
+// ComponentAttributeBag::fieldId() for why a per-render id breaks Livewire's morph.
+$textareaId = $label ? $attributes->fieldId('atom-textarea', $name, $label) : null;
+
+$merges = compact('rows', 'variant', 'autoresize', 'placeholder', 'required', 'invalid');
+
+if ($textareaId) {
+    $merges['id'] = $textareaId;
+}
+
 $classes = Arr::toCssClasses([
     'w-full text-zinc-700 dark:text-zinc-200 outline-offset-1',
     'py-2 px-3 rounded-lg',
@@ -35,11 +46,12 @@ $classes = Arr::toCssClasses([
 
 @if ($label || $caption)
     <atom:input.field
+    :for="$textareaId"
     :label="$label"
     :caption="$caption"
     :required="$required"
     :error="$error">
-        <atom:textarea :attributes="$attributes->merge(compact('rows', 'variant', 'autoresize', 'placeholder', 'required', 'invalid'))">
+        <atom:textarea :attributes="$attributes->merge($merges)">
             {{ $slot }}
         </atom:textarea>
     </atom:input.field>
