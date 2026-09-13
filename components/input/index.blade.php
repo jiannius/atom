@@ -19,11 +19,13 @@ $error ??= $errors?->first($name);
 // field as an unnamed "edit text" — the visible caption is presentational only. The id
 // is derived, never random: see ComponentAttributeBag::fieldId(). Only minted where
 // there is a label to carry it, so an unlabelled field keeps the markup it had.
-// `file` is excluded: the uploader's real control is hidden, so a <label for> gives it
-// no accessible name — naming the visible button is a separate ARIA pass.
-$inputId = $label && $type !== 'file'
-    ? $attributes->fieldId('atom-input', $name, $label, $type)
-    : null;
+$fieldId = $label ? $attributes->fieldId('atom-input', $name, $label, $type) : null;
+
+// `file` is named the other way round. The uploader's own <input type="file"> is hidden,
+// so it is out of the accessibility tree and a <label for> computes no name from it — the
+// visible control is the uploader's trigger button, which points back at the label.
+$inputId = $type === 'file' ? null : $fieldId;
+$labelId = $type === 'file' && $fieldId ? $fieldId.'-label' : null;
 
 $merges = [
     'type' => $type,
@@ -129,11 +131,15 @@ if ($disabled ?? false) {
     @if ($label || $caption)
         <atom:input.field
         :for="$inputId"
+        :label-id="$labelId"
         :label="$label"
         :caption="$caption"
         :required="$required"
         :error="$error">
-            <atom:uploader :attributes="$attributes->merge($merges)">
+            {{-- passed on the tag rather than merged into the bag: a kebab-cased prop
+                 resolves from a literal attribute but not from a bag handed to an
+                 <atom:...> tag, and it would silently be null --}}
+            <atom:uploader :aria-labelledby="$labelId" :attributes="$attributes->merge($merges)">
                 {{ $slot }}
             </atom:uploader>
         </atom:input.field>

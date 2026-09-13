@@ -177,13 +177,13 @@ describe('input label association', function () {
 
     // The uploader's real <input type="file"> is class="hidden", so it is out of the
     // accessibility tree and a <label for> pointing at it computes no accessible name.
-    // Naming the visible button needs aria-labelledby, which is a separate ARIA pass —
-    // so no id is minted here rather than emitting one where it cannot work.
+    // The field is named through the uploader's visible trigger button instead — see
+    // FieldNameTest — so `for` must stay off the label rather than dangle at a hidden
+    // control that can never carry the name.
     it('emits no for on a file input, whose real control is hidden', function () {
         $html = renderBlade('<atom:input type="file" label="Attachment" wire:model="doc" />');
 
         expect($html)->toContain('<label')
-            ->and($html)->not->toContain('for="atom-input-')
-            ->and($html)->not->toContain('id="atom-input-');
+            ->and($html)->not->toContain('for="atom-input-');
     });
 });
