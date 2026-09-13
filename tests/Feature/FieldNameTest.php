@@ -75,6 +75,26 @@ describe('accessible names', function () {
             ->and(labelId($html))->toBeNull('the label carries an id nothing references');
     });
 
+    // The uploader's own <input type="file"> is class="hidden", so it is out of the
+    // accessibility tree: the trigger button is the only thing a screen reader reaches,
+    // and on its own it says "Upload" — identical for every file field on a form. It
+    // points at its own id first, then the field's label, so it reads "Upload Attachment"
+    // without composing two translated strings by hand.
+    it('names a file field through the uploader trigger, its real control being hidden', function () {
+        $html = renderBlade('<atom:input type="file" label="Attachment" wire:model="doc" />');
+        $id = labelId($html);
+
+        expect($id)->not->toBeNull('the label carries no id for the trigger to point at')
+            ->and(labelFor($html))->toBeNull('for would dangle at a control that cannot carry the name');
+
+        preg_match('/<button[^<]*\bid="([^"]+)"[^<]*aria-labelledby="([^"]+)"/', $html, $button);
+
+        expect($button[2] ?? null)->toBe(($button[1] ?? '').' '.$id, 'the trigger does not read as its own text then the field label');
+
+        // the hidden input must not also claim the name
+        expect($html)->not->toMatch('/<input[^<]*type="file"[^<]*aria-labelledby/');
+    });
+
     it('names the three time-picker inputs separately, since one for cannot reach them', function () {
         $html = renderBlade('<atom:time-picker label="Start time" wire:model="t" />');
 
@@ -114,6 +134,7 @@ describe('accessible names', function () {
         'time-picker' => ['<atom:time-picker label="Start time" wire:model="t" />'],
         'radio.group' => ['<atom:radio.group label="Plan" wire:model="p"><atom:radio value="a">A</atom:radio></atom:radio.group>'],
         'tiptap' => ['<atom:tiptap label="Body" wire:model="b" />'],
+        'input file' => ['<atom:input type="file" label="Attachment" wire:model="doc" />'],
     ]);
 
     // Nothing points at them, and an id is what drags an element into the morph swap.

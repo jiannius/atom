@@ -109,3 +109,22 @@ describe('command', function () {
         expect($html)->toContain('name: \'my-page\'');
     });
 });
+
+describe('command.group heading anchor', function () {
+    // An id is Livewire's morph key when nothing else keys the element, so one minted per
+    // render makes the morph replace the group instead of patching it. Same trap as the
+    // field anchors — see FieldNameTest and ComponentAttributeBag::fieldId().
+    it('derives the heading id, so it is identical on every render', function () {
+        $anchor = fn () => preg_match('/aria-labelledby="([^"]+)"/', Blade::render('<atom:command.group heading="Actions"><div>x</div></atom:command.group>'), $m) ? $m[1] : null;
+
+        expect($anchor())->not->toBeNull('the group points at no heading')
+            ->and($anchor())->toBe($anchor(), 'the heading id churned between two renders');
+    });
+
+    it('mints no heading id when there is no heading to point at', function () {
+        $html = Blade::render('<atom:command.group><div>x</div></atom:command.group>');
+
+        expect($html)->not->toContain('atom-command-group-')
+            ->and($html)->not->toContain('aria-labelledby');
+    });
+});

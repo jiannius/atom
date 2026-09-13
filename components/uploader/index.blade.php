@@ -2,7 +2,17 @@
     'label' => 'Upload',
     'variant' => null,
     'size' => null,
+    'ariaLabelledby' => null,
 ])
+
+@php
+// The real <input type="file"> is hidden, so the trigger button is the only thing a
+// screen reader can reach. On its own it announces "Upload" — identical for every file
+// field on a form. Pointing at its own id first and the field's label second reads as
+// "Upload Attachment" without composing two translated strings by hand. Derived from the
+// anchor it was given, so it stays stable across a Livewire morph like every other id.
+$triggerId = $ariaLabelledby ? $ariaLabelledby.'-trigger' : null;
+@endphp
 
 <div
 x-cloak
@@ -25,6 +35,8 @@ class="group/uploader relative">
             <atom:button
             :variant="$variant"
             :size="$size"
+            :id="$triggerId"
+            :aria-labelledby="$triggerId ? $triggerId.' '.$ariaLabelledby : null"
             x-bind:class="uploading && 'opacity-50 pointer-events-none'"
             x-on:click="$refs.fileinput.click()">
                 <div x-show="!uploading" class="flex items-center gap-2">
