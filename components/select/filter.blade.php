@@ -77,6 +77,12 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
         @if (!$searchable)
             {{-- aria-expanded on this trigger is managed by dropdown.js --}}
             role="combobox"
+            {{-- the trigger's visible text is the filter's name, but role="combobox"
+                 takes no accessible name from its own content the way a button does, so
+                 without this it is announced as an unnamed combobox. A filter takes no
+                 label prop from <atom:table.filters>, so there is no anchor to point at
+                 and the name is given directly, as <atom:table.search> does. --}}
+            @if ($label) aria-label="{{ t($label) }}" @endif
             x-bind:aria-controls="`${$id('atom-select')}-list`"
             x-on:keydown="typeAhead($event)"
             data-atom-select-combobox
@@ -145,6 +151,9 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                 x-on:click.stop=""
                 @if ($searchable)
                     role="combobox"
+                    {{-- searchable moves the combobox role off the trigger and onto this
+                         input, so the name has to follow it --}}
+                    @if ($label) aria-label="{{ t($label) }}" @endif
                     x-bind:aria-controls="`${$id('atom-select')}-list`"
                     aria-autocomplete="list"
                     x-bind:aria-expanded="open ? 'true' : 'false'"
