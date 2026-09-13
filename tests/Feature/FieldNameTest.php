@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\ViewErrorBag;
+use Symfony\Component\Finder\Finder;
 
 /**
  * Every labelled control has to end up with an accessible name, and there is more than
@@ -93,6 +94,56 @@ describe('accessible names', function () {
 
         // the hidden input must not also claim the name
         expect($html)->not->toMatch('/<input[^<]*type="file"[^<]*aria-labelledby/');
+    });
+
+    it('names the chat editor, which shares the contenteditable mechanism', function () {
+        $html = renderBlade('<atom:tiptap.chat label="Message" wire:model="m" />');
+        $id = labelId($html);
+
+        expect($id)->not->toBeNull()
+            ->and(html_entity_decode($html))->toMatch('/labelledby:\s*[\'"]'.preg_quote($id, '/').'[\'"]/');
+    });
+
+    // These two build their label by hand in input.field's default slot rather than through
+    // the `label` prop, so none of the automatic wiring reaches them.
+    it('names the confirm dialog fields, whose labels are built by hand', function (string $id, string $tag) {
+        $html = renderBlade('<atom:confirm />');
+
+        expect($html)->toMatch('/<label[^<]*for="'.$id.'"/')
+            ->and($html)->toMatch('/<'.$tag.'[^<]*\bid="'.$id.'"/');
+    })->with([
+        'passphrase' => ['atom-confirm-passphrase', 'input'],
+        'reason' => ['atom-confirm-reason', 'textarea'],
+    ]);
+
+    // The audit that catches the NEXT one of these. <atom:input.field> renders a real
+    // <label>, so any component using it owes its control a name — either `for` at a real
+    // form control, or `labelId` for a composed widget to point back at. A new caller that
+    // does neither renders a label that names nothing, which is the whole bug class.
+    it('leaves no input.field caller rendering a label that names nothing', function () {
+        $offenders = [];
+
+        foreach (Finder::create()->files()->in(__DIR__.'/../../components')->name('*.blade.php') as $file) {
+            $contents = $file->getContents();
+
+            if (!str_contains($contents, 'atom:input.field')) {
+                continue;
+            }
+
+            // `for` covers a real control and the hand-wired confirm dialog; `label-id`
+            // covers a composed widget named the other way round with aria-labelledby.
+            // The lookbehind matters: a plain `for="` substring also matches Alpine's
+            // `x-for="`, which made this audit pass for every file using a loop.
+            $named = str_contains($contents, ':for=')
+                || str_contains($contents, ':label-id=')
+                || preg_match('/(?<![\w:-])for="/', $contents);
+
+            if (!$named) {
+                $offenders[] = 'components/'.$file->getRelativePathname();
+            }
+        }
+
+        expect($offenders)->toBe([]);
     });
 
     it('names the three time-picker inputs separately, since one for cannot reach them', function () {

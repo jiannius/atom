@@ -99,15 +99,18 @@ $config = [
 
         <template x-if="config.passphrase" hidden>
             <atom:input.field>
-                <atom:label><span x-text="config.passphraseLabel.replace(':passphrase', `&quot;${config.passphrase}&quot;`)"></span></atom:label>
-                <atom:input x-model="passphrase" required />
+                {{-- the label is built here rather than through the `label` prop, so the
+                     association has to be made by hand too. Static ids: the dialog renders
+                     once per page, so they are unique, and stable across a morph. --}}
+                <atom:label for="atom-confirm-passphrase"><span x-text="config.passphraseLabel.replace(':passphrase', `&quot;${config.passphrase}&quot;`)"></span></atom:label>
+                <atom:input id="atom-confirm-passphrase" x-model="passphrase" required />
             </atom:input.field>
         </template>
 
         <template x-if="config.reason" hidden>
             <atom:input.field>
-                <atom:label><span x-text="config.reasonLabel"></span></atom:label>
-                <atom:textarea x-model="reason" x-bind:placeholder="config.reasonPlaceholder" rows="3" />
+                <atom:label for="atom-confirm-reason"><span x-text="config.reasonLabel"></span></atom:label>
+                <atom:textarea id="atom-confirm-reason" x-model="reason" x-bind:placeholder="config.reasonPlaceholder" rows="3" />
             </atom:input.field>
         </template>
 
