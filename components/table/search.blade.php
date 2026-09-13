@@ -5,7 +5,7 @@
 <div class="relative" data-atom-table-search>
     <atom:input
         icon="search"
-        {{ $attributes->merge(['placeholder' => $placeholder]) }}
+        {{ $attributes->merge(['placeholder' => $placeholder, 'aria-label' => t($placeholder)]) }}
         x-on:keyup.enter.prevent="$dispatch('table-filter:changed'); $wire.$refresh()" />
 
     {{-- Scoped to the search's own $refresh so it only spins on search, not on

@@ -39,7 +39,14 @@ export default (config) => {
                     editable: !config.readonly,
                     autofocus: config.autofocus,
                     editorProps: {
-                        attributes: { class: config.class },
+                        // the contenteditable is not a form control, so it is named here
+                        // rather than by a <label for> — see components/tiptap/index.blade.php
+                        attributes: {
+                            class: config.class,
+                            role: 'textbox',
+                            'aria-multiline': 'true',
+                            ...(config.labelledby ? { 'aria-labelledby': config.labelledby } : {}),
+                        },
                         ...(config.chat ? { handlePaste: () => true, handleDrop: () => true } : {}),
                     },
                     onCreate ({ editor }) {

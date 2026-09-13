@@ -23,7 +23,7 @@ x-modelable="datePickerValue"
 @if ($disabled) aria-disabled="true" @endif
 @class(['group/date-picker relative', 'pointer-events-none' => $disabled])
 data-atom-date-picker
-{{ $attributes->except(['class', 'placeholder', 'disabled']) }}>
+{{ $attributes->except(['id', 'class', 'placeholder', 'disabled']) }}>
     <atom:dropdown x-on:open="visible = true" x-on:close="visible = false" locked>
         @if ($slot->isNotEmpty())
             <div class="relative">
@@ -34,7 +34,7 @@ data-atom-date-picker
                 <input
                 type="text"
                 x-bind:value="datePickerString"
-                {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}
+                {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['id', 'class', 'placeholder']) }}
                 readonly>
 
                 <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">

@@ -6,11 +6,17 @@
     'required' => false,
     'invalid' => false,
     'error' => null,
+    'ariaLabelledby' => null,
 ])
 
 @php
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
+
+// Hour, minute and meridiem are three separate inputs, so a single <label for> cannot
+// reach them: the set is named as a group pointing back at the field's label, and each
+// input carries its own name. Derived, not per render: see ComponentAttributeBag::fieldId().
+$labelId = $label ? $attributes->fieldId('atom-time-picker', $name, $label).'-label' : null;
 @endphp
 
 @if ($label || $caption)
@@ -19,8 +25,9 @@ $error ??= $errors?->first($name);
     :caption="$caption"
     :inline="$inline"
     :required="$required"
-    :error="$error">
-        <atom:time-picker :invalid="$invalid" :attributes="$attributes" />
+    :error="$error"
+    :label-id="$labelId">
+        <atom:time-picker :invalid="$invalid" :aria-labelledby="$labelId" :attributes="$attributes" />
     </atom:input.field>
 @else
     @php
@@ -38,7 +45,11 @@ $error ??= $errors?->first($name);
     x-data="timePicker()"
     x-modelable="timePickerValue"
     {{ $attributes->class($classes) }}>
-        <div x-on:input.stop class="flex items-center gap-2">
+        <div
+        role="group"
+        @if ($ariaLabelledby) aria-labelledby="{{ $ariaLabelledby }}" @endif
+        x-on:input.stop
+        class="flex items-center gap-2">
             <input
             type="number"
             x-model.lazy="hr"
@@ -48,6 +59,7 @@ $error ??= $errors?->first($name);
             x-on:keydown.left.stop.prevent="down('hr')"
             x-on:keydown.right.stop.prevent="up('hr')"
             maxlength="2"
+            aria-label="{{ t('Hour') }}"
             class="appearance-none w-8 text-center no-spinner">
 
             <span class="font-bold">:</span>
@@ -60,7 +72,9 @@ $error ??= $errors?->first($name);
             x-on:keydown.down.stop.prevent="down('min')"
             x-on:keydown.left.stop.prevent="down('min')"
             x-on:keydown.right.stop.prevent="up('min')"
-            maxlength="2" class="appearance-none w-8 text-center no-spinner">
+            maxlength="2"
+            aria-label="{{ t('Minute') }}"
+            class="appearance-none w-8 text-center no-spinner">
 
             <input
             type="text"
@@ -68,6 +82,7 @@ $error ??= $errors?->first($name);
             x-on:click.stop="up('am')"
             x-on:keydown.up.stop.prevent="up('am')"
             x-on:keydown.down.stop.prevent="down('am')"
+            aria-label="{{ t('AM or PM') }}"
             class="appearance-none w-8 text-center" readonly>
         </div>
 

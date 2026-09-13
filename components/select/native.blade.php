@@ -56,7 +56,7 @@ x-on:input="() => {
 }"
 x-on:click="$root.querySelector('select').showPicker()"
 class="group/select w-full relative"
-{{ $attributes->except(['class', 'disabled', 'required', 'readonly']) }}
+{{ $attributes->except(['id', 'class', 'disabled', 'required', 'readonly']) }}
 data-atom-select-native>
     @if ($icon)
         <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pl-3 left-0">
@@ -98,7 +98,7 @@ data-atom-select-native>
         <select
         @if (!$multiple) x-bind:value="value" @endif
         @if (!$multiple && $attributes->get('required')) required @endif
-        {{ $attributes->merge($merges)->only(['disabled', 'readonly']) }}>
+        {{ $attributes->merge($merges)->only(['id', 'disabled', 'readonly']) }}>
             @if ($placeholder)
                 <atom:select.option value="" selected class="placeholder">
                     {{ t($placeholder) }}

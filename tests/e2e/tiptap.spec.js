@@ -148,3 +148,25 @@ test('link toolbar shows the current link when one is active', async ({ page }) 
   // link-menu-on → getLink populates the info view with the href
   await expect(page.getByText('https://example.com')).toBeVisible()
 })
+
+// The editable surface is a contenteditable that ProseMirror creates itself, so it takes
+// no <label for> and its attributes cannot be set in the blade — they come from the
+// editor's editorProps. That makes this the only half of the accessible name that the
+// Pest suite cannot see: it asserts the config carries the anchor, this asserts the
+// anchor reaches the element. The Basic demo renders <atom:tiptap label="Article body">.
+test('the editable surface is named by the field label', async ({ page }) => {
+  await page.goto('/atom/docs/tiptap')
+  await waitForEditor(basicEditor(page))
+
+  const editable = basicEditor(page).locator('[contenteditable="true"]').first()
+  await expect(editable).toHaveAttribute('role', 'textbox')
+  await expect(editable).toHaveAttribute('aria-multiline', 'true')
+
+  const labelledby = await editable.getAttribute('aria-labelledby')
+  expect(labelledby, 'the contenteditable points at no label').not.toBeNull()
+
+  // and it resolves to the visible label, rather than dangling
+  const label = page.locator(`[id="${labelledby}"]`)
+  await expect(label).toHaveCount(1)
+  await expect(label).toHaveText(/Article body/)
+})

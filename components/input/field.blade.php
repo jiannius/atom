@@ -4,6 +4,7 @@
     'required' => false,
     'error' => null,
     'for' => null,
+    'labelId' => null,
 ])
 
 <div class="group/field {{ $inline ? 'grid md:grid-cols-5' : '' }}">
@@ -13,7 +14,7 @@
         </div>
     @elseif ($label = $attributes->get('label'))
         <div class="{{ $inline ? 'py-2 md:col-span-2' : 'pb-2' }}">
-            <atom:label :for="$for">
+            <atom:label :for="$for" :id="$labelId">
                 <div class="inline-flex items-center justify-center gap-2">
                     {!! t($label) !!}
 

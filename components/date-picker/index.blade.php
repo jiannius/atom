@@ -15,11 +15,19 @@
 @php
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
+
+// Derived, not minted per render: see ComponentAttributeBag::fieldId().
+$inputId = $label ? $attributes->fieldId('atom-date-picker', $name, $label, $variant) : null;
+
 $merges = [
     'required' => $required,
     // Inherit a read-only state from an enclosing <atom:form disabled>.
     'disabled' => ($disabled ?? false) ?: null,
 ];
+
+if ($inputId) {
+    $merges['id'] = $inputId;
+}
 @endphp
 
 @if ($label || $caption)
@@ -28,7 +36,8 @@ $merges = [
     :caption="$caption"
     :inline="$inline"
     :required="$required"
-    :error="$error">
+    :error="$error"
+    :for="$inputId">
         <x-dynamic-component :component="'atom::date-picker.'.$variant" :attributes="$attributes->merge($merges)">
             {{ $slot }}
         </x-dynamic-component>

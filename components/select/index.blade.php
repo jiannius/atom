@@ -20,12 +20,28 @@
     @php
     $name ??= $attributes->wire('model')->value();
     $error ??= $errors?->first($name);
+
+    // `native` renders a real <select>, so its label can point straight at it. `listbox`
+    // is a composed widget whose combobox is a button or a search input, so it is named
+    // the other way round — aria-labelledby back at the label. Both ids derive from the
+    // field rather than being minted per render: see ComponentAttributeBag::fieldId().
+    $fieldId = $label ? $attributes->fieldId('atom-select', $name, $label, $variant) : null;
+    $labelId = $fieldId && $variant !== 'native' ? $fieldId.'-label' : null;
+
     $merges = [
         'name' => $name,
         'required' => $required,
         // Inherit a read-only state from an enclosing <atom:form disabled>.
         'disabled' => ($disabled ?? false) ?: null,
     ];
+
+    if ($fieldId && $variant === 'native') {
+        $merges['id'] = $fieldId;
+    }
+
+    if ($labelId && $variant !== 'native') {
+        $merges['aria-labelledby'] = $labelId;
+    }
     @endphp
 
     @if ($label || $caption)
@@ -34,7 +50,9 @@
         :caption="$caption"
         :required="$required"
         :inline="$inline"
-        :error="$error">
+        :error="$error"
+        :for="$variant === 'native' ? $fieldId : null"
+        :label-id="$labelId">
             <x-dynamic-component :component="'atom::select.'.$variant" :attributes="$attributes->merge($merges)">
                 {{ $slot }}
                 <x-slot:add-button>{{ $addButton ?? '' }}</x-slot:add-button>
