@@ -1,12 +1,6 @@
-// NOTE: Loading-state (pagination overlay) is covered by the Tier-B render test
-// tests/Feature/TableLoadingTest.php which asserts the overlay markup + wire:target;
-// a full round-trip E2E was skipped because serving a Livewire fixture under
-// `testbench serve` requires workbench plumbing (workbench/routes/web.php +
-// workbench Livewire component + testbench.yaml discovers.web) out of proportion
-// to the value. The render test already asserts the structural contract (overlay
-// div, wire:target="$parent", x-show binding); the missing piece is a live
-// Livewire round-trip which would need a proper workbench app setup.
-
+// NOTE: the table's loading overlay is covered end-to-end by
+// tests/e2e/table-loading.spec.js, against the Livewire fixture at
+// /atom/e2e/table-loading.
 import { test, expect } from '@playwright/test'
 
 test('overflow=card toggles an expandable filter panel', async ({ page }) => {

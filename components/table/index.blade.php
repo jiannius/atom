@@ -166,14 +166,17 @@ class="group/table space-y-4" data-atom-table>
              containers whose height never exceeds their content — so from inside
              either one the spinner has nothing to stick to and never moves.
 
-             `hidden` is what holds it down at rest. The rule that normally does
-             that ([wire\:loading] { display: none }) lives in Livewire's own
-             stylesheet, which is auto-injected only on a request that rendered a
-             component — so a plain-Blade table on a page with no Livewire on it
-             (every page under /atom/docs) would otherwise sit under a permanent
-             veil. The bare attribute, not a `hidden` class: it needs no Tailwind,
-             and its UA-level display:none loses to the inline style Livewire sets
-             when a request is actually in flight.
+             A consequence worth knowing: the veil now covers the pagination bar,
+             which it did not when it lived inside the scroll box. Prev/next and
+             rows-per-page are unclickable while a load is in flight.
+
+             What holds this element down at rest is the `[wire:loading]` rule in
+             resources/css/atom.css. Livewire ships the same rule, but only injects
+             its stylesheet on a request that actually rendered a component — so a
+             plain-Blade table on a Livewire-free page had nothing hiding it. Do NOT
+             reach for the `hidden` attribute instead: Tailwind's Preflight hides
+             `[hidden]` with `!important`, which outranks the inline display Livewire
+             sets, and the overlay would then never appear at all.
 
              Targets are every atom-owned control that swaps the result set out.
              Search is deliberately absent: it spins in its own input instead
@@ -183,15 +186,16 @@ class="group/table space-y-4" data-atom-table>
         wire:loading.flex
         wire:target="gotoPage,nextPage,previousPage,_table.sort.column,_table.sort.direction,_table.max_rows,_table.show_trashed"
         class="absolute inset-0 z-10 justify-center rounded-lg bg-white/60 dark:bg-zinc-800/60"
-        hidden
         data-atom-table-loading>
-            {{-- A viewport-tall strut, capped to the table. Centring in *that*
-                 puts the spinner in the middle of whatever slice of the table is
-                 on screen; centring in the table itself puts it thousands of
-                 pixels below the fold on a long one, veil visible and no
-                 indicator in sight. --}}
+            {{-- Two stacked constraints, because one is not enough. The strut is a
+                 viewport-tall box capped to the table, so centring in it lands the
+                 spinner in the middle of the visible slice of a long table, and in
+                 the middle of a short one. But a sticky box can never leave its own
+                 containing block, so where the table only partly overlaps the screen
+                 the strut cannot reach the visible part — which is why the spinner
+                 carries `top`/`bottom` of its own. It is small enough to move. --}}
             <div class="sticky top-0 h-dvh max-h-full flex items-center">
-                <atom:icon.loading class="size-6 text-zinc-500" />
+                <atom:icon.loading class="sticky top-4 bottom-4 size-6 text-zinc-500" />
             </div>
         </div>
     </div>

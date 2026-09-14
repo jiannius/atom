@@ -5,13 +5,28 @@
 {{-- The rig serves no Tailwind, so every utility the overlay's geometry rests on
      would be inert here and a broken overlay would pass. These are the classes
      the component actually carries, written out as Tailwind v4 compiles them, so
-     the test measures what a consuming app renders rather than an empty box. --}}
+     the test measures what a consuming app renders rather than an empty box.
+
+     This is a hand-maintained mirror and it is NOT Preflight: a consuming app gets
+     a great deal more than this. The one Preflight rule reproduced here is
+     `[hidden]`, because its absence once hid a real regression — an overlay held
+     down with the `hidden` attribute passed every test here and could never appear
+     in a consumer, where Preflight's `!important` outranks the inline display
+     Livewire sets. Keep it, and add any other Preflight rule the components come
+     to depend on. --}}
 <style>
+    [hidden]:where(:not([hidden='until-found'])) { display: none !important; }
     .relative { position: relative; }
     .absolute { position: absolute; }
     .sticky { position: sticky; }
     .inset-0 { inset: 0px; }
     .top-0 { top: 0px; }
+    .top-4 { top: 1rem; }
+    .bottom-4 { bottom: 1rem; }
+    .inline-flex { display: inline-flex; }
+    .shrink-0 { flex-shrink: 0; }
+    .\*\:w-full > * { width: 100%; }
+    .\*\:h-full > * { height: 100%; }
     .z-10 { z-index: 10; }
     .h-dvh { height: 100dvh; }
     .max-h-full { max-height: 100%; }
@@ -39,9 +54,17 @@
     .justify-between { justify-content: space-between; }
 </style>
 
+{{-- Deliberate space above and below the table: the spinner's hardest cases are
+     the partial ones — a table whose top has only just scrolled into view, and one
+     whose bottom is about to leave — and neither is reachable if the table is the
+     only thing on the page. --}}
+<div style="height: 1200px"></div>
+
 <div class="p-4">
     <livewire:atom-e2e-table-loading />
 </div>
+
+<div style="height: 1200px"></div>
 
 @livewireScripts
 </atom:html>
