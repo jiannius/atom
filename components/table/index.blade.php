@@ -116,53 +116,74 @@ class="group/table space-y-4" data-atom-table>
         </template>
     @endif
     
-    <div class="overflow-hidden rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-xs divide-y divide-zinc-200 dark:divide-zinc-700">
-        <div class="relative overflow-x-auto">
-            <div
-            wire:loading.flex
-            wire:target="gotoPage,nextPage,previousPage,_table.sort.column,_table.sort.direction"
-            class="absolute inset-0 z-10 items-center justify-center bg-white/60 dark:bg-zinc-800/60">
-                <atom:icon.loading class="size-6 text-zinc-500" />
+    <div class="relative">
+        <div class="overflow-hidden rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-xs divide-y divide-zinc-200 dark:divide-zinc-700">
+            <div class="relative overflow-x-auto">
+                @if ($showSkeleton)
+                    <div class="animate-pulse divide-y divide-zinc-200 dark:divide-zinc-700" data-atom-table-skeleton>
+                        @for ($i = 0; $i < $skeletonRows; $i++)
+                            <div class="py-4 px-4" data-atom-table-skeleton-row>
+                                <atom:placeholder-bar size="{{ [45, 70, 55, 80, 50][$i % 5] }}%x10" />
+                            </div>
+                        @endfor
+                    </div>
+                @elseif ($empty)
+                    <atom:empty />
+                @else
+                    <table class="min-w-full table-fixed text-zinc-800 divide-y divide-zinc-200 dark:divide-zinc-700">
+                        @if (isset($columns) && $columns->isNotEmpty())
+                            <thead data-atom-table-columns>
+                                <tr {{ $columns->attributes }}>
+                                    {{ $columns }}
+                                </tr>
+                            </thead>
+                        @endif
+
+                        @if (isset($rows) && $rows->isNotEmpty())
+                            <tbody {{ $rows->attributes->class(['divide-y divide-zinc-200 dark:divide-zinc-700']) }} data-atom-table-rows>
+                                {{ $rows }}
+                            </tbody>
+                        @endif
+
+                        @if (isset($footer) && $footer->isNotEmpty())
+                            <tfoot data-atom-table-footer>
+                                {{ $footer }}
+                            </tfoot>
+                        @endif
+                    </table>
+                @endif
             </div>
 
-            @if ($showSkeleton)
-                <div class="animate-pulse divide-y divide-zinc-200 dark:divide-zinc-700" data-atom-table-skeleton>
-                    @for ($i = 0; $i < $skeletonRows; $i++)
-                        <div class="py-4 px-4" data-atom-table-skeleton-row>
-                            <atom:placeholder-bar size="{{ [45, 70, 55, 80, 50][$i % 5] }}%x10" />
-                        </div>
-                    @endfor
-                </div>
-            @elseif ($empty)
-                <atom:empty />
-            @else
-                <table class="min-w-full table-fixed text-zinc-800 divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @if (isset($columns) && $columns->isNotEmpty())
-                        <thead data-atom-table-columns>
-                            <tr {{ $columns->attributes }}>
-                                {{ $columns }}
-                            </tr>
-                        </thead>
-                    @endif
-
-                    @if (isset($rows) && $rows->isNotEmpty())
-                        <tbody {{ $rows->attributes->class(['divide-y divide-zinc-200 dark:divide-zinc-700']) }} data-atom-table-rows>
-                            {{ $rows }}
-                        </tbody>
-                    @endif
-
-                    @if (isset($footer) && $footer->isNotEmpty())
-                        <tfoot data-atom-table-footer>
-                            {{ $footer }}
-                        </tfoot>
-                    @endif
-                </table>
+            @if ($paginate?->hasPages())
+                <atom:table.pagination :paginate="$paginate" :max-rows="$maxRows" />
             @endif
         </div>
 
-        @if ($paginate?->hasPages())
-            <atom:table.pagination :paginate="$paginate" :max-rows="$maxRows" />
-        @endif
+        {{-- The overlay is a sibling of the card, not a child of the table's scroll
+             box, because the spinner inside it is sticky: sticky tracks the nearest
+             scroll container, and both `overflow-hidden` (the card, for its rounded
+             corners) and `overflow-x-auto` (the table, for wide columns) are scroll
+             containers whose height never exceeds their content — so from inside
+             either one the spinner has nothing to stick to and never moves.
+
+             Targets are every atom-owned control that swaps the result set out.
+             Search is deliberately absent: it spins in its own input instead
+             (components/table/search.blade.php) and leaves the rows readable.
+             Consumer-owned filter properties can't be named from here. --}}
+        <div
+        wire:loading.flex
+        wire:target="gotoPage,nextPage,previousPage,_table.sort.column,_table.sort.direction,_table.max_rows,_table.show_trashed"
+        class="absolute inset-0 z-10 justify-center rounded-lg bg-white/60 dark:bg-zinc-800/60"
+        data-atom-table-loading>
+            {{-- A viewport-tall strut, capped to the table. Centring in *that*
+                 puts the spinner in the middle of whatever slice of the table is
+                 on screen; centring in the table itself puts it thousands of
+                 pixels below the fold on a long one, veil visible and no
+                 indicator in sight. --}}
+            <div class="sticky top-0 h-dvh max-h-full flex items-center">
+                <atom:icon.loading class="size-6 text-zinc-500" />
+            </div>
+        </div>
     </div>
 </div>
 
