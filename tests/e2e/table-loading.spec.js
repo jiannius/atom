@@ -58,6 +58,29 @@ test.describe('table loading overlay', () => {
     await expect(overlay(page)).toBeHidden({ timeout: 5000 })
   })
 
+  test('a static table on a page with no Livewire component is not left under the veil', async ({ page }) => {
+    await page.goto('/atom/e2e/table-static')
+    await page.waitForLoadState('networkidle')
+
+    // Precondition, and the whole reason this page exists: Livewire's stylesheet
+    // — which carries the [wire\\:loading] { display: none } rule that normally
+    // holds this element down — is only auto-injected on a request that rendered
+    // a component. Without asserting it is absent, this test would pass on
+    // Livewire's rule rather than on anything the component does.
+    const livewireHidesLoading = await page.evaluate(() => [...document.styleSheets].some(sheet => {
+      try { return [...sheet.cssRules].some(r => r.selectorText?.includes('wire\\:loading')) }
+      catch { return false }
+    }))
+    expect(livewireHidesLoading).toBe(false)
+
+    await expect(page.locator('[data-name="Static"]')).toBeVisible()
+
+    // KEY ASSERTION: the overlay holds itself down. At its default display it
+    // veils the table permanently — a greyed-out table on every page load, with
+    // no request in flight and nothing to end it.
+    await expect(page.locator('[data-atom-table-loading]')).toBeHidden()
+  })
+
   test('the spinner stays on screen wherever the fold falls in a long table', async ({ page }) => {
     await page.setViewportSize({ width: 1200, height: 762 })
     await page.goto('/atom/e2e/table-loading')

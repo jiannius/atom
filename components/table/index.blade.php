@@ -166,6 +166,15 @@ class="group/table space-y-4" data-atom-table>
              containers whose height never exceeds their content — so from inside
              either one the spinner has nothing to stick to and never moves.
 
+             `hidden` is what holds it down at rest. The rule that normally does
+             that ([wire\:loading] { display: none }) lives in Livewire's own
+             stylesheet, which is auto-injected only on a request that rendered a
+             component — so a plain-Blade table on a page with no Livewire on it
+             (every page under /atom/docs) would otherwise sit under a permanent
+             veil. The bare attribute, not a `hidden` class: it needs no Tailwind,
+             and its UA-level display:none loses to the inline style Livewire sets
+             when a request is actually in flight.
+
              Targets are every atom-owned control that swaps the result set out.
              Search is deliberately absent: it spins in its own input instead
              (components/table/search.blade.php) and leaves the rows readable.
@@ -174,6 +183,7 @@ class="group/table space-y-4" data-atom-table>
         wire:loading.flex
         wire:target="gotoPage,nextPage,previousPage,_table.sort.column,_table.sort.direction,_table.max_rows,_table.show_trashed"
         class="absolute inset-0 z-10 justify-center rounded-lg bg-white/60 dark:bg-zinc-800/60"
+        hidden
         data-atom-table-loading>
             {{-- A viewport-tall strut, capped to the table. Centring in *that*
                  puts the spinner in the middle of whatever slice of the table is
