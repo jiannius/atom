@@ -10,6 +10,30 @@
     display: none !important;
 }
 
+/* A wire:loading element is hidden at rest by a rule in Livewire's own stylesheet
+   — but SupportAutoInjectedAssets only injects that stylesheet on a request that
+   actually rendered a component. A plain-Blade page that uses atom components and
+   mounts no Livewire component (every page under /atom/docs, and any static table
+   or search box in a consuming app) therefore got the markup with nothing holding
+   it down, and showed a loading veil or spinner permanently.
+
+   Deliberately NOT !important, and deliberately not the `hidden` attribute: both
+   would outrank the inline `display` Livewire sets when a request is in flight,
+   and the indicator would never appear at all. Tailwind's Preflight hides
+   `[hidden]` with !important, which is the trap here. Unlayered is enough to beat
+   a `.flex` utility, the way the x-cloak rule above does. */
+[wire\:loading],
+[wire\:loading\.flex],
+[wire\:loading\.grid],
+[wire\:loading\.block],
+[wire\:loading\.inline],
+[wire\:loading\.table],
+[wire\:loading\.list-item],
+[wire\:loading\.inline-flex],
+[wire\:loading\.inline-block] {
+    display: none;
+}
+
 html {
     font-size: 14px;
 }
