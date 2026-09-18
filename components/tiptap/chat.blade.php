@@ -64,14 +64,14 @@ $labelId = $label ? $attributes->fieldId('atom-tiptap-chat', $attributes->wire('
             <div x-show="files.length" class="py-2 px-3 flex flex-col gap-2">
                 <template x-for="(file, i) in files" hidden>
                     <div class="group flex items-center gap-2">
-                        <figure class="shrink-0 size-6 bg-zinc-200 rounded-md overflow-hidden border border-zinc-300 flex items-center justify-center">
+                        <figure class="shrink-0 size-6 bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200 rounded-md overflow-hidden border border-zinc-300 dark:border-zinc-500 flex items-center justify-center">
                             <img x-show="file.src" x-bind:src="file.src" class="w-full h-full object-cover">
                             <atom:icon.file x-show="!file.src" class="size-4" />
                         </figure>
 
                         <div x-text="file.file.name" class="grow text-xs text-muted dark:text-muted-foreground truncate"></div>
 
-                        <button type="button" x-on:click="files.splice(i, 1)" aria-label="{{ t('Remove') }}" class="shrink-0 flex items-center justify-center text-muted-foreground">
+                        <button type="button" x-on:click="files.splice(i, 1)" aria-label="{{ t('Remove') }}" class="shrink-0 flex items-center justify-center text-muted dark:text-muted-foreground">
                             <atom:icon.delete class="size-4" />
                         </button>
                     </div>

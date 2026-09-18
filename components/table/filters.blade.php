@@ -52,7 +52,7 @@ data-atom-table-filters>
             <div class="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-1 text-sm">
                 <span class="text-zinc-600 dark:text-zinc-300" x-text="chip.label + ':'"></span>
                 <span x-text="chip.display"></span>
-                <button type="button" x-on:click="clear(chip.key)" class="text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200">
+                <button type="button" x-on:click="clear(chip.key)" class="text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-zinc-200">
                     <atom:icon.close class="size-3.5" />
                 </button>
             </div>

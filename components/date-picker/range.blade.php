@@ -42,7 +42,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
             readonly>
 
             <div x-cloak class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">
-                <div x-show="dateRangeValue" x-on:click.stop="dateRangeValue = null; parse()" class="flex items-center justify-center w-full h-full text-muted-foreground hover:text-muted">
+                <div x-show="dateRangeValue" x-on:click.stop="dateRangeValue = null; parse()" class="flex items-center justify-center w-full h-full text-muted dark:text-muted-foreground hover:text-zinc-800 dark:hover:text-white">
                     <atom:icon.close />
                 </div>
 
@@ -67,26 +67,26 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
                 </div>
 
                 <div class="shrink-0 w-[300px]">
-                    <div class="pt-4 px-4 text-sm uppercase text-muted-foreground">{{ t('Start') }}</div>
+                    <div class="pt-4 px-4 text-sm uppercase text-muted dark:text-muted-foreground">{{ t('Start') }}</div>
 
                     <atom:date-picker.calendar />
 
                     @if ($time)
                         <div x-show="startValue" class="px-4 pb-4">
-                            <div class="text-sm text-muted-foreground mb-2 uppercase">{{ t('Time') }}</div>
+                            <div class="text-sm text-muted dark:text-muted-foreground mb-2 uppercase">{{ t('Time') }}</div>
                             <atom:time-picker x-model="startValue" />
                         </div>
                     @endif
                 </div>
 
                 <div class="shrink-0 w-[300px]">
-                    <div class="pt-4 px-4 text-sm uppercase text-muted-foreground">{{ t('End') }}</div>
+                    <div class="pt-4 px-4 text-sm uppercase text-muted dark:text-muted-foreground">{{ t('End') }}</div>
 
                     <atom:date-picker.calendar />
 
                     @if ($time)
                         <div x-show="endValue" class="px-4 pb-4">
-                            <div class="text-sm text-muted-foreground mb-2 uppercase">{{ t('Time') }}</div>
+                            <div class="text-sm text-muted dark:text-muted-foreground mb-2 uppercase">{{ t('Time') }}</div>
                             <atom:time-picker x-model="endValue" />
                         </div>
                     @endif

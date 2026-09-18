@@ -87,7 +87,7 @@ data-atom-select-native>
                 <template x-for="item in selected" hidden>
                     <div class="shrink-0 max-w-56 flex items-center text-sm border-r border-zinc-300 last:border-0">
                         <div x-text="item.label" class="grow truncate text-zinc-700 dark:text-zinc-200"></div>
-                        <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center cursor-pointer text-muted-foreground pl-2 pr-3">
+                        <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center cursor-pointer text-muted dark:text-muted-foreground pl-2 pr-3">
                             <atom:icon.minus-circle class="size-4" />
                         </div>
                     </div>
@@ -152,7 +152,7 @@ data-atom-select-native>
             x-bind:class="!show && 'pointer-events-none'"
             class="flex items-center justify-center last:mr-2"
             data-atom-select-clear>
-                <atom:icon.close x-show="show" class="text-muted-foreground hover:text-muted" />
+                <atom:icon.close x-show="show" class="text-muted dark:text-muted-foreground hover:text-zinc-800 dark:hover:text-white" />
                 <atom:icon.dropdown x-show="!show" />
             </div>
         @elseif (!$disabled)

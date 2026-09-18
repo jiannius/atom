@@ -187,7 +187,38 @@ describe('palette', function () {
             }
         }
 
-        expect($offenders)->toBe([]);
+        // the tokenizer makes two passes (class attributes, then quoted strings),
+        // so one token can surface twice — dedupe for a readable failure
+        expect(array_values(array_unique($offenders)))->toBe([]);
+    });
+
+    it('never leaves the dark-mode muted token running in light mode', function () {
+        // The other half of the contract. `muted-foreground` means ONE thing — the
+        // dark half — so a resting use of it with no `dark:` applies in light mode
+        // too, where a consumer's zinc-400 is 2.63:1 on white: below AA for text and
+        // below even the 3:1 graphical floor. It was standalone at ~20 sites, which
+        // is what made the token look like it needed splitting in two; pairing them
+        // resolves it with no new token for consumers to define.
+        $states = ['hover', 'focus', 'focus-visible', 'focus-within', 'active', 'disabled', 'group-hover', 'peer-hover'];
+        $offenders = [];
+
+        foreach (classSources() as $path => $contents) {
+            foreach (utilityTokens($contents) as $token) {
+                if ($token['utility'] !== 'text-muted-foreground') {
+                    continue;
+                }
+
+                if (in_array('dark', $token['variants'], true) || array_intersect($token['variants'], $states)) {
+                    continue;
+                }
+
+                $offenders[] = $path.':'.$token['line'];
+            }
+        }
+
+        // the tokenizer makes two passes (class attributes, then quoted strings),
+        // so one token can surface twice — dedupe for a readable failure
+        expect(array_values(array_unique($offenders)))->toBe([]);
     });
 
     it('pairs every resting text-muted with a dark-mode counterpart', function () {
@@ -233,6 +264,8 @@ describe('palette', function () {
             }
         }
 
-        expect($offenders)->toBe([]);
+        // the tokenizer makes two passes (class attributes, then quoted strings),
+        // so one token can surface twice — dedupe for a readable failure
+        expect(array_values(array_unique($offenders)))->toBe([]);
     });
 });

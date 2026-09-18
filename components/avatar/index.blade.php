@@ -17,7 +17,7 @@ $classes = [
     'flex items-center justify-center',
     'bg-zinc-200 dark:bg-zinc-700 overflow-hidden shadow-sm',
     'border dark:border-zinc-600',
-    'text-zinc-400 font-bold leading-none',
+    'text-zinc-700 dark:text-zinc-200 font-bold leading-none',
 
     $square ? 'aspect-square' : '',
 
