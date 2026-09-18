@@ -47,8 +47,11 @@ describe('tabs', function () {
         expect($html)
             ->toContain('text-zinc-600')
             ->toContain('dark:text-zinc-300')
-            ->not->toContain('text-muted-foreground')
-            ->not->toContain('dark:text-muted');
+            // whole-token, not substring: ->not->toContain('dark:text-muted')
+            // also matches dark:text-muted-foreground, so it would fail the very
+            // pair the rest of the package standardises on.
+            ->not->toMatch('/\btext-muted-foreground\b/')
+            ->not->toMatch('/\bdark:text-muted\b(?!-)/');
     });
 
     it('marks the current tab active', function () {
