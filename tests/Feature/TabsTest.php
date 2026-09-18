@@ -35,6 +35,22 @@ describe('tabs', function () {
         expect($html)->toContain('bg-zinc-100');
     });
 
+    it('contrasts the inactive label against the raised strip, not the page ground', function () {
+        // Regression: the label was `text-muted-foreground dark:text-muted` — the
+        // pair inverted, dark-mode token in light mode, for 2.3:1 on the button
+        // variant's zinc-100 strip and 2.2:1 on its zinc-700 one. Un-inverting is
+        // not enough: muted is tuned to the page ground and only reaches 4.4:1 on
+        // a strip two steps off it. These clear AA on both, and on the page ground
+        // the default variant sits on.
+        $html = Blade::render('<atom:tabs variant="button" :tabs="[[\'label\' => \'A\', \'value\' => \'a\']]" />');
+
+        expect($html)
+            ->toContain('text-zinc-600')
+            ->toContain('dark:text-zinc-300')
+            ->not->toContain('text-muted-foreground')
+            ->not->toContain('dark:text-muted');
+    });
+
     it('marks the current tab active', function () {
         $html = Blade::render('<atom:tabs :tabs="[[\'label\' => \'A\', \'value\' => \'a\', \'current\' => true]]" />');
 

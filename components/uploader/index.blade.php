@@ -50,7 +50,7 @@ class="group/uploader relative">
                 <div x-show="uploading" class="absolute inset-0 bg-zinc-400 opacity-30" x-bind:style="`width: ${progress}%`"></div>
             </atom:button>
 
-            <atom:tooltip x-show="uploading" content="Cancel Upload" class="shrink-0 flex items-center justify-center text-muted">
+            <atom:tooltip x-show="uploading" content="Cancel Upload" class="shrink-0 flex items-center justify-center text-muted dark:text-muted-foreground">
                 <button type="button" x-on:click="$wire.cancelUpload({{ js($attributes->wire('model')->value()) }})" aria-label="{{ t('Cancel upload') }}" class="flex items-center justify-center">
                     <atom:icon.stop class="size-4" />
                 </button>

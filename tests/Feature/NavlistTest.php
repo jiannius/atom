@@ -35,6 +35,15 @@ describe('navlist', function () {
         expect($html)->toContain('Navigation')->toContain('A');
     });
 
+    it('gives the plain group heading a dark-mode colour', function () {
+        // Regression: the heading was a bare `text-muted`, which a consumer maps to
+        // zinc-500 — 3.67:1 on a zinc-900 sidebar. The expandable branch of this same
+        // component already handled dark; only the plain-heading branch was missed.
+        $html = Blade::render('<atom:navlist.group heading="Navigation"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect($html)->toContain('text-muted dark:text-muted-foreground');
+    });
+
     it('renders an expandable group with Alpine, not a ui-disclosure web component', function () {
         $html = Blade::render('<atom:navlist.group expandable heading="Section"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
 

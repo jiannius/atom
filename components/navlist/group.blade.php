@@ -86,7 +86,7 @@ data-atom-navlist-group>
 @elseif ($heading)
     <div class="mt-5 first:mt-0">
         <div class="px-3 pb-1.5">
-            <div class="text-xs font-semibold uppercase tracking-wider text-muted">{{ t($heading) }}</div>
+            <div class="text-xs font-semibold uppercase tracking-wider text-muted dark:text-muted-foreground">{{ t($heading) }}</div>
         </div>
 
         <div {{ $attributes->class(['flex flex-col']) }}>

@@ -42,7 +42,7 @@ data-atom-date-picker
                         <atom:icon.close />
                     </div>
 
-                    <div x-show="!datePickerValue" class="pointer-events-none flex items-center justify-center w-full h-full text-muted">
+                    <div x-show="!datePickerValue" class="pointer-events-none flex items-center justify-center w-full h-full text-muted dark:text-muted-foreground">
                         <atom:icon.calendar />
                     </div>
                 </div>

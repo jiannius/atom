@@ -46,7 +46,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
                     <atom:icon.close />
                 </div>
 
-                <div x-show="!dateRangeValue" class="pointer-events-none flex items-center justify-center w-full h-full text-muted">
+                <div x-show="!dateRangeValue" class="pointer-events-none flex items-center justify-center w-full h-full text-muted dark:text-muted-foreground">
                     <atom:icon.calendar />
                 </div>
             </div>

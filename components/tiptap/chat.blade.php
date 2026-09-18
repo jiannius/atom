@@ -69,7 +69,7 @@ $labelId = $label ? $attributes->fieldId('atom-tiptap-chat', $attributes->wire('
                             <atom:icon.file x-show="!file.src" class="size-4" />
                         </figure>
 
-                        <div x-text="file.file.name" class="grow text-xs text-muted-more truncate"></div>
+                        <div x-text="file.file.name" class="grow text-xs text-muted dark:text-muted-foreground truncate"></div>
 
                         <button type="button" x-on:click="files.splice(i, 1)" aria-label="{{ t('Remove') }}" class="shrink-0 flex items-center justify-center text-muted-foreground">
                             <atom:icon.delete class="size-4" />

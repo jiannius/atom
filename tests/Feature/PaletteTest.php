@@ -65,4 +65,58 @@ describe('palette', function () {
 
         expect($offenders)->toBe([]);
     });
+
+    it('only names semantic colour tokens that a consumer actually defines', function () {
+        // The package ships no @theme, so its semantic tokens are a contract with
+        // the consuming app: it defines --color-muted and --color-muted-foreground,
+        // and those are the only two. `text-muted-more` was written at two sites and
+        // matched nothing — Tailwind drops an undefined token silently, so both
+        // elements simply inherited their parent's colour for as long as they existed.
+        // The step check above cannot see this: `muted-more` names no numeric step.
+        $defined = ['muted', 'muted-foreground'];
+        $utilities = 'text|bg|border|divide|ring|outline|from|via|to|fill|stroke|accent|caret|decoration|placeholder';
+        $offenders = [];
+
+        foreach (componentSources() as $path => $contents) {
+            foreach (explode("\n", $contents) as $i => $line) {
+                preg_match_all('/\b(?:'.$utilities.')-(muted[a-z-]*)/', $line, $matches);
+
+                foreach ($matches[1] as $token) {
+                    if (! in_array($token, $defined, true)) {
+                        $offenders[] = $path.':'.($i + 1).' → '.$token;
+                    }
+                }
+            }
+        }
+
+        expect($offenders)->toBe([]);
+    });
+
+    it('pairs every unprefixed text-muted with a dark-mode counterpart', function () {
+        // A consumer maps --color-muted to a mid step (zinc-500) that reads on a
+        // light ground and dies on a dark one — 3.67:1 on a zinc-900 sidebar. The
+        // token is only half a colour; the other half is `dark:text-muted-foreground`.
+        // Fifteen components shipped the light half alone. Variant-prefixed uses
+        // (hover:text-muted) are states, not the resting colour, so they are exempt.
+        //
+        // Sites on a RAISED surface are absent from this rule by construction: muted
+        // is tuned to the page ground and misses AA on zinc-100/zinc-600/zinc-700
+        // even when paired, so those hard-code a zinc pair and never match here.
+        $offenders = [];
+
+        foreach (componentSources() as $path => $contents) {
+            foreach (explode("\n", $contents) as $i => $line) {
+                // unprefixed `text-muted`, not the `-foreground` token itself
+                if (! preg_match('/(?<![-:\w])text-muted\b(?!-)/', $line)) {
+                    continue;
+                }
+
+                if (! str_contains($line, 'dark:text-muted-foreground')) {
+                    $offenders[] = $path.':'.($i + 1);
+                }
+            }
+        }
+
+        expect($offenders)->toBe([]);
+    });
 });

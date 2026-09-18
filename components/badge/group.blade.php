@@ -19,7 +19,7 @@
         {{ $slot }}
 
         <div style="display: inherit" data-atom-badge-overflow>
-            <div x-show="badges.length > max" x-text="`+${badges.length - max}`" class="text-sm text-muted font-medium"></div>
+            <div x-show="badges.length > max" x-text="`+${badges.length - max}`" class="text-sm text-muted dark:text-muted-foreground font-medium"></div>
         </div>
     </div>
 @else

@@ -7,7 +7,7 @@
 ])
 
 @if ($subtle)
-    <div class="bg-zinc-100 dark:bg-zinc-700/30 rounded-lg p-3 text-sm text-muted text-center">
+    <div class="bg-zinc-100 dark:bg-zinc-700/30 rounded-lg p-3 text-sm text-zinc-600 dark:text-zinc-300 text-center">
         {{ t($heading) }}
     </div>
 @elseif ($size === 'sm')

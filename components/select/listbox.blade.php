@@ -112,7 +112,7 @@ data-atom-select-listbox
                                         </template>
 
                                         <template x-if="item.avatar" hidden>
-                                            <div class="relative flex items-center justify-center size-6 rounded-full bg-zinc-200 text-muted text-xs overflow-hidden">
+                                            <div class="relative flex items-center justify-center size-6 rounded-full bg-zinc-200 dark:bg-zinc-600 text-zinc-700 dark:text-zinc-200 text-xs overflow-hidden">
                                                 <div x-text="item.label.charAt(0).toUpperCase()"></div>
                                                 <template x-if="typeof item.avatar === 'string'" hidden>
                                                     <div class="absolute inset-0 z-1">
