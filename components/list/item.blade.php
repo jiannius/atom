@@ -16,7 +16,7 @@ class="group/list-item py-2 pr-1 flex rounded-md hover:bg-zinc-100 dark:hover:bg
 {{ $attributes->only(['wire:remove', 'x-on:remove', 'x-sort:item']) }}
 data-atom-list-item>
     @if ($sortable)
-        <div x-sort:handle class="shrink-0 w-8 h-6 flex items-center justify-center text-muted-more cursor-move">
+        <div x-sort:handle class="shrink-0 w-8 h-6 flex items-center justify-center text-muted dark:text-muted-foreground cursor-move">
             <atom:icon.sort-handle />
         </div>
     @endif
@@ -34,7 +34,7 @@ data-atom-list-item>
     </{{ $el }}>
 
     @if ($removeable)
-        <button type="button" x-on:click.stop="$dispatch('remove')" aria-label="{{ t('Remove') }}" class="shrink-0 size-4 text-muted-foreground flex items-center justify-center cursor-pointer py-3 ml-1 mr-2">
+        <button type="button" x-on:click.stop="$dispatch('remove')" aria-label="{{ t('Remove') }}" class="shrink-0 size-4 text-muted dark:text-muted-foreground flex items-center justify-center cursor-pointer py-3 ml-1 mr-2">
             <atom:icon.delete />
         </button>
     @endif

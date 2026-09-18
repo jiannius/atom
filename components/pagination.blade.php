@@ -10,7 +10,7 @@ aria-label="{{ t('atom::pagination.navigation') }}"
 x-on:paginate="document.querySelector('body').scrollIntoView()"
 class="py-2 px-4 flex flex-wrap items-center justify-between gap-3">
     @if ($summary && method_exists($paginator, 'total'))
-        <div class="py-2 text-sm text-muted">
+        <div class="py-2 text-sm text-muted dark:text-muted-foreground">
             @if ($paginator->firstItem())
                 {!! t('atom::pagination.showing-from-rows-to-rows', [
                     'from' => $paginator->firstItem(),

@@ -76,7 +76,7 @@ data-atom-input-email>
         x-show="emailInputValue?.length"
         x-on:click="emailInputValue = []"
         aria-label="{{ t('Clear all') }}"
-        class="z-1 absolute top-0 right-0 h-10 flex items-center justify-center text-zinc-400 pr-3 cursor-pointer hover:text-muted text-muted-foreground">
+        class="z-1 absolute top-0 right-0 h-10 flex items-center justify-center text-muted dark:text-muted-foreground pr-3 cursor-pointer hover:text-zinc-800 dark:hover:text-white">
             <atom:icon.close />
         </button>
     @endif

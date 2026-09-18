@@ -37,7 +37,7 @@ data-atom-color-input>
                 readonly
                 {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['id', 'class', 'placeholder']) }}>
 
-                <div class="absolute top-0 right-0 bottom-0 flex items-center justify-center text-muted-foreground px-3">
+                <div class="absolute top-0 right-0 bottom-0 flex items-center justify-center text-muted dark:text-muted-foreground px-3">
                     <atom:icon.brush />
                 </div>
             @endif

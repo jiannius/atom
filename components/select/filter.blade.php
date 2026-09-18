@@ -94,7 +94,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                 </div>
             @endif
 
-            <div class="font-medium text-muted">
+            <div class="font-medium text-muted dark:text-muted-foreground">
                 {{ t($label) }}
             </div>
 

@@ -38,11 +38,11 @@ data-atom-date-picker
                 readonly>
 
                 <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">
-                    <div x-show="datePickerValue" x-on:click.stop="datePickerValue = null" class="flex items-center justify-center w-full h-full text-muted-foreground hover:text-muted">
+                    <div x-show="datePickerValue" x-on:click.stop="datePickerValue = null" class="flex items-center justify-center w-full h-full text-muted dark:text-muted-foreground hover:text-zinc-800 dark:hover:text-white">
                         <atom:icon.close />
                     </div>
 
-                    <div x-show="!datePickerValue" class="pointer-events-none flex items-center justify-center w-full h-full text-muted">
+                    <div x-show="!datePickerValue" class="pointer-events-none flex items-center justify-center w-full h-full text-muted dark:text-muted-foreground">
                         <atom:icon.calendar />
                     </div>
                 </div>
@@ -54,7 +54,7 @@ data-atom-date-picker
 
             @if ($time)
                 <div x-bind:class="!datePickerString && 'opacity-50 pointer-events-none'" class="px-2 pb-2">
-                    <div class="text-sm text-muted-foreground mb-2 uppercase">{{ t('Time') }}</div>
+                    <div class="text-sm text-muted dark:text-muted-foreground mb-2 uppercase">{{ t('Time') }}</div>
                     <atom:time-picker x-model="datePickerValue" />
                 </div>
             @endif

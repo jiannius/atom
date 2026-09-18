@@ -36,7 +36,13 @@ $merges = [
 @if ($value) x-on:click.stop="$dispatch('tabs-input', {{ js($value) }})" @endif
 @if ($current) data-active @endif
 @class([
-    'grow self-stretch transition-colors duration-200 text-muted-foreground dark:text-muted',
+    // The muted tokens are tuned to the page ground, and this strip is not on it:
+    // the button variant raises it to zinc-100/zinc-700, two steps off. Muted on
+    // that surface is 4.4:1 at best, and the pair here was inverted on top of it —
+    // the dark-mode token in light mode — for 2.3:1. Hard-coded rather than
+    // semantic because staying semantic would need a raised-surface pair of its
+    // own; these two clear AA on the raised strip and on the page ground alike.
+    'grow self-stretch transition-colors duration-200 text-zinc-600 dark:text-zinc-300',
     'flex items-center gap-2 justify-center px-4',
     'not-[data-active]:truncate',
     'hover:text-zinc-800 dark:hover:text-white',

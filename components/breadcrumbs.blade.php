@@ -26,12 +26,12 @@ data-atom-breadcrumbs>
                                 x-bind:href="item.href"
                                 class="leading-none font-medium truncate whitespace-nowrap dark:text-zinc-300"
                                 wire:navigate></a>
-                                <atom:icon.right class="shrink-0 text-muted-foreground size-4"/>
+                                <atom:icon.right class="shrink-0 text-muted dark:text-muted-foreground size-4"/>
                             </div>
                         </template>
 
                         <template x-if="i === breadcrumbs.length - 1">
-                            <span x-text="item.title" class="leading-none truncate whitespace-nowrap text-muted-foreground"></span>
+                            <span x-text="item.title" class="leading-none truncate whitespace-nowrap text-muted dark:text-muted-foreground"></span>
                         </template>
                     </div>
                 </li>                

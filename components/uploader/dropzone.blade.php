@@ -41,7 +41,7 @@ class="group/uploader relative">
             'border-zinc-400 bg-zinc-50 dark:border-zinc-500 dark:bg-zinc-700/30': dragging,
         }"
         x-bind:aria-busy="uploading"
-        class="relative flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed border-zinc-300 p-6 text-center text-muted transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-700/30">
+        class="relative flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed border-zinc-300 p-6 text-center text-muted dark:text-muted-foreground transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-700/30">
             <span x-show="!uploading" class="flex flex-col items-center gap-2">
                 <atom:icon.upload class="size-6" />
                 <span>{{ t($label) }}</span>

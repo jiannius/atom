@@ -112,7 +112,7 @@ data-atom-select-listbox
                                         </template>
 
                                         <template x-if="item.avatar" hidden>
-                                            <div class="relative flex items-center justify-center size-6 rounded-full bg-zinc-200 text-muted text-xs overflow-hidden">
+                                            <div class="relative flex items-center justify-center size-6 rounded-full bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs overflow-hidden">
                                                 <div x-text="item.label.charAt(0).toUpperCase()"></div>
                                                 <template x-if="typeof item.avatar === 'string'" hidden>
                                                     <div class="absolute inset-0 z-1">
@@ -124,7 +124,7 @@ data-atom-select-listbox
 
                                         <div x-text="item.label" class="grow truncate"></div>
                                     </div>
-                                    <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center text-muted-foreground pl-2 pr-3 cursor-pointer">
+                                    <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center text-muted dark:text-muted-foreground pl-2 pr-3 cursor-pointer">
                                         <atom:icon.minus-circle class="size-4" />
                                     </div>
                                 </div>
@@ -151,18 +151,18 @@ data-atom-select-listbox
                     @if ($multiple !== 'list' && $clearable)
                         <template x-if="isEmpty" hidden>
                             <div class="pointer-events-none py-3 pr-2 last:pr-3">
-                                <atom:icon.dropdown class="text-muted-foreground" />
+                                <atom:icon.dropdown class="text-muted dark:text-muted-foreground" />
                             </div>
                         </template>
 
                         <template x-if="!isEmpty" hidden>
-                            <div x-on:click.stop="clear()" class="cursor-pointer flex items-center justify-center pl-3 pr-2 last:pr-3 text-muted-foreground">
+                            <div x-on:click.stop="clear()" class="cursor-pointer flex items-center justify-center pl-3 pr-2 last:pr-3 text-muted dark:text-muted-foreground">
                                 <atom:icon.close />
                             </div>
                         </template>
                     @else
                         <div class="pointer-events-none flex items-center justify-center pl-3 pr-2 last:pr-3">
-                            <atom:icon.dropdown class="text-muted-foreground" />
+                            <atom:icon.dropdown class="text-muted dark:text-muted-foreground" />
                         </div>
                     @endif
 
