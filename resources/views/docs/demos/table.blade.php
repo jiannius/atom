@@ -25,7 +25,7 @@ view="atom::docs.demos.table.trashed"/>
 
 <atom:docs.example
 title="Filters bar"
-description="atom:table.filters wraps your filter controls (atom:select variant=filter, atom:date-picker variant=range, custom selects) and auto-derives active-filter chips + Clear all from each control's label and selected value. Put overflow filters in x-slot:more — a 'More filters' popover by default, or set overflow=card for an expandable row."
+description="atom:table.filters wraps your filter controls (atom:select variant=filter, atom:date-picker variant=range, custom selects) and auto-derives active-filter chips + Clear all from each control's label and selected value. Put overflow filters in x-slot:more — the 'More filters' button follows the last filter in the bar and opens a popover by default; overflow=card expands a row below it, overflow=modal opens a modal that lays the slot out as a form, one labelled field per row."
 view="atom::docs.demos.table.filters"/>
 
 <atom:docs.example
