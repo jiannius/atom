@@ -7,6 +7,16 @@
 @php
 $modes = (array) $modes;
 $periods = (array) $periods;
+
+// The toolbar's segmented-button shell: the nav group, and the period and mode
+// switchers, are the same control. Written once because three copies is how the
+// v3.15.8 palette fix came to miss all three of them.
+$group = 'shrink-0 flex items-center divide-x divide-zinc-200 dark:divide-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-md shadow-sm overflow-hidden bg-white dark:bg-zinc-800';
+
+// Sizing and hover for the buttons inside a toolbar region — the nav group
+// carries it directly, the period and mode switchers inherit it from the region
+// wrapper they share.
+$groupButtons = '[&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:gap-2 [&_button]:size-8 [&_button]:hover:bg-zinc-100 [&_button]:dark:hover:bg-zinc-700';
 @endphp
 
 <link rel="stylesheet" href="{{ app('atom')->asset()->version('calendar.css') }}">
@@ -35,10 +45,7 @@ data-atom-calendar
 ]) }}>
     <div class="flex flex-wrap items-center gap-3">
         <div class="grow flex items-center gap-3">
-            <div @class([
-                'shrink-0 flex items-center divide-x divide-zinc-200 dark:divide-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-md shadow-sm overflow-hidden bg-white dark:bg-zinc-800',
-                '[&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:gap-2 [&_button]:size-8 [&_button]:hover:bg-zinc-100 [&_button]:dark:hover:bg-zinc-700',
-            ])>
+            <div @class([$group, $groupButtons])>
                 <atom:tooltip content="Today">
                     <button type="button" x-on:click="today()">
                         <atom:icon.location class="size-4" />
@@ -73,12 +80,9 @@ data-atom-calendar
             </div>
         </div>
 
-        <div @class([
-            'shrink-0 flex flex-wrap items-center gap-3',
-            '[&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:gap-2 [&_button]:size-8 [&_button]:hover:bg-zinc-100 [&_button]:dark:hover:bg-zinc-700',
-        ])>
+        <div @class(['shrink-0 flex flex-wrap items-center gap-3', $groupButtons])>
             @if (count($periods) > 1)
-                <div class="shrink-0 flex items-center divide-x divide-zinc-200 dark:divide-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-md shadow-sm overflow-hidden bg-white dark:bg-zinc-800">
+                <div class="{{ $group }}">
                     @foreach ($periods as $period)
                         <atom:tooltip :content="str()->title($period)">
                             <button
@@ -97,7 +101,7 @@ data-atom-calendar
             @endif
 
             @if (count($modes) > 1)
-                <div class="shrink-0 flex items-center divide-x divide-zinc-200 dark:divide-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-md shadow-sm overflow-hidden bg-white dark:bg-zinc-800">
+                <div class="{{ $group }}">
                     @foreach ($modes as $mode)
                         <atom:tooltip :content="str()->title($mode).' Mode'">
                             <button
