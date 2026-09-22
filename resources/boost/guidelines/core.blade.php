@@ -385,6 +385,7 @@ These are the conventions Atom-using projects should adopt unless they have a re
 - **Checkboxes.** Multiple related checkboxes → always `<atom:checkbox.group>` (never loose stacked `<atom:checkbox>`). Default variant; use `variant="card"` only when each option needs its own description or icon.
 - **Description lists (show pages).** Group label/value pairs in `<atom:dd.group>`; use `cols="2"` only for many fields on a wide page — same density logic as forms.
 - **Section separation.** Prefer `<atom:separator>` over ad-hoc `<hr>` or border classes; separate logical field groups with a separator and a short title (e.g. "Address", "Registration & Tax").
+- **Always give a border or divider a light-mode colour.** Tailwind v4 defaults `border-color` to `currentColor` (v3 used `gray-200`), so `border-t dark:border-zinc-700` or `divide-y dark:divide-zinc-700` draws a near-black line in light mode — it reads as a heavy black rule on a white card, and it looks correct in dark mode, so it survives review. Write both halves: `border-t border-zinc-200 dark:border-zinc-700`, `divide-y divide-zinc-200 dark:divide-zinc-700`.
 @endverbatim
 - **Component method order** (top of class to bottom):
     1. Validation (`$rules`, `$messages`, `#[Rule]` properties)

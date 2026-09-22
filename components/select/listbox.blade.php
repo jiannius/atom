@@ -103,7 +103,7 @@ data-atom-select-listbox
                     <template x-if="!isEmpty" hidden>
                         <div class="flex items-center gap-2 flex-wrap">
                             <template x-for="item in selectedOptions" hidden>
-                                <div class="shrink-0 max-w-56 truncate flex items-center text-sm border-r border-zinc-300 last:border-0">
+                                <div class="shrink-0 max-w-56 truncate flex items-center text-sm border-r border-zinc-300 dark:border-zinc-600 last:border-0">
                                     <div class="flex items-center gap-2 truncate">
                                         <template x-if="item.color" hidden>
                                             <div
