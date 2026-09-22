@@ -18,7 +18,7 @@ if (is_string($options)) {
     x-on:keydown.up.prevent="arrowUp()"
     x-on:keydown.down.prevent="arrowDown()"
     x-bind:class="(!show || !filteredOptions.length) && 'invisible'"
-    class="fixed max-w-lg min-w-72 rounded-lg border shadow-lg z-10 bg-white dark:bg-zinc-800/50">
+    class="fixed max-w-lg min-w-72 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-lg z-10 bg-white dark:bg-zinc-800/50">
         <ul class="flex flex-col max-h-[300px] overflow-auto p-2">
             <template x-for="(opt, i) in filteredOptions" hidden>
                 <li
@@ -37,7 +37,7 @@ if (is_string($options)) {
                             <template x-if="typeof opt === 'object'" hidden>
                                 <div class="flex flex-col gap-1">
                                     <div class="flex items-center gap-2">
-                                        <div x-show="opt.type" x-text="opt.type" class="uppercase bg-zinc-100 border rounded font-medium text-zinc-500" style="font-size: 0.65rem; padding: 1px 3px;"></div>
+                                        <div x-show="opt.type" x-text="opt.type" class="uppercase bg-zinc-100 dark:bg-zinc-700 border border-zinc-200 dark:border-zinc-600 rounded font-medium text-zinc-500 dark:text-zinc-300" style="font-size: 0.65rem; padding: 1px 3px;"></div>
                                         <div x-text="opt.label" class="font-medium text-sm"></div>
                                     </div>
                                     <div x-show="opt.caption" x-text="opt.caption" class="text-sm text-zinc-500"></div>

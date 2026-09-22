@@ -85,7 +85,7 @@ data-atom-select-native>
             }"
             class="flex items-center gap-2 flex-wrap">
                 <template x-for="item in selected" hidden>
-                    <div class="shrink-0 max-w-56 flex items-center text-sm border-r border-zinc-300 last:border-0">
+                    <div class="shrink-0 max-w-56 flex items-center text-sm border-r border-zinc-300 dark:border-zinc-600 last:border-0">
                         <div x-text="item.label" class="grow truncate text-zinc-700 dark:text-zinc-200"></div>
                         <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center cursor-pointer text-muted dark:text-muted-foreground pl-2 pr-3">
                             <atom:icon.minus-circle class="size-4" />

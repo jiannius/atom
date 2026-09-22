@@ -26,7 +26,7 @@
                 data-url="{!! $url !!}"
                 data-title="{!! $title !!}"
                 aria-label="{{ str($site)->headline()->toString() }}"
-                class="size-10 rounded flex text-2xl cursor-pointer hover:bg-slate-100 hover:border">
+                class="size-10 rounded flex text-2xl cursor-pointer border border-transparent hover:bg-slate-100 hover:border-zinc-200">
                     <x-dynamic-component :component="'atom::icon.'.$site" size="24" @class([
                         'm-auto',
                         match ($site) {
@@ -47,7 +47,7 @@
             type="button"
             x-on:click.stop="$clipboard({{ js($url) }})"
             aria-label="{{ t('Copy Link') }}"
-            class="size-10 rounded flex text-lg cursor-pointer hover:bg-slate-100 hover:border">
+            class="size-10 rounded flex text-lg cursor-pointer border border-transparent hover:bg-slate-100 hover:border-zinc-200">
                 <atom:icon.link size="24" class="m-auto" />
             </button>
         </atom:tooltip>

@@ -113,10 +113,30 @@ function elementTokens(string $contents): array
         foreach ($matches[0] as [$literal, $start]) {
             $depth = 0;
 
-            for ($i = $start + strlen($literal) - 1; $i < strlen($contents); $i++) {
-                if ($contents[$i] === '[') {
+            // Brackets inside a string literal are not structure: an unbalanced one
+            // (`content-['[']`, a stray bracket in an arbitrary variant) would
+            // otherwise carry the range past the array's real end and silently lend
+            // unrelated elements each other's colours.
+            $quote = null;
+
+            for ($i = $start + strlen($literal) - 1, $length = strlen($contents); $i < $length; $i++) {
+                $char = $contents[$i];
+
+                if ($quote !== null) {
+                    if ($char === '\\') {
+                        $i++;
+                    } elseif ($char === $quote) {
+                        $quote = null;
+                    }
+
+                    continue;
+                }
+
+                if ($char === '"' || $char === "'") {
+                    $quote = $char;
+                } elseif ($char === '[') {
                     $depth++;
-                } elseif ($contents[$i] === ']') {
+                } elseif ($char === ']') {
                     $depth--;
 
                     if ($depth === 0) {
@@ -148,25 +168,6 @@ function elementTokens(string $contents): array
 // its dividers in the text colour instead. Dark mode looks right either way,
 // which is how this keeps slipping through review.
 describe('palette', function () {
-    it('gives every divide-y a light-mode colour', function () {
-        $offenders = [];
-
-        foreach (componentSources() as $path => $contents) {
-            foreach (explode("\n", $contents) as $i => $line) {
-                if (! str_contains($line, 'divide-y')) {
-                    continue;
-                }
-
-                // a colour utility not prefixed by a variant (dark:, hover:, ...)
-                if (! preg_match('/(?<![-:\w])divide-[a-z]+-\d+/', $line)) {
-                    $offenders[] = $path.':'.($i + 1);
-                }
-            }
-        }
-
-        expect($offenders)->toBe([]);
-    });
-
     it('only names colour steps that exist on the tailwind scale', function () {
         // Tailwind's default palette. The package ships no @theme of its own,
         // so a step off this scale (divide-zinc-150) compiles away to nothing.
@@ -317,38 +318,59 @@ describe('palette', function () {
         // so one token can surface twice — dedupe for a readable failure
         expect(array_values(array_unique($offenders)))->toBe([]);
     });
-    it('gives every light-mode border and divider a light-mode colour', function () {
-        // The divide-y check above, generalised to the whole border/divide family.
-        // A `border-t` whose only colour is `dark:border-zinc-700` draws its
-        // light-mode line in the TEXT colour — near-black on a white card. Dark mode
-        // is correct, which is why nine components shipped it, and why two consuming
-        // apps then copied the shape across ~30 sites of their own.
+    it('gives every light-mode border and divider a resting light-mode colour', function () {
+        // Tailwind v4 defaults border-color to currentColor (v3 used gray-200), so a
+        // border or divider with no light-mode colour of its own draws its line in the
+        // TEXT colour — near-black on a white card. Dark mode is correct, which is why
+        // nine components shipped it, and why two consuming apps copied the shape
+        // across ~30 sites of their own.
         //
-        // The flagged shape is the asymmetric one: a border that EXISTS in light mode
-        // (its width utility carries no `dark:`), a dark colour, and no light colour.
-        // A width that is itself dark-only draws nothing in light mode and needs no
-        // colour — docs/example and tooltip/content both do that deliberately.
+        // This replaces the original `divide-y` check, whose `(?<![-:\w])` light-colour
+        // regex rejected EVERY prefix and so would have failed a perfectly good
+        // `md:divide-zinc-200`. Here "light" means any variant that is not `dark`.
         //
-        // "Light" means any variant that is not `dark`, not "no variant at all": the
-        // `(?<![-:\w])` shape the divide-y check uses would reject a good
-        // `md:divide-zinc-200`.
+        // Four things this has to get right; each one silently neuters the check:
         //
-        // Colours are matched by an allow-list, never by "border-<word>". `border`
-        // also prefixes styles (`border-dashed`) and two CSS property names that
-        // appear in inline-style strings (`border-color`, `border-radius`) — counting
-        // any of those as a colour would silently satisfy the light half.
+        // 1. Colours are matched by an ALLOW-LIST, never by "border-<word>". `border`
+        //    also prefixes styles (`border-dashed`) and two CSS property names that
+        //    appear in inline-style strings (`border-color`, `border-radius`).
+        // 2. `current` and `inherit` are NOT colours here. Both resolve to
+        //    currentColor, so counting them would accept the defect as its own fix.
+        // 3. An arbitrary value can be EITHER half, so it is classified by content:
+        //    `border-[3px]` is a width, `border-[#fff]` a colour. Matching `border-\[`
+        //    as a colour let an arbitrary WIDTH satisfy the light half.
+        // 4. A state variant is a transient colour, not the resting one, so it settles
+        //    neither half — `border-b hover:border-zinc-300 dark:border-zinc-700` still
+        //    rests at currentColor. Same allow-list the muted checks keep.
         $palette = 'zinc|gray|slate|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose';
-        $named = 'white|black|transparent|current|inherit|muted|muted-foreground';
+        $named = 'white|black|transparent|muted|muted-foreground';
+        $states = ['hover', 'focus', 'focus-visible', 'focus-within', 'active', 'disabled', 'group-hover', 'peer-hover'];
+
+        $length = '(?:length:)?[\d.]+(?:px|rem|em|ex|ch|%|vw|vh|vmin|vmax|pt|pc|cm|mm|in)?';
+        $value = '(?:color:)?(?:#|rgba?\(|hsla?\(|oklch\(|oklab\(|lab\(|lch\(|hwb\(|var\()';
 
         $widths = [
-            'border' => '/^border(?:-[trblxyse])?(?:-\d+)?$/',
-            'divide' => '/^divide-[xy](?:-\d+)?$/',
+            'border' => '/^border(?:-[trblxyse])?(?:-(?:\d+|\['.$length.'\]))?$/',
+            'divide' => '/^divide-[xy](?:-(?:\d+|\['.$length.'\]))?$/',
         ];
 
         $colours = [
-            'border' => '/^border(?:-[trblxyse])?-(?:(?:'.$palette.')-\d+|'.$named.')(?:\/\d+)?$|^border(?:-[trblxyse])?-\[/',
-            'divide' => '/^divide(?:-[xy])?-(?:(?:'.$palette.')-\d+|'.$named.')(?:\/\d+)?$|^divide(?:-[xy])?-\[/',
+            'border' => '/^border(?:-[trblxyse])?-(?:(?:'.$palette.')-\d+|'.$named.')(?:\/\d+)?$|^border(?:-[trblxyse])?-\['.$value.'/',
+            'divide' => '/^divide(?:-[xy])?-(?:(?:'.$palette.')-\d+|'.$named.')(?:\/\d+)?$|^divide(?:-[xy])?-\['.$value.'/',
         ];
+
+        // `divide` is checked strictly: a divider with NO colour at all draws the same
+        // near-black line, and every divider in the package states its colour inline.
+        //
+        // `border` is not, and deliberately: several components hand the colour to
+        // Alpine (input/email's validity ternary, tiptap/toolbar/table's active cell),
+        // which lives in `x-bind:class` — a different attribute from `class`, so it
+        // reads as a bare width here. That is correct code, so the border rule fires
+        // only on the asymmetric shape: a light-mode border that states a DARK colour
+        // and no light one. The uncoloured borders Alpine does NOT fill in are a
+        // separate, visible-on-sight class; they were fixed by hand rather than by
+        // widening this into something that fails on working code.
+        $alwaysNeedsColour = ['border' => false, 'divide' => true];
 
         $offenders = [];
 
@@ -357,14 +379,17 @@ describe('palette', function () {
 
             foreach (elementTokens($contents) as $token) {
                 $isDark = in_array('dark', $token['variants'], true);
+                $isState = (bool) array_intersect($token['variants'], $states);
 
                 foreach ($widths as $property => $width) {
                     if (preg_match($width, $token['utility'])) {
-                        // border-0 / border-y-0 draw no line, so they need no colour
+                        // border-0 / border-y-0 draw no line, so they need no colour;
+                        // a dark-only width draws nothing in light mode, which is how
+                        // docs/example and tooltip/content are meant to work
                         if (! $isDark && ! str_ends_with($token['utility'], '-0')) {
                             $elements[$token['group']][$property]['width'] ??= $token['line'];
                         }
-                    } elseif (preg_match($colours[$property], $token['utility'])) {
+                    } elseif (! $isState && preg_match($colours[$property], $token['utility'])) {
                         $elements[$token['group']][$property][$isDark ? 'dark' : 'light'] = $token['line'];
                     }
                 }
@@ -372,7 +397,11 @@ describe('palette', function () {
 
             foreach ($elements as $element) {
                 foreach ($element as $property => $seen) {
-                    if (isset($seen['width'], $seen['dark']) && ! isset($seen['light'])) {
+                    if (! isset($seen['width']) || isset($seen['light'])) {
+                        continue;
+                    }
+
+                    if ($alwaysNeedsColour[$property] || isset($seen['dark'])) {
                         $offenders[] = $path.':'.$seen['width'].' → '.$property;
                     }
                 }
