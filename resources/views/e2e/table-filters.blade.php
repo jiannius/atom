@@ -1,5 +1,5 @@
 <atom:html title="E2E: Table Filters" :vite="[]" :dark="false" class="min-h-screen bg-white">
-<div x-data="{ filters: { status: null, type: null, category: null } }" class="p-4 space-y-8">
+<div x-data="{ filters: { status: null, type: null, category: null, brand: null } }" class="p-4 space-y-8">
     <atom:table.filters>
         <atom:table.search placeholder="Search" />
         <atom:select variant="filter" x-model="filters.status" data-filter-key="filters.status" label="Status" :options="[
@@ -17,6 +17,15 @@
         <x-slot:more>
             <atom:select variant="filter" x-model="filters.category" data-filter-key="filters.category" label="Category" :options="[
                 ['value' => 'x', 'label' => 'Category X'],
+            ]" />
+        </x-slot:more>
+    </atom:table.filters>
+
+    <atom:table.filters overflow="modal">
+        <atom:table.search placeholder="Search" />
+        <x-slot:more>
+            <atom:select variant="filter" x-model="filters.brand" data-filter-key="filters.brand" label="Brand" :options="[
+                ['value' => 'b1', 'label' => 'Brand One'],
             ]" />
         </x-slot:more>
     </atom:table.filters>

@@ -91,3 +91,33 @@ test('every filter trigger resolves an accessible name', async ({ page }) => {
 
   expect(unnamed, 'a filter combobox has no accessible name').toBe(0)
 })
+
+// overflow="modal" moves the slot into a <dialog>, which the browser paints in the top
+// layer — outside the filter bar's own stacking context, though not outside its subtree.
+// The chip wiring is window-level, so it should reach the bar behind the dialog; that is
+// the thing worth proving, because a control that quietly stopped registering would still
+// filter and look fine.
+test('the overflow modal opens, and its filters still register chips in the bar', async ({ page }) => {
+  await page.goto('/atom/e2e/table-filters')
+  await page.waitForLoadState('networkidle')
+
+  const bar = page.locator('[data-atom-table-filters]').nth(2)
+  const dialog = bar.locator('dialog')
+
+  await expect(dialog).toBeHidden()
+
+  await bar.getByRole('button', { name: /More filters/ }).click()
+  await expect(dialog).toBeVisible()
+
+  await dialog.getByRole('combobox', { name: 'Brand' }).click()
+  await page.locator('[data-atom-option]').filter({ hasText: 'Brand One' }).first().click()
+
+  const chip = bar.locator('div.inline-flex.items-center').filter({ hasText: 'Brand One' }).first()
+  await expect(chip).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+
+  // the chip outlives the modal it was set in — it is the bar's record of the filter
+  await expect(chip).toBeVisible()
+})
