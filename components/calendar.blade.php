@@ -36,7 +36,7 @@ data-atom-calendar
     <div class="flex flex-wrap items-center gap-3">
         <div class="grow flex items-center gap-3">
             <div @class([
-                'shrink-0 flex items-center divide-x dark:divide-zinc-700 border dark:border-zinc-700 rounded-md shadow-sm overflow-hidden bg-white dark:bg-zinc-800',
+                'shrink-0 flex items-center divide-x divide-zinc-200 dark:divide-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-md shadow-sm overflow-hidden bg-white dark:bg-zinc-800',
                 '[&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:gap-2 [&_button]:size-8 [&_button]:hover:bg-zinc-100 [&_button]:dark:hover:bg-zinc-700',
             ])>
                 <atom:tooltip content="Today">
@@ -78,7 +78,7 @@ data-atom-calendar
             '[&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:gap-2 [&_button]:size-8 [&_button]:hover:bg-zinc-100 [&_button]:dark:hover:bg-zinc-700',
         ])>
             @if (count($periods) > 1)
-                <div class="shrink-0 flex items-center divide-x dark:divide-zinc-700 border dark:border-zinc-700 rounded-md shadow-sm overflow-hidden bg-white dark:bg-zinc-800">
+                <div class="shrink-0 flex items-center divide-x divide-zinc-200 dark:divide-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-md shadow-sm overflow-hidden bg-white dark:bg-zinc-800">
                     @foreach ($periods as $period)
                         <atom:tooltip :content="str()->title($period)">
                             <button
@@ -97,7 +97,7 @@ data-atom-calendar
             @endif
 
             @if (count($modes) > 1)
-                <div class="shrink-0 flex items-center divide-x dark:divide-zinc-700 border dark:border-zinc-700 rounded-md shadow-sm overflow-hidden bg-white dark:bg-zinc-800">
+                <div class="shrink-0 flex items-center divide-x divide-zinc-200 dark:divide-zinc-700 border border-zinc-200 dark:border-zinc-700 rounded-md shadow-sm overflow-hidden bg-white dark:bg-zinc-800">
                     @foreach ($modes as $mode)
                         <atom:tooltip :content="str()->title($mode).' Mode'">
                             <button

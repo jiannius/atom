@@ -93,6 +93,55 @@ function utilityTokens(string $contents): array
     return $tokens;
 }
 
+/**
+ * The same tokens as utilityTokens(), but grouped by ELEMENT rather than by string.
+ *
+ * A component writes one element's classes as an `@class([...])` /
+ * `Arr::toCssClasses([...])` array whose entries are separate strings — card puts
+ * `border` on one line and `border-zinc-200` five lines below it. Grouping by
+ * string reads that as an uncoloured border; grouping by the enclosing array
+ * literal reads it as the pair it is. A class attribute outside such an array is
+ * still its own group.
+ *
+ * @return list<array{line: int, group: int|string, variants: list<string>, utility: string}>
+ */
+function elementTokens(string $contents): array
+{
+    $ranges = [];
+
+    if (preg_match_all('/(?:Arr::toCssClasses|@class|->class)\s*\(\s*\[/', $contents, $matches, PREG_OFFSET_CAPTURE)) {
+        foreach ($matches[0] as [$literal, $start]) {
+            $depth = 0;
+
+            for ($i = $start + strlen($literal) - 1; $i < strlen($contents); $i++) {
+                if ($contents[$i] === '[') {
+                    $depth++;
+                } elseif ($contents[$i] === ']') {
+                    $depth--;
+
+                    if ($depth === 0) {
+                        $ranges[] = [$start, $i];
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    $tokens = utilityTokens($contents);
+
+    foreach ($tokens as $index => $token) {
+        foreach ($ranges as [$start, $end]) {
+            if ($token['group'] > $start && $token['group'] < $end) {
+                $tokens[$index]['group'] = 'array:'.$start;
+                break;
+            }
+        }
+    }
+
+    return $tokens;
+}
+
 // Tailwind v4 defaults border-color to currentColor (v3 used gray-200), and it
 // drops an undefined colour token rather than erroring. So a `divide-y` with no
 // light-mode colour — or one naming a token the package never defines — draws
@@ -266,6 +315,72 @@ describe('palette', function () {
 
         // the tokenizer makes two passes (class attributes, then quoted strings),
         // so one token can surface twice — dedupe for a readable failure
+        expect(array_values(array_unique($offenders)))->toBe([]);
+    });
+    it('gives every light-mode border and divider a light-mode colour', function () {
+        // The divide-y check above, generalised to the whole border/divide family.
+        // A `border-t` whose only colour is `dark:border-zinc-700` draws its
+        // light-mode line in the TEXT colour — near-black on a white card. Dark mode
+        // is correct, which is why nine components shipped it, and why two consuming
+        // apps then copied the shape across ~30 sites of their own.
+        //
+        // The flagged shape is the asymmetric one: a border that EXISTS in light mode
+        // (its width utility carries no `dark:`), a dark colour, and no light colour.
+        // A width that is itself dark-only draws nothing in light mode and needs no
+        // colour — docs/example and tooltip/content both do that deliberately.
+        //
+        // "Light" means any variant that is not `dark`, not "no variant at all": the
+        // `(?<![-:\w])` shape the divide-y check uses would reject a good
+        // `md:divide-zinc-200`.
+        //
+        // Colours are matched by an allow-list, never by "border-<word>". `border`
+        // also prefixes styles (`border-dashed`) and two CSS property names that
+        // appear in inline-style strings (`border-color`, `border-radius`) — counting
+        // any of those as a colour would silently satisfy the light half.
+        $palette = 'zinc|gray|slate|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose';
+        $named = 'white|black|transparent|current|inherit|muted|muted-foreground';
+
+        $widths = [
+            'border' => '/^border(?:-[trblxyse])?(?:-\d+)?$/',
+            'divide' => '/^divide-[xy](?:-\d+)?$/',
+        ];
+
+        $colours = [
+            'border' => '/^border(?:-[trblxyse])?-(?:(?:'.$palette.')-\d+|'.$named.')(?:\/\d+)?$|^border(?:-[trblxyse])?-\[/',
+            'divide' => '/^divide(?:-[xy])?-(?:(?:'.$palette.')-\d+|'.$named.')(?:\/\d+)?$|^divide(?:-[xy])?-\[/',
+        ];
+
+        $offenders = [];
+
+        foreach (classSources() as $path => $contents) {
+            $elements = [];
+
+            foreach (elementTokens($contents) as $token) {
+                $isDark = in_array('dark', $token['variants'], true);
+
+                foreach ($widths as $property => $width) {
+                    if (preg_match($width, $token['utility'])) {
+                        // border-0 / border-y-0 draw no line, so they need no colour
+                        if (! $isDark && ! str_ends_with($token['utility'], '-0')) {
+                            $elements[$token['group']][$property]['width'] ??= $token['line'];
+                        }
+                    } elseif (preg_match($colours[$property], $token['utility'])) {
+                        $elements[$token['group']][$property][$isDark ? 'dark' : 'light'] = $token['line'];
+                    }
+                }
+            }
+
+            foreach ($elements as $element) {
+                foreach ($element as $property => $seen) {
+                    if (isset($seen['width'], $seen['dark']) && ! isset($seen['light'])) {
+                        $offenders[] = $path.':'.$seen['width'].' → '.$property;
+                    }
+                }
+            }
+        }
+
+        // the tokenizer makes two passes (class attributes, then quoted strings),
+        // so one element can surface twice — dedupe for a readable failure
         expect(array_values(array_unique($offenders)))->toBe([]);
     });
 });

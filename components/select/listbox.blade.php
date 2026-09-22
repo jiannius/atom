@@ -194,7 +194,7 @@ data-atom-select-listbox
                 clearTimeout(timer)
                 timer = setTimeout(() => fetch(), 300)
             }"
-            class="px-3 pt-2 pb-3 flex items-center gap-2 border-b dark:border-zinc-700">
+            class="px-3 pt-2 pb-3 flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-700">
                 <atom:icon.search class="text-zinc-400 shrink-0"/>
 
                 <input
@@ -258,7 +258,7 @@ data-atom-select-listbox
             </div>
 
             @if (isset($actions) && $actions->isNotEmpty())
-                <div x-show="options.length || !loading" class="border-t mt-1 pt-1 dark:border-zinc-700">
+                <div x-show="options.length || !loading" class="border-t border-zinc-200 mt-1 pt-1 dark:border-zinc-700">
                     {{ $actions }}
                 </div>
             @endif
