@@ -176,10 +176,13 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                     </template>
                 @endif
 
-                <div class="z-1 absolute top-0 right-0 h-10 flex items-center justify-center">
+                <div class="z-1 absolute top-0 right-0 h-10 flex items-center justify-center" data-atom-select-affix>
                     @if ($multiple !== 'list' && $clearable)
                         <template x-if="isEmpty" hidden>
-                            <div class="pointer-events-none py-3 pr-2 last:pr-3">
+                            {{-- flex, like the clear button this alternates with: a
+                                 block wrapper baselines the glyph, so the caret and
+                                 the ✕ would sit at different heights --}}
+                            <div class="pointer-events-none flex items-center justify-center py-3 pr-2 last:pr-3">
                                 <atom:icon.dropdown class="text-muted dark:text-muted-foreground" />
                             </div>
                         </template>

@@ -58,9 +58,7 @@ class="link-menu bg-white dark:bg-zinc-700 rounded-lg shadow-sm border border-zi
     <template x-if="link && !isEditing">
         <div class="py-2 px-3 flex items-center gap-4 cursor-pointer max-w-xl">
             <div class="grow flex items-center gap-2">
-                <div class="shrink-0 text-zinc-600 dark:text-zinc-300">
-                    <atom:icon.link />
-                </div>
+                <atom:icon.link class="shrink-0 text-zinc-600 dark:text-zinc-300" />
                 <div class="grow grid">
                     <div x-text="link.href" class="font-medium truncate text-blue-500"></div>
                 </div>

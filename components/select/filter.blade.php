@@ -98,9 +98,11 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                 {{ t($label) }}
             </div>
 
-            <div class="shrink-0">
-                <atom:icon.dropdown />
-            </div>
+            {{-- no wrapper: a block div around a bare icon is a line box, so the icon
+                 sits on ITS baseline with the descender gap underneath, ~2.5px above
+                 the centre the button's items-center is holding everything else at.
+                 The icon wrapper is already inline-flex shrink-0. --}}
+            <atom:icon.dropdown />
 
             @if ($multiple === true)
                 <template x-if="!isEmpty" hidden>
