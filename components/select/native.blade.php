@@ -12,11 +12,24 @@
     'size' => null,
     'required' => null,
     'disabled' => null,
+    'tableFilter' => false,      // register with the table.filters bar as a chip
+    'tableFilterLabel' => null,  // the chip's name; the select wrapper forwards its label
 ])
 
 @php
 $clearable = $clearable && !$disabled;
 $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value();
+
+// See the note in select/listbox.blade.php. This variant holds raw values and
+// keeps its labels in the <option> elements, so the chip's display is read back
+// out of the DOM rather than from a selected-option object.
+$filterKey = $tableFilter
+    ? ($attributes->wire('model')->value() ?: $attributes->get('data-filter-key'))
+    : null;
+
+$filterLabel = $filterKey
+    ? t($tableFilterLabel ?: (string) str($filterKey)->afterLast('.')->headline())
+    : null;
 
 $classes = Arr::toCssClasses([
     'w-full rounded-lg shadow-xs flex items-center gap-1 flex-wrap',
@@ -45,8 +58,35 @@ $merges = [
 x-data="{
     value: @js($multiple ? [] : null),
     multiple: @js($multiple),
+@if ($filterKey)
+
+    /** The chip's text: the chosen option's label, not the value behind it. */
+    tableFilterDisplay () {
+        const chosen = (this.multiple ? (this.value || []) : [this.value])
+            .filter(val => val !== null && val !== undefined && val !== '')
+
+        const options = Array.from(this.$root.querySelectorAll('option'))
+        const labels = chosen
+            .map(val => options.find(option => option.value == val)?.innerText.trim())
+            .filter(Boolean)
+
+        return labels.length > 1 ? labels.length + ' {{ t('selected') }}' : (labels[0] ?? null)
+    },
+@endif
 }"
 x-modelable="value"
+@if ($filterKey)
+x-init="
+    const emit = () => $dispatch('table-filter:set', {
+        key: @js($filterKey),
+        label: @js($filterLabel),
+        display: tableFilterDisplay(),
+    });
+    $nextTick(emit);
+    $watch('value', () => { $nextTick(emit); $dispatch('table-filter:changed') });
+"
+x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (value = multiple ? [] : null)"
+@endif
 x-on:input="() => {
     if (multiple) {
         value.push($event.target.value)

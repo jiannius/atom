@@ -10,10 +10,25 @@
     'searchable' => false,
     'placeholder' => 'Please select...',
     'ariaLabelledby' => null,
+    'tableFilter' => false,      // register with the table.filters bar as a chip
+    'tableFilterLabel' => null,  // the chip's name; the select wrapper forwards its label
 ])
 
 @php
 $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value();
+
+// A form field filters a table like any bar control — it just has to say so,
+// because a form is also where a select that filters nothing lives. The bar
+// variants (select.filter, date-picker.range) register on the strength of a
+// wire:model alone; here the flag is the opt-in and the model is the chip's key.
+$filterKey = $tableFilter
+    ? ($attributes->wire('model')->value() ?: $attributes->get('data-filter-key'))
+    : null;
+
+// Without a name the chip renders as "null: Red", so fall back to the field.
+$filterLabel = $filterKey
+    ? t($tableFilterLabel ?: (string) str($filterKey)->afterLast('.')->headline())
+    : null;
 
 $classes = Arr::toCssClasses([
     'min-h-10 appearance-none w-full rounded-lg shadow-xs outline-offset-1',
@@ -58,6 +73,20 @@ x-on:keydown.home.prevent.stop="home()"
 x-on:keydown.end.prevent.stop="end()"
 x-on:keydown.escape.stop=""
 data-atom-select-listbox
+@if ($filterKey)
+x-init="
+    const emit = () => $dispatch('table-filter:set', {
+        key: @js($filterKey),
+        label: @js($filterLabel),
+        display: isEmpty ? null : (@js((bool) $multiple)
+            ? (selectedOptions.length > 1 ? selectedOptions.length + ' {{ t('selected') }}' : (selectedOptions[0]?.label ?? null))
+            : (selectedOptions?.label ?? null)),
+    });
+    $nextTick(emit);
+    $watch('selectValue', () => { $nextTick(emit); $dispatch('table-filter:changed') });
+"
+x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clear()"
+@endif
 @if ($disabled) aria-disabled="true" @endif
 @class(['group/select w-full', 'pointer-events-none' => $disabled])
 {{ $attributes->except('class', 'aria-labelledby') }}>
