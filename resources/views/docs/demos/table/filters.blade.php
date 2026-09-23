@@ -32,9 +32,10 @@
         <x-slot:more>
             {{-- the modal lays the slot out as a form, one field per row — so write
                  fields, not bar controls: a label prop turns any atom input into a
-                 labelled field. A control that isn't a filter variant (the listbox
-                 below) still filters, it just registers no chip in the bar. --}}
-            <atom:select label="Category" variant="listbox" wire:model="filters.category" :options="[
+                 labelled field. Add table-filter and the field registers a chip in
+                 the bar too, named by its label; without it the field still filters,
+                 it just does so invisibly. --}}
+            <atom:select label="Category" variant="listbox" table-filter wire:model="filters.category" :options="[
                 ['value' => 'x', 'label' => 'Category X'],
                 ['value' => 'y', 'label' => 'Category Y'],
             ]" />

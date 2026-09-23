@@ -23,7 +23,7 @@ test('selecting a filter shows a chip; clearing it removes the chip', async ({ p
   // This proves: wire:model → $filterKey set → $watch('selectValue') fires →
   // $dispatch('table-filter:set') dispatched → bar's x-on:table-filter:set.window
   // handler called → chip auto-register worked end-to-end.
-  const chip = bar.locator('div.inline-flex.items-center').filter({ hasText: 'Published' }).first()
+  const chip = bar.locator('[data-atom-table-filter-chip]').filter({ hasText: 'Published' }).first()
   await expect(chip).toBeVisible()
   await expect(chip).toContainText('Published')
 
@@ -31,7 +31,7 @@ test('selecting a filter shows a chip; clearing it removes the chip', async ({ p
   await chip.getByRole('button').click()
 
   // chip is gone
-  await expect(bar.locator('div.inline-flex.items-center').filter({ hasText: 'Published' })).toHaveCount(0)
+  await expect(bar.locator('[data-atom-table-filter-chip]').filter({ hasText: 'Published' })).toHaveCount(0)
 })
 
 test('filter options render eagerly, before any dropdown is opened', async ({ page }) => {
@@ -64,7 +64,7 @@ test('Clear all removes every chip', async ({ page }) => {
 
   // clicking it removes all chips
   await clearAll.click()
-  await expect(bar.locator('div.inline-flex.items-center').filter({ hasText: 'Published' })).toHaveCount(0)
+  await expect(bar.locator('[data-atom-table-filter-chip]').filter({ hasText: 'Published' })).toHaveCount(0)
   await expect(clearAll).toHaveCount(0)
 })
 
@@ -112,7 +112,7 @@ test('the overflow modal opens, and its filters still register chips in the bar'
   await dialog.getByRole('combobox', { name: 'Brand' }).click()
   await page.locator('[data-atom-option]').filter({ hasText: 'Brand One' }).first().click()
 
-  const chip = bar.locator('div.inline-flex.items-center').filter({ hasText: 'Brand One' }).first()
+  const chip = bar.locator('[data-atom-table-filter-chip]').filter({ hasText: 'Brand One' }).first()
   await expect(chip).toBeVisible()
 
   await page.keyboard.press('Escape')
@@ -120,4 +120,63 @@ test('the overflow modal opens, and its filters still register chips in the bar'
 
   // the chip outlives the modal it was set in — it is the bar's record of the filter
   await expect(chip).toBeVisible()
+})
+
+// The bar variants register themselves off a wire:model; a form control has to be
+// told to, with `table-filter`. This is the pattern a host writes in the modal:
+// a normal labelled field that still lands in the bar's chip row.
+test('a table-filter listbox in the modal chips, and the chip clears it', async ({ page }) => {
+  await page.goto('/atom/e2e/table-filters')
+  await page.waitForLoadState('networkidle')
+
+  const bar = page.locator('[data-atom-table-filters]').nth(2)
+  const dialog = bar.locator('dialog')
+
+  await bar.getByRole('button', { name: /More filters/ }).click()
+  await expect(dialog).toBeVisible()
+
+  await dialog.getByRole('combobox', { name: 'Colour' }).click()
+  await page.locator('[data-atom-option]').filter({ hasText: 'Blue' }).first().click()
+
+  // the chip carries the FIELD's label, not the option's
+  const chip = bar.locator('[data-atom-table-filter-chip]').filter({ hasText: 'Blue' }).first()
+  await expect(chip).toBeVisible()
+  await expect(chip).toContainText('Colour')
+
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(chip).toBeVisible()
+
+  await chip.getByRole('button').click()
+  await expect(bar.locator('[data-atom-table-filter-chip]').filter({ hasText: 'Blue' })).toHaveCount(0)
+
+  // and the control behind it is empty again, not just the chip gone
+  await bar.getByRole('button', { name: /More filters/ }).click()
+  await expect(dialog.getByRole('combobox', { name: 'Colour' })).not.toContainText('Blue')
+})
+
+test('a table-filter native select chips its option label, not its value', async ({ page }) => {
+  await page.goto('/atom/e2e/table-filters')
+  await page.waitForLoadState('networkidle')
+
+  const bar = page.locator('[data-atom-table-filters]').nth(2)
+  const dialog = bar.locator('dialog')
+
+  await bar.getByRole('button', { name: /More filters/ }).click()
+  await dialog.locator('select').selectOption('l')
+
+  // the model holds 'l'; the chip has to read "Large" back out of the option
+  const chip = bar.locator('[data-atom-table-filter-chip]').filter({ hasText: 'Size' }).first()
+  await expect(chip).toContainText('Large')
+
+  // the chip lives in the bar, so it is only reachable once the modal is closed —
+  // an open dialog holds the top layer and swallows the click
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+
+  await chip.getByRole('button').click()
+  await expect(bar.locator('[data-atom-table-filter-chip]').filter({ hasText: 'Size' })).toHaveCount(0)
+
+  await bar.getByRole('button', { name: /More filters/ }).click()
+  await expect(dialog.locator('select')).toHaveValue('')
 })
