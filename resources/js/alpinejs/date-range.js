@@ -84,7 +84,19 @@ export default (config) => {
             this.setCalendarRange()
         },
 
+        destroy () {
+            this.destroyCalendar()
+        },
+
+        destroyCalendar () {
+            this.pikaday.forEach(p => p?.destroy())
+            this.pikaday = []
+            this.calendarElements.forEach(el => el.innerHTML = '')
+        },
+
         setCalendar () {
+            this.destroyCalendar()
+
             this.pikaday[0] = new Pikaday({ keyboardInput: false, onSelect: (value) => {
                 let dj = dayjs(value)
                 this.startValue = this.dateObjects[0]
