@@ -127,3 +127,48 @@ it('clamps a hostile sort direction on the raw: branch to asc', function () {
     expect($log)->toContain('order by id asc')
         ->and($log)->not->toContain('DROP TABLE');
 });
+
+/**
+ * Review finding (medium): the gate above only checked is_string($sortColumn)
+ * on the resolved value, so an array-valued column — or a deeper path like
+ * "_table.sort.column.0" that turns the leaf into an array — sailed straight
+ * through updatingAtomComponent() and then hit str($sortColumn) in toTable(),
+ * an unauthenticated 500 rather than a 403 on any sortable table.
+ */
+
+it('refuses an array value for the sort column, not just a bad raw: string', function () {
+    Livewire::test(TableFixture::class)
+        ->set('_table.sort.column', ['raw:(SELECT 1)'])
+        ->assertForbidden();
+});
+
+it('refuses a deeper write under _table.sort.column', function () {
+    Livewire::test(TableFixture::class)
+        ->set('_table.sort.column.0', 'raw:(SELECT 1)')
+        ->assertForbidden();
+});
+
+it('refuses a wholesale _table.sort update carrying an unsigned raw column', function () {
+    Livewire::test(TableFixture::class)
+        ->set('_table.sort', ['column' => 'raw:(SELECT 1)', 'direction' => 'asc'])
+        ->assertForbidden();
+});
+
+it('refuses a wholesale _table update carrying an unsigned raw column', function () {
+    Livewire::test(TableFixture::class)
+        ->set('_table', [
+            'sort' => ['column' => 'raw:(SELECT 1)', 'direction' => 'asc'],
+            'checkboxes' => [],
+            'select_all' => false,
+            'max_rows' => 100,
+            'show_trashed' => false,
+            'show_selected' => false,
+        ])
+        ->assertForbidden();
+});
+
+it('refuses a non-string sort direction', function () {
+    Livewire::test(TableFixture::class)
+        ->set('_table.sort.direction', ['asc'])
+        ->assertForbidden();
+});

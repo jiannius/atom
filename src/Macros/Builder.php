@@ -53,8 +53,18 @@ class Builder
             // current() returns false (not null) when no component is on the stack,
             // e.g. toTable() called from a job/console/test — guard so ?-> works.
             $config = (app('livewire')->current() ?: null)?->_table;
+
+            // Defence in depth: updatingAtomComponent() refuses a client
+            // update that would leave these non-string, but $_table is a
+            // plain public property PHP code can still set directly — a
+            // non-string column means "no sort" rather than a str() crash,
+            // and a non-string direction just falls back to 'asc'.
             $sortColumn = data_get($config, 'sort.column');
-            $sortDirection = data_get($config, 'sort.direction') ?? 'asc';
+            $sortColumn = is_string($sortColumn) ? $sortColumn : null;
+
+            $sortDirection = data_get($config, 'sort.direction');
+            $sortDirection = is_string($sortDirection) ? $sortDirection : 'asc';
+
             $showTrashed = data_get($config, 'show_trashed');
             $maxRows ??= data_get($config, 'max_rows') ?? 100;
 
