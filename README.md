@@ -283,7 +283,7 @@ reason; the prefix *is* the protection.
 | | Invoked by | Breaks |
 | --- | --- | --- |
 | `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
-| `mountAtomComponent`, `updatedAtomComponent` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear |
+| `mountAtomComponent`, `updatedAtomComponent`, `updatingAtomComponent` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear, the `raw:` table-sort signature gate |
 | `resetTableCheckboxes`, `selectAllTableMatching`, `toggleTableShowSelected`, `clearTableSelectAll` | atom's markup, by name | the checked-bar buttons no-op |
 | `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed` | each other, and your own `items()` | bulk actions target the wrong rows |
 | `$paginators`, `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination` | Livewire's `WithPagination` | pagination |

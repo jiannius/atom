@@ -3,6 +3,7 @@
 namespace Jiannius\Atom\Macros;
 
 use Illuminate\Support\Facades\DB;
+use Jiannius\Atom\Services\TableSort;
 
 class Builder
 {
@@ -63,7 +64,19 @@ class Builder
                 $this->reorder();
 
                 if (str($sortColumn)->startsWith('raw:')) {
-                    $this->orderByRaw(implode(' ', array_filter([str($sortColumn)->replace('raw:', ''), $sortDirection])));
+                    // A signed value came from the client — verify() strips the
+                    // signature; an unsigned one can only have come from PHP
+                    // (AtomComponent::updatingAtomComponent() refuses the
+                    // client any other way), so it stays trusted as-is.
+                    $expression = TableSort::expression($sortColumn);
+
+                    // The direction used to be spliced into the raw SQL
+                    // unvalidated too — clamp it here regardless of source.
+                    $direction = in_array($sortDirection, ['asc', 'desc'], true) ? $sortDirection : 'asc';
+
+                    if ($expression !== null) {
+                        $this->orderByRaw($expression.' '.$direction);
+                    }
                 }
                 else {
                     $this->orderBy($sortColumn, $sortDirection);

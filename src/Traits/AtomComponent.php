@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom\Traits;
 
+use Jiannius\Atom\Services\TableSort;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
@@ -61,6 +62,30 @@ trait AtomComponent
         // checkbox selection would point at rows no longer shown. Clear it.
         if ($property === '_table.show_trashed') {
             $this->resetTableCheckboxes();
+        }
+    }
+
+    /**
+     * Guard the atom component's reserved state before a client-driven update
+     * lands (Livewire calls this once per dotted path a $wire.set() targets).
+     *
+     * "_table.sort.column" is a plain public property, so a client can set it
+     * to any "raw:" value it likes and toTable() would hand that straight to
+     * orderByRaw() — issue #54. Refuse any update that would leave it holding
+     * a "raw:" value with no valid signature; a signed one (produced by
+     * components/table/column.blade.php) is let through unchanged.
+     */
+    public function updatingAtomComponent($name, $value)
+    {
+        $sortColumn = match ($name) {
+            '_table.sort.column' => $value,
+            '_table.sort' => data_get($value, 'column'),
+            '_table' => data_get($value, 'sort.column'),
+            default => null,
+        };
+
+        if (is_string($sortColumn) && TableSort::isUnsafeFromClient($sortColumn)) {
+            abort(403, 'Invalid table sort.');
         }
     }
 
