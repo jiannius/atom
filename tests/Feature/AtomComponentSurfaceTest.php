@@ -76,6 +76,7 @@ it('occupies only the names it documents', function () {
         'toast',
         'toggleTableShowSelected',
         'updatedAtomComponent',
+        'updatingAtomComponent',
         'verifyRecaptcha',
         'wirekey',
     ]);

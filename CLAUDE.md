@@ -62,6 +62,10 @@ Consuming Livewire components mix this in to get `WithPagination + WithFileUploa
 
 Helper methods on the trait (`modal()`, `toast()`, `alert()`, `confirm()`, `action()`) all delegate to `app('atom')`. `action()` is `protected` — see "Actions" below.
 
+### Signed `raw:` table sort
+
+`$_table.sort.column` is a plain public property (no `#[Locked]`), so a client can `$wire.set()` it to anything. A plain column name is safe either way — `toTable()`'s `orderBy()` path lets Laravel quote it — but a `raw:` value (declared as `<atom:table.column sort="raw:some_sql_expr">`) goes straight into `orderByRaw()`, so a tampered one is SQL injection (issue #54: boolean-blind exfiltration via row order). `components/table/column.blade.php` signs a `raw:` value before it ever reaches the browser — `Services\TableSort::sign($expression)` HMACs it (against `config('app.key')`) into `raw:<64-hex-hmac>:<expression>` — and that signed string is what the Alpine click handler round-trips through `$wire.set('_table.sort.column', ...)`. `AtomComponent::updatingAtomComponent()` is the gate: it inspects `_table.sort.column`, `_table.sort`, and `_table` wholesale (Livewire's `updating` hook fires once per dotted path a `$wire.set()` targets, so all three shapes need checking) and refuses (403) any client update that would leave an unsigned or tampered `raw:` value there. The gate only runs for a client-originated update — a host mounting `_table['sort']['column'] = 'raw:...'` directly in PHP never touches Livewire's `updating` hook, so an *unsigned* `raw:` value reaching `toTable()` can only have come from PHP and stays trusted; `TableSort::expression()` verifies a signed one and strips the signature before it reaches `orderByRaw()`, returning `null` (no sort applied) on a bad signature. The sort direction on that branch is also clamped to `asc`/`desc` there (anything else defaults to `asc`) since it used to be spliced into the raw SQL unvalidated too.
+
 ### Editor content lifecycle (Tiptap + Livewire uploads)
 
 A subtle, two-phase flow worth understanding before touching the editor:

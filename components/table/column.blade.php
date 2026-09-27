@@ -5,6 +5,14 @@
 ])
 
 @php
+// A "raw:" sort has to reach the client signed, or a tampered value could
+// splice arbitrary SQL into toTable()'s orderByRaw() — issue #54. Sign it
+// here so the value the Alpine handler round-trips through $wire.set() is
+// the one AtomComponent::updatingAtomComponent() and toTable() will accept.
+$sortValue = $sort && str($sort)->startsWith('raw:')
+    ? \Jiannius\Atom\Services\TableSort::sign(str($sort)->after('raw:')->toString())
+    : $sort;
+
 $classes = Arr::toCssClasses([
     'py-1.5 px-3 inline-flex items-center gap-2',
     'whitespace-nowrap uppercase text-sm text-zinc-500 font-medium',
@@ -35,7 +43,7 @@ $classes = Arr::toCssClasses([
 ]) }}>
     <div
     @if ($sort)
-        x-data="{ sort: @js($sort) }"
+        x-data="{ sort: @js($sortValue) }"
         x-on:click="() => {
             if ($wire._table.sort.column !== sort) {
                 $wire.set('_table.sort.column', sort)
@@ -94,8 +102,8 @@ $classes = Arr::toCssClasses([
 
         @if ($sort)
             <div x-show="$wire._table.sort.column" class="shrink-0 flex items-center justify-center text-zinc-500 size-3">
-                <atom:icon.arrow-down class="size-3" x-show="$wire._table.sort.column === '{{ $sort }}' && $wire._table.sort.direction === 'asc'"/>
-                <atom:icon.arrow-up class="size-3" x-show="$wire._table.sort.column === '{{ $sort }}' && $wire._table.sort.direction === 'desc'"/>
+                <atom:icon.arrow-down class="size-3" x-show="$wire._table.sort.column === '{{ $sortValue }}' && $wire._table.sort.direction === 'asc'"/>
+                <atom:icon.arrow-up class="size-3" x-show="$wire._table.sort.column === '{{ $sortValue }}' && $wire._table.sort.direction === 'desc'"/>
             </div>
         @endif
     </div>
