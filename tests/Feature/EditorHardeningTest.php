@@ -467,7 +467,7 @@ describe('crash guard: a corrupt stored document', function () {
         expect($html)->toBe('');
         \Illuminate\Support\Facades\Exceptions::assertReportedCount(1);
     })->with([
-        'mention id as an array' => [['type' => 'paragraph', 'content' => [['type' => 'mention', 'attrs' => ['id' => ['x'], 'label' => 'A']]]]],
+        'heading level as an object' => [['type' => 'heading', 'attrs' => ['level' => ['a' => 1]], 'content' => [['type' => 'text', 'text' => 'h']]]],
         'table colwidth as a string' => [['type' => 'table', 'content' => [['type' => 'tableRow', 'content' => [['type' => 'tableCell', 'attrs' => ['colwidth' => 'x'], 'content' => [['type' => 'paragraph']]]]]]]],
     ]);
 
@@ -481,9 +481,10 @@ describe('crash guard: a corrupt stored document', function () {
     it('the <atom:tiptap.content> component survives a corrupt document', function () {
         \Illuminate\Support\Facades\Exceptions::fake();
 
-        $json = json_encode(['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'mention', 'attrs' => ['id' => ['x']]]]]]]);
+        $json = json_encode(['type' => 'doc', 'content' => [['type' => 'heading', 'attrs' => ['level' => ['a' => 1]], 'content' => [['type' => 'text', 'text' => 'h']]]]]);
 
         expect(renderBlade('<atom:tiptap.content :content="$c" />', ['c' => $json]))->toContain('editor-content');
+        \Illuminate\Support\Facades\Exceptions::assertReportedCount(1);
     });
 });
 
