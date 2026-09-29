@@ -258,12 +258,13 @@ trait AtomComponent
     }
 
     /**
-     * Generate a wire key
+     * Generate a wire key from every argument as given — a falsy one (0, '0',
+     * false, '', null) still counts, so a key built from index 0 changes with it.
      */
     public function wirekey(...$args)
     {
         return $args
-            ? md5(json_encode(array_filter($args)))
+            ? md5(json_encode($args))
             : md5((string) str()->ulid());
     }
 
