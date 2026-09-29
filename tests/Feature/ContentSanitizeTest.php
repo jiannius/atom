@@ -436,6 +436,8 @@ dataset('repairable documents', [
     'heading with no attrs' => ['{"type":"doc","content":[{"type":"heading","content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
     'heading with no level' => ['{"type":"doc","content":[{"type":"heading","attrs":{"textAlign":"left"},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
     'mention label as an array' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"before "},{"type":"mention","attrs":{"id":"1","label":["a"]}}]}]}', 'before '],
+    'mention id as an array, no label' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"id":["x"]}}]}]}', '<p>'],
+    'mention id as an object, no label' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"id":{"a":1}}}]}]}', '<p>'],
     'table colwidth as a string' => ['{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colwidth":"x"},"content":[{"type":"paragraph","content":[{"type":"text","text":"cell"}]}]}]}]}]}', 'cell'],
     'table colwidth as an object' => ['{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colwidth":{"a":1}},"content":[{"type":"paragraph","content":[{"type":"text","text":"cell"}]}]}]}]}]}', 'cell'],
     'attrs that is a string' => ['{"type":"doc","content":[{"type":"paragraph","attrs":"x","content":[{"type":"text","text":"kept"}]}]}', '<p>kept</p>'],
@@ -909,6 +911,36 @@ describe('Content: <pre> input the minifier is quadratic or fatal on', function 
         expect($out)->toContain('before')->toContain('<pre>');
         expect($seconds)->toBeLessThan(0.3);
         Log::shouldNotHaveReceived('warning');
+    });
+
+    /**
+     * Minify needs the literal `</pre>` to close a block, so anything else is an unclosed
+     * `<pre>` to it. Sized so an unguarded run costs a few seconds (about 2.5 s here; the
+     * reviewer's 131 KB shape took 10 s).
+     */
+    it('treats a block whose end is not exactly </pre> as unclosed, and renders quickly', function (string $html) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        Log::spy();
+
+        [$out, $seconds] = measured(fn () => Content::render(uniqueHtml($html)));
+        [$clean, $cleanSeconds] = measured(fn () => Content::sanitize($html, 300000, 100000));
+
+        expect($out)->toContain('<pre>')->toContain('x');
+        expect($clean)->toContain('x');
+        expect($seconds)->toBeLessThan(0.3);
+        expect($cleanSeconds)->toBeLessThan(0.3);
+        Log::shouldNotHaveReceived('warning');
+    })->with([
+        'a closing tag with no >' => [str_repeat('<pre>x</pre ', 4000)],
+        'a closing tag that is another element' => [str_repeat('<pre>x</prex>', 4000)],
+        'a closing tag with a space before the >' => [str_repeat('<pre>x</pre >', 4000)],
+        'a closing tag cut off by the next tag' => [str_repeat('<pre>x</pre<p>', 4000)],
+    ]);
+
+    it('still takes </PRE> in any case as the end of a block', function () {
+        $html = str_repeat('<PRE>x</PRE>', 200);
+
+        expect(substr_count(Content::render($html), '<pre>'))->toBe(200);
     });
 
     it('lets through a document with a few unclosed pre tags and a real code block', function () {

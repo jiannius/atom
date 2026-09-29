@@ -766,7 +766,7 @@ Two things it does not do:
 
 `Content::render()` (and so `<atom:tiptap.content>`) reads stored content, and it now renders **empty, and logs a warning**, for stored content that is over its limits, has a `<pre>` block or count of `<pre>` tags the parser can't survive (see above; long whitespace runs and unclosed `<pre>` tags are normalised, not refused), carries the minifier's placeholder token (`MINIFYHTML`), or is not a Tiptap document. Nothing is reported through `report()`. The warning (`Log::warning`, once per value per process) carries the reason, the size and the limits, so check your log after upgrading if a page that used to show content is blank.
 
-The defaults are 2 MB and 20,000 tags (HTML tags, or nodes and marks of a JSON document; worst case about 64 MB of memory). Raise or lower them for your app in `config/atom.php`:
+The defaults are 2 MB and 20,000 tags (HTML tags, or nodes and marks of a JSON document; worst case about 64 MB of memory for HTML and up to about 82 MB for a JSON document). Raise or lower them for your app in `config/atom.php`:
 
 ```php
 return [
@@ -776,6 +776,8 @@ return [
     ],
 ];
 ```
+
+Memory grows with the tag limit (about 3 KB per tag or node), so raising `render_max_tags` needs a matching increase in PHP's `memory_limit`: at the defaults a page that renders one such document can peak near 64 MB (HTML) or 82 MB (JSON) above baseline, and doubling the limit roughly doubles that.
 
 A long legitimate document (a 1,000-row price table, a 3,000-paragraph article) is within the defaults. A value that is not a Tiptap document at all (one only a hostile client can send) renders empty without a warning.
 

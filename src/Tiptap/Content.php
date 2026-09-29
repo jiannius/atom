@@ -28,7 +28,7 @@ class Content
 
     /**
      * Default limits for render(), which reads stored content, so a long
-     * document is legitimate: 2 MB and 20000 tags (about 70 MB worst case).
+     * document is legitimate: 2 MB and 20000 tags (worst case about 64 MB for HTML, up to about 82 MB for a JSON document).
      * A host raises or lowers them with `atom.editor.render_max_bytes` and
      * `atom.editor.render_max_tags`.
      */
@@ -124,7 +124,7 @@ class Content
      * (`atom.editor.render_max_bytes` / `render_max_tags`, default 2 MB and
      * 20000 tags), a `<pre>` or whitespace run past what the parser survives,
      * carrying tiptap-php's reserved placeholder, or not a valid document.
-     * A refusal is logged as a warning (once per value per request) so a host
+     * A refusal is logged as a warning (once per value per process) so a host
      * can notice blanked content, except an invalid document, which only a
      * hostile client can store. Only an unexpected failure is reported.
      */
@@ -429,7 +429,7 @@ class Content
      * Repair the attributes tiptap-php throws on, instead of refusing the
      * document (the rest of it is real content): an `attrs` that is not a keyed
      * array is dropped, a table `colwidth` that is not a list of scalars is
-     * dropped, a mention `label` that is an array is dropped, and a heading
+     * dropped, a mention `label` or `id` that is an array is dropped, and a heading
      * with no usable `level` becomes level 1, which renders. Other odd values
      * are left for the renderer to drop.
      *
@@ -447,8 +447,10 @@ class Content
             unset($attributes['colwidth']);
         }
 
-        if (is_array($attributes['label'] ?? null)) {
-            unset($attributes['label']);
+        foreach (['label', 'id'] as $key) {
+            if (is_array($attributes[$key] ?? null)) {
+                unset($attributes[$key]);
+            }
         }
 
         if ($node['type'] === 'heading' && ! is_scalar($attributes['level'] ?? null)) {
@@ -482,7 +484,7 @@ class Content
     /**
      * Make the `<pre>` blocks in this HTML safe for Minify's `<pre>` regex, or
      * say why they can't be. A block is measured from `<pre` to the first
-     * `</pre` after it, the way the regex takes it.
+     * `</pre>` after it, the way the regex takes it.
      *
      * - A block over MAX_PRE_LENGTH is refused (the regex fails on it).
      * - Many blocks in a long input are refused (MAX_PRE_COST): every
@@ -511,7 +513,7 @@ class Content
         $unclosedFrom = null;
 
         while (($start = strpos($lower, '<pre', $offset)) !== false) {
-            $end = strpos($lower, '</pre', $start);
+            $end = strpos($lower, '</pre>', $start);
 
             if ($end === false) {
                 $unclosedFrom = $start;
@@ -524,7 +526,7 @@ class Content
             }
 
             $blocks++;
-            $offset = $end + 5;
+            $offset = $end + 6;
         }
 
         if ($unclosedFrom !== null) {
