@@ -16,7 +16,14 @@ it('throws from php when the action does not exist', function () {
 })->throws(Exception::class);
 
 it('falls back to the packaged action when the host app has none', function () {
-    expect(app('atom')->action('get-options', ['name' => 'dialcodes']))->toBeArray();
+    // No fixture may define App\Actions\GetOptions in this process, or this is not a
+    // fallback at all — the e2e app aliases one in, and must not leak it here.
+    expect(class_exists('App\Actions\GetOptions'))->toBeFalse();
+
+    $resolve = new ReflectionMethod(app('atom'), 'resolveAction');
+
+    expect($resolve->invoke(app('atom'), 'get-options'))->toBe(GetOptions::class)
+        ->and(app('atom')->action('get-options', ['name' => 'dialcodes']))->toBeArray();
 });
 
 it('lets an action opt in by extending one that already did', function () {

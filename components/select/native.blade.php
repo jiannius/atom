@@ -151,16 +151,16 @@ data-atom-select-native>
                 @foreach ($options as $option)
                     @if (is_enum($option))
                         <atom:select.option :value="data_get($option->option(), 'value')" class="py-3">
-                            {!! data_get($option->option(), 'label') !!}
+                            {{ data_get($option->option(), 'label') }}
                         </atom:select.option>
                     @elseif (data_get($option, 'group'))
                         <atom:select.group :label="data_get($option, 'group')">
                             @foreach (data_get($option, 'options') as $item)
-                                <atom:select.option :value="data_get($item, 'value')">{!! data_get($item, 'label') !!}</atom:select.option>
+                                <atom:select.option :value="data_get($item, 'value')">{{ data_get($item, 'label') }}</atom:select.option>
                             @endforeach
                         </atom:select.group>
                     @else
-                        <atom:select.option :value="data_get($option, 'value')">{!! data_get($option, 'label') !!}</atom:select.option>
+                        <atom:select.option :value="data_get($option, 'value')">{{ data_get($option, 'label') }}</atom:select.option>
                     @endif
                 @endforeach
             @elseif (is_string($options))
@@ -168,11 +168,11 @@ data-atom-select-native>
                     @if (data_get($option, 'group'))
                         <atom:select.group :label="data_get($option, 'group')">
                             @foreach (data_get($option, 'options') as $item)
-                                <atom:select.option :value="data_get($item, 'value')">{!! data_get($item, 'label') !!}</atom:select.option>
+                                <atom:select.option :value="data_get($item, 'value')">{{ data_get($item, 'label') }}</atom:select.option>
                             @endforeach
                         </atom:select.group>
                     @else
-                        <atom:select.option :value="data_get($option, 'value')">{!! data_get($option, 'label') !!}</atom:select.option>
+                        <atom:select.option :value="data_get($option, 'value')">{{ data_get($option, 'label') }}</atom:select.option>
                     @endif
                 @endforeach
             @endif

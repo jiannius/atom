@@ -134,9 +134,9 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                             <template x-for="item in selectedOptions" hidden>
                                 <div class="shrink-0 max-w-56 truncate flex items-center text-sm border-r border-zinc-300 dark:border-zinc-600 last:border-0">
                                     <div class="flex items-center gap-2 truncate">
-                                        <template x-if="item.color" hidden>
+                                        <template x-if="safeColor(item.color)" hidden>
                                             <div
-                                            x-bind:style="'background-color: '+item.color"
+                                            x-bind:style="'background-color: '+safeColor(item.color)"
                                             class="w-3 h-3 rounded-full bg-zinc-100 flex items-center justify-center"></div>
                                         </template>
 
