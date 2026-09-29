@@ -471,14 +471,14 @@ describe('E-S4 text align, link and code block attributes', function () {
     })->with(['javascript', 'c++', 'c#', 'objective-c', 'php']);
 });
 
-describe('crash guard: a corrupt stored document', function () {
-    it('renders empty and reports instead of throwing', function (array $node) {
+describe('crash guard: a corrupt stored document (a refusal, not a report)', function () {
+    it('renders empty, silently, instead of throwing', function (array $node) {
         \Illuminate\Support\Facades\Exceptions::fake();
 
         $html = hardeningDoc([$node]);
 
         expect($html)->toBe('');
-        \Illuminate\Support\Facades\Exceptions::assertReportedCount(1);
+        \Illuminate\Support\Facades\Exceptions::assertNothingReported();
     })->with([
         'heading level as an object' => [['type' => 'heading', 'attrs' => ['level' => ['a' => 1]], 'content' => [['type' => 'text', 'text' => 'h']]]],
         'table colwidth as a string' => [['type' => 'table', 'content' => [['type' => 'tableRow', 'content' => [['type' => 'tableCell', 'attrs' => ['colwidth' => 'x'], 'content' => [['type' => 'paragraph']]]]]]]],
@@ -491,12 +491,27 @@ describe('crash guard: a corrupt stored document', function () {
         \Illuminate\Support\Facades\Exceptions::assertNothingReported();
     });
 
-    it('the <atom:tiptap.content> component survives a corrupt document', function () {
+    it('the <atom:tiptap.content> component survives a corrupt document, silently', function () {
         \Illuminate\Support\Facades\Exceptions::fake();
 
         $json = json_encode(['type' => 'doc', 'content' => [['type' => 'heading', 'attrs' => ['level' => ['a' => 1]], 'content' => [['type' => 'text', 'text' => 'h']]]]]);
 
         expect(renderBlade('<atom:tiptap.content :content="$c" />', ['c' => $json]))->toContain('editor-content');
+        \Illuminate\Support\Facades\Exceptions::assertNothingReported();
+    });
+
+    it('still reports a failure nobody expected, and renders empty', function () {
+        \Illuminate\Support\Facades\Exceptions::fake();
+
+        $broken = new class implements \Stringable
+        {
+            public function __toString(): string
+            {
+                throw new \RuntimeException('boom');
+            }
+        };
+
+        expect(Content::render($broken))->toBe('');
         \Illuminate\Support\Facades\Exceptions::assertReportedCount(1);
     });
 });

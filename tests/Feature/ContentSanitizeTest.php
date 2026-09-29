@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Jiannius\Atom\Tiptap\Content;
 use Jiannius\Atom\Tiptap\Extensions\AtomImage;
@@ -371,8 +372,63 @@ describe('Content::sanitize: input that is not HTML', function () {
 
     it('reports an unexpected failure and returns an empty string', function () {
         $this->mock(ExceptionHandler::class)->shouldReceive('report')->atLeast()->once();
+        $broken = new class implements Stringable
+        {
+            public function __toString(): string
+            {
+                throw new RuntimeException('boom');
+            }
+        };
 
-        expect(Content::sanitize('{"type":"doc"}'))->toBe('');
+        expect(Content::sanitize($broken))->toBe('');
+    });
+});
+
+/**
+ * Documents only a hostile client can send. tiptap-php throws on every one, so
+ * before they were validated each one called report() on every render.
+ *
+ * @return array<string, array{0: string}>
+ */
+dataset('malformed documents', [
+    'doc with no content' => ['{"type":"doc"}'],
+    'root that is not a doc' => ['{"type":"paragraph"}'],
+    'type that is a number' => ['{"type":5}'],
+    'content that is a string' => ['{"type":"doc","content":"x"}'],
+    'content that is an object' => ['{"type":"doc","content":{"a":1}}'],
+    'child that is a string' => ['{"type":"doc","content":["x"]}'],
+    'node with no type' => ['{"type":"doc","content":[{"content":[]}]}'],
+    'type that is an array' => ['{"type":"doc","content":[{"type":["paragraph"]}]}'],
+    'text that is an array' => ['{"type":"doc","content":[{"type":"text","text":["x"]}]}'],
+    'text that is a number' => ['{"type":"doc","content":[{"type":"text","text":5}]}'],
+    'marks that is a string' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x","marks":"bold"}]}]}'],
+    'marks that is an object' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x","marks":{"type":"bold"}}]}]}'],
+    'mark whose type is an array' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x","marks":[{"type":["bold"]}]}]}]}'],
+    'attrs that is a string' => ['{"type":"doc","content":[{"type":"paragraph","attrs":"x"}]}'],
+    'attrs that is a list' => ['{"type":"doc","content":[{"type":"paragraph","attrs":[1,2]}]}'],
+    'heading level as an object' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":{"a":1}},"content":[{"type":"text","text":"h"}]}]}'],
+    'heading with no attrs' => ['{"type":"doc","content":[{"type":"heading","content":[{"type":"text","text":"h"}]}]}'],
+    'heading with no level' => ['{"type":"doc","content":[{"type":"heading","attrs":{"textAlign":"left"}}]}'],
+    'mention label as an array' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"id":"1","label":["a"]}}]}]}'],
+    'table colwidth as a string' => ['{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colwidth":"x"},"content":[{"type":"paragraph"}]}]}]}]}'],
+    'table colwidth as an object' => ['{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colwidth":{"a":1}},"content":[{"type":"paragraph"}]}]}]}]}'],
+]);
+
+describe('Content: malformed documents are a silent refusal', function () {
+    it('renders empty from render() and sanitize(), without a report or a log line', function (string $json) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        Log::spy();
+
+        expect(Content::render($json))->toBe('');
+        expect(Content::sanitize($json))->toBe('');
+        expect(Content::sanitizeRefuses($json))->toBeTrue();
+        Log::shouldNotHaveReceived('warning');
+    })->with('malformed documents');
+
+    it('renders a colwidth that is a list of numbers, and a heading with a level', function () {
+        $html = Content::render('{"type":"doc","content":[{"type":"heading","attrs":{"level":3},"content":[{"type":"text","text":"h"}]},{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colwidth":[120,null]},"content":[{"type":"paragraph"}]}]}]}]}');
+
+        expect($html)->toContain('<h3>h</h3>')->toContain('<table>');
     });
 });
 
@@ -579,11 +635,182 @@ describe('Content::render on untrusted HTML', function () {
 
         expect($html)->toContain('<p>a</p>')->not->toContain('<script')->not->toContain('onclick');
     });
+});
 
-    it('holds stored HTML to looser limits than sanitize(), silently', function () {
+/**
+ * A distinct value per call, so the once-per-value log dedupe of one test cannot
+ * hide the warning another test expects.
+ */
+function uniqueHtml(string $html): string
+{
+    return $html.'<!-- '.uniqid('', true).' -->';
+}
+
+describe('Content::render: limits on stored content', function () {
+    it('renders the content the limits are meant to let through', function () {
+        $prices = '<table><tbody>'.str_repeat('<tr><td>Item</td><td>RM 10.00</td><td>Note</td><td>a</td><td>b</td><td>c</td></tr>', 1000).'</tbody></table>';
+        $article = str_repeat('<p>Lorem ipsum <strong>dolor</strong> sit amet, consectetur adipiscing elit.</p>', 3000);
+
+        expect(substr_count($prices, '<'))->toBeGreaterThan(10000);
+        expect(substr_count($article, '<'))->toBeGreaterThan(10000);
+        expect(substr_count(Content::render($prices), '<tr>'))->toBe(1000);
+        expect(substr_count(Content::render($article), '<p>'))->toBe(3000);
+    });
+
+    it('refuses HTML over the tag limit, warns once with the reason, and does not report', function () {
         $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        Log::spy();
+        $html = uniqueHtml(str_repeat('<p>a', Content::RENDER_MAX_TAGS + 1));
 
-        expect(Content::render(str_repeat('<p>a', 6000)))->not->toBe('');
-        expect(Content::render(str_repeat('<p>a', 10001)))->toBe('');
+        expect(Content::render($html))->toBe('');
+        expect(Content::render($html))->toBe('');
+        Log::shouldHaveReceived('warning')->once()->withArgs(fn ($message, $context) => str_contains($context['reason'], 'tags') && $context['bytes'] === strlen($html) && $context['max_tags'] === Content::RENDER_MAX_TAGS);
+    });
+
+    it('renders HTML at exactly the tag limit', function () {
+        Log::spy();
+
+        expect(Content::render(str_repeat('<p>a', Content::RENDER_MAX_TAGS)))->not->toBe('');
+        Log::shouldNotHaveReceived('warning');
+    });
+
+    it('takes its limits from atom.editor.render_max_bytes and render_max_tags', function () {
+        Log::spy();
+        $html = uniqueHtml(str_repeat('<p>a', 100));
+
+        expect(Content::render($html))->not->toBe('');
+
+        config(['atom.editor.render_max_tags' => 50]);
+        expect(Content::render($html))->toBe('');
+
+        config(['atom.editor.render_max_tags' => 500]);
+        expect(Content::render($html))->not->toBe('');
+
+        config(['atom.editor.render_max_bytes' => 100]);
+        expect(Content::render($html))->toBe('');
+        expect(Content::render(uniqueHtml(str_repeat('<p>a', 100))))->toBe('');
+        Log::shouldHaveReceived('warning')->twice();
+    });
+
+    it('refuses a document over the node limit, however small its bytes per node', function () {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        Log::spy();
+        $json = json_encode(['type' => 'doc', 'content' => array_fill(0, 95000, ['type' => 'paragraph'])]);
+
+        [$html, $seconds, $mb] = measured(fn () => Content::render($json));
+
+        expect(strlen($json))->toBeLessThan(2 * 1024 * 1024);
+        expect($html)->toBe('');
+        expect($mb)->toBeLessThan(10.0);
+        expect($seconds)->toBeLessThan(0.5);
+        Log::shouldHaveReceived('warning')->once()->withArgs(fn ($message, $context) => str_contains($context['reason'], 'nodes'));
+    });
+
+    it('counts marks and text nodes as well as blocks, and accepts a document at the limit', function () {
+        config(['atom.editor.render_max_tags' => 1 + 3 * 10]);
+        $paragraph = ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'a', 'marks' => [['type' => 'bold']]]]];
+        $doc = fn (int $paragraphs) => json_encode(['type' => 'doc', 'content' => array_fill(0, $paragraphs, $paragraph)]);
+
+        expect(Content::render($doc(10)))->not->toBe('');
+        expect(Content::render($doc(11)))->toBe('');
+    });
+
+    it('holds a document at the default limit to a memory and time bound', function (array $children) {
+        $json = json_encode(['type' => 'doc', 'content' => $children]);
+
+        [$html, $seconds, $mb] = measured(fn () => Content::render($json));
+
+        expect($html)->not->toBe('');
+        expect($mb)->toBeLessThan(80.0);
+        expect($seconds)->toBeLessThan(5.0);
+    })->with([
+        'paragraphs' => [array_fill(0, Content::RENDER_MAX_TAGS - 1, ['type' => 'paragraph'])],
+        'links' => [array_fill(0, intdiv(Content::RENDER_MAX_TAGS - 1, 3), ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'a', 'marks' => [['type' => 'link', 'attrs' => ['href' => 'https://example.com']]]]]])],
+    ]);
+
+    it('holds HTML at the default limit to a memory and time bound', function (string $html) {
+        [$out, $seconds, $mb] = measured(fn () => Content::render($html));
+
+        expect($out)->not->toBe('');
+        expect($mb)->toBeLessThan(80.0);
+        expect($seconds)->toBeLessThan(5.0);
+    })->with([
+        'unclosed paragraphs' => [str_repeat('<p>a', Content::RENDER_MAX_TAGS)],
+        'list items' => ['<ul>'.str_repeat('<li>a', Content::RENDER_MAX_TAGS - 1)],
+        'links' => [str_repeat('<p><a href="https://example.com/x">a</a>', intdiv(Content::RENDER_MAX_TAGS, 3))],
+    ]);
+
+    it('logs the same refusal for the <atom:tiptap.content> component and prints nothing', function () {
+        Log::spy();
+        $html = uniqueHtml(str_repeat('<p>a', Content::RENDER_MAX_TAGS + 1));
+
+        $out = renderBlade('<atom:tiptap.content :content="$html" />', ['html' => $html]);
+
+        expect($out)->toContain('editor-content')->not->toContain('<p>');
+        Log::shouldHaveReceived('warning')->once();
+    });
+
+    it('refuses output over four times the byte limit and warns', function () {
+        Log::spy();
+        $html = str_repeat('<a href=x>a</a>b', 50).uniqid('', true);
+        config(['atom.editor.render_max_bytes' => strlen($html)]);
+
+        expect(Content::render($html))->toBe('');
+        Log::shouldHaveReceived('warning')->once()->withArgs(fn ($message, $context) => str_contains($context['reason'], 'output'));
+    });
+
+    it('does not warn when sanitize() refuses', function () {
+        Log::spy();
+
+        expect(Content::sanitize(str_repeat('<p>a', Content::SANITIZE_MAX_TAGS + 1)))->toBe('');
+        expect(Content::sanitize(placeholderBomb()))->toBe('');
+        Log::shouldNotHaveReceived('warning');
+    });
+});
+
+describe('Content: input the minifier is quadratic or fatal on', function () {
+    /**
+     * Each of these is refused before it is parsed. The sizes are the smallest that
+     * cross the rule, so an unguarded run costs a second or two, not the minutes the
+     * full-size inputs took (120 KB of spaces: 98 s).
+     */
+    it('is refused quickly and silently', function (string $html, string $reason) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        Log::spy();
+        $html = uniqueHtml($html);
+
+        [$out, $seconds] = measured(fn () => Content::render($html));
+
+        expect($out)->toBe('');
+        expect($seconds)->toBeLessThan(0.3);
+        Log::shouldHaveReceived('warning')->once()->withArgs(fn ($message, $context) => str_contains($context['reason'], $reason));
+    })->with([
+        'a run of spaces' => ['<p>'.str_repeat(' ', 5000).'a</p>', 'whitespace'],
+        'a run of spaces before a tag' => ['<p>'.str_repeat(' ', 5000).'<b>a</b></p>', 'whitespace'],
+        'a run of tabs and newlines' => ['<p>a'.str_repeat("\t\n", 3000).'b</p>', 'whitespace'],
+        'a run of no-break spaces' => ['<p>'.str_repeat("\u{00A0}", 5000).'a</p>', 'whitespace'],
+        'a run of ideographic spaces' => ['<p>'.str_repeat("\u{3000}", 5000).'a</p>', 'whitespace'],
+        'a pre block past the regex backtrack limit' => ['<pre>'.str_repeat('a', 600000).'</pre>', 'pre'],
+        'an unclosed pre past the regex backtrack limit' => ['<pre>'.str_repeat('a', 600000), 'pre'],
+        'many unclosed pre tags in a long input' => [str_repeat('<pre>a', 2000).str_repeat('b', 50000), 'pre'],
+        'many pre blocks in a long input' => [str_repeat('<pre>a</pre>', 6000), 'pre'],
+    ]);
+
+    it('lets through the largest whitespace run and pre block that are allowed', function () {
+        $html = '<p>a'.str_repeat(' ', 256).'b</p><pre>'.str_repeat('a', 400000).'</pre>';
+
+        expect(Content::render($html))->toContain('<pre><code>')->toContain('<p>a');
+        expect(Content::sanitize('<p>a'.str_repeat(' ', 256).'b</p>'))->not->toBe('');
+    });
+
+    it('refuses a whitespace run in sanitize() too, and tells the host', function () {
+        $html = '<p>'.str_repeat(' ', 5000).'a</p>';
+
+        expect(Content::sanitize($html))->toBe('');
+        expect(Content::sanitizeRefuses($html))->toBeTrue();
+    });
+
+    it('allows a single unclosed pre in a long document', function () {
+        expect(Content::render('<p>a</p><pre>x'.str_repeat('<p>a</p>', 1000)))->not->toBe('');
     });
 });
