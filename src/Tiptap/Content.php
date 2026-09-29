@@ -40,33 +40,41 @@ class Content
     protected const OUTPUT_FACTOR = 4;
 
     /**
-     * A run of whitespace longer than this is refused. tiptap-php's minifier
-     * trims with `^\s+|\s+$` and `\s+(<tag`, which rescan a run from every
-     * position in it: quadratic, so 120 KB of spaces took 98 s.
+     * A run of whitespace longer than this, outside a `<pre>`, is collapsed to
+     * one space before parsing. tiptap-php's minifier trims with `^\s+|\s+$`
+     * and `\s+(<tag`, which rescan a run from every position in it: quadratic,
+     * so 120 KB of spaces took 98 s. HTML collapses whitespace itself, so this
+     * changes nothing a reader sees, and content with no such run is passed on
+     * byte for byte. Inside a `<pre>` nothing is touched: the minifier swaps
+     * the block for a placeholder before it trims.
      */
-    protected const MAX_WHITESPACE_RUN = 256;
+    protected const MAX_WHITESPACE_RUN = 32;
 
     /**
      * A `<pre>` block longer than this is refused: past ~1M characters the
      * minifier's regex hits pcre.backtrack_limit and returns null, which is a
-     * TypeError on every view.
+     * TypeError on every view. Real code blocks are a few KB.
      */
     protected const MAX_PRE_LENGTH = 500000;
 
     /**
      * Unclosed `<pre>` tags times the length they scan to. The minifier's
      * regex rescans to the end of the input from each one, so cost is their
-     * product: 5000 unclosed tags in 130 KB took 8 s. 30 million is ~0.4 s.
+     * product: 5000 unclosed tags in 130 KB took 8 s. Under 30 million (~0.4 s)
+     * they are left alone; over it, one `</pre>` is appended, as the HTML
+     * parser would close them at the end anyway, which leaves one block that
+     * is scanned once. A `<pre` with no `>` after it can't be fixed that way
+     * and counts against the same budget.
      */
     protected const MAX_UNCLOSED_PRE_COST = 30000000;
 
     /**
      * `<pre>` tags times the input length. The minifier swaps each for a
      * placeholder and str_replace()s them all back over the whole input, so
-     * cost is their product: 10000 blocks in 120 KB took 2.3 s. 250 million is
-     * ~0.5 s.
+     * cost is their product: 10000 blocks in 120 KB took 2.3 s. 500 million is
+     * ~1 s: 250 code blocks in a 2 MB document, far past real content.
      */
-    protected const MAX_PRE_COST = 250000000;
+    protected const MAX_PRE_COST = 500000000;
 
     /**
      * Refusals already logged in this process, so a value that is rendered
@@ -290,8 +298,10 @@ class Content
      * What to hand the parser, and why it was refused when it is not.
      *
      * A Tiptap document (JSON with a `type` key) goes through as an array once
-     * it is a well-formed document within the node limit. Everything else is
-     * HTML, held to the limits, and refused when the parser can't survive it:
+     * it is a well-formed document within the node limit, with the attributes
+     * tiptap-php can't take repaired. Everything else is HTML, held to the
+     * limits, normalised where the parser would be slow on real content, and
+     * refused only when it can't be made safe:
      *
      * - it carries the token Minify uses for its `<pre>` placeholders:
      *   tiptap-php replaces each `<pre>` with `%MINIFYHTML<md5(REQUEST_TIME)>N%`
@@ -299,8 +309,10 @@ class Content
      *   written inside a `<pre>` expands again for every level of nesting, so
      *   a few KB exhausts memory. Only HTML reaches Minify; a document's text
      *   never does;
-     * - a whitespace run, a `<pre>` block or a run of unclosed `<pre>` tags
-     *   that Minify's regexes take quadratic time on, or fail on.
+     * - a `<pre>` block, or a count of `<pre>` tags, that Minify's regexes fail
+     *   on or take quadratic time on (see normalisePre());
+     * - whitespace runs are collapsed rather than refused (see
+     *   collapseWhitespace()).
      *
      * @return array{0: string|array<string, mixed>|null, 1: string|null} [content, refusal]
      */
@@ -328,30 +340,40 @@ class Content
         $problem = match (true) {
             static::carriesPlaceholder($text) => 'placeholder: the input carries tiptap-php\'s reserved token',
             ($tags = substr_count($text, '<')) > $maxTags => "tags: {$tags} over {$maxTags}",
-            static::longestWhitespaceRun($text) > static::MAX_WHITESPACE_RUN => 'whitespace: a run over '.static::MAX_WHITESPACE_RUN.' characters',
-            default => static::preProblem($text),
+            default => null,
         };
+
+        if ($problem === null) {
+            [$text, $problem] = static::normalisePre($text);
+        }
+
+        $collapsed = $problem === null ? static::collapseWhitespace($text) : null;
+
+        if ($problem === null && $collapsed === null) {
+            $problem = 'pre: the input is too large for the parser';
+        }
 
         if ($problem !== null) {
             return [null, $problem];
         }
 
         // the parser takes any string that decodes as JSON for JSON: an empty comment makes it HTML
-        return [$isJson ? '<!---->'.$text : $text, null];
+        return [$isJson ? '<!---->'.$collapsed : $collapsed, null];
     }
 
     /**
      * Why a decoded Tiptap document is refused, or null when it is a
      * well-formed document within the node limit. The root must be a `doc`
      * with a `content` list; every node needs a string `type`, and `content`,
-     * `marks`, `attrs` and `text` must be the right shape where present.
-     * tiptap-php throws on the wrong shape, and only a hostile client can send
-     * one, so that is a refusal (no report), not an unexpected failure.
-     * Nodes and marks are counted against $maxNodes because cost tracks them.
+     * `marks` and `text` must be the right shape where present. tiptap-php
+     * throws on the wrong shape, and only a hostile client can send one, so
+     * that is a refusal (no report), not an unexpected failure. Attributes are
+     * repaired in place instead (see normaliseAttributes()). Nodes and marks
+     * are counted against $maxNodes because cost tracks them.
      *
      * @param  array<mixed>  $doc
      */
-    protected static function documentProblem(array $doc, int $maxNodes): ?string
+    protected static function documentProblem(array &$doc, int $maxNodes): ?string
     {
         if (($doc['type'] ?? null) !== 'doc' || ! isset($doc['content'])) {
             return 'invalid document';
@@ -367,12 +389,12 @@ class Content
     }
 
     /**
-     * Whether $node is a well-formed node, counting it and everything under it.
-     * Stops as soon as $count passes $maxNodes.
+     * Whether $node is a well-formed node, counting it and everything under it
+     * and repairing its attributes. Stops as soon as $count passes $maxNodes.
      *
      * @param  array<mixed>  $node
      */
-    protected static function validNode(array $node, int &$count, int $maxNodes): bool
+    protected static function validNode(array &$node, int &$count, int $maxNodes): bool
     {
         if (++$count > $maxNodes || array_is_list($node) || ! is_string($node['type'] ?? null) || $node['type'] === '') {
             return false;
@@ -382,15 +404,9 @@ class Content
             return false;
         }
 
-        if (isset($node['attrs']) && ! static::validAttributes($node['attrs'], $node['type'])) {
-            return false;
-        }
+        static::normaliseAttributes($node);
 
-        if ($node['type'] === 'heading' && ! isset($node['attrs'])) {
-            return false;
-        }
-
-        foreach (['content' => false, 'marks' => true] as $key => $isMarks) {
+        foreach (['content', 'marks'] as $key) {
             if (! isset($node[$key])) {
                 continue;
             }
@@ -399,8 +415,8 @@ class Content
                 return false;
             }
 
-            foreach ($node[$key] as $child) {
-                if (! is_array($child) || ! static::validNode($child, $count, $maxNodes)) {
+            foreach (array_keys($node[$key]) as $i) {
+                if (! is_array($node[$key][$i]) || ! static::validNode($node[$key][$i], $count, $maxNodes)) {
                     return false;
                 }
             }
@@ -410,99 +426,149 @@ class Content
     }
 
     /**
-     * A node's attributes are a keyed array. tiptap-php throws on three shapes
-     * a client can send, all of which the editor never writes, so they are
-     * refused rather than reported: a heading with no `level`, a table
-     * `colwidth` that is not a list of scalars, and a mention `label` that is
-     * an array. Other odd values are tolerated: the renderer drops them.
+     * Repair the attributes tiptap-php throws on, instead of refusing the
+     * document (the rest of it is real content): an `attrs` that is not a keyed
+     * array is dropped, a table `colwidth` that is not a list of scalars is
+     * dropped, a mention `label` that is an array is dropped, and a heading
+     * with no usable `level` becomes level 1, which renders. Other odd values
+     * are left for the renderer to drop.
+     *
+     * @param  array<mixed>  $node
      */
-    protected static function validAttributes(mixed $attributes, string $type): bool
+    protected static function normaliseAttributes(array &$node): void
     {
-        if (! is_array($attributes) || ($attributes !== [] && array_is_list($attributes))) {
-            return false;
-        }
+        $attributes = $node['attrs'] ?? [];
 
-        if ($type === 'heading' && ! is_scalar($attributes['level'] ?? null)) {
-            return false;
+        if (! is_array($attributes) || ($attributes !== [] && array_is_list($attributes))) {
+            $attributes = [];
         }
 
         if (isset($attributes['colwidth']) && (! is_array($attributes['colwidth']) || ! array_is_list($attributes['colwidth']) || array_filter($attributes['colwidth'], fn ($width) => ! is_scalar($width) && $width !== null))) {
-            return false;
+            unset($attributes['colwidth']);
         }
 
-        return ! is_array($attributes['label'] ?? null);
+        if (is_array($attributes['label'] ?? null)) {
+            unset($attributes['label']);
+        }
+
+        if ($node['type'] === 'heading' && ! is_scalar($attributes['level'] ?? null)) {
+            $attributes['level'] = 1;
+        }
+
+        if ($attributes === []) {
+            unset($node['attrs']);
+        } else {
+            $node['attrs'] = $attributes;
+        }
     }
 
     /**
-     * The length of the longest run of whitespace, in one linear pass. PHP
-     * compiles the minifier's `\s` with Unicode properties (the `u` flag), so
-     * a no-break or other Unicode space counts, and is folded to a plain space
-     * first.
+     * Collapse every run of whitespace longer than MAX_WHITESPACE_RUN, outside
+     * a `<pre>` block, to a single space, in one linear pass. PHP compiles the
+     * minifier's `\s` with Unicode properties (the `u` flag), so a no-break or
+     * other Unicode space counts as part of a run. The `<pre>` alternative is
+     * the minifier's own pattern, so the blocks it will set aside are the ones
+     * left alone. Null when the regex fails.
      */
-    protected static function longestWhitespaceRun(string $text): int
+    protected static function collapseWhitespace(string $html): ?string
     {
-        $text = preg_replace('/[\x{0085}\x{00A0}\x{1680}\x{180E}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}]/u', ' ', $text) ?? $text;
-        $whitespace = " \t\n\r\f\v";
-        $length = strlen($text);
-        $longest = 0;
-        $i = 0;
-
-        while ($i < $length) {
-            $i += strcspn($text, $whitespace, $i);
-
-            if ($i >= $length) {
-                break;
-            }
-
-            $run = strspn($text, $whitespace, $i);
-            $longest = max($longest, $run);
-            $i += $run;
-
-            if ($longest > static::MAX_WHITESPACE_RUN) {
-                break;
-            }
-        }
-
-        return $longest;
+        return preg_replace_callback(
+            '/(<pre\b[^>]*+>.*?<\/pre>)|[\s\x{0085}\x{00A0}\x{1680}\x{180E}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}]++/isu',
+            fn (array $match) => isset($match[1]) || strlen($match[0]) <= static::MAX_WHITESPACE_RUN ? $match[0] : ' ',
+            $html,
+        );
     }
 
     /**
-     * Why the `<pre>` blocks in this HTML would break Minify's `<pre>` regex,
-     * or null. A block is measured from `<pre` to the first `</pre` after it,
-     * the way the regex takes it; a `<pre` with no closing tag scans to the
-     * end, and every later one does too.
+     * Make the `<pre>` blocks in this HTML safe for Minify's `<pre>` regex, or
+     * say why they can't be. A block is measured from `<pre` to the first
+     * `</pre` after it, the way the regex takes it.
+     *
+     * - A block over MAX_PRE_LENGTH is refused (the regex fails on it).
+     * - Many blocks in a long input are refused (MAX_PRE_COST): every
+     *   placeholder is swapped back over the whole input.
+     * - Unclosed `<pre>` tags are left alone while they are few. Past
+     *   MAX_UNCLOSED_PRE_COST a `</pre>` is appended, which is what the HTML
+     *   parser does at the end of the input anyway, so the tags become one
+     *   block that is scanned once.
+     * - A `<pre` that no `>` follows scans to the end of the input; that many
+     *   of them is refused.
+     *
+     * @return array{0: string, 1: string|null} [html, refusal]
      */
-    protected static function preProblem(string $text): ?string
+    protected static function normalisePre(string $text): array
     {
+        $lower = strtolower($text);
+        $count = substr_count($lower, '<pre');
+
+        if ($count === 0) {
+            return [$text, null];
+        }
+
         $length = strlen($text);
         $offset = 0;
+        $blocks = 0;
+        $unclosedFrom = null;
 
-        if (stripos($text, '<pre') !== false && substr_count(strtolower($text), '<pre') * $length > static::MAX_PRE_COST) {
-            return 'pre: '.substr_count(strtolower($text), '<pre').' blocks';
-        }
-
-        while (($start = stripos($text, '<pre', $offset)) !== false) {
-            $end = stripos($text, '</pre', $start);
+        while (($start = strpos($lower, '<pre', $offset)) !== false) {
+            $end = strpos($lower, '</pre', $start);
 
             if ($end === false) {
-                $unclosed = 1 + substr_count(strtolower($text), '<pre', $start + 4);
-                $scanned = $length - $start;
+                $unclosedFrom = $start;
 
-                return match (true) {
-                    $scanned > static::MAX_PRE_LENGTH => 'pre: an unclosed block over '.static::MAX_PRE_LENGTH.' characters',
-                    $unclosed * $scanned > static::MAX_UNCLOSED_PRE_COST => "pre: {$unclosed} unclosed tags",
-                    default => null,
-                };
+                break;
             }
 
             if ($end - $start > static::MAX_PRE_LENGTH) {
-                return 'pre: a block over '.static::MAX_PRE_LENGTH.' characters';
+                return [$text, 'pre: a block over '.static::MAX_PRE_LENGTH.' characters'];
             }
 
+            $blocks++;
             $offset = $end + 5;
         }
 
-        return null;
+        if ($unclosedFrom !== null) {
+            $unclosed = substr_count($lower, '<pre', $unclosedFrom);
+
+            if ($unclosed * ($length - $unclosedFrom) > static::MAX_UNCLOSED_PRE_COST) {
+                $text .= '</pre>';
+                $lower .= '</pre>';
+                $length += 6;
+                $blocks++;
+            }
+
+            if ($length - $unclosedFrom > static::MAX_PRE_LENGTH) {
+                return [$text, 'pre: an unclosed block over '.static::MAX_PRE_LENGTH.' characters'];
+            }
+        }
+
+        if ($blocks * $length > static::MAX_PRE_COST) {
+            return [$text, "pre: {$blocks} blocks in {$length} bytes"];
+        }
+
+        // each `<pre` scans on to the next `>`: fine for a real tag, quadratic for many without one
+        $cost = 0;
+        $offset = 0;
+        $gt = -1;
+
+        while (($start = strpos($lower, '<pre', $offset)) !== false) {
+            if ($gt < $start) {
+                $gt = strpos($lower, '>', $start);
+            }
+
+            if ($gt === false) {
+                $cost += substr_count($lower, '<pre', $start) * ($length - $start);
+
+                break;
+            }
+
+            $cost += $gt - $start;
+            $offset = $start + 4;
+        }
+
+        return $cost > static::MAX_UNCLOSED_PRE_COST
+            ? [$text, 'pre: tags with no end']
+            : [$text, null];
     }
 
     /**

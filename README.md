@@ -737,9 +737,14 @@ public function submit(array $message): void
 
 `Content::sanitize(mixed $html, int $maxBytes = 131072, int $maxTags = 5000): string` parses the value through the same schema and the same hardened extensions as `render()`, and returns the schema's own serialisation, so nothing of the input's markup survives except what the editor itself can write. It also accepts a Tiptap JSON document (a string or array with a `type` key) and a `Stringable`; any other string, `'42'` and `'null'` included, is text.
 
-It returns `''` when the input is empty, when it is refused, and when it fails. It refuses (silently, so a client can't flood your logs) HTML over `$maxBytes`, HTML with more than `$maxTags` tags (or a document with more than `$maxTags` nodes and marks), a malformed document, HTML that carries tiptap-php's reserved `MINIFYHTML` placeholder, and the inputs the parser can't survive (below). Output over four times `$maxBytes` is refused too, so a small `$maxBytes` also caps the output at four times that. Only an unexpected failure is reported through Laravel's `report()`. `Content::sanitizeRefuses($html)` tells a refusal from an empty message.
+It returns `''` when the input is empty, when it is refused, and when it fails. It refuses (silently, so a client can't flood your logs) HTML over `$maxBytes`, HTML with more than `$maxTags` tags (or a document with more than `$maxTags` nodes and marks), a document that is not a Tiptap document, HTML that carries tiptap-php's reserved `MINIFYHTML` placeholder, and the `<pre>` inputs the parser can't survive (below). Output over four times `$maxBytes` is refused too, so a small `$maxBytes` also caps the output at four times that. Only an unexpected failure is reported through Laravel's `report()`. `Content::sanitizeRefuses($html)` tells a refusal from an empty message.
 
-The limits exist because parsing cost tracks the tag count, not the byte count: about 3 KB of memory per tag or document node in the worst case, so an input of 65,000 `<p>a` (260 KB) needs over 200 MB, and 95,000 `{"type":"paragraph"}` nodes (2 MB of JSON) needs about 290 MB. Measured at the sanitize defaults, the worst shape costs about 16 MB and 0.2 s; a long chat message is a few KB and a few dozen tags. Raise the limits only for a field that holds long documents. The parser also has inputs it takes minutes on or crashes on, all refused up front: a run of more than 256 whitespace characters (120 KB of spaces took 98 s), a `<pre>` block over 500,000 characters, many unclosed `<pre>` tags, and many `<pre>` blocks in a long input. Legitimate content has none of these.
+The limits exist because parsing cost tracks the tag count, not the byte count: about 3 KB of memory per tag or document node in the worst case, so an input of 65,000 `<p>a` (260 KB) needs over 200 MB, and 95,000 `{"type":"paragraph"}` nodes (2 MB of JSON) needs about 290 MB. Measured at the sanitize defaults, the worst shape costs about 16 MB and 0.2 s; a long chat message is a few KB and a few dozen tags. Raise the limits only for a field that holds long documents. The parser also has inputs it takes minutes on or crashes on, which are normalised where real content could have them and refused only where it can't:
+
+- **Long whitespace runs are collapsed, not refused.** Outside a `<pre>`, a run of more than 32 whitespace characters (Unicode spaces included) becomes one space before parsing. HTML collapses whitespace anyway, so nothing a reader sees changes, and content with no such run is passed on byte for byte. Pretty-printed or indented legacy HTML and pasted Word markup render normally (120 KB of spaces used to take 98 s and now takes about 0 s). Inside a `<pre>` nothing is touched: a code block with 300-space indentation, or 120 KB of spaces, is kept exactly.
+- **Unclosed `<pre>` tags are closed, not refused.** A few are left alone; once they would make the parser quadratic (5000 in 130 KB took 8 s), one `</pre>` is appended, which is what the HTML parser does at the end of the input anyway.
+- **Refused:** a `<pre>` block over 500,000 characters (the parser's regex fails past about 1M), a very large number of `<pre>` blocks in a long input (about 250 code blocks in a 2 MB document), and many `<pre` tags with no `>` after them. Real content has none of these.
+- **Repaired, not refused:** a Tiptap document with an attribute the renderer throws on keeps rendering. A heading with no usable `level` becomes level 1, and a `colwidth`, a mention `label` or an `attrs` of the wrong shape is dropped. Only a document that is not a document at all (wrong `type`, `content` not a list, and so on) is refused.
 
 | Kept (as the editor writes it) | Dropped |
 | --- | --- |
@@ -759,7 +764,7 @@ Two things it does not do:
 
 ### Upgrading: `render()` and `<atom:tiptap.content>` refuse what they can't parse safely
 
-`Content::render()` (and so `<atom:tiptap.content>`) reads stored content, and it now renders **empty, and logs a warning**, for stored content that is over its limits, has a whitespace run or `<pre>` block the parser can't survive, carries the minifier's placeholder token (`MINIFYHTML`), or is not a valid Tiptap document. Nothing is reported through `report()`. The warning (`Log::warning`, once per value per process) carries the reason, the size and the limits, so check your log after upgrading if a page that used to show content is blank.
+`Content::render()` (and so `<atom:tiptap.content>`) reads stored content, and it now renders **empty, and logs a warning**, for stored content that is over its limits, has a `<pre>` block or count of `<pre>` tags the parser can't survive (see above; long whitespace runs and unclosed `<pre>` tags are normalised, not refused), carries the minifier's placeholder token (`MINIFYHTML`), or is not a Tiptap document. Nothing is reported through `report()`. The warning (`Log::warning`, once per value per process) carries the reason, the size and the limits, so check your log after upgrading if a page that used to show content is blank.
 
 The defaults are 2 MB and 20,000 tags (HTML tags, or nodes and marks of a JSON document; worst case about 64 MB of memory). Raise or lower them for your app in `config/atom.php`:
 
@@ -772,7 +777,7 @@ return [
 ];
 ```
 
-A long legitimate document (a 1,000-row price table, a 3,000-paragraph article) is within the defaults. A malformed document (one only a hostile client can send) renders empty without a warning.
+A long legitimate document (a 1,000-row price table, a 3,000-paragraph article) is within the defaults. A value that is not a Tiptap document at all (one only a hostile client can send) renders empty without a warning.
 
 ---
 

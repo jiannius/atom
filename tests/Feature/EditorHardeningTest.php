@@ -472,17 +472,24 @@ describe('E-S4 text align, link and code block attributes', function () {
 });
 
 describe('crash guard: a corrupt stored document (a refusal, not a report)', function () {
-    it('renders empty, silently, instead of throwing', function (array $node) {
+    it('repairs the attribute, renders the rest, and does not report', function (array $node, string $expected) {
         \Illuminate\Support\Facades\Exceptions::fake();
 
         $html = hardeningDoc([$node]);
 
-        expect($html)->toBe('');
+        expect($html)->toContain($expected);
         \Illuminate\Support\Facades\Exceptions::assertNothingReported();
     })->with([
-        'heading level as an object' => [['type' => 'heading', 'attrs' => ['level' => ['a' => 1]], 'content' => [['type' => 'text', 'text' => 'h']]]],
-        'table colwidth as a string' => [['type' => 'table', 'content' => [['type' => 'tableRow', 'content' => [['type' => 'tableCell', 'attrs' => ['colwidth' => 'x'], 'content' => [['type' => 'paragraph']]]]]]]],
+        'heading level as an object' => [['type' => 'heading', 'attrs' => ['level' => ['a' => 1]], 'content' => [['type' => 'text', 'text' => 'h']]], '<h1>h</h1>'],
+        'table colwidth as a string' => [['type' => 'table', 'content' => [['type' => 'tableRow', 'content' => [['type' => 'tableCell', 'attrs' => ['colwidth' => 'x'], 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'cell']]]]]]]]], 'cell'],
     ]);
+
+    it('renders empty, silently, for a document that is not one', function () {
+        \Illuminate\Support\Facades\Exceptions::fake();
+
+        expect(hardeningDoc([['type' => ['paragraph']]]))->toBe('');
+        \Illuminate\Support\Facades\Exceptions::assertNothingReported();
+    });
 
     it('does not report a healthy document', function () {
         \Illuminate\Support\Facades\Exceptions::fake();
@@ -496,7 +503,7 @@ describe('crash guard: a corrupt stored document (a refusal, not a report)', fun
 
         $json = json_encode(['type' => 'doc', 'content' => [['type' => 'heading', 'attrs' => ['level' => ['a' => 1]], 'content' => [['type' => 'text', 'text' => 'h']]]]]);
 
-        expect(renderBlade('<atom:tiptap.content :content="$c" />', ['c' => $json]))->toContain('editor-content');
+        expect(renderBlade('<atom:tiptap.content :content="$c" />', ['c' => $json]))->toContain('editor-content')->toContain('<h1>h</h1>');
         \Illuminate\Support\Facades\Exceptions::assertNothingReported();
     });
 

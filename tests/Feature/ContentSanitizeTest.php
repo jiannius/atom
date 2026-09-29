@@ -404,14 +404,6 @@ dataset('malformed documents', [
     'marks that is a string' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x","marks":"bold"}]}]}'],
     'marks that is an object' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x","marks":{"type":"bold"}}]}]}'],
     'mark whose type is an array' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x","marks":[{"type":["bold"]}]}]}]}'],
-    'attrs that is a string' => ['{"type":"doc","content":[{"type":"paragraph","attrs":"x"}]}'],
-    'attrs that is a list' => ['{"type":"doc","content":[{"type":"paragraph","attrs":[1,2]}]}'],
-    'heading level as an object' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":{"a":1}},"content":[{"type":"text","text":"h"}]}]}'],
-    'heading with no attrs' => ['{"type":"doc","content":[{"type":"heading","content":[{"type":"text","text":"h"}]}]}'],
-    'heading with no level' => ['{"type":"doc","content":[{"type":"heading","attrs":{"textAlign":"left"}}]}'],
-    'mention label as an array' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"id":"1","label":["a"]}}]}]}'],
-    'table colwidth as a string' => ['{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colwidth":"x"},"content":[{"type":"paragraph"}]}]}]}]}'],
-    'table colwidth as an object' => ['{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colwidth":{"a":1}},"content":[{"type":"paragraph"}]}]}]}]}'],
 ]);
 
 describe('Content: malformed documents are a silent refusal', function () {
@@ -430,6 +422,36 @@ describe('Content: malformed documents are a silent refusal', function () {
 
         expect($html)->toContain('<h3>h</h3>')->toContain('<table>');
     });
+});
+
+/**
+ * Attribute shapes tiptap-php throws on. The rest of such a document is real
+ * content, so they are repaired, not refused: the document still renders.
+ *
+ * @return array<string, array{0: string, 1: string}> [document, what still renders]
+ */
+dataset('repairable documents', [
+    'heading level as an object' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":{"a":1}},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level as null' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":null},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading with no attrs' => ['{"type":"doc","content":[{"type":"heading","content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading with no level' => ['{"type":"doc","content":[{"type":"heading","attrs":{"textAlign":"left"},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'mention label as an array' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"before "},{"type":"mention","attrs":{"id":"1","label":["a"]}}]}]}', 'before '],
+    'table colwidth as a string' => ['{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colwidth":"x"},"content":[{"type":"paragraph","content":[{"type":"text","text":"cell"}]}]}]}]}]}', 'cell'],
+    'table colwidth as an object' => ['{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colwidth":{"a":1}},"content":[{"type":"paragraph","content":[{"type":"text","text":"cell"}]}]}]}]}]}', 'cell'],
+    'attrs that is a string' => ['{"type":"doc","content":[{"type":"paragraph","attrs":"x","content":[{"type":"text","text":"kept"}]}]}', '<p>kept</p>'],
+    'attrs that is a list' => ['{"type":"doc","content":[{"type":"paragraph","attrs":[1,2],"content":[{"type":"text","text":"kept"}]}]}', '<p>kept</p>'],
+]);
+
+describe('Content: documents with a bad attribute are repaired, not blanked', function () {
+    it('still renders the content, from render() and sanitize(), without a report or a log line', function (string $json, string $expected) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        Log::spy();
+
+        expect(Content::render($json))->toContain($expected);
+        expect(Content::sanitize($json))->toContain($expected);
+        expect(Content::sanitizeRefuses($json))->toBeFalse();
+        Log::shouldNotHaveReceived('warning');
+    })->with('repairable documents');
 });
 
 /**
@@ -768,13 +790,99 @@ describe('Content::render: limits on stored content', function () {
     });
 });
 
-describe('Content: input the minifier is quadratic or fatal on', function () {
+describe('Content: whitespace the minifier is quadratic on is collapsed, not refused', function () {
     /**
-     * Each of these is refused before it is parsed. The sizes are the smallest that
-     * cross the rule, so an unguarded run costs a second or two, not the minutes the
-     * full-size inputs took (120 KB of spaces: 98 s).
+     * The inputs are the size at which an unguarded run costs seconds: 20000
+     * characters is ~2.7 s, 120 KB is 98 s. The content around the run must still render.
      */
-    it('is refused quickly and silently', function (string $html, string $reason) {
+    it('renders the content, quickly, silently, and without a warning', function (string $html) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        Log::spy();
+
+        [$out, $seconds] = measured(fn () => Content::render($html));
+
+        expect($out)->toContain('a')->toContain('b');
+        expect($seconds)->toBeLessThan(0.3);
+        Log::shouldNotHaveReceived('warning');
+    })->with([
+        'a run of spaces' => ['<p>a'.str_repeat(' ', 20000).'b</p>'],
+        'a run of spaces before a tag' => ['<p>a'.str_repeat(' ', 20000).'<b>b</b></p>'],
+        'a run of tabs and newlines' => ['<p>a'.str_repeat("\t\n", 10000).'b</p>'],
+        'a run of no-break spaces' => ['<p>a'.str_repeat("\u{00A0}", 20000).'b</p>'],
+        'a run of ideographic spaces' => ['<p>a'.str_repeat("\u{3000}", 20000).'b</p>'],
+        'a run mixing ascii and unicode spaces' => ['<p>a'.str_repeat(" \u{00A0}\t", 7000).'b</p>'],
+        'a run between blocks' => ['<p>a</p>'.str_repeat(' ', 20000).'<p>b</p>'],
+    ]);
+
+    it('renders 120 KB of spaces in well under a second (it took 98 s)', function () {
+        $html = '<p>a'.str_repeat(' ', 120000).'b</p>';
+
+        [$out, $seconds] = measured(fn () => Content::render($html));
+
+        expect($out)->toBe('<p>a b</p>');
+        expect($seconds)->toBeLessThan(0.5);
+        expect(Content::sanitize($html))->toBe('<p>a b</p>');
+        expect(Content::sanitizeRefuses($html))->toBeFalse();
+    });
+
+    it('passes a run of the allowed length on byte for byte, and collapses one space longer', function () {
+        expect(Content::sanitize('<p>a'.str_repeat(' ', 32).'b</p>'))->toBe('<p>a'.str_repeat(' ', 32).'b</p>');
+        expect(Content::sanitize('<p>a'.str_repeat(' ', 33).'b</p>'))->toBe('<p>a b</p>');
+    });
+
+    it('holds a run just under the limit, repeated across a 2 MB document, to a time bound', function () {
+        $html = str_repeat('<p>a'.str_repeat(' ', 32).'b</p>', intdiv(2000000, 40));
+
+        [$out, $seconds] = measured(fn () => Content::sanitize($html, 3000000, 100000));
+
+        expect($out)->not->toBe('');
+        expect($seconds)->toBeLessThan(3.0);
+    });
+
+    it('renders real legacy markup: pretty-printed nested HTML with long indentation', function () {
+        $indent = str_repeat(' ', 300);
+        $html = "<div>\n{$indent}<div>\n{$indent}{$indent}<h2>Heading</h2>\n{$indent}{$indent}<p>First paragraph with <strong>bold</strong>.</p>\n"
+            ."{$indent}{$indent}<ul>\n{$indent}{$indent}{$indent}<li>one</li>\n{$indent}{$indent}{$indent}<li>two</li>\n{$indent}{$indent}</ul>\n"
+            ."{$indent}</div>\n</div>";
+
+        $out = Content::render($html);
+
+        expect($out)->toContain('<h2>Heading</h2>')->toContain('<strong>bold</strong>')->toContain('one')->toContain('two');
+        expect(strlen($out))->toBeLessThan(500);
+    });
+
+    it('renders pasted Word style markup with runs of tabs and newlines between tags', function () {
+        $html = "<p>One</p>\n\n\n".str_repeat("\t", 100)."<p>Two</p>".str_repeat("\r\n", 100)."<p>Three</p>";
+
+        expect(Content::render($html))->toBe('<p>One</p><p>Two</p><p>Three</p>');
+    });
+
+    it('leaves the inside of a pre block alone, however long the runs in it', function () {
+        $code = str_repeat(str_repeat(' ', 300)."call();\n", 20);
+        $html = '<p>before   '.str_repeat(' ', 500).'after</p><pre><code>'.$code.'</code></pre>';
+
+        $out = Content::render($html);
+
+        expect($out)->toContain(str_repeat(' ', 300).'call();')->toContain('<p>before after</p>');
+        expect(substr_count($out, str_repeat(' ', 300).'call();'))->toBe(20);
+    });
+
+    it('leaves 120 KB of spaces inside a pre block intact, and quickly', function () {
+        $html = '<pre><code>a'.str_repeat(' ', 120000).'b</code></pre>';
+
+        [$out, $seconds] = measured(fn () => Content::render($html));
+
+        expect($out)->toContain('a'.str_repeat(' ', 120000).'b');
+        expect($seconds)->toBeLessThan(0.5);
+    });
+});
+
+describe('Content: <pre> input the minifier is quadratic or fatal on', function () {
+    /**
+     * Refused before parsing. The sizes are the smallest that cross each rule, so an
+     * unguarded run costs a second or two.
+     */
+    it('is refused quickly, silently, with a warning from render()', function (string $html, string $reason) {
         $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
         Log::spy();
         $html = uniqueHtml($html);
@@ -785,32 +893,46 @@ describe('Content: input the minifier is quadratic or fatal on', function () {
         expect($seconds)->toBeLessThan(0.3);
         Log::shouldHaveReceived('warning')->once()->withArgs(fn ($message, $context) => str_contains($context['reason'], $reason));
     })->with([
-        'a run of spaces' => ['<p>'.str_repeat(' ', 5000).'a</p>', 'whitespace'],
-        'a run of spaces before a tag' => ['<p>'.str_repeat(' ', 5000).'<b>a</b></p>', 'whitespace'],
-        'a run of tabs and newlines' => ['<p>a'.str_repeat("\t\n", 3000).'b</p>', 'whitespace'],
-        'a run of no-break spaces' => ['<p>'.str_repeat("\u{00A0}", 5000).'a</p>', 'whitespace'],
-        'a run of ideographic spaces' => ['<p>'.str_repeat("\u{3000}", 5000).'a</p>', 'whitespace'],
         'a pre block past the regex backtrack limit' => ['<pre>'.str_repeat('a', 600000).'</pre>', 'pre'],
         'an unclosed pre past the regex backtrack limit' => ['<pre>'.str_repeat('a', 600000), 'pre'],
-        'many unclosed pre tags in a long input' => [str_repeat('<pre>a', 2000).str_repeat('b', 50000), 'pre'],
-        'many pre blocks in a long input' => [str_repeat('<pre>a</pre>', 6000), 'pre'],
+        'many pre blocks in a long input' => [str_repeat('<pre>a</pre>', 9000), 'pre'],
+        'many pre tags with no end' => [str_repeat('<pre a', 4000), 'pre'],
     ]);
 
-    it('lets through the largest whitespace run and pre block that are allowed', function () {
-        $html = '<p>a'.str_repeat(' ', 256).'b</p><pre>'.str_repeat('a', 400000).'</pre>';
+    it('closes many unclosed pre tags instead of refusing them, and renders quickly', function () {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        Log::spy();
+        $html = uniqueHtml('<p>before</p>'.str_repeat('<pre>a', 2000).str_repeat('b', 50000));
 
-        expect(Content::render($html))->toContain('<pre><code>')->toContain('<p>a');
-        expect(Content::sanitize('<p>a'.str_repeat(' ', 256).'b</p>'))->not->toBe('');
+        [$out, $seconds] = measured(fn () => Content::render($html));
+
+        expect($out)->toContain('before')->toContain('<pre>');
+        expect($seconds)->toBeLessThan(0.3);
+        Log::shouldNotHaveReceived('warning');
     });
 
-    it('refuses a whitespace run in sanitize() too, and tells the host', function () {
-        $html = '<p>'.str_repeat(' ', 5000).'a</p>';
+    it('lets through a document with a few unclosed pre tags and a real code block', function () {
+        $html = '<p>a</p><pre>x</pre><p>b</p><pre>unclosed'.str_repeat('<p>more</p>', 500);
 
-        expect(Content::sanitize($html))->toBe('');
-        expect(Content::sanitizeRefuses($html))->toBeTrue();
+        $out = Content::render($html);
+
+        expect($out)->toContain('<p>a</p>')->toContain('x')->toContain('unclosed');
+    });
+
+    it('lets through the number of code blocks a long article has', function () {
+        $html = str_repeat('<p>text</p><pre><code>'.str_repeat('code line'."\n", 40).'</code></pre>', 200);
+
+        expect(strlen($html))->toBeLessThan(100000);
+        expect(substr_count(Content::render($html), '<pre>'))->toBe(200);
     });
 
     it('allows a single unclosed pre in a long document', function () {
         expect(Content::render('<p>a</p><pre>x'.str_repeat('<p>a</p>', 1000)))->not->toBe('');
+    });
+
+    it('lets through a pre block just under the length limit', function () {
+        $out = Content::render('<pre>'.str_repeat('a', 400000).'</pre>');
+
+        expect($out)->toContain('<pre>');
     });
 });
