@@ -35,9 +35,9 @@ class MigrateTiptapContent extends Command
 
                 foreach ($columns as $column) {
                     $value = $row->getRawOriginal($column);
-                    $html = @unserialize($value);          // legacy AsEditorContent stored serialize()'d HTML
-                    if ($html === false && $value !== 'b:0;') {
-                        $html = $value;                    // raw
+                    [$serialized, $html] = is_string($value) ? Content::unserialize($value) : [false, null];
+                    if (! $serialized) {
+                        $html = $value;                    // raw (legacy AsEditorContent stored serialize()'d HTML)
                     }
 
                     if (! is_string($html) || $html === '' || $this->isJson($html)) {

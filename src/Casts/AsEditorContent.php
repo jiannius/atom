@@ -5,6 +5,7 @@ namespace Jiannius\Atom\Casts;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Jiannius\Atom\Tiptap\Content;
 
 class AsEditorContent implements CastsAttributes
 {
@@ -16,9 +17,9 @@ class AsEditorContent implements CastsAttributes
     public function get(Model $model, string $key, mixed $value, array $attributes): mixed
     {
         if (is_string($value)) {
-            $unserialized = @unserialize($value);
+            [$serialized, $unserialized] = Content::unserialize($value);
 
-            if ($unserialized !== false || $value === 'b:0;') {
+            if ($serialized) {
                 return $unserialized;
             }
         }

@@ -19,6 +19,13 @@ import TextAlign from '@tiptap/extension-text-align'
 import { TextStyle, FontSize } from '@tiptap/extension-text-style'
 import Youtube from '@tiptap/extension-youtube'
 
+// Mirrors Tiptap\StyleValue (PHP): only these float / width values reach a style attribute.
+const safeFloat = v => (['left', 'right', 'none'].includes(v) ? v : null)
+const safeWidth = v => {
+    const m = typeof v === 'string' && v.trim().match(/^(\d{1,4}(?:\.\d+)?)(px|%)$/i)
+    return m && +m[1] >= 1 && +m[1] <= (m[2] === '%' ? 100 : 5000) ? v.trim() : null
+}
+
 // Image with float/align/width attributes (ported from v2; .extend stable in v3)
 const ImageExtended = Image.extend({
     addAttributes () {
@@ -27,7 +34,7 @@ const ImageExtended = Image.extend({
             float: {
                 default: null,
                 parseHTML: el => el.getAttribute('data-float'),
-                renderHTML: a => (a.float ? { 'data-float': a.float, style: `float: ${a.float}` } : {}),
+                renderHTML: a => (safeFloat(a.float) ? { 'data-float': a.float, style: `float: ${a.float}` } : {}),
             },
             align: {
                 default: null,
@@ -43,7 +50,7 @@ const ImageExtended = Image.extend({
             width: {
                 default: null,
                 parseHTML: el => el.getAttribute('data-width'),
-                renderHTML: a => (a.width ? { 'data-width': a.width, style: `width: ${a.width}` } : {}),
+                renderHTML: a => (safeWidth(a.width) ? { 'data-width': a.width.trim(), style: `width: ${a.width.trim()}` } : {}),
             },
         }
     },
