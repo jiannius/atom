@@ -238,6 +238,7 @@ describe('E-S3 YouTube embed URLs', function () {
         'ftp scheme' => ['ftp://youtube.com/watch?v=dQw4w9WgXcQ'],
         'no id' => ['https://www.youtube.com/'],
         'short id' => ['https://www.youtube.com/watch?v=abc'],
+        'id followed by an encoded newline' => ['https://www.youtube.com/watch?v=dQw4w9WgXcQ%0A'],
         'array src' => [['x' => 'y']],
         'empty' => [''],
     ]);
@@ -280,6 +281,7 @@ describe('E-S4 style values', function () {
         'expression' => ['expression(alert(1))'],
         'unit-less' => ['20'],
         'huge' => ['999rem'],
+        'over the px cap' => ['1000px'],
         'zero' => ['0px'],
         'other unit' => ['100vw'],
         'negative' => ['-1rem'],
@@ -369,7 +371,128 @@ describe('E-S4 style values', function () {
     });
 });
 
+describe('E-S4 text align, link and code block attributes', function () {
+    it('drops a hostile text alignment', function (mixed $align) {
+        $html = hardeningDoc([
+            ['type' => 'paragraph', 'attrs' => ['textAlign' => $align], 'content' => [['type' => 'text', 'text' => 'p']]],
+            ['type' => 'heading', 'attrs' => ['level' => 2, 'textAlign' => $align], 'content' => [['type' => 'text', 'text' => 'h']]],
+        ]);
+
+        expect($html)->not->toContain('position')->not->toContain('style=')->toContain('p')->toContain('h');
+    })->with([
+        'declaration injection' => ['center; position: fixed; inset: 0; background: url(https://evil.example.com/x.png)'],
+        'unknown value' => ['inherit'],
+        'wrong case' => ['CENTER'],
+        'loose-equal bool' => [true],
+        'array' => [['center']],
+        'object' => [['a' => 'center']],
+    ]);
+
+    it('still renders the four alignments and leaves the default alone', function () {
+        $html = hardeningDoc(array_map(
+            fn ($align) => ['type' => 'paragraph', 'attrs' => ['textAlign' => $align], 'content' => [['type' => 'text', 'text' => $align]]],
+            ['left', 'center', 'right', 'justify'],
+        ));
+
+        expect($html)
+            ->toContain('text-align: center')
+            ->toContain('text-align: right')
+            ->toContain('text-align: justify')
+            ->not->toContain('text-align: left');
+    });
+
+    it('an alignment in legacy HTML survives HTML to JSON to HTML', function () {
+        $editor = new \Tiptap\Editor(['extensions' => Content::extensions()]);
+        $html = Content::render($editor->setContent('<p style="text-align: right">r</p>')->getJSON());
+
+        expect($html)->toContain('text-align: right');
+    });
+
+    it('a link renders only a checked href and the configured target and rel', function () {
+        $html = hardeningDoc([hardeningText([['type' => 'link', 'attrs' => [
+            'href' => 'https://example.com/a',
+            'class' => 'fixed inset-0 z-50',
+            'rel' => 'opener',
+            'target' => 'evil-frame',
+        ]]], 'l')]);
+
+        expect($html)
+            ->toContain('href="https://example.com/a"')
+            ->not->toContain('fixed')
+            ->not->toContain('rel="opener"')
+            ->not->toContain('evil-frame');
+    });
+
+    it('a link with a null rel still keeps the configured rel', function () {
+        $html = hardeningDoc([hardeningText([['type' => 'link', 'attrs' => ['href' => 'https://example.com', 'rel' => null, 'target' => '_blank']]], 'l')]);
+
+        expect($html)->toContain('rel="noopener noreferrer nofollow"')->toContain('target="_blank"');
+    });
+
+    it('a link keeps the editor new-tab switch (_blank, _self, or none)', function () {
+        $make = fn ($target) => hardeningDoc([hardeningText([['type' => 'link', 'attrs' => ['href' => 'https://example.com', 'target' => $target]]], 'l')]);
+
+        expect($make('_blank'))->toContain('target="_blank"');
+        expect($make('_self'))->toContain('target="_self"');
+        expect($make(null))->not->toContain('target=');
+    });
+
+    it('a link with an unsafe href renders no href', function () {
+        $html = hardeningDoc([hardeningText([['type' => 'link', 'attrs' => ['href' => 'javascript:alert(1)']]], 'l')]);
+
+        expect($html)->not->toContain('javascript');
+    });
+
+    it('a code block renders a single-token language class only', function () {
+        $hostile = hardeningDoc([['type' => 'codeBlock', 'attrs' => ['language' => 'js fixed inset-0 z-50'], 'content' => [['type' => 'text', 'text' => 'x']]]]);
+        $array = hardeningDoc([['type' => 'codeBlock', 'attrs' => ['language' => ['a']], 'content' => [['type' => 'text', 'text' => 'x']]]]);
+
+        expect($hostile)->not->toContain('fixed')->not->toContain('class=');
+        expect($array)->not->toContain('class=');
+    });
+
+    it('a code block still renders real language names', function (string $language) {
+        $html = hardeningDoc([['type' => 'codeBlock', 'attrs' => ['language' => $language], 'content' => [['type' => 'text', 'text' => 'x']]]]);
+
+        expect($html)->toContain('<code class="language-'.$language.'">');
+    })->with(['javascript', 'c++', 'c#', 'objective-c', 'php']);
+});
+
+describe('crash guard: a corrupt stored document', function () {
+    it('renders empty and reports instead of throwing', function (array $node) {
+        \Illuminate\Support\Facades\Exceptions::fake();
+
+        $html = hardeningDoc([$node]);
+
+        expect($html)->toBe('');
+        \Illuminate\Support\Facades\Exceptions::assertReportedCount(1);
+    })->with([
+        'mention id as an array' => [['type' => 'paragraph', 'content' => [['type' => 'mention', 'attrs' => ['id' => ['x'], 'label' => 'A']]]]],
+        'table colwidth as a string' => [['type' => 'table', 'content' => [['type' => 'tableRow', 'content' => [['type' => 'tableCell', 'attrs' => ['colwidth' => 'x'], 'content' => [['type' => 'paragraph']]]]]]]],
+    ]);
+
+    it('does not report a healthy document', function () {
+        \Illuminate\Support\Facades\Exceptions::fake();
+
+        expect(hardeningDoc([['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'fine']]]]))->toBe('<p>fine</p>');
+        \Illuminate\Support\Facades\Exceptions::assertNothingReported();
+    });
+
+    it('the <atom:tiptap.content> component survives a corrupt document', function () {
+        \Illuminate\Support\Facades\Exceptions::fake();
+
+        $json = json_encode(['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'mention', 'attrs' => ['id' => ['x']]]]]]]);
+
+        expect(renderBlade('<atom:tiptap.content :content="$c" />', ['c' => $json]))->toContain('editor-content');
+    });
+});
+
 describe('StyleValue', function () {
+    it('accepts the largest font size the toolbar can produce', function () {
+        expect(StyleValue::fontSize('998px'))->toBe('998px');
+        expect(StyleValue::fontSize('999px'))->toBe('999px');
+    });
+
     it('accepts the legitimate colour forms', function (string $color) {
         expect(StyleValue::color($color))->toBe($color);
     })->with(['#fff', '#FFFA', '#a1b2c3', '#a1b2c3d4', 'rgb(1,2,3)', 'rgb(1 2 3 / 50%)', 'rgba(1, 2, 3, .5)', 'rgb(10%, 20%, 30%)', 'hsl(120deg, 50%, 50%)', 'hsla(0.5turn 50% 50% / 0.3)', 'Red', 'transparent']);

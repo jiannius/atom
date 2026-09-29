@@ -92,7 +92,7 @@ class Youtube extends Node
                 : ($query['v'] ?? null);
         }
 
-        if (! is_string($id) || ! preg_match('/^[A-Za-z0-9_-]{11}$/', $id)) {
+        if (! is_string($id) || ! preg_match('/^[A-Za-z0-9_-]{11}$/D', $id)) {
             return null;
         }
 

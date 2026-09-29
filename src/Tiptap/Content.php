@@ -2,10 +2,13 @@
 
 namespace Jiannius\Atom\Tiptap;
 
+use Jiannius\Atom\Tiptap\Extensions\AtomCodeBlock;
 use Jiannius\Atom\Tiptap\Extensions\AtomColor;
 use Jiannius\Atom\Tiptap\Extensions\AtomHighlight;
 use Jiannius\Atom\Tiptap\Extensions\AtomImage;
+use Jiannius\Atom\Tiptap\Extensions\AtomLink;
 use Jiannius\Atom\Tiptap\Extensions\AtomMention;
+use Jiannius\Atom\Tiptap\Extensions\AtomTextAlign;
 use Jiannius\Atom\Tiptap\Extensions\FontSize;
 use Jiannius\Atom\Tiptap\Extensions\Youtube;
 use Tiptap\Editor;
@@ -21,16 +24,17 @@ class Content
     public static function extensions(): array
     {
         return [
-            new \Tiptap\Extensions\StarterKit,
+            new \Tiptap\Extensions\StarterKit(['codeBlock' => false]),
+            new AtomCodeBlock,
             new \Tiptap\Marks\Underline,
             new \Tiptap\Marks\Subscript,
             new \Tiptap\Marks\Superscript,
             new AtomHighlight(['multicolor' => true]),
-            new \Tiptap\Marks\Link,
+            new AtomLink,
             new \Tiptap\Marks\TextStyle,
             new AtomColor(['types' => ['textStyle']]),
             new FontSize(['types' => ['textStyle']]),
-            new \Tiptap\Extensions\TextAlign(['types' => ['heading', 'paragraph']]),
+            new AtomTextAlign(['types' => ['heading', 'paragraph']]),
             new \Tiptap\Nodes\Table,
             new \Tiptap\Nodes\TableRow,
             new \Tiptap\Nodes\TableHeader,
@@ -43,6 +47,9 @@ class Content
 
     /**
      * Render stored content (Tiptap JSON string/array, or legacy HTML) to HTML.
+     * Stored content is untrusted, so a document the renderer cannot handle
+     * (e.g. non-scalar attrs) is reported and renders empty rather than
+     * taking the page down.
      */
     public static function render(mixed $value): string
     {
@@ -50,9 +57,15 @@ class Content
             return '';
         }
 
-        return (new Editor(['extensions' => static::extensions()]))
-            ->setContent($value)
-            ->getHTML();
+        try {
+            return (new Editor(['extensions' => static::extensions()]))
+                ->setContent($value)
+                ->getHTML();
+        } catch (\Throwable $e) {
+            report($e);
+
+            return '';
+        }
     }
 
     /**

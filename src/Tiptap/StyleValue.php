@@ -57,7 +57,7 @@ class StyleValue
     }
 
     /**
-     * A custom font size: a number in px (1-300) or em/rem (0.1-20).
+     * A custom font size: a number in px (1-999) or em/rem (0.1-20).
      */
     public static function fontSize(mixed $value): ?string
     {
@@ -65,7 +65,7 @@ class StyleValue
             return null;
         }
 
-        [$min, $max] = strtolower($m[2]) === 'px' ? [1, 300] : [0.1, 20];
+        [$min, $max] = strtolower($m[2]) === 'px' ? [1, 999] : [0.1, 20];
 
         return ((float) $m[1] >= $min && (float) $m[1] <= $max) ? $size : null;
     }
