@@ -698,12 +698,10 @@ php artisan atom:purge-editor-images --force  # delete the editor-purged/ backup
 
 ## Editor and chat HTML is untrusted
 
-`<atom:tiptap>`, `<atom:tiptap.chat>` and `<atom:editor>` hand the host what the browser sent. The chat composer sends HTML (`tiptap.getHTML()`, in an `input` event carrying `{ body, files }`), and the editor sends Tiptap JSON. Neither is checked on the way in: a client that skips the editor and calls `$wire.submit(...)` (or sets the bound property) with its own string stores whatever it likes. Stored and printed as-is, that is stored XSS.
-
-atom can't see your storage code, so the rule for hosts is:
+`<atom:tiptap.chat>` (the chat composer) hands the host **HTML**: `tiptap.getHTML()`, in an `input` event carrying `{ body, files }`. Nothing checks it on the way in. A client that skips the editor and calls `$wire.submit(...)` (or sets the bound property) with its own string stores whatever it likes, and stored and printed as-is that is stored XSS. atom can't see your storage code, so the rule for a host that keeps chat HTML is:
 
 - **Clean it before you store it:** `Jiannius\Atom\Tiptap\Content::sanitize()`.
-- **Or print it through atom:** `<atom:tiptap.content :content="$message->body"/>` or `Content::render($message->body)`. Both parse the value through the editor's schema and print only what the schema allows, so a row that was stored unclean is still safe to display.
+- **Print it through atom:** `<atom:tiptap.content :content="$message->body"/>` or `Content::render($message->body)`. Both parse the value through the editor's schema and print only what the schema allows.
 - **Never** print it with `x-html`, `{!! $body !!}` or `->html()` straight from the column or from the request.
 
 ```php
@@ -712,10 +710,15 @@ use Jiannius\Atom\Tiptap\Content;
 // the chat composer dispatches `input` with { body, files }
 public function submit(array $message): void
 {
-    $body = Content::sanitize($message['body'] ?? '');
+    $raw = $message['body'] ?? '';
+    $body = Content::sanitize($raw);
 
-    // '' means nothing usable arrived: it was empty, too large, or held nothing the editor can produce
+    // '' covers three cases: empty, refused (too big) and failed. Ask which if the user should be told.
     if ($body === '') {
+        if (Content::sanitizeRefuses($raw)) {
+            $this->addError('body', 'That message is too long.');
+        }
+
         return;
     }
 
@@ -724,11 +727,19 @@ public function submit(array $message): void
 ```
 
 ```blade
-{{-- reads back through the same schema, so old unclean rows render clean too --}}
+{{-- reads back through the same schema --}}
 <atom:tiptap.content :content="$message->body"/>
 ```
 
-`Content::sanitize(mixed $html, int $maxBytes = Content::SANITIZE_MAX_BYTES): string` takes HTML, a Tiptap JSON string or a document array. It parses the value through the same schema and the same hardened extensions as `render()`, and returns the schema's own serialisation, so nothing of the input's markup survives except what the editor itself can write. It never throws: a value it can't handle, or one larger than `$maxBytes` (256 KB by default), is reported through Laravel's `report()` and comes back as `''`. Parsing costs roughly 250 bytes of memory per input byte, so raise the limit only for fields that hold long documents.
+**This is for HTML, not for the JSON editor.** `<atom:tiptap>` (and the `AsTiptapContent` cast) store **Tiptap JSON**, and `sanitize()` returns HTML. Don't pass JSON editor content through it before storing: that would turn the column into HTML and drop YouTube embeds. JSON is already printed safely by `<atom:tiptap.content>` / `Content::render()`, so store it as JSON and print it through those.
+
+**Rows stored before you adopt `sanitize()` stay unclean.** `sanitize()` only cleans what passes through it from now on. A chat message already in your table keeps whatever it was saved with until you render it through `<atom:tiptap.content>` / `Content::render()` (which cleans on the way out, so old rows print safely), or backfill the column by running each row through `Content::sanitize()`. A host that prints stored HTML with `x-html` is exposed to every unclean row it already holds.
+
+`Content::sanitize(mixed $html, int $maxBytes = 131072, int $maxTags = 5000): string` parses the value through the same schema and the same hardened extensions as `render()`, and returns the schema's own serialisation, so nothing of the input's markup survives except what the editor itself can write. It also accepts a Tiptap JSON document (a string or array with a `type` key) and a `Stringable`; any other string, `'42'` and `'null'` included, is text.
+
+It returns `''` when the input is empty, when it is refused, and when it fails. It refuses (silently, so a client can't flood your logs) HTML over `$maxBytes`, HTML with more than `$maxTags` tags, or HTML that carries tiptap-php's reserved `MINIFYHTML` placeholder; output over four times `$maxBytes` is refused too. Only an unexpected failure is reported through Laravel's `report()`. `Content::sanitizeRefuses($html)` tells a refusal from an empty message.
+
+The limits exist because parsing cost tracks the tag count, not the byte count: about 3 KB of memory per tag in the worst case, so an input of 65,000 `<p>a` (260 KB) needs over 200 MB, and tiptap-php's `<pre>` placeholder can be made to expand exponentially from a few KB. Measured at the defaults, the worst shape costs about 16 MB and 0.2 s; a long chat message is a few KB and a few dozen tags. Raise the limits only for a field that holds long documents. `Content::render()` reads stored content, so its limits are looser (2 MB, 10,000 tags) and it refuses the same placeholder.
 
 | Kept (as the editor writes it) | Dropped |
 | --- | --- |
@@ -736,10 +747,10 @@ public function submit(array $message): void
 | Bold, italic, strike, underline, code, sub/superscript | Every event handler (`onclick`, `onerror`, ...) and every attribute the schema doesn't define, `id` and `srcdoc` included |
 | Links to `http`, `https`, `mailto`, `tel` (and the other protocols Tiptap allows, such as `ftp` and `sms`) and relative URLs, with atom's own `target` / `rel` | Links whose href is `javascript:`, `vbscript:`, `data:` or another scheme (the text stays, the link goes); a link's own `class`, `rel` or `target` |
 | Images with an `http(s)`, relative or raster `data:image/` source | An image whose source is `javascript:`, `data:image/svg+xml` or another scheme (the whole image goes) |
-| `color`, `background-color`, `font-size`, `text-align`, image `width` / `float` / `align` when the value passes the allow-list | `style` declarations that fail it (`position`, `url(...)`, `expression(...)`, out-of-range sizes), and every `class` except `mention` and `language-*` |
+| `color`, `background-color`, `font-size`, `text-align`, image `width` / `float` / `align` when the value passes the allow-list | `style` declarations that fail it (`position`, `url(...)`, `expression(...)`, out-of-range sizes), and every `class` except `mention`, a font-size preset and `language-*` |
 | Mentions (`<span class="mention" data-type="mention" data-id data-label>`), escaped | The `data-mention-suggestion-char` marker the JS adds |
 | YouTube embeds in a JSON document, rebuilt from the video id | Any `<iframe>` in HTML input, and any iframe that isn't YouTube |
-| Text that looks like markup (`&lt;script&gt;`), as escaped text | NUL bytes and invalid UTF-8 (scrubbed, the text around them kept) |
+| Text that looks like markup (`&lt;script&gt;`), as escaped text | Invalid UTF-8 (scrubbed, the text around it kept) |
 
 Two things it does not do:
 

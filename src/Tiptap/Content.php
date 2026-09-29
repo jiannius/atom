@@ -15,8 +15,29 @@ use Tiptap\Editor;
 
 class Content
 {
-    /** The default size limit for sanitize(), in bytes. */
-    public const SANITIZE_MAX_BYTES = 262144;
+    /**
+     * Default limits for sanitize(): 128 KB and 5000 tags. Cost tracks the tag
+     * count, not the byte count (about 3 KB of memory per tag, worst case), so
+     * both are held. The measured worst case at the limit is ~17 MB and ~0.5 s;
+     * a long chat message is a few KB and a few dozen tags.
+     */
+    public const SANITIZE_MAX_BYTES = 131072;
+
+    public const SANITIZE_MAX_TAGS = 5000;
+
+    /**
+     * Limits for render(), which reads stored content: a long document is
+     * legitimate here, so they are looser (worst case ~33 MB at 10000 tags).
+     */
+    protected const RENDER_MAX_BYTES = 2097152;
+
+    protected const RENDER_MAX_TAGS = 10000;
+
+    /** Output larger than this many times the byte limit is refused. */
+    protected const OUTPUT_FACTOR = 4;
+
+    /** The prefix of tiptap-php's `<pre>` placeholder (Tiptap\Utils\Minify). */
+    protected const MINIFY_TOKEN = 'MINIFYHTML';
 
     /**
      * The full PHP extension set mirroring the JS engine. Used for both SSR
@@ -50,9 +71,10 @@ class Content
 
     /**
      * Render stored content (Tiptap JSON string/array, or legacy HTML) to HTML.
-     * Stored content is untrusted, so a document the renderer cannot handle
-     * (e.g. non-scalar attrs) is reported and renders empty rather than
-     * taking the page down.
+     * Stored content is untrusted, so a value the renderer refuses (over the
+     * RENDER_MAX_* limits, or carrying tiptap-php's reserved placeholder) or
+     * cannot handle (e.g. non-scalar attrs) renders empty rather than taking
+     * the page down. Only an unexpected failure is reported.
      */
     public static function render(mixed $value): string
     {
@@ -60,51 +82,90 @@ class Content
             return '';
         }
 
-        return static::convert($value);
+        return static::convert($value, static::RENDER_MAX_BYTES, static::RENDER_MAX_TAGS);
     }
 
     /**
-     * Clean HTML (or a Tiptap JSON document) that came from the browser, so it
+     * Clean HTML that came from the browser (the chat composer's output), so it
      * is safe to store and to print. It is parsed through the same schema and
      * the same hardened extension set as render(), and what comes back is the
      * schema's own serialisation: nodes and marks the editor can produce, only
      * href / src values that pass the allow-lists, and none of the input's
      * attributes. Scripts, event handlers, style / class values that fail the
      * allow-lists, javascript: / data: links, non-YouTube iframes and unknown
-     * tags are all dropped.
+     * tags are all dropped. It returns HTML: content a JSON editor
+     * (`<atom:tiptap>`) sends is already rendered safely by render(), and
+     * should be stored as JSON, not passed through here.
      *
-     * Never throws. Input that is not a string or array, is larger than
-     * $maxBytes, or cannot be parsed is reported and comes back as ''; so does
-     * input with nothing of the schema in it, so a host that must not accept
-     * an empty message should check for '' after cleaning.
+     * A Tiptap JSON document (a string or an array with a `type` key) is
+     * accepted too. Anything else, `'42'` and `'null'` included, is text.
+     * A Stringable is cast to a string.
+     *
+     * '' comes back for empty input, for input that is refused and for input
+     * that fails, so a host that must not store an empty message checks for ''.
+     * To tell a refusal from an empty message, ask sanitizeRefuses().
+     * Refusals (over $maxBytes, over $maxTags, or carrying the reserved
+     * placeholder) are silent, so a client cannot flood the log; only an
+     * unexpected failure is reported.
      *
      * Mention ids and labels are kept as sent: they are escaped, but not
      * checked. A host that acts on a mention (a notification, a link to a
      * record) must look the id up itself, scoped to what the user may mention.
      *
-     * @param  int  $maxBytes  Refuse anything larger. Parsing costs roughly 250
-     *                         bytes of memory per input byte, so raise this only
-     *                         for fields that hold long documents.
+     * @param  int  $maxBytes  Refuse anything larger. Output over 4x this is refused too.
+     * @param  int  $maxTags  Refuse HTML with more `<` characters than this. Cost tracks
+     *                        the tag count, not the byte count: about 3 KB of memory per
+     *                        tag at worst, so 5000 tags is ~17 MB and ~0.5 s. Raise both
+     *                        only for fields that hold long documents.
      */
-    public static function sanitize(mixed $html, int $maxBytes = self::SANITIZE_MAX_BYTES): string
+    public static function sanitize(mixed $html, int $maxBytes = self::SANITIZE_MAX_BYTES, int $maxTags = self::SANITIZE_MAX_TAGS): string
+    {
+        return static::convert($html, $maxBytes, $maxTags);
+    }
+
+    /**
+     * Whether sanitize() would refuse this input without parsing it: over the
+     * byte or tag limit, or carrying tiptap-php's reserved placeholder. False
+     * for input that is merely empty or not a string, so a host can tell a
+     * refused message ("too long") from an empty one.
+     */
+    public static function sanitizeRefuses(mixed $html, int $maxBytes = self::SANITIZE_MAX_BYTES, int $maxTags = self::SANITIZE_MAX_TAGS): bool
+    {
+        $text = static::input($html);
+
+        return $text !== null && static::prepare($text, $maxBytes, $maxTags) === null;
+    }
+
+    /**
+     * Whether an HTML string carries tiptap-php's reserved `<pre>` placeholder
+     * prefix, which no real content has and which must never reach the parser
+     * (see prepare()).
+     */
+    public static function carriesPlaceholder(string $html): bool
+    {
+        return stripos($html, static::MINIFY_TOKEN) !== false;
+    }
+
+    /**
+     * Parse content through the extension set and serialise it back to HTML.
+     * A refused value comes back empty and silently; a value the parser cannot
+     * handle is reported and comes back empty.
+     */
+    protected static function convert(mixed $value, int $maxBytes, int $maxTags): string
     {
         try {
-            if (is_array($html)) {
-                $html = json_encode($html, JSON_THROW_ON_ERROR);
-            }
+            $text = static::input($value);
+            $content = $text === null ? null : static::prepare($text, $maxBytes, $maxTags);
 
-            if (! is_string($html)) {
+            if ($content === null) {
                 return '';
             }
 
-            if (strlen($html) > $maxBytes) {
-                throw new \LengthException('Editor HTML of '.strlen($html)." bytes exceeds the {$maxBytes} byte limit.");
-            }
+            $html = (new Editor(['extensions' => static::extensions()]))
+                ->setContent($content)
+                ->getHTML();
 
-            // a NUL byte or invalid UTF-8 makes the parser's minifier return null
-            $html = trim(str_replace("\0", '', mb_scrub($html, 'UTF-8')));
-
-            return $html === '' ? '' : static::convert($html);
+            return strlen($html) > $maxBytes * static::OUTPUT_FACTOR ? '' : $html;
         } catch (\Throwable $e) {
             report($e);
 
@@ -113,20 +174,62 @@ class Content
     }
 
     /**
-     * Parse content through the extension set and serialise it back to HTML.
-     * A document the parser cannot handle is reported and comes back empty.
+     * Reduce a value to the string to parse: a Stringable is cast, an array is
+     * accepted only as a document (a `type` key) and encoded, invalid UTF-8 is
+     * scrubbed (the parser's minifier returns null on it, which is a
+     * TypeError). Null when there is nothing to parse.
      */
-    protected static function convert(mixed $value): string
+    protected static function input(mixed $value): ?string
     {
-        try {
-            return (new Editor(['extensions' => static::extensions()]))
-                ->setContent($value)
-                ->getHTML();
-        } catch (\Throwable $e) {
-            report($e);
-
-            return '';
+        if ($value instanceof \Stringable) {
+            $value = (string) $value;
         }
+
+        if (is_array($value)) {
+            $value = isset($value['type']) ? json_encode($value) : null;
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim(mb_scrub($value, 'UTF-8'));
+
+        return $value === '' ? null : $value;
+    }
+
+    /**
+     * What to hand the parser, or null when the value is refused.
+     *
+     * A Tiptap document (JSON with a `type` key) goes through as an array. Everything
+     * else is HTML, held to the limits, and refused if it carries the token
+     * Minify uses for its `<pre>` placeholders: tiptap-php replaces each `<pre>`
+     * with `%MINIFYHTML<md5(REQUEST_TIME)>N%` and str_replace()s them back, the
+     * hash is guessable, and a placeholder written inside a `<pre>` expands
+     * again for every level of nesting, so a few KB exhausts memory. Only
+     * HTML reaches Minify; a document's text never does.
+     *
+     * @return string|array<string, mixed>|null
+     */
+    protected static function prepare(string $text, int $maxBytes, int $maxTags): string|array|null
+    {
+        if (strlen($text) > $maxBytes) {
+            return null;
+        }
+
+        $decoded = json_decode($text, true);
+        $isJson = json_last_error() === JSON_ERROR_NONE;
+
+        if ($isJson && is_array($decoded) && isset($decoded['type'])) {
+            return $decoded;
+        }
+
+        if (static::carriesPlaceholder($text) || substr_count($text, '<') > $maxTags) {
+            return null;
+        }
+
+        // the parser takes any string that decodes as JSON for JSON: an empty comment makes it HTML
+        return $isJson ? '<!---->'.$text : $text;
     }
 
     /**

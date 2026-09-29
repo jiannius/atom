@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Support\Str;
 use Jiannius\Atom\Tiptap\Content;
 use Jiannius\Atom\Tiptap\Extensions\AtomImage;
 
@@ -28,7 +29,7 @@ function sanitisedViolations(string $html): array
 
     $attributes = [
         'a' => ['href', 'target', 'rel'],
-        'span' => ['class', 'style', 'data-type', 'data-id', 'data-label'],
+        'span' => ['class', 'style', 'data-type', 'data-id', 'data-label', 'data-font-size'],
         'mark' => ['style', 'data-color'],
         'p' => ['style'],
         'h1' => ['style'], 'h2' => ['style'], 'h3' => ['style'], 'h4' => ['style'], 'h5' => ['style'], 'h6' => ['style'],
@@ -82,8 +83,15 @@ function sanitisedViolations(string $html): array
                 $violations[] = "iframe src {$value}";
             }
 
-            if ($name === 'class' && ! preg_match('/^(mention|language-[\w+#.-]+)$/', $value)) {
-                $violations[] = "class {$value}";
+            // the class values each tag may carry: a mention, a font-size preset, a code language
+            $classPattern = ['code' => '/^language-[\w+#.-]+$/', 'span' => '/^(mention|text-(xs|sm|base|lg|xl))$/'][$tag] ?? '/^(?!)/';
+
+            if ($name === 'class' && ! preg_match($classPattern, $value)) {
+                $violations[] = "<{$tag} class={$value}>";
+            }
+
+            if ($name === 'data-font-size' && ! preg_match('/^(xs|sm|md|lg|xl|\d{1,3}(\.\d+)?(px|em|rem))$/i', $value)) {
+                $violations[] = "data-font-size {$value}";
             }
 
             if ($name === 'style') {
@@ -216,7 +224,7 @@ describe('Content::sanitize: hostile input', function () {
         expect(Content::sanitize('<img src="data:image/png;base64,AAAA">'))->toContain('src="data:image/png;base64,AAAA"');
     });
 
-    it('strips NUL bytes and invalid UTF-8 and keeps the text around them', function () {
+    it('keeps the text around NUL bytes and invalid UTF-8', function () {
         expect(Content::sanitize("<p>a\0b</p>"))->toBe('<p>ab</p>');
         expect(Content::sanitize("<p>ok \xff\xfe fine</p>"))->toContain('ok')->toContain('fine');
         expect(Content::sanitize("<p>\xff<img src=x onerror=alert(1)></p>"))->not->toContain('onerror');
@@ -312,7 +320,7 @@ describe('Content::sanitize: legitimate chat output', function () {
     });
 });
 
-describe('Content::sanitize: never throws', function () {
+describe('Content::sanitize: input that is not HTML', function () {
     it('returns an empty string for input that is not a string or a document', function (mixed $input) {
         expect(Content::sanitize($input))->toBe('');
     })->with([
@@ -324,66 +332,236 @@ describe('Content::sanitize: never throws', function () {
         'object' => [new stdClass],
         'closure' => [fn () => 1],
         'empty array' => [[]],
+        'array that is not a document' => [['a' => 1]],
+        'list' => [[1, 2, 3]],
         'empty string' => [''],
         'whitespace' => ["  \n\t "],
     ]);
 
-    it('returns a string for corrupt input', function (mixed $input) {
+    it('treats JSON that is not a document as text, and does not report it', function (string $input, string $expected) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+
+        expect(Content::sanitize($input))->toBe($expected);
+    })->with([
+        'a number' => ['42', '42'],
+        'true' => ['true', 'true'],
+        'null' => ['null', 'null'],
+        'a list' => ['[1,2,3]', '[1,2,3]'],
+        'an object with no type' => ['{"foo":"bar"}', '{&quot;foo&quot;:&quot;bar&quot;}'],
+    ]);
+
+    it('casts a Stringable to a string', function () {
+        expect(Content::sanitize(Str::of('<p onclick="x()">hi</p><script>alert(1)</script>')))->toBe('<p>hi</p>');
+    });
+
+    it('returns a string for corrupt input, without reporting the ones it can read as text', function (mixed $input) {
         expect(Content::sanitize($input))->toBeString();
     })->with([
         'truncated JSON' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","te'],
-        'JSON that is not a document' => ['{"foo":"bar"}'],
-        'JSON list' => ['[1,2,3]'],
-        'document with a non-array content' => ['{"type":"doc","content":"x"}'],
         'document with an unknown node' => ['{"type":"doc","content":[{"type":"nope","attrs":{"a":[1]}}]}'],
-        'array of junk' => [['a' => 1]],
         'nested array of junk' => [['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [1, 'x', null]]]]],
         'lone angle bracket' => ['<'],
         'lone entity' => ['&#'],
         'binary' => [random_bytes(2048)],
         'invalid UTF-8' => ["\xc3\x28\xa0\xa1\xe2\x28\xa1"],
         'NUL bytes' => [str_repeat("\0", 100)],
+        'unclosed pre tags' => [str_repeat('<pre>', 2000).'x'],
+        'JSON nested past the depth limit' => [str_repeat('[', 600).str_repeat(']', 600)],
     ]);
 
-    it('reports a refusal and returns an empty string', function () {
-        $this->mock(ExceptionHandler::class)->shouldReceive('report')->atLeast()->once()->with(Mockery::type(LengthException::class));
-
-        expect(Content::sanitize(str_repeat('a', 10), maxBytes: 5))->toBe('');
-    });
-
-    it('reports a document the parser cannot handle', function () {
+    it('reports an unexpected failure and returns an empty string', function () {
         $this->mock(ExceptionHandler::class)->shouldReceive('report')->atLeast()->once();
 
-        expect(Content::sanitize(['a' => 1]))->toBe('');
+        expect(Content::sanitize('{"type":"doc"}'))->toBe('');
     });
 });
 
-describe('Content::sanitize: size limit', function () {
-    it('refuses input over the limit and reports it', function () {
+/**
+ * tiptap-php's Minify swaps every <pre> for %MINIFYHTML<md5(REQUEST_TIME)>N% and
+ * str_replace()s them back, in order. The hash is guessable, so a placeholder
+ * written inside a <pre> is expanded again, once per level of nesting.
+ * depth 5, 10 per level: ~1.8 KB in, ~300 KB out, ~27 MB and 0.4 s unguarded;
+ * depth 8 exhausts a 512 MB limit.
+ */
+function placeholderBomb(int $depth = 5, int $perLevel = 10, ?string $hash = null): string
+{
+    $hash ??= md5((string) $_SERVER['REQUEST_TIME']);
+    $html = '';
+
+    for ($i = 0; $i < $depth; $i++) {
+        $html .= '<pre>'.($i < $depth - 1 ? str_repeat('%MINIFYHTML'.$hash.($i + 1).'%', $perLevel) : 'a').'</pre>';
+    }
+
+    return $html;
+}
+
+/**
+ * Run a callback and report how long it took and how much memory its peak added.
+ *
+ * @return array{0: mixed, 1: float, 2: float} [result, seconds, MB]
+ */
+function measured(callable $callback): array
+{
+    gc_collect_cycles();
+    memory_reset_peak_usage();
+    $base = memory_get_usage();
+    $started = microtime(true);
+
+    $result = $callback();
+
+    return [$result, microtime(true) - $started, (memory_get_peak_usage() - $base) / 1048576];
+}
+
+describe('Content: the <pre> placeholder bomb', function () {
+    it('is refused by sanitize() without being parsed', function (string $html) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+
+        [$clean, $seconds, $mb] = measured(fn () => Content::sanitize($html));
+
+        expect($clean)->toBe('');
+        expect($mb)->toBeLessThan(5.0);
+        expect($seconds)->toBeLessThan(0.5);
+        expect(Content::sanitizeRefuses($html))->toBeTrue();
+    })->with([
+        'nested, ten per level' => [placeholderBomb()],
+        'nested, deeper' => [placeholderBomb(depth: 6)],
+        'one pre, then the placeholder repeated' => ['<pre>'.str_repeat('a', 1000).'</pre>'.str_repeat('%MINIFYHTML'.'x'.'0%', 500)],
+        'lower case' => [strtolower(placeholderBomb())],
+        'mixed case' => [str_replace('MINIFYHTML', 'MiniFyHtml', placeholderBomb())],
+        'the bare token in a paragraph' => ['<p>MINIFYHTML</p>'],
+    ]);
+
+    it('is refused by render() without being parsed, and does not report', function () {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+
+        [$html, $seconds, $mb] = measured(fn () => Content::render(placeholderBomb()));
+
+        expect($html)->toBe('');
+        expect($mb)->toBeLessThan(5.0);
+        expect($seconds)->toBeLessThan(0.5);
+    });
+
+    it('is refused by <atom:tiptap.content>, as a prop and as a slot', function () {
+        [$prop, $seconds, $mb] = measured(fn () => renderBlade('<atom:tiptap.content :content="$html" />', ['html' => placeholderBomb()]));
+        [$slot] = measured(fn () => renderBlade('<atom:tiptap.content>'.placeholderBomb().'</atom:tiptap.content>'));
+
+        expect($prop)->not->toContain('<pre')->not->toContain('MINIFYHTML');
+        expect($slot)->not->toContain('<pre')->not->toContain('MINIFYHTML');
+        expect($mb)->toBeLessThan(10.0);
+        expect($seconds)->toBeLessThan(1.0);
+    });
+
+    it('cannot be planted in a document, whose text never reaches the minifier', function () {
+        $token = '%MINIFYHTML'.md5((string) $_SERVER['REQUEST_TIME']).'0%';
+        $doc = json_encode(['type' => 'doc', 'content' => [
+            ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => str_repeat($token, 20)]]],
+            ['type' => 'codeBlock', 'content' => [['type' => 'text', 'text' => str_repeat($token, 20)]]],
+        ]]);
+
+        [$rendered, $seconds, $mb] = measured(fn () => Content::render($doc));
+        [$sanitised] = measured(fn () => Content::sanitize($doc));
+
+        expect($rendered)->toContain($token)->and(strlen($rendered))->toBeLessThan(5000);
+        expect($sanitised)->toBe($rendered);
+        expect($mb)->toBeLessThan(5.0);
+        expect($seconds)->toBeLessThan(0.5);
+    });
+
+    it('is refused by the tiptap-migrate command guard', function () {
+        expect(Content::carriesPlaceholder(placeholderBomb()))->toBeTrue();
+        expect(Content::carriesPlaceholder('<pre>a</pre><p>b</p>'))->toBeFalse();
+    });
+});
+
+describe('Content::sanitize: limits', function () {
+    it('refuses input over the byte limit, silently', function () {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
         $big = '<p>'.str_repeat('a', Content::SANITIZE_MAX_BYTES).'</p>';
 
         expect(Content::sanitize($big))->toBe('');
+        expect(Content::sanitizeRefuses($big))->toBeTrue();
     });
 
-    it('accepts input at the limit, and a raised limit', function () {
-        $html = '<p>'.str_repeat('a', 1000).'</p>';
+    it('accepts input at the byte limit and refuses one byte over', function () {
+        $html = '<p>'.str_repeat('a', 997).'</p>';
 
         expect(Content::sanitize($html, maxBytes: strlen($html)))->toBe($html);
         expect(Content::sanitize($html, maxBytes: strlen($html) - 1))->toBe('');
-        expect(Content::sanitize($html, maxBytes: 10 * 1024 * 1024))->toBe($html);
+        expect(Content::sanitizeRefuses($html, maxBytes: strlen($html)))->toBeFalse();
+        expect(Content::sanitizeRefuses($html, maxBytes: strlen($html) - 1))->toBeTrue();
     });
 
-    it('cleans the largest input the default allows in reasonable time and memory', function () {
-        $html = str_repeat('<p><b><i>x</i></b><script>alert(1)</script></p>', 5000);
-        $before = memory_get_peak_usage();
-        $started = microtime(true);
+    it('refuses input over the tag limit, silently, and accepts it at the limit', function () {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        $atLimit = str_repeat('<p>a', Content::SANITIZE_MAX_TAGS);
+        $over = $atLimit.'<p>a';
 
-        $clean = Content::sanitize($html);
+        expect(Content::sanitize($atLimit))->not->toBe('');
+        expect(Content::sanitizeRefuses($atLimit))->toBeFalse();
+        expect(Content::sanitize($over))->toBe('');
+        expect(Content::sanitizeRefuses($over))->toBeTrue();
+        expect(Content::sanitize($over, maxTags: Content::SANITIZE_MAX_TAGS + 1))->not->toBe('');
+    });
+
+    it('says nothing is refused for input that is only empty or not HTML', function (mixed $input) {
+        expect(Content::sanitizeRefuses($input))->toBeFalse();
+    })->with([[null], [''], ['  '], [123], [[]], ['<p>hi</p>']]);
+
+    it('refuses the input that cost 212 MB and 2.7 s before the tag limit, at once', function () {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        $html = str_repeat('<p>a', 65536);
+
+        [$clean, $seconds, $mb] = measured(fn () => Content::sanitize($html));
+
+        expect($clean)->toBe('');
+        expect($seconds)->toBeLessThan(0.5);
+        expect($mb)->toBeLessThan(5.0);
+    });
+
+    /**
+     * The costliest shapes per tag, each built to the tag limit. Measured at the
+     * limit: 16 MB and 0.2 s for the worst; the bounds here leave room for a
+     * slower machine, but not for the 212 MB an unbounded input cost.
+     */
+    it('parses the worst-case shapes at the limit within a memory and time bound', function (string $html) {
+        $tags = substr_count($html, '<');
+
+        [$clean, $seconds, $mb] = measured(fn () => Content::sanitize($html));
+
+        expect($tags)->toBeLessThanOrEqual(Content::SANITIZE_MAX_TAGS);
+        expect(strlen($html))->toBeLessThanOrEqual(Content::SANITIZE_MAX_BYTES);
+        expect($clean)->not->toBe('');
+        expect(sanitisedViolations($clean))->toBe([]);
+        expect($mb)->toBeLessThan(40.0);
+        expect($seconds)->toBeLessThan(5.0);
+    })->with([
+        'unclosed paragraphs' => [str_repeat('<p>a', Content::SANITIZE_MAX_TAGS)],
+        'paragraph, bold, text' => [str_repeat('<p><b>a</b>x', intdiv(Content::SANITIZE_MAX_TAGS, 3))],
+        'paragraph with a link' => [str_repeat('<p><a href="https://example.com/x">a</a>', intdiv(Content::SANITIZE_MAX_TAGS, 3))],
+        'unclosed table cells' => ['<table><tbody>'.str_repeat('<tr><td>a<td>b', intdiv(Content::SANITIZE_MAX_TAGS - 2, 3))],
+        'pre blocks' => [str_repeat('<pre>a</pre>', intdiv(Content::SANITIZE_MAX_TAGS, 2))],
+        'list items' => ['<ul>'.str_repeat('<li>a', Content::SANITIZE_MAX_TAGS - 1)],
+        'line breaks' => ['<p>'.str_repeat('a<br>', Content::SANITIZE_MAX_TAGS - 1)],
+        'images' => [str_repeat('<img src="/a.png">', Content::SANITIZE_MAX_TAGS)],
+    ]);
+
+    it('refuses output more than four times the byte limit', function () {
+        $html = str_repeat('<a href=x>a</a>b', 50);
+        $out = Content::sanitize($html, maxBytes: 100000);
+
+        expect(strlen($out))->toBeGreaterThan(strlen($html) * 4);
+        expect(Content::sanitize($html, maxBytes: strlen($html)))->toBe('');
+        expect(Content::sanitize($html, maxBytes: intdiv(strlen($out), 4) + 1))->toBe($out);
+    });
+
+    it('lets a long, realistic chat message through unchanged', function () {
+        $paragraph = '<p>Hello <strong>team</strong>, the <a target="_blank" rel="noopener noreferrer nofollow" href="https://example.com/some/path?x=1&amp;y=2">report</a> is ready. '
+            .'<span class="mention" data-type="mention" data-id="7" data-label="Alice">@Alice</span> can you check <em>section 3</em> and <code>total</code>?</p>';
+        $html = str_repeat($paragraph, 100).'<ul>'.str_repeat('<li><p>item</p></li>', 200).'</ul>';
 
         expect(strlen($html))->toBeLessThan(Content::SANITIZE_MAX_BYTES);
-        expect($clean)->not->toContain('<script');
-        expect(microtime(true) - $started)->toBeLessThan(10.0);
-        expect(memory_get_peak_usage() - $before)->toBeLessThan(120 * 1024 * 1024);
+        expect(substr_count($html, '<'))->toBeLessThan(Content::SANITIZE_MAX_TAGS);
+        expect(Content::sanitize($html))->toBe($html);
     });
 });
 
@@ -400,5 +578,12 @@ describe('Content::render on untrusted HTML', function () {
         $html = renderBlade('<atom:tiptap.content><p onclick="x()">a</p><script>alert(1)</script></atom:tiptap.content>');
 
         expect($html)->toContain('<p>a</p>')->not->toContain('<script')->not->toContain('onclick');
+    });
+
+    it('holds stored HTML to looser limits than sanitize(), silently', function () {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+
+        expect(Content::render(str_repeat('<p>a', 6000)))->not->toBe('');
+        expect(Content::render(str_repeat('<p>a', 10001)))->toBe('');
     });
 });

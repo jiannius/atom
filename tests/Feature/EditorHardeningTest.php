@@ -220,6 +220,19 @@ PHP);
         $rows = DB::table('hardening_migrate_items')->orderBy('id')->pluck('body');
         expect(json_decode($rows[1], true)['type'])->toBe('doc');
     });
+
+    it('skips a row that carries the parser placeholder instead of expanding it', function () {
+        $token = '%MINIFYHTML'.md5((string) ($_SERVER['REQUEST_TIME'] ?? time())).'0%';
+        $hostile = '<pre>a</pre><pre>'.str_repeat($token, 50).'</pre>';
+        DB::table('hardening_migrate_items')->insert(['body' => $hostile]);
+        DB::table('hardening_migrate_items')->insert(['body' => '<p>fine</p>']);
+
+        $this->artisan('atom:tiptap-migrate')->expectsOutputToContain('reserved placeholder')->assertSuccessful();
+
+        $rows = DB::table('hardening_migrate_items')->orderBy('id')->pluck('body');
+        expect($rows[0])->toBe($hostile);
+        expect(json_decode($rows[1], true)['type'])->toBe('doc');
+    });
 });
 
 describe('E-S3 YouTube embed URLs', function () {
