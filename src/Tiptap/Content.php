@@ -2,6 +2,8 @@
 
 namespace Jiannius\Atom\Tiptap;
 
+use Jiannius\Atom\Tiptap\Extensions\AtomColor;
+use Jiannius\Atom\Tiptap\Extensions\AtomHighlight;
 use Jiannius\Atom\Tiptap\Extensions\AtomImage;
 use Jiannius\Atom\Tiptap\Extensions\AtomMention;
 use Jiannius\Atom\Tiptap\Extensions\FontSize;
@@ -23,10 +25,10 @@ class Content
             new \Tiptap\Marks\Underline,
             new \Tiptap\Marks\Subscript,
             new \Tiptap\Marks\Superscript,
-            new \Tiptap\Marks\Highlight(['multicolor' => true]),
+            new AtomHighlight(['multicolor' => true]),
             new \Tiptap\Marks\Link,
             new \Tiptap\Marks\TextStyle,
-            new \Tiptap\Extensions\Color(['types' => ['textStyle']]),
+            new AtomColor(['types' => ['textStyle']]),
             new FontSize(['types' => ['textStyle']]),
             new \Tiptap\Extensions\TextAlign(['types' => ['heading', 'paragraph']]),
             new \Tiptap\Nodes\Table,
@@ -51,5 +53,31 @@ class Content
         return (new Editor(['extensions' => static::extensions()]))
             ->setContent($value)
             ->getHTML();
+    }
+
+    /**
+     * Unserialize a stored legacy value without instantiating any class.
+     * Legacy AsEditorContent rows are serialize()'d strings, never objects, so
+     * classes are refused; a payload holding an object comes back as null.
+     *
+     * @return array{0: bool, 1: mixed} [whether $value was serialized, the value]
+     */
+    public static function unserialize(string $value): array
+    {
+        $data = @unserialize($value, ['allowed_classes' => false]);
+
+        if ($data === false && $value !== 'b:0;') {
+            return [false, null];
+        }
+
+        $hasObject = is_object($data);
+
+        if (is_array($data)) {
+            array_walk_recursive($data, function ($item) use (&$hasObject) {
+                $hasObject = $hasObject || is_object($item);
+            });
+        }
+
+        return [true, $hasObject ? null : $data];
     }
 }

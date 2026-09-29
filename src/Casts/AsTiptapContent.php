@@ -5,13 +5,15 @@ namespace Jiannius\Atom\Casts;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Jiannius\Atom\Tiptap\Content;
 
 class AsTiptapContent implements CastsAttributes
 {
     /**
      * Read a stored value. New rows are Tiptap JSON (returned as-is). Legacy
      * rows were stored by the v2 AsEditorContent cast as serialize()'d HTML —
-     * unserialize them to the raw HTML string. No forced migration.
+     * unserialize them (no classes allowed) to the raw HTML string. No forced
+     * migration.
      *
      * @param  array<string, mixed>  $attributes
      */
@@ -21,13 +23,9 @@ class AsTiptapContent implements CastsAttributes
             return $value;
         }
 
-        $unserialized = @unserialize($value);
+        [$serialized, $unserialized] = Content::unserialize($value);
 
-        if ($unserialized !== false || $value === 'b:0;') {
-            return $unserialized;
-        }
-
-        return $value;
+        return $serialized ? $unserialized : $value;
     }
 
     /**
@@ -50,7 +48,7 @@ class AsTiptapContent implements CastsAttributes
         $doc = json_decode($value, true);
 
         if (! is_array($doc)) {
-            return $value;
+            return $this->storableNonJson($value);
         }
 
         $this->walkImages($doc, function (array &$node) use ($model, $key) {
@@ -62,6 +60,24 @@ class AsTiptapContent implements CastsAttributes
         });
 
         return json_encode($doc);
+    }
+
+    /**
+     * A string that is not a JSON doc is legacy HTML and is stored as-is (the
+     * renderer only emits schema nodes). A PHP-serialized string never is: the
+     * value can arrive from the browser, so a serialized string is unwrapped to
+     * the HTML it holds, and anything else it holds (an object, array, scalar)
+     * is dropped.
+     */
+    protected function storableNonJson(string $value): ?string
+    {
+        [$serialized, $unserialized] = Content::unserialize($value);
+
+        if (! $serialized) {
+            return $value;
+        }
+
+        return is_string($unserialized) && $unserialized !== '' ? $unserialized : null;
     }
 
     /**
