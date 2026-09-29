@@ -2,6 +2,7 @@
 
 use Illuminate\Foundation\Auth\User;
 use Jiannius\Atom\Tests\Fixtures\GetOptionsSubclass;
+use Jiannius\Atom\Tests\Fixtures\XssOptions;
 
 it('does not read outside its json directory', function () {
     $response = $this->postJson('/atom/action/get-options', ['name' => '../../composer']);
@@ -81,4 +82,70 @@ it('does not 500 when the request omits the name entirely', function () {
 
     $response->assertOk();
     expect($response->json())->toBe([]);
+});
+
+// The browser renders the html key with x-html, so what getOptionHtml() builds
+// from an option's label and caption must be text by the time it leaves.
+it('escapes a label and caption that hold markup', function () {
+    $option = (new GetOptionsSubclass())->getOptionHtml([
+        'value' => 1,
+        'label' => '<img src=x onerror=alert(1)>Mallory',
+        'caption' => '<script>alert(2)</script>',
+    ]);
+
+    expect($option['html'])
+        ->not->toContain('<img')
+        ->not->toContain('<script')
+        ->toContain('&lt;img src=x onerror=alert(1)&gt;Mallory')
+        ->toContain('&lt;script&gt;alert(2)&lt;/script&gt;');
+});
+
+it('escapes an option that also carries an avatar', function () {
+    $option = (new GetOptionsSubclass())->getOptionHtml([
+        'value' => 1,
+        'label' => '<img src=x onerror=alert(1)>',
+        'caption' => '<b>x</b>',
+        'avatar' => 'https://example.test/a.png',
+    ]);
+
+    expect($option['html'])
+        ->not->toContain('<img src=x')
+        ->not->toContain('<b>x</b>')
+        ->toContain('&lt;b&gt;x&lt;/b&gt;');
+});
+
+it('does not double the escape of a plain label', function () {
+    $option = (new GetOptionsSubclass())->getOptionHtml(['value' => 1, 'label' => 'Tom & Jerry']);
+
+    expect($option['html'])->toContain('Tom &amp; Jerry')->not->toContain('&amp;amp;');
+});
+
+it('leaves the raw label on the option, for search and text rendering', function () {
+    $option = (new GetOptionsSubclass())->getOptionHtml(['value' => 1, 'label' => '<b>x</b>']);
+
+    expect($option['label'])->toBe('<b>x</b>');
+});
+
+it('passes a host-supplied html key through unchanged', function () {
+    $html = '<strong data-trusted>Acme</strong>';
+
+    $option = (new GetOptionsSubclass())->getOptionHtml(['value' => 1, 'label' => '<b>x</b>', 'html' => $html]);
+
+    expect($option['html'])->toBe($html);
+});
+
+it('escapes the markup of a whole option set handle() returns', function () {
+    $options = (new XssOptions())->handle(['name' => 'hostile-people']);
+
+    expect(data_get($options, '0.html'))
+        ->not->toContain('<img')
+        ->not->toContain('<script')
+        ->toContain('&lt;img src=x onerror=');
+    expect(data_get($options, '1.html'))->toContain('Alice &amp; Bob &lt;b&gt;bold&lt;/b&gt;');
+});
+
+it('returns a trusted html key from handle() as the host wrote it', function () {
+    $options = (new XssOptions())->handle(['name' => 'trusted-html']);
+
+    expect(data_get($options, '0.html'))->toBe('<strong data-trusted>Trusted</strong>');
 });

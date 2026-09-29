@@ -469,13 +469,19 @@ class GetOptions implements WebAction
 
     /**
      * Get option html
+     *
+     * An option that already carries an `html` key is passed through untouched:
+     * that key is TRUSTED, the caller built it and must have escaped every
+     * user-supplied value in it. Everything this method builds itself — the
+     * label and caption — is escaped, because the browser renders the result as
+     * HTML and those fields routinely hold text a user typed.
      */
     public function getOptionHtml($option)
     {
         if (data_get($option, 'html')) return $option;
 
-        $label = '<div class="text-wrap">'.data_get($option, 'label').'</div>';
-        $caption = data_get($option, 'caption') ? '<div class="text-muted dark:text-muted-foreground text-sm text-wrap">'.data_get($option, 'caption').'</div>' : '';
+        $label = '<div class="text-wrap">'.e(data_get($option, 'label')).'</div>';
+        $caption = data_get($option, 'caption') ? '<div class="text-muted dark:text-muted-foreground text-sm text-wrap">'.e(data_get($option, 'caption')).'</div>' : '';
         $avatar = data_get($option, 'avatar')
             ? Blade::render('<atom:avatar size="xs" :avatar="$avatar">{{ $name }}</atom:avatar>', ['name' => data_get($option, 'label'), 'avatar' => data_get($option, 'avatar')])
             : '';

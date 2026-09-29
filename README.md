@@ -764,6 +764,14 @@ class Search implements WebAction
 
 Actions without `authorize()` are callable by anyone, including guests — which is right for something like `GetOptions` (country and dial-code lists on public forms) and wrong for almost everything else. An action inheriting from an opted-in parent inherits the contract.
 
+### Upgrading to 3.29.9
+
+Remote and static select options used to be turned into HTML without escaping `label`, `caption` or `color`, so a value a user typed (a contact name, say) rendered as markup. They are escaped now, including the native select's `<option>` text.
+
+- **Nothing to do** if your option sets return plain `label`/`caption` text.
+- **A label that already contains HTML entities** (`Tom &amp; Jerry`) is now shown literally. Return the raw text (`Tom & Jerry`).
+- **The `html` key stays trusted.** If a set builds its own `html`, atom still passes it through untouched, and you must wrap every interpolated user or database field in `e()`. Grep your `App\Actions\GetOptions` (and any code that sets `html` or `selected_html` on an option) for interpolated model fields. See [Option text is escaped](#option-text-is-escaped-the-html-key-is-trusted).
+
 ### Upgrading to 3.25
 
 3.25 makes the trait's `action()` helper `protected`. It was public, and Livewire exposes
@@ -886,6 +894,20 @@ Why the declaration: the option name arrives in the request body, and it used to
 The package's own sets (`countries`, `states`, `dialcodes`, `currencies`, `colors`, `postcodes`) are always readable — guest address and phone forms need them — and you don't re-declare them.
 
 `$auth` is a coarse gate: signed in or not. It does **not** scope rows. A signed-in user of tenant A calling a set that returns every tenant's rows still gets every tenant's rows, so scope the query itself as well.
+
+#### Option text is escaped; the `html` key is trusted
+
+The listbox renders each option's markup with `x-html`. An option is a `value` plus a `label`, and optionally `caption`, `avatar` and `color`. Atom builds the markup from those fields and **escapes every one of them**, both on the server (`GetOptions::getOptionHtml()`) and in the client-side fallback (`select.js`). A contact name a user typed renders as text, whatever it contains. Return the raw text in `label` and `caption`; don't pre-escape it, or it is escaped twice. `color` is checked as well as escaped: only `#hex`, `rgb()`/`rgba()`, `hsl()`/`hsla()` or a plain colour name draws a swatch, and anything else (`red; position: fixed`) draws none.
+
+An option may instead carry its own `html` (and `selected_html`, the version shown in the closed trigger). That key is the escape hatch for a custom layout, and it is **trusted**: atom passes it to the browser untouched, so you own escaping it. Wrap every user or database value you put in it with `e()`:
+
+```php
+['value' => $doc->id, 'label' => $doc->name, 'html' => '<div>'.e($doc->name).' <small>'.e($doc->number).'</small></div>']
+```
+
+An unescaped field in `html` is a stored XSS for everyone who opens that select. Keep `label` plain even when `html` is set: the label is what search filters on and what the chips show.
+
+The native variant prints `label` into `<option>`, and escapes it.
 
 ---
 

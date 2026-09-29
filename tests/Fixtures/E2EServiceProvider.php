@@ -9,6 +9,21 @@ use Livewire\Livewire;
 class E2EServiceProvider extends ServiceProvider
 {
     /**
+     * Give the served e2e app an App\Actions\GetOptions to point remote selects at.
+     */
+    public function register(): void
+    {
+        // A remote select always POSTs to `get-options`, which resolves the host's
+        // App\Actions\GetOptions first. The served e2e app has no such class, so
+        // give it one for the xss page. Deliberately NOT a file under
+        // tests/Fixtures/Actions: that directory is autoloaded as App\Actions in
+        // the Pest process too, and the class would shadow the package's there.
+        if (! class_exists('App\Actions\GetOptions', false)) {
+            class_alias(XssOptions::class, 'App\Actions\GetOptions');
+        }
+    }
+
+    /**
      * Wire the Livewire-backed E2E fixtures into the `testbench serve` app only —
      * they are dev scaffolding and must not reach consuming apps, so this provider
      * is registered in testbench.yaml rather than in the package's own routes.
@@ -28,6 +43,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-select-sibling-sync', SelectSiblingSyncFixture::class);
 
         Route::middleware('web')->get('/atom/e2e/select-morph', fn () => view('atom::e2e.select-morph'));
+        Route::middleware('web')->get('/atom/e2e/select-xss', fn () => view('atom::e2e.select-xss'));
         Route::middleware('web')->get('/atom/e2e/select-sibling-sync', fn () => view('atom::e2e.select-sibling-sync'));
         Route::middleware('web')->get('/atom/e2e/input-morph', fn () => view('atom::e2e.input-morph'));
         Route::middleware('web')->get('/atom/e2e/date-range-morph', fn () => view('atom::e2e.date-range-morph'));
