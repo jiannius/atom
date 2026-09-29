@@ -306,6 +306,23 @@ Rich text uses `<atom:tiptap>` (editor), `<atom:tiptap.chat>` (chat composer: en
 
 Cast the storage column with `Jiannius\Atom\Casts\AsTiptapContent` — it stores Tiptap JSON and dual-reads legacy serialized-HTML, so existing rows keep rendering and migrate to JSON on next save. Images: the cast persists Livewire temporary uploads to `config('atom.editor.disk')` (falls back to the default filesystem disk), or define `tiptapStoreImage(string $tmpPath, string $key): string` on the model to control persistence. Display stored content with `<atom:tiptap.content :content="$model->body"/>`. Convert legacy HTML columns to JSON with `php artisan atom:tiptap-migrate` (switch the cast to `AsTiptapContent` first). `<atom:editor>`, `<atom:editor.chat>`, `<atom:editor.content>` remain as back-compat aliases.
 
+**Editor and chat HTML from the browser is untrusted.** `<atom:tiptap.chat>` hands the host raw HTML (an `input` event with `{ body, files }`), and any client can call `$wire.submit()` or set the bound property with its own string, so what arrives may hold script, event handlers or `javascript:` links. Clean it **before you store it** with `Jiannius\Atom\Tiptap\Content::sanitize($html)` (returns schema-only HTML, never throws, `''` when nothing usable came in), or print it through `<atom:tiptap.content :content="$body"/>` / `Content::render($body)`, which re-parse through the same schema so a row stored unclean still displays clean. **Never** print it with `x-html`, `{!! $body !!}` or `->html()` straight from the column or the request. `sanitize()` does not check a mention's `data-id` (it is client-chosen): look the id up server-side before acting on it.
+
+```php
+use Jiannius\Atom\Tiptap\Content;
+
+public function submit(array $message): void
+{
+    $body = Content::sanitize($message['body'] ?? '');
+
+    if ($body === '') {
+        return;
+    }
+
+    $this->task->messages()->create(['body' => $body]);
+}
+```
+
 **Upgrading to v3.6.0 (editor):** `atom.js` now loads as an ES module — if you include it via your own `<script>` tag instead of `<atom:html>`, add `type="module"`. Switch editor columns from `AsEditorContent` to `AsTiptapContent`, then run `php artisan atom:tiptap-migrate`. Run `npm run build` to pick up new Tailwind utilities. `<atom:editor>` keeps working as an alias for `<atom:tiptap>`.
 @endverbatim
 

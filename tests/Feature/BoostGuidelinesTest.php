@@ -20,3 +20,14 @@ it('reaches a remote option set through the options prop, not name', function ()
         ->and($contents)->not->toContain('<atom:select name=')
         ->and($contents)->not->toContain(':callback');
 });
+
+// Chat / editor HTML reaches the host from the browser. The guideline is what tells
+// every host app (and its agents) to clean it before storing and never to x-html it.
+it('tells hosts that editor and chat HTML is untrusted and to sanitise it', function () {
+    $contents = file_get_contents(__DIR__.'/../../resources/boost/guidelines/core.blade.php');
+
+    expect($contents)->toContain('Content::sanitize(')
+        ->and($contents)->toContain('untrusted')
+        ->and($contents)->toContain('x-html')
+        ->and($contents)->toContain('<atom:tiptap.content');
+});

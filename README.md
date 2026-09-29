@@ -696,6 +696,58 @@ php artisan atom:purge-editor-images --force  # delete the editor-purged/ backup
 
 ---
 
+## Editor and chat HTML is untrusted
+
+`<atom:tiptap>`, `<atom:tiptap.chat>` and `<atom:editor>` hand the host what the browser sent. The chat composer sends HTML (`tiptap.getHTML()`, in an `input` event carrying `{ body, files }`), and the editor sends Tiptap JSON. Neither is checked on the way in: a client that skips the editor and calls `$wire.submit(...)` (or sets the bound property) with its own string stores whatever it likes. Stored and printed as-is, that is stored XSS.
+
+atom can't see your storage code, so the rule for hosts is:
+
+- **Clean it before you store it:** `Jiannius\Atom\Tiptap\Content::sanitize()`.
+- **Or print it through atom:** `<atom:tiptap.content :content="$message->body"/>` or `Content::render($message->body)`. Both parse the value through the editor's schema and print only what the schema allows, so a row that was stored unclean is still safe to display.
+- **Never** print it with `x-html`, `{!! $body !!}` or `->html()` straight from the column or from the request.
+
+```php
+use Jiannius\Atom\Tiptap\Content;
+
+// the chat composer dispatches `input` with { body, files }
+public function submit(array $message): void
+{
+    $body = Content::sanitize($message['body'] ?? '');
+
+    // '' means nothing usable arrived: it was empty, too large, or held nothing the editor can produce
+    if ($body === '') {
+        return;
+    }
+
+    $this->task->messages()->create(['body' => $body, 'user_id' => auth()->id()]);
+}
+```
+
+```blade
+{{-- reads back through the same schema, so old unclean rows render clean too --}}
+<atom:tiptap.content :content="$message->body"/>
+```
+
+`Content::sanitize(mixed $html, int $maxBytes = Content::SANITIZE_MAX_BYTES): string` takes HTML, a Tiptap JSON string or a document array. It parses the value through the same schema and the same hardened extensions as `render()`, and returns the schema's own serialisation, so nothing of the input's markup survives except what the editor itself can write. It never throws: a value it can't handle, or one larger than `$maxBytes` (256 KB by default), is reported through Laravel's `report()` and comes back as `''`. Parsing costs roughly 250 bytes of memory per input byte, so raise the limit only for fields that hold long documents.
+
+| Kept (as the editor writes it) | Dropped |
+| --- | --- |
+| Paragraphs, headings, lists, blockquotes, code blocks, line breaks, rules, tables | `<script>`, `<style>`, `<svg>`, `<form>`, `<object>`, `<embed>`, `<link>`, `<meta>`, `<base>`, comments, CDATA and any tag the editor has no node for |
+| Bold, italic, strike, underline, code, sub/superscript | Every event handler (`onclick`, `onerror`, ...) and every attribute the schema doesn't define, `id` and `srcdoc` included |
+| Links to `http`, `https`, `mailto`, `tel` (and the other protocols Tiptap allows, such as `ftp` and `sms`) and relative URLs, with atom's own `target` / `rel` | Links whose href is `javascript:`, `vbscript:`, `data:` or another scheme (the text stays, the link goes); a link's own `class`, `rel` or `target` |
+| Images with an `http(s)`, relative or raster `data:image/` source | An image whose source is `javascript:`, `data:image/svg+xml` or another scheme (the whole image goes) |
+| `color`, `background-color`, `font-size`, `text-align`, image `width` / `float` / `align` when the value passes the allow-list | `style` declarations that fail it (`position`, `url(...)`, `expression(...)`, out-of-range sizes), and every `class` except `mention` and `language-*` |
+| Mentions (`<span class="mention" data-type="mention" data-id data-label>`), escaped | The `data-mention-suggestion-char` marker the JS adds |
+| YouTube embeds in a JSON document, rebuilt from the video id | Any `<iframe>` in HTML input, and any iframe that isn't YouTube |
+| Text that looks like markup (`&lt;script&gt;`), as escaped text | NUL bytes and invalid UTF-8 (scrubbed, the text around them kept) |
+
+Two things it does not do:
+
+- **It doesn't check a mention's `data-id`.** It is escaped, but it is whatever the client sent. If a mention does anything (a notification, a link to a record), look the id up on the server, scoped to what the current user may mention, and ignore the rest.
+- **It doesn't check that the caller may post.** Authorise the request as you would any other write.
+
+---
+
 ## Actions
 
 Named PHP classes you can invoke from PHP or, if they opt in, from the browser.
