@@ -15,16 +15,25 @@ class PurgeEditorImages extends Command
 {
     /**
      * What splits a stored value into tokens: any run of characters that cannot
-     * be in a name atom generates (letters, digits, and . _ - % +, which are
-     * what a name, a rawurlencode()d name and a urlencode()d name are made of).
-     * Non-ASCII bytes are kept in a token so a non-ASCII name is still one.
+     * be in an ASCII name (letters, digits, and . _ - % +, which are what a
+     * name, a rawurlencode()d name and a urlencode()d name are made of). Every
+     * non-ASCII byte splits, so a name beside a fullwidth colon, a curly quote,
+     * an NBSP, an ideographic space or an emoji is still a token; a name that
+     * holds one is searched for as a substring instead.
      */
-    protected const TOKEN_SPLIT = '/[^A-Za-z0-9._%+\-\x80-\xFF]+/';
+    protected const TOKEN_SPLIT = '/[^A-Za-z0-9._%+\-]+/';
 
     /**
      * A needle made only of token characters can be found as a token
      */
-    protected const TOKEN_ONLY = '/^[A-Za-z0-9._%+\-\x80-\xFF]+$/D';
+    protected const TOKEN_ONLY = '/^[A-Za-z0-9._%+\-]+$/D';
+
+    /**
+     * A JSON escape (\uXXXX, \n \t \r \b \f) glued to a name would hide it
+     * from a token, so a variant of the value with each one read as a slash is
+     * scanned too
+     */
+    protected const JSON_ESCAPES = '/\\\\(?:u[0-9a-fA-F]{4}|[nrtbf])/';
 
     /**
      * Inside a token, a name may begin after one of these, or end before one
@@ -380,15 +389,17 @@ class PurgeEditorImages extends Command
         $haystacks = [];
 
         foreach ([$raw, $decoded] as $value) {
-            for ($i = 0; is_string($value) && $i < 4; $i++) {
-                $haystacks[] = $value;
+            foreach (is_string($value) ? $this->decodedForms($value) : [] as $form) {
+                $haystacks[] = $form;
 
-                // a JSON / (or any \uXXXX) glued to the name would hide it from a token
-                if (str_contains($value, '\\u')) {
-                    $haystacks[] = preg_replace('/\\\\u[0-9a-fA-F]{4}/', '/', $value);
+                if (str_contains($form, '\\')) {
+                    $unescaped = preg_replace(self::JSON_ESCAPES, '/', $form);
+
+                    // null when PCRE gives up: that variant is skipped, the form itself is still searched
+                    if (is_string($unescaped)) {
+                        $haystacks[] = $unescaped;
+                    }
                 }
-
-                $value = rawurldecode($value);
             }
         }
 
@@ -415,6 +426,44 @@ class PurgeEditorImages extends Command
         }
 
         return array_keys($found);
+    }
+
+    /**
+     * A value and its percent-decoded forms, three levels deep, each level read
+     * both ways: rawurldecode() and urldecode() (a "+" is a space), since a value
+     * may be rawurlencode()d or urlencode()d, or a mix, level by level. Both give
+     * the same string unless there is a "+", so a value without one has one form
+     * per level.
+     *
+     * @return array<int, string>
+     */
+    protected function decodedForms(string $value): array
+    {
+        // nothing to decode without a "%", and a "+" is the only thing urldecode() changes
+        if (! str_contains($value, '%')) {
+            return str_contains($value, '+') ? [$value, urldecode($value)] : [$value];
+        }
+
+        $forms = [$value => true];
+        $level = [$value];
+
+        for ($i = 0; $i < 3; $i++) {
+            $next = [];
+
+            foreach ($level as $form) {
+                foreach ([rawurldecode($form), urldecode($form)] as $decoded) {
+                    $next[$decoded] = true;
+                }
+            }
+
+            $level = array_map('strval', array_keys($next));
+
+            foreach ($level as $form) {
+                $forms[$form] = true;
+            }
+        }
+
+        return array_map('strval', array_keys($forms));
     }
 
     /**

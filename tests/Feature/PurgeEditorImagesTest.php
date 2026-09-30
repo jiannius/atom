@@ -621,6 +621,47 @@ describe('atom:purge-editor-images names in odd forms', function () {
         Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
     });
 
+    it('keeps a name beside CJK punctuation, curly quotes and a non-ASCII file name', function () {
+        purgeEditorFiles('legacy_disk', 'editor', 'cjk-kept.jpg', 'cjk-quoted.jpg', '日本語.png', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert([
+            ['body' => serialize('图片：https://cdn.test/editor/cjk-kept.jpg，请看')],
+            ['body' => serialize('“cjk-quoted.jpg”')],
+            ['body' => serialize('<img src="https://cdn.test/editor/日本語.png">')],
+        ]);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        foreach (['cjk-kept.jpg', 'cjk-quoted.jpg', '日本語.png'] as $kept) {
+            Storage::disk('legacy_disk')->assertExists('editor/'.$kept);
+        }
+
+        Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
+    });
+
+    it('keeps a name behind a JSON control escape', function () {
+        purgeEditorFiles('legacy_disk', 'editor', 'after-newline.jpg', 'after-tab.jpg', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert([
+            ['body' => serialize('{"type":"text","text":"line\\nafter-newline.jpg"}')],
+            ['body' => serialize('{"type":"text","text":"a\\tafter-tab.jpg"}')],
+        ]);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('legacy_disk')->assertExists('editor/after-newline.jpg');
+        Storage::disk('legacy_disk')->assertExists('editor/after-tab.jpg');
+        Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
+    });
+
+    it('keeps a spaced name inside a value that is urlencoded whole', function () {
+        purgeEditorFiles('legacy_disk', 'editor', 'my photo (1).jpg', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert(['body' => '%3Cimg+src%3D%22%2Feditor%2Fmy+photo+%281%29.jpg']);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('legacy_disk')->assertExists('editor/my photo (1).jpg');
+        Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
+    });
+
     it('says how far a long scan has got', function () {
         purgeEditorFiles('legacy_disk', 'editor', 'orphan.jpg');
         DB::table('purge_legacy_posts')->insert(array_fill(0, 1001, ['body' => purgeLegacyHtml()]));

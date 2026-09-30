@@ -695,7 +695,7 @@ php artisan atom:purge-editor-images --dry-run  # list what it would delete, cha
 php artisan atom:purge-editor-images --force    # delete the editor-purged/ backup
 ```
 
-A file counts as referenced when its file name (or its percent-encoded form) appears anywhere in a stored editor value, whatever the format around it. The scan reads each value once, so its cost follows the size of your data, not the number of files, and it prints a progress line every 1000 rows.
+A file counts as referenced when its file name (or its percent-encoded form) appears anywhere in a stored editor value, whatever the format around it. The scan splits each form of a value (raw, decoded, percent-decoded) into tokens once, so its cost still follows the size of your data, not the number of files, and it prints a progress line every 1000 rows. A file whose name holds a space, quote, bracket or non-ASCII character (a macOS `Screenshot ... .png` stored through `tiptapStoreImage()`, say) is searched for as a plain substring instead, which is slower when there are many such files.
 
 ---
 
