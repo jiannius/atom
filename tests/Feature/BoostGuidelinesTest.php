@@ -179,3 +179,50 @@ it('documents the components that need a script, a flag or a colour the source d
         ->and($skill)->toContain('`updatingAtomComponent`')
         ->and($skill)->toContain('border-zinc-200 dark:border-zinc-700');
 });
+
+// These are the rules an agent breaks without ever opening the skill: a public action, a select
+// that silently renders empty, a hand-rolled layout. They stay always-on; the skill has the detail.
+it('keeps the action, option-set and layout rules in the always-on guideline', function () {
+    $guideline = boostFile('guidelines/core.blade.php');
+
+    expect($guideline)->toContain('POST /atom/action/{Name}')
+        ->and($guideline)->toContain('implements `WebAction`')
+        ->and($guideline)->toContain('`authorize()`')
+        ->and($guideline)->toContain('return columns, not models')
+        ->and($guideline)->toContain('must declare it `protected`')
+        ->and($guideline)->toContain('app/Actions/GetOptions.php')
+        ->and($guideline)->toContain('\Jiannius\Atom\Actions\GetOptions')
+        ->and($guideline)->toContain('`$auth`')
+        ->and($guideline)->toContain('`$guest`')
+        ->and($guideline)->toContain('scoped to the current tenant')
+        ->and($guideline)->toContain('<atom:form.grid>')
+        ->and($guideline)->toContain('<atom:form.modal>')
+        ->and($guideline)->toContain('<atom:form.actions>')
+        ->and($guideline)->toContain('bare `grid-cols-2`')
+        ->and($guideline)->toContain('<atom:callout>')
+        ->and($guideline)->toContain('<atom:navlist>')
+        ->and($guideline)->toContain('border-t border-zinc-200 dark:border-zinc-700');
+});
+
+it('says sanitize() is for chat HTML only and the JSON editor value is stored as JSON', function () {
+    expect(boostFile('guidelines/core.blade.php'))
+        ->toContain('`sanitize()` is for chat HTML only')
+        ->toContain('stored as JSON');
+});
+
+it('tells hosts the skill needs Boost skills enabled and a skills-capable agent', function () {
+    $guideline = boostFile('guidelines/core.blade.php');
+
+    expect($guideline)->toContain('`boost.json`')
+        ->and($guideline)->toContain('Claude Code, Codex, Cursor, Gemini, Amp')
+        ->and($guideline)->toContain('php artisan boost:install');
+});
+
+// What was moved into the always-on guideline is still in the skill, with its detail.
+it('keeps the moved rules in the skill as well', function () {
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+    expect($skill)->toContain('Default to NOT implementing `WebAction`')
+        ->and($skill)->toContain('**Scope the query anyway.**')
+        ->and($skill)->toContain('Never use bare `grid-cols-2`');
+});
