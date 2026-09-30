@@ -527,7 +527,7 @@ there's no server-side or cross-device state.
 | `<atom:embed>` | `src`, `icon`, `file` — embeds image / video / YouTube / file preview. |
 | `<atom:error>` | Plain error message slot. |
 | `<atom:html>` | Page boilerplate (see [Page boilerplate](#page-boilerplate)). |
-| `<atom:sharer>` | `sites` (array), `url`, `title` — social share buttons. |
+| `<atom:sharer>` | `sites` (array), `url`, `title` — social share buttons. atom does not bundle [sharer.js](https://ellisonleao.github.io/sharer.js): load it on the page (`<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`) or the share buttons do nothing (the copy-link button works without it). The default sites (`facebook`, `twitter-x`, `linkedin`, `whatsapp`, `telegram`, `email`) were checked against sharer.js 0.5.4; a site needs an atom icon of the same name. |
 | `<atom:whatsapp>` | `number`, `text` — floating WhatsApp button. |
 
 ---
@@ -853,6 +853,19 @@ class Search implements WebAction
 ```
 
 Actions without `authorize()` are callable by anyone, including guests — which is right for something like `GetOptions` (country and dial-code lists on public forms) and wrong for almost everything else. An action inheriting from an opted-in parent inherits the contract.
+
+### Upgrading to 3.29.12
+
+`<atom:sharer>` printed `title` and `url`, and `<atom:embed>` printed an image `src`, into HTML attributes without escaping, so a value containing a quote could add attributes to the element; `<atom:error :errors="...">` printed each message as HTML. They are escaped now. `<atom:embed>` also refuses a `src` whose scheme is not `http` or `https` (relative and protocol-relative URLs still work) and shows the file icon instead.
+
+- **Nothing to do** if you pass plain text and normal URLs. `&`, quotes and CJK text reach `sharer.js` as typed; it reads the attributes with `getAttribute()` and URL-encodes them itself.
+- **A `title`, `url` or error message that is already HTML-encoded** (`Tom &amp; Jerry`) is now shown literally. Pass the raw text (`Tom & Jerry`).
+- **An error message that carries markup on purpose** (`atom:error :errors="[...]"` with `<b>`) now shows the tags as text. Laravel's own validation messages never do.
+- **An embed `src` on another scheme** (`javascript:`, `data:`, `blob:`) no longer renders. Nothing in atom's own `file->url` produces one.
+- **`embed`'s `icon` prop is trusted markup when it starts with `<svg`.** Only pass developer-written SVG; never a database or user value.
+- **`<atom:sharer>` needs [sharer.js](https://ellisonleao.github.io/sharer.js) on the page.** atom has never bundled it. Without it the component used to throw `Sharer is not defined` in the console; it now stays quiet, but the share buttons do nothing until you load it, for example `<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`. The copy-link button does not need it.
+- **Two share buttons that never worked are fixed** (checked against sharer.js 0.5.4). The X button sent `data-sharer="twitter-x"`, a key sharer.js does not have, so it did nothing; it now sends `x` and keeps its icon and label. The email button opened a blank popup for its `mailto:` link; it now carries `data-link="true"`, so the mail client opens. sharer.js opens its popups without `noopener` and has no option for it, and atom does not patch it: the popups only ever go to the social sites' own addresses.
+- **`Content::sanitize()` and `Content::render()` no longer report an error for input with nothing to render.** A script-only, style-only, comment-only, `<html></html>` or head-only value used to hit `report()` on every call (a `TypeError` from tiptap-php). They now return `''` without a report or a log line. **Content that is only whitespace, Unicode spaces such as U+3000 or a no-break space included, renders `''`** the same way. Two nested-mark shapes (`<code>><code>c` and `<p><strong>a<em><strong>c</strong></em></strong></p>`) threw an `ErrorException` from tiptap-php, reported on every call; atom now folds the marks of one type on a node into one (the attributes are merged, a later value winning only for the same key, and a `link` keeps its first valid href), which also repairs the malformed output simple repeats such as `<code><code>c</code></code>` used to produce (nested duplicate tags). If you filtered these out of your error tracker, you can drop the filter.
 
 ### Upgrading to 3.29.9
 

@@ -226,9 +226,20 @@ class Content
                 return static::refused($logRefusal, $text, $refusal, $maxBytes, $maxTags);
             }
 
-            $html = (new Editor(['extensions' => static::extensions()]))
-                ->setContent($content)
-                ->getHTML();
+            // a document with no <body> has no content, and tiptap-php's parser throws on it
+            if (is_string($content) && ! static::hasBody($content)) {
+                return '';
+            }
+
+            $editor = (new Editor(['extensions' => static::extensions()]))->setContent($content);
+
+            $document = $editor->getDocument();
+
+            if (static::dedupeMarks($document)) {
+                $editor->setContent($document);
+            }
+
+            $html = $editor->getHTML();
 
             if (strlen($html) > $maxBytes * static::OUTPUT_FACTOR) {
                 return static::refused($logRefusal, $text, 'output of '.strlen($html).' bytes', $maxBytes, $maxTags);
@@ -462,6 +473,125 @@ class Content
         } else {
             $node['attrs'] = $attributes;
         }
+    }
+
+    /**
+     * Whether libxml gives this HTML a <body>, the only part tiptap-php's
+     * parser reads. It builds one only when something belongs in it: a script,
+     * a style, a comment, a bare <meta>, <link>, <base> or <title>, an empty
+     * `<html>` or nothing at all leaves it without, and the parser then throws
+     * a TypeError, on every call. Asked before setContent() so that input is an
+     * empty message, not a failure to report. Whitespace is collapsed
+     * first, Unicode spaces included, because the parser's minifier does the
+     * same: a value of no-break spaces is bodyless to the parser though libxml
+     * would keep it as text. (Running the minifier itself here would double
+     * its cost, 0.6 s on 2 MB.)
+     */
+    protected static function hasBody(string $html): bool
+    {
+        $previous = libxml_use_internal_errors(true);
+
+        try {
+            $document = new \DOMDocument;
+            $document->loadHTML('<?xml encoding="utf-8" ?>'.trim(preg_replace('/\s+/u', ' ', $html) ?? $html));
+
+            return $document->getElementsByTagName('body')->length > 0;
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+    }
+
+    /**
+     * Fold the marks of one type on a node into one, on every node. tiptap-php's
+     * serialiser pairs opening and closing tags through a stack and loses count
+     * when a node carries the same mark twice in some shapes
+     * (`<code>><code>c`, `<p><strong>a<em><strong>c</strong></em></strong></p>`),
+     * which is an ErrorException on every call, and it prints unbalanced HTML
+     * in others. The marks' attributes are merged in order, a later value
+     * winning only for the same key and a later null never blanking an earlier
+     * value, so `<span style="color:red"><span style="font-size:20px">` keeps
+     * both (they are two `textStyle` marks). A `link` keeps the first href
+     * that passes the link allow-list, so an invalid one after a valid one
+     * cannot blank it. Returns whether anything was folded.
+     *
+     * @param  array<mixed>  $node
+     */
+    protected static function dedupeMarks(array &$node): bool
+    {
+        $changed = false;
+
+        if (isset($node['marks']) && is_array($node['marks'])) {
+            $byType = [];
+
+            foreach ($node['marks'] as $mark) {
+                $type = is_array($mark) ? (string) ($mark['type'] ?? '') : '';
+
+                if (! isset($byType[$type])) {
+                    $byType[$type] = $mark;
+
+                    continue;
+                }
+
+                $byType[$type] = static::mergeMarks($type, $byType[$type], $mark);
+            }
+
+            if (count($byType) !== count($node['marks'])) {
+                $node['marks'] = array_values($byType);
+                $changed = true;
+            }
+        }
+
+        if (isset($node['content']) && is_array($node['content'])) {
+            foreach ($node['content'] as $i => $child) {
+                if (is_array($child)) {
+                    $changed = static::dedupeMarks($node['content'][$i]) || $changed;
+                }
+            }
+        }
+
+        return $changed;
+    }
+
+    /**
+     * Merge a later mark of the same type into an earlier one (see dedupeMarks()).
+     *
+     * @param  array<mixed>  $earlier
+     * @param  array<mixed>  $later
+     * @return array<mixed>
+     */
+    protected static function mergeMarks(string $type, mixed $earlier, mixed $later): mixed
+    {
+        if (! is_array($earlier) || ! is_array($later)) {
+            return $earlier;
+        }
+
+        $attributes = is_array($earlier['attrs'] ?? null) ? $earlier['attrs'] : [];
+        $laterAttributes = is_array($later['attrs'] ?? null) ? $later['attrs'] : [];
+
+        foreach ($laterAttributes as $key => $value) {
+            if ($value !== null || ! array_key_exists($key, $attributes)) {
+                $attributes[$key] = $value;
+            }
+        }
+
+        if ($type === 'link') {
+            $link = new AtomLink;
+
+            foreach ([$earlier, $later] as $candidate) {
+                $href = is_array($candidate['attrs'] ?? null) ? ($candidate['attrs']['href'] ?? null) : null;
+
+                if (is_string($href) && $href !== '' && $link->isAllowedUri($href)) {
+                    $attributes['href'] = $href;
+
+                    break;
+                }
+            }
+        }
+
+        $earlier['attrs'] = $attributes;
+
+        return $earlier;
     }
 
     /**

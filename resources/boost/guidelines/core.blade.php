@@ -192,6 +192,7 @@ Reach for these instead of hand-rolling coloured pills, notice boxes, or empty s
 - **Empty states:** `<atom:empty heading="No invoices" subheading="..." icon="inbox" />`; `subtle` for a one-line box, `size="sm"` for an inline row.
 - **People:** `<atom:avatar name="Jane" :src="$url" size="sm" />` (falls back to initials; `<atom:avatar.group max="4">` for stacks); `<atom:profile :name="..." :email="..." :avatar="..." />` for an avatar + name/email chip (defaults to the authed user).
 - **Description lists:** `<atom:dd.group cols="2"><atom:dd label="Email">{{ $user->email }}</atom:dd></atom:dd.group>` — empty values show a `--` filler.
+- **Share buttons:** `<atom:sharer :url="$url" :title="$title" />` needs sharer.js, which atom does not bundle: load it once on the page (`<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`, docs at https://ellisonleao.github.io/sharer.js) or the share buttons do nothing (copy-link still works). The default `sites` (`facebook`, `twitter-x`, `linkedin`, `whatsapp`, `telegram`, `email`) were checked against sharer.js 0.5.4; atom sends `twitter-x` to it as `x`, and a site you add needs an atom icon of the same name. Pass raw text for `title`/`url`; atom escapes them.
 - **Loading placeholders:** `<atom:skeleton />` (paragraph) and `<atom:placeholder-bar size="60%x12" />` (`WIDTHxHEIGHT`, width may be `%`). Tables render their own loading skeleton, so you rarely place these by hand.
 @endverbatim
 
