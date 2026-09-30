@@ -71,9 +71,11 @@ describe('Content: input that parses to nothing is an empty message', function (
 });
 
 /**
- * The same mark twice on one node (`<code><code>c`, or two `bold` marks in a
- * document) unbalances tiptap-php's mark stack: an ErrorException, reported on
- * every call. One mark per type is what the schema means anyway.
+ * The same mark twice on one node unbalances tiptap-php's mark stack. Two
+ * shapes throw an ErrorException, reported on every call (`<code>><code>c` and
+ * `<p><strong>a<em><strong>c</strong></em></strong></p>`); simple repeats
+ * (`<code><code>c</code></code>`, two `bold` marks) did not throw but printed
+ * nested duplicates. Marks of one type are folded into one, which repairs both.
  */
 describe('Content: the same mark twice on one node is not a failure', function () {
     it('renders it once, from HTML and from a document, without a report', function (string $input, string $expected) {
@@ -161,5 +163,85 @@ describe('Content: random HTML never reaches report()', function () {
 
         expect($reports)->toBe([]);
         Log::shouldNotHaveReceived('warning');
+    });
+});
+
+describe('Content: the marks that really threw', function () {
+    it('does not report the two shapes that threw, and prints balanced HTML', function (string $html, string $expected) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+
+        expect(Content::sanitize($html))->toBe($expected)
+            ->and(Content::render($html))->toBe($expected);
+    })->with([
+        'code, text, code' => ['<code>><code>c', '<code>&gt;</code><code>c</code>'],
+        'strong around em around strong' => ['<p><strong>a<em><strong>c</strong></em></strong></p>', '<p><strong>a</strong><strong><em>c</em></strong></p>'],
+    ]);
+});
+
+/**
+ * Folding marks must not lose what the marks said. Two textStyle marks (one
+ * per nested span, or a colour and a size in a document) are one style, and a
+ * link keeps a valid href a later invalid one would otherwise blank.
+ */
+function marksDocument(array $marks): string
+{
+    return json_encode(['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 't', 'marks' => $marks]]]]]);
+}
+
+describe('Content: folded marks keep their attributes', function () {
+    it('keeps the colour of an outer span when an inner span adds nothing', function (string $html) {
+        expect(Content::sanitize($html))->toContain('color: red')
+            ->and(Content::render($html))->toContain('color: red');
+    })->with([
+        'colour outside, size inside' => ['<span style="color:red"><span style="font-size:20px">t'],
+        'size outside, colour inside' => ['<span style="font-size:20px"><span style="color:red">t'],
+    ]);
+
+    it('merges the attributes of two textStyle marks', function () {
+        $json = marksDocument([['type' => 'textStyle', 'attrs' => ['color' => 'red']], ['type' => 'textStyle', 'attrs' => ['fontSize' => '20px']]]);
+
+        expect(Content::sanitize($json))->toContain('color: red')->toContain('font-size: 20px')
+            ->and(Content::render($json))->toContain('color: red')->toContain('font-size: 20px');
+    });
+
+    it('lets a later value win only for the same attribute', function () {
+        $json = marksDocument([['type' => 'textStyle', 'attrs' => ['color' => 'red', 'fontSize' => '20px']], ['type' => 'textStyle', 'attrs' => ['color' => 'blue']]]);
+
+        expect(Content::sanitize($json))->toContain('color: blue')->toContain('font-size: 20px')->not->toContain('red');
+    });
+
+    it('never lets a later null blank an earlier value', function () {
+        $json = marksDocument([['type' => 'textStyle', 'attrs' => ['color' => 'red']], ['type' => 'textStyle', 'attrs' => ['color' => null]]]);
+
+        expect(Content::sanitize($json))->toContain('color: red');
+    });
+
+    it('lets a later highlight colour win', function () {
+        $json = marksDocument([['type' => 'highlight', 'attrs' => ['color' => 'red']], ['type' => 'highlight', 'attrs' => ['color' => 'blue']]]);
+
+        expect(Content::sanitize($json))->toContain('background-color: blue')->not->toContain('red');
+    });
+
+    it('keeps the first valid href of a link', function (array $hrefs, string $expected) {
+        $marks = array_map(fn ($href) => ['type' => 'link', 'attrs' => $href === null ? [] : ['href' => $href]], $hrefs);
+        $json = marksDocument($marks);
+
+        $html = Content::sanitize($json);
+
+        expect($html)->toContain('href="'.$expected.'"')
+            ->and(substr_count($html, '<a '))->toBe(1)
+            ->and(Content::render($json))->toBe($html);
+    })->with([
+        'valid, then valid' => [['https://a.test/', 'https://b.test/'], 'https://a.test/'],
+        'valid, then invalid' => [['https://a.test/', 'javascript:alert(1)'], 'https://a.test/'],
+        'invalid, then valid' => [['javascript:alert(1)', 'https://b.test/'], 'https://b.test/'],
+        'valid, then none' => [['https://a.test/', null], 'https://a.test/'],
+        'none, then valid' => [[null, 'https://b.test/'], 'https://b.test/'],
+    ]);
+
+    it('drops the href when no link mark has a valid one', function () {
+        $html = Content::sanitize(marksDocument([['type' => 'link', 'attrs' => ['href' => 'javascript:alert(1)']], ['type' => 'link', 'attrs' => ['href' => 'vbscript:x']]]));
+
+        expect($html)->not->toContain('javascript')->not->toContain('vbscript');
     });
 });

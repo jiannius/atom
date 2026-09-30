@@ -503,12 +503,17 @@ class Content
     }
 
     /**
-     * Keep one mark of each type on every node, the last one winning, as a
-     * ProseMirror mark set does. tiptap-php's serialiser pairs opening and
-     * closing tags through a stack and loses count when a node carries the
-     * same mark twice (`<code><code>c`, or a document with two `bold` marks
-     * on one text), which is an ErrorException on every call. Returns whether
-     * anything was removed.
+     * Fold the marks of one type on a node into one, on every node. tiptap-php's
+     * serialiser pairs opening and closing tags through a stack and loses count
+     * when a node carries the same mark twice in some shapes
+     * (`<code>><code>c`, `<p><strong>a<em><strong>c</strong></em></strong></p>`),
+     * which is an ErrorException on every call, and it prints unbalanced HTML
+     * in others. The marks' attributes are merged in order, a later value
+     * winning only for the same key and a later null never blanking an earlier
+     * value, so `<span style="color:red"><span style="font-size:20px">` keeps
+     * both (they are two `textStyle` marks). A `link` keeps the first href
+     * that passes the link allow-list, so an invalid one after a valid one
+     * cannot blank it. Returns whether anything was folded.
      *
      * @param  array<mixed>  $node
      */
@@ -520,7 +525,15 @@ class Content
             $byType = [];
 
             foreach ($node['marks'] as $mark) {
-                $byType[is_array($mark) ? (string) ($mark['type'] ?? '') : ''] = $mark;
+                $type = is_array($mark) ? (string) ($mark['type'] ?? '') : '';
+
+                if (! isset($byType[$type])) {
+                    $byType[$type] = $mark;
+
+                    continue;
+                }
+
+                $byType[$type] = static::mergeMarks($type, $byType[$type], $mark);
             }
 
             if (count($byType) !== count($node['marks'])) {
@@ -538,6 +551,47 @@ class Content
         }
 
         return $changed;
+    }
+
+    /**
+     * Merge a later mark of the same type into an earlier one (see dedupeMarks()).
+     *
+     * @param  array<mixed>  $earlier
+     * @param  array<mixed>  $later
+     * @return array<mixed>
+     */
+    protected static function mergeMarks(string $type, mixed $earlier, mixed $later): mixed
+    {
+        if (! is_array($earlier) || ! is_array($later)) {
+            return $earlier;
+        }
+
+        $attributes = is_array($earlier['attrs'] ?? null) ? $earlier['attrs'] : [];
+        $laterAttributes = is_array($later['attrs'] ?? null) ? $later['attrs'] : [];
+
+        foreach ($laterAttributes as $key => $value) {
+            if ($value !== null || ! array_key_exists($key, $attributes)) {
+                $attributes[$key] = $value;
+            }
+        }
+
+        if ($type === 'link') {
+            $link = new AtomLink;
+
+            foreach ([$earlier, $later] as $candidate) {
+                $href = is_array($candidate['attrs'] ?? null) ? ($candidate['attrs']['href'] ?? null) : null;
+
+                if (is_string($href) && $href !== '' && $link->isAllowedUri($href)) {
+                    $attributes['href'] = $href;
+
+                    break;
+                }
+            }
+        }
+
+        $earlier['attrs'] = $attributes;
+
+        return $earlier;
     }
 
     /**

@@ -13,7 +13,9 @@ $icon ??= 'file';
 // falls back to the icon. The scheme is read the way the WHATWG URL parser does: after
 // decoding entities (`&#106;avascript:` is a script URL if a host prints it unencoded),
 // with tabs and newlines removed anywhere and leading control characters and spaces
-// dropped. A value that is still decoding after five rounds is refused.
+// dropped. A value that is still decoding after five rounds is refused, and so is one that
+// still holds a numeric reference (`&#1;` before the scheme, or `&#106avascript:` with no
+// semicolon) once decoding is done: PHP leaves those alone and a browser decodes them.
 if ($src) {
     $probe = (string) $src;
     $settled = false;
@@ -27,7 +29,7 @@ if ($src) {
     $probe = ltrim(str_replace(["\t", "\n", "\r"], '', $probe), "\x00..\x20");
     $scheme = preg_match('/^([a-z][a-z0-9+.\-]*):/i', $probe, $matches) ? strtolower($matches[1]) : null;
 
-    if (!$settled || ($scheme !== null && !in_array($scheme, ['http', 'https'], true))) {
+    if (!$settled || str_contains($probe, '&#') || ($scheme !== null && !in_array($scheme, ['http', 'https'], true))) {
         $src = null;
     }
 }
