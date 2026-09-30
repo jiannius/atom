@@ -44,7 +44,7 @@ class Content
      */
     protected const YOUTUBE_EMBED = '~<div data-youtube-video="true"><iframe src="https://www\.youtube(?:-nocookie)?\.com/embed/[A-Za-z0-9_-]{11}(?:\?start=[1-9][0-9]{0,18})?" width="640" height="480" frameborder="0" allowfullscreen="true"></iframe></div>~';
 
-    /** The prefix of resanitize()'s placeholder. Input that carries it is refused. */
+    /** The prefix of resanitize()'s placeholder; the rest is 128 random bits, new for every call. */
     protected const EMBED_PLACEHOLDER = 'ATOMEMBED';
 
     /** Output larger than this many times the byte limit is refused. */
@@ -208,21 +208,32 @@ class Content
      * iframe that is not that exact shape (another host, an extra attribute, a
      * `srcdoc`) is not set aside, so sanitize() drops it; a placeholder that ends
      * up anywhere but a paragraph of its own (inside an attribute, a `<pre>`) is
-     * escaped text, and is never put back (it is removed). An embed inside a `<pre>` is left for
-     * sanitize() to drop: atom never prints one there.
+     * escaped text, and is never put back (it is removed, and only this call's
+     * placeholder is). An embed inside a `<pre>` is left for sanitize() to drop:
+     * atom never prints one there.
      *
-     * Returns '' for input that is empty, refused, failed, or carries the
-     * placeholder prefix, which no stored row has and which nothing may forge.
-     * A row that comes back '' is not cleaned: a host reviews it by hand.
+     * The placeholder is 128 random bits, new for every call, so nothing in a
+     * row can forge or predict it, and a row that holds the word "ATOMEMBED" (or
+     * any other guess) is cleaned like any other. The one refusal is a row that
+     * already holds this call's own token, which cannot happen by chance.
+     *
+     * Returns '' for input that is empty, over $maxBytes, refused, or failed. A
+     * row that comes back '' is not cleaned: a host reviews it by hand.
      * Not for a JSON document; that is what sanitize() is for.
      */
     public static function resanitize(string $html, int $maxBytes = self::SANITIZE_MAX_BYTES, int $maxTags = self::SANITIZE_MAX_TAGS): string
     {
-        if (stripos($html, static::EMBED_PLACEHOLDER) !== false) {
+        // sanitize() refuses this too; here it saves the scan below over a row that is refused anyway
+        if (strlen($html) > $maxBytes) {
             return '';
         }
 
-        $token = static::EMBED_PLACEHOLDER.bin2hex(random_bytes(16));
+        $token = static::embedToken();
+
+        if (str_contains($html, $token)) {
+            return '';
+        }
+
         $embeds = [];
         $swapped = '';
         $offset = 0;
@@ -263,6 +274,14 @@ class Content
         }
 
         return $clean;
+    }
+
+    /**
+     * A new placeholder for resanitize(): the prefix and 128 random bits.
+     */
+    protected static function embedToken(): string
+    {
+        return static::EMBED_PLACEHOLDER.bin2hex(random_bytes(16));
     }
 
     /**

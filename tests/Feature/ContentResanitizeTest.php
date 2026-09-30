@@ -42,6 +42,15 @@ function textBlock(string $text): array
 }
 
 /**
+ * Whether the output holds something shaped like resanitize()'s own placeholder
+ * (a row that seeds one itself is checked some other way).
+ */
+function placeholderLeft(string $html): bool
+{
+    return (bool) preg_match('/ATOMEMBED[0-9a-f]{32}x[0-9]+x/', $html);
+}
+
+/**
  * What a row may not hold after resanitize(), read from the parsed markup and not
  * by grepping (a label may say "onerror" as text): a tag the schema does not
  * have, an event handler or `srcdoc` attribute, a leftover placeholder. The
@@ -56,7 +65,7 @@ function resanitizeLeftovers(string $html): array
     $allowed = ['p', 'br', 'hr', 'strong', 'em', 's', 'u', 'code', 'pre', 'blockquote', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'span', 'mark', 'sub', 'sup', 'table', 'tbody', 'thead', 'tr', 'th', 'td', 'img'];
     $found = [];
 
-    if (stripos($html, 'ATOMEMBED') !== false) {
+    if (placeholderLeft($html)) {
         $found[] = 'placeholder';
     }
 
@@ -140,7 +149,8 @@ describe('Content::resanitize: a genuine row', function () {
     it('does not differ between calls (the placeholder is per call and never survives)', function () {
         $row = embedRow([textBlock('a'), youtubeBlock(), textBlock('b')]);
 
-        expect(Content::resanitize($row))->toBe(Content::resanitize($row))->not->toContain('ATOMEMBED');
+        expect(Content::resanitize($row))->toBe(Content::resanitize($row));
+        expect(placeholderLeft(Content::resanitize($row)))->toBeFalse();
     });
 });
 
@@ -226,34 +236,103 @@ describe('Content::resanitize: an embed that is not exactly what atom prints', f
 
             // only the one outside every <pre> may survive
             expect(substr_count($clean, '<iframe'))->toBe(str_contains($row, '</pre>'.GENUINE_EMBED) ? 1 : 0);
-            expect($clean)->not->toContain('ATOMEMBED');
+            expect(placeholderLeft($clean))->toBeFalse();
         }
     });
 });
 
-describe('Content::resanitize: the placeholder cannot be forged', function () {
-    it('refuses input that carries it, in any case', function (string $forged) {
-        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+/**
+ * A subclass whose placeholder is known, which no caller of Content can ever
+ * have: it stands in for an attacker who guessed the token, to show what the
+ * belt-and-braces check does.
+ */
+class ResanitizeKnownToken extends Content
+{
+    protected static function embedToken(): string
+    {
+        return 'ATOMEMBED'.str_repeat('0', 32);
+    }
+}
 
-        expect(Content::resanitize('<p>before</p>'.$forged.GENUINE_EMBED))->toBe('');
+describe('Content::resanitize: the placeholder cannot be forged', function () {
+    it('cleans a hostile row that holds the word, in any form, instead of refusing it', function (string $seed) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        $hostile = '<img><https://a.test/x.png"><iframe srcdoc="<script>alert(1)</script>"></iframe>>';
+        $clean = Content::resanitize('<p>before</p>'.$seed.$hostile);
+
+        expect($clean)->not->toBe('');
+        // the seed is the row's own text and stays as text; the rest is what is checked
+        expect(resanitizeLeftovers(str_ireplace('ATOMEMBED', 'seed', $clean)))->toBe([]);
+        expect($clean)->toContain('<p>before</p>')->not->toContain('<iframe')->not->toContain('<script');
     })->with([
-        'a paragraph' => ['<p>ATOMEMBED00000000000000000000000000000000x0x</p>'],
-        'lower case' => ['<p>atomembed00000000000000000000000000000000x0x</p>'],
-        'the bare prefix' => ['<p>ATOMEMBED</p>'],
+        'the word' => ['<p>ATOMEMBED</p>'],
+        'lower case' => ['<p>atomembed</p>'],
+        'a forged token' => ['<p>ATOMEMBED00000000000000000000000000000000x0x</p>'],
+        'a forged token, lower case' => ['<p>atomembedffffffffffffffffffffffffffffffffx0x</p>'],
         'in an attribute' => ['<img src="/a.png" alt="ATOMEMBEDff">'],
         'in a pre' => ['<pre>ATOMEMBEDff</pre>'],
     ]);
 
-    it('does not turn a forged guess into an embed', function () {
-        // even a forged <p> of the right shape only ever gets the embed the row really holds
-        $row = GENUINE_EMBED.'<p>ATOMEMBEDaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaax0x</p>';
+    it('round-trips a genuine row that has the word in its text', function () {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        $row = embedRow([textBlock('the ATOMEMBED project, and atomembed too'), youtubeBlock(), textBlock('ATOMEMBED00000000000000000000000000000000x0x')]);
 
-        expect(Content::resanitize($row))->toBe('');
+        expect($row)->toContain('ATOMEMBED00000000000000000000000000000000x0x');
+        expect(Content::resanitize($row))->toBe($row);
+    });
+
+    it('cannot restore anything from a token seeded in the row', function () {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        $lookalike = '<div data-youtube-video="true"><iframe src="https://www.youtube.evil.test/embed/dQw4w9WgXcQ" width="640" height="480" frameborder="0" allowfullscreen="true"></iframe></div>';
+        $seeded = '<p>ATOMEMBED00000000000000000000000000000000x0x</p><p>ATOMEMBED00000000000000000000000000000000x1x</p>';
+
+        // a seeded token with no real embed beside it restores nothing
+        $clean = Content::resanitize($seeded.$lookalike);
+
+        expect($clean)->not->toContain('<iframe')->not->toContain('<div');
+
+        // and beside a real one, only the real embed comes back, once
+        $clean = Content::resanitize($seeded.GENUINE_EMBED.$lookalike);
+
+        expect(substr_count($clean, '<iframe'))->toBe(1);
+        expect(substr_count($clean, GENUINE_EMBED))->toBe(1);
+    });
+
+    it('refuses a row that already holds this call\'s own token, which chance cannot produce', function () {
+        $forged = '<p>ATOMEMBED'.str_repeat('0', 32).'x0x</p>';
+
+        expect(ResanitizeKnownToken::resanitize($forged.GENUINE_EMBED))->toBe('');
+        expect(ResanitizeKnownToken::resanitize('<p>ATOMEMBED'.str_repeat('0', 32).'</p>'))->toBe('');
+        // the same rows, with a token nobody knows, are just rows
+        expect(Content::resanitize($forged.GENUINE_EMBED))->toContain(GENUINE_EMBED);
+    });
+
+    it('takes only its own token out of the output', function () {
+        // the row's own "ATOMEMBED..." text stays: stripping removes this call's keys and nothing else
+        $text = 'keep ATOMEMBED00000000000000000000000000000000x0x and ATOMEMBED here';
+        $row = '<p>'.$text.'</p>'.GENUINE_EMBED;
+        $clean = Content::resanitize($row);
+
+        expect($clean)->toBe($row);
+        expect($clean)->toContain($text);
+
+        // an embed inside an attribute is removed as this call's token, the surrounding text is kept
+        $clean = Content::resanitize('<img src="/a.png" alt="keep ATOMEMBED '.str_replace('"', '&quot;', GENUINE_EMBED).' end">');
+
+        expect($clean)->toContain('keep ATOMEMBED')->toContain('end')->not->toContain('<iframe');
+        expect(placeholderLeft($clean))->toBeFalse();
     });
 
     it('never leaves a placeholder in the output', function (string $row) {
-        expect(Content::resanitize($row))->not->toContain('ATOMEMBED');
+        expect(placeholderLeft(Content::resanitize($row)))->toBeFalse();
     })->with('genuine rows');
+
+    it('bails out of a row over $maxBytes before matching anything', function () {
+        $row = str_repeat('<p>a</p>', 100).GENUINE_EMBED;
+
+        expect(Content::resanitize($row, maxBytes: strlen($row) - 1))->toBe('');
+        expect(Content::resanitize($row, maxBytes: strlen($row)))->toBe($row);
+    });
 });
 
 describe('Content::resanitize: every case', function () {
