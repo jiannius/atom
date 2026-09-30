@@ -23,8 +23,8 @@
                 <button
                 type="button"
                 data-sharer="{{ $site }}"
-                data-url="{!! $url !!}"
-                data-title="{!! $title !!}"
+                data-url="{{ $url }}"
+                data-title="{{ $title }}"
                 aria-label="{{ str($site)->headline()->toString() }}"
                 class="size-10 rounded flex text-2xl cursor-pointer border border-transparent hover:bg-slate-100 hover:border-zinc-200">
                     <x-dynamic-component :component="'atom::icon.'.$site" size="24" @class([

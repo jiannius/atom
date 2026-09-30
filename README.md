@@ -854,6 +854,15 @@ class Search implements WebAction
 
 Actions without `authorize()` are callable by anyone, including guests — which is right for something like `GetOptions` (country and dial-code lists on public forms) and wrong for almost everything else. An action inheriting from an opted-in parent inherits the contract.
 
+### Upgrading to 3.29.12
+
+`<atom:sharer>` printed `title` and `url`, and `<atom:embed>` printed an image `src`, into HTML attributes without escaping, so a value containing a quote could add attributes to the element. They are escaped now. `<atom:embed>` also refuses a `src` whose scheme is not `http` or `https` (relative and protocol-relative URLs still work) and shows the file icon instead.
+
+- **Nothing to do** if you pass plain text and normal URLs. `&`, quotes and CJK text reach `sharer.js` as typed; it reads the attributes with `getAttribute()` and URL-encodes them itself.
+- **A `title` or `url` that is already HTML-encoded** (`Tom &amp; Jerry`) is now shown literally. Pass the raw text (`Tom & Jerry`).
+- **An embed `src` on another scheme** (`javascript:`, `data:`, `blob:`) no longer renders. Nothing in atom's own `file->url` produces one.
+- **`embed`'s `icon` prop is trusted markup when it starts with `<svg`.** Only pass developer-written SVG; never a database or user value.
+
 ### Upgrading to 3.29.9
 
 Remote and static select options used to be turned into HTML without escaping `label`, `caption` or `color`, so a value a user typed (a contact name, say) rendered as markup. They are escaped now, including the native select's `<option>` text.
