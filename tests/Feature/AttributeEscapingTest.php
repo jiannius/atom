@@ -35,7 +35,7 @@ function attributeEscapingElements(string $html, string $tag): array
  */
 function attributeEscapingNames(DOMElement $element): array
 {
-    return array_map(fn ($attribute) => $attribute->name, iterator_to_array($element->attributes));
+    return array_values(array_map(fn ($attribute) => $attribute->name, iterator_to_array($element->attributes)));
 }
 
 const ATTRIBUTE_ESCAPING_HOSTILE = <<<'TEXT'
@@ -143,6 +143,15 @@ describe('embed', function () {
         'https video' => ['https://cdn.test/a.mp4', 'video'],
         'youtube' => ['https://www.youtube.com/watch?v=abc', 'iframe'],
         'uppercase scheme' => ['HTTPS://cdn.test/a.png', 'img'],
+        // a colon that is not a scheme (a space or slash comes first) is just a file name
+        'colon after a space' => ['Report 2024: final.png', 'img'],
+        'colon after a slash' => ['/files/report:final.png', 'img'],
+        'colon in a query' => ['/files/a.png?next=a:b', 'img'],
+        'colon in a relative segment' => ['docs/v1:2/a.png', 'img'],
+        'space inside a file name' => ['/files/my photo.png', 'img'],
+        // a URL that is already entity-encoded (the & in a query) is still a plain URL
+        'encoded ampersand in a query' => ['https://cdn.test/a.png?x=1&amp;y=2', 'img'],
+        'several encoded ampersands' => ['/files/a.png?x=1&amp;y=2&amp;z=3', 'img'],
     ]);
 
     it('drops a script-scheme source for every embed type', function (string $src) {
@@ -164,5 +173,80 @@ describe('embed', function () {
         'leading control chars' => ["\x01 javascript:alert(1)//x.jpg"],
         'vbscript' => ['vbscript:msgbox(1)//x.jpg'],
         'data html' => ['data:text/html,<script>alert(1)</script>//x.jpg'],
+        'decimal entity' => ['&#106;avascript:alert(1)//x.jpg'],
+        'padded decimal entity' => ['&#0000106avascript:alert(1)//x.jpg'],
+        'hex entity' => ['&#x6A;avascript:alert(1)//x.jpg'],
+        'entity for the colon' => ['javascript&colon;alert(1)//x.jpg'],
+        'entity for the tab' => ['java&Tab;script:alert(1)//x.jpg'],
+        'entity for the newline' => ['java&NewLine;script:alert(1)//x.mp4'],
+        'entity for the whole scheme' => ['&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;&#112;&#116;&#58;alert(1)//x.jpg'],
+        'double-encoded entity' => ['&amp;#106;avascript:alert(1)//x.jpg'],
+        'triple-encoded entity' => ['&amp;amp;#106;avascript:alert(1)//x.jpg'],
+        'entity youtube shape' => ['&#106;avascript:/watch/;alert(1)'],
+        'named entity encoded twice' => ['javascript&amp;colon;alert(1)//x.jpg'],
+        'named entity encoded three times' => ['javascript&amp;amp;colon;alert(1)//x.mp4'],
+        'encoded past the decode limit' => ['javascript&'.str_repeat('amp;', 6).'colon;alert(1)//x.jpg'],
     ]);
+
+    it('drops an entity-encoded script scheme even when the host prints attributes without double encoding', function (string $src) {
+        Blade::withoutDoubleEncoding();
+
+        try {
+            $html = Blade::render('<atom:embed :src="$src" />', compact('src'));
+        } finally {
+            Blade::withDoubleEncoding();
+        }
+
+        expect(attributeEscapingElements($html, 'img'))->toBeEmpty()
+            ->and(attributeEscapingElements($html, 'iframe'))->toBeEmpty()
+            ->and(attributeEscapingElements($html, 'source'))->toBeEmpty()
+            ->and($html)->not->toContain('avascript');
+    })->with([
+        'entity for the colon' => ['javascript&colon;alert(1)//x.jpg'],
+        'entity for the tab' => ['java&Tab;script:alert(1)//x.mp4'],
+        'decimal entity' => ['&#106;avascript:alert(1)//x.jpg'],
+        'hex entity' => ['&#x6A;avascript:alert(1)//x.mp4'],
+        'youtube shape' => ['&#106;avascript:/watch/;alert(1)'],
+    ]);
+
+    it('keeps a hostile video source inside its source element', function () {
+        $src = 'https://cdn.test/a"onerror="alert(1)"x=\'<>&.mp4';
+
+        $html = Blade::render('<atom:embed :src="$src" />', compact('src'));
+        $sources = attributeEscapingElements($html, 'source');
+
+        expect($sources)->toHaveCount(1)
+            ->and(attributeEscapingNames($sources[0]))->toBe(['src', 'type'])
+            ->and($sources[0]->getAttribute('src'))->toBe($src)
+            ->and(attributeEscapingNames(attributeEscapingElements($html, 'video')[0]))->not->toContain('onerror');
+    });
+
+    it('keeps a hostile YouTube source inside its iframe', function () {
+        $src = 'https://www.youtube.com/watch"onerror="alert(1)"x=\'<>&';
+
+        $html = Blade::render('<atom:embed :src="$src" />', compact('src'));
+        $frames = attributeEscapingElements($html, 'iframe');
+
+        expect($frames)->toHaveCount(1)
+            ->and(attributeEscapingNames($frames[0]))->not->toContain('onerror')
+            ->and($frames[0]->getAttribute('src'))->toBe($src);
+    });
+});
+
+describe('error', function () {
+    it('shows a validation message that echoes user input as text', function () {
+        $message = 'The value "<img src=x onerror=alert(1)>" & <script>alert(2)</script> is not valid.';
+
+        $html = Blade::render('<atom:error :errors="[$message]" />', compact('message'));
+
+        expect(attributeEscapingElements($html, 'img'))->toBeEmpty()
+            ->and(attributeEscapingElements($html, 'script'))->toBeEmpty()
+            ->and(attributeEscapingElements($html, 'li')[0]->textContent)->toBe($message);
+    });
+
+    it('renders a plain message with an ampersand and CJK text once-encoded', function () {
+        $html = Blade::render('<atom:error :errors="[$message]" />', ['message' => 'Tom & Jerry 不能为空']);
+
+        expect($html)->toContain('Tom &amp; Jerry 不能为空')->not->toContain('&amp;amp;');
+    });
 });

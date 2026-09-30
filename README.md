@@ -856,10 +856,11 @@ Actions without `authorize()` are callable by anyone, including guests — which
 
 ### Upgrading to 3.29.12
 
-`<atom:sharer>` printed `title` and `url`, and `<atom:embed>` printed an image `src`, into HTML attributes without escaping, so a value containing a quote could add attributes to the element. They are escaped now. `<atom:embed>` also refuses a `src` whose scheme is not `http` or `https` (relative and protocol-relative URLs still work) and shows the file icon instead.
+`<atom:sharer>` printed `title` and `url`, and `<atom:embed>` printed an image `src`, into HTML attributes without escaping, so a value containing a quote could add attributes to the element; `<atom:error :errors="...">` printed each message as HTML. They are escaped now. `<atom:embed>` also refuses a `src` whose scheme is not `http` or `https` (relative and protocol-relative URLs still work) and shows the file icon instead.
 
 - **Nothing to do** if you pass plain text and normal URLs. `&`, quotes and CJK text reach `sharer.js` as typed; it reads the attributes with `getAttribute()` and URL-encodes them itself.
-- **A `title` or `url` that is already HTML-encoded** (`Tom &amp; Jerry`) is now shown literally. Pass the raw text (`Tom & Jerry`).
+- **A `title`, `url` or error message that is already HTML-encoded** (`Tom &amp; Jerry`) is now shown literally. Pass the raw text (`Tom & Jerry`).
+- **An error message that carries markup on purpose** (`atom:error :errors="[...]"` with `<b>`) now shows the tags as text. Laravel's own validation messages never do.
 - **An embed `src` on another scheme** (`javascript:`, `data:`, `blob:`) no longer renders. Nothing in atom's own `file->url` produces one.
 - **`embed`'s `icon` prop is trusted markup when it starts with `<svg`.** Only pass developer-written SVG; never a database or user value.
 - **`<atom:sharer>` needs [sharer.js](https://ellisonleao.github.io/sharer.js) on the page.** atom has never bundled it. Without it the component used to throw `Sharer is not defined` in the console; it now stays quiet, but the share buttons do nothing until you load it, for example `<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`. The copy-link button does not need it.
