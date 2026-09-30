@@ -52,21 +52,29 @@ export default () => {
             }
         },
 
+        // The fields read '--' until a time is set (and any text can be typed), so a
+        // non-number counts as 0 rather than turning into NaN on an arrow key.
         up (key) {
+            let hr = +this.hr || 0
+            let min = +this.min || 0
+
             if (key === 'hr') {
-                this.hr = +this.hr >= 12 ? 1 : +this.hr + 1
+                this.hr = hr >= 12 ? 1 : hr + 1
             } else if (key === 'min') {
-                this.min = +this.min >= 59 ? 0 : +this.min + 1
+                this.min = min >= 59 ? 0 : min + 1
             } else if (key === 'am') {
                 this.am = this.am === 'AM' ? 'PM' : 'AM'
             }
         },
 
         down (key) {
+            let hr = +this.hr || 0
+            let min = +this.min || 0
+
             if (key === 'hr') {
-                this.hr = +this.hr <= 1 ? 12 : +this.hr - 1
+                this.hr = hr <= 1 ? 12 : hr - 1
             } else if (key === 'min') {
-                this.min = +this.min <= 0 ? 59 : +this.min - 1
+                this.min = min <= 0 ? 59 : min - 1
             } else if (key === 'am') {
                 this.am = this.am === 'AM' ? 'PM' : 'AM'
             }

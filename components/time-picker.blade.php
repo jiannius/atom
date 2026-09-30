@@ -52,9 +52,11 @@ $labelId = $label ? $attributes->fieldId('atom-time-picker', $name, $label).'-la
         x-on:input.stop
         class="flex items-center gap-2">
             <input
-            type="number"
+            type="text"
+            inputmode="numeric"
             x-model.lazy="hr"
-            x-on:click.stop="up('hr')"
+            x-on:click.stop="$el.select()"
+            x-on:focus="$el.select()"
             x-on:keydown.up.stop.prevent="up('hr')"
             x-on:keydown.down.stop.prevent="down('hr')"
             x-on:keydown.left.stop.prevent="down('hr')"
@@ -66,9 +68,11 @@ $labelId = $label ? $attributes->fieldId('atom-time-picker', $name, $label).'-la
             <span class="font-bold">:</span>
 
             <input
-            type="number"
+            type="text"
+            inputmode="numeric"
             x-model.lazy="min"
-            x-on:click.stop="up('min')"
+            x-on:click.stop="$el.select()"
+            x-on:focus="$el.select()"
             x-on:keydown.up.stop.prevent="up('min')"
             x-on:keydown.down.stop.prevent="down('min')"
             x-on:keydown.left.stop.prevent="down('min')"

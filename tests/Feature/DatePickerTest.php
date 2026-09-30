@@ -45,4 +45,19 @@ describe('time-picker', function () {
             ->toContain('x-model.lazy="min"')
             ->toContain('x-bind:value="am"');
     });
+
+    it('selects the hour and minute on click instead of stepping them', function () {
+        $html = Blade::render('<atom:time-picker />');
+
+        // smgdms#156: a click used to step the value, and a number input ignores maxlength.
+        expect($html)
+            ->toContain('x-on:click.stop="$el.select()"')
+            ->toContain('x-on:focus="$el.select()"')
+            ->toContain('inputmode="numeric"')
+            ->not->toContain('type="number"')
+            ->not->toContain('x-on:click.stop="up(\'hr\')"')
+            ->not->toContain('x-on:click.stop="up(\'min\')"')
+            // AM/PM is a toggle, so it keeps stepping on click.
+            ->toContain('x-on:click.stop="up(\'am\')"');
+    });
 });
