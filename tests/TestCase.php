@@ -9,6 +9,22 @@ use Orchestra\Testbench\TestCase as Orchestra;
 abstract class TestCase extends Orchestra
 {
     /**
+     * Boot the app, then forget the environment variables the suite must not
+     * depend on. `testbench serve` (which Playwright starts) writes
+     * vendor/orchestra/testbench-core/laravel/.env with FILESYSTEM_DISK=local,
+     * and AsEditorContent reads that through env(): left in place it points
+     * the legacy cast at a disk no test set up, whichever ran first. An exported
+     * shell variable does the same, so it is removed from every place env() reads.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        putenv('FILESYSTEM_DISK');
+        unset($_ENV['FILESYSTEM_DISK'], $_SERVER['FILESYSTEM_DISK']);
+    }
+
+    /**
      * Register the package + Livewire service providers into the test app.
      *
      * @return array<int, class-string>

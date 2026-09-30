@@ -13,6 +13,58 @@ use Throwable;
 
 class PurgeEditorImages extends Command
 {
+    /**
+     * What splits a stored value into tokens: any run of characters that cannot
+     * be in an ASCII name (letters, digits, and . _ - % +, which are what a
+     * name, a rawurlencode()d name and a urlencode()d name are made of). Every
+     * non-ASCII byte splits, so a name beside a fullwidth colon, a curly quote,
+     * an NBSP, an ideographic space or an emoji is still a token; a name that
+     * holds one is searched for as a substring instead.
+     */
+    protected const TOKEN_SPLIT = '/[^A-Za-z0-9._%+\-]+/';
+
+    /**
+     * The same characters, for finding one delimiter: where a long value may be
+     * cut without cutting a token
+     */
+    protected const TOKEN_DELIMITER = '/[^A-Za-z0-9._%+\-]/';
+
+    /**
+     * A needle made only of token characters can be found as a token
+     */
+    protected const TOKEN_ONLY = '/^[A-Za-z0-9._%+\-]+$/D';
+
+    /**
+     * A JSON escape (\uXXXX, \n \t \r \b \f) glued to a name would hide it
+     * from a token, so a variant of the value with each one read as a slash is
+     * scanned too
+     */
+    protected const JSON_ESCAPES = '/\\\\(?:u[0-9a-fA-F]{4}|[nrtbf])/';
+
+    /**
+     * Inside a token, a name may begin after one of these, or end before one
+     * (thumb-NAME, NAME.webp, NAME-2x), so those spans are looked up too
+     */
+    protected const TOKEN_BOUNDARIES = '-_.+';
+
+    /**
+     * A value is tokenised this many bytes at a time (cut at a delimiter), so the
+     * memory of a token list follows the chunk, not the value
+     */
+    protected const TOKEN_CHUNK = 262144;
+
+    /**
+     * Above this many bytes a value is not also read with urldecode(): every
+     * decoded form is tokenised, so a huge value dense in "%" and "+" costs a
+     * multiple of its size in memory. rawurldecode() levels are still read.
+     */
+    protected const URLDECODE_MAX_BYTES = 1048576;
+
+    /**
+     * Say how far a long scan has got every this many rows
+     */
+    protected const PROGRESS_EVERY = 1000;
+
     protected $signature = 'atom:purge-editor-images
         {--force}
         {--dry-run : List what would be moved and deleted, change nothing}
@@ -45,12 +97,38 @@ class PurgeEditorImages extends Command
     protected array $scanned = [];
 
     /**
-     * The names to look for inside every stored value, needle => file name: each
-     * listed file's name, plus its rawurlencode()d and urlencode()d forms.
+     * The needles with no delimiter character in them, needle => the file names
+     * it stands for (usually one: two files collide when one's name is the
+     * other's urlencode()d form, a b.jpg and a+b.jpg). A value is split into
+     * tokens on delimiters, so these are found by hash lookup.
      *
-     * @var array<string, string>
+     * @var array<string, array<int, string>>
      */
-    protected array $needles = [];
+    protected array $tokenNeedles = [];
+
+    /**
+     * The needles with a delimiter character in them (a name with a space, a
+     * bracket or a backslash, say), needle => the file names it stands for. A
+     * token can never hold one, so these are searched for as plain substrings.
+     * They are rare.
+     *
+     * @var array<string, array<int, string>>
+     */
+    protected array $substringNeedles = [];
+
+    /**
+     * Every needle of each file name still being looked for, name => needles.
+     *
+     * @var array<string, array<int, string>>
+     */
+    protected array $needleNames = [];
+
+    /**
+     * The lengths the token needles come in, length => true.
+     *
+     * @var array<int, bool>
+     */
+    protected array $needleLengths = [];
 
     /**
      * The file that declared each class found, for saying where a failure is.
@@ -94,8 +172,12 @@ class PurgeEditorImages extends Command
         // list the files BEFORE reading the database: an image saved while the
         // scan runs is then not in the list, so it can never be called unreferenced
         $snapshots = $this->snapshotDisks();
-        $this->needles = $this->buildNeedles($snapshots);
+        $this->indexNeedles($this->buildNeedles($snapshots));
         $this->classFiles = [];
+
+        // the whole scan happens here, before anything is moved or deleted: a
+        // failure in it (an exception, or a memory fatal on a huge value) can
+        // never come after a deletion, so keep every deletion below this line
         $images = $this->getImagesFromModels();
 
         $this->reportScanned();
@@ -239,10 +321,15 @@ class PurgeEditorImages extends Command
     }
 
     /**
-     * The needles for every listed file, needle => file name
+     * The needles for every listed file, needle => the file names it stands for
+     * (a list: two files can share a needle, and a hit must keep both): the name, its
+     * rawurlencode()d and urlencode()d forms, and, for a name JSON would write
+     * differently (non-ASCII, a quote, a backslash), the way json_encode() writes
+     * it, in both hex cases, since a truncated JSON document holds that form
+     * and cannot be decoded
      *
      * @param  array<string, array{files?: Collection}>  $snapshots
-     * @return array<string, string>
+     * @return array<string, array<int, string>>
      */
     protected function buildNeedles(array $snapshots): array
     {
@@ -251,9 +338,19 @@ class PurgeEditorImages extends Command
         foreach ($snapshots as $snapshot) {
             foreach ($snapshot['files'] ?? [] as $path) {
                 $name = basename($path);
+                $forms = [$name, rawurlencode($name), urlencode($name)];
+                $json = json_encode($name, JSON_UNESCAPED_SLASHES);
 
-                foreach ([$name, rawurlencode($name), urlencode($name)] as $needle) {
-                    $needles[$needle] = $name;
+                if ($json !== false && substr($json, 1, -1) !== $name) {
+                    $json = substr($json, 1, -1);
+                    $forms[] = $json;
+                    $forms[] = preg_replace_callback('/\\\\u[0-9a-f]{4}/', fn ($hex) => '\\u'.strtoupper(substr($hex[0], 2)), $json);
+                }
+
+                foreach ($forms as $needle) {
+                    if (! in_array($name, $needles[$needle] ?? [], true)) {
+                        $needles[$needle][] = $name;
+                    }
                 }
             }
         }
@@ -262,12 +359,51 @@ class PurgeEditorImages extends Command
     }
 
     /**
+     * Sort the needles into the ones found by token lookup and the ones that
+     * have to be searched for as substrings
+     *
+     * @param  array<string, array<int, string>>  $needles  needle => file names
+     */
+    protected function indexNeedles(array $needles): void
+    {
+        $this->tokenNeedles = [];
+        $this->substringNeedles = [];
+        $this->needleNames = [];
+        $this->needleLengths = [];
+
+        foreach ($needles as $needle => $names) {
+            $needle = (string) $needle;
+
+            if ($needle === '') {
+                continue;
+            }
+
+            foreach ($names as $name) {
+                $this->needleNames[$name][] = $needle;
+            }
+
+            if (preg_match(self::TOKEN_ONLY, $needle)) {
+                $this->tokenNeedles[$needle] = $names;
+                $this->needleLengths[strlen($needle)] = true;
+            }
+            else {
+                $this->substringNeedles[$needle] = $names;
+            }
+        }
+    }
+
+    /**
      * The backstop that decides deletion: which listed files have their name
-     * anywhere inside a stored value, whatever the format around it (HTML, JSON,
-     * a CSS url(), a poster attribute, a truncated document). The raw value, the
+     * inside a stored value, whatever the format around it (HTML, JSON, a CSS
+     * url(), a poster attribute, a truncated document). The raw value, the
      * decoded value and their percent-decoded forms are all searched. A name is
      * random(20)-timestamp.ext, so this can only over-keep. A name found once is
      * not searched for again.
+     *
+     * Each form is split once into tokens (see TOKEN_SPLIT) and every token is
+     * looked up in a hash of the needles, so the cost follows the length of the
+     * value, not the number of files. A needle that holds a delimiter cannot be
+     * a token, so those alone are searched for as substrings.
      *
      * @return array<int, string>
      */
@@ -276,31 +412,212 @@ class PurgeEditorImages extends Command
         $haystacks = [];
 
         foreach ([$raw, $decoded] as $value) {
-            for ($i = 0; is_string($value) && $i < 4; $i++) {
-                $haystacks[] = $value;
-                $value = rawurldecode($value);
-            }
-        }
+            foreach (is_string($value) ? $this->decodedForms($value) : [] as $form) {
+                $haystacks[] = $form;
 
-        $haystacks = array_unique($haystacks);
-        $found = [];
+                if (str_contains($form, '\\')) {
+                    $unescaped = preg_replace(self::JSON_ESCAPES, '/', $form);
 
-        foreach ($this->needles as $needle => $name) {
-            if (isset($found[$name])) {
-                unset($this->needles[$needle]);
-                continue;
-            }
-
-            foreach ($haystacks as $haystack) {
-                if (str_contains($haystack, $needle)) {
-                    $found[$name] = true;
-                    unset($this->needles[$needle]);
-                    break;
+                    // null when PCRE gives up: that variant is skipped, the form itself is still searched
+                    if (is_string($unescaped)) {
+                        $haystacks[] = $unescaped;
+                    }
                 }
             }
         }
 
+        $found = [];
+
+        foreach (array_unique($haystacks) as $haystack) {
+            if (empty($this->tokenNeedles) && empty($this->substringNeedles)) {
+                break;
+            }
+
+            foreach ($this->findTokenNamesIn($haystack) as $name) {
+                $found[$name] = true;
+            }
+
+            foreach ($this->substringNeedles as $needle => $names) {
+                if (str_contains($haystack, (string) $needle)) {
+                    foreach ($names as $name) {
+                        $found[$name] = true;
+                    }
+                }
+            }
+
+            $this->forgetNames(array_keys($found));
+        }
+
         return array_keys($found);
+    }
+
+    /**
+     * A value and its percent-decoded forms, three levels deep, each level read
+     * both ways: rawurldecode() and urldecode() (a "+" is a space), since a value
+     * may be rawurlencode()d or urlencode()d, or a mix, level by level. Both give
+     * the same string unless there is a "+", so a value without one has one form
+     * per level.
+     *
+     * @return array<int, string>
+     */
+    protected function decodedForms(string $value): array
+    {
+        $plusToo = strlen($value) <= self::URLDECODE_MAX_BYTES;
+
+        // nothing to decode without a "%", and a "+" is the only thing urldecode() changes
+        if (! str_contains($value, '%')) {
+            return $plusToo && str_contains($value, '+') ? [$value, urldecode($value)] : [$value];
+        }
+
+        $forms = [$value => true];
+        $level = [$value];
+
+        for ($i = 0; $i < 3; $i++) {
+            $next = [];
+
+            foreach ($level as $form) {
+                foreach ($plusToo ? [rawurldecode($form), urldecode($form)] : [rawurldecode($form)] as $decoded) {
+                    $next[$decoded] = true;
+                }
+            }
+
+            $level = array_map('strval', array_keys($next));
+
+            foreach ($level as $form) {
+                $forms[$form] = true;
+            }
+        }
+
+        return array_map('strval', array_keys($forms));
+    }
+
+    /**
+     * The file names whose token needle is a token of the string, or a span of
+     * one that begins at its start or after a boundary and ends at its end or
+     * before a boundary. Falls back to searching every token needle as a
+     * substring if a chunk cannot be split.
+     *
+     * @return array<int, string>
+     */
+    protected function findTokenNamesIn(string $haystack): array
+    {
+        $names = [];
+        $length = strlen($haystack);
+
+        for ($offset = 0; $offset < $length;) {
+            $end = $length;
+
+            // cut a long value at the first delimiter past the chunk size: no token spans it
+            if ($length - $offset > self::TOKEN_CHUNK && preg_match(self::TOKEN_DELIMITER, $haystack, $cut, PREG_OFFSET_CAPTURE, $offset + self::TOKEN_CHUNK)) {
+                $end = $cut[0][1] + 1;
+            }
+
+            array_push($names, ...$this->findTokenNamesInChunk($end === $length && $offset === 0 ? $haystack : substr($haystack, $offset, $end - $offset)));
+            $offset = $end;
+        }
+
+        return $names;
+    }
+
+    /**
+     * The names found among the tokens of a string that is cut at a delimiter
+     * or is the whole value
+     *
+     * @return array<int, string>
+     */
+    protected function findTokenNamesInChunk(string $haystack): array
+    {
+        $tokens = preg_split(self::TOKEN_SPLIT, $haystack, -1, PREG_SPLIT_NO_EMPTY);
+        $names = [];
+
+        if ($tokens === false) {
+            foreach ($this->tokenNeedles as $needle => $needleNames) {
+                if (str_contains($haystack, (string) $needle)) {
+                    array_push($names, ...$needleNames);
+                }
+            }
+
+            return $names;
+        }
+
+        $min = $this->needleLengths ? min(array_keys($this->needleLengths)) : PHP_INT_MAX;
+        $max = $this->needleLengths ? max(array_keys($this->needleLengths)) : 0;
+
+        // a token repeated in the value is looked up once (numeric ones become int keys)
+        foreach (array_keys(array_flip($tokens)) as $token) {
+            $token = (string) $token;
+            $length = strlen($token);
+
+            if ($length < $min) {
+                continue;
+            }
+
+            if (strpbrk($token, self::TOKEN_BOUNDARIES) === false) {
+                if (isset($this->tokenNeedles[$token])) {
+                    array_push($names, ...$this->tokenNeedles[$token]);
+                }
+
+                continue;
+            }
+
+            // a span begins at the token's start or after a boundary and ends before a boundary or at the
+            // token's end: walk the ends, keeping only the starts still within the longest needle, so a token
+            // dense in boundaries costs no more memory than one needle's length of them
+            $starts = [0];
+            $head = 0;
+            $tail = 1;
+
+            for ($at = 0;; $at = $end + 1) {
+                $end = $at + strcspn($token, self::TOKEN_BOUNDARIES, $at);
+
+                for ($i = $head; $i < $tail; $i++) {
+                    $span = $end - $starts[$i];
+
+                    if ($span > $max) {
+                        unset($starts[$i]);
+                        $head = $i + 1;
+                    }
+                    elseif (isset($this->needleLengths[$span]) && isset($this->tokenNeedles[$sub = substr($token, $starts[$i], $span)])) {
+                        array_push($names, ...$this->tokenNeedles[$sub]);
+                    }
+                }
+
+                if ($end >= $length) {
+                    break;
+                }
+
+                $starts[$tail++] = $end + 1;
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * Stop looking for files already found. A needle a still-unfound file shares
+     * stays in the search, minus the found name.
+     *
+     * @param  array<int, string>  $names
+     */
+    protected function forgetNames(array $names): void
+    {
+        foreach ($names as $name) {
+            foreach ($this->needleNames[$name] ?? [] as $needle) {
+                foreach (['tokenNeedles', 'substringNeedles'] as $index) {
+                    if (! isset($this->{$index}[$needle])) {
+                        continue;
+                    }
+
+                    $this->{$index}[$needle] = array_values(array_diff($this->{$index}[$needle], [$name]));
+
+                    if (empty($this->{$index}[$needle])) {
+                        unset($this->{$index}[$needle]);
+                    }
+                }
+            }
+
+            unset($this->needleNames[$name]);
+        }
     }
 
     /**
@@ -340,7 +657,13 @@ class PurgeEditorImages extends Command
 
                 $this->scanned[$class] = $columns;
 
+                $read = 0;
+
                 foreach ($this->getRows($model, array_keys($columns)) as $row) {
+                    if (++$read % self::PROGRESS_EVERY === 0) {
+                        $this->info('  '.$class.': '.$read.' row(s) read');
+                    }
+
                     foreach (array_keys($columns) as $column) {
                         try {
                             $raw = $row->getRawOriginal($column);

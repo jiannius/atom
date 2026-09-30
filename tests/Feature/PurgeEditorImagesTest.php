@@ -544,3 +544,130 @@ describe('atom:purge-editor-images name anywhere in the value', function () {
         Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
     });
 });
+
+describe('atom:purge-editor-images names in odd forms', function () {
+    it('keeps an image whose name is stored form-encoded, a space as a plus', function () {
+        // rawurldecode() leaves a "+" alone, so only the urlencode()d needle can find this
+        purgeEditorFiles('legacy_disk', 'editor', 'a b.jpg', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert(['body' => serialize('<p>see /files?name=a+b.jpg</p>')]);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('legacy_disk')->assertExists('editor/a b.jpg');
+        Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
+    });
+
+    it('keeps a file whose name holds a delimiter, written out or percent-encoded', function () {
+        // "sp ace (1).jpg" cannot be a token, so it is searched as a substring; its encoded form is a token
+        purgeEditorFiles('legacy_disk', 'editor', 'sp ace (1).jpg', 'enc ((2)).jpg', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert([
+            ['body' => serialize('<img src="https://cdn.test/editor/sp ace (1).jpg">')],
+            ['body' => serialize('<img src="https://cdn.test/editor/'.rawurlencode('enc ((2)).jpg').'">')],
+        ]);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('legacy_disk')->assertExists('editor/sp ace (1).jpg');
+        Storage::disk('legacy_disk')->assertExists('editor/enc ((2)).jpg');
+        Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
+    });
+
+    it('keeps a name that a prefix, a suffix or a JSON unicode escape is glued to', function () {
+        purgeEditorFiles('legacy_disk', 'editor', 'pre-glued.jpg', 'under-glued.jpg', 'sfx-glued.jpg', 'esc-glued.jpg', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert([
+            ['body' => serialize('<img src="https://cdn.test/thumb-pre-glued.jpg">')],
+            ['body' => serialize('<img src="https://cdn.test/thumb_under-glued.jpg">')],
+            ['body' => serialize('<img src="https://cdn.test/sfx-glued.jpg.webp"><img src="x/sfx-glued.jpg-2x">')],
+            ['body' => serialize('{"src":"https:\\u002f\\u002fcdn.test\\u002feditor\\u002fesc-glued.jpg"}')],
+        ]);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        foreach (['pre-glued', 'under-glued', 'sfx-glued', 'esc-glued'] as $kept) {
+            Storage::disk('legacy_disk')->assertExists('editor/'.$kept.'.jpg');
+        }
+
+        Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
+    });
+
+    it('keeps a non-ASCII name that a truncated JSON document holds as \\uXXXX', function (bool $upper) {
+        // the document is cut off, so it cannot be decoded: only the json_encode()d form of the name can find it
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'tr-ünï.jpg', 'orphan.jpg');
+        $document = substr(json_encode(['type' => 'doc', 'content' => [['type' => 'image', 'attrs' => ['src' => 'https://cdn.test/tenant/editor/tr-ünï.jpg']]]]), 0, -5);
+
+        if ($upper) {
+            $document = preg_replace_callback('/\\\\u[0-9a-f]{4}/', fn ($m) => '\\u'.strtoupper(substr($m[0], 2)), $document);
+        }
+
+        expect($document)->toContain($upper ? '\\u00FC' : '\\u00fc');
+        expect(json_decode($document))->toBeNull();
+        DB::table('purge_tiptap_articles')->insert(['doc' => $document]);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('tiptap_disk')->assertExists('tenant/editor/tr-ünï.jpg');
+        Storage::disk('tiptap_disk')->assertMissing('tenant/editor/orphan.jpg');
+    })->with(['lower-case hex' => [false], 'upper-case hex' => [true]]);
+
+    it('keeps both files when one name is the other\'s form-encoded name', function () {
+        // "a b.jpg" urlencodes to "a+b.jpg", the other file's name: the value can stand for either, so both stay
+        purgeEditorFiles('legacy_disk', 'editor', 'a b.jpg', 'a+b.jpg', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert(['body' => purgeLegacyHtml('https://cdn.test/editor/a+b.jpg')]);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('legacy_disk')->assertExists('editor/a b.jpg');
+        Storage::disk('legacy_disk')->assertExists('editor/a+b.jpg');
+        Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
+    });
+
+    it('keeps a name beside CJK punctuation, curly quotes and a non-ASCII file name', function () {
+        purgeEditorFiles('legacy_disk', 'editor', 'cjk-kept.jpg', 'cjk-quoted.jpg', '日本語.png', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert([
+            ['body' => serialize('图片：https://cdn.test/editor/cjk-kept.jpg，请看')],
+            ['body' => serialize('“cjk-quoted.jpg”')],
+            ['body' => serialize('<img src="https://cdn.test/editor/日本語.png">')],
+        ]);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        foreach (['cjk-kept.jpg', 'cjk-quoted.jpg', '日本語.png'] as $kept) {
+            Storage::disk('legacy_disk')->assertExists('editor/'.$kept);
+        }
+
+        Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
+    });
+
+    it('keeps a name behind a JSON control escape', function () {
+        purgeEditorFiles('legacy_disk', 'editor', 'after-newline.jpg', 'after-tab.jpg', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert([
+            ['body' => serialize('{"type":"text","text":"line\\nafter-newline.jpg"}')],
+            ['body' => serialize('{"type":"text","text":"a\\tafter-tab.jpg"}')],
+        ]);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('legacy_disk')->assertExists('editor/after-newline.jpg');
+        Storage::disk('legacy_disk')->assertExists('editor/after-tab.jpg');
+        Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
+    });
+
+    it('keeps a spaced name inside a value that is urlencoded whole', function () {
+        purgeEditorFiles('legacy_disk', 'editor', 'my photo (1).jpg', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert(['body' => '%3Cimg+src%3D%22%2Feditor%2Fmy+photo+%281%29.jpg']);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('legacy_disk')->assertExists('editor/my photo (1).jpg');
+        Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
+    });
+
+    it('says how far a long scan has got', function () {
+        purgeEditorFiles('legacy_disk', 'editor', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert(array_fill(0, 1001, ['body' => purgeLegacyHtml()]));
+
+        $this->artisan('atom:purge-editor-images --dry-run')
+            ->expectsOutputToContain('App\Models\PurgeLegacyPost: 1000 row(s) read')
+            ->assertSuccessful();
+    });
+});

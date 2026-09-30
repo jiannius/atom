@@ -690,9 +690,12 @@ What it does on save:
 Pair with the scheduled command to clean up images no longer referenced:
 
 ```bash
-php artisan atom:purge-editor-images          # dry-clean (move to editor-purged/)
-php artisan atom:purge-editor-images --force  # delete the editor-purged/ backup
+php artisan atom:purge-editor-images            # dry-clean (move to editor-purged/)
+php artisan atom:purge-editor-images --dry-run  # list what it would delete, change nothing
+php artisan atom:purge-editor-images --force    # delete the editor-purged/ backup
 ```
+
+A file counts as referenced when its file name (or its percent-encoded form) appears anywhere in a stored editor value, whatever the format around it. The scan splits each form of a value (raw, decoded, percent-decoded) into tokens once, so its cost still follows the size of your data, not the number of files, and it prints a progress line every 1000 rows. A file whose name holds a space, quote, bracket or non-ASCII character (a macOS `Screenshot ... .png` stored through `tiptapStoreImage()`, say) is searched for as a plain substring instead, which is slower when there are many such files.
 
 ---
 
@@ -1039,7 +1042,8 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 
 | Command | Purpose |
 | ------- | ------- |
-| `atom:purge-editor-images` | Walks `App\Models\*`, finds columns cast as `AsEditorContent`, and moves any unreferenced editor image to `editor-purged/` on the local disk before removing from the configured disk. |
+| `atom:purge-editor-images` | Walks `App\Models\*`, finds columns cast as `AsEditorContent` or `AsTiptapContent`, and moves any unreferenced editor image to `editor-purged/` on the local disk before removing from the configured disk. A file is referenced if its name appears anywhere in a stored value. |
+| `atom:purge-editor-images --dry-run` | Lists what it would delete and changes nothing. |
 | `atom:purge-editor-images --force` | Empties the `editor-purged/` backup folder. |
 
 ---
