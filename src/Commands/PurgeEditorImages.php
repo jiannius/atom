@@ -24,6 +24,12 @@ class PurgeEditorImages extends Command
     protected const TOKEN_SPLIT = '/[^A-Za-z0-9._%+\-]+/';
 
     /**
+     * The same characters, for finding one delimiter: where a long value may be
+     * cut without cutting a token
+     */
+    protected const TOKEN_DELIMITER = '/[^A-Za-z0-9._%+\-]/';
+
+    /**
      * A needle made only of token characters can be found as a token
      */
     protected const TOKEN_ONLY = '/^[A-Za-z0-9._%+\-]+$/D';
@@ -40,6 +46,19 @@ class PurgeEditorImages extends Command
      * (thumb-NAME, NAME.webp, NAME-2x), so those spans are looked up too
      */
     protected const TOKEN_BOUNDARIES = '-_.+';
+
+    /**
+     * A value is tokenised this many bytes at a time (cut at a delimiter), so the
+     * memory of a token list follows the chunk, not the value
+     */
+    protected const TOKEN_CHUNK = 262144;
+
+    /**
+     * Above this many bytes a value is not also read with urldecode(): every
+     * decoded form is tokenised, so a huge value dense in "%" and "+" costs a
+     * multiple of its size in memory. rawurldecode() levels are still read.
+     */
+    protected const URLDECODE_MAX_BYTES = 1048576;
 
     /**
      * Say how far a long scan has got every this many rows
@@ -155,6 +174,10 @@ class PurgeEditorImages extends Command
         $snapshots = $this->snapshotDisks();
         $this->indexNeedles($this->buildNeedles($snapshots));
         $this->classFiles = [];
+
+        // the whole scan happens here, before anything is moved or deleted: a
+        // failure in it (an exception, or a memory fatal on a huge value) can
+        // never come after a deletion, so keep every deletion below this line
         $images = $this->getImagesFromModels();
 
         $this->reportScanned();
@@ -439,9 +462,11 @@ class PurgeEditorImages extends Command
      */
     protected function decodedForms(string $value): array
     {
+        $plusToo = strlen($value) <= self::URLDECODE_MAX_BYTES;
+
         // nothing to decode without a "%", and a "+" is the only thing urldecode() changes
         if (! str_contains($value, '%')) {
-            return str_contains($value, '+') ? [$value, urldecode($value)] : [$value];
+            return $plusToo && str_contains($value, '+') ? [$value, urldecode($value)] : [$value];
         }
 
         $forms = [$value => true];
@@ -451,7 +476,7 @@ class PurgeEditorImages extends Command
             $next = [];
 
             foreach ($level as $form) {
-                foreach ([rawurldecode($form), urldecode($form)] as $decoded) {
+                foreach ($plusToo ? [rawurldecode($form), urldecode($form)] : [rawurldecode($form)] as $decoded) {
                     $next[$decoded] = true;
                 }
             }
@@ -470,11 +495,37 @@ class PurgeEditorImages extends Command
      * The file names whose token needle is a token of the string, or a span of
      * one that begins at its start or after a boundary and ends at its end or
      * before a boundary. Falls back to searching every token needle as a
-     * substring if the string cannot be split.
+     * substring if a chunk cannot be split.
      *
      * @return array<int, string>
      */
     protected function findTokenNamesIn(string $haystack): array
+    {
+        $names = [];
+        $length = strlen($haystack);
+
+        for ($offset = 0; $offset < $length;) {
+            $end = $length;
+
+            // cut a long value at the first delimiter past the chunk size: no token spans it
+            if ($length - $offset > self::TOKEN_CHUNK && preg_match(self::TOKEN_DELIMITER, $haystack, $cut, PREG_OFFSET_CAPTURE, $offset + self::TOKEN_CHUNK)) {
+                $end = $cut[0][1] + 1;
+            }
+
+            array_push($names, ...$this->findTokenNamesInChunk($end === $length && $offset === 0 ? $haystack : substr($haystack, $offset, $end - $offset)));
+            $offset = $end;
+        }
+
+        return $names;
+    }
+
+    /**
+     * The names found among the tokens of a string that is cut at a delimiter
+     * or is the whole value
+     *
+     * @return array<int, string>
+     */
+    protected function findTokenNamesInChunk(string $haystack): array
     {
         $tokens = preg_split(self::TOKEN_SPLIT, $haystack, -1, PREG_SPLIT_NO_EMPTY);
         $names = [];
@@ -509,38 +560,33 @@ class PurgeEditorImages extends Command
                 continue;
             }
 
-            // where a span may begin and end: the token's edges and either side of each boundary
+            // a span begins at the token's start or after a boundary and ends before a boundary or at the
+            // token's end: walk the ends, keeping only the starts still within the longest needle, so a token
+            // dense in boundaries costs no more memory than one needle's length of them
             $starts = [0];
-            $ends = [];
+            $head = 0;
+            $tail = 1;
 
-            for ($i = 0; $i < $length; $i++) {
-                if (str_contains(self::TOKEN_BOUNDARIES, $token[$i])) {
-                    $starts[] = $i + 1;
-                    $ends[] = $i;
-                }
-            }
+            for ($at = 0;; $at = $end + 1) {
+                $end = $at + strcspn($token, self::TOKEN_BOUNDARIES, $at);
 
-            $ends[] = $length;
-            $first = 0;
-            $lastEnd = count($ends);
-
-            foreach ($starts as $start) {
-                // ends only grow, so the first end that can be long enough only moves right
-                while ($first < $lastEnd && $ends[$first] - $start < $min) {
-                    $first++;
-                }
-
-                for ($i = $first; $i < $lastEnd; $i++) {
-                    $span = $ends[$i] - $start;
+                for ($i = $head; $i < $tail; $i++) {
+                    $span = $end - $starts[$i];
 
                     if ($span > $max) {
-                        break;
+                        unset($starts[$i]);
+                        $head = $i + 1;
                     }
-
-                    if (isset($this->needleLengths[$span]) && isset($this->tokenNeedles[$sub = substr($token, $start, $span)])) {
+                    elseif (isset($this->needleLengths[$span]) && isset($this->tokenNeedles[$sub = substr($token, $starts[$i], $span)])) {
                         array_push($names, ...$this->tokenNeedles[$sub]);
                     }
                 }
+
+                if ($end >= $length) {
+                    break;
+                }
+
+                $starts[$tail++] = $end + 1;
             }
         }
 

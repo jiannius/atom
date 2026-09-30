@@ -249,6 +249,8 @@ function purgeCorpus(int $seed, array $names, array $others, int $count, bool $g
         '{"text":"line\\n{n}\\tnext\\r{n}\\b\\f{n}"}',
         '{"a":"\\u4e2d{n}\\u6587"}',
         '{"a":"\\u002f{n}\\u0022"}',
+        '{"src":"https:\\u002F\\u002Fcdn.test\\u002Feditor\\u002F{n}"}',
+        '{"a":"\\u4E2D{n}\\u6587"}',
     ];
 
     $glueWrappers = ['x{n}', '{n}z', 'img123{n}', '{n}9', 'a{n}.bak', '{n}x-2x'];
@@ -467,6 +469,7 @@ describe('atom:purge-editor-images token matcher against the substring definitio
         'backspace' => '{"text":"a\\bglued-esc.jpg"}',
         'form feed' => '{"text":"a\\fglued-esc.jpg"}',
         'unicode escape' => '{"text":"a\\u002fglued-esc.jpg"}',
+        'upper-case unicode escape' => '{"text":"a\\u002Fglued-esc.jpg"}',
     ]);
 
     it('finds a spaced name inside a value that is urlencoded whole, a space as a plus', function () {
@@ -532,6 +535,31 @@ describe('atom:purge-editor-images token matcher against the substring definitio
             ini_set('pcre.backtrack_limit', (string) $limit);
         }
     });
+
+    it('keeps the memory of a scan near the size of a huge value, whatever it is dense in', function (string $value) {
+        if (! function_exists('memory_reset_peak_usage')) {
+            $this->markTestSkipped('memory_reset_peak_usage() needs PHP 8.2');
+        }
+
+        $probe = new PurgeMatcherProbe;
+        $probe->load(['bounded-memory.jpg', 'orphan.jpg']);
+
+        gc_collect_cycles();
+        memory_reset_peak_usage();
+        $base = memory_get_usage();
+
+        $found = $probe->find($value.' bounded-memory.jpg', null);
+
+        $peak = memory_get_peak_usage() - $base;
+
+        // it still finds the name, and holds a few copies of the value at most, never the tens the token lists and forms once cost
+        expect($found)->toBe(['bounded-memory.jpg']);
+        expect($peak)->toBeLessThan(8 * strlen($value));
+    })->with([
+        'dense in %, + and a' => [str_repeat('%2B%2B+a', 140000)],
+        'dense in boundaries' => [str_repeat('a-', 600000)],
+        'plain words' => [str_repeat('lorem ipsum ', 100000)],
+    ]);
 
     it('keeps every file a shared needle stands for', function () {
         // a b.jpg urlencodes to a+b.jpg, which is also the name of another file
