@@ -379,7 +379,7 @@ class Content
         $isJson = json_last_error() === JSON_ERROR_NONE;
 
         if ($isJson && is_array($decoded) && isset($decoded['type'])) {
-            $problem = static::documentProblem($decoded, $maxTags);
+            $problem = static::roundTrips($decoded) ? static::documentProblem($decoded, $maxTags) : 'invalid document';
 
             return $problem === null ? [$decoded, null] : [null, $problem];
         }
@@ -406,6 +406,30 @@ class Content
 
         // the parser takes any string that decodes as JSON for JSON: an empty comment makes it HTML
         return [$isJson ? '<!---->'.$collapsed : $collapsed, null];
+    }
+
+    /**
+     * Whether a decoded document survives what tiptap-php does to it first:
+     * `Editor::setContent()` writes it with json_encode() and reads it back as
+     * objects. A number that overflows to INF (`1e999`) cannot be written, so
+     * json_encode() returns false, and a key that starts with a NUL byte cannot
+     * be an object property, so the read comes back null. Either one is a
+     * TypeError (a report(), on every call: once per view for a stored row), and
+     * only a hostile client sends them, so the document is refused.
+     *
+     * @param  array<mixed>  $document
+     */
+    protected static function roundTrips(array $document): bool
+    {
+        $encoded = json_encode($document);
+
+        if ($encoded === false) {
+            return false;
+        }
+
+        json_decode($encoded);
+
+        return json_last_error() === JSON_ERROR_NONE;
     }
 
     /**
@@ -480,10 +504,12 @@ class Content
      * 6 (or the digit as a string) becomes level 1 (see headingLevel()), an
      * ordered list `start`, a cell `colspan` or `rowspan` that is not a whole
      * number (`colspan` and `rowspan` also at least 1) is dropped, a table
-     * `colwidth` that is not a list of whole numbers and nulls is dropped, and
-     * a zero (an int 0, or a float that is zero) in any attribute becomes "0" (see below). Other odd values are
-     * left for the renderer to drop or escape. A code block's `language` needs
-     * nothing here: AtomCodeBlock renders it only as one token of name characters.
+     * `colwidth` that is not a list of numbers and nulls is dropped (a finite
+     * float is rounded to a whole number), and a zero (an int 0, or a float
+     * that is zero) in any attribute becomes "0" (see below). Other odd values
+     * are left for the renderer to drop or escape. A code block's `language`
+     * needs nothing here: AtomCodeBlock renders it only as one token of name
+     * characters.
      *
      * @param  array<mixed>  $node
      */
@@ -521,7 +547,11 @@ class Content
             $widths = [];
 
             foreach ($attributes['colwidth'] as $width) {
-                $whole = $width === null ? null : static::wholeNumber($width);
+                $whole = match (true) {
+                    $width === null => null,
+                    is_float($width) => is_finite($width) && abs($width) < 1e9 ? (int) round($width) : null,
+                    default => static::wholeNumber($width),
+                };
 
                 if ($width !== null && $whole === null) {
                     unset($attributes['colwidth']);

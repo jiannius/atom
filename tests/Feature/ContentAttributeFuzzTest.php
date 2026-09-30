@@ -52,6 +52,8 @@ function fuzzValues(): array
         ' 1', "\n1", '+1', '1e0', '01', '1.0', 1.5, true, false, '6 ', 7, 0, -1, 2, '3', 6, null, '', 'x', '1x', 'h1', '1 2', '-0', '0x1', '1e2',
         '9999999999999999999', PHP_INT_MAX, 1e30, 0.1, [], [1], [0], ['a' => 1], [[1]], [null], ['<'], '<script>', '"><b>', "a\0b", '💥', str_repeat('9', 400),
         '1,2', [1, 'x'], [true], ['level' => 1], 'https://a.test/x.png', '#fff', 'left',
+        // numbers that json_encode() cannot write, as raw JSON: see fuzzRawNumbers()
+        '@@1e999', '@@-1e999', '@@1e400', '@@1.7976931348623157e308', '@@1e-999', '@@[1e999]', '@@{"a":1e999}',
     ];
 }
 
@@ -65,6 +67,8 @@ function fuzzAttributeNames(): array
     return [
         'level', 'start', 'colspan', 'rowspan', 'colwidth', 'language', 'textAlign', 'href', 'target', 'rel', 'class', 'style', 'color', 'fontSize',
         'src', 'alt', 'title', 'width', 'height', 'float', 'align', 'id', 'label', 'multicolor', 'type', 'data-x',
+        // a key that starts with a NUL byte cannot be an object property
+        "\0x", "\0",
     ];
 }
 
@@ -110,6 +114,15 @@ function fuzzDocument(string $type, array $attributes, bool $mark): array
 }
 
 /**
+ * Turn the `"@@..."` strings in fuzzValues() into the raw JSON after the `@@`:
+ * json_encode() will not write INF, and a huge exponent is INF once it is read.
+ */
+function fuzzRawNumbers(string|false $json): string
+{
+    return (string) preg_replace_callback('/"@@((?:[^"\\\\]|\\\\.)*)"/', fn (array $m) => stripcslashes($m[1]), (string) $json);
+}
+
+/**
  * Run every document through sanitize() (and render(), which parses the same way
  * under other limits), and collect what breaks.
  *
@@ -132,7 +145,7 @@ function fuzzRun(iterable $documents, bool $renderToo = true): array
 
     foreach ($documents as $label => $document) {
         $current = $label;
-        $json = json_encode($document);
+        $json = fuzzRawNumbers(json_encode($document));
         $count++;
 
         foreach ($renderToo ? [Content::sanitize($json), Content::render($json)] : [Content::sanitize($json)] as $html) {
@@ -233,6 +246,7 @@ describe('Content: attribute fuzz, HTML', function () {
             foreach (fuzzValues() as $value) {
                 $text = is_array($value) ? json_encode($value) : (string) json_encode($value);
                 $value = is_string($value) ? $value : $text;
+                $value = str_starts_with($value, '@@') ? substr($value, 2) : $value;
                 $html = str_replace('{v}', htmlspecialchars($value, ENT_QUOTES), $template);
                 $count++;
 
@@ -397,13 +411,16 @@ describe('Content: the whole-number attributes', function () {
         'a list' => [[1], '<ol><li><p></p></li></ol>'],
     ]);
 
-    it('drops a colwidth with an element that is not a number, and keeps nulls', function () {
+    it('drops a colwidth with an element that is not a number, keeps nulls, and rounds a float', function () {
         $cell = fn (array $colwidth) => json_encode(['type' => 'doc', 'content' => [['type' => 'table', 'content' => [['type' => 'tableRow', 'content' => [['type' => 'tableCell', 'attrs' => ['colwidth' => $colwidth], 'content' => [['type' => 'paragraph']]]]]]]]]);
 
         expect(Content::sanitize($cell([120, null])))->toContain('data-colwidth="120,"');
         expect(Content::sanitize($cell(['120', 80])))->toContain('data-colwidth="120,80"');
         expect(Content::sanitize($cell([120, 'x'])))->not->toContain('data-colwidth');
-        expect(Content::sanitize($cell([1.5])))->not->toContain('data-colwidth');
+        expect(Content::sanitize($cell([120.5])))->toContain('data-colwidth="121"');
+        expect(Content::sanitize($cell([119.4, null, 80])))->toContain('data-colwidth="119,,80"');
+        expect(Content::sanitize($cell([-3.6])))->toContain('data-colwidth="-4"');
+        expect(Content::sanitize($cell([1e12 + 0.5])))->not->toContain('data-colwidth');
     });
 });
 
@@ -443,6 +460,7 @@ describe('Content: the int 0 hole, other value types and the HTML path', functio
         foreach (fuzzHtmlTemplates() as $name => $template) {
             foreach (array_merge(fuzzValues(), ['0', '00', '0.0', '-0', '0,0', '0x0', ' 0', '+0']) as $value) {
                 $text = is_string($value) ? $value : json_encode($value);
+                $text = str_starts_with($text, '@@') ? substr($text, 2) : $text;
                 $html = str_replace('{v}', htmlspecialchars($text, ENT_QUOTES), $template);
                 $document = $editor($html);
 
@@ -556,5 +574,126 @@ describe('Content: a float that is zero in a JSON document', function () {
         $json = '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"id":0.5,"label":"Half"}}]}]}';
 
         expect(Content::sanitize($json))->toContain('data-id="0.5"');
+    });
+});
+
+/**
+ * `Editor::setContent()` writes the document with json_encode() and reads it back
+ * as objects. A number that overflows to INF cannot be written (json_encode()
+ * returns false), and a key that starts with a NUL byte cannot be an object
+ * property (the read returns null). Both were a TypeError, so a report() on every
+ * call, and from render() once per view of a stored row.
+ *
+ * @return array<string, array{0: string}>
+ */
+dataset('documents that cannot round-trip through JSON', [
+    'an image alt that overflows' => ['{"type":"doc","content":[{"type":"image","attrs":{"src":"https://a.test/x.png","alt":1e999}}]}'],
+    'a negative overflow' => ['{"type":"doc","content":[{"type":"paragraph","attrs":{"textAlign":-1e999}}]}'],
+    'a huge exponent' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":1e400},"content":[{"type":"text","text":"h"}]}]}'],
+    'an overflow in a list' => ['{"type":"doc","content":[{"type":"table","content":[{"type":"tableRow","content":[{"type":"tableCell","attrs":{"colwidth":[1e999]},"content":[{"type":"paragraph"}]}]}]}]}'],
+    'an overflow in a mark' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x","marks":[{"type":"link","attrs":{"href":"https://a.test/","x":1e999}}]}]}]}'],
+    'an overflow inside a nested object' => ['{"type":"doc","content":[{"type":"paragraph","attrs":{"a":{"b":{"c":1e999}}}}]}'],
+    'a NUL-prefixed key on the document' => ['{"type":"doc","\u0000a":1,"content":[{"type":"paragraph"}]}'],
+    'a NUL-prefixed key on a node' => ['{"type":"doc","content":[{"type":"paragraph","\u0000":1}]}'],
+    'a NUL-prefixed attribute' => ['{"type":"doc","content":[{"type":"paragraph","attrs":{"\u0000x":"y"}}]}'],
+    'a NUL-prefixed key in a mark' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x","marks":[{"type":"bold","attrs":{"\u0000":1}}]}]}]}'],
+    'a NUL-prefixed key in a nested object' => ['{"type":"doc","content":[{"type":"paragraph","attrs":{"a":{"\u0000b":1}}}]}'],
+]);
+
+describe('Content: a document that cannot round-trip through JSON is a silent refusal', function () {
+    it('renders empty from render() and sanitize(), without a report or a log line', function (string $json) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        Log::spy();
+
+        expect(Content::render($json))->toBe('');
+        expect(Content::sanitize($json))->toBe('');
+        expect(Content::sanitizeRefuses($json))->toBeTrue();
+        Log::shouldNotHaveReceived('warning');
+    })->with('documents that cannot round-trip through JSON');
+
+    it('does not report a PHP array holding INF or NAN either, which is not a document that can be parsed', function (float $number) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        $array = ['type' => 'doc', 'content' => [['type' => 'paragraph', 'attrs' => ['a' => $number]]]];
+
+        expect(Content::render($array))->toBe('');
+        expect(Content::sanitize($array))->toBe('');
+    })->with([INF, -INF, NAN]);
+
+    it('keeps a document whose numbers are large but finite', function () {
+        $json = '{"type":"doc","content":[{"type":"paragraph","attrs":{"a":1.7976931348623157e308,"b":1e-320}}]}';
+
+        expect(Content::sanitize($json))->toBe('<p></p>');
+    });
+});
+
+/**
+ * A table cell whose `colspan` or `rowspan` was 0 opened its `<td>` bare, and a
+ * string `colwidth` was then printed raw as a tag. Two attributes, so the
+ * one-attribute fuzz cannot see it: the random draw and this test do.
+ */
+describe('Content: a zero span beside a string colwidth', function () {
+    it('prints the width as an attribute', function (string $type, array $attributes) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        $cell = ['type' => $type, 'attrs' => $attributes, 'content' => [['type' => 'paragraph']]];
+        $json = json_encode(['type' => 'doc', 'content' => [['type' => 'table', 'content' => [['type' => 'tableRow', 'content' => [$cell]]]]]]);
+
+        foreach ([Content::sanitize($json), Content::render($json)] as $html) {
+            expect(fuzzBadTags($html))->toBe([]);
+            expect($html)->not->toContain('<b>')->not->toContain('<x');
+        }
+    })->with([
+        'a cell, rowspan 0' => ['tableCell', ['rowspan' => 0, 'colwidth' => ['"><b>x</b>']]],
+        'a cell, colspan 0' => ['tableCell', ['colspan' => 0, 'colwidth' => ['x y']]],
+        'a header, both 0' => ['tableHeader', ['colspan' => 0, 'rowspan' => 0.0, 'colwidth' => ['<x>']]],
+    ]);
+});
+
+/**
+ * The README's backfill for rows that sanitize() wrote from a JSON document before
+ * 3.29.14: sanitize() them again, except a row that holds a YouTube embed, which
+ * HTML parsing drops. This is that logic; the test below keeps the README's
+ * snippet to it.
+ */
+function backfilledBody(string $body): ?string
+{
+    if (str_contains($body, 'data-youtube-video') || stripos($body, '<iframe') !== false) {
+        return null;
+    }
+
+    $clean = Content::sanitize($body);
+
+    return $clean !== '' && $clean !== $body ? $clean : null;
+}
+
+describe('Content: the documented backfill', function () {
+    it('cleans a row that holds stray markup, and leaves a YouTube row, a clean row and an empty row alone', function () {
+        $hostile = json_encode(['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'kept']]]]]);
+        $stray = '<p>kept</p><img><https://a.test/x.png"><script>alert(1)</script>><p>after</p>';
+        $youtube = Content::sanitize('{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"watch"}]},{"type":"youtube","attrs":{"src":"https://www.youtube.com/watch?v=dQw4w9WgXcQ"}}]}');
+
+        expect($youtube)->toContain('<iframe');
+        // the reason for the guard: sanitizing it again would drop the embed
+        expect(Content::sanitize($youtube))->not->toContain('<iframe');
+        expect(backfilledBody($youtube))->toBeNull();
+
+        $cleaned = backfilledBody($stray);
+
+        expect($cleaned)->toBeString()->not->toContain('<script')->not->toContain('<https')->toContain('kept')->toContain('after');
+        expect(fuzzBadTags($cleaned))->toBe([]);
+        expect(backfilledBody($cleaned))->toBeNull();
+        expect(backfilledBody('<p>Hello <strong>team</strong></p>'))->toBeNull();
+        expect(backfilledBody(''))->toBeNull();
+        expect(backfilledBody($hostile))->toBeString();
+    });
+
+    it('is what the README documents', function () {
+        $readme = file_get_contents(dirname(__DIR__, 2).'/README.md');
+        $section = substr($readme, strpos($readme, '### Upgrading to 3.29.14'), 9000);
+
+        expect($section)
+            ->toContain('use Jiannius\Atom\Tiptap\Content;')
+            ->toContain("str_contains(\$message->body, 'data-youtube-video')")
+            ->toContain("stripos(\$message->body, '<iframe')")
+            ->toContain('$clean !== \'\' && $clean !== $message->body');
     });
 });
