@@ -13,7 +13,7 @@ class PurgeMatcherProbe extends PurgeEditorImages
      * reference matcher wants them
      *
      * @param  array<int, string>  $names
-     * @return array<string, string>
+     * @return array<string, array<int, string>>
      */
     public function load(array $names): array
     {
@@ -32,7 +32,7 @@ class PurgeMatcherProbe extends PurgeEditorImages
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, array<int, string>>
      */
     public function tokenNeedlesLeft(): array
     {
@@ -40,7 +40,7 @@ class PurgeMatcherProbe extends PurgeEditorImages
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, array<int, string>>
      */
     public function substringNeedlesLeft(): array
     {
@@ -52,9 +52,10 @@ class PurgeMatcherProbe extends PurgeEditorImages
  * The matcher as it was before the token lookup: every needle of every file
  * still unfound against every form of the value, as a plain substring. It is
  * the definition of "referenced" the fast matcher has to agree with, and lives
- * here only.
+ * here only. One change from the original: a needle maps to a list of names
+ * (two files can share one), and a hit finds all of them.
  *
- * @param  array<string, string>  $needles  needle => file name
+ * @param  array<string, array<int, string>>  $needles  needle => file names
  * @return array<int, string>
  */
 function purgeReferenceMatch(array $needles, mixed $raw, mixed $decoded): array
@@ -71,16 +72,13 @@ function purgeReferenceMatch(array $needles, mixed $raw, mixed $decoded): array
     $haystacks = array_unique($haystacks);
     $found = [];
 
-    foreach ($needles as $needle => $name) {
-        if (isset($found[$name])) {
-            unset($needles[$needle]);
-            continue;
-        }
-
+    foreach ($needles as $needle => $names) {
         foreach ($haystacks as $haystack) {
             if (str_contains($haystack, (string) $needle)) {
-                $found[$name] = true;
-                unset($needles[$needle]);
+                foreach ($names as $name) {
+                    $found[$name] = true;
+                }
+
                 break;
             }
         }
@@ -90,8 +88,8 @@ function purgeReferenceMatch(array $needles, mixed $raw, mixed $decoded): array
 }
 
 /**
- * The names the corpus embeds, and a few it never does. None is another's
- * needle (a b.jpg and a+b.jpg would be: the needle map keeps one owner).
+ * The names the corpus embeds, and a few it never does. a b.jpg and a+b.jpg
+ * are here on purpose: the first's urlencode()d needle is the second's name.
  *
  * @return array{0: array<int, string>, 1: array<int, string>}
  */
@@ -108,7 +106,7 @@ function purgeCorpusNames(): array
     $embedded = [...$atom,
         'snapshot.jpg', 'my photo.jpg', 'x_y-z.v1.webp', 'dot.name.tar.gz', 'tr-ünï.jpg', '日本語.png', 'a&b.jpg',
         'semi;colon.jpg', '(paren).png', '100%.png', 'plus+sign.jpg', 'q"uote.jpg', 'back\\slash.jpg', 'ünï.pdf',
-        '[brackets].jpg', 'UPPER.JPG', 'short.gif', 'a b.jpg', 'it\'s.jpg', 'tab	name.jpg',
+        '[brackets].jpg', 'UPPER.JPG', 'short.gif', 'a b.jpg', 'a+b.jpg', 'it\'s.jpg', 'tab	name.jpg',
     ];
 
     return [$embedded, ['never-embedded-1712345678.jpg', 'orphan ünï 1.png']];
@@ -331,5 +329,36 @@ describe('atom:purge-editor-images token matcher against the substring definitio
             ini_set('pcre.jit', (string) $jit);
             ini_set('pcre.backtrack_limit', (string) $limit);
         }
+    });
+
+    it('keeps every file a shared needle stands for', function () {
+        // a b.jpg urlencodes to a+b.jpg, which is also the name of another file
+        $probe = new PurgeMatcherProbe;
+        $probe->load(['a b.jpg', 'a+b.jpg', 'orphan.jpg']);
+
+        expect($probe->tokenNeedlesLeft()['a+b.jpg'])->toEqualCanonicalizing(['a b.jpg', 'a+b.jpg']);
+        expect($probe->find('<img src="https://cdn.test/editor/a+b.jpg">', null))->toEqualCanonicalizing(['a b.jpg', 'a+b.jpg']);
+    });
+
+    it('keeps every file a shared needle stands for, whichever way the needle is found', function () {
+        // no extension, so the shared needle "a%20b" has no boundary and is a whole token
+        $whole = new PurgeMatcherProbe;
+        $whole->load(['a b', 'a%20b']);
+        expect($whole->find('<img src=/x/a%20b>', null))->toEqualCanonicalizing(['a b', 'a%20b']);
+
+        // q"x.jpg json-encodes to q\"x.jpg, another file's name; both hold a delimiter, so both are substring needles
+        $substring = new PurgeMatcherProbe;
+        $substring->load(['q"x.jpg', 'q\\"x.jpg']);
+        expect(array_keys($substring->substringNeedlesLeft()))->toContain('q\\"x.jpg');
+        expect($substring->find('{"text":"see q\\"x.jpg"}', null))->toEqualCanonicalizing(['q"x.jpg', 'q\\"x.jpg']);
+    });
+
+    it('keeps looking for the other file when one that shares a needle is found first', function () {
+        $probe = new PurgeMatcherProbe;
+        $probe->load(['a b.jpg', 'a+b.jpg']);
+
+        // "a b.jpg" written out is found through its own needle only: the shared one must stay for the next value
+        expect($probe->find('files/a b.jpg', null))->toBe(['a b.jpg']);
+        expect($probe->find('files/a+b.jpg', null))->toBe(['a+b.jpg']);
     });
 });

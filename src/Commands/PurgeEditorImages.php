@@ -69,19 +69,22 @@ class PurgeEditorImages extends Command
     protected array $scanned = [];
 
     /**
-     * The needles with no delimiter character in them, needle => file name. A
-     * value is split into tokens on delimiters, so these are found by hash lookup.
+     * The needles with no delimiter character in them, needle => the file names
+     * it stands for (usually one: two files collide when one's name is the
+     * other's urlencode()d form, a b.jpg and a+b.jpg). A value is split into
+     * tokens on delimiters, so these are found by hash lookup.
      *
-     * @var array<string, string>
+     * @var array<string, array<int, string>>
      */
     protected array $tokenNeedles = [];
 
     /**
      * The needles with a delimiter character in them (a name with a space, a
-     * bracket or a backslash, say), needle => file name. A token can never hold
-     * one, so these are searched for as plain substrings. They are rare.
+     * bracket or a backslash, say), needle => the file names it stands for. A
+     * token can never hold one, so these are searched for as plain substrings.
+     * They are rare.
      *
-     * @var array<string, string>
+     * @var array<string, array<int, string>>
      */
     protected array $substringNeedles = [];
 
@@ -286,14 +289,15 @@ class PurgeEditorImages extends Command
     }
 
     /**
-     * The needles for every listed file, needle => file name: the name, its
+     * The needles for every listed file, needle => the file names it stands for
+     * (a list: two files can share a needle, and a hit must keep both): the name, its
      * rawurlencode()d and urlencode()d forms, and, for a name JSON would write
      * differently (non-ASCII, a quote, a backslash), the way json_encode() writes
      * it, in both hex cases, since a truncated JSON document holds that form
      * and cannot be decoded
      *
      * @param  array<string, array{files?: Collection}>  $snapshots
-     * @return array<string, string>
+     * @return array<string, array<int, string>>
      */
     protected function buildNeedles(array $snapshots): array
     {
@@ -312,7 +316,9 @@ class PurgeEditorImages extends Command
                 }
 
                 foreach ($forms as $needle) {
-                    $needles[$needle] = $name;
+                    if (! in_array($name, $needles[$needle] ?? [], true)) {
+                        $needles[$needle][] = $name;
+                    }
                 }
             }
         }
@@ -324,7 +330,7 @@ class PurgeEditorImages extends Command
      * Sort the needles into the ones found by token lookup and the ones that
      * have to be searched for as substrings
      *
-     * @param  array<string, string>  $needles  needle => file name
+     * @param  array<string, array<int, string>>  $needles  needle => file names
      */
     protected function indexNeedles(array $needles): void
     {
@@ -333,21 +339,23 @@ class PurgeEditorImages extends Command
         $this->needleNames = [];
         $this->needleLengths = [];
 
-        foreach ($needles as $needle => $name) {
+        foreach ($needles as $needle => $names) {
             $needle = (string) $needle;
 
             if ($needle === '') {
                 continue;
             }
 
-            $this->needleNames[$name][] = $needle;
+            foreach ($names as $name) {
+                $this->needleNames[$name][] = $needle;
+            }
 
             if (preg_match(self::TOKEN_ONLY, $needle)) {
-                $this->tokenNeedles[$needle] = $name;
+                $this->tokenNeedles[$needle] = $names;
                 $this->needleLengths[strlen($needle)] = true;
             }
             else {
-                $this->substringNeedles[$needle] = $name;
+                $this->substringNeedles[$needle] = $names;
             }
         }
     }
@@ -395,9 +403,11 @@ class PurgeEditorImages extends Command
                 $found[$name] = true;
             }
 
-            foreach ($this->substringNeedles as $needle => $name) {
+            foreach ($this->substringNeedles as $needle => $names) {
                 if (str_contains($haystack, (string) $needle)) {
-                    $found[$name] = true;
+                    foreach ($names as $name) {
+                        $found[$name] = true;
+                    }
                 }
             }
 
@@ -421,9 +431,9 @@ class PurgeEditorImages extends Command
         $names = [];
 
         if ($tokens === false) {
-            foreach ($this->tokenNeedles as $needle => $name) {
+            foreach ($this->tokenNeedles as $needle => $needleNames) {
                 if (str_contains($haystack, (string) $needle)) {
-                    $names[] = $name;
+                    array_push($names, ...$needleNames);
                 }
             }
 
@@ -444,7 +454,7 @@ class PurgeEditorImages extends Command
 
             if (strpbrk($token, self::TOKEN_BOUNDARIES) === false) {
                 if (isset($this->tokenNeedles[$token])) {
-                    $names[] = $this->tokenNeedles[$token];
+                    array_push($names, ...$this->tokenNeedles[$token]);
                 }
 
                 continue;
@@ -479,7 +489,7 @@ class PurgeEditorImages extends Command
                     }
 
                     if (isset($this->needleLengths[$span]) && isset($this->tokenNeedles[$sub = substr($token, $start, $span)])) {
-                        $names[] = $this->tokenNeedles[$sub];
+                        array_push($names, ...$this->tokenNeedles[$sub]);
                     }
                 }
             }
@@ -489,7 +499,8 @@ class PurgeEditorImages extends Command
     }
 
     /**
-     * Stop looking for files already found
+     * Stop looking for files already found. A needle a still-unfound file shares
+     * stays in the search, minus the found name.
      *
      * @param  array<int, string>  $names
      */
@@ -497,7 +508,17 @@ class PurgeEditorImages extends Command
     {
         foreach ($names as $name) {
             foreach ($this->needleNames[$name] ?? [] as $needle) {
-                unset($this->tokenNeedles[$needle], $this->substringNeedles[$needle]);
+                foreach (['tokenNeedles', 'substringNeedles'] as $index) {
+                    if (! isset($this->{$index}[$needle])) {
+                        continue;
+                    }
+
+                    $this->{$index}[$needle] = array_values(array_diff($this->{$index}[$needle], [$name]));
+
+                    if (empty($this->{$index}[$needle])) {
+                        unset($this->{$index}[$needle]);
+                    }
+                }
             }
 
             unset($this->needleNames[$name]);

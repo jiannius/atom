@@ -609,6 +609,18 @@ describe('atom:purge-editor-images names in odd forms', function () {
         Storage::disk('tiptap_disk')->assertMissing('tenant/editor/orphan.jpg');
     })->with(['lower-case hex' => [false], 'upper-case hex' => [true]]);
 
+    it('keeps both files when one name is the other\'s form-encoded name', function () {
+        // "a b.jpg" urlencodes to "a+b.jpg", the other file's name: the value can stand for either, so both stay
+        purgeEditorFiles('legacy_disk', 'editor', 'a b.jpg', 'a+b.jpg', 'orphan.jpg');
+        DB::table('purge_legacy_posts')->insert(['body' => purgeLegacyHtml('https://cdn.test/editor/a+b.jpg')]);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('legacy_disk')->assertExists('editor/a b.jpg');
+        Storage::disk('legacy_disk')->assertExists('editor/a+b.jpg');
+        Storage::disk('legacy_disk')->assertMissing('editor/orphan.jpg');
+    });
+
     it('says how far a long scan has got', function () {
         purgeEditorFiles('legacy_disk', 'editor', 'orphan.jpg');
         DB::table('purge_legacy_posts')->insert(array_fill(0, 1001, ['body' => purgeLegacyHtml()]));
