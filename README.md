@@ -866,32 +866,38 @@ A client that can save a JSON document could get markup of its choosing into wha
 - **HTML input was never affected.** HTML attributes arrive as strings, and tiptap-php's HTML parse turns the numeric ones (`start`, `colspan`, `rowspan`) into `null` when they are zero, so a zero never reaches the serialiser that way. Chat HTML from `<atom:tiptap.chat>` was not exposed, unless your code passed it a JSON document.
 - **Stored JSON needs no backfill, but it is not rewritten either.** The stored document still holds the zero; `render()` and `<atom:tiptap.content>` repair it on the way out, so every print through atom is safe after the upgrade. Anything that prints the column some other way was never covered and still is not: `{!! !!}` or `x-html` straight from the column, your own tiptap-php `Editor`, or JavaScript that loads the stored document.
 - **HTML that was rendered before the upgrade is not repaired.** Anything that stored or cached the output of `render()` or `sanitize()` while the hole was open (a rendered email, a page or fragment cache, a PDF, a search index) still holds whatever it printed. Clear those caches; atom cannot reach them.
-- **Backfill only if you ever passed JSON to `sanitize()` and stored the result.** `sanitize()` accepts a JSON document and returns HTML, so a row stored from a hostile document before 3.29.14 may hold the stray markup as HTML. Run those rows through `Content::sanitize()` again. HTML parsing drops every tag the schema does not have, so the stray markup goes. **It also drops a YouTube embed**, because HTML parsing drops every `<iframe>` (an embed only survives in a JSON document), so a row that holds one must not be re-sanitized: the snippet skips it, and you check it by hand or rebuild it from the original JSON if you kept it. A clean row comes back unchanged and is not written:
+- **Backfill only if you ever passed JSON to `sanitize()` and stored the result.** `sanitize()` accepts a JSON document and returns HTML, so a row stored from a hostile document before 3.29.14 may hold stray markup as HTML, and that markup can include an `<iframe>`. Run those rows through `Content::resanitize()`, which is `sanitize()` for a row that `sanitize()` wrote: `sanitize()` itself would drop the YouTube embeds a row legitimately holds (HTML parsing drops every `<iframe>`; an embed survives only in a JSON document). `resanitize()` sets aside only an embed that is exactly what atom prints (a `div` and an `iframe` with the attributes it sets, a `src` rebuilt from the 11-character id on `youtube.com` or `youtube-nocookie.com`, an optional `?start=`), sanitizes everything else, and puts the embeds back. Any other `<iframe>`, a `srcdoc` or an extra attribute included, is cleaned away with the rest of the hostile markup. A clean row comes back unchanged and is not written. A row that comes back `''` is not rewritten; it is either over the size limits, has nothing printable in it, or carries `resanitize()`'s reserved placeholder, so the snippet lists those ids and you look at each by hand (blank or delete it: `render()` never prints it, but anything that prints the column raw would):
 
 ```php
 use Jiannius\Atom\Tiptap\Content;
 
 // once, after upgrading; Message is your model, body the column that sanitize() wrote
-$skipped = [];
+$review = [];
 
-Message::query()->chunkById(200, function ($messages) use (&$skipped) {
+Message::query()->chunkById(200, function ($messages) use (&$review) {
     foreach ($messages as $message) {
-        if (str_contains($message->body, 'data-youtube-video') || stripos($message->body, '<iframe') !== false) {
-            $skipped[] = $message->getKey();
+        if (! is_string($message->body)) {
+            continue;
+        }
+
+        $clean = Content::resanitize($message->body);
+
+        if ($clean === '') {
+            if (trim($message->body) !== '') {
+                $review[] = $message->getKey();
+            }
 
             continue;
         }
 
-        $clean = Content::sanitize($message->body);
-
-        if ($clean !== '' && $clean !== $message->body) {
+        if ($clean !== $message->body) {
             $message->forceFill(['body' => $clean])->saveQuietly();
         }
     }
 });
 
-// the rows with an embed: look at them by hand
-logger()->info('sanitize() backfill skipped rows with an embed', ['ids' => $skipped]);
+// the rows nothing was written for: look at them by hand
+logger()->info('resanitize() backfill: rows to review', ['ids' => $review]);
 ```
 
 If you only ever stored chat HTML, or JSON through `AsTiptapContent`, skip it. Do not pass JSON through `sanitize()` from now on either (see the section above); it is for HTML.

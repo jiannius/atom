@@ -36,6 +36,17 @@ class Content
 
     public const RENDER_MAX_TAGS = 20000;
 
+    /**
+     * Exactly what the Youtube extension prints for an embed it accepted: a
+     * `div` and an `iframe` with the attributes it sets, a `src` rebuilt from
+     * the 11-character video id on youtube.com or youtube-nocookie.com, and an
+     * optional `?start=` of digits. resanitize() matches this and nothing looser.
+     */
+    protected const YOUTUBE_EMBED = '~<div data-youtube-video="true"><iframe src="https://www\.youtube(?:-nocookie)?\.com/embed/[A-Za-z0-9_-]{11}(?:\?start=[1-9][0-9]{0,18})?" width="640" height="480" frameborder="0" allowfullscreen="true"></iframe></div>~';
+
+    /** The prefix of resanitize()'s placeholder. Input that carries it is refused. */
+    protected const EMBED_PLACEHOLDER = 'ATOMEMBED';
+
     /** Output larger than this many times the byte limit is refused. */
     protected const OUTPUT_FACTOR = 4;
 
@@ -184,6 +195,74 @@ class Content
     public static function sanitize(mixed $html, int $maxBytes = self::SANITIZE_MAX_BYTES, int $maxTags = self::SANITIZE_MAX_TAGS): string
     {
         return static::convert($html, $maxBytes, $maxTags, capOutputTags: true);
+    }
+
+    /**
+     * Clean stored HTML that an earlier version of sanitize() wrote, keeping
+     * the YouTube embeds it printed. sanitize() cannot be run over such a row
+     * as it is: HTML parsing drops every `<iframe>`, the embeds included (they
+     * survive only in a JSON document). So each embed that is EXACTLY what the
+     * Youtube extension prints (YOUTUBE_EMBED) is set aside as a paragraph holding
+     * a random, per-call placeholder, the rest is sanitized, and the embeds are
+     * put back where their placeholder came out as a paragraph of its own. An
+     * iframe that is not that exact shape (another host, an extra attribute, a
+     * `srcdoc`) is not set aside, so sanitize() drops it; a placeholder that ends
+     * up anywhere but a paragraph of its own (inside an attribute, a `<pre>`) is
+     * escaped text, and is never put back (it is removed). An embed inside a `<pre>` is left for
+     * sanitize() to drop: atom never prints one there.
+     *
+     * Returns '' for input that is empty, refused, failed, or carries the
+     * placeholder prefix, which no stored row has and which nothing may forge.
+     * A row that comes back '' is not cleaned: a host reviews it by hand.
+     * Not for a JSON document; that is what sanitize() is for.
+     */
+    public static function resanitize(string $html, int $maxBytes = self::SANITIZE_MAX_BYTES, int $maxTags = self::SANITIZE_MAX_TAGS): string
+    {
+        if (stripos($html, static::EMBED_PLACEHOLDER) !== false) {
+            return '';
+        }
+
+        $token = static::EMBED_PLACEHOLDER.bin2hex(random_bytes(16));
+        $embeds = [];
+        $swapped = '';
+        $offset = 0;
+
+        // an embed inside a `<pre>` (or after an unclosed one) is not one atom printed, and a
+        // placeholder there would come out as markup inside a code block: leave those alone
+        while ($offset < strlen($html)) {
+            $pre = stripos($html, '<pre', $offset);
+            $end = $pre === false ? strlen($html) : $pre;
+
+            $outside = preg_replace_callback(static::YOUTUBE_EMBED, function (array $match) use (&$embeds, $token) {
+                $key = $token.'x'.count($embeds).'x';
+                $embeds[$key] = $match[0];
+
+                return "<p>{$key}</p>";
+            }, substr($html, $offset, $end - $offset));
+
+            if ($outside === null) {
+                return '';
+            }
+
+            $swapped .= $outside;
+
+            if ($pre === false) {
+                break;
+            }
+
+            $close = stripos($html, '</pre>', $pre);
+            $stop = $close === false ? strlen($html) : $close + 6;
+            $swapped .= substr($html, $pre, $stop - $pre);
+            $offset = $stop;
+        }
+
+        $clean = static::sanitize($swapped, $maxBytes, $maxTags);
+
+        foreach ($embeds as $key => $embed) {
+            $clean = str_replace(["<p>{$key}</p>", $key], [$embed, ''], $clean);
+        }
+
+        return $clean;
     }
 
     /**
