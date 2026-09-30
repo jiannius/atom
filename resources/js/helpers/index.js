@@ -7,6 +7,7 @@ import empty from './empty'
 import confirm from './confirm'
 import floatingui from './floatingui'
 import recaptcha from './recaptcha'
+import safeUrl from './safe-url'
 
 export default {
     alert,
@@ -17,6 +18,7 @@ export default {
     confirm,
     floatingui,
     recaptcha,
+    safeUrl,
 
     ajax: (url, headers = null) => new ajax(url, headers),
     json: (data) => JSON.stringify(data, null, 2),

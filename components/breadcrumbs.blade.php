@@ -23,7 +23,7 @@ data-atom-breadcrumbs>
                             <div class="flex items-center gap-2 truncate">
                                 <a
                                 x-text="item.title"
-                                x-bind:href="item.href"
+                                x-bind:href="atom.safeUrl(item.href)"
                                 class="leading-none font-medium truncate whitespace-nowrap dark:text-zinc-300"
                                 wire:navigate></a>
                                 <atom:icon.right class="shrink-0 text-muted dark:text-muted-foreground size-4"/>

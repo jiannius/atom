@@ -136,6 +136,7 @@ It defaults to `tableQuery()`, so a table without the prop behaves exactly as be
 - **Breadcrumbs:** add a `breadcrumbs(Breadcrumbs $b)` method to the Livewire component (see the AtomComponent section) and drop `<atom:breadcrumbs />` in the page — the trail builds itself from navigation; a single crumb renders as the page heading.
 - **Tabs:** `<atom:tabs :tabs="[...]" wire:model="tab" />` (each tab `['label' => ..., 'value' => ..., 'icon' => ...]`), or compose `<atom:tabs.item>` children. `variant="button"` for the pill style.
 - **Links:** `<atom:link :href="..." />` for inline prose links (dotted underline). Nav/actions use `<atom:navlist.item>` / `<atom:button>`, not link.
+- **A URL a user typed is checked, not trusted.** `<atom:link>`, `<atom:button>`, `<atom:tabs.item>`, `<atom:menu.item>`, `<atom:list.item>`, `<atom:command.item>`, `<atom:navlist.item>`, `<atom:table.row>`, the breadcrumbs trail, toast `url`/`navigate` and the lightbox download only follow `http`, `https`, `mailto`, `tel`, `sms` or a scheme-less URL; anything else (`javascript:`, `data:`, `vbscript:`, an entity- or tab-obfuscated one) renders with no `href` and does nothing on click, so a profile "website" or a CMS link can't run script. The one thing to know: a relative path whose **first segment contains a colon** (`foo:bar`) now counts as a scheme and is dropped. Write it `./foo:bar`. Any markup of your own that puts a user-supplied URL in an `href`, `formaction`, `window.open()` or `location` must go through `safe_url($url)` (PHP, returns the URL or `null`) or `atom.safeUrl(url)` (JS) first; `{{ }}` escaping does not stop `javascript:`.
 - **Heading levels:** `<atom:heading>` is a `<div>` unless you pass `level` — most app headings (card titles, stat labels) are visual, not structural. `size` and `level` are independent. `<atom:layouts.sidebar>` already emits the page's `<h1>` from its `title` prop (visually hidden — the visible title comes from the breadcrumbs, a nav landmark with no heading element), so **never add your own `<h1>` in the page body**; start nested sections at `level="2"`.
 @endverbatim
 
@@ -384,6 +385,7 @@ Event name is prefixed with `.` when listening. Private channels require auth in
 @endverbatim
 - `num($value)->currency('USD')` / `->filesize()` / `->format()` — Laravel Number helper shorthand.
 - `carbon($value)` — produces `Jiannius\Atom\Services\Carbon` (also installed globally via `Date::use()`).
+- `safe_url($url)` — the URL unchanged if it is `http`, `https`, `mailto`, `tel`, `sms` or scheme-less, else `null`. Use it on any user-supplied URL before it reaches an `href`, `formaction` or a redirect; `{{ }}` escaping does not stop `javascript:`.
 
 ### Other helpers
 

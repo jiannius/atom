@@ -97,3 +97,49 @@ if (!function_exists('carbon')) {
         return new Carbon(...$args);
     }
 }
+
+/**
+ * Return a URL only if it is safe to put in an href or navigate to, else null.
+ *
+ * Allowed: http, https, mailto, tel, sms, and any scheme-less URL (relative,
+ * root-relative, protocol-relative, fragment-only, query-only). The check runs
+ * on what a browser would see: HTML entities are decoded until stable, tab and
+ * newline are dropped from anywhere, leading control characters and spaces are
+ * stripped, and the scheme is lowercased. The first path segment is treated as
+ * a scheme when it holds a colon, so a relative path such as `foo:bar` must be
+ * written `./foo:bar`. Keep in step with resources/js/helpers/safe-url.js.
+ */
+if (!function_exists('safe_url')) {
+    function safe_url(mixed $url) : ?string
+    {
+        if ($url instanceof Stringable || is_scalar($url)) $url = (string) $url;
+        if (!is_string($url) || $url === '') return null;
+
+        $normalised = $url;
+
+        for ($pass = 0; ; $pass++) {
+            if ($pass >= 8) return null; // never settles: not a URL worth trusting
+
+            $decoded = preg_replace_callback('/&#(?:x([0-9a-f]+)|([0-9]+));?/i', function ($m) {
+                $code = $m[1] !== '' ? hexdec($m[1]) : (int) $m[2];
+
+                return $code > 0 && $code <= 0x10FFFF ? mb_chr($code, 'UTF-8') : "\u{FFFD}";
+            }, $normalised) ?? $normalised;
+
+            $decoded = html_entity_decode($decoded, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
+            $decoded = str_replace(["\t", "\n", "\r"], '', $decoded);
+
+            if ($decoded === $normalised) break;
+
+            $normalised = $decoded;
+        }
+
+        $normalised = ltrim($normalised, "\x00..\x20");
+        $segment = substr($normalised, 0, strcspn($normalised, '/?#'));
+        $colon = strpos($segment, ':');
+
+        if ($colon === false) return $url;
+
+        return in_array(strtolower(substr($segment, 0, $colon)), ['http', 'https', 'mailto', 'tel', 'sms'], true) ? $url : null;
+    }
+}

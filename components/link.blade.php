@@ -8,6 +8,8 @@
 ])
 
 @php
+$href = safe_url($href);
+
 $classes = Arr::toCssClasses([
     'underline underline-offset-5 decoration-dotted cursor-pointer',
     $variant === 'accent' ? 'text-accent' : 'text-sky-600 dark:text-zinc-300',

@@ -17,6 +17,7 @@ $icons = [
     'end' => $iconSuffix,
 ];
 
+$href = safe_url($href);
 $el = $href ? 'a' : 'button';
 
 $classes = Arr::toCssClasses([

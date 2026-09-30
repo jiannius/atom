@@ -21,7 +21,7 @@ describe('toast', function () {
         $html = Blade::render('<atom:toast />');
 
         expect($html)
-            ->toContain('Livewire.navigate(this.config.navigate)')
+            ->toContain('Livewire.navigate(navigate)')
             ->not->toContain('Liveiwre');
     });
 

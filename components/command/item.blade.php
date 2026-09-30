@@ -5,6 +5,7 @@
 ])
 
 @php
+$href = safe_url($href);
 $el = $href ? 'a' : 'button';
 $label = trim(strip_tags($slot->toHtml()));
 $classes = Arr::toCssClasses([

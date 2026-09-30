@@ -5,6 +5,7 @@
 ])
 
 @php
+$href = safe_url($href);
 $el = $href ? 'a' : 'div';
 $sortable = $attributes->has('x-sort:item');
 $clickable = $attributes->wire('click')->value() || $attributes->has('x-on:click') || $href;
