@@ -16,11 +16,11 @@ use Tiptap\Editor;
 class Content
 {
     /**
-     * Default limits for sanitize(): 128 KB and 5000 tags. Cost tracks the tag
-     * count (an HTML tag, or a node of a JSON document), not the byte count:
-     * about 3 KB of memory per tag, worst case, so both are held. The measured
-     * worst case at the limit is ~16 MB and ~0.2 s; a long chat message is a
-     * few KB and a few dozen tags.
+     * Default limits for sanitize(): 128 KB and 5000 tags, of the input (an HTML
+     * tag, or a node of a JSON document) and of the output. Cost tracks the tag
+     * count, not the byte count: about 3 KB of memory per tag, worst case, so
+     * both are held. The measured worst case at the limit is ~16 MB and ~0.2 s;
+     * a long chat message is a few KB and a few dozen tags.
      */
     public const SANITIZE_MAX_BYTES = 131072;
 
@@ -35,6 +35,17 @@ class Content
     public const RENDER_MAX_BYTES = 2097152;
 
     public const RENDER_MAX_TAGS = 20000;
+
+    /**
+     * Exactly what the Youtube extension prints for an embed it accepted: a
+     * `div` and an `iframe` with the attributes it sets, a `src` rebuilt from
+     * the 11-character video id on youtube.com or youtube-nocookie.com, and an
+     * optional `?start=` of digits. resanitize() matches this and nothing looser.
+     */
+    protected const YOUTUBE_EMBED = '~<div data-youtube-video="true"><iframe src="https://www\.youtube(?:-nocookie)?\.com/embed/[A-Za-z0-9_-]{11}(?:\?start=[1-9][0-9]{0,18})?" width="640" height="480" frameborder="0" allowfullscreen="true"></iframe></div>~';
+
+    /** The prefix of resanitize()'s placeholder; the rest is 128 random bits, new for every call. */
+    protected const EMBED_PLACEHOLDER = 'ATOMEMBED';
 
     /** Output larger than this many times the byte limit is refused. */
     protected const OUTPUT_FACTOR = 4;
@@ -171,28 +182,125 @@ class Content
      * @param  int  $maxBytes  Refuse anything larger. Output over 4x this is refused too,
      *                         so a small $maxBytes also caps the output at 4x that.
      * @param  int  $maxTags  Refuse HTML with more `<` characters, or a document with more
-     *                        nodes and marks, than this. Cost tracks this, not the byte
-     *                        count: about 3 KB of memory per tag at worst, so 5000 tags is
-     *                        ~16 MB and ~0.2 s. Raise both only for fields that hold long
-     *                        documents.
+     *                        nodes and marks, than this, and refuse output with more `<`
+     *                        characters than this too: a document prints up to four tags
+     *                        per node (an empty table is one node and four tags), and HTML
+     *                        prints the closing tags and wrappers it was not given. Cost
+     *                        tracks this, not the byte count: about 3 KB of memory per tag
+     *                        at worst, so 5000 tags is ~16 MB and ~0.2 s. Raise both only
+     *                        for fields that hold long documents. Real chat and editor
+     *                        output prints about as many tags as it had (0.7 to 1.4 per
+     *                        node of a document, 1.0 for what the composer sends).
      */
     public static function sanitize(mixed $html, int $maxBytes = self::SANITIZE_MAX_BYTES, int $maxTags = self::SANITIZE_MAX_TAGS): string
     {
-        return static::convert($html, $maxBytes, $maxTags);
+        return static::convert($html, $maxBytes, $maxTags, capOutputTags: true);
     }
 
     /**
-     * Whether sanitize() would refuse this input without parsing it: over the
-     * byte or tag limit, a whitespace run or `<pre>` the parser can't survive,
-     * tiptap-php's reserved placeholder, or an invalid document. False for
-     * input that is merely empty or not a string, so a host can tell a refused
-     * message ("too long") from an empty one.
+     * Clean stored HTML that an earlier version of sanitize() wrote, keeping
+     * the YouTube embeds it printed. sanitize() cannot be run over such a row
+     * as it is: HTML parsing drops every `<iframe>`, the embeds included (they
+     * survive only in a JSON document). So each embed that is EXACTLY what the
+     * Youtube extension prints (YOUTUBE_EMBED) is set aside as a paragraph holding
+     * a random, per-call placeholder, the rest is sanitized, and the embeds are
+     * put back where their placeholder came out as a paragraph of its own. An
+     * iframe that is not that exact shape (another host, an extra attribute, a
+     * `srcdoc`) is not set aside, so sanitize() drops it; a placeholder that ends
+     * up anywhere but a paragraph of its own (inside an attribute, a `<pre>`) is
+     * escaped text, and is never put back (it is removed, and only this call's
+     * placeholder is). An embed inside a `<pre>` is left for sanitize() to drop:
+     * atom never prints one there.
+     *
+     * The placeholder is 128 random bits, new for every call, so nothing in a
+     * row can forge or predict it, and a row that holds the word "ATOMEMBED" (or
+     * any other guess) is cleaned like any other. The one refusal is a row that
+     * already holds this call's own token, which cannot happen by chance.
+     *
+     * Returns '' for input that is empty, over $maxBytes, refused, or failed. A
+     * row that comes back '' is not cleaned: a host reviews it by hand.
+     * Not for a JSON document; that is what sanitize() is for.
+     */
+    public static function resanitize(string $html, int $maxBytes = self::SANITIZE_MAX_BYTES, int $maxTags = self::SANITIZE_MAX_TAGS): string
+    {
+        // sanitize() refuses this too; here it saves the scan below over a row that is refused anyway
+        if (strlen($html) > $maxBytes) {
+            return '';
+        }
+
+        $token = static::embedToken();
+
+        if (str_contains($html, $token)) {
+            return '';
+        }
+
+        $embeds = [];
+        $swapped = '';
+        $offset = 0;
+
+        // an embed inside a `<pre>` (or after an unclosed one) is not one atom printed, and a
+        // placeholder there would come out as markup inside a code block: leave those alone
+        while ($offset < strlen($html)) {
+            $pre = stripos($html, '<pre', $offset);
+            $end = $pre === false ? strlen($html) : $pre;
+
+            $outside = preg_replace_callback(static::YOUTUBE_EMBED, function (array $match) use (&$embeds, $token) {
+                $key = $token.'x'.count($embeds).'x';
+                $embeds[$key] = $match[0];
+
+                return "<p>{$key}</p>";
+            }, substr($html, $offset, $end - $offset));
+
+            if ($outside === null) {
+                return '';
+            }
+
+            $swapped .= $outside;
+
+            if ($pre === false) {
+                break;
+            }
+
+            $close = stripos($html, '</pre>', $pre);
+            $stop = $close === false ? strlen($html) : $close + 6;
+            $swapped .= substr($html, $pre, $stop - $pre);
+            $offset = $stop;
+        }
+
+        $clean = static::sanitize($swapped, $maxBytes, $maxTags);
+
+        foreach ($embeds as $key => $embed) {
+            $clean = str_replace(["<p>{$key}</p>", $key], [$embed, ''], $clean);
+        }
+
+        return $clean;
+    }
+
+    /**
+     * A new placeholder for resanitize(): the prefix and 128 random bits.
+     */
+    protected static function embedToken(): string
+    {
+        return static::EMBED_PLACEHOLDER.bin2hex(random_bytes(16));
+    }
+
+    /**
+     * Whether sanitize() would refuse this input: over the byte or tag limit, a
+     * whitespace run or `<pre>` the parser can't survive, tiptap-php's reserved
+     * placeholder, an invalid document, or output over the byte or tag limit.
+     * The limits on the input are checked first, without parsing; only input
+     * that gets past them is converted, to measure the output, so call it
+     * after sanitize() has returned '' (the answer is the same either way).
+     * False for input that is merely empty or not a string, or that fails, so
+     * a host can tell a refused message ("too long") from an empty one.
      */
     public static function sanitizeRefuses(mixed $html, int $maxBytes = self::SANITIZE_MAX_BYTES, int $maxTags = self::SANITIZE_MAX_TAGS): bool
     {
-        $text = static::input($html);
-
-        return $text !== null && static::inspect($text, $maxBytes, $maxTags)[1] !== null;
+        try {
+            return static::attempt($html, $maxBytes, $maxTags, capOutputTags: true)[1] !== null;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
@@ -211,46 +319,72 @@ class Content
      * warning); a value the parser cannot handle is reported and comes back
      * empty.
      */
-    protected static function convert(mixed $value, int $maxBytes, int $maxTags, bool $logRefusal = false): string
+    protected static function convert(mixed $value, int $maxBytes, int $maxTags, bool $logRefusal = false, bool $capOutputTags = false): string
     {
         try {
-            $text = static::input($value);
+            [$html, $refusal, $text] = static::attempt($value, $maxBytes, $maxTags, $capOutputTags);
 
-            if ($text === null) {
-                return '';
-            }
-
-            [$content, $refusal] = static::inspect($text, $maxBytes, $maxTags);
-
-            if ($content === null) {
-                return static::refused($logRefusal, $text, $refusal, $maxBytes, $maxTags);
-            }
-
-            // a document with no <body> has no content, and tiptap-php's parser throws on it
-            if (is_string($content) && ! static::hasBody($content)) {
-                return '';
-            }
-
-            $editor = (new Editor(['extensions' => static::extensions()]))->setContent($content);
-
-            $document = $editor->getDocument();
-
-            if (static::dedupeMarks($document)) {
-                $editor->setContent($document);
-            }
-
-            $html = $editor->getHTML();
-
-            if (strlen($html) > $maxBytes * static::OUTPUT_FACTOR) {
-                return static::refused($logRefusal, $text, 'output of '.strlen($html).' bytes', $maxBytes, $maxTags);
-            }
-
-            return $html;
+            return $refusal === null ? $html : static::refused($logRefusal, $text, $refusal, $maxBytes, $maxTags);
         } catch (\Throwable $e) {
             report($e);
 
             return '';
         }
+    }
+
+    /**
+     * Run the conversion and say what happened, without reporting: the HTML
+     * ('' when there is nothing to render or the value is refused), why it was
+     * refused (null when it was not), and the text that was parsed. Both
+     * convert() and sanitizeRefuses() go through here, so they cannot disagree.
+     * A failure the parser cannot handle is thrown.
+     *
+     * $capOutputTags holds the output to $maxTags too, counted as `<`
+     * characters, which is how a document of $maxTags nodes (an empty table is
+     * one node and four tags) could still print four times as many tags as
+     * were allowed in. sanitize() sets it; render() does not, since it reads
+     * content that was stored under its own limits.
+     *
+     * @return array{0: string, 1: string|null, 2: string} [html, refusal, text]
+     */
+    protected static function attempt(mixed $value, int $maxBytes, int $maxTags, bool $capOutputTags): array
+    {
+        $text = static::input($value);
+
+        if ($text === null) {
+            return ['', null, ''];
+        }
+
+        [$content, $refusal] = static::inspect($text, $maxBytes, $maxTags);
+
+        if ($content === null) {
+            return ['', $refusal, $text];
+        }
+
+        // a document with no <body> has no content, and tiptap-php's parser throws on it
+        if (is_string($content) && ! static::hasBody($content)) {
+            return ['', null, $text];
+        }
+
+        $editor = (new Editor(['extensions' => static::extensions()]))->setContent($content);
+
+        $document = $editor->getDocument();
+
+        if (static::dedupeMarks($document)) {
+            $editor->setContent($document);
+        }
+
+        $html = $editor->getHTML();
+
+        if (strlen($html) > $maxBytes * static::OUTPUT_FACTOR) {
+            return ['', 'output of '.strlen($html).' bytes', $text];
+        }
+
+        if ($capOutputTags && ($tags = substr_count($html, '<')) > $maxTags) {
+            return ['', "output tags: {$tags} over {$maxTags}", $text];
+        }
+
+        return [$html, null, $text];
     }
 
     /**
@@ -343,7 +477,7 @@ class Content
         $isJson = json_last_error() === JSON_ERROR_NONE;
 
         if ($isJson && is_array($decoded) && isset($decoded['type'])) {
-            $problem = static::documentProblem($decoded, $maxTags);
+            $problem = static::roundTrips($decoded) ? static::documentProblem($decoded, $maxTags) : 'invalid document';
 
             return $problem === null ? [$decoded, null] : [null, $problem];
         }
@@ -370,6 +504,30 @@ class Content
 
         // the parser takes any string that decodes as JSON for JSON: an empty comment makes it HTML
         return [$isJson ? '<!---->'.$collapsed : $collapsed, null];
+    }
+
+    /**
+     * Whether a decoded document survives what tiptap-php does to it first:
+     * `Editor::setContent()` writes it with json_encode() and reads it back as
+     * objects. A number that overflows to INF (`1e999`) cannot be written, so
+     * json_encode() returns false, and a key that starts with a NUL byte cannot
+     * be an object property, so the read comes back null. Either one is a
+     * TypeError (a report(), on every call: once per view for a stored row), and
+     * only a hostile client sends them, so the document is refused.
+     *
+     * @param  array<mixed>  $document
+     */
+    protected static function roundTrips(array $document): bool
+    {
+        $encoded = json_encode($document);
+
+        if ($encoded === false) {
+            return false;
+        }
+
+        json_decode($encoded);
+
+        return json_last_error() === JSON_ERROR_NONE;
     }
 
     /**
@@ -437,12 +595,19 @@ class Content
     }
 
     /**
-     * Repair the attributes tiptap-php throws on, instead of refusing the
-     * document (the rest of it is real content): an `attrs` that is not a keyed
-     * array is dropped, a table `colwidth` that is not a list of scalars is
-     * dropped, a mention `label` or `id` that is an array is dropped, and a heading
-     * with no usable `level` becomes level 1, which renders. Other odd values
-     * are left for the renderer to drop.
+     * Repair the attributes tiptap-php throws on, or prints wrongly, instead of
+     * refusing the document (the rest of it is real content): an `attrs` that
+     * is not a keyed array is dropped, a mention `label` or `id` that is an
+     * array is dropped, a heading `level` that is not a whole number from 1 to
+     * 6 (or the digit as a string) becomes level 1 (see headingLevel()), an
+     * ordered list `start`, a cell `colspan` or `rowspan` that is not a whole
+     * number (`colspan` and `rowspan` also at least 1) is dropped, a table
+     * `colwidth` that is not a list of numbers and nulls is dropped (a finite
+     * float is rounded to a whole number), and a zero (an int 0, or a float
+     * that is zero) in any attribute becomes "0" (see below). Other odd values
+     * are left for the renderer to drop or escape. A code block's `language`
+     * needs nothing here: AtomCodeBlock renders it only as one token of name
+     * characters.
      *
      * @param  array<mixed>  $node
      */
@@ -464,8 +629,56 @@ class Content
             }
         }
 
-        if ($node['type'] === 'heading' && ! is_scalar($attributes['level'] ?? null)) {
-            $attributes['level'] = 1;
+        foreach (['start', 'colspan', 'rowspan'] as $key) {
+            if (array_key_exists($key, $attributes)) {
+                $count = static::wholeNumber($attributes[$key]);
+
+                if ($count === null || ($key !== 'start' && $count < 1)) {
+                    unset($attributes[$key]);
+                } else {
+                    $attributes[$key] = $count;
+                }
+            }
+        }
+
+        if (isset($attributes['colwidth'])) {
+            $widths = [];
+
+            foreach ($attributes['colwidth'] as $width) {
+                $whole = match (true) {
+                    $width === null => null,
+                    is_float($width) => is_finite($width) && abs($width) < 1e9 ? (int) round($width) : null,
+                    default => static::wholeNumber($width),
+                };
+
+                if ($width !== null && $whole === null) {
+                    unset($attributes['colwidth']);
+
+                    break;
+                }
+
+                $widths[] = $whole;
+            }
+
+            if (isset($attributes['colwidth'])) {
+                $attributes['colwidth'] = $widths;
+            }
+        }
+
+        if ($node['type'] === 'heading') {
+            $attributes['level'] = static::headingLevel($attributes['level'] ?? null);
+        }
+
+        // tiptap-php's serialiser takes an attribute array holding an int 0 for a content
+        // hole (in_array(0, $attributes, true)): the element opens bare and every string
+        // value is printed raw as a tag name, so `alt: 0` on an image emitted its `src`
+        // between angle brackets. '0' prints the same in an attribute and is not that marker.
+        // A float that is zero (0.0, -0.0, 0e0, 1e-400) counts too: the Editor round-trips the
+        // document through json_encode(), which writes 0.0 as 0, and it comes back an int
+        foreach ($attributes as $key => $value) {
+            if ((is_int($value) || is_float($value)) && $value == 0) {
+                $attributes[$key] = '0';
+            }
         }
 
         if ($attributes === []) {
@@ -473,6 +686,41 @@ class Content
         } else {
             $node['attrs'] = $attributes;
         }
+    }
+
+    /**
+     * A heading level tiptap-php can put in a tag name: an int 1 to 6, or a
+     * string that is exactly one of those digits once trimmed. Anything else is
+     * 1, the repair rule for a missing level. tiptap-php compares the level
+     * with a loose in_array() and interpolates the value as it was sent, so
+     * `" 1"`, `"+1"` and `"1e0"` reached the tag name (`createElement('h 1')`
+     * throws, and `<h1e0>` was stored).
+     */
+    protected static function headingLevel(mixed $level): int
+    {
+        if (is_string($level)) {
+            $level = trim($level);
+            $level = preg_match('/^[1-6]\z/', $level) ? (int) $level : null;
+        }
+
+        return is_int($level) && $level >= 1 && $level <= 6 ? $level : 1;
+    }
+
+    /**
+     * An attribute that must be a whole number (an ordered list's `start`, a
+     * cell's `colspan`, `rowspan` and each `colwidth`): an int, or a string of
+     * digits with an optional minus sign. Null for anything else, a float, a
+     * bool or a long digit string included.
+     */
+    protected static function wholeNumber(mixed $value): ?int
+    {
+        if (is_string($value)) {
+            $value = trim($value);
+
+            return preg_match('/^-?\d{1,9}\z/', $value) ? (int) $value : null;
+        }
+
+        return is_int($value) ? $value : null;
     }
 
     /**

@@ -743,14 +743,14 @@ public function submit(array $message): void
 
 `Content::sanitize(mixed $html, int $maxBytes = 131072, int $maxTags = 5000): string` parses the value through the same schema and the same hardened extensions as `render()`, and returns the schema's own serialisation, so nothing of the input's markup survives except what the editor itself can write. It also accepts a Tiptap JSON document (a string or array with a `type` key) and a `Stringable`; any other string, `'42'` and `'null'` included, is text.
 
-It returns `''` when the input is empty, when it is refused, and when it fails. It refuses (silently, so a client can't flood your logs) HTML over `$maxBytes`, HTML with more than `$maxTags` tags (or a document with more than `$maxTags` nodes and marks), a document that is not a Tiptap document, HTML that carries tiptap-php's reserved `MINIFYHTML` placeholder, and the `<pre>` inputs the parser can't survive (below). Output over four times `$maxBytes` is refused too, so a small `$maxBytes` also caps the output at four times that. Only an unexpected failure is reported through Laravel's `report()`. `Content::sanitizeRefuses($html)` tells a refusal from an empty message.
+It returns `''` when the input is empty, when it is refused, and when it fails. It refuses (silently, so a client can't flood your logs) HTML over `$maxBytes`, HTML with more than `$maxTags` tags (or a document with more than `$maxTags` nodes and marks), input whose output would have more than `$maxTags` tags (a document prints up to four tags per node, and an empty table is one node), a document that is not a Tiptap document, HTML that carries tiptap-php's reserved `MINIFYHTML` placeholder, and the `<pre>` inputs the parser can't survive (below). Output over four times `$maxBytes` is refused too, so a small `$maxBytes` also caps the output at four times that. Only an unexpected failure is reported through Laravel's `report()`. `Content::sanitizeRefuses($html)` tells a refusal from an empty message.
 
 The limits exist because parsing cost tracks the tag count, not the byte count: about 3 KB of memory per tag or document node in the worst case, so an input of 65,000 `<p>a` (260 KB) needs over 200 MB, and 95,000 `{"type":"paragraph"}` nodes (2 MB of JSON) needs about 290 MB. Measured at the sanitize defaults, the worst shape costs about 16 MB and 0.2 s; a long chat message is a few KB and a few dozen tags. Raise the limits only for a field that holds long documents. The parser also has inputs it takes minutes on or crashes on, which are normalised where real content could have them and refused only where it can't:
 
 - **Long whitespace runs are collapsed, not refused.** Outside a `<pre>`, a run of more than 32 whitespace characters (Unicode spaces included) becomes one space before parsing. HTML collapses whitespace anyway, so nothing a reader sees changes, and content with no such run is passed on byte for byte. Pretty-printed or indented legacy HTML and pasted Word markup render normally (120 KB of spaces used to take 98 s and now takes about 0 s). Inside a `<pre>` nothing is touched: a code block with 300-space indentation, or 120 KB of spaces, is kept exactly.
 - **Unclosed `<pre>` tags are closed, not refused.** A few are left alone; once they would make the parser quadratic (5000 in 130 KB took 8 s), one `</pre>` is appended, which is what the HTML parser does at the end of the input anyway.
 - **Refused:** a `<pre>` block over 500,000 characters (the parser's regex fails past about 1M), a very large number of `<pre>` blocks in a long input (about 250 code blocks in a 2 MB document), and many `<pre` tags with no `>` after them. Real content has none of these.
-- **Repaired, not refused:** a Tiptap document with an attribute the renderer throws on keeps rendering. A heading with no usable `level` becomes level 1, and a `colwidth`, a mention `label` or an `attrs` of the wrong shape is dropped. Only a document that is not a document at all (wrong `type`, `content` not a list, and so on) is refused.
+- **Repaired, not refused:** a Tiptap document with an attribute the renderer throws on keeps rendering. A heading `level` that is not a whole number from 1 to 6 (or that digit as a string) becomes level 1, a list `start`, a cell `colspan` or `rowspan` that is not a whole number is dropped, and a `colwidth`, a mention `label` or an `attrs` of the wrong shape is dropped. Only a document that is not a document at all (wrong `type`, `content` not a list, and so on) is refused.
 
 | Kept (as the editor writes it) | Dropped |
 | --- | --- |
@@ -856,6 +856,58 @@ class Search implements WebAction
 ```
 
 Actions without `authorize()` are callable by anyone, including guests — which is right for something like `GetOptions` (country and dial-code lists on public forms) and wrong for almost everything else. An action inheriting from an opted-in parent inherits the contract.
+
+### Upgrading to 3.29.14
+
+**This is a security fix for stored Tiptap JSON documents. Upgrade soon if any user can write to an `AsTiptapContent` column, to an `<atom:tiptap>` field, or to anything you pass to `Content::sanitize()` or `Content::render()` as JSON.**
+
+A client that can save a JSON document could get markup of its choosing into what `Content::render()`, `<atom:tiptap.content>` and `Content::sanitize()` print (stored XSS). The cause is in tiptap-php: a zero in a node's attributes (an int `0`, or a float that is zero such as `0.0`) makes its serialiser print the node's other string attributes as raw tags instead of escaped attribute values. Two shapes were exploitable: an image whose `alt`, `title` or `height` was zero, and a mention whose `id` was zero; and a table cell (`tableCell` or `tableHeader`) whose `colspan` or `rowspan` was zero and whose `colwidth` held a string. From 3.29.14 a zero in any node or mark attribute is turned into the string `"0"`, which prints the same inside an attribute, before the document reaches the serialiser.
+
+- **HTML input was never affected.** HTML attributes arrive as strings, and tiptap-php's HTML parse turns the numeric ones (`start`, `colspan`, `rowspan`) into `null` when they are zero, so a zero never reaches the serialiser that way. Chat HTML from `<atom:tiptap.chat>` was not exposed, unless your code passed it a JSON document.
+- **Stored JSON needs no backfill, but it is not rewritten either.** The stored document still holds the zero; `render()` and `<atom:tiptap.content>` repair it on the way out, so every print through atom is safe after the upgrade. Anything that prints the column some other way was never covered and still is not: `{!! !!}` or `x-html` straight from the column, your own tiptap-php `Editor`, or JavaScript that loads the stored document.
+- **HTML that was rendered before the upgrade is not repaired.** Anything that stored or cached the output of `render()` or `sanitize()` while the hole was open (a rendered email, a page or fragment cache, a PDF, a search index) still holds whatever it printed. Clear those caches; atom cannot reach them.
+- **Backfill only if you ever passed JSON to `sanitize()` and stored the result.** `sanitize()` accepts a JSON document and returns HTML, so a row stored from a hostile document before 3.29.14 may hold stray markup as HTML, and that markup can include an `<iframe>`. Run those rows through `Content::resanitize()`, which is `sanitize()` for a row that `sanitize()` wrote: `sanitize()` itself would drop the YouTube embeds a row legitimately holds (HTML parsing drops every `<iframe>`; an embed survives only in a JSON document). `resanitize()` sets aside only an embed that is exactly what atom prints (a `div` and an `iframe` with the attributes it sets, a `src` rebuilt from the 11-character id on `youtube.com` or `youtube-nocookie.com`, an optional `?start=`), sanitizes everything else, and puts the embeds back. Any other `<iframe>`, a `srcdoc` or an extra attribute included, is cleaned away with the rest of the hostile markup. The placeholder it uses is 128 random bits, new for every call, so nothing in a row can forge or predict it: a row that contains the word `ATOMEMBED`, or a guess at the token, is cleaned like any other. A clean row comes back unchanged and is not written. A row that comes back `''` is not rewritten; it is either over the size limits or has nothing printable in it, so the snippet lists those ids and you look at each by hand (blank or delete it: `render()` never prints it, but anything that prints the column raw would):
+
+```php
+use Jiannius\Atom\Tiptap\Content;
+
+// once, after upgrading; Message is your model, body the column that sanitize() wrote
+$review = [];
+
+Message::query()->chunkById(200, function ($messages) use (&$review) {
+    foreach ($messages as $message) {
+        if (! is_string($message->body)) {
+            continue;
+        }
+
+        $clean = Content::resanitize($message->body);
+
+        if ($clean === '') {
+            if (trim($message->body) !== '') {
+                $review[] = $message->getKey();
+            }
+
+            continue;
+        }
+
+        if ($clean !== $message->body) {
+            $message->forceFill(['body' => $clean])->saveQuietly();
+        }
+    }
+});
+
+// the rows nothing was written for: look at them by hand
+logger()->info('resanitize() backfill: rows to review', ['ids' => $review]);
+```
+
+If you only ever stored chat HTML, or JSON through `AsTiptapContent`, skip it. Do not pass JSON through `sanitize()` from now on either (see the section above); it is for HTML.
+
+- **A heading `level` no longer reaches the tag name as sent.** tiptap-php checks it with a loose `in_array()`, so `" 1"`, `"\n1"`, `"+1"` and `"6 "` made `createElement('h 1')` throw (a `report()` on every call, and `sanitize()` returned `''` with `sanitizeRefuses()` false), and `"1e0"`, `"01"` and `"1.0"` were stored as `<h1e0>`, `<h01>` and `<h1.0>`. A level that is an int from 1 to 6, or a string that is exactly one of those digits once trimmed, is kept; anything else (`7`, `0`, `-1`, `1.5`, `true`, `"01"`, `"1e0"`) becomes level 1, as a missing level already did. The editor only ever sends `1` to `6`.
+- **Other whole-number attributes are checked the same way.** An ordered list `start`, a cell `colspan` and `rowspan` (at least 1) must be an int or a string of digits, and anything else is dropped, as it is when the same value comes in as HTML. A `colwidth` entry may also be a finite float, which is rounded to a whole number; an entry that is not a number drops the whole `colwidth`. A code block's `language` was already limited to one token of name characters.
+- **`sanitize()` refuses output over `$maxTags`, not only input.** A document of 5000 nodes could print 20000 tags (about 5,000 empty tables were 85 KB in and about 20,000 tags out, just under `render()`'s limit), stored and printed on every view. Now the output is counted (`<` characters) against `$maxTags` too, and a document that prints more comes back `''` with `sanitizeRefuses()` true. Real content is nowhere near it: what the chat composer sends prints exactly as many tags as it had, and a long article (2,900 nodes, 105 KB of JSON) prints about 2,600, so the byte limit binds first. What can now be refused is hand-written HTML that leans on the parser's repairs: `<p><b>a</b>x` prints four tags for three, so about 1,250 of them in one message reach the limit. Measured with the default limits, a list of `<li><p>` items is refused from 1,250 items (1,249 is kept, 118 KB of JSON), and a table of 5 columns from 228 rows (227 is kept; 3 columns, 356 rows; 8 columns, 146 rows). **Raise `$maxTags` (and `$maxBytes`, which sits close behind at about 120 KB for those shapes) for a checklist or table-heavy field.** `Content::render()` is not capped this way; it reads stored content under its own limits.
+- **`sanitizeRefuses()` now converts the input** (once the cheap checks on the input pass) to measure the output, so it agrees with `sanitize()`. It also answers `true` for output over four times `$maxBytes`, which it used to miss. Call it after `sanitize()` has returned `''`, as the example above does, and it costs one more parse only for a message that is being rejected anyway.
+- **A document that cannot be written back as JSON is now refused silently.** A number that overflows (`1e999`) made tiptap-php's `json_encode()` return false, and an object key that starts with a NUL byte (`\u0000`) made it read `content` on null. Either one was a `report()` on every call, and from `render()` one per view of a stored row. Such a document now renders `''` with no report and no log line, and `sanitizeRefuses()` is true. Only a hostile client sends one.
+- **Nothing to do** for documents written by the editor: their output is unchanged.
 
 ### Upgrading to 3.29.13
 

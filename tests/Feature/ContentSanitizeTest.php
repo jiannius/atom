@@ -435,6 +435,18 @@ dataset('repairable documents', [
     'heading level as null' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":null},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
     'heading with no attrs' => ['{"type":"doc","content":[{"type":"heading","content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
     'heading with no level' => ['{"type":"doc","content":[{"type":"heading","attrs":{"textAlign":"left"},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level " 1"' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":" 1"},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level "\n1"' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":"\n1"},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level "+1"' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":"+1"},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level "1e0"' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":"1e0"},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level "01"' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":"01"},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level "1.0"' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":"1.0"},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level 1.5' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":1.5},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level true' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":true},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level "6 "' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":"6 "},"content":[{"type":"text","text":"h"}]}]}', '<h6>h</h6>'],
+    'heading level 7' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":7},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level 0' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":0},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
+    'heading level -1' => ['{"type":"doc","content":[{"type":"heading","attrs":{"level":-1},"content":[{"type":"text","text":"h"}]}]}', '<h1>h</h1>'],
     'mention label as an array' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"before "},{"type":"mention","attrs":{"id":"1","label":["a"]}}]}]}', 'before '],
     'mention id as an array, no label' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"id":["x"]}}]}]}', '<p>'],
     'mention id as an object, no label' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"mention","attrs":{"id":{"a":1}}}]}]}', '<p>'],
@@ -595,8 +607,8 @@ describe('Content::sanitize: limits', function () {
 
     it('refuses input over the tag limit, silently, and accepts it at the limit', function () {
         $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
-        $atLimit = str_repeat('<p>a', Content::SANITIZE_MAX_TAGS);
-        $over = $atLimit.'<p>a';
+        $atLimit = str_repeat('<p>a</p>', intdiv(Content::SANITIZE_MAX_TAGS, 2));
+        $over = $atLimit.'<hr>';
 
         expect(Content::sanitize($atLimit))->not->toBe('');
         expect(Content::sanitizeRefuses($atLimit))->toBeFalse();
@@ -621,29 +633,31 @@ describe('Content::sanitize: limits', function () {
     });
 
     /**
-     * The costliest shapes per tag, each built to the tag limit. Measured at the
-     * limit: 16 MB and 0.2 s for the worst; the bounds here leave room for a
-     * slower machine, but not for the 212 MB an unbounded input cost.
+     * The costliest shapes per tag, each sized so its OUTPUT reaches the tag
+     * limit (sanitize() holds the output to it, and a shape such as `<p><b>a</b>x` or `<td>a` prints four tags for three it was given). Measured at the limit:
+     * 16 MB and 0.2 s for the worst; the bounds here leave room for a slower
+     * machine, but not for the 212 MB an unbounded input cost.
      */
     it('parses the worst-case shapes at the limit within a memory and time bound', function (string $html) {
-        $tags = substr_count($html, '<');
+        $max = Content::SANITIZE_MAX_TAGS;
 
         [$clean, $seconds, $mb] = measured(fn () => Content::sanitize($html));
 
-        expect($tags)->toBeLessThanOrEqual(Content::SANITIZE_MAX_TAGS);
+        expect(substr_count($html, '<'))->toBeLessThanOrEqual($max);
         expect(strlen($html))->toBeLessThanOrEqual(Content::SANITIZE_MAX_BYTES);
         expect($clean)->not->toBe('');
+        expect(substr_count($clean, '<'))->toBeLessThanOrEqual($max)->toBeGreaterThan($max * 0.4);
         expect(sanitisedViolations($clean))->toBe([]);
         expect($mb)->toBeLessThan(40.0);
         expect($seconds)->toBeLessThan(5.0);
     })->with([
-        'unclosed paragraphs' => [str_repeat('<p>a', Content::SANITIZE_MAX_TAGS)],
-        'paragraph, bold, text' => [str_repeat('<p><b>a</b>x', intdiv(Content::SANITIZE_MAX_TAGS, 3))],
-        'paragraph with a link' => [str_repeat('<p><a href="https://example.com/x">a</a>', intdiv(Content::SANITIZE_MAX_TAGS, 3))],
-        'unclosed table cells' => ['<table><tbody>'.str_repeat('<tr><td>a<td>b', intdiv(Content::SANITIZE_MAX_TAGS - 2, 3))],
-        'pre blocks' => [str_repeat('<pre>a</pre>', intdiv(Content::SANITIZE_MAX_TAGS, 2))],
-        'list items' => ['<ul>'.str_repeat('<li>a', Content::SANITIZE_MAX_TAGS - 1)],
-        'line breaks' => ['<p>'.str_repeat('a<br>', Content::SANITIZE_MAX_TAGS - 1)],
+        'unclosed paragraphs' => [str_repeat('<p>a', intdiv(Content::SANITIZE_MAX_TAGS, 2))],
+        'paragraph, bold, text' => [str_repeat('<p><b>a</b>x', intdiv(Content::SANITIZE_MAX_TAGS, 4))],
+        'paragraph with a link' => [str_repeat('<p><a href="https://example.com/x">a</a>', intdiv(Content::SANITIZE_MAX_TAGS, 4))],
+        'unclosed table cells' => ['<table><tbody>'.str_repeat('<tr><td>a<td>b', intdiv(Content::SANITIZE_MAX_TAGS - 4, 10))],
+        'pre blocks' => [str_repeat('<pre>a</pre>', intdiv(Content::SANITIZE_MAX_TAGS, 4))],
+        'list items' => ['<ul>'.str_repeat('<li>a', intdiv(Content::SANITIZE_MAX_TAGS - 2, 2))],
+        'line breaks' => ['<p>'.str_repeat('a<br>', Content::SANITIZE_MAX_TAGS - 2)],
         'images' => [str_repeat('<img src="/a.png">', Content::SANITIZE_MAX_TAGS)],
     ]);
 
