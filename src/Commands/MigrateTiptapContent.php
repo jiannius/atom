@@ -44,6 +44,12 @@ class MigrateTiptapContent extends Command
                         continue;                          // already JSON or empty
                     }
 
+                    if (Content::carriesPlaceholder($html)) {
+                        $this->warn('Skipped a '.$model::class.' '.$column.' value (row '.$row->getKey().'): it carries the HTML parser\'s reserved placeholder.');
+
+                        continue;
+                    }
+
                     $json = $editor->setContent($html)->getJSON();
                     if (! $this->option('dry')) {
                         $row->{$column} = $json;           // AsTiptapContent::set stores it

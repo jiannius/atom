@@ -220,6 +220,19 @@ PHP);
         $rows = DB::table('hardening_migrate_items')->orderBy('id')->pluck('body');
         expect(json_decode($rows[1], true)['type'])->toBe('doc');
     });
+
+    it('skips a row that carries the parser placeholder instead of expanding it', function () {
+        $token = '%MINIFYHTML'.md5((string) ($_SERVER['REQUEST_TIME'] ?? time())).'0%';
+        $hostile = '<pre>a</pre><pre>'.str_repeat($token, 50).'</pre>';
+        DB::table('hardening_migrate_items')->insert(['body' => $hostile]);
+        DB::table('hardening_migrate_items')->insert(['body' => '<p>fine</p>']);
+
+        $this->artisan('atom:tiptap-migrate')->expectsOutputToContain('reserved placeholder')->assertSuccessful();
+
+        $rows = DB::table('hardening_migrate_items')->orderBy('id')->pluck('body');
+        expect($rows[0])->toBe($hostile);
+        expect(json_decode($rows[1], true)['type'])->toBe('doc');
+    });
 });
 
 describe('E-S3 YouTube embed URLs', function () {
@@ -458,18 +471,25 @@ describe('E-S4 text align, link and code block attributes', function () {
     })->with(['javascript', 'c++', 'c#', 'objective-c', 'php']);
 });
 
-describe('crash guard: a corrupt stored document', function () {
-    it('renders empty and reports instead of throwing', function (array $node) {
+describe('crash guard: a corrupt stored document (a refusal, not a report)', function () {
+    it('repairs the attribute, renders the rest, and does not report', function (array $node, string $expected) {
         \Illuminate\Support\Facades\Exceptions::fake();
 
         $html = hardeningDoc([$node]);
 
-        expect($html)->toBe('');
-        \Illuminate\Support\Facades\Exceptions::assertReportedCount(1);
+        expect($html)->toContain($expected);
+        \Illuminate\Support\Facades\Exceptions::assertNothingReported();
     })->with([
-        'heading level as an object' => [['type' => 'heading', 'attrs' => ['level' => ['a' => 1]], 'content' => [['type' => 'text', 'text' => 'h']]]],
-        'table colwidth as a string' => [['type' => 'table', 'content' => [['type' => 'tableRow', 'content' => [['type' => 'tableCell', 'attrs' => ['colwidth' => 'x'], 'content' => [['type' => 'paragraph']]]]]]]],
+        'heading level as an object' => [['type' => 'heading', 'attrs' => ['level' => ['a' => 1]], 'content' => [['type' => 'text', 'text' => 'h']]], '<h1>h</h1>'],
+        'table colwidth as a string' => [['type' => 'table', 'content' => [['type' => 'tableRow', 'content' => [['type' => 'tableCell', 'attrs' => ['colwidth' => 'x'], 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'cell']]]]]]]]], 'cell'],
     ]);
+
+    it('renders empty, silently, for a document that is not one', function () {
+        \Illuminate\Support\Facades\Exceptions::fake();
+
+        expect(hardeningDoc([['type' => ['paragraph']]]))->toBe('');
+        \Illuminate\Support\Facades\Exceptions::assertNothingReported();
+    });
 
     it('does not report a healthy document', function () {
         \Illuminate\Support\Facades\Exceptions::fake();
@@ -478,12 +498,27 @@ describe('crash guard: a corrupt stored document', function () {
         \Illuminate\Support\Facades\Exceptions::assertNothingReported();
     });
 
-    it('the <atom:tiptap.content> component survives a corrupt document', function () {
+    it('the <atom:tiptap.content> component survives a corrupt document, silently', function () {
         \Illuminate\Support\Facades\Exceptions::fake();
 
         $json = json_encode(['type' => 'doc', 'content' => [['type' => 'heading', 'attrs' => ['level' => ['a' => 1]], 'content' => [['type' => 'text', 'text' => 'h']]]]]);
 
-        expect(renderBlade('<atom:tiptap.content :content="$c" />', ['c' => $json]))->toContain('editor-content');
+        expect(renderBlade('<atom:tiptap.content :content="$c" />', ['c' => $json]))->toContain('editor-content')->toContain('<h1>h</h1>');
+        \Illuminate\Support\Facades\Exceptions::assertNothingReported();
+    });
+
+    it('still reports a failure nobody expected, and renders empty', function () {
+        \Illuminate\Support\Facades\Exceptions::fake();
+
+        $broken = new class implements \Stringable
+        {
+            public function __toString(): string
+            {
+                throw new \RuntimeException('boom');
+            }
+        };
+
+        expect(Content::render($broken))->toBe('');
         \Illuminate\Support\Facades\Exceptions::assertReportedCount(1);
     });
 });

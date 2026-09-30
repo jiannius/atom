@@ -8,6 +8,30 @@ use Tiptap\Nodes\Image;
 class AtomImage extends Image
 {
     /**
+     * An image source is a relative path, an http(s) URL or a raster data: URI.
+     * Any other scheme (javascript:, vbscript:, data:image/svg+xml, ...) is
+     * dropped, so a stored value can never put a script URL into the page.
+     */
+    public static function isSafeSource(mixed $src): bool
+    {
+        if (! is_string($src)) {
+            return false;
+        }
+
+        $bare = preg_replace('/[\x00-\x20\x{00A0}\x{1680}\x{180E}\x{2000}-\x{2029}\x{205F}\x{3000}]/u', '', $src);
+
+        if ($bare === null || $bare === '') {
+            return false;
+        }
+
+        if (! preg_match('/^[a-z][a-z0-9+.\-]*:/i', $bare)) {
+            return true;
+        }
+
+        return (bool) preg_match('/^(?:https?:|data:image\/(?:png|jpe?g|gif|webp|avif);base64,)/i', $bare);
+    }
+
+    /**
      * Add atom's float / align / width attributes (data-* + inline style),
      * mirroring the JS ImageExtended. Float and width are validated (StyleValue);
      * an invalid value renders neither the data attribute nor the style. HTML::mergeAttributes merges the style
@@ -50,5 +74,17 @@ class AtomImage extends Image
                 },
             ],
         ]);
+    }
+
+    /**
+     * Render the image, or nothing at all when its source is not a safe one.
+     */
+    public function renderHTML($node, $HTMLAttributes = [])
+    {
+        if (! static::isSafeSource($node->attrs->src ?? null)) {
+            return null;
+        }
+
+        return parent::renderHTML($node, $HTMLAttributes);
     }
 }
