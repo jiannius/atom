@@ -16,7 +16,7 @@ $initial ??= $name ? str($name)->initials()->take(match ($size) {
 $classes = [
     'flex items-center justify-center',
     'bg-zinc-200 dark:bg-zinc-700 overflow-hidden shadow-sm',
-    'border dark:border-zinc-600',
+    'border border-zinc-300 dark:border-zinc-600',
     'text-zinc-700 dark:text-zinc-200 font-bold leading-none',
 
     $square ? 'aspect-square' : '',

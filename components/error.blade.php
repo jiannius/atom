@@ -11,7 +11,7 @@ $attrs = $attributes
     <div {{ $attrs }} data-atom-error>
         <ul class="list-disc list-inside">
             @foreach ($errors as $val)
-                <li>{!! t($val) !!}</li>
+                <li>{{ t($val) }}</li>
             @endforeach
         </ul>
     </div>

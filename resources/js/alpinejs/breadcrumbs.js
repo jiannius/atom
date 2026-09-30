@@ -12,7 +12,8 @@ export default (config) => {
 
         back () {
             let idx = this.breadcrumbs.length - 2
-            if (idx > -1) Livewire.navigate(this.breadcrumbs[idx].url)
+            let url = idx > -1 ? atom.safeUrl(this.breadcrumbs[idx].url) : null
+            if (url) Livewire.navigate(url)
         },
 
         // when navigate, the final URL of the page might be different

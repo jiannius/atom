@@ -42,6 +42,12 @@
     if ($labelId && $variant !== 'native') {
         $merges['aria-labelledby'] = $labelId;
     }
+
+    // A table-filter chip is named by the field's label — which this component
+    // consumes as a prop, so the variant that emits the chip never sees it.
+    if ($label && $attributes->has('table-filter')) {
+        $merges['table-filter-label'] = $label;
+    }
     @endphp
 
     @if ($label || $caption)

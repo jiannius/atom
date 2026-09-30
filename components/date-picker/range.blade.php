@@ -53,7 +53,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
         </button>
 
         <atom:menu class="max-w-full" popover>
-            <div class="w-sm md:w-[740px] overflow-auto flex divide-x dark:divide-zinc-600">
+            <div class="w-sm md:w-[740px] overflow-auto flex divide-x divide-zinc-200 dark:divide-zinc-600">
                 <div class="shrink-0 w-40">
                     <atom:menu.item x-on:click.stop="preset('today')">{{ t('Today') }}</atom:menu.item>
                     <atom:menu.item x-on:click.stop="preset('yesterday')">{{ t('Yesterday') }}</atom:menu.item>

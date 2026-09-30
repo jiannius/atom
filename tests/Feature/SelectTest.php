@@ -133,3 +133,35 @@ describe('remote option sets', function () {
         expect($html)->toContain('options: null');
     });
 });
+
+// The native select prints an option's label into <option>, which the browser
+// parses as markup: `</select>` ends the select and what follows is live HTML.
+describe('native option labels', function () {
+    it('escapes an option label that holds markup', function () {
+        $html = renderBlade('<atom:select :options="$options" wire:model="pick" />', [
+            'options' => [['value' => 1, 'label' => '</select><img src=x onerror=alert(1)>']],
+        ]);
+
+        expect($html)
+            ->not->toContain('<img src=x')
+            ->toContain('&lt;/select&gt;&lt;img src=x onerror=alert(1)&gt;');
+    });
+
+    it('escapes a grouped option label', function () {
+        $html = renderBlade('<atom:select :options="$options" wire:model="pick" />', [
+            'options' => [['group' => 'G', 'options' => [['value' => 1, 'label' => '<img src=x onerror=alert(1)>']]]],
+        ]);
+
+        expect($html)->not->toContain('<img src=x')->toContain('&lt;img src=x onerror=alert(1)&gt;');
+    });
+});
+
+// The listbox turns an option's colour into a style attribute; escaping stops it
+// leaving the attribute but not adding declarations, so it goes through an allow-list.
+it('builds the listbox chip colour through the allow-list', function () {
+    $html = renderBlade('<atom:select variant="listbox" multiple :options="[]" wire:model="pick" />');
+
+    expect($html)
+        ->toContain("safeColor(item.color)")
+        ->not->toContain("'background-color: '+item.color");
+});

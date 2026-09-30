@@ -48,7 +48,7 @@ data-atom-color-input>
                 @foreach (Arr::collapse(\Jiannius\Atom\Services\Color::all()) as $color)
                     <div
                     x-on:click="color = @js($color)"
-                    class="cursor-pointer size-6 border rounded hover:ring-1 hover:ring-offset-1 hover:ring-zinc-500"
+                    class="cursor-pointer size-6 border border-zinc-300 dark:border-zinc-600 rounded hover:ring-1 hover:ring-offset-1 hover:ring-zinc-500"
                     style="background-color: {{ $color }};">
                     </div>
                 @endforeach

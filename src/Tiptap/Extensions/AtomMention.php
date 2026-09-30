@@ -14,8 +14,13 @@ class AtomMention extends Mention
     public function addAttributes()
     {
         return array_merge(parent::addAttributes(), [
+            // the stock parser's `?: null` turns the id "0" into no id at all
+            'id' => [
+                'parseHTML' => fn ($node) => $node->getAttribute('data-id') !== '' ? $node->getAttribute('data-id') : null,
+                'renderHTML' => fn ($attributes) => ['data-id' => $attributes->id ?? null],
+            ],
             'label' => [
-                'parseHTML' => fn ($node) => $node->getAttribute('data-label') ?: null,
+                'parseHTML' => fn ($node) => $node->getAttribute('data-label') !== '' ? $node->getAttribute('data-label') : null,
                 'renderHTML' => fn ($attributes) => empty($attributes->label)
                     ? null
                     : ['data-label' => $attributes->label],

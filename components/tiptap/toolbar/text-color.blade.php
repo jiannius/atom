@@ -9,7 +9,7 @@
                 <div
                 x-on:click="commands().setColor(@js($color)); close()"
                 x-bind:style="{ backgroundColor: @js($color) }"
-                class="cursor-pointer w-6 h-6 border rounded hover:ring-1 hover:ring-offset-1 hover:ring-gray-500">
+                class="cursor-pointer w-6 h-6 border border-zinc-300 dark:border-zinc-600 rounded hover:ring-1 hover:ring-offset-1 hover:ring-gray-500">
                 </div>
             @endforeach
 

@@ -36,8 +36,11 @@ x-data="{
     },
 
     onClick () {
-        if (this.config.navigate) Livewire.navigate(this.config.navigate)
-        else if (this.config.url) window.open(this.config.url, '_blank')
+        let navigate = atom.safeUrl(this.config.navigate)
+        let url = atom.safeUrl(this.config.url)
+
+        if (navigate) Livewire.navigate(navigate)
+        else if (url) window.open(url, '_blank')
     },
 }"
 x-on:atom-toast-show.window="showToast"
@@ -48,7 +51,7 @@ x-bind:class="{
     'ml-auto': config.align === 'right',
     'mr-auto': config.align === 'left',
     'mx-auto': config.align === 'center',
-    'cursor-pointer': config.navigate || config.url,
+    'cursor-pointer': atom.safeUrl(config.navigate) || atom.safeUrl(config.url),
 }"
 class="p-6 bg-transparent opacity-0 scale-75 transition-all duration-100"
 data-atom-toast

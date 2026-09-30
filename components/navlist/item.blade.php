@@ -12,6 +12,8 @@
 ])
 
 @php
+$href = safe_url($href);
+
 // Button should be a square if it has no text contents...
 $square ??= $slot->isEmpty();
 

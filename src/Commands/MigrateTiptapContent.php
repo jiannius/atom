@@ -35,13 +35,19 @@ class MigrateTiptapContent extends Command
 
                 foreach ($columns as $column) {
                     $value = $row->getRawOriginal($column);
-                    $html = @unserialize($value);          // legacy AsEditorContent stored serialize()'d HTML
-                    if ($html === false && $value !== 'b:0;') {
-                        $html = $value;                    // raw
+                    [$serialized, $html] = is_string($value) ? Content::unserialize($value) : [false, null];
+                    if (! $serialized) {
+                        $html = $value;                    // raw (legacy AsEditorContent stored serialize()'d HTML)
                     }
 
                     if (! is_string($html) || $html === '' || $this->isJson($html)) {
                         continue;                          // already JSON or empty
+                    }
+
+                    if (Content::carriesPlaceholder($html)) {
+                        $this->warn('Skipped a '.$model::class.' '.$column.' value (row '.$row->getKey().'): it carries the HTML parser\'s reserved placeholder.');
+
+                        continue;
                     }
 
                     $json = $editor->setContent($html)->getJSON();

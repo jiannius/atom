@@ -256,6 +256,62 @@ describe('sharer', function () {
             ->toContain('aria-label="Facebook"')
             ->toContain('aria-label="Copy Link"');
     });
+
+    it('only calls Sharer when sharer.js is on the page', function () {
+        $html = Blade::render('<atom:sharer url="https://example.com" title="Hi" />');
+
+        // atom does not bundle sharer.js. A bare `Sharer.init()` throws "Sharer is not defined"
+        // in the console on every page whose host has not loaded it.
+        expect($html)
+            ->toContain('x-init="window.Sharer && Sharer.init()"')
+            ->not->toContain('x-init="Sharer.init()"');
+    });
+
+    /**
+     * The opening tag of every share button, keyed by the data-sharer value it carries.
+     *
+     * @return array<string, string>
+     */
+    function sharerButtons(string $html): array
+    {
+        preg_match_all('/<button\b[^>]*\bdata-sharer="([^"]+)"[^>]*>/s', $html, $matches, PREG_SET_ORDER);
+
+        return array_column($matches, 0, 1);
+    }
+
+    it('sends sharer.js only keys it knows, so the X button works', function () {
+        $html = Blade::render('<atom:sharer url="https://example.com" title="Hi" />');
+
+        // Every key sharer.js 0.5.4 has a sharer for (its `sharers` table).
+        $known = [
+            'facebook', 'linkedin', 'twitter', 'x', 'threads', 'bluesky', 'email', 'whatsapp', 'telegram', 'viber', 'line', 'pinterest',
+            'tumblr', 'hackernews', 'reddit', 'vk', 'xing', 'buffer', 'instapaper', 'pocket', 'mashable', 'mix', 'flipboard', 'weibo',
+            'blogger', 'baidu', 'douban', 'okru', 'mailru', 'evernote', 'skype', 'delicious', 'sms', 'trello', 'messenger', 'odnoklassniki',
+            'meneame', 'diaspora', 'googlebookmarks', 'qzone', 'refind', 'surfingbird', 'yahoomail', 'wordpress', 'amazon', 'pinboard',
+            'threema', 'kakaostory', 'yummly',
+        ];
+
+        expect(array_keys(sharerButtons($html)))
+            ->toBe(['facebook', 'x', 'linkedin', 'whatsapp', 'telegram', 'email'])
+            ->each->toBeIn($known);
+    });
+
+    it('keeps the X button labelled and coloured as before', function () {
+        $html = Blade::render('<atom:sharer url="https://example.com" title="Hi" />');
+
+        expect(sharerButtons($html)['x'])->toContain('aria-label="Twitter X"')
+            ->and($html)->toContain('text-black');
+    });
+
+    it('marks the mailto: email sharer as a link so it does not open a blank popup', function () {
+        $buttons = sharerButtons(Blade::render('<atom:sharer url="https://example.com" title="Hi" />'));
+
+        expect($buttons['email'])->toContain('data-link="true"');
+
+        foreach (['facebook', 'x', 'linkedin', 'whatsapp', 'telegram'] as $site) {
+            expect($buttons[$site])->not->toContain('data-link');
+        }
+    });
 });
 
 describe('lightbox', function () {

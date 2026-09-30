@@ -3,8 +3,10 @@
 namespace Jiannius\Atom\Casts;
 
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Jiannius\Atom\Tiptap\Content;
 
 class AsEditorContent implements CastsAttributes
 {
@@ -16,9 +18,9 @@ class AsEditorContent implements CastsAttributes
     public function get(Model $model, string $key, mixed $value, array $attributes): mixed
     {
         if (is_string($value)) {
-            $unserialized = @unserialize($value);
+            [$serialized, $unserialized] = Content::unserialize($value);
 
-            if ($unserialized !== false || $value === 'b:0;') {
+            if ($serialized) {
                 return $unserialized;
             }
         }
@@ -58,8 +60,8 @@ class AsEditorContent implements CastsAttributes
                 $image->save(quality: 80);
 
                 // save to disk
-                $disk = Storage::disk(env('FILESYSTEM_DISK'));
-                $folder = collect([data_get($disk->getConfig(), 'folder'), 'editor'])->filter()->join('/');
+                $disk = static::disk();
+                $folder = static::folder();
                 $extension = pathinfo($tmppath, PATHINFO_EXTENSION);
                 $filename = strtolower(str()->random(20)).'-'.time().'.'.$extension;
                 $path = $disk->putFileAs($folder, $tmppath, $filename, 'public');
@@ -71,5 +73,30 @@ class AsEditorContent implements CastsAttributes
         }
 
         return $value ? serialize($value) : null;
+    }
+
+    /**
+     * The disk this cast writes editor images to. The purge command reads it
+     * from here so the two can never disagree.
+     */
+    public static function disk(): Filesystem
+    {
+        return Storage::disk(env('FILESYSTEM_DISK'));
+    }
+
+    /**
+     * The name of the disk returned by disk(), for telling two disks apart.
+     */
+    public static function diskName(): string
+    {
+        return env('FILESYSTEM_DISK') ?: config('filesystems.default');
+    }
+
+    /**
+     * The folder, on that disk, this cast writes editor images to.
+     */
+    public static function folder(): string
+    {
+        return collect([data_get(static::disk()->getConfig(), 'folder'), 'editor'])->filter()->join('/');
     }
 }

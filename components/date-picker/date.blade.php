@@ -49,7 +49,7 @@ data-atom-date-picker
             </div>
         @endif
 
-        <atom:menu class="w-[300px]" popover>
+        <atom:menu class="w-[300px]" popover wire:ignore>
             <atom:date-picker.calendar />
 
             @if ($time)

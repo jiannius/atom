@@ -3,6 +3,7 @@
 namespace Jiannius\Atom\Macros;
 
 use Illuminate\Support\Facades\DB;
+use Jiannius\Atom\Services\TableSort;
 
 class Builder
 {
@@ -52,8 +53,18 @@ class Builder
             // current() returns false (not null) when no component is on the stack,
             // e.g. toTable() called from a job/console/test — guard so ?-> works.
             $config = (app('livewire')->current() ?: null)?->_table;
+
+            // Defence in depth: updatingAtomComponent() refuses a client
+            // update that would leave these non-string, but $_table is a
+            // plain public property PHP code can still set directly — a
+            // non-string column means "no sort" rather than a str() crash,
+            // and a non-string direction just falls back to 'asc'.
             $sortColumn = data_get($config, 'sort.column');
-            $sortDirection = data_get($config, 'sort.direction') ?? 'asc';
+            $sortColumn = is_string($sortColumn) ? $sortColumn : null;
+
+            $sortDirection = data_get($config, 'sort.direction');
+            $sortDirection = is_string($sortDirection) ? $sortDirection : 'asc';
+
             $showTrashed = data_get($config, 'show_trashed');
             $maxRows ??= data_get($config, 'max_rows') ?? 100;
 
@@ -63,7 +74,19 @@ class Builder
                 $this->reorder();
 
                 if (str($sortColumn)->startsWith('raw:')) {
-                    $this->orderByRaw(implode(' ', array_filter([str($sortColumn)->replace('raw:', ''), $sortDirection])));
+                    // A signed value came from the client — verify() strips the
+                    // signature; an unsigned one can only have come from PHP
+                    // (AtomComponent::updatingAtomComponent() refuses the
+                    // client any other way), so it stays trusted as-is.
+                    $expression = TableSort::expression($sortColumn);
+
+                    // The direction used to be spliced into the raw SQL
+                    // unvalidated too — clamp it here regardless of source.
+                    $direction = in_array($sortDirection, ['asc', 'desc'], true) ? $sortDirection : 'asc';
+
+                    if ($expression !== null) {
+                        $this->orderByRaw($expression.' '.$direction);
+                    }
                 }
                 else {
                     $this->orderBy($sortColumn, $sortDirection);

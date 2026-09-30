@@ -1,3 +1,21 @@
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+})[char])
+
+// An option's colour lands in a style attribute, and escaping only stops it leaving
+// the attribute — `red; position: fixed; …` would still add declarations. So only a
+// colour value passes: #hex, rgb()/hsl() (with or without alpha) or a named colour.
+// Anything else renders no colour.
+const safeColor = (value) => {
+    let color = String(value ?? '').trim()
+
+    return /^(#[0-9a-f]{3,8}|(rgb|hsl)a?\([0-9a-z\s.,%\/+-]*\)|[a-z]+)$/i.test(color) ? color : ''
+}
+
 export default (config) => {
     return {
         text: null,
@@ -194,6 +212,12 @@ export default (config) => {
             return !this.text || option.label.toLowerCase().includes(this.text.toLowerCase())
         },
 
+        // Exposed so the chip template in listbox.blade.php builds its style from the
+        // same allow-list rather than from the raw option field.
+        safeColor (value) {
+            return safeColor(value)
+        },
+
         getOptionHtml (option, selected = false) {
             if (selected && option.selected_html) {
                 return option.selected_html
@@ -202,11 +226,13 @@ export default (config) => {
                 return option.html
             }
 
-            let color = option.color
-                ? '<div style="background-color: '+option.color+'" class="shrink-0 w-3 h-3 rounded-full bg-zinc-100 flex items-center justify-center"></div>'
+            // The result goes straight into x-html, so every field interpolated here
+            // is escaped. An option's own `html` (above) is the trusted escape hatch.
+            let color = safeColor(option.color)
+                ? '<div style="background-color: '+escapeHtml(safeColor(option.color))+'" class="shrink-0 w-3 h-3 rounded-full bg-zinc-100 flex items-center justify-center"></div>'
                 : ''
 
-            return '<div class="flex items-center gap-2">'+color+'<span>'+option.label+'</span></div>'
+            return '<div class="flex items-center gap-2">'+color+'<span>'+escapeHtml(option.label)+'</span></div>'
         },
 
         getOptionsElements (index = -1) {

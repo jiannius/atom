@@ -10,10 +10,25 @@
     'searchable' => false,
     'placeholder' => 'Please select...',
     'ariaLabelledby' => null,
+    'tableFilter' => false,      // register with the table.filters bar as a chip
+    'tableFilterLabel' => null,  // the chip's name; the select wrapper forwards its label
 ])
 
 @php
 $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value();
+
+// A form field filters a table like any bar control — it just has to say so,
+// because a form is also where a select that filters nothing lives. The bar
+// variants (select.filter, date-picker.range) register on the strength of a
+// wire:model alone; here the flag is the opt-in and the model is the chip's key.
+$filterKey = $tableFilter
+    ? ($attributes->wire('model')->value() ?: $attributes->get('data-filter-key'))
+    : null;
+
+// Without a name the chip renders as "null: Red", so fall back to the field.
+$filterLabel = $filterKey
+    ? t($tableFilterLabel ?: (string) str($filterKey)->afterLast('.')->headline())
+    : null;
 
 $classes = Arr::toCssClasses([
     'min-h-10 appearance-none w-full rounded-lg shadow-xs outline-offset-1',
@@ -58,6 +73,20 @@ x-on:keydown.home.prevent.stop="home()"
 x-on:keydown.end.prevent.stop="end()"
 x-on:keydown.escape.stop=""
 data-atom-select-listbox
+@if ($filterKey)
+x-init="
+    const emit = () => $dispatch('table-filter:set', {
+        key: @js($filterKey),
+        label: @js($filterLabel),
+        display: isEmpty ? null : (@js((bool) $multiple)
+            ? (selectedOptions.length > 1 ? selectedOptions.length + ' {{ t('selected') }}' : (selectedOptions[0]?.label ?? null))
+            : (selectedOptions?.label ?? null)),
+    });
+    $nextTick(emit);
+    $watch('selectValue', () => { $nextTick(emit); $dispatch('table-filter:changed') });
+"
+x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clear()"
+@endif
 @if ($disabled) aria-disabled="true" @endif
 @class(['group/select w-full', 'pointer-events-none' => $disabled])
 {{ $attributes->except('class', 'aria-labelledby') }}>
@@ -103,11 +132,11 @@ data-atom-select-listbox
                     <template x-if="!isEmpty" hidden>
                         <div class="flex items-center gap-2 flex-wrap">
                             <template x-for="item in selectedOptions" hidden>
-                                <div class="shrink-0 max-w-56 truncate flex items-center text-sm border-r border-zinc-300 last:border-0">
+                                <div class="shrink-0 max-w-56 truncate flex items-center text-sm border-r border-zinc-300 dark:border-zinc-600 last:border-0">
                                     <div class="flex items-center gap-2 truncate">
-                                        <template x-if="item.color" hidden>
+                                        <template x-if="safeColor(item.color)" hidden>
                                             <div
-                                            x-bind:style="'background-color: '+item.color"
+                                            x-bind:style="'background-color: '+safeColor(item.color)"
                                             class="w-3 h-3 rounded-full bg-zinc-100 flex items-center justify-center"></div>
                                         </template>
 
@@ -147,10 +176,13 @@ data-atom-select-listbox
                     </template>
                 @endif
 
-                <div class="z-1 absolute top-0 right-0 h-10 flex items-center justify-center">
+                <div class="z-1 absolute top-0 right-0 h-10 flex items-center justify-center" data-atom-select-affix>
                     @if ($multiple !== 'list' && $clearable)
                         <template x-if="isEmpty" hidden>
-                            <div class="pointer-events-none py-3 pr-2 last:pr-3">
+                            {{-- flex, like the clear button this alternates with: a
+                                 block wrapper baselines the glyph, so the caret and
+                                 the ✕ would sit at different heights --}}
+                            <div class="pointer-events-none flex items-center justify-center py-3 pr-2 last:pr-3">
                                 <atom:icon.dropdown class="text-muted dark:text-muted-foreground" />
                             </div>
                         </template>
@@ -194,7 +226,7 @@ data-atom-select-listbox
                 clearTimeout(timer)
                 timer = setTimeout(() => fetch(), 300)
             }"
-            class="px-3 pt-2 pb-3 flex items-center gap-2 border-b dark:border-zinc-700">
+            class="px-3 pt-2 pb-3 flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-700">
                 <atom:icon.search class="text-zinc-400 shrink-0"/>
 
                 <input
@@ -258,7 +290,7 @@ data-atom-select-listbox
             </div>
 
             @if (isset($actions) && $actions->isNotEmpty())
-                <div x-show="options.length || !loading" class="border-t mt-1 pt-1 dark:border-zinc-700">
+                <div x-show="options.length || !loading" class="border-t border-zinc-200 mt-1 pt-1 dark:border-zinc-700">
                     {{ $actions }}
                 </div>
             @endif

@@ -210,7 +210,7 @@ class="min-h-screen bg-white dark:bg-zinc-900">
     </main>
 
     @isset ($footer)
-        <footer class="[grid-area:footer] z-10 p-4 lg:border-t dark:lg:border-zinc-700">
+        <footer class="[grid-area:footer] z-10 p-4 border-zinc-200 lg:border-t dark:lg:border-zinc-700">
             {{ $footer ?? '' }}
         </footer>
     @endisset

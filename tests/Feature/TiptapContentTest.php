@@ -43,6 +43,20 @@ describe('Content::render', function () {
             ->toContain('height="480"');
     });
 
+    it('renders the youtube iframe frameborder="0" (tiptap-php 2.2 keeps falsy-but-valid values)', function () {
+        $html = renderDoc([['type' => 'youtube', 'attrs' => ['src' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ']]]);
+
+        expect($html)->toContain('frameborder="0"');
+    });
+
+    it('renders a mention whose id is "0" with data-id="0"', function () {
+        $html = renderDoc([['type' => 'paragraph', 'content' => [['type' => 'mention', 'attrs' => ['id' => '0', 'label' => 'Zero']]]]]);
+
+        expect($html)
+            ->toContain('data-id="0"')
+            ->toContain('@Zero');
+    });
+
     it('renders mention as span.mention with the label', function () {
         $html = renderDoc([['type' => 'paragraph', 'content' => [['type' => 'mention', 'attrs' => ['id' => '1', 'label' => 'Alice']]]]]);
 

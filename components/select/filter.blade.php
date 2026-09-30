@@ -98,9 +98,11 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                 {{ t($label) }}
             </div>
 
-            <div class="shrink-0">
-                <atom:icon.dropdown />
-            </div>
+            {{-- no wrapper: a block div around a bare icon is a line box, so the icon
+                 sits on ITS baseline with the descender gap underneath, ~2.5px above
+                 the centre the button's items-center is holding everything else at.
+                 The icon wrapper is already inline-flex shrink-0. --}}
+            <atom:icon.dropdown />
 
             @if ($multiple === true)
                 <template x-if="!isEmpty" hidden>
@@ -142,7 +144,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                 clearTimeout(timer)
                 timer = setTimeout(() => fetch(), 300)
             }"
-            class="px-3 pt-2 pb-3 flex items-center gap-2 border-b dark:border-zinc-700">
+            class="px-3 pt-2 pb-3 flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-700">
                 <atom:icon.search class="text-zinc-400 shrink-0"/>
 
                 <input
@@ -230,7 +232,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
             </div>
 
             @if (isset($actions) && $actions->isNotEmpty())
-                <div x-show="options.length || !loading" class="border-t mt-1 pt-1 dark:border-zinc-700">
+                <div x-show="options.length || !loading" class="border-t border-zinc-200 mt-1 pt-1 dark:border-zinc-700">
                     {{ $actions }}
                 </div>
             @endif

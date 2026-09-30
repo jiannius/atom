@@ -170,3 +170,32 @@ test('the editable surface is named by the field label', async ({ page }) => {
   await expect(label).toHaveCount(1)
   await expect(label).toHaveText(/Article body/)
 })
+
+// Stored content is untrusted: the editor must not write a hostile image float / width
+// into a style attribute either (the PHP renderer validates the same values).
+test('an image float / width that is not a safe value renders no style', async ({ page }) => {
+  await page.goto('/atom/docs/tiptap')
+  const editor = basicEditor(page)
+  await waitForEditor(editor)
+
+  await editor.evaluate((el) => {
+    const ed = el.closest('[x-data]')._x_dataStack[0].editor()
+    const src = 'data:image/gif;base64,R0lGODlhAQABAAAAACw='
+    ed.commands.setContent({ type: 'doc', content: [
+      { type: 'image', attrs: { src, width: '100%; position: fixed; inset: 0', float: 'left; position: fixed' } },
+      { type: 'image', attrs: { src, width: '50%', float: 'right' } },
+    ] })
+  })
+
+  const images = editor.locator('.editor-content img')
+  await expect(images).toHaveCount(2)
+
+  const hostile = await images.nth(0).getAttribute('style')
+  expect(hostile ?? '').not.toContain('position')
+  expect(await images.nth(0).getAttribute('data-width')).toBeNull()
+  expect(await images.nth(0).getAttribute('data-float')).toBeNull()
+
+  const legit = await images.nth(1).getAttribute('style')
+  expect(legit).toContain('width: 50%')
+  expect(legit).toContain('float: right')
+})

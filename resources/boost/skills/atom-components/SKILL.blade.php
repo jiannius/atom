@@ -1,6 +1,6 @@
 ---
 name: atom-components
-description: "Use when building or editing any Blade view, Livewire component, or admin screen in an app that uses jiannius/atom. Activate for atom: component markup, the AtomComponent trait, forms and reCAPTCHA, modals, data tables (sorting, filters, bulk and sticky selection), sidebar navigation and breadcrumbs, toasts/alerts/confirms, dropdowns and menus, tooltips, badges/callouts/empty states, select option sets, Action classes and the WebAction contract, enums, the editor, mail, and broadcasting. Covers the load-bearing rules and silent-breakage footguns that reading the component source alone will not reveal. Do not use for plain Laravel work that touches no Atom component."
+description: "Use when building or editing any Blade view, Livewire component, or admin screen in an app that uses jiannius/atom. Activate for atom: component markup, the AtomComponent trait, forms and reCAPTCHA, modals, data tables (sorting, filters, bulk and sticky selection), sidebar navigation and breadcrumbs, toasts/alerts/confirms, dropdowns and menus, tooltips, badges/callouts/empty states, select option sets, Action classes and the WebAction contract, enums, the editor and sanitising its HTML, safe URLs, share buttons, mail, and broadcasting. Covers the load-bearing rules and silent-breakage footguns that reading the component source alone will not reveal. Do not use for plain Laravel work that touches no Atom component."
 license: MIT
 metadata:
   author: jiannius
@@ -8,7 +8,7 @@ metadata:
 # Atom components
 
 Deep reference for `jiannius/atom`. The always-on guidelines cover tag syntax, the
-component directory and icons; everything below loads only when you are actually
+component directory, icons and the security rules that always apply; everything below loads only when you are actually
 working with Atom components.
 
 ### Livewire components — `AtomComponent` trait
@@ -23,7 +23,7 @@ Livewire 4 single-file components are the default. Mix `Jiannius\Atom\Traits\Ato
 Define a `breadcrumbs(Breadcrumbs $b)` method to populate `$_breadcrumbs` automatically on mount.
 
 @verbatim
-**Names the trait occupies** — a class method beats a trait method of the same name with no error, so a component that redefines one shadows atom's. Whether that matters depends on who calls the name. **Safe to shadow** (sugar you call, never atom): `modal`, `command`, `toast`, `alert`, `confirm`, `action`, `wirekey`, `verifyRecaptcha` — but declare a shadowing `action()` **protected** like the trait's, because Livewire exposes every public method a component declares and a public `action()` is callable from the browser as `$wire.action('AnyAction', {method: 'anyMethod'})`. **Silent breakage if shadowed** (atom or Livewire invokes these by name — the prefix is the protection): `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` (read by the `toTable()` macro and the blades); `mountAtomComponent`, `updatedAtomComponent` (Livewire convention — kills breadcrumbs, editor uploads, trashed clear); `resetTableCheckboxes`, `selectAllTableMatching`, `toggleTableShowSelected`, `clearTableSelectAll` (wired from markup by name); `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed`; and Livewire's own `$paginators`, `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination`, `_startUpload`, `_finishUpload`, `_removeUpload`, `_uploadErrored`. Yours to define: `breadcrumbs`, `tableQuery`, `tableSelectionQuery`. Everything else is free — the `#[Computed]` property feeding `<atom:table :paginate="...">` is yours to name, and atom neither defines nor looks for `items`/`rows`/`records`/`data`.
+**Names the trait occupies** — a class method beats a trait method of the same name with no error, so a component that redefines one shadows atom's. Whether that matters depends on who calls the name. **Safe to shadow** (sugar you call, never atom): `modal`, `command`, `toast`, `alert`, `confirm`, `action`, `wirekey`, `verifyRecaptcha` — but declare a shadowing `action()` **protected** like the trait's, because Livewire exposes every public method a component declares and a public `action()` is callable from the browser as `$wire.action('AnyAction', {method: 'anyMethod'})`. **Silent breakage if shadowed** (atom or Livewire invokes these by name — the prefix is the protection): `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` (read by the `toTable()` macro and the blades); `mountAtomComponent`, `updatedAtomComponent`, `updatingAtomComponent` (Livewire convention — kills breadcrumbs, editor uploads, trashed clear, the `raw:` table-sort signature gate); `resetTableCheckboxes`, `selectAllTableMatching`, `toggleTableShowSelected`, `clearTableSelectAll` (wired from markup by name); `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed`; and Livewire's own `$paginators`, `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination`, `_startUpload`, `_finishUpload`, `_removeUpload`, `_uploadErrored`. Yours to define: `breadcrumbs`, `tableQuery`, `tableSelectionQuery`. Everything else is free — the `#[Computed]` property feeding `<atom:table :paginate="...">` is yours to name, and atom neither defines nor looks for `items`/`rows`/`records`/`data`.
 @endverbatim
 
 @verbatim
@@ -94,7 +94,7 @@ Requires `config('services.recaptcha.site_key' / 'secret_key' / 'min_score')` an
 `<atom:table :paginate="$this->rows">` with `x-slot:columns` / `x-slot:rows` is the data table. Drive sort, pagination and checkboxes through the `$_table` state (from `AtomComponent`) plus the `toTable($filters)` Eloquent builder macro on a `#[Computed]` method.
 
 - **Search:** `<atom:table.search wire:model="filters.search" />` — the standard listing search (search icon, Enter to run). Don't hand-roll an input.
-- **Filters:** wrap the filter controls in `<atom:table.filters>`; it auto-renders active-filter chips + a "Clear all". Use `<atom:select variant="filter">`, `<atom:date-picker variant="range">`, or custom selects inside it — each control needs a `wire:model` (that is the chip's key; without it no chip registers). Put overflow filters in `<x-slot:more>` — a "More filters" popover by default, or set `overflow="card"` for an expandable row.
+- **Filters:** wrap the filter controls in `<atom:table.filters>`; it auto-renders active-filter chips + a "Clear all". Use `<atom:select variant="filter">`, `<atom:date-picker variant="range">`, or custom selects inside it — each control needs a `wire:model` (that is the chip's key; without it no chip registers). Put overflow filters in `<x-slot:more>`; the "More filters" button sits in the bar right after the last filter. Its overflow is a popover by default, `overflow="card"` an expandable row below the bar, and `overflow="modal"` a modal that lays the slot out as a form (one field per row) — write that slot as labelled fields (`<atom:select label="Category" variant="listbox" table-filter>`, `<atom:date-picker variant="range" label="Created">`), not as bar controls. **A form field only registers a chip if you add `table-filter`** — the bar variants (`select variant="filter"`, `date-picker variant="range"`) do it on the strength of their `wire:model` alone, but a form is also full of selects that filter nothing, so there the flag is the opt-in. The chip's key is the `wire:model`, its name is the `label`. Without the flag the field still filters, it just does so invisibly.
 - **Trashed:** add the `trashed` prop to `<atom:table>` to append an icon toggle at the end of the header bar — it drives `$_table.show_trashed` and `toTable()` applies `onlyTrashed()`. Bare `trashed` = archived preset (archive icon, "Show archived"); `trashed="voided"` = voided preset (trash icon, "Show voided"). `<atom:table.trashed :variant="..." />` is the standalone component for custom placement.
 - **Row actions:** `<atom:table.actions>` as the last cell of a row renders a ⋯ menu — put `<atom:menu.item>`s inside. It stops row-click propagation, so it works inside a clickable `<atom:table.row>`. Delete items use the confirm pattern (`type="delete"` or `<atom:confirm.trigger>`).
 - **Loading:** built in — pagination/sort show a dim overlay (rows stay put); search shows a spinner in the search box (rows stay). For a lazy/deferred table, add the `skeleton` prop (or `:skeleton="N"`) to `<atom:table>` to show placeholder rows on first load until the data resolves.
@@ -115,6 +115,7 @@ It defaults to `tableQuery()`, so a table without the prop behaves exactly as be
 - **Breadcrumbs:** add a `breadcrumbs(Breadcrumbs $b)` method to the Livewire component (see the AtomComponent section) and drop `<atom:breadcrumbs />` in the page — the trail builds itself from navigation; a single crumb renders as the page heading.
 - **Tabs:** `<atom:tabs :tabs="[...]" wire:model="tab" />` (each tab `['label' => ..., 'value' => ..., 'icon' => ...]`), or compose `<atom:tabs.item>` children. `variant="button"` for the pill style.
 - **Links:** `<atom:link :href="..." />` for inline prose links (dotted underline). Nav/actions use `<atom:navlist.item>` / `<atom:button>`, not link.
+- **A URL a user typed is checked, not trusted.** `<atom:link>`, `<atom:button>`, `<atom:tabs.item>`, `<atom:menu.item>`, `<atom:list.item>`, `<atom:command.item>`, `<atom:navlist.item>`, `<atom:table.row>`, the breadcrumbs trail, toast `url`/`navigate`, the lightbox download and the `cta` button in `atom()->mail()` only follow `http`, `https`, `mailto`, `tel`, `sms` or a scheme-less URL; anything else (`javascript:`, `data:`, `vbscript:`, an entity- or tab-obfuscated one) renders with no `href` and does nothing on click, so a profile "website" or a CMS link can't run script. The one thing to know: a relative path whose **first segment contains a colon** (`foo:bar`) now counts as a scheme and is dropped. Write it `./foo:bar`. Any markup of your own that puts a user-supplied URL in an `href`, `formaction`, `window.open()` or `location` must go through `safe_url($url)` (PHP, returns the URL or `null`) or `atom.safeUrl(url)` (JS) first; `{{ }}` escaping does not stop `javascript:`. That check is about the scheme only: `//evil.com` is allowed, so a redirect to a user-supplied URL must also check the host.
 - **Heading levels:** `<atom:heading>` is a `<div>` unless you pass `level` — most app headings (card titles, stat labels) are visual, not structural. `size` and `level` are independent. `<atom:layouts.sidebar>` already emits the page's `<h1>` from its `title` prop (visually hidden — the visible title comes from the breadcrumbs, a nav landmark with no heading element), so **never add your own `<h1>` in the page body**; start nested sections at `level="2"`.
 @endverbatim
 
@@ -171,6 +172,7 @@ Reach for these instead of hand-rolling coloured pills, notice boxes, or empty s
 - **Empty states:** `<atom:empty heading="No invoices" subheading="..." icon="inbox" />`; `subtle` for a one-line box, `size="sm"` for an inline row.
 - **People:** `<atom:avatar name="Jane" :src="$url" size="sm" />` (falls back to initials; `<atom:avatar.group max="4">` for stacks); `<atom:profile :name="..." :email="..." :avatar="..." />` for an avatar + name/email chip (defaults to the authed user).
 - **Description lists:** `<atom:dd.group cols="2"><atom:dd label="Email">{{ $user->email }}</atom:dd></atom:dd.group>` — empty values show a `--` filler.
+- **Share buttons:** `<atom:sharer :url="$url" :title="$title" />` needs sharer.js, which atom does not bundle: load it once on the page (`<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`, docs at https://ellisonleao.github.io/sharer.js) or the share buttons do nothing (copy-link still works). The default `sites` (`facebook`, `twitter-x`, `linkedin`, `whatsapp`, `telegram`, `email`) were checked against sharer.js 0.5.4; atom sends `twitter-x` to it as `x`, and a site you add needs an atom icon of the same name. Pass raw text for `title`/`url`; atom escapes them.
 - **Loading placeholders:** `<atom:skeleton />` (paragraph) and `<atom:placeholder-bar size="60%x12" />` (`WIDTHxHEIGHT`, width may be `%`). Tables render their own loading skeleton, so you rarely place these by hand.
 @endverbatim
 
@@ -182,6 +184,7 @@ Reach for these instead of hand-rolling coloured pills, notice boxes, or empty s
   - **It must extend the package class** — that is what carries the `WebAction` contract the endpoint requires; a standalone `App\Actions\GetOptions` shadows the package's and the select 404s.
   - **Every option set must be declared.** `protected array $auth = ['users'];` needs a signed-in caller; `protected array $guest = ['brands'];` is readable by anyone. An undeclared name returns `[]` (the select renders empty) and logs a warning. Default to `$auth` — the endpoint is public and unauthenticated, so a `$guest` set hands every row it can return to a stranger. The package's own sets (countries, states, dialcodes, currencies, colors, postcodes) are always readable and are not re-declared.
   - **Scope the query anyway.** `$auth` only asks whether the caller is signed in; it does not restrict rows. Filter to the current org/tenant inside the method — a bare `User::all()` is a customer list any logged-in user can download.
+- **Option text is escaped; an `html` key is not.** The listbox renders an option through `x-html`. Atom escapes everything it builds itself — `label`, `caption`, `color` — so a name a user typed can never inject markup. If a set returns its own `'html' => '...'` (custom layout), that key is **trusted**: you build it, so wrap **every** interpolated user or database field in `e()` (`'html' => '<b>'.e($doc->name).'</b>'`). An unescaped field in `html` is stored XSS. Prefer plain `label`/`caption` and let atom render them. Don't pre-escape a `label` yourself — it would be escaped twice.
 - Enums: `<atom:select :options="ClientType::all()->map->option()->all()" />`.
 @endverbatim
 
@@ -284,6 +287,23 @@ Rich text uses `<atom:tiptap>` (editor), `<atom:tiptap.chat>` (chat composer: en
 
 Cast the storage column with `Jiannius\Atom\Casts\AsTiptapContent` — it stores Tiptap JSON and dual-reads legacy serialized-HTML, so existing rows keep rendering and migrate to JSON on next save. Images: the cast persists Livewire temporary uploads to `config('atom.editor.disk')` (falls back to the default filesystem disk), or define `tiptapStoreImage(string $tmpPath, string $key): string` on the model to control persistence. Display stored content with `<atom:tiptap.content :content="$model->body"/>`. Convert legacy HTML columns to JSON with `php artisan atom:tiptap-migrate` (switch the cast to `AsTiptapContent` first). `<atom:editor>`, `<atom:editor.chat>`, `<atom:editor.content>` remain as back-compat aliases.
 
+**Chat HTML from the browser is untrusted.** `<atom:tiptap.chat>` hands the host raw **HTML** (an `input` event with `{ body, files }`), and any client can call `$wire.submit()` or set the bound property with its own string, so what arrives may hold script, event handlers or `javascript:` links. Clean it **before you store it** with `Jiannius\Atom\Tiptap\Content::sanitize($html)` (schema-only HTML), or print it through `<atom:tiptap.content :content="$body"/>` / `Content::render($body)`, which re-parse through the same schema. **Never** print it with `x-html`, `{!! $body !!}` or `->html()` straight from the column or the request. `sanitize()` is for HTML: `<atom:tiptap>` (the JSON editor, `AsTiptapContent`) stores JSON, which `<atom:tiptap.content>` already prints safely, so store that as JSON and do not pass it through `sanitize()` (it returns HTML and would drop YouTube embeds). Rows stored before you adopt `sanitize()` stay unclean until you render them through `<atom:tiptap.content>` or backfill them. `sanitize()` returns `''` for empty, refused (over 128 KB or 5000 tags or document nodes, or output that would have over 5000 tags, a `<pre>` block or count the parser can't survive, something that is not a Tiptap document, or tiptap-php's `MINIFYHTML` placeholder; long whitespace runs and unclosed `<pre>` tags are normalised, not refused) and failed input alike; `Content::sanitizeRefuses($raw)` tells a refusal apart. `<atom:tiptap.content>` / `Content::render()` apply the same kind of refusal to stored content with looser limits (`config('atom.editor.render_max_bytes')`, default 2 MB, and `render_max_tags`, default 20000): the content renders empty and a `Log::warning` says why, so if stored content goes blank check the log and raise the limits in `config/atom.php`. It does not check a mention's `data-id` (client-chosen): look the id up server-side before acting on it.
+
+```php
+use Jiannius\Atom\Tiptap\Content;
+
+public function submit(array $message): void
+{
+    $body = Content::sanitize($message['body'] ?? '');
+
+    if ($body === '') {
+        return;
+    }
+
+    $this->task->messages()->create(['body' => $body]);
+}
+```
+
 **Upgrading to v3.6.0 (editor):** `atom.js` now loads as an ES module — if you include it via your own `<script>` tag instead of `<atom:html>`, add `type="module"`. Switch editor columns from `AsEditorContent` to `AsTiptapContent`, then run `php artisan atom:tiptap-migrate`. Run `npm run build` to pick up new Tailwind utilities. `<atom:editor>` keeps working as an alias for `<atom:tiptap>`.
 @endverbatim
 
@@ -344,6 +364,9 @@ Event name is prefixed with `.` when listening. Private channels require auth in
 @endverbatim
 - `num($value)->currency('USD')` / `->filesize()` / `->format()` — Laravel Number helper shorthand.
 - `carbon($value)` — produces `Jiannius\Atom\Services\Carbon` (also installed globally via `Date::use()`).
+@verbatim
+- `safe_url($url)` — makes a URL scheme-safe: it returns the URL unchanged if it is `http`, `https`, `mailto`, `tel`, `sms` or scheme-less, else `null`. Use it on any user-supplied URL before it reaches an `href` or `formaction`; `{{ }}` escaping does not stop `javascript:`. Its scope is the scheme only: `//evil.com` is allowed, so a redirect built from user input must also check the host (compare it with your own, or allow only a relative path).
+@endverbatim
 
 ### Other helpers
 
@@ -364,6 +387,7 @@ These are the conventions Atom-using projects should adopt unless they have a re
 - **Checkboxes.** Multiple related checkboxes → always `<atom:checkbox.group>` (never loose stacked `<atom:checkbox>`). Default variant; use `variant="card"` only when each option needs its own description or icon.
 - **Description lists (show pages).** Group label/value pairs in `<atom:dd.group>`; use `cols="2"` only for many fields on a wide page — same density logic as forms.
 - **Section separation.** Prefer `<atom:separator>` over ad-hoc `<hr>` or border classes; separate logical field groups with a separator and a short title (e.g. "Address", "Registration & Tax").
+- **Always give a border or divider a light-mode colour.** Tailwind v4 defaults `border-color` to `currentColor` (v3 used `gray-200`), so `border-t dark:border-zinc-700` or `divide-y dark:divide-zinc-700` draws a near-black line in light mode — it reads as a heavy black rule on a white card, and it looks correct in dark mode, so it survives review. Write both halves: `border-t border-zinc-200 dark:border-zinc-700`, `divide-y divide-zinc-200 dark:divide-zinc-700`.
 @endverbatim
 - **Component method order** (top of class to bottom):
     1. Validation (`$rules`, `$messages`, `#[Rule]` properties)

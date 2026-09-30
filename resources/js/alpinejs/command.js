@@ -115,7 +115,12 @@ export default (config) => {
 
         enterKey () {
             let el = this.visibleItems()[this.activeIndex]
-            if (el) el.click() // anchor navigates; button fires its wire:click / x-on:click
+            if (!el) return
+
+            // an anchor whose href is not a safe URL must not be followed
+            if (el.hasAttribute('href') && !atom.safeUrl(el.getAttribute('href'))) return
+
+            el.click() // anchor navigates; button fires its wire:click / x-on:click
         },
     }
 }

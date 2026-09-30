@@ -229,6 +229,7 @@ All `heading`, `subheading`, and `message` strings are auto-passed through `t()`
 | `js($value)` | Alias for `Js::from()`. |
 | `is_enum($value)` | True for `UnitEnum` / `BackedEnum`. |
 | `is_using_trait($class, $trait)` | True if `$class` (recursively) uses `$trait`. |
+| `safe_url($url)` | The URL unchanged if it is `http`, `https`, `mailto`, `tel`, `sms` or scheme-less, otherwise `null`. Reads the URL the way a browser does (entities decoded, tabs and newlines dropped, leading control characters stripped, scheme lowercased). Makes a URL scheme-safe and nothing more: `//evil.com` is allowed, so a redirect built from user input must also check the host. Every atom component that takes an `href` uses it. |
 
 Examples:
 
@@ -283,7 +284,7 @@ reason; the prefix *is* the protection.
 | | Invoked by | Breaks |
 | --- | --- | --- |
 | `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
-| `mountAtomComponent`, `updatedAtomComponent` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear |
+| `mountAtomComponent`, `updatedAtomComponent`, `updatingAtomComponent` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear, the `raw:` table-sort signature gate |
 | `resetTableCheckboxes`, `selectAllTableMatching`, `toggleTableShowSelected`, `clearTableSelectAll` | atom's markup, by name | the checked-bar buttons no-op |
 | `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed` | each other, and your own `items()` | bulk actions target the wrong rows |
 | `$paginators`, `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination` | Livewire's `WithPagination` | pagination |
@@ -392,7 +393,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | --- | ------------------------------ |
 | `<atom:input>` | `name`, `type` (`text`, `email`, `password`, `number`, `tel`, `color`), `label`, `caption`, `prefix`, `suffix`, `required`, `error`. Subs: `<atom:input.text>`, `<atom:input.email>`, `<atom:input.tel>`, `<atom:input.color>`, `<atom:input.field>`, `<atom:input.prefix>`. |
 | `<atom:textarea>` | `name`, `label`, `caption`, `rows` (default 3), `autoresize`, `variant="transparent"`. |
-| `<atom:select>` | `options` — an **array** for a static list, or a **string** naming a `GetOptions` set to fetch remotely. Plus `name` (field name, not the option set), `label`, `caption`, `variant` (`native` (default), `listbox`, `filter`), `required`, `error`, `prefix`, `suffix`, `inline`; `filters`, `multiple`, `searchable`, `clearable` on `listbox`. Children: `<atom:select.option>`, `<atom:select.group>`. |
+| `<atom:select>` | `options` — an **array** for a static list, or a **string** naming a `GetOptions` set to fetch remotely. Plus `name` (field name, not the option set), `label`, `caption`, `variant` (`native` (default), `listbox`, `filter`), `required`, `error`, `prefix`, `suffix`, `inline`; `filters`, `multiple`, `searchable`, `clearable` on `listbox`; `table-filter` on `native`/`listbox` registers the field as a chip in `<atom:table.filters>` (key = `wire:model`, chip name = `label`). Children: `<atom:select.option>`, `<atom:select.group>`. |
 | `<atom:checkbox>` | `name`, `label`, `caption`, `align` (`start`, `center`, `end`). Group with `<atom:checkbox.group>`. |
 | `<atom:radio>` | Same as checkbox. Group with `<atom:radio.group>`. |
 | `<atom:toggle>` | `name`, `label`, `caption`. Group with `<atom:toggle.group>`. |
@@ -410,6 +411,8 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:button>` | `type` (`submit`, `delete`), `variant` (`primary`, `danger`, `accent`, `ghost`, `link`, `facebook`, `google`, `linkedin`, `whatsapp`, `telegram`), `size` (`xs`, `sm`, `md`, `lg`), `block`, `href`, `icon`, `iconSuffix`, `inverted`, `newtab`. Wraps `wire:click`, dispatches `confirmed` for `type="delete"` (auto-confirmed → `$wire.delete()`). |
 | `<atom:button.group>` | Layout helper for adjacent buttons. |
 | `<atom:link>` | `href`, `icon`, `iconSuffix`, `variant="accent"`, `newtab`, `rel`. |
+
+An `href` is only followed if it is `http`, `https`, `mailto`, `tel`, `sms` or scheme-less; see [Upgrading to 3.29.13](#upgrading-to-32913).
 
 ### Display & typography
 
@@ -527,7 +530,7 @@ there's no server-side or cross-device state.
 | `<atom:embed>` | `src`, `icon`, `file` — embeds image / video / YouTube / file preview. |
 | `<atom:error>` | Plain error message slot. |
 | `<atom:html>` | Page boilerplate (see [Page boilerplate](#page-boilerplate)). |
-| `<atom:sharer>` | `sites` (array), `url`, `title` — social share buttons. |
+| `<atom:sharer>` | `sites` (array), `url`, `title` — social share buttons. atom does not bundle [sharer.js](https://ellisonleao.github.io/sharer.js): load it on the page (`<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`) or the share buttons do nothing (the copy-link button works without it). The default sites (`facebook`, `twitter-x`, `linkedin`, `whatsapp`, `telegram`, `email`) were checked against sharer.js 0.5.4; a site needs an atom icon of the same name. |
 | `<atom:whatsapp>` | `number`, `text` — floating WhatsApp button. |
 
 ---
@@ -690,9 +693,99 @@ What it does on save:
 Pair with the scheduled command to clean up images no longer referenced:
 
 ```bash
-php artisan atom:purge-editor-images          # dry-clean (move to editor-purged/)
-php artisan atom:purge-editor-images --force  # delete the editor-purged/ backup
+php artisan atom:purge-editor-images            # dry-clean (move to editor-purged/)
+php artisan atom:purge-editor-images --dry-run  # list what it would delete, change nothing
+php artisan atom:purge-editor-images --force    # delete the editor-purged/ backup
 ```
+
+A file counts as referenced when its file name (or its percent-encoded form) appears anywhere in a stored editor value, whatever the format around it. The scan splits each form of a value (raw, decoded, percent-decoded) into tokens once, so its cost still follows the size of your data, not the number of files, and it prints a progress line every 1000 rows. A file whose name holds a space, quote, bracket or non-ASCII character (a macOS `Screenshot ... .png` stored through `tiptapStoreImage()`, say) is searched for as a plain substring instead, which is slower when there are many such files.
+
+---
+
+## Editor and chat HTML is untrusted
+
+`<atom:tiptap.chat>` (the chat composer) hands the host **HTML**: `tiptap.getHTML()`, in an `input` event carrying `{ body, files }`. Nothing checks it on the way in. A client that skips the editor and calls `$wire.submit(...)` (or sets the bound property) with its own string stores whatever it likes, and stored and printed as-is that is stored XSS. atom can't see your storage code, so the rule for a host that keeps chat HTML is:
+
+- **Clean it before you store it:** `Jiannius\Atom\Tiptap\Content::sanitize()`.
+- **Print it through atom:** `<atom:tiptap.content :content="$message->body"/>` or `Content::render($message->body)`. Both parse the value through the editor's schema and print only what the schema allows.
+- **Never** print it with `x-html`, `{!! $body !!}` or `->html()` straight from the column or from the request.
+
+```php
+use Jiannius\Atom\Tiptap\Content;
+
+// the chat composer dispatches `input` with { body, files }
+public function submit(array $message): void
+{
+    $raw = $message['body'] ?? '';
+    $body = Content::sanitize($raw);
+
+    // '' covers three cases: empty, refused (too big) and failed. Ask which if the user should be told.
+    if ($body === '') {
+        if (Content::sanitizeRefuses($raw)) {
+            $this->addError('body', 'That message is too long.');
+        }
+
+        return;
+    }
+
+    $this->task->messages()->create(['body' => $body, 'user_id' => auth()->id()]);
+}
+```
+
+```blade
+{{-- reads back through the same schema --}}
+<atom:tiptap.content :content="$message->body"/>
+```
+
+**This is for HTML, not for the JSON editor.** `<atom:tiptap>` (and the `AsTiptapContent` cast) store **Tiptap JSON**, and `sanitize()` returns HTML. Don't pass JSON editor content through it before storing: that would turn the column into HTML and drop YouTube embeds. JSON is already printed safely by `<atom:tiptap.content>` / `Content::render()`, so store it as JSON and print it through those.
+
+**Rows stored before you adopt `sanitize()` stay unclean.** `sanitize()` only cleans what passes through it from now on. A chat message already in your table keeps whatever it was saved with until you render it through `<atom:tiptap.content>` / `Content::render()` (which cleans on the way out, so old rows print safely), or backfill the column by running each row through `Content::sanitize()`. A host that prints stored HTML with `x-html` is exposed to every unclean row it already holds.
+
+`Content::sanitize(mixed $html, int $maxBytes = 131072, int $maxTags = 5000): string` parses the value through the same schema and the same hardened extensions as `render()`, and returns the schema's own serialisation, so nothing of the input's markup survives except what the editor itself can write. It also accepts a Tiptap JSON document (a string or array with a `type` key) and a `Stringable`; any other string, `'42'` and `'null'` included, is text.
+
+It returns `''` when the input is empty, when it is refused, and when it fails. It refuses (silently, so a client can't flood your logs) HTML over `$maxBytes`, HTML with more than `$maxTags` tags (or a document with more than `$maxTags` nodes and marks), input whose output would have more than `$maxTags` tags (a document prints up to four tags per node, and an empty table is one node), a document that is not a Tiptap document, HTML that carries tiptap-php's reserved `MINIFYHTML` placeholder, and the `<pre>` inputs the parser can't survive (below). Output over four times `$maxBytes` is refused too, so a small `$maxBytes` also caps the output at four times that. Only an unexpected failure is reported through Laravel's `report()`. `Content::sanitizeRefuses($html)` tells a refusal from an empty message.
+
+The limits exist because parsing cost tracks the tag count, not the byte count: about 3 KB of memory per tag or document node in the worst case, so an input of 65,000 `<p>a` (260 KB) needs over 200 MB, and 95,000 `{"type":"paragraph"}` nodes (2 MB of JSON) needs about 290 MB. Measured at the sanitize defaults, the worst shape costs about 16 MB and 0.2 s; a long chat message is a few KB and a few dozen tags. Raise the limits only for a field that holds long documents. The parser also has inputs it takes minutes on or crashes on, which are normalised where real content could have them and refused only where it can't:
+
+- **Long whitespace runs are collapsed, not refused.** Outside a `<pre>`, a run of more than 32 whitespace characters (Unicode spaces included) becomes one space before parsing. HTML collapses whitespace anyway, so nothing a reader sees changes, and content with no such run is passed on byte for byte. Pretty-printed or indented legacy HTML and pasted Word markup render normally (120 KB of spaces used to take 98 s and now takes about 0 s). Inside a `<pre>` nothing is touched: a code block with 300-space indentation, or 120 KB of spaces, is kept exactly.
+- **Unclosed `<pre>` tags are closed, not refused.** A few are left alone; once they would make the parser quadratic (5000 in 130 KB took 8 s), one `</pre>` is appended, which is what the HTML parser does at the end of the input anyway.
+- **Refused:** a `<pre>` block over 500,000 characters (the parser's regex fails past about 1M), a very large number of `<pre>` blocks in a long input (about 250 code blocks in a 2 MB document), and many `<pre` tags with no `>` after them. Real content has none of these.
+- **Repaired, not refused:** a Tiptap document with an attribute the renderer throws on keeps rendering. A heading `level` that is not a whole number from 1 to 6 (or that digit as a string) becomes level 1, a list `start`, a cell `colspan` or `rowspan` that is not a whole number is dropped, and a `colwidth`, a mention `label` or an `attrs` of the wrong shape is dropped. Only a document that is not a document at all (wrong `type`, `content` not a list, and so on) is refused.
+
+| Kept (as the editor writes it) | Dropped |
+| --- | --- |
+| Paragraphs, headings, lists, blockquotes, code blocks, line breaks, rules, tables | `<script>`, `<style>`, `<svg>`, `<form>`, `<object>`, `<embed>`, `<link>`, `<meta>`, `<base>`, comments, CDATA and any tag the editor has no node for |
+| Bold, italic, strike, underline, code, sub/superscript | Every event handler (`onclick`, `onerror`, ...) and every attribute the schema doesn't define, `id` and `srcdoc` included |
+| Links to `http`, `https`, `mailto`, `tel` (and the other protocols Tiptap allows, such as `ftp` and `sms`) and relative URLs, with atom's own `target` / `rel` | Links whose href is `javascript:`, `vbscript:`, `data:` or another scheme (the text stays, the link goes); a link's own `class`, `rel` or `target` |
+| Images with an `http(s)`, relative or raster `data:image/` source | An image whose source is `javascript:`, `data:image/svg+xml` or another scheme (the whole image goes) |
+| `color`, `background-color`, `font-size`, `text-align`, image `width` / `float` / `align` when the value passes the allow-list | `style` declarations that fail it (`position`, `url(...)`, `expression(...)`, out-of-range sizes), and every `class` except `mention`, a font-size preset and `language-*` |
+| Mentions (`<span class="mention" data-type="mention" data-id data-label>`), escaped | The `data-mention-suggestion-char` marker the JS adds |
+| YouTube embeds in a JSON document, rebuilt from the video id | Any `<iframe>` in HTML input, and any iframe that isn't YouTube |
+| Text that looks like markup (`&lt;script&gt;`), as escaped text | Invalid UTF-8 (scrubbed, the text around it kept) |
+
+Two things it does not do:
+
+- **It doesn't check a mention's `data-id`.** It is escaped, but it is whatever the client sent. If a mention does anything (a notification, a link to a record), look the id up on the server, scoped to what the current user may mention, and ignore the rest.
+- **It doesn't check that the caller may post.** Authorise the request as you would any other write.
+
+### Upgrading: `render()` and `<atom:tiptap.content>` refuse what they can't parse safely
+
+`Content::render()` (and so `<atom:tiptap.content>`) reads stored content, and it now renders **empty, and logs a warning**, for stored content that is over its limits, has a `<pre>` block or count of `<pre>` tags the parser can't survive (see above; long whitespace runs and unclosed `<pre>` tags are normalised, not refused), carries the minifier's placeholder token (`MINIFYHTML`), or is not a Tiptap document. Nothing is reported through `report()`. The warning (`Log::warning`, once per value per process) carries the reason, the size and the limits, so check your log after upgrading if a page that used to show content is blank.
+
+The defaults are 2 MB and 20,000 tags (HTML tags, or nodes and marks of a JSON document; worst case about 64 MB of memory for HTML and up to about 82 MB for a JSON document). Raise or lower them for your app in `config/atom.php`:
+
+```php
+return [
+    'editor' => [
+        'render_max_bytes' => 4 * 1024 * 1024,
+        'render_max_tags' => 40000,
+    ],
+];
+```
+
+Memory grows with the tag limit (about 3 KB per tag or node), so raising `render_max_tags` needs a matching increase in PHP's `memory_limit`: at the defaults a page that renders one such document can peak near 64 MB (HTML) or 82 MB (JSON) above baseline, and doubling the limit roughly doubles that.
+
+A long legitimate document (a 1,000-row price table, a 3,000-paragraph article) is within the defaults. A value that is not a Tiptap document at all (one only a hostile client can send) renders empty without a warning.
 
 ---
 
@@ -763,6 +856,90 @@ class Search implements WebAction
 ```
 
 Actions without `authorize()` are callable by anyone, including guests — which is right for something like `GetOptions` (country and dial-code lists on public forms) and wrong for almost everything else. An action inheriting from an opted-in parent inherits the contract.
+
+### Upgrading to 3.29.14
+
+**This is a security fix for stored Tiptap JSON documents. Upgrade soon if any user can write to an `AsTiptapContent` column, to an `<atom:tiptap>` field, or to anything you pass to `Content::sanitize()` or `Content::render()` as JSON.**
+
+A client that can save a JSON document could get markup of its choosing into what `Content::render()`, `<atom:tiptap.content>` and `Content::sanitize()` print (stored XSS). The cause is in tiptap-php: a zero in a node's attributes (an int `0`, or a float that is zero such as `0.0`) makes its serialiser print the node's other string attributes as raw tags instead of escaped attribute values. Two shapes were exploitable: an image whose `alt`, `title` or `height` was zero, and a mention whose `id` was zero; and a table cell (`tableCell` or `tableHeader`) whose `colspan` or `rowspan` was zero and whose `colwidth` held a string. From 3.29.14 a zero in any node or mark attribute is turned into the string `"0"`, which prints the same inside an attribute, before the document reaches the serialiser.
+
+- **HTML input was never affected.** HTML attributes arrive as strings, and tiptap-php's HTML parse turns the numeric ones (`start`, `colspan`, `rowspan`) into `null` when they are zero, so a zero never reaches the serialiser that way. Chat HTML from `<atom:tiptap.chat>` was not exposed, unless your code passed it a JSON document.
+- **Stored JSON needs no backfill, but it is not rewritten either.** The stored document still holds the zero; `render()` and `<atom:tiptap.content>` repair it on the way out, so every print through atom is safe after the upgrade. Anything that prints the column some other way was never covered and still is not: `{!! !!}` or `x-html` straight from the column, your own tiptap-php `Editor`, or JavaScript that loads the stored document.
+- **HTML that was rendered before the upgrade is not repaired.** Anything that stored or cached the output of `render()` or `sanitize()` while the hole was open (a rendered email, a page or fragment cache, a PDF, a search index) still holds whatever it printed. Clear those caches; atom cannot reach them.
+- **Backfill only if you ever passed JSON to `sanitize()` and stored the result.** `sanitize()` accepts a JSON document and returns HTML, so a row stored from a hostile document before 3.29.14 may hold stray markup as HTML, and that markup can include an `<iframe>`. Run those rows through `Content::resanitize()`, which is `sanitize()` for a row that `sanitize()` wrote: `sanitize()` itself would drop the YouTube embeds a row legitimately holds (HTML parsing drops every `<iframe>`; an embed survives only in a JSON document). `resanitize()` sets aside only an embed that is exactly what atom prints (a `div` and an `iframe` with the attributes it sets, a `src` rebuilt from the 11-character id on `youtube.com` or `youtube-nocookie.com`, an optional `?start=`), sanitizes everything else, and puts the embeds back. Any other `<iframe>`, a `srcdoc` or an extra attribute included, is cleaned away with the rest of the hostile markup. The placeholder it uses is 128 random bits, new for every call, so nothing in a row can forge or predict it: a row that contains the word `ATOMEMBED`, or a guess at the token, is cleaned like any other. A clean row comes back unchanged and is not written. A row that comes back `''` is not rewritten; it is either over the size limits or has nothing printable in it, so the snippet lists those ids and you look at each by hand (blank or delete it: `render()` never prints it, but anything that prints the column raw would):
+
+```php
+use Jiannius\Atom\Tiptap\Content;
+
+// once, after upgrading; Message is your model, body the column that sanitize() wrote
+$review = [];
+
+Message::query()->chunkById(200, function ($messages) use (&$review) {
+    foreach ($messages as $message) {
+        if (! is_string($message->body)) {
+            continue;
+        }
+
+        $clean = Content::resanitize($message->body);
+
+        if ($clean === '') {
+            if (trim($message->body) !== '') {
+                $review[] = $message->getKey();
+            }
+
+            continue;
+        }
+
+        if ($clean !== $message->body) {
+            $message->forceFill(['body' => $clean])->saveQuietly();
+        }
+    }
+});
+
+// the rows nothing was written for: look at them by hand
+logger()->info('resanitize() backfill: rows to review', ['ids' => $review]);
+```
+
+If you only ever stored chat HTML, or JSON through `AsTiptapContent`, skip it. Do not pass JSON through `sanitize()` from now on either (see the section above); it is for HTML.
+
+- **A heading `level` no longer reaches the tag name as sent.** tiptap-php checks it with a loose `in_array()`, so `" 1"`, `"\n1"`, `"+1"` and `"6 "` made `createElement('h 1')` throw (a `report()` on every call, and `sanitize()` returned `''` with `sanitizeRefuses()` false), and `"1e0"`, `"01"` and `"1.0"` were stored as `<h1e0>`, `<h01>` and `<h1.0>`. A level that is an int from 1 to 6, or a string that is exactly one of those digits once trimmed, is kept; anything else (`7`, `0`, `-1`, `1.5`, `true`, `"01"`, `"1e0"`) becomes level 1, as a missing level already did. The editor only ever sends `1` to `6`.
+- **Other whole-number attributes are checked the same way.** An ordered list `start`, a cell `colspan` and `rowspan` (at least 1) must be an int or a string of digits, and anything else is dropped, as it is when the same value comes in as HTML. A `colwidth` entry may also be a finite float, which is rounded to a whole number; an entry that is not a number drops the whole `colwidth`. A code block's `language` was already limited to one token of name characters.
+- **`sanitize()` refuses output over `$maxTags`, not only input.** A document of 5000 nodes could print 20000 tags (about 5,000 empty tables were 85 KB in and about 20,000 tags out, just under `render()`'s limit), stored and printed on every view. Now the output is counted (`<` characters) against `$maxTags` too, and a document that prints more comes back `''` with `sanitizeRefuses()` true. Real content is nowhere near it: what the chat composer sends prints exactly as many tags as it had, and a long article (2,900 nodes, 105 KB of JSON) prints about 2,600, so the byte limit binds first. What can now be refused is hand-written HTML that leans on the parser's repairs: `<p><b>a</b>x` prints four tags for three, so about 1,250 of them in one message reach the limit. Measured with the default limits, a list of `<li><p>` items is refused from 1,250 items (1,249 is kept, 118 KB of JSON), and a table of 5 columns from 228 rows (227 is kept; 3 columns, 356 rows; 8 columns, 146 rows). **Raise `$maxTags` (and `$maxBytes`, which sits close behind at about 120 KB for those shapes) for a checklist or table-heavy field.** `Content::render()` is not capped this way; it reads stored content under its own limits.
+- **`sanitizeRefuses()` now converts the input** (once the cheap checks on the input pass) to measure the output, so it agrees with `sanitize()`. It also answers `true` for output over four times `$maxBytes`, which it used to miss. Call it after `sanitize()` has returned `''`, as the example above does, and it costs one more parse only for a message that is being rejected anyway.
+- **A document that cannot be written back as JSON is now refused silently.** A number that overflows (`1e999`) made tiptap-php's `json_encode()` return false, and an object key that starts with a NUL byte (`\u0000`) made it read `content` on null. Either one was a `report()` on every call, and from `render()` one per view of a stored row. Such a document now renders `''` with no report and no log line, and `sanitizeRefuses()` is true. Only a hostile client sends one.
+- **Nothing to do** for documents written by the editor: their output is unchanged.
+
+### Upgrading to 3.29.13
+
+A URL handed to an atom component used to be printed into an `href` (or navigated to) as it came. `{{ }}` escapes the HTML, but a `javascript:` URL still runs when clicked, so a host that passed a user-supplied URL (a profile "website", a link from a CMS) let that user run script in a visitor's browser. Atom now checks the URL first, with `safe_url()` in PHP and `atom.safeUrl()` in JS.
+
+Allowed: `http`, `https`, `mailto`, `tel`, `sms`, and any URL with no scheme (`/path`, `path`, `//host/path`, `#anchor`, `?query`). Anything else (`javascript:`, `vbscript:`, `data:`, `blob:`, `file:`, and versions hidden with upper case, HTML entities, tabs, newlines or leading control characters) is dropped: the link renders without an `href`, a button or row does not navigate, and a toast or lightbox does not open it. It covers `<atom:link>`, `<atom:button>`, `<atom:tabs>` / `<atom:tabs.item>`, `<atom:menu.item>`, `<atom:list.item>`, `<atom:command.item>` (and Enter in the palette), `<atom:navlist.item>`, `<atom:table.row>`, the `<atom:logo>` link, the breadcrumbs trail and its back action, toast `url` / `navigate`, the lightbox download, and the call-to-action button in the generic mail template (`atom()->mail(cta: ...)`), which is left out when its URL is blocked.
+
+- **Nothing to do** for `route()`, `url()` and `asset()` output, ports, query strings, fragments, IDN hosts, `mailto:` and `tel:`, or `wire:navigate` links. They are unchanged.
+- **A relative path whose first segment contains a colon is now read as a scheme and dropped.** `href="foo:bar"` and `href="10:30/agenda"` no longer render; write `./foo:bar` (or `/foo:bar`). A colon later in the path (`/time/10:30`), in the query or in the fragment is fine.
+- **Other schemes** (`ftp:`, `whatsapp:`, `viber:`, an app deep link) are dropped too. If you need one, render your own `<a>` for it.
+- **Your own markup is not covered.** An `href`, `formaction`, `window.open()` or `location` you write around a user-supplied URL needs `safe_url($url)` (PHP) or `atom.safeUrl(url)` (JS) first. That check is about the scheme only: `//evil.com` is allowed, so a redirect to a user-supplied URL must also check the host. `<atom:embed>` keeps its own check for now.
+
+### Upgrading to 3.29.12
+
+`<atom:sharer>` printed `title` and `url`, and `<atom:embed>` printed an image `src`, into HTML attributes without escaping, so a value containing a quote could add attributes to the element; `<atom:error :errors="...">` printed each message as HTML. They are escaped now. `<atom:embed>` also refuses a `src` whose scheme is not `http` or `https` (relative and protocol-relative URLs still work) and shows the file icon instead.
+
+- **Nothing to do** if you pass plain text and normal URLs. `&`, quotes and CJK text reach `sharer.js` as typed; it reads the attributes with `getAttribute()` and URL-encodes them itself.
+- **A `title`, `url` or error message that is already HTML-encoded** (`Tom &amp; Jerry`) is now shown literally. Pass the raw text (`Tom & Jerry`).
+- **An error message that carries markup on purpose** (`atom:error :errors="[...]"` with `<b>`) now shows the tags as text. Laravel's own validation messages never do.
+- **An embed `src` on another scheme** (`javascript:`, `data:`, `blob:`) no longer renders. Nothing in atom's own `file->url` produces one.
+- **`embed`'s `icon` prop is trusted markup when it starts with `<svg`.** Only pass developer-written SVG; never a database or user value.
+- **`<atom:sharer>` needs [sharer.js](https://ellisonleao.github.io/sharer.js) on the page.** atom has never bundled it. Without it the component used to throw `Sharer is not defined` in the console; it now stays quiet, but the share buttons do nothing until you load it, for example `<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`. The copy-link button does not need it.
+- **Two share buttons that never worked are fixed** (checked against sharer.js 0.5.4). The X button sent `data-sharer="twitter-x"`, a key sharer.js does not have, so it did nothing; it now sends `x` and keeps its icon and label. The email button opened a blank popup for its `mailto:` link; it now carries `data-link="true"`, so the mail client opens. sharer.js opens its popups without `noopener` and has no option for it, and atom does not patch it: the popups only ever go to the social sites' own addresses.
+- **`Content::sanitize()` and `Content::render()` no longer report an error for input with nothing to render.** A script-only, style-only, comment-only, `<html></html>` or head-only value used to hit `report()` on every call (a `TypeError` from tiptap-php). They now return `''` without a report or a log line. **Content that is only whitespace, Unicode spaces such as U+3000 or a no-break space included, renders `''`** the same way. Two nested-mark shapes (`<code>><code>c` and `<p><strong>a<em><strong>c</strong></em></strong></p>`) threw an `ErrorException` from tiptap-php, reported on every call; atom now folds the marks of one type on a node into one (the attributes are merged, a later value winning only for the same key, and a `link` keeps its first valid href), which also repairs the malformed output simple repeats such as `<code><code>c</code></code>` used to produce (nested duplicate tags). If you filtered these out of your error tracker, you can drop the filter.
+
+### Upgrading to 3.29.9
+
+Remote and static select options used to be turned into HTML without escaping `label`, `caption` or `color`, so a value a user typed (a contact name, say) rendered as markup. They are escaped now, including the native select's `<option>` text.
+
+- **Nothing to do** if your option sets return plain `label`/`caption` text.
+- **A label that already contains HTML entities** (`Tom &amp; Jerry`) is now shown literally. Return the raw text (`Tom & Jerry`).
+- **The `html` key stays trusted.** If a set builds its own `html`, atom still passes it through untouched, and you must wrap every interpolated user or database field in `e()`. Grep your `App\Actions\GetOptions` (and any code that sets `html` or `selected_html` on an option) for interpolated model fields. See [Option text is escaped](#option-text-is-escaped-the-html-key-is-trusted).
 
 ### Upgrading to 3.25
 
@@ -887,6 +1064,20 @@ The package's own sets (`countries`, `states`, `dialcodes`, `currencies`, `color
 
 `$auth` is a coarse gate: signed in or not. It does **not** scope rows. A signed-in user of tenant A calling a set that returns every tenant's rows still gets every tenant's rows, so scope the query itself as well.
 
+#### Option text is escaped; the `html` key is trusted
+
+The listbox renders each option's markup with `x-html`. An option is a `value` plus a `label`, and optionally `caption`, `avatar` and `color`. Atom builds the markup from those fields and **escapes every one of them**, both on the server (`GetOptions::getOptionHtml()`) and in the client-side fallback (`select.js`). A contact name a user typed renders as text, whatever it contains. Return the raw text in `label` and `caption`; don't pre-escape it, or it is escaped twice. `color` is checked as well as escaped: only `#hex`, `rgb()`/`rgba()`, `hsl()`/`hsla()` or a plain colour name draws a swatch, and anything else (`red; position: fixed`) draws none.
+
+An option may instead carry its own `html` (and `selected_html`, the version shown in the closed trigger). That key is the escape hatch for a custom layout, and it is **trusted**: atom passes it to the browser untouched, so you own escaping it. Wrap every user or database value you put in it with `e()`:
+
+```php
+['value' => $doc->id, 'label' => $doc->name, 'html' => '<div>'.e($doc->name).' <small>'.e($doc->number).'</small></div>']
+```
+
+An unescaped field in `html` is a stored XSS for everyone who opens that select. Keep `label` plain even when `html` is set: the label is what search filters on and what the chips show.
+
+The native variant prints `label` into `<option>`, and escapes it.
+
 ---
 
 ## Translation
@@ -905,6 +1096,7 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 
 `resources/js/atom.js` is built to `dist/` and served by the package; it boots automatically when `<atom:html>` renders. It exposes:
 
+- `window.atom.safeUrl(url)` — the URL unchanged if it is safe to bind to an `href` or navigate to, else `null`. The JS twin of `safe_url()` (scheme only: a host check is still yours for a redirect); use it before `Livewire.navigate()`, `window.open()` or `x-bind:href` on a URL you did not write.
 - `window.atom.action(name, params)` — POST to `/atom/action/{name}` (actions implementing `WebAction` only; see [Actions](#actions)).
 - `window.dd(...args)` — `console.log` dump.
 - `window.empty(value)` — truthy-empty helper.
@@ -930,7 +1122,8 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 
 | Command | Purpose |
 | ------- | ------- |
-| `atom:purge-editor-images` | Walks `App\Models\*`, finds columns cast as `AsEditorContent`, and moves any unreferenced editor image to `editor-purged/` on the local disk before removing from the configured disk. |
+| `atom:purge-editor-images` | Walks `App\Models\*`, finds columns cast as `AsEditorContent` or `AsTiptapContent`, and moves any unreferenced editor image to `editor-purged/` on the local disk before removing from the configured disk. A file is referenced if its name appears anywhere in a stored value. |
+| `atom:purge-editor-images --dry-run` | Lists what it would delete and changes nothing. |
 | `atom:purge-editor-images --force` | Empties the `editor-purged/` backup folder. |
 
 ---
