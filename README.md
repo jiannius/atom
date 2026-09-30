@@ -862,6 +862,7 @@ Actions without `authorize()` are callable by anyone, including guests — which
 - **A `title` or `url` that is already HTML-encoded** (`Tom &amp; Jerry`) is now shown literally. Pass the raw text (`Tom & Jerry`).
 - **An embed `src` on another scheme** (`javascript:`, `data:`, `blob:`) no longer renders. Nothing in atom's own `file->url` produces one.
 - **`embed`'s `icon` prop is trusted markup when it starts with `<svg`.** Only pass developer-written SVG; never a database or user value.
+- **`Content::sanitize()` and `Content::render()` no longer report an error for input with nothing to render.** A script-only, style-only, comment-only, whitespace-only, `<html></html>` or head-only value, or one with the same mark twice on a node (`<code><code>c`), used to hit `report()` on every call (a `TypeError` or `ErrorException` from tiptap-php). They now return `''` (or the content, once the duplicate mark is collapsed) without a report or a log line. If you filtered these out of your error tracker, you can drop the filter.
 
 ### Upgrading to 3.29.9
 

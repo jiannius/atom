@@ -226,9 +226,20 @@ class Content
                 return static::refused($logRefusal, $text, $refusal, $maxBytes, $maxTags);
             }
 
-            $html = (new Editor(['extensions' => static::extensions()]))
-                ->setContent($content)
-                ->getHTML();
+            // a document with no <body> has no content, and tiptap-php's parser throws on it
+            if (is_string($content) && ! static::hasBody($content)) {
+                return '';
+            }
+
+            $editor = (new Editor(['extensions' => static::extensions()]))->setContent($content);
+
+            $document = $editor->getDocument();
+
+            if (static::dedupeMarks($document)) {
+                $editor->setContent($document);
+            }
+
+            $html = $editor->getHTML();
 
             if (strlen($html) > $maxBytes * static::OUTPUT_FACTOR) {
                 return static::refused($logRefusal, $text, 'output of '.strlen($html).' bytes', $maxBytes, $maxTags);
@@ -462,6 +473,71 @@ class Content
         } else {
             $node['attrs'] = $attributes;
         }
+    }
+
+    /**
+     * Whether libxml gives this HTML a <body>, the only part tiptap-php's
+     * parser reads. It builds one only when something belongs in it: a script,
+     * a style, a comment, a bare <meta>, <link>, <base> or <title>, an empty
+     * `<html>` or nothing at all leaves it without, and the parser then throws
+     * a TypeError, on every call. Asked before setContent() so that input is an
+     * empty message, not a failure to report. Whitespace is collapsed
+     * first, Unicode spaces included, because the parser's minifier does the
+     * same: a value of no-break spaces is bodyless to the parser though libxml
+     * would keep it as text. (Running the minifier itself here would double
+     * its cost, 0.6 s on 2 MB.)
+     */
+    protected static function hasBody(string $html): bool
+    {
+        $previous = libxml_use_internal_errors(true);
+
+        try {
+            $document = new \DOMDocument;
+            $document->loadHTML('<?xml encoding="utf-8" ?>'.trim(preg_replace('/\s+/u', ' ', $html) ?? $html));
+
+            return $document->getElementsByTagName('body')->length > 0;
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+    }
+
+    /**
+     * Keep one mark of each type on every node, the last one winning, as a
+     * ProseMirror mark set does. tiptap-php's serialiser pairs opening and
+     * closing tags through a stack and loses count when a node carries the
+     * same mark twice (`<code><code>c`, or a document with two `bold` marks
+     * on one text), which is an ErrorException on every call. Returns whether
+     * anything was removed.
+     *
+     * @param  array<mixed>  $node
+     */
+    protected static function dedupeMarks(array &$node): bool
+    {
+        $changed = false;
+
+        if (isset($node['marks']) && is_array($node['marks'])) {
+            $byType = [];
+
+            foreach ($node['marks'] as $mark) {
+                $byType[is_array($mark) ? (string) ($mark['type'] ?? '') : ''] = $mark;
+            }
+
+            if (count($byType) !== count($node['marks'])) {
+                $node['marks'] = array_values($byType);
+                $changed = true;
+            }
+        }
+
+        if (isset($node['content']) && is_array($node['content'])) {
+            foreach ($node['content'] as $i => $child) {
+                if (is_array($child)) {
+                    $changed = static::dedupeMarks($node['content'][$i]) || $changed;
+                }
+            }
+        }
+
+        return $changed;
     }
 
     /**
