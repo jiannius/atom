@@ -41,6 +41,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-date-range-morph', DateRangeMorphFixture::class);
         Livewire::component('atom-e2e-date-picker-time-morph', DatePickerTimeMorphFixture::class);
         Livewire::component('atom-e2e-select-sibling-sync', SelectSiblingSyncFixture::class);
+        Livewire::component('atom-e2e-safe-url-breadcrumbs', SafeUrlBreadcrumbsFixture::class);
 
         Route::middleware('web')->get('/atom/e2e/select-morph', fn () => view('atom::e2e.select-morph'));
         Route::middleware('web')->get('/atom/e2e/select-xss', fn () => view('atom::e2e.select-xss'));
@@ -54,5 +55,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/breadcrumbs', fn () => view('atom::e2e.breadcrumbs'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-wrapped', fn () => view('atom::e2e.breadcrumbs-wrapped'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-untrailed', fn () => view('atom::e2e.breadcrumbs-untrailed'));
+        Route::middleware('web')->get('/atom/e2e/safe-url', fn () => view('atom::e2e.safe-url'));
+        Route::middleware('web')->get('/atom/e2e/safe-url-breadcrumbs', fn () => view('atom::e2e.safe-url-breadcrumbs'));
     }
 }

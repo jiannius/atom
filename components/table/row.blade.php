@@ -3,6 +3,7 @@
 ])
 
 @php
+$href = safe_url($href);
 $clickable = $href || $attributes->hasLike('x-on:click*', 'wire:click*');
 @endphp
 

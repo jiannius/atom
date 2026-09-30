@@ -14,7 +14,7 @@
 
 @php
 $rel ??= data_get($tab, 'rel');
-$href ??= data_get($tab, 'href');
+$href = safe_url($href ?? data_get($tab, 'href'));
 $icon ??= data_get($tab, 'icon');
 $label ??= data_get($tab, 'label');
 $value ??= data_get($tab, 'value');

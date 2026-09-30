@@ -15,6 +15,8 @@
 ])
 
 @php
+$href = safe_url($href);
+
 $inverted ??= $type === 'delete';
 
 $variant ??= data_get($social, 'name') ?? match ($type) {
