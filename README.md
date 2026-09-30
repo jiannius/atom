@@ -527,7 +527,7 @@ there's no server-side or cross-device state.
 | `<atom:embed>` | `src`, `icon`, `file` — embeds image / video / YouTube / file preview. |
 | `<atom:error>` | Plain error message slot. |
 | `<atom:html>` | Page boilerplate (see [Page boilerplate](#page-boilerplate)). |
-| `<atom:sharer>` | `sites` (array), `url`, `title` — social share buttons. |
+| `<atom:sharer>` | `sites` (array), `url`, `title` — social share buttons. atom does not bundle [sharer.js](https://ellisonleao.github.io/sharer.js): load it on the page (`<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`) or the share buttons do nothing (the copy-link button works without it). The default sites (`facebook`, `twitter-x`, `linkedin`, `whatsapp`, `telegram`, `email`) were checked against sharer.js 0.5.4; a site needs an atom icon of the same name. |
 | `<atom:whatsapp>` | `number`, `text` — floating WhatsApp button. |
 
 ---
@@ -862,6 +862,8 @@ Actions without `authorize()` are callable by anyone, including guests — which
 - **A `title` or `url` that is already HTML-encoded** (`Tom &amp; Jerry`) is now shown literally. Pass the raw text (`Tom & Jerry`).
 - **An embed `src` on another scheme** (`javascript:`, `data:`, `blob:`) no longer renders. Nothing in atom's own `file->url` produces one.
 - **`embed`'s `icon` prop is trusted markup when it starts with `<svg`.** Only pass developer-written SVG; never a database or user value.
+- **`<atom:sharer>` needs [sharer.js](https://ellisonleao.github.io/sharer.js) on the page.** atom has never bundled it. Without it the component used to throw `Sharer is not defined` in the console; it now stays quiet, but the share buttons do nothing until you load it, for example `<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`. The copy-link button does not need it.
+- **Two share buttons that never worked are fixed** (checked against sharer.js 0.5.4). The X button sent `data-sharer="twitter-x"`, a key sharer.js does not have, so it did nothing; it now sends `x` and keeps its icon and label. The email button opened a blank popup for its `mailto:` link; it now carries `data-link="true"`, so the mail client opens. sharer.js opens its popups without `noopener` and has no option for it, and atom does not patch it: the popups only ever go to the social sites' own addresses.
 - **`Content::sanitize()` and `Content::render()` no longer report an error for input with nothing to render.** A script-only, style-only, comment-only, whitespace-only, `<html></html>` or head-only value, or one with the same mark twice on a node (`<code><code>c`), used to hit `report()` on every call (a `TypeError` or `ErrorException` from tiptap-php). They now return `''` (or the content, once the duplicate mark is collapsed) without a report or a log line. If you filtered these out of your error tracker, you can drop the filter.
 
 ### Upgrading to 3.29.9
