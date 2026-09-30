@@ -8,18 +8,22 @@
 ])
 
 @php
+// a link that was given an href which safe_url() refused goes nowhere, so it
+// must not look or act like one (a link with no href at all may carry wire:click)
+$blocked = filled($href) && safe_url($href) === null;
 $href = safe_url($href);
 
 $classes = Arr::toCssClasses([
-    'underline underline-offset-5 decoration-dotted cursor-pointer',
+    'underline underline-offset-5 decoration-dotted',
+    'cursor-pointer' => !$blocked,
     $variant === 'accent' ? 'text-accent' : 'text-sky-600 dark:text-zinc-300',
     $icon || $iconSuffix ? 'inline-flex items-center gap-2' : '',
 ]);
 
 $merges = [
     'href' => $href,
-    'rel' => $rel,
-    'target' => $newtab ? '_blank' : null,
+    'rel' => $blocked ? null : $rel,
+    'target' => $newtab && !$blocked ? '_blank' : null,
     'aria-label' => strip_tags($slot->toHtml()),
 ];
 @endphp

@@ -229,7 +229,7 @@ All `heading`, `subheading`, and `message` strings are auto-passed through `t()`
 | `js($value)` | Alias for `Js::from()`. |
 | `is_enum($value)` | True for `UnitEnum` / `BackedEnum`. |
 | `is_using_trait($class, $trait)` | True if `$class` (recursively) uses `$trait`. |
-| `safe_url($url)` | The URL unchanged if it is `http`, `https`, `mailto`, `tel`, `sms` or scheme-less, otherwise `null`. Reads the URL the way a browser does (entities decoded, tabs and newlines dropped, leading control characters stripped, scheme lowercased). Every atom component that takes an `href` uses it. |
+| `safe_url($url)` | The URL unchanged if it is `http`, `https`, `mailto`, `tel`, `sms` or scheme-less, otherwise `null`. Reads the URL the way a browser does (entities decoded, tabs and newlines dropped, leading control characters stripped, scheme lowercased). Makes a URL scheme-safe and nothing more: `//evil.com` is allowed, so a redirect built from user input must also check the host. Every atom component that takes an `href` uses it. |
 
 Examples:
 
@@ -861,12 +861,12 @@ Actions without `authorize()` are callable by anyone, including guests — which
 
 A URL handed to an atom component used to be printed into an `href` (or navigated to) as it came. `{{ }}` escapes the HTML, but a `javascript:` URL still runs when clicked, so a host that passed a user-supplied URL (a profile "website", a link from a CMS) let that user run script in a visitor's browser. Atom now checks the URL first, with `safe_url()` in PHP and `atom.safeUrl()` in JS.
 
-Allowed: `http`, `https`, `mailto`, `tel`, `sms`, and any URL with no scheme (`/path`, `path`, `//host/path`, `#anchor`, `?query`). Anything else (`javascript:`, `vbscript:`, `data:`, `blob:`, `file:`, and versions hidden with upper case, HTML entities, tabs, newlines or leading control characters) is dropped: the link renders without an `href`, a button or row does not navigate, and a toast or lightbox does not open it. It covers `<atom:link>`, `<atom:button>`, `<atom:tabs>` / `<atom:tabs.item>`, `<atom:menu.item>`, `<atom:list.item>`, `<atom:command.item>` (and Enter in the palette), `<atom:navlist.item>`, `<atom:table.row>`, the `<atom:logo>` link, the breadcrumbs trail and its back action, toast `url` / `navigate`, and the lightbox download.
+Allowed: `http`, `https`, `mailto`, `tel`, `sms`, and any URL with no scheme (`/path`, `path`, `//host/path`, `#anchor`, `?query`). Anything else (`javascript:`, `vbscript:`, `data:`, `blob:`, `file:`, and versions hidden with upper case, HTML entities, tabs, newlines or leading control characters) is dropped: the link renders without an `href`, a button or row does not navigate, and a toast or lightbox does not open it. It covers `<atom:link>`, `<atom:button>`, `<atom:tabs>` / `<atom:tabs.item>`, `<atom:menu.item>`, `<atom:list.item>`, `<atom:command.item>` (and Enter in the palette), `<atom:navlist.item>`, `<atom:table.row>`, the `<atom:logo>` link, the breadcrumbs trail and its back action, toast `url` / `navigate`, the lightbox download, and the call-to-action button in the generic mail template (`atom()->mail(cta: ...)`), which is left out when its URL is blocked.
 
 - **Nothing to do** for `route()`, `url()` and `asset()` output, ports, query strings, fragments, IDN hosts, `mailto:` and `tel:`, or `wire:navigate` links. They are unchanged.
 - **A relative path whose first segment contains a colon is now read as a scheme and dropped.** `href="foo:bar"` and `href="10:30/agenda"` no longer render; write `./foo:bar` (or `/foo:bar`). A colon later in the path (`/time/10:30`), in the query or in the fragment is fine.
 - **Other schemes** (`ftp:`, `whatsapp:`, `viber:`, an app deep link) are dropped too. If you need one, render your own `<a>` for it.
-- **Your own markup is not covered.** An `href`, `formaction`, `window.open()` or `location` you write around a user-supplied URL needs `safe_url($url)` (PHP) or `atom.safeUrl(url)` (JS) first. `<atom:embed>` keeps its own check for now.
+- **Your own markup is not covered.** An `href`, `formaction`, `window.open()` or `location` you write around a user-supplied URL needs `safe_url($url)` (PHP) or `atom.safeUrl(url)` (JS) first. That check is about the scheme only: `//evil.com` is allowed, so a redirect to a user-supplied URL must also check the host. `<atom:embed>` keeps its own check for now.
 
 ### Upgrading to 3.29.12
 
@@ -1044,7 +1044,7 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 
 `resources/js/atom.js` is built to `dist/` and served by the package; it boots automatically when `<atom:html>` renders. It exposes:
 
-- `window.atom.safeUrl(url)` — the URL unchanged if it is safe to bind to an `href` or navigate to, else `null`. The JS twin of `safe_url()`; use it before `Livewire.navigate()`, `window.open()` or `x-bind:href` on a URL you did not write.
+- `window.atom.safeUrl(url)` — the URL unchanged if it is safe to bind to an `href` or navigate to, else `null`. The JS twin of `safe_url()` (scheme only: a host check is still yours for a redirect); use it before `Livewire.navigate()`, `window.open()` or `x-bind:href` on a URL you did not write.
 - `window.atom.action(name, params)` — POST to `/atom/action/{name}` (actions implementing `WebAction` only; see [Actions](#actions)).
 - `window.dd(...args)` — `console.log` dump.
 - `window.empty(value)` — truthy-empty helper.

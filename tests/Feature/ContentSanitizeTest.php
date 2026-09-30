@@ -492,6 +492,28 @@ function measured(callable $callback): array
     return [$result, microtime(true) - $started, (memory_get_peak_usage() - $base) / 1048576];
 }
 
+/**
+ * Run a callback and report the CPU time it used (user + system) rather than the
+ * wall clock. A busy machine (the whole suite, another run alongside) stretches wall
+ * time without the code doing any more work, which made a bound on it flaky; CPU
+ * time moves far less, so a bound on it still trips on a genuine slowdown.
+ *
+ * @return array{0: mixed, 1: float} [result, CPU seconds]
+ */
+function measuredCpu(callable $callback): array
+{
+    $cpu = function (): float {
+        $usage = getrusage();
+
+        return $usage['ru_utime.tv_sec'] + $usage['ru_utime.tv_usec'] / 1e6 + $usage['ru_stime.tv_sec'] + $usage['ru_stime.tv_usec'] / 1e6;
+    };
+
+    $before = $cpu();
+    $result = $callback();
+
+    return [$result, $cpu() - $before];
+}
+
 describe('Content: the <pre> placeholder bomb', function () {
     it('is refused by sanitize() without being parsed', function (string $html) {
         $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
@@ -835,10 +857,13 @@ describe('Content: whitespace the minifier is quadratic on is collapsed, not ref
     it('holds a run just under the limit, repeated across a 2 MB document, to a time bound', function () {
         $html = str_repeat('<p>a'.str_repeat(' ', 32).'b</p>', intdiv(2000000, 40));
 
-        [$out, $seconds] = measured(fn () => Content::sanitize($html, 3000000, 100000));
+        // CPU time, not wall clock, and 5 s rather than 3: the work is about 2.5 s on an idle
+        // machine, so 3 s of wall clock failed under full-suite load (3.29 s seen) while
+        // proving nothing more. A quadratic regression on 2 MB would be far past 5 s.
+        [$out, $seconds] = measuredCpu(fn () => Content::sanitize($html, 3000000, 100000));
 
         expect($out)->not->toBe('');
-        expect($seconds)->toBeLessThan(3.0);
+        expect($seconds)->toBeLessThan(5.0);
     });
 
     it('renders real legacy markup: pretty-printed nested HTML with long indentation', function () {

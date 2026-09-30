@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 // A host that puts a user-supplied URL (a profile "website", a CMS link) into an
 // atom component must not get click-XSS from a `javascript:` URL. The blade
@@ -31,68 +33,13 @@ async function spyOnNavigation (page) {
 const navigated = (page) => page.evaluate(() => window.__navigated)
 const opened = (page) => page.evaluate(() => window.__opened)
 
-// Keep in step with safeUrlHostile() / safeUrlLegit() in tests/Feature/SafeUrlTest.php
-const hostile = [
-  'javascript:PWNED(1)',
-  'JaVaScRiPt:PWNED(1)',
-  '   javascript:PWNED(1)',
-  '\x01\x02javascript:PWNED(1)',
-  '\x00javascript:PWNED(1)',
-  'java\tscript:PWNED(1)',
-  'java\nscript:PWNED(1)',
-  'jav\r\nascript:PWNED(1)',
-  'javascript\t:PWNED(1)',
-  '&#106;avascript:PWNED(1)',
-  '&#106avascript:PWNED(1)',
-  '&#x6A;avascript:PWNED(1)',
-  '&#0000106;avascript:PWNED(1)',
-  'javascript&colon;PWNED(1)',
-  'javascript&#58;PWNED(1)',
-  'java&Tab;script:PWNED(1)',
-  'java&NewLine;script:PWNED(1)',
-  '&amp;#106;avascript:PWNED(1)',
-  '&amp;amp;#106;avascript:PWNED(1)',
-  'vbscript:PWNED(1)',
-  'data:text/html,<script>PWNED(1)</script>',
-  'blob:https://example.com/PWNED',
-  'file:///etc/PWNED',
-  'java script:PWNED(1)',
-  'foo:bar',
-]
-
-const legit = [
-  '/dashboard',
-  'invoices/12',
-  './foo:bar',
-  '../up/one',
-  '#section-2',
-  '?page=2&sort=name',
-  '//cdn.example.com/a.js',
-  'http://example.com',
-  'https://example.com/a/b',
-  'HTTPS://EXAMPLE.COM/A',
-  'https://example.com:8443/admin',
-  'http://127.0.0.1:8000/atom/docs',
-  'https://example.com/search?q=a+b&lang=en#results',
-  '/time/10:30',
-  '/x?redirect=https://other.example/a',
-  '#a:b',
-  'https://bücher.example/päth',
-  'https://xn--bcher-kva.example/',
-  'mailto:hello@example.com?subject=Hi',
-  'tel:+60123456789',
-  'sms:+60123456789?body=Hi',
-  'https://example.com/?a=1&amp;b=2',
-  '/a%3Ab',
-  // allowed, but only once the browser's own clean-up is applied
-  'ht\ttps://example.com/a',
-  'ma\nilto:hello@example.com',
-  '  https://example.com/a',
-  '\x01\x02https://example.com/a',
-  'ht&#116;ps://example.com/a',
-  'https&colon;//example.com/a',
-  'ht&Tab;tps://example.com/a',
-]
+// One corpus for both sides: tests/Fixtures/safe-url-corpus.json is also read by
+// tests/Feature/SafeUrlTest.php, so the PHP helper and atom.safeUrl() are held to
+// the same answers. `parity` is a sample sorted by what atom.safeUrl() answered in
+// a browser when the file was generated; both suites must reproduce it.
+const corpus = JSON.parse(readFileSync(join(process.cwd(), 'tests/Fixtures/safe-url-corpus.json'), 'utf8'))
+const hostile = Object.values(corpus.hostile)
+const legit = [...Object.values(corpus.legit), ...Object.values(corpus.oddities)]
 
 test.describe('atom.safeUrl()', () => {
   test('blocks the hostile corpus', async ({ page }) => {
@@ -114,14 +61,16 @@ test.describe('atom.safeUrl()', () => {
   test('returns null for empty and non-string input', async ({ page }) => {
     await page.goto('/atom/e2e/safe-url')
 
-    const results = await page.evaluate(() => [null, undefined, '', {}, [], false].map(value => atom.safeUrl(value)))
+    const results = await page.evaluate(() => [null, undefined, '', {}, [], false, true].map(value => atom.safeUrl(value)))
 
-    expect(results).toEqual([null, null, null, null, null, null])
+    expect(results).toEqual([null, null, null, null, null, null, null])
   })
 
-  test('blocks a value that never settles under entity decoding', async ({ page }) => {
+  test('blocks a deeply nested entity encoding', async ({ page }) => {
     await page.goto('/atom/e2e/safe-url')
 
+    // blocked because it decodes down to a `javascript:` URL; the pass limit is a
+    // fail-closed bound on top of that, and this test does not pin it down
     const result = await page.evaluate(() => {
       let url = '&#106;avascript:PWNED(1)'
       for (let i = 0; i < 12; i++) url = url.replaceAll('&', '&amp;')
@@ -129,6 +78,19 @@ test.describe('atom.safeUrl()', () => {
     })
 
     expect(result).toBeNull()
+  })
+
+  test('answers what the shared sample recorded for every string', async ({ page }) => {
+    await page.goto('/atom/e2e/safe-url')
+
+    const wrong = await page.evaluate(({ allowed, blocked }) => ({
+      blockedButShouldPass: allowed.filter(url => atom.safeUrl(url) !== url),
+      passedButShouldBlock: blocked.filter(url => atom.safeUrl(url) !== null),
+    }), corpus.parity)
+
+    expect(corpus.parity.allowed.length).toBeGreaterThan(2000)
+    expect(corpus.parity.blocked.length).toBeGreaterThan(2000)
+    expect(wrong).toEqual({ blockedButShouldPass: [], passedButShouldBlock: [] })
   })
 })
 

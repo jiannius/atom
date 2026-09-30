@@ -7,92 +7,41 @@ use Illuminate\Support\Facades\Blade;
  * HTML-escaped, but `javascript:` still runs on click. Every component that
  * takes a URL therefore runs it through safe_url() first.
  *
- * Every hostile URL carries the marker PWNED so a test can prove the payload
- * reached the output nowhere, not only that an href attribute is gone.
+ * The corpus is one file, tests/Fixtures/safe-url-corpus.json, read here and by
+ * tests/e2e/safe-url.spec.js, so the PHP helper and atom.safeUrl() are held to
+ * the same answers. Every hostile URL carries the marker PWNED so a test can
+ * prove the payload reached the output nowhere, not only that an href is gone.
+ *
+ *   hostile   URLs a browser would run or treat as a script/document scheme
+ *   legit     URLs a host legitimately renders; each comes back unchanged
+ *   oddities  allowed URLs a browser reads correctly after its own clean-up
+ *             (helper only: the attribute bag trims an href, so a component would
+ *             not print these back unchanged)
+ *   parity    a sample of about 4800 strings (hand-written edge cases plus seeded
+ *             fuzz of entities, tabs, controls, case and Unicode look-alikes),
+ *             sorted by what a browser-side atom.safeUrl() answered when the file
+ *             was generated; the helper must answer the same for every one
  */
+function safeUrlCorpus(): array
+{
+    static $corpus;
 
-/** URLs a browser would run or treat as a script/document scheme. */
+    return $corpus ??= json_decode(file_get_contents(__DIR__.'/../Fixtures/safe-url-corpus.json'), true, flags: JSON_THROW_ON_ERROR);
+}
+
 function safeUrlHostile(): array
 {
-    return [
-        'javascript' => 'javascript:PWNED(1)',
-        'mixed case' => 'JaVaScRiPt:PWNED(1)',
-        'upper case' => 'JAVASCRIPT:PWNED(1)',
-        'leading space' => '   javascript:PWNED(1)',
-        'leading control' => "\x01\x02javascript:PWNED(1)",
-        'leading NUL' => "\x00javascript:PWNED(1)",
-        'tab split' => "java\tscript:PWNED(1)",
-        'newline split' => "java\nscript:PWNED(1)",
-        'carriage return split' => "jav\r\nascript:PWNED(1)",
-        'tab before colon' => "javascript\t:PWNED(1)",
-        'decimal entity' => '&#106;avascript:PWNED(1)',
-        'decimal entity, no semicolon' => '&#106avascript:PWNED(1)',
-        'hex entity' => '&#x6A;avascript:PWNED(1)',
-        'padded entity' => '&#0000106;avascript:PWNED(1)',
-        'entity colon' => 'javascript&colon;PWNED(1)',
-        'numeric entity colon' => 'javascript&#58;PWNED(1)',
-        'entity tab' => 'java&Tab;script:PWNED(1)',
-        'entity newline' => 'java&NewLine;script:PWNED(1)',
-        'double encoded' => '&amp;#106;avascript:PWNED(1)',
-        'triple encoded' => '&amp;amp;#106;avascript:PWNED(1)',
-        'vbscript' => 'vbscript:PWNED(1)',
-        'data html' => 'data:text/html,<script>PWNED(1)</script>',
-        'data base64' => 'data:text/html;base64,PHNjcmlwdD5QV05FRDwvc2NyaXB0Pg==',
-        'blob' => 'blob:https://example.com/PWNED',
-        'file' => 'file:///etc/PWNED',
-        'not a scheme char' => 'java script:PWNED(1)',
-    ];
+    return safeUrlCorpus()['hostile'];
 }
 
-/** URLs a host legitimately renders; each must come back unchanged. */
 function safeUrlLegit(): array
 {
-    return [
-        'root relative' => '/dashboard',
-        'relative' => 'invoices/12',
-        'dot relative' => './foo:bar',
-        'parent relative' => '../up/one',
-        'fragment' => '#section-2',
-        'query only' => '?page=2&sort=name',
-        'protocol relative' => '//cdn.example.com/a.js',
-        'http' => 'http://example.com',
-        'https' => 'https://example.com/a/b',
-        'upper case scheme' => 'HTTPS://EXAMPLE.COM/A',
-        'port' => 'https://example.com:8443/admin',
-        'localhost port' => 'http://127.0.0.1:8000/atom/docs',
-        'query and fragment' => 'https://example.com/search?q=a+b&lang=en#results',
-        'colon after slash' => '/time/10:30',
-        'colon in query' => '/x?redirect=https://other.example/a',
-        'colon in fragment' => '#a:b',
-        'idn host' => 'https://bücher.example/päth',
-        'punycode host' => 'https://xn--bcher-kva.example/',
-        'mailto' => 'mailto:hello@example.com?subject=Hi',
-        'tel' => 'tel:+60123456789',
-        'sms' => 'sms:+60123456789?body=Hi',
-        'encoded query ampersand' => 'https://example.com/?a=1&amp;b=2',
-        'percent encoded colon' => '/a%3Ab',
-    ];
+    return safeUrlCorpus()['legit'];
 }
 
-/**
- * Allowed URLs a browser still reads correctly after it drops the tabs, newlines
- * and leading control characters. Without the same clean-up here they would look
- * like an unknown scheme and be blocked. Helper only: the attribute bag trims an
- * href, so a component would not print these back unchanged.
- */
 function safeUrlLegitOddities(): array
 {
-    return [
-        'tab inside the scheme' => "ht\ttps://example.com/a",
-        'newline inside the scheme' => "ma\nilto:hello@example.com",
-        'newline inside the path' => "https://example.com/a\nb",
-        'leading space' => '  https://example.com/a',
-        'leading control' => "\x01\x02https://example.com/a",
-        'leading newline' => "\nhttps://example.com/a",
-        'entity-encoded scheme' => 'ht&#116;ps://example.com/a',
-        'entity-encoded colon' => 'https&colon;//example.com/a',
-        'entity tab inside the scheme' => 'ht&Tab;tps://example.com/a',
-    ];
+    return safeUrlCorpus()['oddities'];
 }
 
 describe('safe_url()', function () {
@@ -120,7 +69,8 @@ describe('safe_url()', function () {
             ->and(safe_url(''))->toBeNull()
             ->and(safe_url([]))->toBeNull()
             ->and(safe_url(new stdClass))->toBeNull()
-            ->and(safe_url(false))->toBeNull();
+            ->and(safe_url(false))->toBeNull()
+            ->and(safe_url(true))->toBeNull();
     });
 
     it('accepts a Stringable and a number', function () {
@@ -129,7 +79,10 @@ describe('safe_url()', function () {
             ->and(safe_url(12))->toBe('12');
     });
 
-    it('blocks a value that never settles under entity decoding', function () {
+    it('blocks a deeply nested entity encoding', function () {
+        // Blocked because it decodes down to a `javascript:` URL. The pass limit in
+        // safe_url() is a fail-closed bound on top of that; this test does not prove
+        // it (raising the limit leaves this passing), so nothing here claims to.
         $url = '&#106;avascript:PWNED(1)';
 
         for ($i = 0; $i < 12; $i++) {
@@ -137,6 +90,31 @@ describe('safe_url()', function () {
         }
 
         expect(safe_url($url))->toBeNull();
+    });
+
+    it('answers the same as atom.safeUrl() for every string in the shared sample', function () {
+        // tests/e2e/safe-url.spec.js checks the browser side against the same lists.
+        $corpus = safeUrlCorpus()['parity'];
+
+        $blockedButAllowedInTheBrowser = array_values(array_filter($corpus['allowed'], fn ($url) => safe_url($url) === null));
+        $allowedButBlockedInTheBrowser = array_values(array_filter($corpus['blocked'], fn ($url) => safe_url($url) !== null));
+
+        expect(count($corpus['allowed']))->toBeGreaterThan(2000)
+            ->and(count($corpus['blocked']))->toBeGreaterThan(2000)
+            ->and($blockedButAllowedInTheBrowser)->toBe([])
+            ->and($allowedButBlockedInTheBrowser)->toBe([])
+            // an allowed URL comes back as the very same string
+            ->and(array_values(array_filter($corpus['allowed'], fn ($url) => safe_url($url) !== $url)))->toBe([]);
+    });
+
+    it('decodes the legacy named entities a browser reads without a semicolon', function () {
+        expect(safe_url('&amp#106;avascript:PWNED(1)'))->toBeNull()
+            ->and(safe_url('javascript&amp#58;PWNED(1)'))->toBeNull()
+            ->and(safe_url('&AMP#106;avascript:PWNED(1)'))->toBeNull()
+            ->and(safe_url('&ampamp;#106;avascript:PWNED(1)'))->toBeNull()
+            ->and(safe_url('&amp;amp;#106;avascript:PWNED(1)'))->toBeNull()
+            // a legacy name glued onto more text still leaves an allowed URL allowed
+            ->and(safe_url('https://example.com/?a=1&ampb=2'))->toBe('https://example.com/?a=1&ampb=2');
     });
 
     it('blocks invalid UTF-8 rather than passing it through', function () {
@@ -192,6 +170,45 @@ describe('components keep a hostile URL inert', function () {
             ->toContain('rel="noopener noreferrer"');
     });
 
+    it('gives a blocked link no pointer cursor, target or rel', function () {
+        $html = renderBlade('<atom:link :href="$h" newtab>Site</atom:link>', ['h' => 'javascript:PWNED(1)']);
+
+        expect($html)
+            ->not->toContain('cursor-pointer')
+            ->not->toMatch('/\b(href|target|rel)\s*=/i');
+    });
+
+    it('keeps the pointer cursor, target and rel on a link that was allowed', function () {
+        $html = renderBlade('<atom:link href="https://example.com" newtab>Site</atom:link>');
+
+        expect($html)
+            ->toContain('cursor-pointer')
+            ->toContain('href="https://example.com"')
+            ->toContain('target="_blank"')
+            ->toContain('rel="noopener noreferrer nofollow"');
+    });
+
+    it('keeps the pointer cursor on a link with no href at all, which may carry wire:click', function () {
+        expect(renderBlade('<atom:link wire:click="open">Open</atom:link>'))->toContain('cursor-pointer');
+    });
+
+    it('adds no target or rel to a blocked component when newtab is set', function (string $template) {
+        $html = renderBlade($template, ['h' => 'javascript:PWNED(1)']);
+
+        expect($html)->not->toMatch('/\b(href|target|rel)\s*=/i');
+    })->with([
+        'link' => '<atom:link :href="$h" newtab>Go</atom:link>',
+        'button' => '<atom:button :href="$h" newtab>Go</atom:button>',
+        'tabs.item' => '<atom:tabs.item :href="$h" newtab>Go</atom:tabs.item>',
+        'menu.item' => '<atom:menu.item :href="$h" newtab>Go</atom:menu.item>',
+        'list.item' => '<atom:list.item :href="$h" newtab>Go</atom:list.item>',
+    ]);
+
+    it('gives a blocked list item no pointer cursor', function () {
+        expect(renderBlade('<atom:list.item :href="$h">Go</atom:list.item>', ['h' => 'javascript:PWNED(1)']))
+            ->not->toContain('cursor-pointer');
+    });
+
     it('does not navigate a table row with a blocked href', function (string $url) {
         $html = renderBlade('<table><tbody><atom:table.row :href="$h"><td>x</td></atom:table.row></tbody></table>', ['h' => $url]);
 
@@ -231,5 +248,34 @@ describe('components keep a hostile URL inert', function () {
             ->toContain('atom.safeUrl(this.config.url)');
 
         expect(renderBlade('<atom:lightbox />'))->toContain('atom.safeUrl(item.url) && window.open(item.url');
+    });
+});
+
+describe('the generic mail template', function () {
+    // the Markdown renderer is what registers the `mail::` components, as it does for a real send
+    $render = fn (array $cta) => (string) app(\Illuminate\Mail\Markdown::class)->render('atom::mail.generic', ['content' => 'Hello there', 'cta' => $cta]);
+
+    it('renders the call-to-action button for a legitimate URL', function () use ($render) {
+        $html = $render(['url' => 'https://example.com/invoice/1?a=1', 'label' => 'View invoice']);
+
+        expect($html)
+            ->toContain('button-primary')
+            ->toContain('href="https://example.com/invoice/1?a=1"')
+            ->toContain('View invoice');
+    });
+
+    it('omits the button for a hostile URL and keeps the message', function (string $url) use ($render) {
+        $html = $render(['url' => $url, 'label' => 'View invoice']);
+
+        expect($html)
+            ->toContain('Hello there')
+            ->not->toContain('View invoice')
+            ->not->toContain('PWNED')
+            // the layout carries its own links; the button is the one with this class
+            ->not->toContain('button-primary');
+    })->with(safeUrlHostile());
+
+    it('omits the button when there is no URL, as before', function () use ($render) {
+        expect($render(['label' => 'View invoice']))->not->toContain('View invoice');
     });
 });

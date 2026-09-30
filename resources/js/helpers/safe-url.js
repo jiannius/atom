@@ -1,5 +1,6 @@
 // Return the URL if it is safe to bind to an href or navigate to, else null.
-// Mirrors the PHP safe_url() helper (src/Helpers.php) — keep the two in step.
+// Mirrors the PHP safe_url() helper (src/Helpers.php) — keep the two in step;
+// tests/Fixtures/safe-url-corpus.json holds both to the same answers.
 //
 // Allowed: http, https, mailto, tel, sms, and any scheme-less URL (relative,
 // root-relative, protocol-relative, fragment-only, query-only). The check runs
@@ -7,6 +8,9 @@
 // newline are dropped from anywhere, leading control characters and spaces are
 // stripped, and the scheme is lowercased. The first path segment is treated as
 // a scheme when it holds a colon, so `foo:bar` must be written `./foo:bar`.
+//
+// This makes a URL scheme-safe only: `//evil.com` is allowed, so a redirect built
+// from user input also needs a host check.
 const allowed = ['http', 'https', 'mailto', 'tel', 'sms']
 
 // The HTML parser's own decoder, so named and unterminated references behave
@@ -24,7 +28,7 @@ export default (url) => {
     let normalised = url
 
     for (let pass = 0; ; pass++) {
-        if (pass >= 8) return null // never settles: not a URL worth trusting
+        if (pass >= 8) return null // fail closed on input that keeps decoding
 
         let decoded = decode(normalised).replace(/[\t\n\r]/g, '')
 
