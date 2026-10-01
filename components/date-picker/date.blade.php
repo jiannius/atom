@@ -7,7 +7,7 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'h-10 w-full py-2 pl-3 pr-10 no-spinner rounded-lg shadow-xs outline-offset-1 cursor-text',
+    'h-10 w-full py-2 pl-3 pr-16 no-spinner rounded-lg shadow-xs outline-offset-1 cursor-text',
     'text-zinc-700 dark:text-zinc-200',
     'bg-white dark:bg-white/10',
     'dark:placeholder-zinc-400',
@@ -43,14 +43,17 @@ data-atom-date-picker
                 {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['id', 'class', 'placeholder']) }}
                 @if ($disabled) readonly @endif>
 
-                <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">
-                    <div x-show="datePickerValue" x-on:click.stop="datePickerValue = null" class="flex items-center justify-center w-full h-full text-muted dark:text-muted-foreground hover:text-zinc-800 dark:hover:text-white">
+                <div class="z-1 absolute top-0 bottom-0 right-0 flex items-center gap-2 pr-3">
+                    <div x-show="datePickerValue" x-on:click.stop="datePickerValue = null" class="flex items-center justify-center h-full text-muted dark:text-muted-foreground hover:text-zinc-800 dark:hover:text-white">
                         <atom:icon.close />
                     </div>
 
-                    <div x-show="!datePickerValue" class="pointer-events-none flex items-center justify-center w-full h-full text-muted dark:text-muted-foreground">
+                    {{-- A tap target of its own, so a touch user can open the calendar without
+                         focusing the input (which would raise the soft keyboard). Not in the tab
+                         order: keyboard users open it with ArrowDown from the input. --}}
+                    <button type="button" tabindex="-1" aria-label="{{ t('Open calendar') }}" class="flex items-center justify-center h-full text-muted dark:text-muted-foreground hover:text-zinc-800 dark:hover:text-white">
                         <atom:icon.calendar />
-                    </div>
+                    </button>
                 </div>
             </div>
         @endif

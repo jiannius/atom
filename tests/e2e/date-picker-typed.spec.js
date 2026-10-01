@@ -247,3 +247,44 @@ test('Enter commits an edit without submitting the form; Enter again submits', a
   await expect(page.locator('[data-saves]')).toHaveText('1')
   await expect(server(page, 'deferred-date')).toHaveText(await iso(page, 2024, 10, 1))
 })
+
+// On a phone, focusing the input raises the soft keyboard over the calendar. The
+// calendar icon is its own tap target, so a touch user can pick from the calendar
+// without the input ever taking focus; tapping the input still offers both.
+test.describe('touch', () => {
+  test.use({ hasTouch: true, viewport: { width: 390, height: 844 } })
+
+  for (const name of ['date', 'range']) {
+    test(`tapping the ${name} calendar icon opens the calendar without focusing the input`, async ({ page }) => {
+      const popover = probe(page, name).locator('[popover]')
+      const icon = probe(page, name).getByRole('button', { name: 'Open calendar' })
+
+      await icon.tap()
+      await expect.poll(() => popover.evaluate(el => el.matches(':popover-open'))).toBe(true)
+      await expect(input(page, name)).not.toBeFocused()
+    })
+  }
+
+  test('the calendar icon stays beside the clear button once a date is set', async ({ page }) => {
+    await type(page, 'date', '01/10/2024')
+    await expect(server(page, 'date')).not.toBeEmpty()
+    await input(page, 'date').blur()
+
+    const icon = probe(page, 'date').getByRole('button', { name: 'Open calendar' })
+    await expect(icon).toBeVisible()
+
+    await icon.tap()
+    const popover = probe(page, 'date').locator('[popover]')
+    await expect.poll(() => popover.evaluate(el => el.matches(':popover-open'))).toBe(true)
+    await expect(input(page, 'date')).not.toBeFocused()
+
+    await probe(page, 'date').locator('button.pika-day[data-pika-day="15"]').tap()
+    await expect(server(page, 'date')).toHaveText(await iso(page, 2024, 10, 15))
+  })
+
+  test('tapping the input still focuses it and opens the calendar', async ({ page }) => {
+    await input(page, 'date').tap()
+    await expect(input(page, 'date')).toBeFocused()
+    await expect.poll(() => probe(page, 'date').locator('[popover]').evaluate(el => el.matches(':popover-open'))).toBe(true)
+  })
+})
