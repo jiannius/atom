@@ -32,11 +32,27 @@ export default () => {
             this.am = this.timePickerObject?.format('A') || 'AM'
         },
 
-        setTime () {
-            if (this.hr === '--' || this.min === '--' || !this.hr || !this.min) return
+        // Only digits count: fullwidth digits fold to ASCII, everything else is dropped.
+        digits (value) {
+            return String(value ?? '').normalize('NFKC').replace(/\D/g, '').slice(0, 2)
+        },
 
-            this.hr = !+this.hr || this.hr > 12 ? '12' : this.hr.toString().padStart(2, '0')
-            this.min = !+this.min || this.min > 59 ? '00' : this.min.toString().padStart(2, '0')
+        // Runs on `input`, so the field never shows (or holds) anything but digits.
+        sanitise (el) {
+            let clean = this.digits(el.value)
+            if (el.value !== clean) el.value = clean
+        },
+
+        setTime () {
+            let hr = this.digits(this.hr)
+            let min = this.digits(this.min)
+
+            // '--' (no time yet) and anything non-numeric write nothing, so nothing but
+            // a number can ever reach dayjs.
+            if (!hr || !min) return
+
+            this.hr = !+hr || hr > 12 ? '12' : hr.padStart(2, '0')
+            this.min = !+min || min > 59 ? '00' : min.padStart(2, '0')
 
             let obj = dayjs(`1970-01-01 ${this.hr}:${this.min} ${this.am}`)
 
@@ -52,21 +68,31 @@ export default () => {
             }
         },
 
-        up (key) {
+        // The fields read '--' until a time is set, so a non-number counts as 0 rather than
+        // turning into NaN on an arrow key. `typed` is the field's current text: the model
+        // is lazy (it commits on change), so it is stale until the field is left, and the
+        // arrow keys must step from what is on screen.
+        up (key, typed) {
+            let hr = +this.digits(key === 'hr' ? typed ?? this.hr : this.hr) || 0
+            let min = +this.digits(key === 'min' ? typed ?? this.min : this.min) || 0
+
             if (key === 'hr') {
-                this.hr = +this.hr >= 12 ? 1 : +this.hr + 1
+                this.hr = hr >= 12 ? 1 : hr + 1
             } else if (key === 'min') {
-                this.min = +this.min >= 59 ? 0 : +this.min + 1
+                this.min = min >= 59 ? 0 : min + 1
             } else if (key === 'am') {
                 this.am = this.am === 'AM' ? 'PM' : 'AM'
             }
         },
 
-        down (key) {
+        down (key, typed) {
+            let hr = +this.digits(key === 'hr' ? typed ?? this.hr : this.hr) || 0
+            let min = +this.digits(key === 'min' ? typed ?? this.min : this.min) || 0
+
             if (key === 'hr') {
-                this.hr = +this.hr <= 1 ? 12 : +this.hr - 1
+                this.hr = hr <= 1 ? 12 : hr - 1
             } else if (key === 'min') {
-                this.min = +this.min <= 0 ? 59 : +this.min - 1
+                this.min = min <= 0 ? 59 : min - 1
             } else if (key === 'am') {
                 this.am = this.am === 'AM' ? 'PM' : 'AM'
             }

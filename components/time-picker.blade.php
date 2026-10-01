@@ -52,13 +52,16 @@ $labelId = $label ? $attributes->fieldId('atom-time-picker', $name, $label).'-la
         x-on:input.stop
         class="flex items-center gap-2">
             <input
-            type="number"
+            type="text"
+            inputmode="numeric"
             x-model.lazy="hr"
-            x-on:click.stop="up('hr')"
-            x-on:keydown.up.stop.prevent="up('hr')"
-            x-on:keydown.down.stop.prevent="down('hr')"
-            x-on:keydown.left.stop.prevent="down('hr')"
-            x-on:keydown.right.stop.prevent="up('hr')"
+            x-on:input="sanitise($el)"
+            x-on:click.stop="$el.select()"
+            x-on:focus="$el.select()"
+            x-on:keydown.up.stop.prevent="up('hr', $el.value)"
+            x-on:keydown.down.stop.prevent="down('hr', $el.value)"
+            x-on:keydown.left.stop.prevent="down('hr', $el.value)"
+            x-on:keydown.right.stop.prevent="up('hr', $el.value)"
             maxlength="2"
             aria-label="{{ t('Hour') }}"
             class="appearance-none w-8 text-center no-spinner">
@@ -66,13 +69,16 @@ $labelId = $label ? $attributes->fieldId('atom-time-picker', $name, $label).'-la
             <span class="font-bold">:</span>
 
             <input
-            type="number"
+            type="text"
+            inputmode="numeric"
             x-model.lazy="min"
-            x-on:click.stop="up('min')"
-            x-on:keydown.up.stop.prevent="up('min')"
-            x-on:keydown.down.stop.prevent="down('min')"
-            x-on:keydown.left.stop.prevent="down('min')"
-            x-on:keydown.right.stop.prevent="up('min')"
+            x-on:input="sanitise($el)"
+            x-on:click.stop="$el.select()"
+            x-on:focus="$el.select()"
+            x-on:keydown.up.stop.prevent="up('min', $el.value)"
+            x-on:keydown.down.stop.prevent="down('min', $el.value)"
+            x-on:keydown.left.stop.prevent="down('min', $el.value)"
+            x-on:keydown.right.stop.prevent="up('min', $el.value)"
             maxlength="2"
             aria-label="{{ t('Minute') }}"
             class="appearance-none w-8 text-center no-spinner">

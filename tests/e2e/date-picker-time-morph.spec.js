@@ -166,3 +166,27 @@ test('a real click at the time field pre-update position still reaches it, not t
   await expect(hourInput(page)).toBeFocused()
   await expect(popover(page)).toBeVisible()
 })
+
+// A non-digit typed into the embedded time picker used to reach dayjs and throw a RangeError
+// from .toISOString() in the datetime path, leaving the bound value untouched or invalid.
+test('typing +5 into the hour of a date picker with time keeps the bound value a valid date', async ({ page }) => {
+  const errors = []
+  page.on('pageerror', (e) => errors.push(e.message))
+
+  await open(page)
+  await pickADayWithRealMouse(page)
+
+  await hourInput(page).click()
+  await page.keyboard.type('+5')
+  await expect(hourInput(page)).toHaveValue('5')
+
+  await probe(page).locator('input[aria-label="Minute"]').click()
+  await page.keyboard.type('30')
+  await page.keyboard.press('Tab')
+
+  const value = await probe(page).evaluate((el) => window.Alpine.$data(el).datePickerValue)
+  expect(String(value)).not.toContain('Invalid')
+  const stamped = new Date(value)
+  expect([stamped.getHours(), stamped.getMinutes()]).toEqual([5, 30])
+  expect(errors).toEqual([])
+})
