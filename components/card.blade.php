@@ -45,7 +45,7 @@ $merges = [
             </div>
 
             @if ($indicator)
-                <div class="flex items-center gap-2 {{ $indicator > 0 ? 'text-green-500' : 'text-red-500' }}">
+                <div class="flex items-center gap-2 {{ $indicator > 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400' }}">
                     <x-dynamic-component :component="'atom::icon.'.($indicator > 0 ? 'arrow-up' : 'arrow-down')" class="size-5" />
                     <div class="font-medium">{{ abs($indicator).'%' }}</div>
                 </div>

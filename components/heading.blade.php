@@ -9,7 +9,7 @@ $el = $level ? "h{$level}" : 'div';
 
 if ($subheading) {
     $classes = Arr::toCssClasses([
-        'text-zinc-500',
+        'text-zinc-500 dark:text-zinc-400',
         'text-xs' => $size === 'xs',
         'text-sm' => $size === 'sm',
         'text-lg' => $size === 'lg',
