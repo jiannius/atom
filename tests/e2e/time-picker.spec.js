@@ -56,9 +56,6 @@ test('arrow keys still step the fields, and clicking AM/PM still toggles it', as
 
   await hour(page).click()
   await page.keyboard.type('10')
-  // The model is lazy: the typed value commits on change, so tab out and back before stepping.
-  await page.keyboard.press('Tab')
-  await page.keyboard.press('Shift+Tab')
   await page.keyboard.press('ArrowUp')
   await expect(hour(page)).toHaveValue('11')
 
@@ -70,4 +67,101 @@ test('arrow keys still step the fields, and clicking AM/PM still toggles it', as
   await expect(meridiem(page)).toHaveValue('AM')
   await meridiem(page).click()
   await expect(meridiem(page)).toHaveValue('PM')
+})
+
+// The hour and minute accept digits only. A plain `+5` used to reach dayjs and leave the
+// string 'Invalid Date' in the bound value (and a RangeError from .toISOString() when the
+// picker sits inside a date-picker with `time`).
+const boundValue = (page) => picker(page).evaluate((el) => window.Alpine.$data(el).timePickerValue)
+
+function collectPageErrors (page) {
+  const errors = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  return errors
+}
+
+for (const [typed, expected] of [['+5', '5'], ['5.', '5'], ['ab', ''], ['-5', '5']]) {
+  test(`typing "${typed}" into the hour leaves only its digits`, async ({ page }) => {
+    const errors = collectPageErrors(page)
+    await page.goto('/atom/docs/time-picker')
+
+    await hour(page).click()
+    await page.keyboard.type(typed)
+    await expect(hour(page)).toHaveValue(expected)
+
+    await minute(page).click()
+    await page.keyboard.type('30')
+    await page.keyboard.press('Tab')
+
+    expect(String(await boundValue(page))).not.toContain('Invalid')
+    expect(errors).toEqual([])
+  })
+}
+
+test('pasting +5 into the hour leaves 5', async ({ page }) => {
+  const errors = collectPageErrors(page)
+  await page.goto('/atom/docs/time-picker')
+
+  await hour(page).fill('+5')
+  await expect(hour(page)).toHaveValue('5')
+
+  await minute(page).fill('+9')
+  await expect(minute(page)).toHaveValue('9')
+
+  await page.keyboard.press('Tab')
+  expect(String(await boundValue(page))).not.toContain('Invalid')
+  expect(errors).toEqual([])
+})
+
+test('fullwidth digits are folded to ASCII', async ({ page }) => {
+  await page.goto('/atom/docs/time-picker')
+
+  await hour(page).click()
+  await page.keyboard.type('１０')
+  await expect(hour(page)).toHaveValue('10')
+})
+
+test('arrow keys step from what was typed, not from the last committed value', async ({ page }) => {
+  await page.goto('/atom/docs/time-picker')
+
+  await hour(page).click()
+  await page.keyboard.type('10')
+  await page.keyboard.press('ArrowUp')
+  await expect(hour(page)).toHaveValue('11')
+  await page.keyboard.press('ArrowDown')
+  await expect(hour(page)).toHaveValue('10')
+
+  await minute(page).click()
+  await page.keyboard.type('30')
+  await page.keyboard.press('ArrowDown')
+  await expect(minute(page)).toHaveValue('29')
+})
+
+test('a full time is still written to the bound value in plain time mode', async ({ page }) => {
+  await page.goto('/atom/docs/time-picker')
+
+  await hour(page).click()
+  await page.keyboard.type('10')
+  await minute(page).click()
+  await page.keyboard.type('05')
+  await page.keyboard.press('Tab')
+
+  expect(await boundValue(page)).toBe('10:05:00')
+})
+
+test('setTime() never lets a non-numeric value reach dayjs, even if one is set directly', async ({ page }) => {
+  const errors = collectPageErrors(page)
+  await page.goto('/atom/docs/time-picker')
+
+  await picker(page).evaluate((el) => {
+    const data = window.Alpine.$data(el)
+    data.hr = '+5'
+    data.min = 'ab'
+  })
+  await page.waitForTimeout(100)
+  expect(await boundValue(page)).toBeNull()
+
+  await picker(page).evaluate((el) => { window.Alpine.$data(el).min = '+7' })
+  await expect.poll(() => boundValue(page)).toBe('05:07:00')
+  expect(errors).toEqual([])
 })
