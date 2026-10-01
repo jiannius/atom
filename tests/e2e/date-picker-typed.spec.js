@@ -118,6 +118,47 @@ test('the calendar still picks a date, and follows a typed one', async ({ page }
   await expect(input(page, 'date')).toHaveValue('15 Oct 2024')
 })
 
+// Pikaday's keyboardInput listens on the document: once the input was typeable, a caret
+// arrow with the calendar open moved the picked day and committed it.
+test('caret keys in the input never move the picked day', async ({ page }) => {
+  for (const name of ['date', 'date-time']) {
+    await type(page, name, '01/10/2024')
+    await expect(server(page, name)).not.toBeEmpty()
+    const committed = await server(page, name).textContent()
+    const shown = await input(page, name).inputValue()
+
+    const field = input(page, name)
+    await field.click()
+    const popover = probe(page, name).locator('[popover]')
+    await expect.poll(() => popover.evaluate(el => el.matches(':popover-open'))).toBe(true)
+
+    for (const key of ['End', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'Home', 'Backspace']) {
+      await field.press(key)
+    }
+
+    await page.waitForTimeout(300)
+    await expect(server(page, name)).toHaveText(committed)
+    expect(await popover.evaluate(el => el.matches(':popover-open'))).toBe(true)
+    await field.press('Escape')
+    await expect(field).toHaveValue(shown)
+  }
+})
+
+test('ArrowDown in the input opens the calendar, for a single date and a range', async ({ page }) => {
+  for (const name of ['date', 'range']) {
+    const popover = probe(page, name).locator('[popover]')
+    await input(page, name).focus()
+    expect(await popover.evaluate(el => el.matches(':popover-open'))).toBe(false)
+
+    await input(page, name).press('ArrowDown')
+    await expect.poll(() => popover.evaluate(el => el.matches(':popover-open'))).toBe(true)
+    await expect(probe(page, name).locator('.pika-lendar').first()).toBeVisible()
+
+    await input(page, name).press('Escape')
+    await expect.poll(() => popover.evaluate(el => el.matches(':popover-open'))).toBe(false)
+  }
+})
+
 test('a time-flagged picker takes a typed date and time, and a bare date keeps the time', async ({ page }) => {
   await type(page, 'date-time', '01/10/2024 09:30 pm')
   await expect(server(page, 'date-time')).toHaveText(await iso(page, 2024, 10, 1, 21, 30))

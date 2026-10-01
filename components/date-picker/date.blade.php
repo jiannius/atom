@@ -7,7 +7,7 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'h-10 w-full py-2 pl-3 pr-10 no-spinner rounded-lg shadow-xs outline-offset-1 cursor-default',
+    'h-10 w-full py-2 pl-3 pr-10 no-spinner rounded-lg shadow-xs outline-offset-1 cursor-text',
     'text-zinc-700 dark:text-zinc-200',
     'bg-white dark:bg-white/10',
     'dark:placeholder-zinc-400',
@@ -37,7 +37,9 @@ data-atom-date-picker
                 x-on:blur="commitTyped($el)"
                 x-on:keydown.enter="typedEnter($event)"
                 x-on:keydown.escape="revertTyped($el)"
+                @if (! $disabled) x-on:keydown.down.prevent="show()" @endif
                 autocomplete="off"
+                spellcheck="false"
                 {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['id', 'class', 'placeholder']) }}
                 @if ($disabled) readonly @endif>
 

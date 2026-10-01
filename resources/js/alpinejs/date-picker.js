@@ -102,7 +102,10 @@ export default (config) => {
         setCalendar () {
             this.pikaday?.destroy()
 
+            // No keyboardInput: Pikaday listens on the document, so with the input now
+            // typeable, a caret arrow would move the picked day and commit it.
             this.pikaday = new Pikaday({
+                keyboardInput: false,
                 onSelect: value => {
                     let obj = dayjs(value)
 

@@ -1,7 +1,4 @@
 import dayjs from 'dayjs'
-import customParseFormat from 'dayjs/plugin/customParseFormat.js'
-
-dayjs.extend(customParseFormat)
 
 // Parse a date the user typed into a date picker's text input. Returns
 // { date, hasTime } or null when the text is not a whole, real date.
@@ -10,38 +7,72 @@ dayjs.extend(customParseFormat)
 // month name, any case), day-first numerics (`01/10/2024`, `1-10-2024`,
 // `1.10.2024`) and ISO (`2024-10-01`). Numerics are always DAY first; there is
 // no month-first reading. With `time`, a date may be followed by a 12h
-// (`9:30 PM`) or 24h (`21:30`) time; without it, a time is refused. Parsing is
-// strict, so a partial entry or an impossible date (`31/02/2024`) is null.
-const dateFormats = [
-    'DD MMM YYYY', 'D MMM YYYY', 'DD MMMM YYYY', 'D MMMM YYYY',
-    'DD/MM/YYYY', 'D/M/YYYY', 'DD/M/YYYY', 'D/MM/YYYY',
-    'DD-MM-YYYY', 'D-M-YYYY', 'DD-M-YYYY', 'D-MM-YYYY',
-    'DD.MM.YYYY', 'D.M.YYYY', 'DD.M.YYYY', 'D.MM.YYYY',
-    'YYYY-MM-DD', 'YYYY-M-D',
+// (`9:30 PM`) or 24h (`21:30`) time; without it, a time is refused. A partial
+// entry or an impossible date (`31/02/2024`) is null.
+//
+// Hand-rolled on purpose: dayjs's customParseFormat plugin would extend the ONE
+// dayjs instance the whole bundle shares, and the String prototype helpers call
+// `dayjs(value, format)` expecting the format to be ignored (with the plugin, a
+// `...Z` string loses its zone and a date-only string turns invalid).
+const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+const monthNames = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december']
+
+const datePatterns = [
+    // 01 Oct 2024, 1 October 2024
+    [/^(\d{1,2}) ([a-z]+) (\d{4})/, m => [m[3], monthOf(m[2]), m[1]]],
+    // 01/10/2024, 1-10-2024, 1.10.2024 (one separator throughout)
+    [/^(\d{1,2})([/.-])(\d{1,2})\2(\d{4})/, m => [m[4], Number(m[3]), m[1]]],
+    // 2024-10-01
+    [/^(\d{4})-(\d{1,2})-(\d{1,2})/, m => [m[1], Number(m[2]), m[3]]],
 ]
 
-const timeFormats = ['hh:mm A', 'h:mm A', 'hh:mmA', 'h:mmA', 'HH:mm', 'H:mm']
+const monthOf = (word) => {
+    let index = months.indexOf(word)
+    if (index === -1) index = monthNames.indexOf(word)
+    return index === -1 ? null : index + 1
+}
 
-const dateTimeFormats = dateFormats.flatMap(date => timeFormats.map(time => `${date} ${time}`))
+// What may follow the date: nothing, or (with `time`) a 12h or 24h time.
+const timePattern = /^ (\d{1,2}):(\d{2}) ?(am|pm)?$/
 
-// Strict parsing compares case-sensitively, so `oct`/`OCT` → `Oct`, `pm` → `PM`.
-const normalise = (text) => text
-    .trim()
-    .replace(/\s+/g, ' ')
-    .replace(/[a-z]+/gi, word => /^(am|pm)$/i.test(word)
-        ? word.toUpperCase()
-        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+const parseTime = (rest) => {
+    let m = rest.match(timePattern)
+    if (!m) return null
+
+    let hour = Number(m[1])
+    let minute = Number(m[2])
+    if (minute > 59) return null
+
+    if (m[3]) {
+        if (hour < 1 || hour > 12) return null
+        hour = hour % 12 + (m[3] === 'pm' ? 12 : 0)
+    }
+    else if (hour > 23) return null
+
+    return [hour, minute]
+}
 
 export const parseTypedDate = (text, { time = false } = {}) => {
-    let value = normalise(String(text ?? ''))
+    let value = String(text ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
     if (!value) return null
 
-    let date = dayjs(value, dateFormats, true)
-    if (date.isValid()) return { date, hasTime: false }
+    for (let [pattern, read] of datePatterns) {
+        let m = value.match(pattern)
+        if (!m) continue
 
-    if (time) {
-        date = dayjs(value, dateTimeFormats, true)
-        if (date.isValid()) return { date, hasTime: true }
+        let [year, month, day] = read(m).map(Number)
+        if (!month) return null
+
+        let rest = value.slice(m[0].length)
+        let clock = rest ? (time ? parseTime(rest) : null) : [0, 0]
+        if (!clock) return null
+
+        let date = new Date(year, month - 1, day, clock[0], clock[1])
+
+        // Reject overflow (31/02 → 2 Mar) rather than let Date roll it over.
+        if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null
+
+        return { date: dayjs(date), hasTime: rest !== '' }
     }
 
     return null

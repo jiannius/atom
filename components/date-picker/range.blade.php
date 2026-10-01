@@ -8,7 +8,7 @@
 $filterKey = $attributes->wire('model')->value();
 
 $classes = Arr::toCssClasses([
-    'h-10 w-full py-2 pl-3 pr-10 no-spinner rounded-lg shadow-xs outline-offset-1 cursor-default',
+    'h-10 w-full py-2 pl-3 pr-10 no-spinner rounded-lg shadow-xs outline-offset-1 cursor-text',
     'text-zinc-700 dark:text-zinc-200',
     'bg-white dark:bg-white/10',
     'dark:placeholder-zinc-400',
@@ -42,7 +42,9 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
             x-on:blur="commitTyped($el)"
             x-on:keydown.enter="typedEnter($event)"
             x-on:keydown.escape="revertTyped($el)"
+            x-on:keydown.down.prevent="show()"
             autocomplete="off"
+            spellcheck="false"
             {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}>
 
             <div x-cloak class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">
