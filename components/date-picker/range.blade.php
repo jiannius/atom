@@ -13,7 +13,7 @@ $classes = Arr::toCssClasses([
     'bg-white dark:bg-white/10',
     'dark:placeholder-zinc-400',
     'focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
-    $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-white/10',
+    $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-zinc-500',
     'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
 ]);
 @endphp
@@ -34,12 +34,16 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
 @endif
 {{ $attributes->except(['class', 'placeholder']) }}>
     <atom:dropdown x-on:open="setCalendarDates(); setCalendarRange();" locked>
-        <button type="button" class="relative w-full">
+        {{-- A div, not a button: the input is typed into, and a button may not hold one. --}}
+        <div class="relative w-full" data-atom-dropdown-trigger>
             <input
             type="text"
             x-bind:value="dateRangeString"
-            {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}
-            readonly>
+            x-on:blur="commitTyped($el)"
+            x-on:keydown.enter="typedEnter($event)"
+            x-on:keydown.escape="revertTyped($el)"
+            autocomplete="off"
+            {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}>
 
             <div x-cloak class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">
                 <div x-show="dateRangeValue" x-on:click.stop="dateRangeValue = null; parse()" class="flex items-center justify-center w-full h-full text-muted dark:text-muted-foreground hover:text-zinc-800 dark:hover:text-white">
@@ -50,7 +54,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
                     <atom:icon.calendar />
                 </div>
             </div>
-        </button>
+        </div>
 
         <atom:menu class="max-w-full" popover>
             <div class="w-sm md:w-[740px] overflow-auto flex divide-x divide-zinc-200 dark:divide-zinc-600">

@@ -1,5 +1,6 @@
 import Pikaday from 'pikaday'
 import dayjs from 'dayjs'
+import { parseTypedDate, splitTypedRange } from '../helpers/typed-date'
 
 export default (config) => {
     return {
@@ -73,6 +74,68 @@ export default (config) => {
                     this.setCalendarRange()
                 })
             }
+        },
+
+        // Commit what was typed into the input (on blur / Enter): `from to to`,
+        // `from - to`, or one date for a one-day range. An empty input clears
+        // the range; anything else (a half-typed date, one end missing, an end
+        // before the start) is put back to the last good value, so it never
+        // wipes the model. Returns 'unchanged', 'committed' or 'reverted'.
+        commitTyped (input) {
+            let text = input.value.trim()
+            if (text === this.dateRangeString) return 'unchanged'
+
+            if (!text) {
+                this.dateRangeValue = null
+                this.parse()
+                return 'committed'
+            }
+
+            let parts = splitTypedRange(text)
+            if (parts.length === 1) parts = [parts[0], parts[0]]
+
+            let [start, end] = parts.length === 2
+                ? parts.map(part => parseTypedDate(part, { time: config.time }))
+                : [null, null]
+
+            if (!start || !end) {
+                this.revertTyped(input)
+                return 'reverted'
+            }
+
+            // Like a calendar pick: a date-only end covers its whole day.
+            let startObject = start.hasTime ? start.date : start.date.startOf('day')
+            let endObject = end.hasTime ? end.date : end.date.endOf('day')
+
+            if (endObject.isBefore(startObject)) {
+                this.revertTyped(input)
+                return 'reverted'
+            }
+
+            this.startValue = startObject.toISOString()
+            this.endValue = endObject.toISOString()
+
+            this.$nextTick(() => {
+                // The display re-renders only if the formatted string differs,
+                // so a re-spelling of the same range is tidied by hand.
+                input.value = this.dateRangeString
+                if (this.pikaday[0] && this.pikaday[1]) {
+                    this.setCalendarDates()
+                    this.setCalendarRange()
+                }
+            })
+
+            return 'committed'
+        },
+
+        revertTyped (input) {
+            input.value = this.dateRangeString
+        },
+
+        typedEnter (event) {
+            // An edited entry is committed (or put back) and the form is not
+            // submitted; an untouched one lets Enter submit as it always has.
+            if (this.commitTyped(event.target) !== 'unchanged') event.preventDefault()
         },
 
         updateValue () {

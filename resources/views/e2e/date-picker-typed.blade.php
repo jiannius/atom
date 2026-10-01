@@ -1,6 +1,6 @@
-<atom:html title="E2E: Date Range Morph" :vite="[]" :dark="false" class="min-h-screen bg-white">
-{{-- Hosts the Livewire fixture (tests/Fixtures/DateRangeMorphFixture.php) so the E2E
-     can drive a real Livewire re-render over a wire:ignore'd range picker. --}}
+<atom:html title="E2E: Date Picker Typed" :vite="[]" :dark="false" class="min-h-screen bg-white">
+{{-- Hosts the Livewire fixture (tests/Fixtures/DatePickerTypedFixture.php) so the E2E
+     can type into the date pickers and read back what reached the server. --}}
 {{-- The rig ships no Tailwind: stand in for the two utilities that size the trigger,
      or its unsized icons make it ~1300px tall and the calendar opens off-screen. --}}
 <style>
@@ -8,7 +8,8 @@
     [data-atom-dropdown-trigger] svg { width: 1.25rem; height: 1.25rem; }
 </style>
 <div class="p-4">
-    <livewire:atom-e2e-date-range-morph />
+    <button type="button" data-before>Before</button>
+    <livewire:atom-e2e-date-picker-typed />
 </div>
 
 @livewireScripts

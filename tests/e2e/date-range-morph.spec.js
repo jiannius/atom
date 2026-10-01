@@ -52,7 +52,7 @@ test('a plain Livewire re-render does not duplicate the calendars (wire:ignore h
 })
 
 test('a .live round trip from picking a preset does not duplicate the calendars', async ({ page }) => {
-  await probe(page).locator('[data-atom-dropdown] > button').click()
+  await probe(page).locator('[data-atom-dropdown-trigger]').click()
 
   const [response] = await Promise.all([
     page.waitForResponse(r => r.url().includes('livewire')),
@@ -61,7 +61,7 @@ test('a .live round trip from picking a preset does not duplicate the calendars'
   expect(response.ok()).toBe(true)
   await page.waitForTimeout(300)
 
-  await probe(page).locator('[data-atom-dropdown] > button').click()
+  await probe(page).locator('[data-atom-dropdown-trigger]').click()
   await expect(grids(page, 0)).toHaveCount(1)
   await expect(grids(page, 1)).toHaveCount(1)
 })
@@ -93,7 +93,7 @@ test('a destroy + re-init cycle on the same node leaves exactly one pair of grid
 
   // not just "no duplicate" — the recreated pair is still live and independently
   // navigable, not orphaned markup left over from the destroyed instance
-  await probe(page).locator('[data-atom-dropdown] > button').click()
+  await probe(page).locator('[data-atom-dropdown-trigger]').click()
   const endNext = containers(page).nth(1).locator('button.pika-next')
   const startMonthBefore = await containers(page).nth(0).locator('.pika-select-month').inputValue()
   await endNext.click()
