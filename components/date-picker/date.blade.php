@@ -7,12 +7,12 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'h-10 w-full py-2 pl-3 pr-10 no-spinner rounded-lg shadow-xs outline-offset-1 cursor-default',
+    'h-10 w-full py-2 pl-3 pr-16 no-spinner rounded-lg shadow-xs outline-offset-1 cursor-text',
     'text-zinc-700 dark:text-zinc-200',
     'bg-white dark:bg-white/10',
     'dark:placeholder-zinc-400',
     'focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
-    $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-white/10',
+    $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-zinc-500',
     'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
 ]);
 @endphp
@@ -30,21 +30,30 @@ data-atom-date-picker
                 {{ $slot }}
             </div>
         @else
-            <div class="relative">
+            <div class="relative" data-atom-dropdown-trigger>
                 <input
                 type="text"
                 x-bind:value="datePickerString"
+                x-on:blur="commitTyped($el)"
+                x-on:keydown.enter="typedEnter($event)"
+                x-on:keydown.escape="revertTyped($el)"
+                @if (! $disabled) x-on:keydown.down.prevent="show()" @endif
+                autocomplete="off"
+                spellcheck="false"
                 {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['id', 'class', 'placeholder']) }}
-                readonly>
+                @if ($disabled) readonly @endif>
 
-                <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">
-                    <div x-show="datePickerValue" x-on:click.stop="datePickerValue = null" class="flex items-center justify-center w-full h-full text-muted dark:text-muted-foreground hover:text-zinc-800 dark:hover:text-white">
+                <div class="z-1 absolute top-0 bottom-0 right-0 flex items-center gap-2 pr-3">
+                    <div x-show="datePickerValue" x-on:click.stop="datePickerValue = null" class="flex items-center justify-center h-full text-muted dark:text-muted-foreground hover:text-zinc-800 dark:hover:text-white">
                         <atom:icon.close />
                     </div>
 
-                    <div x-show="!datePickerValue" class="pointer-events-none flex items-center justify-center w-full h-full text-muted dark:text-muted-foreground">
+                    {{-- A tap target of its own, so a touch user can open the calendar without
+                         focusing the input (which would raise the soft keyboard). Not in the tab
+                         order: keyboard users open it with ArrowDown from the input. --}}
+                    <button type="button" tabindex="-1" aria-label="{{ t('Open calendar') }}" class="flex items-center justify-center h-full text-muted dark:text-muted-foreground hover:text-zinc-800 dark:hover:text-white">
                         <atom:icon.calendar />
-                    </div>
+                    </button>
                 </div>
             </div>
         @endif

@@ -21,7 +21,7 @@ $classes = Arr::toCssClasses([
     'text-zinc-700 dark:text-zinc-200 text-left pr-3',
     'bg-white dark:bg-white/10',
     'focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
-    'border border-zinc-200 dark:border-white/10',
+    'border border-zinc-200 dark:border-zinc-500',
     $icon ? 'pl-10' : 'pl-3',
 ]);
 
