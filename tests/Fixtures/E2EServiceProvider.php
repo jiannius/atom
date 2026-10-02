@@ -39,6 +39,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-input-morph', InputMorphFixture::class);
         Livewire::component('atom-e2e-table-loading', TableLoadingFixture::class);
         Livewire::component('atom-e2e-table-search-chip', TableSearchChipFixture::class);
+        Livewire::component('atom-e2e-table-search-chip-live', TableSearchChipLiveFixture::class);
         Livewire::component('atom-e2e-date-range-morph', DateRangeMorphFixture::class);
         Livewire::component('atom-e2e-date-picker-time-morph', DatePickerTimeMorphFixture::class);
         Livewire::component('atom-e2e-date-picker-typed', DatePickerTypedFixture::class);
@@ -57,6 +58,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/table-loading', fn () => view('atom::e2e.table-loading'));
         Route::middleware('web')->get('/atom/e2e/table-layout', fn () => view('atom::e2e.table-layout'));
         Route::middleware('web')->get('/atom/e2e/table-search-chip', fn () => view('atom::e2e.table-search-chip'));
+        Route::middleware('web')->get('/atom/e2e/table-search-chip-live', fn () => view('atom::e2e.table-search-chip-live'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs', fn () => view('atom::e2e.breadcrumbs'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-wrapped', fn () => view('atom::e2e.breadcrumbs-wrapped'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-untrailed', fn () => view('atom::e2e.breadcrumbs-untrailed'));

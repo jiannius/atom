@@ -74,11 +74,22 @@ test("the search chip's own x clears the search and leaves the other filter", as
   await expect(rows(page)).toHaveCount(3)
 })
 
-test('leaving the box with text charts it, so the chip matches what the next request sends', async ({ page }) => {
+test('a deferred search shows no chip while typing; leaving the box charts it', async ({ page }) => {
   await page.goto('/atom/e2e/table-search-chip')
   await page.waitForLoadState('networkidle')
 
-  await box(page).fill('cher')
+  // type like a person, a key at a time: the model's client state changes on every one
+  await box(page).click()
+  await box(page).pressSequentially('cher')
+  await expect(box(page)).toBeFocused()
+  await expect(box(page)).toHaveValue('cher')
+
+  // KEY ASSERTION: nothing registers while the box has focus, so the bar does not
+  // appear and push the table down mid-word. Give a (wrongly) fired watch time to land.
+  await page.waitForTimeout(500)
+  await expect(chips(page)).toHaveCount(0)
+  await expect(bar(page).getByRole('button', { name: /Clear all/i })).toHaveCount(0)
+
   await page.locator('body').click({ position: { x: 5, y: 400 } })
 
   await expect(searchChip(page)).toBeVisible()
@@ -90,6 +101,35 @@ test('leaving the box with text charts it, so the chip matches what the next req
   await box(page).fill('')
   await page.locator('body').click({ position: { x: 5, y: 400 } })
   await expect(searchChip(page)).toHaveCount(0)
+})
+
+test('a .live search shows its chip while typing, since the rows are filtering', async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip-live')
+  await page.waitForLoadState('networkidle')
+
+  await box(page).click()
+  await box(page).pressSequentially('ap')
+
+  await expect(box(page)).toBeFocused()
+  await expect(searchChip(page)).toBeVisible()
+  await expect(searchChip(page)).toContainText('ap')
+  await expect(rows(page)).toHaveCount(2)
+})
+
+test('a server-side reset removes the chip of a .live search too', async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip-live')
+  await page.waitForLoadState('networkidle')
+
+  await box(page).click()
+  await box(page).pressSequentially('ap')
+  await expect(searchChip(page)).toBeVisible()
+  await expect(rows(page)).toHaveCount(2)
+
+  await page.locator('[data-reset-search]').click()
+
+  await expect(box(page)).toHaveValue('')
+  await expect(searchChip(page)).toHaveCount(0)
+  await expect(rows(page)).toHaveCount(6)
 })
 
 test('a search already in the model on load shows its chip', async ({ page }) => {

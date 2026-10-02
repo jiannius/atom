@@ -4,7 +4,11 @@
     <atom:table :empty="false">
         <x-slot:header>
             <atom:table.filters>
-                <atom:table.search wire:model="search" placeholder="Search fruit..." data-search />
+                @if ($live)
+                    <atom:table.search wire:model.live.debounce.250ms="search" placeholder="Search fruit..." data-search />
+                @else
+                    <atom:table.search wire:model="search" placeholder="Search fruit..." data-search />
+                @endif
 
                 <atom:select variant="filter" wire:model.live="status" label="Status" :options="[
                     ['value' => 'fresh', 'label' => 'Fresh'],

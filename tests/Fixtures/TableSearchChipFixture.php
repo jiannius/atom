@@ -23,6 +23,9 @@ class TableSearchChipFixture extends Component
 
     public ?string $status = null;
 
+    /** Whether the search box binds with `.live` (the variant at /atom/e2e/table-search-chip-live). */
+    public bool $live = false;
+
     /** @var array<int,array{name:string,status:string}> */
     public const ROWS = [
         ['name' => 'Apple', 'status' => 'fresh'],

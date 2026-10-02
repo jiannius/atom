@@ -60,6 +60,16 @@ describe('filter bar', function () {
             ->and($unbound->getAttribute('x-data'))->not->toContain('$watch');
     });
 
+    it('ignores a deferred model while the box has focus, and follows a .live one', function () {
+        $deferred = domQuery(renderBlade('<atom:table.search wire:model="filters.search" />'), '//*[@data-atom-table-search]')[0];
+        $live = domQuery(renderBlade('<atom:table.search wire:model.live.debounce.300ms="filters.search" />'), '//*[@data-atom-table-search]')[0];
+
+        expect($deferred->getAttribute('x-data'))
+            ->toContain('!false && document.activeElement ===')
+            ->and($live->getAttribute('x-data'))
+            ->toContain('!true && document.activeElement ===');
+    });
+
     it('takes its key from data-filter-key when there is no wire:model', function () {
         $wrapper = domQuery(
             renderBlade('<atom:table.search data-filter-key="filters.q" />'),

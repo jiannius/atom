@@ -27,6 +27,12 @@ $chipLabel = preg_replace('/[\s.\x{2026}]+$/u', '', t($placeholder)) ?: t($place
 // than the box changes it (a host reset, a .live round trip).
 $wireModel = $attributes->wire('model')->value();
 
+// A deferred model still updates the client's state on every keystroke, so the watch
+// fires while the user types; the chip would show, and push the table down, before any
+// search ran. It waits for Enter or blur unless the model is .live (rows filter as the
+// user types, so the chip should follow them).
+$followsTyping = $wireModel && $attributes->wire('model')->hasModifier('live');
+
 $onEnter = ($filterKey ? 'emit(); ' : '')."\$dispatch('table-filter:changed'); \$wire.\$refresh()";
 @endphp
 
@@ -38,9 +44,16 @@ x-data="{
 @if ($wireModel)
     {{-- report only: no refresh and no 'changed', so it cannot loop back into a request.
          A method, not x-init: x-init runs its last expression, and $watch returns the
-         function that stops it, so ending x-init on it would unwatch at once. --}}
+         function that stops it, so ending x-init on it would unwatch at once.
+         A deferred model is ignored while this box has focus: Enter and blur report it. --}}
     init () {
-        this.unwatch = this.$wire.$watch(@js($wireModel), value => this.report(value))
+        this.unwatch = this.$wire.$watch(@js($wireModel), value => {
+            if (!@js($followsTyping) && document.activeElement === this.$root.querySelector('input')) {
+                return
+            }
+
+            this.report(value)
+        })
     },
     destroy () {
         this.unwatch?.()
