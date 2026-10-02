@@ -24,7 +24,7 @@ x-data="{
     clearAll() { Object.keys(this.chips).forEach(k => this.clear(k)) },
 }"
 x-on:table-filter:set.window="set($event.detail.key, $event.detail.label, $event.detail.display)"
-class="grow space-y-3"
+{{ $attributes->class('grow space-y-3') }}
 data-atom-table-filters>
     {{-- the overflow button is a filter control like the rest, so it sits in the
          same wrapping row, straight after the last one. A grow wrapper around the

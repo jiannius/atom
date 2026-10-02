@@ -11,13 +11,13 @@ $class = Arr::toCssClasses([
 ]);
 @endphp
 
-<div @class([
+<div {{ $attributes->class([
     'group flex items-center w-full',
     '[&_[data-atom-input]_input]:rounded-l-none' => !empty($prefix),
     '[&_[data-atom-input]_input]:rounded-r-none' => !empty($suffix),
     '[&_[data-atom-date-picker]_input]:rounded-l-none' => !empty($prefix),
     '[&_[data-atom-date-picker]_input]:rounded-r-none' => !empty($suffix),
-])>
+]) }}>
     @if ($prefix)
         <div @class([$class, 'rounded-l-lg border-r-0'])>
             {{ t($prefix) }}

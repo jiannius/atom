@@ -91,7 +91,7 @@ data-atom-table>
                     </template>
                 @endif
 
-                <div class="grow flex items-center gap-3">
+                <div {{ $checked->attributes->class('grow flex items-center gap-3') }}>
                     {{ $checked }}
                 </div>
             </div>
@@ -146,7 +146,7 @@ data-atom-table>
                         @endif
 
                         @if (isset($footer) && $footer->isNotEmpty())
-                            <tfoot data-atom-table-footer>
+                            <tfoot {{ $footer->attributes }} data-atom-table-footer>
                                 {{ $footer }}
                             </tfoot>
                         @endif

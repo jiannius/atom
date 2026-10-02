@@ -39,12 +39,12 @@ $classes = [
 ];
 @endphp
 
-<figure @class([...$classes, match ($size) {
+<figure {{ $attributes->class([...$classes, match ($size) {
     'xl' => 'text-xl',
     'lg' => 'text-lg',
     'xs' => 'text-xs',
     default => 'text-base',
-}]) data-atom-avatar>
+}]) }} data-atom-avatar>
     <atom:tooltip :content="$name" class="w-full h-full">
         @if ($src)
             <img src="{{ $src }}" alt="{{ $name }}" class="w-full h-full object-cover">

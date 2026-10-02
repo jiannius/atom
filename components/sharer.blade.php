@@ -23,7 +23,7 @@ $sharerKeys = ['twitter-x' => 'x'];
 $linkSharers = ['email'];
 @endphp
 
-<div>
+<div {{ $attributes }}>
     <div class="text-sm text-zinc-400 font-medium mb-2">
         {{ t('Share to') }}
     </div>
