@@ -101,6 +101,20 @@ describe('wrapping', function () {
             ->and(domClasses(domQuery($html, '//th/div')[0]))->not->toContain('w-10');
     });
 
+    it('truncates a cell on the truncate prop without letting it size the column', function () {
+        $cell = domQuery(renderBlade('<atom:table.cell truncate class="text-sm">A very long address</atom:table.cell>'), '//td')[0];
+
+        expect(domClasses($cell))->toContain('truncate', 'max-w-0', 'w-full', 'text-sm', '[:where(&)]:whitespace-nowrap')
+            // a prop, not a stray attribute on the td
+            ->and($cell->hasAttribute('truncate'))->toBeFalse();
+    });
+
+    it('does not truncate a cell by default', function () {
+        $cell = domQuery(renderBlade('<atom:table.cell>Jane</atom:table.cell>'), '//td')[0];
+
+        expect(domClasses($cell))->not->toContain('truncate', 'max-w-0', 'w-full');
+    });
+
     it('leaves a plain header without a width', function () {
         expect(domClasses(domQuery(renderBlade('<atom:table.column>Contact</atom:table.column>'), '//th')[0]))->not->toContain('w-10');
     });

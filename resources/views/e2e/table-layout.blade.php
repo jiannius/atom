@@ -26,6 +26,9 @@
     .rounded-lg { border-radius: 0.5rem; }
     .border { border: 1px solid #e4e4e7; }
     .min-w-full { min-width: 100%; }
+    /* not used by the table now: here so a table given w-full + table-fixed again
+       (the combination that squeezes a wide table's cells) is measurable. */
+    .table-fixed { table-layout: fixed; }
     .py-3 { padding-block: 0.75rem; }
     .px-4 { padding-inline: 1rem; }
     .p-1 { padding: 0.25rem; }
@@ -62,6 +65,53 @@
                 <atom:table.cell :checkbox="1" />
                 <atom:table.cell>Jane Tan</atom:table.cell>
                 <atom:table.cell>jane@example.com</atom:table.cell>
+            </atom:table.row>
+        </x-slot:rows>
+    </atom:table>
+</div>
+
+@php
+$long = 'Level 12, Menara Example, Jalan Sultan Ismail, Kuala Lumpur, Wilayah Persekutuan, 50250, Malaysia, and then some more address lines';
+@endphp
+
+{{-- The same long value with and without `truncate`: without it the column (and
+     the table) grows to hold it and the box scrolls; with it the cell ellipsises
+     inside the box. --}}
+@foreach (['box-long-plain' => false, 'box-long-truncate' => true] as $id => $truncate)
+    <div id="{{ $id }}" style="width: 624px; margin: 16px">
+        <atom:table :empty="false">
+            <x-slot:columns>
+                <atom:table.column>Name</atom:table.column>
+                <atom:table.column>Address</atom:table.column>
+                <atom:table.column>Phone</atom:table.column>
+                <atom:table.column>Status</atom:table.column>
+            </x-slot:columns>
+            <x-slot:rows>
+                <atom:table.row>
+                    <atom:table.cell>Jane Tan</atom:table.cell>
+                    <atom:table.cell :truncate="$truncate" data-address>{{ $long }}</atom:table.cell>
+                    <atom:table.cell>012-345 6789</atom:table.cell>
+                    <atom:table.cell>Active</atom:table.cell>
+                </atom:table.row>
+            </x-slot:rows>
+        </atom:table>
+    </div>
+@endforeach
+
+{{-- Twelve nowrap columns: wider than the box, so it must scroll, with every cell
+     still holding its own text (no cell squeezed below its content). --}}
+<div id="box-wide" style="width: 624px; margin: 16px">
+    <atom:table :empty="false">
+        <x-slot:columns>
+            @for ($i = 1; $i <= 12; $i++)
+                <atom:table.column>Column {{ $i }}</atom:table.column>
+            @endfor
+        </x-slot:columns>
+        <x-slot:rows>
+            <atom:table.row>
+                @for ($i = 1; $i <= 12; $i++)
+                    <atom:table.cell>Customer name number {{ $i }}</atom:table.cell>
+                @endfor
             </atom:table.row>
         </x-slot:rows>
     </atom:table>

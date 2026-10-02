@@ -56,3 +56,48 @@ test('a caller whitespace-normal beats the nowrap default and the text wraps', a
   expect(wrapCell).toBeGreaterThan(nowrapCell + 15)
   expect(wrapHead).toBeGreaterThan(nowrapHead + 15)
 })
+
+// firmhive #4: a table with one long value stretched past its box. `truncate` on
+// the cell lets the value ellipsise instead; the table is NOT given w-full, which
+// would squeeze a wide table's nowrap cells below their content.
+const tableWidth = (page, box) => width(page, `#${box} table`)
+const boxScrolls = (page, box) =>
+  page.locator(`#${box} .overflow-x-auto`).evaluate(el => el.scrollWidth > el.clientWidth + 1)
+
+test('a long value stretches the table past its box without truncate', async ({ page }) => {
+  await page.goto('/atom/e2e/table-layout')
+
+  expect(await tableWidth(page, 'box-long-plain')).toBeGreaterThan(624)
+  expect(await boxScrolls(page, 'box-long-plain')).toBe(true)
+})
+
+test('a truncate cell ellipsises inside the box and the table does not grow', async ({ page }) => {
+  await page.goto('/atom/e2e/table-layout')
+
+  expect(await tableWidth(page, 'box-long-truncate')).toBeLessThanOrEqual(624)
+  expect(await boxScrolls(page, 'box-long-truncate')).toBe(false)
+
+  // the value is cut, not wrapped: still one line, and its content is wider than the cell
+  const cell = page.locator('#box-long-truncate [data-address]')
+  await expect(cell).toHaveCSS('text-overflow', 'ellipsis')
+  expect(await cell.evaluate(el => el.scrollWidth > el.clientWidth + 1)).toBe(true)
+  expect(await textHeight(page, '#box-long-truncate [data-address]')).toBeLessThan(30)
+
+  // the short columns stay readable: no neighbouring cell is cut
+  for (const text of ['Jane Tan', '012-345 6789', 'Active']) {
+    const neighbour = page.locator('#box-long-truncate tbody td', { hasText: text })
+    expect(await neighbour.evaluate(el => el.scrollWidth > el.clientWidth + 1)).toBe(false)
+  }
+})
+
+test('twelve nowrap columns still scroll, with no cell squeezed below its text', async ({ page }) => {
+  await page.goto('/atom/e2e/table-layout')
+
+  expect(await tableWidth(page, 'box-wide')).toBeGreaterThan(624)
+  expect(await boxScrolls(page, 'box-wide')).toBe(true)
+
+  const squeezed = await page.locator('#box-wide td').evaluateAll(
+    cells => cells.filter(td => td.scrollWidth > td.clientWidth + 1).length
+  )
+  expect(squeezed).toBe(0)
+})
