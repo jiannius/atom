@@ -102,3 +102,149 @@ test.describe('Livewire action timing the toast hook relies on', () => {
     expect(await page.evaluate(() => window.__timeline.find(t => t.at === 'finish').name)).toBe('save')
   })
 })
+
+test.describe('the error toast', () => {
+  test('a failed submit shows a danger toast that lists each message once', async ({ page }) => {
+    await open(page)
+    await submit(page)
+
+    await expect(toast(page)).toBeVisible()
+    await expect(toast(page)).toContainText('Please check the form')
+
+    // name and nickname fail with the same sentence: it appears once, not twice
+    const items = toast(page).locator('li')
+    await expect(items).toHaveText(['Name is required.', 'Email is required.'])
+
+    // danger variant: the red error glyph shows, the success one does not
+    await expect(toast(page).locator('span.text-red-500')).toBeVisible()
+    await expect(toast(page).locator('span.text-green-500')).toBeHidden()
+  })
+
+  test('it stays up past the 3s a normal toast gets, until the X is clicked', async ({ page }) => {
+    await open(page)
+    await submit(page)
+    await expect(toast(page)).toBeVisible()
+
+    await page.waitForTimeout(5000)
+    await expect(toast(page)).toBeVisible()
+
+    await toast(page).getByRole('button', { name: 'Close' }).click()
+    await expect(toast(page)).toBeHidden()
+  })
+
+  test('it does not scroll or move focus', async ({ page }) => {
+    await open(page)
+    const before = await page.evaluate(() => window.scrollY)
+    await submit(page)
+    await expect(toast(page)).toBeVisible()
+
+    // the toast is the whole response: nothing is scrolled to, and no field is focused
+    const after = await page.evaluate(() => ({ y: window.scrollY, onField: !!document.activeElement?.matches('input, textarea, select') }))
+    expect(after.y).toBe(before)
+    expect(after.onField).toBe(false)
+  })
+
+  test('a successful submit shows only the app\'s own toast', async ({ page }) => {
+    await open(page)
+    await page.locator('input[data-probe="name"]').fill('Acme')
+    await page.locator('input[data-probe="nickname"]').fill('Ac')
+    await page.locator('input[data-probe="email"]').fill('a@b.co')
+    await submit(page)
+
+    await expect(page.locator('[data-saves]')).toHaveText('1')
+    await expect(toast(page)).toBeVisible()
+    await expect(toast(page)).toContainText('Saved')
+    await expect(toast(page)).not.toContainText('Please check the form')
+  })
+
+  test(':error-toast="false" shows nothing', async ({ page }) => {
+    await open(page, '?error-toast=0')
+    await submit(page)
+
+    // the errors still reach the fields, so the round trip did finish
+    await expect(page.locator('[data-atom-error]').first()).toBeVisible()
+    await expect(toast(page)).toBeHidden()
+  })
+
+  test('a disabled form never opts in', async ({ page }) => {
+    await open(page, '?disabled=1')
+
+    await expect(page.locator('form[data-form="main"]')).not.toHaveAttribute('data-atom-error-toast', /.*/)
+    await expect(page.locator('form[data-form="main"]')).not.toHaveAttribute('data-atom-error-heading', /.*/)
+  })
+
+  test('a page without <atom:toast> is a no-op: no throw, errors still on the fields', async ({ page }) => {
+    const errors = []
+    page.on('pageerror', (e) => errors.push(e.message))
+
+    await open(page, '?no-toast=1')
+    await submit(page)
+
+    await expect(page.locator('[data-atom-error]').first()).toBeVisible()
+    await expect(page.locator('[data-atom-toast]')).toHaveCount(0)
+    expect(errors).toEqual([])
+  })
+
+  test('a reCAPTCHA form (which calls $wire.save() itself) still toasts', async ({ page }) => {
+    await open(page, '?recaptcha=1')
+    await submit(page)
+
+    await expect(toast(page)).toBeVisible()
+    await expect(toast(page).locator('li').first()).toHaveText('Name is required.')
+  })
+
+  test('only a form submit reacts: another action finishing leaves a dismissed toast down', async ({ page }) => {
+    await open(page)
+    await submit(page)
+    await expect(toast(page)).toBeVisible()
+    await toast(page).getByRole('button', { name: 'Close' }).click()
+    await expect(toast(page)).toBeHidden()
+
+    // the errors are still on the component; a non-submit action must not bring the toast back
+    const responded = page.waitForResponse((r) => r.url().includes('livewire'))
+    await page.locator('[data-touch]').click()
+    await responded
+    await page.waitForTimeout(300)
+    await expect(toast(page)).toBeHidden()
+  })
+
+  test('the second form on the component reacts for its own submit, with its own message', async ({ page }) => {
+    await open(page)
+    await submit(page, 'other')
+
+    await expect(toast(page)).toBeVisible()
+    await expect(toast(page).locator('li')).toHaveText(['Other is required.'])
+  })
+
+  test('a network failure is not a failed submit: no toast from stale errors', async ({ page }) => {
+    await open(page)
+    await submit(page)
+    await expect(toast(page)).toBeVisible()
+    await toast(page).getByRole('button', { name: 'Close' }).click()
+    await expect(toast(page)).toBeHidden()
+
+    // errors from the first submit are still on the component's snapshot
+    await page.route('**/livewire*/update', (route) => route.abort())
+    await submit(page)
+    await page.waitForTimeout(800)
+    await expect(toast(page)).toBeHidden()
+  })
+
+  // The toast is a popover opened after the dialog, so it paints in the top layer above
+  // it. (A modal dialog makes the rest of the page inert, so the toast's X cannot be
+  // clicked while the modal is open; the next successful submit closes it instead.)
+  test('a form inside a modal toasts over the dialog', async ({ page }) => {
+    await open(page)
+    await page.evaluate(() => window.atom.modal('fixture-modal').show())
+
+    const dialog = page.locator('dialog[open]')
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('button', { name: 'Save' }).click()
+
+    await expect(toast(page)).toBeVisible()
+    await expect(toast(page).locator('li')).toHaveText(['Modal field is required.'])
+
+    await expect(toast(page)).toHaveJSProperty('popover', 'manual')
+    expect(await toast(page).evaluate((el) => el.matches(':popover-open'))).toBe(true)
+  })
+})

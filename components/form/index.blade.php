@@ -3,6 +3,7 @@
     'cols' => null,
     'recaptcha' => false,
     'disabled' => false,
+    'errorToast' => true,
 ])
 
 @php
@@ -28,6 +29,7 @@ if ($disabled) {
     // Enter can't post. The reCAPTCHA branch is skipped for the same reason.
     $attributes = $attributes->whereDoesntStartWith('wire:submit');
     $merges['onsubmit'] = 'return false';
+    $errorToast = false;
 }
 elseif ($recaptcha) {
     // Intercept the submit so reCAPTCHA can mint + attach a token before the
@@ -39,6 +41,14 @@ elseif ($recaptcha) {
 }
 else {
     $merges['wire:submit'] = $submit;
+}
+
+// A failed submit shows its errors in a sticky danger toast (resources/js/helpers/
+// form-errors.js reads these two attributes). The heading is translated here because
+// the script has no translator; a read-only form submits nothing, so it never opts in.
+if ($errorToast) {
+    $merges['data-atom-error-toast'] = '';
+    $merges['data-atom-error-heading'] = t('Please check the form');
 }
 @endphp
 

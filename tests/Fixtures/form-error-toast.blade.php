@@ -1,6 +1,8 @@
 <div class="space-y-8">
     <div>Saves: <span data-saves>{{ $saves }}</span></div>
 
+    <button type="button" wire:click="touch" data-touch>Touch</button>
+
     <atom:form wire:submit="save" data-form="main" :error-toast="$errorToast" :disabled="$disabled" :recaptcha="$recaptcha">
         <atom:input label="Name" wire:model="name" data-probe="name" />
         <atom:input label="Nickname" wire:model="nickname" data-probe="nickname" />

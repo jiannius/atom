@@ -64,6 +64,15 @@ class FormErrorToastFixture extends Component
     }
 
     /**
+     * An action that is not a form submit, run while errors from an earlier submit are
+     * still on the component.
+     */
+    public function touch(): void
+    {
+        $this->saves += 0;
+    }
+
+    /**
      * The default `submit` method of the modal's <atom:form>.
      */
     public function submit(): void

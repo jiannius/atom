@@ -3,6 +3,7 @@ import './prototypes/number'
 import './prototypes/string'
 
 import helpers from './helpers'
+import formErrors from './helpers/form-errors'
 import accordion from './alpinejs/accordion'
 import command from './alpinejs/command'
 import modal from './alpinejs/modal'
@@ -62,3 +63,5 @@ document.addEventListener('alpine:init', () => {
 window.dd = console.log.bind(console)
 window.atom = helpers
 window.empty = helpers.empty
+
+formErrors()

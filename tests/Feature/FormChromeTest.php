@@ -117,6 +117,73 @@ describe('form', function () {
     });
 });
 
+/**
+ * The attributes of the first <form> in a render, by parsing it rather than grepping.
+ *
+ * @return array<string, string>
+ */
+function formErrorToastAttributes(string $html): array
+{
+    $document = new DOMDocument;
+    $previous = libxml_use_internal_errors(true);
+    $document->loadHTML('<?xml encoding="utf-8"?><body>'.$html.'</body>');
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+
+    $form = $document->getElementsByTagName('form')->item(0);
+    $attributes = [];
+
+    foreach ($form->attributes as $attribute) {
+        $attributes[$attribute->name] = $attribute->value;
+    }
+
+    return $attributes;
+}
+
+describe('form error toast', function () {
+    it('opts in by default, with the heading translated server-side', function () {
+        $attributes = formErrorToastAttributes(renderBlade('<atom:form wire:submit="save"><input name="x"/></atom:form>'));
+
+        expect($attributes)
+            ->toHaveKey('data-atom-error-toast')
+            ->toHaveKey('data-atom-error-heading', 'Please check the form');
+    });
+
+    it('translates the heading', function () {
+        app('translator')->setLoaded(['*' => ['*' => ['en' => ['Please check the form' => 'Sila semak borang']]]]);
+
+        $attributes = formErrorToastAttributes(renderBlade('<atom:form><input name="x"/></atom:form>'));
+
+        expect($attributes['data-atom-error-heading'])->toBe('Sila semak borang');
+    });
+
+    it('opts out with :error-toast="false"', function () {
+        $attributes = formErrorToastAttributes(renderBlade('<atom:form :error-toast="false"><input name="x"/></atom:form>'));
+
+        expect($attributes)
+            ->toHaveKey('data-atom-form')
+            ->not->toHaveKey('data-atom-error-toast')
+            ->not->toHaveKey('data-atom-error-heading');
+    });
+
+    it('stays off for a disabled form, which submits nothing', function () {
+        $attributes = formErrorToastAttributes(renderBlade('<atom:form disabled><input name="x"/></atom:form>'));
+
+        expect($attributes)
+            ->toHaveKey('data-atom-form')
+            ->not->toHaveKey('data-atom-error-toast')
+            ->not->toHaveKey('data-atom-error-heading');
+    });
+
+    it('stays on for a reCAPTCHA form, targeting the same method', function () {
+        $attributes = formErrorToastAttributes(renderBlade('<atom:form wire:submit="create" recaptcha><input name="x"/></atom:form>'));
+
+        expect($attributes)
+            ->toHaveKey('data-atom-error-toast')
+            ->toHaveKey('wire:target', 'create');
+    });
+});
+
 describe('button submit-loading', function () {
     it('mirrors the parent form loading state for type=submit', function () {
         $html = renderBlade('<atom:button type="submit">Save</atom:button>');
