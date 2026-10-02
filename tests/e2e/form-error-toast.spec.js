@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test'
+import { targets } from '../../resources/js/helpers/form-errors.js'
 
 // <atom:form> shows a sticky error toast when a submit comes back with validation errors.
 // The page is tests/Fixtures/FormErrorToastFixture.php: a "main" form (name, nickname,
-// email; success raises the app's own "Saved" toast), a second form on the same component
-// ("other") and a modal form. Query flags flip the main form's props: ?error-toast=0,
+// email; success raises the app's own "Saved" toast), more forms on the same component
+// ("other", "twin" which shares other's method, "plain" which validates nothing, "gone"
+// which a successful save removes, "many" with seven failing fields) and a modal form. Query flags flip the main form's props: ?error-toast=0,
 // ?disabled=1, ?recaptcha=1; ?no-toast=1 drops <atom:toast> from the page.
 
 const open = async (page, query = '') => {
@@ -120,12 +122,12 @@ test.describe('the error toast', () => {
     await expect(toast(page).locator('span.text-green-500')).toBeHidden()
   })
 
-  test('it stays up past the 3s a normal toast gets, until the X is clicked', async ({ page }) => {
+  test('outside a modal it stays up past the 6s a modal one gets, until the X is clicked', async ({ page }) => {
     await open(page)
     await submit(page)
     await expect(toast(page)).toBeVisible()
 
-    await page.waitForTimeout(5000)
+    await page.waitForTimeout(7000)
     await expect(toast(page)).toBeVisible()
 
     await toast(page).getByRole('button', { name: 'Close' }).click()
@@ -313,9 +315,10 @@ test.describe('the error toast', () => {
     await expect(toast(page)).toBeHidden()
   })
 
-  // The toast is a popover opened after the dialog, so it paints in the top layer above
-  // it. (A modal dialog makes the rest of the page inert, so the toast's X cannot be
-  // clicked while the modal is open; the next successful submit closes it instead.)
+  // The toast is a popover opened after the dialog, so it paints in the top layer above it.
+  // But a modal dialog makes the rest of the page inert: the toast's X can't be clicked,
+  // Escape doesn't reach a popover=manual, so a sticky toast would sit there for good.
+  // Inside a dialog the toast is timed and also closes with the dialog.
   test('a form inside a modal toasts over the dialog', async ({ page }) => {
     await open(page)
     await page.evaluate(() => window.atom.modal('fixture-modal').show())
@@ -329,5 +332,141 @@ test.describe('the error toast', () => {
 
     await expect(toast(page)).toHaveJSProperty('popover', 'manual')
     expect(await toast(page).evaluate((el) => el.matches(':popover-open'))).toBe(true)
+  })
+
+  test('a form inside a modal gets a timed toast, which closes by itself', async ({ page }) => {
+    test.setTimeout(30000)
+    await open(page)
+    await page.evaluate(() => window.atom.modal('fixture-modal').show())
+    await page.locator('dialog[open]').getByRole('button', { name: 'Save' }).click()
+
+    await expect(toast(page)).toBeVisible()
+    await page.waitForTimeout(4000)
+    await expect(toast(page)).toBeVisible()
+    await expect(toast(page)).toBeHidden({ timeout: 5000 })
+    await expect(page.locator('dialog[open]')).toBeVisible()
+  })
+
+  const closers = {
+    'Escape': (page) => page.keyboard.press('Escape'),
+    'the dialog\'s close button': (page) => page.locator('dialog[open]').getByRole('button', { name: 'Close' }).click(),
+    'an atom-modal-close dispatch': (page) => page.evaluate(() => window.atom.modal('fixture-modal').close()),
+  }
+
+  for (const [how, close] of Object.entries(closers)) {
+    test(`closing the modal with ${how} closes its error toast`, async ({ page }) => {
+      await open(page)
+      await page.evaluate(() => window.atom.modal('fixture-modal').show())
+      await page.locator('dialog[open]').getByRole('button', { name: 'Save' }).click()
+      await expect(toast(page)).toBeVisible()
+
+      await close(page)
+
+      await expect(page.locator('dialog[open]')).toHaveCount(0)
+      await expect(toast(page)).toBeHidden({ timeout: 2000 })
+    })
+  }
+
+  test('closing the modal leaves a toast that is not the form\'s own', async ({ page }) => {
+    await open(page)
+    await page.evaluate(() => window.atom.modal('fixture-modal').show())
+    await page.locator('dialog[open]').getByRole('button', { name: 'Save' }).click()
+    await expect(toast(page)).toContainText('Modal field is required.')
+
+    await page.evaluate(() => window.atom.toast({ message: 'Elsewhere', delay: 0 }))
+    await expect(toast(page)).toContainText('Elsewhere')
+    await page.evaluate(() => window.atom.modal('fixture-modal').close())
+
+    await page.waitForTimeout(400)
+    await expect(toast(page)).toBeVisible()
+    await expect(toast(page)).toContainText('Elsewhere')
+  })
+})
+
+test.describe('whose errors, and when', () => {
+  test('a form that is gone after a successful save takes its error toast with it', async ({ page }) => {
+    await open(page)
+    await submit(page, 'gone')
+    await expect(toast(page)).toContainText('Gone field is required.')
+
+    await page.locator('input[data-probe="gone-field"]').fill('ok')
+    await submit(page, 'gone')
+
+    await expect(page.locator('form[data-form="gone"]')).toHaveCount(0)
+    await expect(toast(page)).toBeHidden()
+  })
+
+  test('a submit that validates nothing does not re-toast another form\'s errors', async ({ page }) => {
+    await open(page)
+    await submit(page)
+    await expect(toast(page)).toContainText('Name is required.')
+    await toast(page).getByRole('button', { name: 'Close' }).click()
+    await expect(toast(page)).toBeHidden()
+
+    // the main form's errors are still on the component
+    await expect(page.locator('[data-atom-error]').first()).toBeVisible()
+    const responded = page.waitForResponse((r) => r.url().includes('livewire'))
+    await submit(page, 'plain')
+    await responded
+    await page.waitForTimeout(400)
+
+    await expect(toast(page)).toBeHidden()
+  })
+
+  test('a call that names no origin and matches two forms toasts nothing rather than guess', async ({ page }) => {
+    await open(page)
+    const responded = page.waitForResponse((r) => r.url().includes('livewire'))
+    await page.evaluate(() => {
+      const el = document.querySelector('form[data-atom-form]').closest('[wire\\:id]')
+      window.Livewire.find(el.getAttribute('wire:id')).saveOther()
+    })
+    await responded
+
+    await expect(page.locator('form[data-form="other"] [data-atom-error]')).toBeVisible()
+    await page.waitForTimeout(400)
+    await expect(toast(page)).toBeHidden()
+  })
+
+  test('with no origin, the candidate form that last had focus is the one that toasts', async ({ page }) => {
+    await open(page)
+    await page.locator('input[data-probe="other"]').focus()
+    await page.evaluate(() => {
+      const el = document.querySelector('form[data-atom-form]').closest('[wire\\:id]')
+      window.Livewire.find(el.getAttribute('wire:id')).saveOther()
+    })
+
+    await expect(toast(page).locator('li')).toHaveText(['Other is required.'])
+  })
+
+  test('a long list is cut at five messages and a count of the rest', async ({ page }) => {
+    await open(page)
+    await submit(page, 'many')
+
+    await expect(toast(page).locator('li')).toHaveText([
+      'Row a is required.', 'Row b is required.', 'Row c is required.', 'Row d is required.', 'Row e is required.',
+      'and 2 more',
+    ])
+  })
+})
+
+test.describe('the toast as a live region', () => {
+  test('it is a polite status region, whatever it shows', async ({ page }) => {
+    await open(page)
+
+    await expect(toast(page)).toHaveAttribute('role', 'status')
+    await expect(toast(page)).toHaveAttribute('aria-live', 'polite')
+  })
+})
+
+test.describe('wire:target', () => {
+  // split on the commas between targets, not those inside an argument list or a string
+  test('is read as a list of action names', () => {
+    const form = (value) => ({ getAttribute: () => value })
+
+    expect(targets(form('save'))).toEqual(['save'])
+    expect(targets(form('save, other'))).toEqual(['save', 'other'])
+    expect(targets(form('save(1, 2), other'))).toEqual(['save', 'other'])
+    expect(targets(form(`save('a, saveOther()'), other(1, [2, 3])`))).toEqual(['save', 'other'])
+    expect(targets(form(''))).toEqual([])
   })
 })

@@ -146,7 +146,8 @@ describe('form error toast', function () {
 
         expect($attributes)
             ->toHaveKey('data-atom-error-toast')
-            ->toHaveKey('data-atom-error-heading', 'Please check the form');
+            ->toHaveKey('data-atom-error-heading', 'Please check the form')
+            ->toHaveKey('data-atom-error-more', 'and :count more');
     });
 
     it('translates the heading', function () {
@@ -157,13 +158,22 @@ describe('form error toast', function () {
         expect($attributes['data-atom-error-heading'])->toBe('Sila semak borang');
     });
 
+    it('translates the line that counts the messages the toast leaves out, keeping :count', function () {
+        app('translator')->setLoaded(['*' => ['*' => ['en' => ['and :count more' => 'dan :count lagi']]]]);
+
+        $attributes = formErrorToastAttributes(renderBlade('<atom:form><input name="x"/></atom:form>'));
+
+        expect($attributes['data-atom-error-more'])->toBe('dan :count lagi');
+    });
+
     it('opts out with :error-toast="false"', function () {
         $attributes = formErrorToastAttributes(renderBlade('<atom:form :error-toast="false"><input name="x"/></atom:form>'));
 
         expect($attributes)
             ->toHaveKey('data-atom-form')
             ->not->toHaveKey('data-atom-error-toast')
-            ->not->toHaveKey('data-atom-error-heading');
+            ->not->toHaveKey('data-atom-error-heading')
+            ->not->toHaveKey('data-atom-error-more');
     });
 
     it('stays off for a disabled form, which submits nothing', function () {
@@ -172,7 +182,8 @@ describe('form error toast', function () {
         expect($attributes)
             ->toHaveKey('data-atom-form')
             ->not->toHaveKey('data-atom-error-toast')
-            ->not->toHaveKey('data-atom-error-heading');
+            ->not->toHaveKey('data-atom-error-heading')
+            ->not->toHaveKey('data-atom-error-more');
     });
 
     it('stays on for a reCAPTCHA form, targeting the same method', function () {

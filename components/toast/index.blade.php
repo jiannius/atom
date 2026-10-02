@@ -8,7 +8,13 @@ $config = [
 ];
 @endphp
 
+{{-- atom-toast-close with a source (onClose) closes only a toast that was shown with that same
+     source, so a form closing its own error toast can't take the app's own Saved toast with it.
+     With no source it closes whatever is open. role=status: the toast is a live region, so a
+     screen reader announces a saved or failed message without it taking focus. --}}
 <div
+role="status"
+aria-live="polite"
 x-data="{
     timer: null,
     config: {},
@@ -35,9 +41,6 @@ x-data="{
         this.$root.classList.remove('opacity-100')
     },
 
-    // atom-toast-close with a source closes only a toast that was shown with that same
-    // source, so a form closing its own error toast can't take the app's own Saved toast
-    // with it. With no source it closes whatever is open.
     onClose (e) {
         let source = e.detail?.source
 

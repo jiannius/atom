@@ -30,11 +30,14 @@ describe('toast', function () {
 
         $toast = (new DOMXPath($document))->query('//*[@data-atom-toast]')->item(0);
 
-        expect($toast->getAttribute('x-on:atom-toast-close.window'))->toBe('onClose')
+        expect($toast->getAttribute('role'))->toBe('status')
+            ->and($toast->getAttribute('aria-live'))->toBe('polite')
+            ->and($toast->getAttribute('x-on:atom-toast-close.window'))->toBe('onClose')
             ->and($toast->getAttribute('x-on:atom-toast-show.window'))->toBe('showToast')
             ->and($toast->getAttribute('x-data'))
             ->toContain('onClose (e)')
             ->toContain('this.config.source !== source')
+            ->not->toContain('//')
             ->toEndWith('}');
     });
 
