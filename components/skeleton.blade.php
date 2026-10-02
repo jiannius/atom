@@ -1,5 +1,5 @@
 <div {{ $attributes->class([
-    'flex flex-col gap-4 animate-pulse w-full',
+    'flex flex-col gap-4 animate-pulse [:where(&)]:w-full',
     '*:bg-zinc-200 *:h-2 *:rounded-full',
     'dark:*:bg-zinc-600'
 ]) }}>

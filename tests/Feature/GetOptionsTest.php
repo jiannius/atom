@@ -114,6 +114,69 @@ it('escapes an option that also carries an avatar', function () {
         ->toContain('&lt;b&gt;x&lt;/b&gt;');
 });
 
+// `avatar` is not an avatar prop: it used to land as a stray attribute on the
+// <figure> (the bag is printed now) and an array one threw in trim() on the
+// unauthenticated endpoint. The URL has to reach <img src>, scheme-checked.
+describe('an option avatar', function () {
+    function avatarHtml(mixed $avatar): string
+    {
+        return (new GetOptionsSubclass())->getOptionHtml(['value' => 1, 'label' => 'Jane', 'avatar' => $avatar])['html'];
+    }
+
+    it('renders a string avatar as the image, with no stray avatar attribute', function () {
+        $html = avatarHtml('https://example.test/a.png');
+        $img = domQuery($html, '//figure//img');
+
+        expect($img)->toHaveCount(1)
+            ->and($img[0]->getAttribute('src'))->toBe('https://example.test/a.png')
+            ->and(domQuery($html, '//*[@avatar]'))->toHaveCount(0);
+    });
+
+    // The label is printed beside the avatar, so the image is decorative. Passing
+    // `name` would also wrap the avatar in a tooltip: a top-layer popover inside
+    // the role=option row, whose click bubbles to its own row and which overlaps
+    // the row above, so a click near the avatar could pick the wrong option.
+    it('is decorative and carries no tooltip popover', function () {
+        $html = avatarHtml('https://example.test/a.png');
+        $img = domQuery($html, '//figure//img')[0];
+
+        expect($img->hasAttribute('alt'))->toBeTrue()
+            ->and($img->getAttribute('alt'))->toBe('')
+            ->and(domQuery($html, '//*[@popover]'))->toHaveCount(0)
+            ->and(domQuery($html, '//*[@data-atom-tooltip-content]'))->toHaveCount(0);
+    });
+
+    it('shows the label initials when there is no usable image', function (mixed $avatar) {
+        $html = avatarHtml($avatar);
+        $figure = domQuery($html, '//figure')[0];
+
+        expect(domQuery($html, '//img'))->toHaveCount(0)
+            ->and(domQuery($html, '//*[@popover]'))->toHaveCount(0)
+            ->and(trim($figure->textContent))->toBe('J');
+    })->with([
+        'blocked scheme' => ['javascript:alert(1)'],
+        'array' => [fn () => ['url' => 'https://example.test/a.png']],
+    ]);
+
+    it('does not throw on an array or object avatar, and renders no image', function (mixed $avatar) {
+        $html = avatarHtml($avatar);
+
+        expect(domQuery($html, '//figure'))->toHaveCount(1)
+            ->and(domQuery($html, '//img'))->toHaveCount(0)
+            ->and(domQuery($html, '//*[@avatar]'))->toHaveCount(0);
+    })->with([
+        'array' => [fn () => ['url' => 'https://example.test/a.png']],
+        'object' => [fn () => (object) ['url' => 'https://example.test/a.png']],
+    ]);
+
+    it('lets no javascript: avatar reach img src', function () {
+        $html = avatarHtml('javascript:alert(1)');
+
+        expect(domQuery($html, '//img'))->toHaveCount(0)
+            ->and($html)->not->toContain('javascript:');
+    });
+});
+
 it('does not double the escape of a plain label', function () {
     $option = (new GetOptionsSubclass())->getOptionHtml(['value' => 1, 'label' => 'Tom & Jerry']);
 

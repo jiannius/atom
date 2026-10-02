@@ -45,6 +45,17 @@
         <atom:button type="submit" data-submit="orphan">Save orphan</atom:button>
     </atom:form>
 
+    {{-- plain inputs: the matcher knows each only by a wire:model modifier or a name, so a
+         bracketed name has to be read as the dotted error key it fails under --}}
+    <atom:form wire:submit="saveRaw" data-form="raw">
+        <input wire:model.blur="blurOnly" data-probe="blur-only">
+        <input wire:model.live.debounce.300ms="liveOnly" data-probe="live-only">
+        <input name="nameOnly" data-probe="name-only">
+        <input name="tags[]" data-probe="tags">
+        <input name="rows[a]" data-probe="rows-a">
+        <atom:button type="submit" data-submit="raw">Save raw</atom:button>
+    </atom:form>
+
     {{-- one of every atom control, each bound to a property that fails: the e2e checks that
          the toast's matcher finds every one of them --}}
     <atom:form wire:submit="saveControls" data-form="controls">

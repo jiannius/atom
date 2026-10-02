@@ -6,7 +6,7 @@
     'align' => 'center',
 ])
 
-<label class="group/radio inline-block" data-atom-radio>
+<label {{ $attributes->only('class')->class('group/radio inline-block') }} data-atom-radio>
     <div @class([
         'flex gap-2',
         'items-center' => $align === 'center',
@@ -17,7 +17,7 @@
             'shrink-0',
             'pt-1' => $align === 'start',
         ])>
-            <input type="radio" class="sr-only peer" {{ $attributes->merge(['disabled' => ($disabled ?? false) ?: null]) }}>
+            <input type="radio" class="sr-only peer" {{ $attributes->except('class')->merge(['disabled' => ($disabled ?? false) ?: null]) }}>
 
             <div
             aria-hidden="true"

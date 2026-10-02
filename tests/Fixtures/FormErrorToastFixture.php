@@ -46,6 +46,16 @@ class FormErrorToastFixture extends Component
 
     public ?string $orphanField = null;
 
+    // the "raw" form: plain inputs the matcher knows only by a wire:model modifier or a name
+    public ?string $blurOnly = null;
+
+    public ?string $liveOnly = null;
+
+    public ?string $nameOnly = null;
+
+    /** @var array<int, string> */
+    public array $tags = [];
+
     // Livewire sends the browser only the errors keyed to a public property, so a field-less
     // error has to be keyed to one that no field renders
     public ?string $general = null;
@@ -176,6 +186,16 @@ class FormErrorToastFixture extends Component
     {
         $this->addError('orphanField', 'Orphan field is required.');
         $this->addError('general', 'Something general went wrong.');
+    }
+
+    /**
+     * Fail every field of the "raw" form, named five different ways.
+     */
+    public function saveRaw(): void
+    {
+        foreach (['blurOnly', 'liveOnly', 'nameOnly', 'tags', 'rows.a'] as $key) {
+            $this->addError($key, "$key failed.");
+        }
     }
 
     /**

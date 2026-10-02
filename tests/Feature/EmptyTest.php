@@ -27,8 +27,10 @@ describe('empty', function () {
     it('renders the subtle variant as a single heading box', function () {
         $html = Blade::render('<atom:empty subtle heading="Nothing here" />');
 
+        // the marker lets a caller's class and attributes land on a findable element
         expect($html)
             ->toContain('Nothing here')
-            ->not->toContain('data-atom-empty');
+            ->toContain('data-atom-empty')
+            ->not->toContain('We could not find anything.');
     });
 });

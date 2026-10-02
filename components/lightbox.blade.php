@@ -6,6 +6,7 @@ x-on:lightbox.window="open($event.target)"
 x-on:keydown.left.prevent="prev()"
 x-on:keydown.right.prevent="next()"
 x-on:close="$el.removeAttribute('data-open')"
+{{ $attributes }}
 data-atom-lightbox>
     <div
     x-transition.opacity.duration.100

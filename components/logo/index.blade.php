@@ -10,7 +10,7 @@ $src = collect(["$name.svg", "$name.png", "$name.jpg", "$name.jpeg", "$name.webp
         'alt' => config('app.name').' Logo',
         'width' => 512,
         'height' => 512,
-        ])->only('alt', 'width', 'height') }}>
+        ])->only(['alt', 'width', 'height']) }}>
     @else
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 42">
             <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"

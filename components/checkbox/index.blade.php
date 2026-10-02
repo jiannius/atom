@@ -20,7 +20,7 @@ if ($disabled ?? false) {
 }
 @endphp
 
-<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<label {{ $attributes->only('class')->class('group/checkbox inline-block space-y-2') }} data-atom-checkbox>
     <div>
         <div @class([
             'flex gap-2',
@@ -32,7 +32,7 @@ if ($disabled ?? false) {
                 'shrink-0',
                 'pt-1' => $align === 'start',
             ])>
-                <input type="checkbox" class="sr-only peer" {{ $attributes->merge($merges) }}>
+                <input type="checkbox" class="sr-only peer" {{ $attributes->except('class')->merge($merges) }}>
 
                 <div
                 aria-hidden="true"

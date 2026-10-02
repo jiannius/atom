@@ -16,7 +16,7 @@ $icon ??= match ($variant) {
 };
 
 $classes = Arr::toCssClasses([
-    'relative w-full rounded-lg border py-4 px-6',
+    '[:where(&)]:relative [:where(&)]:w-full rounded-lg border py-4 px-6',
     match ($variant) {
         'info' => 'bg-sky-100 dark:bg-sky-900/20 border-sky-200 dark:border-sky-400/50 text-sky-600 dark:text-sky-100/80 [&_[data-atom-icon]]:text-sky-400',
         'success' => 'bg-green-100 dark:bg-green-900/20 border-green-200 dark:border-green-400/50 text-green-600 dark:text-green-100/80 [&_[data-atom-icon]]:text-green-400',

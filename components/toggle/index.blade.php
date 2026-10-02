@@ -12,11 +12,11 @@ $error ??= $errors?->first($name);
 $merges = ['name' => $name];
 @endphp
 
-<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<label {{ $attributes->only('class')->class('group/toggle inline-block space-y-2') }} data-atom-toggle>
     <div>
         <div class="flex gap-2 items-center">
             <div class="shrink-0 pt-0.5">
-                <input type="checkbox" class="peer sr-only" {{ $attributes->merge($merges) }}>
+                <input type="checkbox" class="peer sr-only" {{ $attributes->except('class')->merge($merges) }}>
 
                 <div
                 aria-hidden="true"

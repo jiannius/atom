@@ -89,7 +89,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
 @endif
 @if ($disabled) aria-disabled="true" @endif
 @class(['group/select w-full', 'pointer-events-none' => $disabled])
-{{ $attributes->except('class', 'aria-labelledby') }}>
+{{ $attributes->except(['class', 'aria-labelledby']) }}>
     @if ($multiple === 'list')
         <template x-if="!isEmpty" hidden>
             <atom:list class="mb-2">

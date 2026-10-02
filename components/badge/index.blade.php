@@ -9,6 +9,14 @@
 @php
 $color ??= (is_enum($status) ? $status->color() : data_get($status, 'color'));
 
+// the hex branch computes its colours; a caller `style` is appended last so it wins
+$style = ! str($color)->startsWith('#') ? null : Arr::toCssStyles(array_filter([
+    'color: '.$color,
+    'background-color: '.\Jiannius\Atom\Services\Color::shade($color, 70, 0.4),
+    'border-color: '.\Jiannius\Atom\Services\Color::shade($color, 50, 0.4),
+    $attributes->get('style'),
+]));
+
 $classes = Arr::toCssClasses([
     'inline-flex items-center justify-center font-medium whitespace-nowrap border',
 
@@ -22,16 +30,12 @@ $classes = Arr::toCssClasses([
 
 @if (str($color)->startsWith('#'))
     <div
-    @style([
-        'color: '.$color,
-        'background-color: '.\Jiannius\Atom\Services\Color::shade($color, 70, 0.4),
-        'border-color: '.\Jiannius\Atom\Services\Color::shade($color, 50, 0.4),
-    ])
     @class([
         $classes,
         $attributes->get('class', 'max-w-xs')
     ])
-    {{ $attributes->except('class') }}
+    {{ $attributes->except(['class', 'style']) }}
+    style="{{ $style }}"
     data-atom-badge>
         @if ($slot->isNotEmpty())
             {{ $slot }}

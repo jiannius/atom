@@ -10,7 +10,7 @@
     @if ($slot->isNotEmpty())
         <span @class([
             'shrink whitespace-nowrap text-center text-muted dark:text-muted-foreground',
-            $attributes->get('class', 'font-medium uppercase text-sm'),
+            'font-medium uppercase text-sm',
             'ml-4' => $align === 'right',
             'mr-4' => $align === 'left',
             'mx-4' => $align === 'center',
