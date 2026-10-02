@@ -24,7 +24,7 @@ $classes = Arr::toCssClasses([
 x-data="telInput({ code: @js($code) })"
 x-modelable="telValue"
 class="group/input relative w-full"
-{{ $attributes->except('id', 'class', 'placeholder', 'required', 'invalid', 'disabled', 'readonly') }}
+{{ $attributes->except(['id', 'class', 'placeholder', 'required', 'invalid', 'disabled', 'readonly']) }}
 data-atom-input-tel>
     <div class="absolute top-0 bottom-0 left-0 w-[9rem] flex items-center gap-2">
         <div class="relative w-full">

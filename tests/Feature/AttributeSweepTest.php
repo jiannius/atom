@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\ViewErrorBag;
 
 /**
  * The attribute-bag sweep: a component that declares no way for a caller's
@@ -159,6 +160,10 @@ describe('B1: components that never printed the bag', function () {
 });
 
 describe('B2: duplicate or wrong attributes', function () {
+    beforeEach(function () {
+        view()->share('errors', new ViewErrorBag);
+    });
+
     it('prints one class attribute on copy, carrying the caller classes', function () {
         $html = renderBlade('<atom:copy value="abc" class="ml-2">x</atom:copy>');
         $root = domQuery($html, '//*[@x-data]')[0];
@@ -217,6 +222,43 @@ describe('B2: duplicate or wrong attributes', function () {
             ->and(domClasses($figure))->toContain('h-8')
             ->and($figure->getAttribute('id'))->toBe('pay');
     })->with(['fpx', 'master', 'tng', 'ipay88']);
+
+    it('names the Touch \'n Go logo after Touch \'n Go by default', function () {
+        $img = domQuery(renderBlade('<atom:logo.tng />'), '//img')[0];
+
+        expect($img->getAttribute('alt'))->toBe("Touch 'n Go");
+    });
+
+    // `ComponentAttributeBag::except()` takes ONE argument (a key or an array): the
+    // variadic call dropped only the first name, so the wrapper kept a copy of the rest.
+    it('keeps the tel field attributes on the input and off the Alpine wrapper', function () {
+        $html = renderBlade('<atom:input type="tel" id="ph" class="h-20" placeholder="Phone" required disabled readonly wire:model="phone" />');
+        $wrapper = domQuery($html, '//*[@data-atom-input-tel]')[0];
+        $input = domQuery($html, '//input[@type="tel"]')[0];
+
+        foreach (['id', 'placeholder', 'required', 'disabled', 'readonly'] as $name) {
+            expect($wrapper->hasAttribute($name))->toBeFalse("the wrapper kept {$name}")
+                ->and($input->hasAttribute($name))->toBeTrue("the input lost {$name}");
+        }
+
+        expect(domClasses($wrapper))->not->toContain('h-20')
+            ->and(domClasses($input))->toContain('h-20')
+            ->and($wrapper->hasAttribute('wire:model'))->toBeTrue()
+            ->and($input->getAttribute('id'))->toBe('ph')
+            ->and($input->getAttribute('placeholder'))->toBe('Phone');
+    });
+
+    it('keeps aria-labelledby on the listbox trigger and class off the listbox root', function () {
+        $html = renderBlade('<atom:select variant="listbox" :options="[[\'value\' => 1, \'label\' => \'One\']]" aria-labelledby="pick-label" class="h-20" data-probe="1" wire:model="pick" />');
+        $root = domQuery($html, '//*[@data-atom-select-listbox]')[0];
+        $trigger = domQuery($html, '//button[@role="combobox"]')[0];
+
+        expect($root->hasAttribute('aria-labelledby'))->toBeFalse()
+            ->and($trigger->getAttribute('aria-labelledby'))->toBe('pick-label')
+            ->and(domClasses($root))->not->toContain('h-20')
+            ->and(domClasses($trigger))->toContain('h-20')
+            ->and($root->getAttribute('data-probe'))->toBe('1');
+    });
 
     it('keeps alt, width and height on the img of the app logo, defaults included', function () {
         $dir = storage_path('app/public/img');

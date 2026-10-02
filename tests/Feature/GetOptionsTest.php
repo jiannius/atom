@@ -132,6 +132,25 @@ describe('an option avatar', function () {
             ->and(domQuery($html, '//*[@avatar]'))->toHaveCount(0);
     });
 
+    // The avatar used to be handed its label as a slot, which it never prints: a
+    // fallback (no or blocked src) was an empty grey box and the <img> had alt="".
+    it('names the image after the label', function () {
+        $img = domQuery(avatarHtml('https://example.test/a.png'), '//figure//img')[0];
+
+        expect($img->getAttribute('alt'))->toBe('Jane');
+    });
+
+    it('shows the label initials when there is no usable image', function (mixed $avatar) {
+        $html = avatarHtml($avatar);
+        $figure = domQuery($html, '//figure')[0];
+
+        expect(domQuery($html, '//img'))->toHaveCount(0)
+            ->and(trim($figure->textContent))->toContain('J');
+    })->with([
+        'blocked scheme' => ['javascript:alert(1)'],
+        'array' => [fn () => ['url' => 'https://example.test/a.png']],
+    ]);
+
     it('does not throw on an array or object avatar, and renders no image', function (mixed $avatar) {
         $html = avatarHtml($avatar);
 
