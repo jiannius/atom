@@ -201,6 +201,51 @@ describe('B2: duplicate or wrong attributes', function () {
             ->and($figure->getAttribute('id'))->toBe('pay');
     });
 
+    it('keeps alt, width and height on the img and the rest on the wrapper for every logo', function (string $tag) {
+        $html = renderBlade('<atom:logo.'.$tag.' alt="Mine" width="64" height="32" class="h-8" id="pay" />');
+        $img = domQuery($html, '//img')[0];
+        $figure = domQuery($html, '//figure')[0];
+
+        expect($img->getAttribute('alt'))->toBe('Mine')
+            ->and($img->getAttribute('width'))->toBe('64')
+            ->and($img->getAttribute('height'))->toBe('32')
+            ->and($img->hasAttribute('class'))->toBeFalse()
+            ->and($img->hasAttribute('id'))->toBeFalse()
+            ->and($figure->hasAttribute('alt'))->toBeFalse()
+            ->and($figure->hasAttribute('width'))->toBeFalse()
+            ->and($figure->hasAttribute('height'))->toBeFalse()
+            ->and(domClasses($figure))->toContain('h-8')
+            ->and($figure->getAttribute('id'))->toBe('pay');
+    })->with(['fpx', 'master', 'tng', 'ipay88']);
+
+    it('keeps alt, width and height on the img of the app logo, defaults included', function () {
+        $dir = storage_path('app/public/img');
+        $file = $dir.'/sweeplogo.svg';
+        @mkdir($dir, 0777, true);
+        file_put_contents($file, '<svg xmlns="http://www.w3.org/2000/svg"/>');
+
+        try {
+            $html = renderBlade('<atom:logo name="sweeplogo" alt="Mine" width="64" height="32" class="h-8" />');
+            $img = domQuery($html, '//img')[0];
+            $figure = domQuery($html, '//figure')[0];
+
+            expect($img->getAttribute('alt'))->toBe('Mine')
+                ->and($img->getAttribute('width'))->toBe('64')
+                ->and($img->getAttribute('height'))->toBe('32')
+                ->and($figure->hasAttribute('alt'))->toBeFalse()
+                ->and($figure->hasAttribute('width'))->toBeFalse()
+                ->and(domClasses($figure))->toContain('h-8');
+
+            $default = domQuery(renderBlade('<atom:logo name="sweeplogo" />'), '//img')[0];
+
+            expect($default->getAttribute('width'))->toBe('512')
+                ->and($default->getAttribute('height'))->toBe('512')
+                ->and($default->hasAttribute('alt'))->toBeTrue();
+        } finally {
+            @unlink($file);
+        }
+    });
+
     it('merges a caller style into the single style attribute of a hex badge', function () {
         $html = renderBlade('<atom:badge color="#ff0000" label="Custom" style="margin-left: 4px" class="max-w-sm" id="b" />');
         $badge = domQuery($html, '//*[@data-atom-badge]')[0];
