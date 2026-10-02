@@ -228,3 +228,148 @@ describe('B2: duplicate or wrong attributes', function () {
         expect(trim($bar->getAttribute('style')))->toBe('width: 40px; height: 8px;');
     });
 });
+
+describe('B3: caller class swallowed', function () {
+    beforeEach(function () {
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+    });
+
+    it('puts the slider caller class on the wrapper and none on the range input', function () {
+        $html = renderBlade('<atom:slider wire:model="vol" class="mt-4 max-w-sm" />');
+        $root = domQuery($html, '//*[@data-atom-slider]')[0];
+        $input = domQuery($html, '//input[@type="range"]')[0];
+
+        expect(domClasses($root))->toContain('mt-4', 'max-w-sm', 'group/slider', 'space-y-2')
+            ->and($root->getAttribute('wire:model'))->toBe('vol')
+            ->and(domClasses($input))->toBe(['w-full', 'text-primary']);
+        expect(substr_count(substr($html, 0, strpos($html, '>')), 'class='))->toBe(1);
+    });
+
+    it('puts the rating caller class on the wrapper', function () {
+        $html = renderBlade('<atom:rating wire:model="stars" class="mt-4" />');
+        $root = domQuery($html, '//*[@data-atom-rating]')[0];
+
+        expect(domClasses($root))->toContain('mt-4', 'space-y-2')
+            ->and($root->getAttribute('wire:model'))->toBe('stars');
+        expect(substr_count(substr($html, 0, strpos($html, '>')), 'class='))->toBe(1);
+    });
+
+    it('keeps the slider and rating defaults with no caller class', function () {
+        $slider = domQuery(renderBlade('<atom:slider />'), '//*[@data-atom-slider]')[0];
+        $rating = domQuery(renderBlade('<atom:rating />'), '//*[@data-atom-rating]')[0];
+
+        expect(domClasses($slider))->toBe(['group/slider', 'space-y-2'])
+            ->and(domClasses($rating))->toBe(['space-y-2']);
+    });
+
+    it('merges a tab item caller class into its defaults', function () {
+        $html = renderBlade('<atom:tabs.item class="text-red-500" value="a">A</atom:tabs.item>');
+        $tab = domQuery($html, '//button')[0];
+
+        expect(domClasses($tab))->toContain('text-red-500', 'grow', 'px-4', '-mb-px')
+            ->and($tab->getAttribute('type'))->toBe('button');
+        expect(substr_count($html, 'class='))->toBe(1);
+    });
+
+    it('keeps the tab item defaults with no caller class', function () {
+        $tab = domQuery(renderBlade('<atom:tabs.item>A</atom:tabs.item>'), '//button')[0];
+
+        expect(domClasses($tab))->toContain('grow', 'self-stretch', 'px-4')
+            ->and(domClasses($tab))->not->toContain('text-red-500');
+    });
+
+    it('keeps the caller class on the otp root and off the boxes', function () {
+        $html = renderBlade('<atom:input.otp length="4" class="justify-center mt-2" />');
+        $root = domQuery($html, '//*[@data-atom-input-otp]')[0];
+        $box = domQuery($html, '//input')[0];
+
+        expect(domClasses($root))->toContain('justify-center', 'mt-2', 'flex', 'items-center', 'gap-2')
+            ->and(domClasses($box))->not->toContain('justify-center')
+            ->and(domClasses($box))->toContain('size-11');
+    });
+
+    it('gives the separator label its own classes instead of copying the root class', function () {
+        $html = renderBlade('<atom:separator class="py-3">Section</atom:separator>');
+        $root = domQuery($html, '//*[@data-atom-separator]')[0];
+        $label = domQuery($html, '//span')[0];
+
+        expect(domClasses($root))->toContain('py-3', 'w-full', 'flex')
+            ->and(domClasses($label))->toContain('font-medium', 'uppercase', 'text-sm', 'mx-4')
+            ->and(domClasses($label))->not->toContain('py-3');
+    });
+
+    it('puts the checkbox caller class on the label and keeps wire:model on the sr-only input', function () {
+        $html = renderBlade('<atom:checkbox wire:model="agree" label="Agree" class="mt-3" id="agree" />');
+        $label = domQuery($html, '//*[@data-atom-checkbox]')[0];
+        $input = domQuery($html, '//input')[0];
+
+        expect($label->nodeName)->toBe('label')
+            ->and(domClasses($label))->toContain('mt-3', 'group/checkbox', 'inline-block')
+            ->and($input->getAttribute('wire:model'))->toBe('agree')
+            ->and($input->getAttribute('name'))->toBe('agree')
+            ->and($input->getAttribute('id'))->toBe('agree')
+            ->and(domClasses($input))->toBe(['sr-only', 'peer']);
+        expect($label->hasAttribute('wire:model'))->toBeFalse()
+            ->and($label->hasAttribute('id'))->toBeFalse();
+    });
+
+    it('puts the toggle caller class on the label and keeps wire:model on the sr-only input', function () {
+        $html = renderBlade('<atom:toggle wire:model="on" label="On" class="mt-3" />');
+        $label = domQuery($html, '//*[@data-atom-toggle]')[0];
+        $input = domQuery($html, '//input')[0];
+
+        expect(domClasses($label))->toContain('mt-3', 'group/toggle', 'inline-block')
+            ->and($input->getAttribute('wire:model'))->toBe('on')
+            ->and($input->getAttribute('name'))->toBe('on')
+            ->and(domClasses($input))->toBe(['peer', 'sr-only']);
+    });
+
+    it('puts the radio caller class on the label and keeps value and name on the sr-only input', function () {
+        $html = renderBlade('<atom:radio label="A" value="a" name="opt" class="mt-3" />');
+        $label = domQuery($html, '//*[@data-atom-radio]')[0];
+        $input = domQuery($html, '//input')[0];
+
+        expect(domClasses($label))->toContain('mt-3', 'group/radio', 'inline-block')
+            ->and($input->getAttribute('value'))->toBe('a')
+            ->and($input->getAttribute('name'))->toBe('opt')
+            ->and(domClasses($input))->toBe(['sr-only', 'peer']);
+    });
+
+    it('keeps the choice control defaults with no caller class', function () {
+        $checkbox = domQuery(renderBlade('<atom:checkbox label="x" />'), '//*[@data-atom-checkbox]')[0];
+        $toggle = domQuery(renderBlade('<atom:toggle label="x" />'), '//*[@data-atom-toggle]')[0];
+        $radio = domQuery(renderBlade('<atom:radio label="x" />'), '//*[@data-atom-radio]')[0];
+
+        expect(domClasses($checkbox))->toBe(['group/checkbox', 'inline-block', 'space-y-2'])
+            ->and(domClasses($toggle))->toBe(['group/toggle', 'inline-block', 'space-y-2'])
+            ->and(domClasses($radio))->toBe(['group/radio', 'inline-block']);
+    });
+
+    it('puts the uploader caller class on the root and the file attributes on the hidden input', function (string $tag) {
+        $html = renderBlade('<atom:'.$tag.' wire:model="photo" accept="image/*" multiple class="mt-3" />');
+        $root = domQuery($html, '//*[@x-data][contains(@class, "group/uploader")]')[0];
+        $input = domQuery($html, '//input[@type="file"]')[0];
+
+        expect(domClasses($root))->toContain('mt-3', 'group/uploader', 'relative')
+            ->and($input->getAttribute('wire:model'))->toBe('photo')
+            ->and($input->getAttribute('accept'))->toBe('image/*')
+            ->and($input->hasAttribute('multiple'))->toBeTrue()
+            ->and(domClasses($input))->toBe(['hidden']);
+    })->with(['uploader', 'uploader.dropzone']);
+
+    it('keeps the uploader defaults with no caller class', function (string $tag) {
+        $root = domQuery(renderBlade('<atom:'.$tag.' />'), '//*[contains(@class, "group/uploader")]')[0];
+
+        expect(domClasses($root))->toBe(['group/uploader', 'relative']);
+    })->with(['uploader', 'uploader.dropzone']);
+
+    it('delivers class to the uploader root through <atom:input type="file">', function () {
+        $html = renderBlade('<atom:input type="file" wire:model="photo" class="mt-3" />');
+        $root = domQuery($html, '//*[contains(@class, "group/uploader")]')[0];
+        $input = domQuery($html, '//input[@type="file"]')[0];
+
+        expect(domClasses($root))->toContain('mt-3')
+            ->and(domClasses($input))->toBe(['hidden'])
+            ->and($input->getAttribute('wire:model'))->toBe('photo');
+    });
+});

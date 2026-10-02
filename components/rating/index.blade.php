@@ -22,17 +22,16 @@ $flag = fn ($v) => $v ? 'true' : 'false';
 
 $id = $attributes->get('id') ?? ($name ? 'atom-rating-'.$name : 'atom-rating-'.\Illuminate\Support\Str::random(6));
 
-// wire:model / x-on ride on the wrapper (x-modelable target); prop attrs are stripped.
-$wrapper = $attributes->except(['class', 'id', 'value', 'count', 'half', 'readonly', 'clearable', 'icon']);
+// wire:model / x-on and the caller's class ride on the wrapper (x-modelable target); prop attrs are stripped.
+$wrapper = $attributes->except(['id', 'value', 'count', 'half', 'readonly', 'clearable', 'icon']);
 @endphp
 
 <div
-class="space-y-2"
 data-atom-rating
 x-data="rating({ count: {{ $count }}, half: {{ $flag($half) }}, readonly: {{ $flag($readonly) }}, clearable: {{ $flag($clearable) }}, value: {{ $value }} })"
 x-modelable="value"
 :style="{ '--atom-rating-percent': percent + '%' }"
-{{ $wrapper }}>
+{{ $wrapper->class('space-y-2') }}>
     @if ($slot->isNotEmpty() || $label || $caption)
         <div>
             @if ($slot->isNotEmpty())

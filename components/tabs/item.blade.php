@@ -30,12 +30,8 @@ $merges = [
     'rel' => $element === 'a' ? $rel : null,
     'target' => $element === 'a' && $newtab ? '_blank' : null,
 ];
-@endphp
 
-<{{ $element }}
-@if ($value) x-on:click.stop="$dispatch('tabs-input', {{ js($value) }})" @endif
-@if ($current) data-active @endif
-@class([
+$classes = [
     // The muted tokens are tuned to the page ground, and this strip is not on it:
     // the button variant raises it to zinc-100/zinc-700, two steps off. Muted on
     // that surface is 4.4:1 at best, and the pair here was inverted on top of it —
@@ -64,8 +60,13 @@ $merges = [
     'data-[active]:border-zinc-800' => !$variant,
     'dark:data-[active]:border-white' => !$variant,
     'data-[active]:text-zinc-800' => !$variant,
-])
-{{ $attributes->merge($merges)->except('class') }}>
+];
+@endphp
+
+<{{ $element }}
+@if ($value) x-on:click.stop="$dispatch('tabs-input', {{ js($value) }})" @endif
+@if ($current) data-active @endif
+{{ $attributes->merge($merges)->class($classes) }}>
     @if ($icon)
         <x-dynamic-component :component="'atom::icon.'.$icon" class="shrink-0" />
     @endif

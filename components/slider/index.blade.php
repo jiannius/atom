@@ -21,17 +21,16 @@ $value = $attributes->get('value', $min);
 
 $id = $attributes->get('id') ?? ($name ? 'atom-slider-'.$name : 'atom-slider-'.\Illuminate\Support\Str::random(6));
 
-// wire:model / x-on / etc. ride on the wrapper (x-modelable target); input-only attrs go to the input.
-$wrapper = $attributes->except(['class', 'id', 'name', 'value', 'min', 'max', 'step', 'required', 'disabled']);
+// wire:model / x-on / etc. and the caller's class ride on the wrapper (x-modelable target); input-only attrs go to the input.
+$wrapper = $attributes->except(['id', 'name', 'value', 'min', 'max', 'step', 'required', 'disabled']);
 @endphp
 
 <div
-class="group/slider space-y-2"
 data-atom-slider
 x-data="slider({ min: {{ $min }}, max: {{ $max }}, step: {{ $step }}, value: @js($value) })"
 x-modelable="value"
 :style="{ '--atom-slider-percent': percent + '%' }"
-{{ $wrapper }}>
+{{ $wrapper->class('group/slider space-y-2') }}>
     @if ($slot->isNotEmpty() || $label || $caption)
         <div>
             @if ($slot->isNotEmpty())

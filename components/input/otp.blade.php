@@ -23,7 +23,7 @@ $box = Arr::toCssClasses([
 <div
 x-data="otp({ length: {{ $length }}, submit: @js($submit) })"
 x-modelable="code"
-{{ $attributes->except(['class', 'length', 'masked', 'groups', 'submit', 'invalid'])->class('flex items-center gap-2') }}
+{{ $attributes->except(['length', 'masked', 'groups', 'submit', 'invalid'])->class('flex items-center gap-2') }}
 data-atom-input-otp>
     @for ($i = 0; $i < $length; $i++)
         <input
