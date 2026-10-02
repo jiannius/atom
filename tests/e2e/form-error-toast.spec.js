@@ -449,6 +449,76 @@ test.describe('whose errors, and when', () => {
   })
 })
 
+test.describe('errors no form renders', () => {
+  // addError('general') belongs to no field, so no form owns it. It rides along with a form
+  // that has errors of its own, and never toasts by itself.
+  test('an orphan error is listed beside the form\'s own', async ({ page }) => {
+    await open(page)
+    await page.evaluate(() => {
+      window.__shown = []
+      addEventListener('atom-toast-show', (e) => window.__shown.push(e.detail))
+    })
+    await submit(page, 'orphan')
+
+    await expect(toast(page).locator('li')).toHaveText(['Orphan field is required.', 'Something general went wrong.'])
+    expect(await page.evaluate(() => window.__shown.at(-1).orphans)).toEqual(['general'])
+  })
+
+  test('an orphan error alone toasts nothing', async ({ page }) => {
+    await open(page)
+    const responded = page.waitForResponse((r) => r.url().includes('livewire'))
+    await submit(page, 'orphan-only')
+    await responded
+    await page.waitForTimeout(400)
+
+    await expect(toast(page)).toBeHidden()
+  })
+
+  test('another form\'s orphan does not make a form that validates nothing toast', async ({ page }) => {
+    await open(page)
+    await submit(page, 'orphan-only')
+    await page.waitForTimeout(400)
+    const responded = page.waitForResponse((r) => r.url().includes('livewire'))
+    await submit(page, 'plain')
+    await responded
+    await page.waitForTimeout(400)
+
+    await expect(toast(page)).toBeHidden()
+  })
+})
+
+test.describe('every atom control is found by the matcher', () => {
+  // The matcher knows a field by its wire:model* or name attribute. A control that moved its
+  // model onto something else, or wrote a name the matcher can't read, would silently drop
+  // its errors from the toast. Fail every control on one form and read the error keys that
+  // went into the toast (the lines are cut at five, the keys are not).
+  const CONTROL_KEYS = [
+    'selectListbox', 'selectNative', 'selectMultiple', 'dateSingle', 'dateRange', 'timePick',
+    'tiptapEager', 'tiptapLazy', 'editorField', 'upload', 'agree', 'channels', 'plan', 'phone',
+    'otp', 'mail', 'color', 'textField', 'toggled', 'volume', 'stars', 'notes',
+  ]
+
+  test('a toast for the controls form carries the key of every one', async ({ page }) => {
+    await open(page)
+    await page.evaluate(() => {
+      window.__shown = []
+      addEventListener('atom-toast-show', (e) => window.__shown.push(e.detail))
+    })
+
+    await submit(page, 'controls')
+    await expect(toast(page)).toBeVisible()
+
+    const shown = await page.evaluate(() => window.__shown)
+    expect(shown).toHaveLength(1)
+    expect([...shown[0].keys].sort()).toEqual([...CONTROL_KEYS].sort())
+    // a key no field claims would be listed as an orphan, and so would hide a control the matcher can't see
+    expect(shown[0].orphans).toEqual([])
+    // five lines and the count of the rest
+    await expect(toast(page).locator('li')).toHaveCount(6)
+    await expect(toast(page).locator('li').last()).toHaveText(`and ${CONTROL_KEYS.length - 5} more`)
+  })
+})
+
 test.describe('the toast as a live region', () => {
   test('it is a polite status region, whatever it shows', async ({ page }) => {
     await open(page)

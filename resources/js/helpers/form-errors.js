@@ -18,9 +18,12 @@
 // Which errors are the form's: Livewire's $errors is per component, so a submit of a form
 // that never validates would otherwise re-toast another form's stale errors. A form owns an
 // error key when it renders a field (wire:model / name) for that key or a parent or child of
-// it (`items` / `items.0.name`). An error with no field in the form (addError('general'))
-// therefore does not toast; that is the price of not guessing, and the field-less message is
-// still wherever the host renders it.
+// it (`items` / `items.0.name`). An orphan, a key no field anywhere in the component renders
+// (addError('general')), has no form to be pinned on, so it rides along: it is listed when
+// the submitted form has at least one error of its own, and never toasts on its own.
+// A host that wants a toast for an orphan alone calls $this->toast() itself. (Livewire only
+// sends the browser the errors keyed to a public property, so an orphan has to be keyed to
+// one, e.g. a `general` property no field renders; any other never gets here.)
 //
 // Timing, pinned by tests/e2e/form-error-toast.spec.js: Livewire runs an action's
 // onFinish after the response's snapshot is merged and morphed, so $wire.$errors holds
@@ -121,16 +124,36 @@ const fieldNames = (form) => {
 }
 
 /**
- * The messages of the errors that belong to this form, each sentence once.
+ * Whether an error key belongs to one of these field names: the same key, or a parent or
+ * child of it (`items` / `items.0.name`).
  */
-const messagesOf = (form, component) => {
-    if (!form.isConnected) return []
+const matches = (names, key) => names.some((name) => name === key || name.startsWith(key + '.') || key.startsWith(name + '.'))
 
+/**
+ * The error keys of this form, and the orphans (keys no field under the component renders)
+ * that ride along. There are no orphans, and no toast, unless the form has a key of its own.
+ */
+export const errorKeys = (form, component) => {
+    if (!form.isConnected) return { own: [], orphans: [] }
+
+    const keys = component.$wire.$errors.keys()
     const names = fieldNames(form)
+    const own = keys.filter((key) => matches(names, key))
+
+    if (!own.length) return { own, orphans: [] }
+
+    const known = fieldNames(component.el)
+
+    return { own, orphans: keys.filter((key) => !matches(known, key)) }
+}
+
+/**
+ * Each sentence of these error keys once.
+ */
+const messagesOf = (keys, component) => {
     const errors = component.$wire.$errors
 
-    const messages = errors.keys()
-        .filter((key) => names.some((name) => name === key || name.startsWith(key + '.') || key.startsWith(name + '.')))
+    const messages = keys
         .flatMap((key) => [errors.get(key)].flat(2))
         .map(String)
         .filter(Boolean)
@@ -149,7 +172,7 @@ const closeToast = () => {
     dispatchEvent(new CustomEvent('atom-toast-close', { detail: { source: SOURCE } }))
 }
 
-const showToast = (form, messages) => {
+const showToast = (form, messages, { own, orphans }) => {
     const extra = messages.length - MAX_MESSAGES
     const dialog = form.closest('dialog')
 
@@ -176,14 +199,18 @@ const showToast = (form, messages) => {
         heading: form.getAttribute('data-atom-error-heading') || '',
         message: messages,
         delay: dialog ? MODAL_DELAY : 0,
+        // the error keys behind the lines (the list is cut at five), for tests and listeners
+        keys: own,
+        orphans,
         source: SOURCE,
     })
 }
 
 const onFinished = (action, form) => {
-    const messages = messagesOf(form, action.component)
+    const found = errorKeys(form, action.component)
+    const messages = messagesOf([...found.own, ...found.orphans], action.component)
 
-    if (messages.length) showToast(form, messages)
+    if (messages.length) showToast(form, messages, found)
     else if (owner === form) closeToast()
 }
 

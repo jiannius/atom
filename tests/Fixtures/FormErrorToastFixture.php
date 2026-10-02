@@ -8,12 +8,20 @@ use Livewire\Component;
 /**
  * Hosts <atom:form>'s error toast: several forms on one component (so the e2e can check
  * that only the submitter reacts), a modal form, a reCAPTCHA form, a form that a successful
- * save removes from the page, a form that never validates, and one with seven failing fields.
+ * save removes from the page, a form that never validates, one with seven failing fields, a
+ * form with one of every atom control (all failing) and two forms that raise a field-less error.
  * `?error-toast=0`, `?disabled=1` and `?recaptcha=1` on the page flip the form props.
  */
 class FormErrorToastFixture extends Component
 {
     use AtomComponent;
+
+    /** Every field of the "controls" form, which fails them all. */
+    public const CONTROL_KEYS = [
+        'selectListbox', 'selectNative', 'selectMultiple', 'dateSingle', 'dateRange', 'timePick',
+        'tiptapEager', 'tiptapLazy', 'editorField', 'upload', 'agree', 'channels', 'plan', 'phone',
+        'otp', 'mail', 'color', 'textField', 'toggled', 'volume', 'stars', 'notes',
+    ];
 
     public ?string $name = null;
 
@@ -35,6 +43,61 @@ class FormErrorToastFixture extends Component
 
     /** @var array<string, ?string> */
     public array $rows = ['a' => null, 'b' => null, 'c' => null, 'd' => null, 'e' => null, 'f' => null, 'g' => null];
+
+    public ?string $orphanField = null;
+
+    // Livewire sends the browser only the errors keyed to a public property, so a field-less
+    // error has to be keyed to one that no field renders
+    public ?string $general = null;
+
+    public ?string $orphanOnlyField = null;
+
+    // one property per control on the "controls" form; CONTROL_KEYS lists them
+    public ?string $selectListbox = null;
+
+    public ?string $selectNative = null;
+
+    /** @var array<int, string> */
+    public array $selectMultiple = [];
+
+    public ?string $dateSingle = null;
+
+    public ?string $dateRange = null;
+
+    public ?string $timePick = null;
+
+    public ?string $tiptapEager = null;
+
+    public ?string $tiptapLazy = null;
+
+    public ?string $editorField = null;
+
+    public $upload = null;
+
+    public ?string $agree = null;
+
+    /** @var array<int, string> */
+    public array $channels = [];
+
+    public ?string $plan = null;
+
+    public ?string $phone = null;
+
+    public ?string $otp = null;
+
+    public ?string $mail = null;
+
+    public ?string $color = null;
+
+    public ?string $textField = null;
+
+    public ?string $toggled = null;
+
+    public ?string $volume = null;
+
+    public ?string $stars = null;
+
+    public ?string $notes = null;
 
     public bool $errorToast = true;
 
@@ -106,6 +169,33 @@ class FormErrorToastFixture extends Component
         }
 
         $this->validate($rules, $messages);
+    }
+
+    /**
+     * Fail one field of the form and one that no form renders.
+     */
+    public function saveOrphanWithField(): void
+    {
+        $this->addError('orphanField', 'Orphan field is required.');
+        $this->addError('general', 'Something general went wrong.');
+    }
+
+    /**
+     * Raise only an error that no form renders.
+     */
+    public function saveOrphanOnly(): void
+    {
+        $this->addError('general', 'Something general went wrong.');
+    }
+
+    /**
+     * Fail every control on the "controls" form.
+     */
+    public function saveControls(): void
+    {
+        foreach (self::CONTROL_KEYS as $key) {
+            $this->addError($key, "$key failed.");
+        }
     }
 
     /**
