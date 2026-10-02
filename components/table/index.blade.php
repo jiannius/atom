@@ -44,9 +44,9 @@ if (!$showSkeleton && !is_bool($empty)) {
 @endphp
 
 <div
-x-data="{}"
+{{ $attributes->merge(['x-data' => '{}'])->class('group/table space-y-4') }}
 x-on:table-filter:changed.window="{!! $onFilterChanged !!}"
-class="group/table space-y-4" data-atom-table>
+data-atom-table>
     @if (isset($checked) && $checked->isNotEmpty())
         <template x-if="$wire._table.checkboxes.length || $wire._table.select_all" hidden>
             <div class="min-h-10 flex items-center gap-3" data-atom-table-checked>
@@ -130,7 +130,7 @@ class="group/table space-y-4" data-atom-table>
                 @elseif ($empty)
                     <atom:empty />
                 @else
-                    <table class="min-w-full table-fixed text-zinc-800 divide-y divide-zinc-200 dark:divide-zinc-700">
+                    <table class="min-w-full text-zinc-800 divide-y divide-zinc-200 dark:divide-zinc-700">
                         @if (isset($columns) && $columns->isNotEmpty())
                             <thead data-atom-table-columns>
                                 <tr {{ $columns->attributes }}>
