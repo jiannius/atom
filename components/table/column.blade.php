@@ -15,9 +15,8 @@ $sortValue = $sort && str($sort)->startsWith('raw:')
 
 $classes = Arr::toCssClasses([
     'py-1.5 px-3 inline-flex items-center gap-2',
-    'whitespace-nowrap uppercase text-sm text-zinc-500 font-medium',
+    'uppercase text-sm text-zinc-500 font-medium',
     'leading-6 tracking-wider',
-    $checkbox ? 'w-10' : '',
 
     match ($align) {
         'left' => 'justify-start',
@@ -32,9 +31,16 @@ $classes = Arr::toCssClasses([
 {{-- The caller's attributes belong on the <th>, not on the layout wrapper
      inside it: a responsive `class="hidden lg:table-cell"` has to hide the
      header cell itself, or the column leaves an empty gap behind. Matches
-     table/cell.blade.php, which puts the bag on its <td>. --}}
+     table/cell.blade.php, which puts the bag on its <td>.
+
+     Likewise nowrap and the checkbox w-10 live on the <th>: nowrap at zero
+     specificity so a caller's whitespace-normal wins (white-space inherits into
+     the wrapper), and w-10 because under auto layout a width on the inner
+     wrapper is only a hint. --}}
 <th {{ $attributes->class([
     'p-1 bg-zinc-100 dark:bg-transparent border-b border-zinc-200 dark:border-zinc-700 sticky top-0 z-1',
+    '[:where(&)]:whitespace-nowrap',
+    $checkbox ? 'w-10' : '',
     match ($align) {
         'left' => 'text-left',
         'center' => 'text-center',
