@@ -4,7 +4,9 @@
 // them off screen, so the submit looks like it did nothing. When a Livewire action named
 // by a form's wire:target finishes with errors on the component, show them in a danger
 // toast that stays until it is dismissed (delay: 0 = no timer; the toast's own X closes
-// it).
+// it). The next submit of the same form that comes back clean closes it again, but only
+// if it is still the toast on screen: the check is the toast's own `source` match, so an
+// app's "Saved" dispatched by that same response is left alone (it fires before onFinish).
 //
 // Timing, pinned by tests/e2e/form-error-toast.spec.js: Livewire runs an action's
 // onFinish after the response's snapshot is merged and morphed, so $wire.$errors holds
@@ -14,6 +16,9 @@
 
 const SOURCE = 'atom-form-error'
 
+// The form that opened the toast now showing, so a successful submit of another form
+// leaves it alone.
+let owner = null
 let registered = false
 
 /**
@@ -53,6 +58,8 @@ const onFinished = (action) => {
     const messages = messagesOf(action.component)
 
     if (messages.length) {
+        owner = form
+
         window.atom.toast({
             variant: 'danger',
             heading: form.getAttribute('data-atom-error-heading') || '',
@@ -60,6 +67,11 @@ const onFinished = (action) => {
             delay: 0,
             source: SOURCE,
         })
+    }
+    else if (owner === form) {
+        owner = null
+
+        dispatchEvent(new CustomEvent('atom-toast-close', { detail: { source: SOURCE } }))
     }
 }
 

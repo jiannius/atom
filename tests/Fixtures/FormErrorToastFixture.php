@@ -33,7 +33,7 @@ class FormErrorToastFixture extends Component
     public int $saves = 0;
 
     /**
-     * Validate the first form; a pass raises the app's own "Saved" toast.
+     * Validate the first form; a pass raises the app's own "Saved" toast. The other two forms succeed quietly.
      */
     public function save(): void
     {
@@ -58,9 +58,8 @@ class FormErrorToastFixture extends Component
      */
     public function saveOther(): void
     {
+        // a quiet success: no toast of the app's own, so a closed error toast is a closed one
         $this->validate(['other' => 'required'], ['other.required' => 'Other is required.']);
-
-        $this->toast('Other saved');
     }
 
     /**
@@ -78,8 +77,6 @@ class FormErrorToastFixture extends Component
     public function submit(): void
     {
         $this->validate(['modalField' => 'required'], ['modalField.required' => 'Modal field is required.']);
-
-        $this->toast('Modal saved');
     }
 
     /**

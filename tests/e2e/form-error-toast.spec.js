@@ -230,6 +230,89 @@ test.describe('the error toast', () => {
     await expect(toast(page)).toBeHidden()
   })
 
+  test('fixing the form and resubmitting closes the error toast', async ({ page }) => {
+    await open(page)
+    await submit(page, 'other')
+    await expect(toast(page)).toBeVisible()
+    await expect(toast(page)).toContainText('Other is required.')
+
+    await page.locator('input[data-probe="other"]').fill('ok')
+    await submit(page, 'other')
+
+    await expect(toast(page)).toBeHidden()
+  })
+
+  test('closing on success leaves the app\'s own "Saved" toast alone', async ({ page }) => {
+    await open(page)
+    await submit(page)
+    await expect(toast(page)).toContainText('Please check the form')
+
+    await page.locator('input[data-probe="name"]').fill('Acme')
+    await page.locator('input[data-probe="nickname"]').fill('Ac')
+    await page.locator('input[data-probe="email"]').fill('a@b.co')
+    await submit(page)
+
+    // "Saved" replaced the error toast and must survive the form's own close request
+    await expect(page.locator('[data-saves]')).toHaveText('1')
+    await expect(toast(page)).toContainText('Saved')
+    await page.waitForTimeout(600)
+    await expect(toast(page)).toBeVisible()
+    await expect(toast(page)).toContainText('Saved')
+    await expect(toast(page)).not.toContainText('Please check the form')
+  })
+
+  // The flow above can't tell the source check from luck: the app's toast is shown on the
+  // next tick, which can land after the close request, so a close with no check would also
+  // leave it up. Dispatch the events by hand, in the order that matters.
+  test('atom-toast-close with a source closes only a toast carrying that source', async ({ page }) => {
+    await open(page)
+
+    await page.evaluate(() => window.atom.toast({ message: 'Saved', delay: 0 }))
+    await expect(toast(page)).toBeVisible()
+    await page.evaluate(() => dispatchEvent(new CustomEvent('atom-toast-close', { detail: { source: 'atom-form-error' } })))
+    await page.waitForTimeout(300)
+    await expect(toast(page)).toBeVisible()
+
+    await page.evaluate(() => window.atom.toast({ message: 'Oops', delay: 0, source: 'atom-form-error' }))
+    await expect(toast(page)).toContainText('Oops')
+    await page.evaluate(() => dispatchEvent(new CustomEvent('atom-toast-close', { detail: { source: 'atom-form-error' } })))
+    await expect(toast(page)).toBeHidden()
+
+    // no source: closes whatever is open
+    await page.evaluate(() => window.atom.toast({ message: 'Saved', delay: 0 }))
+    await expect(toast(page)).toBeVisible()
+    await page.evaluate(() => dispatchEvent(new CustomEvent('atom-toast-close')))
+    await expect(toast(page)).toBeHidden()
+  })
+
+  test('another form\'s clean submit does not close this form\'s error toast', async ({ page }) => {
+    await open(page)
+    await submit(page)
+    await expect(toast(page)).toContainText('Name is required.')
+
+    await page.locator('input[data-probe="other"]').fill('ok')
+    const responded = page.waitForResponse((r) => r.url().includes('livewire'))
+    await submit(page, 'other')
+    await responded
+    await page.waitForTimeout(400)
+
+    await expect(toast(page)).toBeVisible()
+    await expect(toast(page)).toContainText('Name is required.')
+  })
+
+  test('a clean submit closes the error toast over a modal too', async ({ page }) => {
+    await open(page)
+    await page.evaluate(() => window.atom.modal('fixture-modal').show())
+    const dialog = page.locator('dialog[open]')
+    await dialog.getByRole('button', { name: 'Save' }).click()
+    await expect(toast(page)).toContainText('Modal field is required.')
+
+    await dialog.locator('input[data-probe="modal-field"]').fill('ok')
+    await dialog.getByRole('button', { name: 'Save' }).click()
+
+    await expect(toast(page)).toBeHidden()
+  })
+
   // The toast is a popover opened after the dialog, so it paints in the top layer above
   // it. (A modal dialog makes the rest of the page inert, so the toast's X cannot be
   // clicked while the modal is open; the next successful submit closes it instead.)

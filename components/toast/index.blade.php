@@ -35,6 +35,17 @@ x-data="{
         this.$root.classList.remove('opacity-100')
     },
 
+    // atom-toast-close with a source closes only a toast that was shown with that same
+    // source, so a form closing its own error toast can't take the app's own Saved toast
+    // with it. With no source it closes whatever is open.
+    onClose (e) {
+        let source = e.detail?.source
+
+        if (source && this.config.source !== source) return
+
+        this.closeToast()
+    },
+
     onClick () {
         let navigate = atom.safeUrl(this.config.navigate)
         let url = atom.safeUrl(this.config.url)
@@ -44,6 +55,7 @@ x-data="{
     },
 }"
 x-on:atom-toast-show.window="showToast"
+x-on:atom-toast-close.window="onClose"
 x-on:click="onClick"
 x-bind:class="{
     'mt-auto': config.position === 'bottom',
