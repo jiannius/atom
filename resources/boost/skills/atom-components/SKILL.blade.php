@@ -74,6 +74,8 @@ public function create() {
 }
 ```
 Requires `config('services.recaptcha.site_key' / 'secret_key' / 'min_score')` and a built site (consumers run their Tailwind/Vite build). With no site key configured the form behaves as a normal `wire:submit` form.
+
+**Error toast.** A failed submit (the Livewire method ends with validation errors) shows a sticky danger toast headed "Please check the form" and listing each error message once, so a long form that hides its errors off screen doesn't look like it did nothing. It stays until the user dismisses it with its ✕ or the same form's next submit comes back clean, and it never scrolls or moves focus. It is on by default; opt out per form with `:error-toast="false"` (a `disabled` form never shows one). It needs `<atom:toast>` mounted on the page (the sidebar layout has it), and does nothing without. It is a singleton like every toast: if your own method already toasts its validation message, the last one shown wins.
 @endverbatim
 
 ### Modals
