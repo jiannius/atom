@@ -10,7 +10,7 @@ view="atom::docs.demos.table.empty"/>
 
 <atom:docs.example
 title="Search"
-description="atom:table.search is the standard listing search: a search-icon input bound to a filter key, Enter to run ($wire.$refresh). Replaces the per-page boilerplate."
+description="atom:table.search is the standard listing search: a search-icon input bound to a filter key, Enter to run ($wire.$refresh). Replaces the per-page boilerplate. Bound with wire:model inside atom:table.filters it also joins the bar: its text shows as a chip named by the placeholder, and Clear all (or the chip's x) empties the box and refreshes. Shown here unbound, so no chip."
 view="atom::docs.demos.table.search"/>
 
 <atom:docs.example
