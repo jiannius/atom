@@ -146,3 +146,85 @@ describe('B1: components that never printed the bag', function () {
         expect(domClasses($actions))->toContain('justify-end', 'grow', 'flex', 'gap-3');
     });
 });
+
+describe('B2: duplicate or wrong attributes', function () {
+    it('prints one class attribute on copy, carrying the caller classes', function () {
+        $html = renderBlade('<atom:copy value="abc" class="ml-2">x</atom:copy>');
+        $root = domQuery($html, '//*[@x-data]')[0];
+
+        expect(substr_count($html, 'class="'))->toBe(1)
+            ->and(domClasses($root))->toContain('contents', 'ml-2');
+    });
+
+    it('lets alt, loading and id reach the embed image, and no more than one src', function () {
+        $html = renderBlade('<atom:embed src="https://example.test/a.png" alt="A cat" loading="lazy" id="cat" class="rounded" />');
+        $imgs = domQuery($html, '//img');
+
+        expect($imgs)->toHaveCount(1);
+        expect($imgs[0]->getAttribute('alt'))->toBe('A cat')
+            ->and($imgs[0]->getAttribute('loading'))->toBe('lazy')
+            ->and($imgs[0]->getAttribute('id'))->toBe('cat')
+            ->and($imgs[0]->getAttribute('src'))->toBe('https://example.test/a.png')
+            ->and(domClasses($imgs[0]))->toContain('rounded', 'object-contain')
+            ->and(substr_count($html, 'src='))->toBe(1);
+    });
+
+    it('does not let the embed image bypass its scheme gate', function () {
+        $html = renderBlade('<atom:embed src="javascript:alert(1)" alt="x" />');
+
+        expect(domQuery($html, '//img'))->toHaveCount(0)
+            ->and($html)->not->toContain('javascript:');
+    });
+
+    it('keeps the senangpay alt, width and height on the img and the rest on the wrapper only', function () {
+        $html = renderBlade('<atom:logo.senangpay class="h-8" id="pay" />');
+        $img = domQuery($html, '//img')[0];
+        $figure = domQuery($html, '//figure')[0];
+
+        expect($img->getAttribute('alt'))->toBe('SenangPay')
+            ->and($img->getAttribute('width'))->toBe('512')
+            ->and($img->getAttribute('height'))->toBe('512')
+            ->and($img->hasAttribute('class'))->toBeFalse()
+            ->and($img->hasAttribute('id'))->toBeFalse()
+            ->and(domClasses($figure))->toContain('h-8')
+            ->and($figure->getAttribute('id'))->toBe('pay');
+    });
+
+    it('merges a caller style into the single style attribute of a hex badge', function () {
+        $html = renderBlade('<atom:badge color="#ff0000" label="Custom" style="margin-left: 4px" class="max-w-sm" id="b" />');
+        $badge = domQuery($html, '//*[@data-atom-badge]')[0];
+
+        expect(substr_count($html, 'style='))->toBe(1);
+        expect($badge->getAttribute('style'))->toContain('color: #ff0000')
+            ->and($badge->getAttribute('style'))->toContain('background-color:')
+            ->and($badge->getAttribute('style'))->toEndWith('margin-left: 4px;')
+            ->and($badge->getAttribute('id'))->toBe('b')
+            ->and(domClasses($badge))->toContain('max-w-sm');
+    });
+
+    it('keeps the hex badge colours with no caller style, and a named badge unstyled', function () {
+        $hex = domQuery(renderBlade('<atom:badge color="#ff0000" label="Custom" />'), '//*[@data-atom-badge]')[0];
+        $named = domQuery(renderBlade('<atom:badge color="green" label="Active" />'), '//*[@data-atom-badge]')[0];
+
+        expect($hex->getAttribute('style'))->toContain('border-color:')
+            ->and($hex->getAttribute('style'))->not->toContain('; ;')
+            ->and($named->hasAttribute('style'))->toBeFalse();
+    });
+
+    it('merges a caller style into the single style attribute of a placeholder bar', function () {
+        $html = renderBlade('<atom:placeholder-bar size="45%x10" style="opacity: .5" class="bg-red-200" />');
+        $bar = domQuery($html, '//div')[0];
+
+        expect(substr_count($html, 'style='))->toBe(1);
+        expect($bar->getAttribute('style'))->toStartWith('width: 45%; height: 10px')
+            ->and($bar->getAttribute('style'))->toEndWith('opacity: .5;')
+            ->and($bar->hasAttribute('size'))->toBeFalse()
+            ->and(domClasses($bar))->toContain('bg-red-200', 'rounded-xl');
+    });
+
+    it('sizes a placeholder bar the same with no caller style', function () {
+        $bar = domQuery(renderBlade('<atom:placeholder-bar size="40x8" />'), '//div')[0];
+
+        expect(trim($bar->getAttribute('style')))->toBe('width: 40px; height: 8px;');
+    });
+});

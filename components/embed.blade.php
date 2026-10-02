@@ -62,7 +62,7 @@ $merges = [
 @endphp
 
 @if ($type === 'image')
-    <img src="{{ $src }}" {{ $attributes->class($classes)->only('class') }}>
+    <img src="{{ $src }}" {{ $attributes->class($classes) }}>
 @elseif ($type === 'video')
     <video {{ $attributes->class($classes)->merge($merges) }}>
         <source src="{{ $src }}" type="video/mp4">
