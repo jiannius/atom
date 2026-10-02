@@ -45,11 +45,6 @@
         <atom:button type="submit" data-submit="orphan">Save orphan</atom:button>
     </atom:form>
 
-    <atom:form wire:submit="saveOrphanOnly" data-form="orphan-only">
-        <atom:input label="Orphan only field" wire:model="orphanOnlyField" />
-        <atom:button type="submit" data-submit="orphan-only">Save orphan only</atom:button>
-    </atom:form>
-
     {{-- one of every atom control, each bound to a property that fails: the e2e checks that
          the toast's matcher finds every one of them --}}
     <atom:form wire:submit="saveControls" data-form="controls">

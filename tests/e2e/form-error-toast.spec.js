@@ -449,41 +449,15 @@ test.describe('whose errors, and when', () => {
   })
 })
 
-test.describe('errors no form renders', () => {
-  // addError('general') belongs to no field, so no form owns it. It rides along with a form
-  // that has errors of its own, and never toasts by itself.
-  test('an orphan error is listed beside the form\'s own', async ({ page }) => {
+test.describe('errors no field of the form renders', () => {
+  // addError('general') belongs to no field of the form: it is the host's to report, so the
+  // toast lists only the form's own field errors.
+  test('a field-less error is not listed beside the form\'s own', async ({ page }) => {
     await open(page)
-    await page.evaluate(() => {
-      window.__shown = []
-      addEventListener('atom-toast-show', (e) => window.__shown.push(e.detail))
-    })
     await submit(page, 'orphan')
 
-    await expect(toast(page).locator('li')).toHaveText(['Orphan field is required.', 'Something general went wrong.'])
-    expect(await page.evaluate(() => window.__shown.at(-1).orphans)).toEqual(['general'])
-  })
-
-  test('an orphan error alone toasts nothing', async ({ page }) => {
-    await open(page)
-    const responded = page.waitForResponse((r) => r.url().includes('livewire'))
-    await submit(page, 'orphan-only')
-    await responded
-    await page.waitForTimeout(400)
-
-    await expect(toast(page)).toBeHidden()
-  })
-
-  test('another form\'s orphan does not make a form that validates nothing toast', async ({ page }) => {
-    await open(page)
-    await submit(page, 'orphan-only')
-    await page.waitForTimeout(400)
-    const responded = page.waitForResponse((r) => r.url().includes('livewire'))
-    await submit(page, 'plain')
-    await responded
-    await page.waitForTimeout(400)
-
-    await expect(toast(page)).toBeHidden()
+    await expect(toast(page).locator('li')).toHaveText(['Orphan field is required.'])
+    await expect(toast(page)).not.toContainText('Something general went wrong.')
   })
 })
 
@@ -510,9 +484,7 @@ test.describe('every atom control is found by the matcher', () => {
 
     const shown = await page.evaluate(() => window.__shown)
     expect(shown).toHaveLength(1)
-    expect([...shown[0].keys].sort()).toEqual([...CONTROL_KEYS].sort())
-    // a key no field claims would be listed as an orphan, and so would hide a control the matcher can't see
-    expect(shown[0].orphans).toEqual([])
+    expect([...shown[0].meta.keys].sort()).toEqual([...CONTROL_KEYS].sort())
     // five lines and the count of the rest
     await expect(toast(page).locator('li')).toHaveCount(6)
     await expect(toast(page).locator('li').last()).toHaveText(`and ${CONTROL_KEYS.length - 5} more`)
