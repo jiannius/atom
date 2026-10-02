@@ -91,3 +91,39 @@ test('leaving the box with text charts it, so the chip matches what the next req
   await page.locator('body').click({ position: { x: 5, y: 400 } })
   await expect(searchChip(page)).toHaveCount(0)
 })
+
+test('a search already in the model on load shows its chip', async ({ page }) => {
+  // the fixture's search is #[Url], so ?search=ap mounts it with a value
+  await page.goto('/atom/e2e/table-search-chip?search=ap')
+  await page.waitForLoadState('networkidle')
+
+  await expect(box(page)).toHaveValue('ap')
+  await expect(searchChip(page)).toBeVisible()
+  await expect(searchChip(page)).toContainText('ap')
+  await expect(rows(page)).toHaveCount(2)
+})
+
+test('the chip names the search by its placeholder without punctuation after it', async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip')
+  await page.waitForLoadState('networkidle')
+
+  await search(page, 'ap')
+
+  await expect(searchChip(page).locator('span').first()).toHaveText('Search fruit:')
+})
+
+test('a server-side reset of the model removes the chip along with the box', async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip')
+  await page.waitForLoadState('networkidle')
+
+  await search(page, 'ap')
+  await expect(searchChip(page)).toBeVisible()
+  await expect(rows(page)).toHaveCount(2)
+
+  await page.locator('[data-reset-search]').click()
+
+  // KEY ASSERTION: nothing in the browser asked for the clear, so only following the model removes the chip
+  await expect(box(page)).toHaveValue('')
+  await expect(searchChip(page)).toHaveCount(0)
+  await expect(rows(page)).toHaveCount(6)
+})

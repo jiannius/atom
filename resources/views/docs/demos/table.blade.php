@@ -33,7 +33,6 @@ title="Loading skeleton"
 description="Pass skeleton (or :skeleton=N for a row count) to show placeholder rows on first load while a lazy/deferred table fetches its data. Opt-in: a table without the flag is unaffected. Filter/search shows a spinner in the search box (rows stay); pagination/sort use a dim overlay."
 view="atom::docs.demos.table.skeleton"/>
 
-
 <atom:docs.example
 title="Long values"
 description="A nowrap cell grows its column to its longest value, so one long address can push the whole table wider than its box. Add truncate to atom:table.cell and it takes the room left over and cuts the text with an ellipsis instead. To let a cell or header wrap instead, pass whitespace-normal (md:whitespace-normal also works) — the nowrap default yields to it. Neither needs w-full on the table."

@@ -1,8 +1,10 @@
 <div>
+    <button type="button" wire:click="resetSearch" data-reset-search>Reset from server</button>
+
     <atom:table :empty="false">
         <x-slot:header>
             <atom:table.filters>
-                <atom:table.search wire:model="search" placeholder="Search fruit" data-search />
+                <atom:table.search wire:model="search" placeholder="Search fruit..." data-search />
 
                 <atom:select variant="filter" wire:model.live="status" label="Status" :options="[
                     ['value' => 'fresh', 'label' => 'Fresh'],

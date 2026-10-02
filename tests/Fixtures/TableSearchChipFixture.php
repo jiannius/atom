@@ -3,6 +3,7 @@
 namespace Jiannius\Atom\Tests\Fixtures;
 
 use Jiannius\Atom\Traits\AtomComponent;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 /**
@@ -17,6 +18,7 @@ class TableSearchChipFixture extends Component
 {
     use AtomComponent;
 
+    #[Url]
     public ?string $search = null;
 
     public ?string $status = null;
@@ -44,6 +46,14 @@ class TableSearchChipFixture extends Component
             fn ($row) => (blank($this->search) || str_contains(strtolower($row['name']), strtolower($this->search)))
                 && (blank($this->status) || $row['status'] === $this->status),
         ));
+    }
+
+    /**
+     * Empty the search from the server, the way a host's `$this->reset('filters')` does.
+     */
+    public function resetSearch(): void
+    {
+        $this->reset('search');
     }
 
     /**

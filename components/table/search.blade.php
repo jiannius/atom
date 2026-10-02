@@ -19,6 +19,14 @@ if (!filled($attributes->get('label'))) {
 // keeps the plain enter-to-refresh behaviour.
 $filterKey = $attributes->wire('model')->value() ?: $attributes->get('data-filter-key');
 
+// The chip is named by the placeholder, and the bar appends its own ':', so a
+// trailing "..." or ellipsis would read "Search customers...:".
+$chipLabel = preg_replace('/[\s.\x{2026}]+$/u', '', t($placeholder)) ?: t($placeholder);
+
+// The bound model, when there is one, is what the chip follows when something other
+// than the box changes it (a host reset, a .live round trip).
+$wireModel = $attributes->wire('model')->value();
+
 $onEnter = ($filterKey ? 'emit(); ' : '')."\$dispatch('table-filter:changed'); \$wire.\$refresh()";
 @endphp
 
@@ -26,11 +34,26 @@ $onEnter = ($filterKey ? 'emit(); ' : '')."\$dispatch('table-filter:changed'); \
 class="relative"
 @if ($filterKey)
 x-data="{
+    unwatch: null,
+@if ($wireModel)
+    {{-- report only: no refresh and no 'changed', so it cannot loop back into a request.
+         A method, not x-init: x-init runs its last expression, and $watch returns the
+         function that stops it, so ending x-init on it would unwatch at once. --}}
+    init () {
+        this.unwatch = this.$wire.$watch(@js($wireModel), value => this.report(value))
+    },
+    destroy () {
+        this.unwatch?.()
+    },
+@endif
+    report (value) {
+        value = String(value ?? '').trim()
+
+        this.$dispatch('table-filter:set', { key: @js($filterKey), label: @js($chipLabel), display: value === '' ? null : value })
+    },
     emit () {
         // $el is whichever element is calling (the input on Enter, the wrapper otherwise)
-        const value = this.$el.closest('[data-atom-table-search]').querySelector('input').value.trim()
-
-        this.$dispatch('table-filter:set', { key: @js($filterKey), label: @js(t($placeholder)), display: value === '' ? null : value })
+        this.report(this.$el.closest('[data-atom-table-search]').querySelector('input').value)
     },
 }"
 x-init="$nextTick(() => emit())"

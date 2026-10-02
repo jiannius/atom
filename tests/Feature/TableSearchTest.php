@@ -41,6 +41,25 @@ describe('filter bar', function () {
             ->toContain('$wire.$refresh()');
     });
 
+    it('names the chip by the placeholder without its trailing dots or whitespace', function () {
+        foreach (['Search customers...' => 'Search customers', "Search customers\u{2026}" => 'Search customers', 'Search customers . ' => 'Search customers', 'Search' => 'Search', '...' => '...'] as $placeholder => $label) {
+            $wrapper = domQuery(
+                renderBlade('<atom:table.search wire:model="q" :placeholder="$placeholder" />', ['placeholder' => $placeholder]),
+                '//*[@data-atom-table-search]',
+            )[0];
+
+            expect($wrapper->getAttribute('x-data'))->toContain("label: '".$label."',");
+        }
+    });
+
+    it('follows its model with a watch when there is a wire:model, and has none for data-filter-key', function () {
+        $bound = domQuery(renderBlade('<atom:table.search wire:model="filters.search" />'), '//*[@data-atom-table-search]')[0];
+        $unbound = domQuery(renderBlade('<atom:table.search data-filter-key="filters.q" />'), '//*[@data-atom-table-search]')[0];
+
+        expect($bound->getAttribute('x-data'))->toContain('$wire.$watch(')->toContain('filters.search')
+            ->and($unbound->getAttribute('x-data'))->not->toContain('$watch');
+    });
+
     it('takes its key from data-filter-key when there is no wire:model', function () {
         $wrapper = domQuery(
             renderBlade('<atom:table.search data-filter-key="filters.q" />'),
