@@ -9,6 +9,17 @@ use Illuminate\Pagination\LengthAwarePaginator;
  * because a string match cannot tell which element a class landed on.
  */
 
+/**
+ * The <body> of a full-page render as a parseable element: DOMDocument folds a
+ * second <body> into the wrapper one, so the tag's attributes are read off a div.
+ */
+function sweepBody(string $html): DOMElement
+{
+    preg_match('/<body\b([^>]*)>/', $html, $m);
+
+    return domQuery('<div'.($m[1] ?? '').'></div>', '//div')[0];
+}
+
 describe('B1: components that never printed the bag', function () {
     it('prints the bag on every empty variant', function (string $props) {
         $html = renderBlade('<atom:empty id="nothing" class="mt-4" x-show="ready" '.$props.' />');
@@ -350,7 +361,7 @@ describe('B3: caller class swallowed', function () {
         $root = domQuery($html, '//*[@x-data][contains(@class, "group/uploader")]')[0];
         $input = domQuery($html, '//input[@type="file"]')[0];
 
-        expect(domClasses($root))->toContain('mt-3', 'group/uploader', 'relative')
+        expect(domClasses($root))->toContain('mt-3', 'group/uploader', '[:where(&)]:relative')
             ->and($input->getAttribute('wire:model'))->toBe('photo')
             ->and($input->getAttribute('accept'))->toBe('image/*')
             ->and($input->hasAttribute('multiple'))->toBeTrue()
@@ -360,7 +371,7 @@ describe('B3: caller class swallowed', function () {
     it('keeps the uploader defaults with no caller class', function (string $tag) {
         $root = domQuery(renderBlade('<atom:'.$tag.' />'), '//*[contains(@class, "group/uploader")]')[0];
 
-        expect(domClasses($root))->toBe(['group/uploader', 'relative']);
+        expect(domClasses($root))->toBe(['group/uploader', '[:where(&)]:relative']);
     })->with(['uploader', 'uploader.dropzone']);
 
     it('delivers class to the uploader root through <atom:input type="file">', function () {
@@ -371,5 +382,118 @@ describe('B3: caller class swallowed', function () {
         expect(domClasses($root))->toContain('mt-3')
             ->and(domClasses($input))->toBe(['hidden'])
             ->and($input->getAttribute('wire:model'))->toBe('photo');
+    });
+});
+
+describe('B4: the previously left-out items', function () {
+    beforeEach(function () {
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+    });
+
+    it('prints the whole bag on the whatsapp link and keeps one href, target and style', function () {
+        $html = renderBlade('<atom:whatsapp number="60123" text="hi" id="wa" data-x="1" style="opacity: .9" target="_self" />');
+        $a = domQuery($html, '//a')[0];
+
+        expect($a->getAttribute('href'))->toBe('https://wa.me/60123?text=hi')
+            ->and($a->getAttribute('id'))->toBe('wa')
+            ->and($a->getAttribute('data-x'))->toBe('1')
+            ->and($a->getAttribute('target'))->toBe('_self')
+            ->and($a->getAttribute('style'))->toStartWith('z-index: 200;')
+            ->and($a->getAttribute('style'))->toEndWith('opacity: .9;');
+        expect(substr_count($html, 'style='))->toBe(1)
+            ->and(substr_count($html, 'target='))->toBe(1)
+            ->and(substr_count($html, 'href='))->toBe(1);
+    });
+
+    it('defaults the whatsapp position at zero specificity so a caller position wins', function () {
+        $default = domQuery(renderBlade('<atom:whatsapp number="1" />'), '//a')[0];
+        $placed = domQuery(renderBlade('<atom:whatsapp number="1" class="fixed bottom-32 right-14" />'), '//a')[0];
+
+        expect(domClasses($default))->toContain('[:where(&)]:fixed', '[:where(&)]:right-14', '[:where(&)]:bottom-14', 'bg-green-500')
+            ->and(domClasses($default))->not->toContain('fixed')
+            ->and(domClasses($default))->not->toContain('bottom-14');
+
+        // the caller's utilities sit beside the defaults, and only the :where() ones are zero-specificity
+        expect(domClasses($placed))->toContain('fixed', 'bottom-32', 'right-14', '[:where(&)]:bottom-14');
+        expect($default->getAttribute('target'))->toBe('_blank');
+    });
+
+    it('prints the whole bag on <body> through atom:html', function () {
+        $html = renderBlade('<atom:html :vite="false" :fonts="false" class="bg-white" id="app" data-theme="x" x-data="{}">Hello</atom:html>');
+        $body = sweepBody($html);
+
+        expect(domClasses($body))->toBe(['bg-white'])
+            ->and($body->getAttribute('id'))->toBe('app')
+            ->and($body->getAttribute('data-theme'))->toBe('x')
+            ->and($body->getAttribute('x-data'))->toBe('{}');
+    });
+
+    it('hands the layout bag to <body> and keeps the layout classes', function (string $layout, string $defaults) {
+        $html = renderBlade('<atom:'.$layout.' :vite="false" class="font-mono" id="shell" data-x="1">Body</atom:'.$layout.'>');
+        $body = sweepBody($html);
+
+        expect(domClasses($body))->toContain('font-mono', ...explode(' ', $defaults))
+            ->and($body->getAttribute('id'))->toBe('shell')
+            ->and($body->getAttribute('data-x'))->toBe('1');
+    })->with([
+        'auth' => ['layouts.auth', 'min-h-screen bg-white antialiased'],
+        'sidebar' => ['layouts.sidebar', 'min-h-screen bg-white'],
+    ]);
+
+    it('keeps the layout body classes with no caller class', function (string $layout, array $expected) {
+        $body = sweepBody(renderBlade('<atom:'.$layout.' :vite="false">Body</atom:'.$layout.'>'));
+
+        expect(domClasses($body)[0])->toBe($expected[0])
+            ->and(domClasses($body))->toContain(...$expected);
+    })->with([
+        'auth' => ['layouts.auth', ['min-h-screen', 'bg-white', 'antialiased']],
+        'sidebar' => ['layouts.sidebar', ['min-h-screen', 'bg-white']],
+    ]);
+
+    it('prints the bag on the lightbox dialog without losing its Alpine hooks', function () {
+        $html = renderBlade('<atom:lightbox id="gallery" class="p-0" />');
+        $dialog = domQuery($html, '//dialog[@data-atom-lightbox]')[0];
+
+        expect($dialog->getAttribute('id'))->toBe('gallery')
+            ->and(domClasses($dialog))->toBe(['p-0'])
+            ->and($dialog->getAttribute('x-data'))->toBe('lightbox()')
+            ->and($dialog->getAttribute('wire:ignore'))->toBe('');
+    });
+
+    it('prints the bag on the darkmode toggle root', function () {
+        $html = renderBlade('<atom:darkmode-toggle id="dm" class="hidden lg:block" />');
+        $root = domQuery($html, '//*[@data-atom-dropdown]')[0];
+
+        expect($root->getAttribute('id'))->toBe('dm')
+            ->and(domClasses($root))->toContain('hidden', 'lg:block', 'group/dropdown')
+            ->and(domQuery($html, '//button[@data-atom-darkmode-toggle]'))->toHaveCount(1);
+    });
+
+    it('defaults w-full / relative at zero specificity on callout, skeleton, chart, card, dropdown and uploader', function (string $tag, string $marker, array $where, array $plain) {
+        $root = domQuery(renderBlade('<atom:'.$tag.' />'), $marker)[0];
+        $classes = domClasses($root);
+
+        expect($classes)->toContain(...$where);
+
+        foreach ($plain as $token) {
+            expect($classes)->not->toContain($token);
+        }
+    })->with([
+        'callout' => ['callout', '//*[@x-show="show"]', ['[:where(&)]:relative', '[:where(&)]:w-full', 'rounded-lg'], ['relative', 'w-full']],
+        'skeleton' => ['skeleton', '//div[contains(@class, "animate-pulse")]', ['[:where(&)]:w-full', 'animate-pulse'], ['w-full']],
+        'chart' => ['chart', '//*[@data-atom-chart]', ['[:where(&)]:w-full', 'h-64'], ['w-full']],
+        'card' => ['card', '//*[@data-atom-card]', ['[:where(&)]:relative', 'rounded-lg', 'p-6'], ['relative']],
+        'dropdown' => ['dropdown', '//*[@data-atom-dropdown]', ['group/dropdown', '[:where(&)]:relative'], ['relative']],
+        'uploader' => ['uploader', '//*[contains(@class, "group/uploader")]', ['[:where(&)]:relative'], ['relative']],
+    ]);
+
+    it('lets a caller w-full, relative or absolute sit beside the zero-specificity default', function () {
+        $card = domQuery(renderBlade('<atom:card class="absolute inset-0" />'), '//*[@data-atom-card]')[0];
+        $callout = domQuery(renderBlade('<atom:callout class="w-auto" />'), '//*[@x-show="show"]')[0];
+        $chart = domQuery(renderBlade('<atom:chart class="w-1/2 h-10" />'), '//*[@data-atom-chart]')[0];
+
+        expect(domClasses($card))->toContain('absolute', 'inset-0', '[:where(&)]:relative')
+            ->and(domClasses($callout))->toContain('w-auto', '[:where(&)]:w-full')
+            ->and(domClasses($chart))->toContain('w-1/2', 'h-10', '[:where(&)]:w-full');
     });
 });

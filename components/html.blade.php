@@ -163,7 +163,7 @@ fbq('track', 'PageView');
 @endif
 </head>
 
-<body {{ $attributes->only('class') }}>
+<body {{ $attributes }}>
     @if (!$noindex && $gtm)
     <!-- Google Tag Manager (noscript) -->
     <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ $gtm }}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>

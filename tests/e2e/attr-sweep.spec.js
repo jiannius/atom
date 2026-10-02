@@ -42,3 +42,41 @@ test('radio: class on the label, arrow keys still move through the group', async
   await expect(pro).toBeFocused()
   await expect(free).not.toBeChecked()
 })
+
+test('the body carries the attributes passed to <atom:html>', async ({ page }) => {
+  await page.goto('/atom/e2e/attr-sweep')
+
+  await expect(page.locator('body')).toHaveAttribute('data-sweep', 'body')
+  await expect(page.locator('body')).toHaveClass(/min-h-screen/)
+})
+
+test('lightbox still boots with a class and id on its dialog', async ({ page }) => {
+  await page.goto('/atom/e2e/attr-sweep')
+
+  const dialog = page.locator('dialog#sweep-lightbox')
+  await expect(dialog).toHaveClass(/sweep-lightbox/)
+  await expect(dialog).toHaveAttribute('data-atom-lightbox', '')
+
+  await page.locator('[data-lightbox] [data-lightbox-url]').click()
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toHaveAttribute('data-open', '')
+
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+})
+
+test('darkmode toggle still boots with a class and id on its root', async ({ page }) => {
+  await page.goto('/atom/e2e/attr-sweep')
+
+  const root = page.locator('#sweep-darkmode')
+  await expect(root).toHaveClass(/sweep-darkmode/)
+  await expect(root).toHaveAttribute('data-atom-dropdown', '')
+
+  await root.locator('[data-atom-darkmode-toggle]').click()
+  await root.getByText('Dark', { exact: true }).click()
+  await expect(page.locator('html')).toHaveClass(/\bdark\b/)
+
+  await root.locator('[data-atom-darkmode-toggle]').click()
+  await root.getByText('Light', { exact: true }).click()
+  await expect(page.locator('html')).not.toHaveClass(/\bdark\b/)
+})

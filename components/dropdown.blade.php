@@ -8,7 +8,7 @@
 $classes = Arr::toCssClasses([
     // The menu's `position` is not set here: it is a top-layer [popover], so it
     // must be viewport-positioned to match floating-ui. atom.css owns that.
-    'group/dropdown relative',
+    'group/dropdown [:where(&)]:relative',
     '[:where(&_[data-atom-menu])]:transition',
     '[:where(&_[data-atom-menu])]:duration-300',
     '[:where(&_[data-atom-menu])]:ease-in-out',

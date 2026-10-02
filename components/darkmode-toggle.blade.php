@@ -1,4 +1,4 @@
-<atom:dropdown>
+<atom:dropdown :attributes="$attributes">
     <button
     type="button"
     class="shrink-0 flex items-center justify-center rounded-lg size-10 hover:bg-zinc-100 dark:hover:bg-zinc-700"

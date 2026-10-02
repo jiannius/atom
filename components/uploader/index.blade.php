@@ -22,7 +22,7 @@ x-on:livewire-upload-finish="uploading = false"
 x-on:livewire-upload-cancel="uploading = false"
 x-on:livewire-upload-error="uploading = false"
 x-on:livewire-upload-progress="progress = $event.detail.progress"
-{{ $attributes->only('class')->class('group/uploader relative') }}>
+{{ $attributes->only('class')->class('group/uploader [:where(&)]:relative') }}>
     <input  type="file" x-ref="fileinput" class="hidden" {{ $attributes->except('class') }}>
 
     @if ($slot->isNotEmpty())

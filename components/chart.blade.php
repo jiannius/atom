@@ -19,7 +19,7 @@ $height = str($attributes->get('class'))->is('*h-*')
 @endphp
 
 <div
-    {{ $attributes->class(['w-full', $height]) }}
+    {{ $attributes->class(['[:where(&)]:w-full', $height]) }}
     data-atom-chart
     data-atom-chart-type="{{ $type }}"
     x-data="{{ $factory }}({ data: @js($data), color: @js($color), max: @js($max), min: @js($min) })"

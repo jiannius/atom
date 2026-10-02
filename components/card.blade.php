@@ -15,7 +15,7 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'relative rounded-lg border shadow-xs overflow-auto',
+    '[:where(&)]:relative rounded-lg border shadow-xs overflow-auto',
     $divided
         ? 'divide-y divide-zinc-200 dark:divide-zinc-700 '.($inset ? '' : '[&>div]:p-6')
         : ($inset ? '' : 'p-6'),
