@@ -483,7 +483,7 @@ class GetOptions implements WebAction
         $label = '<div class="text-wrap">'.e(data_get($option, 'label')).'</div>';
         $caption = data_get($option, 'caption') ? '<div class="text-muted dark:text-muted-foreground text-sm text-wrap">'.e(data_get($option, 'caption')).'</div>' : '';
         $avatar = data_get($option, 'avatar')
-            ? Blade::render('<atom:avatar size="xs" :name="$name" :src="$src" />', ['name' => data_get($option, 'label'), 'src' => is_string(data_get($option, 'avatar')) ? safe_url(data_get($option, 'avatar')) : null])
+            ? Blade::render('<atom:avatar size="xs" :initial="$initial" :src="$src" />', ['initial' => str((string) data_get($option, 'label'))->initials()->take(1)->toString(), 'src' => is_string(data_get($option, 'avatar')) ? safe_url(data_get($option, 'avatar')) : null])
             : '';
 
         return [

@@ -132,12 +132,18 @@ describe('an option avatar', function () {
             ->and(domQuery($html, '//*[@avatar]'))->toHaveCount(0);
     });
 
-    // The avatar used to be handed its label as a slot, which it never prints: a
-    // fallback (no or blocked src) was an empty grey box and the <img> had alt="".
-    it('names the image after the label', function () {
-        $img = domQuery(avatarHtml('https://example.test/a.png'), '//figure//img')[0];
+    // The label is printed beside the avatar, so the image is decorative. Passing
+    // `name` would also wrap the avatar in a tooltip: a top-layer popover inside
+    // the role=option row, whose click bubbles to its own row and which overlaps
+    // the row above, so a click near the avatar could pick the wrong option.
+    it('is decorative and carries no tooltip popover', function () {
+        $html = avatarHtml('https://example.test/a.png');
+        $img = domQuery($html, '//figure//img')[0];
 
-        expect($img->getAttribute('alt'))->toBe('Jane');
+        expect($img->hasAttribute('alt'))->toBeTrue()
+            ->and($img->getAttribute('alt'))->toBe('')
+            ->and(domQuery($html, '//*[@popover]'))->toHaveCount(0)
+            ->and(domQuery($html, '//*[@data-atom-tooltip-content]'))->toHaveCount(0);
     });
 
     it('shows the label initials when there is no usable image', function (mixed $avatar) {
@@ -145,7 +151,8 @@ describe('an option avatar', function () {
         $figure = domQuery($html, '//figure')[0];
 
         expect(domQuery($html, '//img'))->toHaveCount(0)
-            ->and(trim($figure->textContent))->toContain('J');
+            ->and(domQuery($html, '//*[@popover]'))->toHaveCount(0)
+            ->and(trim($figure->textContent))->toBe('J');
     })->with([
         'blocked scheme' => ['javascript:alert(1)'],
         'array' => [fn () => ['url' => 'https://example.test/a.png']],
