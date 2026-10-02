@@ -42,3 +42,30 @@ function renderBlade(string $template, array $data = []): string
         }
     }
 }
+
+/**
+ * Parse rendered markup and return the elements an XPath expression matches,
+ * so a test can assert on the element rather than grep the string.
+ *
+ * @return list<DOMElement>
+ */
+function domQuery(string $html, string $xpath): array
+{
+    $document = new DOMDocument;
+
+    libxml_use_internal_errors(true);
+    $document->loadHTML('<?xml encoding="utf-8"?><body>'.$html.'</body>');
+    libxml_clear_errors();
+
+    return array_values(iterator_to_array((new DOMXPath($document))->query($xpath)));
+}
+
+/**
+ * The class tokens of an element, so `toContain('mt-2')` cannot match `mt-20`.
+ *
+ * @return list<string>
+ */
+function domClasses(DOMElement $element): array
+{
+    return preg_split('/\s+/', trim($element->getAttribute('class')), -1, PREG_SPLIT_NO_EMPTY);
+}
