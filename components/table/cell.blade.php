@@ -3,13 +3,19 @@
     'checkbox' => null,
     'filler' => null,
     'muted' => false,
+    'truncate' => false,
 ])
 
 @php
 $classes = Arr::toCssClasses([
-    'py-3 px-4 whitespace-nowrap',
+    // nowrap is the default, but at zero specificity (modal/menu use the same idiom)
+    // so a caller's whitespace-normal, or a responsive md:whitespace-normal, wins.
+    'py-3 px-4 [:where(&)]:whitespace-nowrap',
     $muted ? 'text-muted dark:text-muted-foreground' :'text-zinc-800 dark:text-zinc-200',
     $checkbox ? 'w-10' : '',
+    // max-w-0 + w-full: the cell takes the room left over and ellipsises, instead of
+    // sizing the column (and the table) to its longest value.
+    $truncate ? 'truncate max-w-0 w-full' : '',
     match ($align) {
         'left' => 'text-left justify-start',
         'center' => 'text-center justify-center',

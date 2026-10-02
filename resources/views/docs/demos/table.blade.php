@@ -10,7 +10,7 @@ view="atom::docs.demos.table.empty"/>
 
 <atom:docs.example
 title="Search"
-description="atom:table.search is the standard listing search: a search-icon input bound to a filter key, Enter to run ($wire.$refresh). Replaces the per-page boilerplate."
+description="atom:table.search is the standard listing search: a search-icon input bound to a filter key, Enter to run ($wire.$refresh). Replaces the per-page boilerplate. Bound with wire:model inside atom:table.filters it also joins the bar: its text shows as a chip named by the placeholder, and Clear all (or the chip's x) empties the box and refreshes. Shown here unbound, so no chip."
 view="atom::docs.demos.table.search"/>
 
 <atom:docs.example
@@ -32,3 +32,8 @@ view="atom::docs.demos.table.filters"/>
 title="Loading skeleton"
 description="Pass skeleton (or :skeleton=N for a row count) to show placeholder rows on first load while a lazy/deferred table fetches its data. Opt-in: a table without the flag is unaffected. Filter/search shows a spinner in the search box (rows stay); pagination/sort use a dim overlay."
 view="atom::docs.demos.table.skeleton"/>
+
+<atom:docs.example
+title="Long values"
+description="A nowrap cell grows its column to its longest value, so one long address can push the whole table wider than its box. Add truncate to atom:table.cell and it takes the room left over and cuts the text with an ellipsis instead. To let a cell or header wrap instead, pass whitespace-normal (md:whitespace-normal also works) — the nowrap default yields to it. Neither needs w-full on the table."
+view="atom::docs.demos.table.truncate"/>

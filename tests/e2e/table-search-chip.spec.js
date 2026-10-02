@@ -1,0 +1,169 @@
+import { test, expect } from '@playwright/test'
+
+// Drives the Livewire fixture at /atom/e2e/table-search-chip
+// (tests/Fixtures/TableSearchChipFixture.php).
+//
+// A bound <atom:table.search> inside <atom:table.filters> used to be invisible to
+// the bar: no chip for the text, and "Clear all" cleared the selects but left the
+// search box (and its rows) alone. The Livewire round trip is the point — the
+// search model is deferred, so the clear has to reach server state.
+
+const bar = page => page.locator('[data-atom-table-filters]')
+const box = page => page.locator('[data-atom-table-search] input')
+const rows = page => page.locator('[data-atom-table-row]')
+const chips = page => page.locator('[data-atom-table-filter-chip]')
+const searchChip = page => chips(page).filter({ hasText: 'Search fruit' })
+
+async function search (page, term) {
+  await box(page).fill(term)
+  await box(page).press('Enter')
+}
+
+async function pickStatus (page, label) {
+  await bar(page).getByRole('combobox', { name: 'Status' }).click()
+  await page.locator('[data-atom-option]').filter({ hasText: label }).first().click()
+}
+
+test('Enter on a search shows a chip and filters the rows', async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip')
+  await page.waitForLoadState('networkidle')
+
+  await expect(rows(page)).toHaveCount(6)
+  await expect(chips(page)).toHaveCount(0)
+
+  await search(page, 'ap')
+
+  await expect(searchChip(page)).toBeVisible()
+  await expect(searchChip(page)).toContainText('ap')
+  await expect(rows(page)).toHaveCount(2)
+})
+
+test('Clear all empties the search box, removes every chip and unfilters the rows', async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip')
+  await page.waitForLoadState('networkidle')
+
+  await search(page, 'ap')
+  await expect(rows(page)).toHaveCount(2)
+  await pickStatus(page, 'Fresh')
+  await expect(rows(page)).toHaveCount(1)
+  await expect(chips(page)).toHaveCount(2)
+
+  await bar(page).getByRole('button', { name: /Clear all/i }).click()
+
+  // KEY ASSERTIONS: the box is empty, no chip is left, and the server state followed —
+  // all six rows are back, which only happens if the search model was emptied and sent.
+  await expect(box(page)).toHaveValue('')
+  await expect(chips(page)).toHaveCount(0)
+  await expect(rows(page)).toHaveCount(6)
+})
+
+test("the search chip's own x clears the search and leaves the other filter", async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip')
+  await page.waitForLoadState('networkidle')
+
+  await search(page, 'b')
+  await pickStatus(page, 'Fresh')
+  await expect(rows(page)).toHaveCount(1)
+
+  await searchChip(page).getByRole('button').click()
+
+  await expect(box(page)).toHaveValue('')
+  await expect(searchChip(page)).toHaveCount(0)
+  // Status: Fresh is still applied
+  await expect(chips(page).filter({ hasText: 'Fresh' })).toHaveCount(1)
+  await expect(rows(page)).toHaveCount(3)
+})
+
+test('a deferred search shows no chip while typing; leaving the box charts it', async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip')
+  await page.waitForLoadState('networkidle')
+
+  // type like a person, a key at a time: the model's client state changes on every one
+  await box(page).click()
+  await box(page).pressSequentially('cher')
+  await expect(box(page)).toBeFocused()
+  await expect(box(page)).toHaveValue('cher')
+
+  // KEY ASSERTION: nothing registers while the box has focus, so the bar does not
+  // appear and push the table down mid-word. Give a (wrongly) fired watch time to land.
+  await page.waitForTimeout(500)
+  await expect(chips(page)).toHaveCount(0)
+  await expect(bar(page).getByRole('button', { name: /Clear all/i })).toHaveCount(0)
+
+  await page.locator('body').click({ position: { x: 5, y: 400 } })
+
+  await expect(searchChip(page)).toBeVisible()
+  await expect(searchChip(page)).toContainText('cher')
+  // blur alone does not run the search: the rows wait for Enter or another request
+  await expect(rows(page)).toHaveCount(6)
+
+  // emptying the box removes the chip again
+  await box(page).fill('')
+  await page.locator('body').click({ position: { x: 5, y: 400 } })
+  await expect(searchChip(page)).toHaveCount(0)
+})
+
+test('a .live search shows its chip while typing, since the rows are filtering', async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip-live')
+  await page.waitForLoadState('networkidle')
+
+  await box(page).click()
+  await box(page).pressSequentially('ap')
+
+  await expect(box(page)).toBeFocused()
+  await expect(searchChip(page)).toBeVisible()
+  await expect(searchChip(page)).toContainText('ap')
+  await expect(rows(page)).toHaveCount(2)
+})
+
+test('a server-side reset removes the chip of a .live search too', async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip-live')
+  await page.waitForLoadState('networkidle')
+
+  await box(page).click()
+  await box(page).pressSequentially('ap')
+  await expect(searchChip(page)).toBeVisible()
+  await expect(rows(page)).toHaveCount(2)
+
+  await page.locator('[data-reset-search]').click()
+
+  await expect(box(page)).toHaveValue('')
+  await expect(searchChip(page)).toHaveCount(0)
+  await expect(rows(page)).toHaveCount(6)
+})
+
+test('a search already in the model on load shows its chip', async ({ page }) => {
+  // the fixture's search is #[Url], so ?search=ap mounts it with a value
+  await page.goto('/atom/e2e/table-search-chip?search=ap')
+  await page.waitForLoadState('networkidle')
+
+  await expect(box(page)).toHaveValue('ap')
+  await expect(searchChip(page)).toBeVisible()
+  await expect(searchChip(page)).toContainText('ap')
+  await expect(rows(page)).toHaveCount(2)
+})
+
+test('the chip names the search by its placeholder without punctuation after it', async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip')
+  await page.waitForLoadState('networkidle')
+
+  await search(page, 'ap')
+
+  await expect(searchChip(page).locator('span').first()).toHaveText('Search fruit:')
+})
+
+test('a server-side reset of the model removes the chip along with the box', async ({ page }) => {
+  await page.goto('/atom/e2e/table-search-chip')
+  await page.waitForLoadState('networkidle')
+
+  await search(page, 'ap')
+  await expect(searchChip(page)).toBeVisible()
+  await expect(rows(page)).toHaveCount(2)
+
+  await page.locator('[data-reset-search]').click()
+
+  // KEY ASSERTION: nothing in the browser asked for the clear, so only following the model removes the chip
+  await expect(box(page)).toHaveValue('')
+  await expect(searchChip(page)).toHaveCount(0)
+  await expect(rows(page)).toHaveCount(6)
+})
