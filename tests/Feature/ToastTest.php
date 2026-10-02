@@ -17,6 +17,30 @@ describe('toast', function () {
             ->toContain('bottom');
     });
 
+    it('closes on atom-toast-close, but only a toast with the same source when one is given', function () {
+        $html = Blade::render('<atom:toast />');
+
+        // parse it: a stray double quote in the x-data comment ends the attribute early and
+        // silently drops every attribute after it, which a string match would not notice
+        $document = new DOMDocument;
+        $previous = libxml_use_internal_errors(true);
+        $document->loadHTML('<?xml encoding="utf-8"?><body>'.$html.'</body>');
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $toast = (new DOMXPath($document))->query('//*[@data-atom-toast]')->item(0);
+
+        expect($toast->getAttribute('role'))->toBe('status')
+            ->and($toast->getAttribute('aria-live'))->toBe('polite')
+            ->and($toast->getAttribute('x-on:atom-toast-close.window'))->toBe('onClose')
+            ->and($toast->getAttribute('x-on:atom-toast-show.window'))->toBe('showToast')
+            ->and($toast->getAttribute('x-data'))
+            ->toContain('onClose (e)')
+            ->toContain('this.config.source !== source')
+            ->not->toContain('//')
+            ->toEndWith('}');
+    });
+
     it('navigates via Livewire.navigate (not the old Liveiwre typo)', function () {
         $html = Blade::render('<atom:toast />');
 

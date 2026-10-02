@@ -74,6 +74,13 @@ public function create() {
 }
 ```
 Requires `config('services.recaptcha.site_key' / 'secret_key' / 'min_score')` and a built site (consumers run their Tailwind/Vite build). With no site key configured the form behaves as a normal `wire:submit` form.
+
+**Error toast.** A failed submit (the Livewire method ends with validation errors) shows a danger toast headed "Please check the form", so a long form that hides its errors off screen doesn't look like it did nothing.
+
+- It lists the errors of the fields the submitted form renders (`wire:model*` / `name`), each message once, five at most, then "and N more". An error with no field in the form (a failed API call, `addError('general', ...)`) is the host's to report, e.g. with `$this->toast(...)`.
+- Outside a modal it is sticky: it stays until the user dismisses it with its ✕ or the same form's next submit comes back clean. Inside a `<dialog>` it is timed (6s) and closes with the dialog. It never scrolls or moves focus.
+- The form's `wire:target` must name the submit method (atom sets it; don't override it) or the toast is off. It is on by default; opt out per form with `:error-toast="false"` (a `disabled` form never shows one).
+- It needs `<atom:toast>` mounted on the page (the sidebar layout has it), and does nothing without. It is a singleton like every toast: if your own method already toasts its validation message, the last one shown wins.
 @endverbatim
 
 ### Modals

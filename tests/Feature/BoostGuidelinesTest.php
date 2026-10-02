@@ -218,6 +218,15 @@ it('tells hosts the skill needs Boost skills enabled and a skills-capable agent'
         ->and($guideline)->toContain('php artisan boost:install');
 });
 
+// A host's agent only learns the form's error toast, and how to opt out, from the skill.
+it('documents the form error toast and its opt-out in the skill', function () {
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+    expect($skill)->toContain('**Error toast.**')
+        ->and($skill)->toContain(':error-toast="false"')
+        ->and($skill)->toContain('`<atom:toast>` mounted');
+});
+
 // What was moved into the always-on guideline is still in the skill, with its detail.
 it('keeps the moved rules in the skill as well', function () {
     $skill = boostFile('skills/atom-components/SKILL.blade.php');
