@@ -491,6 +491,26 @@ test.describe('every atom control is found by the matcher', () => {
   })
 })
 
+test.describe('plain inputs are found by wire:model modifier or name', () => {
+  // wire:model.blur / .live.debounce are not an exact `wire:model`; a `name` of `tags[]` or
+  // `rows[a]` fails under the dotted key (`tags`, `rows.a`). Read the keys the toast was built from.
+  test('a toast for the raw form carries the key of every field', async ({ page }) => {
+    await open(page)
+    await page.evaluate(() => {
+      window.__shown = []
+      addEventListener('atom-toast-show', (e) => window.__shown.push(e.detail))
+    })
+
+    await submit(page, 'raw')
+    await expect(toast(page)).toBeVisible()
+
+    const shown = await page.evaluate(() => window.__shown)
+    expect(shown).toHaveLength(1)
+    expect([...shown[0].meta.keys].sort()).toEqual(['blurOnly', 'liveOnly', 'nameOnly', 'rows.a', 'tags'])
+    await expect(toast(page).locator('li')).toHaveCount(5)
+  })
+})
+
 test.describe('the toast as a live region', () => {
   test('it is a polite status region, whatever it shows', async ({ page }) => {
     await open(page)
