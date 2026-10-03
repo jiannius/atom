@@ -118,3 +118,28 @@ it('makes the invoice line from humblebear 401 add up', function () {
 
     expect("51 x {$unit} = {$line}")->toBe('51 x 0.065 = 3.32');
 });
+
+it('takes the rounding mode in any case', function () {
+    expect(num(0.125)->currency(roundingMode: 'Half-Even'))->toBe('0.12');
+    expect(num(0.125)->currency(roundingMode: 'HALF-UP'))->toBe('0.13');
+    expect(num(0.125)->currency(roundingMode: 'Half-Down'))->toBe('0.12');
+});
+
+it('does not pre-round the float, so a product that lands just under a tie rounds down (known limit)', function () {
+    // 175 * 9.825 is 1719.3749999999998 in floating point, so the tie never reaches the formatter.
+    // Callers must pass an exact value (e.g. a rounded or decimal-computed total) when a sum lands on a tie.
+    expect(175 * 9.825)->toBe(1719.3749999999998);
+    expect(num(175 * 9.825)->currency())->toBe('1,719.37');
+    expect(num(round(175 * 9.825, 3))->currency())->toBe('1,719.38');
+});
+
+it('keeps the sign of a negative zero', function () {
+    expect(num(-0.0)->currency())->toBe('-0.00');
+    expect(num(0.0)->currency())->toBe('0.00');
+});
+
+it('applies the 0.05 rounding first, whatever the rounding mode', function () {
+    expect(num(10.12)->currency(null, true, roundingMode: 'half-even'))->toBe('10.10');
+    expect(num(10.125)->currency(null, true, roundingMode: 'half-even'))->toBe('10.15');
+    expect(num(10.125)->currency(null, true, roundingMode: 'half-down'))->toBe('10.15');
+});

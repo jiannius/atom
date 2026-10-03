@@ -1,8 +1,8 @@
 Number.prototype.currency = function(symbol = null, round = false, maxPrecision = null) {
     const config = { minimumFractionDigits: 2 }
 
-    // at least 2 decimals, at most maxPrecision; Intl rounds half away from zero, as PHP's half-up does
-    if (maxPrecision !== null) config.maximumFractionDigits = Math.max(2, maxPrecision)
+    // at least 2 decimals, at most maxPrecision (clamped 2-100, Intl's limit); Intl rounds half away from zero, as PHP's half-up does
+    if (Number.isFinite(maxPrecision)) config.maximumFractionDigits = Math.min(100, Math.max(2, maxPrecision))
 
     let currency
     let num = Number(this)
