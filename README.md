@@ -224,7 +224,7 @@ All `heading`, `subheading`, and `message` strings are auto-passed through `t()`
 | Function | Purpose |
 | -------- | ------- |
 | `t($key, $count = 1, $params = [])` | Translation shim. Number → `trans_choice`, array → `__($key, $array)`, scalar → `__($key, $params)`. Used internally by every component. |
-| `num($value)` | Wraps Laravel's `Number` helper. Adds `->currency($iso, $rounding, $bracket, $abbreviate)` and `->filesize($precision)`. All other `Number::*` methods proxy through. |
+| `num($value)` | Wraps Laravel's `Number` helper. Adds `->currency($iso, $rounding, $bracket, $abbreviate, $maxPrecision, $roundingMode)` (2dp, rounded half-up; `$roundingMode` is `half-up`, `half-even` or `half-down`) and `->filesize($precision)`. All other `Number::*` methods proxy through. |
 | `carbon(...$args)` | Returns a `Jiannius\Atom\Services\Carbon` instance. |
 | `js($value)` | Alias for `Js::from()`. |
 | `is_enum($value)` | True for `UnitEnum` / `BackedEnum`. |
@@ -238,8 +238,11 @@ t('Welcome :name', ['name' => $user->name]);
 t('item.count', 5);                       // → trans_choice
 num(1234.5)->currency('USD');             // → "USD 1,234.50"
 num(2048)->filesize();                    // → "2 MB"
-num(1500000)->currency('USD', abbreviate: true);  // → "USD 1.5M"
+num(1500000)->currency('USD', abbreviate: true);  // → "USD 2M"
+num(0.065)->currency(maxPrecision: 6);    // → "0.065" (at least 2 decimals, at most 6, half-up; default stays 2dp)
 ```
+
+`currency()` rounds half-up (away from zero) by default, so `10.185` is `10.19`; before this change it rounded half-even (`10.18`). Pass `roundingMode: 'half-even'` (or `'half-down'`) for another mode, in any case. `roundingMode` does not affect the `$rounding` 0.05 step or `$abbreviate`. The input is a float: `175 * 9.825` is `1719.3749999999998` and prints `1,719.37`, so pass an exact value when a sum lands on a tie. In JavaScript, `(0.065).currency(symbol, round, maxPrecision)` takes the same `maxPrecision` (a number or numeric string, clamped 2 to 100; `null`, `NaN` or blank mean unset); without it the JS default allows up to 3 decimals, so it is not the same as the PHP default.
 
 ### The `AtomComponent` Livewire trait
 

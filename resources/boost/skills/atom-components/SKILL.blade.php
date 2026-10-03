@@ -370,7 +370,7 @@ Event name is prefixed with `.` when listening. Private channels require auth in
 @verbatim
 - `js($value)` — safe PHP-to-JS in Blade attributes: `wire:click="delete({{ js($row->id) }})"`.
 @endverbatim
-- `num($value)->currency('USD')` / `->filesize()` / `->format()` — Laravel Number helper shorthand.
+- `num($value)->currency('USD')` / `->filesize()` / `->format()` — Laravel Number helper shorthand. For a unit price pass `maxPrecision: N` to `currency()` (min 2, max N decimals, half-up) so `0.065` stays `0.065` instead of becoming `0.07`; rounding is half-up unless `roundingMode: 'half-even'` (or `half-down`).
 - `carbon($value)` — produces `Jiannius\Atom\Services\Carbon` (also installed globally via `Date::use()`).
 @verbatim
 - `safe_url($url)` — makes a URL scheme-safe: it returns the URL unchanged if it is `http`, `https`, `mailto`, `tel`, `sms` or scheme-less, else `null`. Use it on any user-supplied URL before it reaches an `href` or `formaction`; `{{ }}` escaping does not stop `javascript:`. Its scope is the scheme only: `//evil.com` is allowed, so a redirect built from user input must also check the host (compare it with your own, or allow only a relative path).

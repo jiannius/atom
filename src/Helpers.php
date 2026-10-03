@@ -23,8 +23,14 @@ if (!function_exists('num')) {
                 return Number::filesize($this->value * 1024, $precision);
             }
 
-            public function currency($in = null, $rounding = false, $bracket = false, $abbreviate = false) : string
+            public function currency($in = null, $rounding = false, $bracket = false, $abbreviate = false, ?int $maxPrecision = null, string $roundingMode = 'half-up') : string
             {
+                $mode = strtolower($roundingMode);
+
+                if (!in_array($mode, ['half-up', 'half-even', 'half-down'], true)) {
+                    throw new InvalidArgumentException("Unknown rounding mode [$roundingMode]; use 'half-up', 'half-even' or 'half-down'.");
+                }
+
                 if (!is_numeric($this->value)) return $this->value ?? '';
         
                 $value = (float) $this->value;
@@ -35,10 +41,34 @@ if (!function_exists('num')) {
                 }
                 else {
                     $amount = $rounding ? (round((float) $value * 2, 1)/2) : $value;
-                    $currency = $in ? ($in.' '.Number::format($amount, 2)) : Number::format($amount, 2);
+                    $formatted = $this->formatDecimals($amount, $maxPrecision, $mode);
+                    $currency = $in ? ($in.' '.$formatted) : $formatted;
                 }
         
                 return ($bracket && $value < 0) ? '('.str($currency)->replaceFirst('-', '').')' : $currency;
+            }
+
+            /**
+             * Format with exactly 2 decimals, or 2 to $maxPrecision (trailing zeros past the 2nd trimmed), using the given rounding mode ('half-up', 'half-even' or 'half-down')
+             */
+            private function formatDecimals(float $amount, ?int $maxPrecision, string $roundingMode) : string
+            {
+                if (!extension_loaded('intl')) {
+                    throw new RuntimeException('The "intl" PHP extension is required to use the [currency] method.');
+                }
+
+                $icuMode = match ($roundingMode) {
+                    'half-even' => NumberFormatter::ROUND_HALFEVEN,
+                    'half-down' => NumberFormatter::ROUND_HALFDOWN,
+                    default => NumberFormatter::ROUND_HALFUP,
+                };
+
+                $formatter = new NumberFormatter(Number::defaultLocale(), NumberFormatter::DECIMAL);
+                $formatter->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, 2);
+                $formatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, max(2, $maxPrecision ?? 2));
+                $formatter->setAttribute(NumberFormatter::ROUNDING_MODE, $icuMode);
+
+                return $formatter->format($amount);
             }
         };
     }
