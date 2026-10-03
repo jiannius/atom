@@ -224,7 +224,7 @@ All `heading`, `subheading`, and `message` strings are auto-passed through `t()`
 | Function | Purpose |
 | -------- | ------- |
 | `t($key, $count = 1, $params = [])` | Translation shim. Number → `trans_choice`, array → `__($key, $array)`, scalar → `__($key, $params)`. Used internally by every component. |
-| `num($value)` | Wraps Laravel's `Number` helper. Adds `->currency($iso, $rounding, $bracket, $abbreviate)` and `->filesize($precision)`. All other `Number::*` methods proxy through. |
+| `num($value)` | Wraps Laravel's `Number` helper. Adds `->currency($iso, $rounding, $bracket, $abbreviate, $maxPrecision, $roundingMode)` (2dp, rounded half-up; `$roundingMode` is `half-up`, `half-even` or `half-down`) and `->filesize($precision)`. All other `Number::*` methods proxy through. |
 | `carbon(...$args)` | Returns a `Jiannius\Atom\Services\Carbon` instance. |
 | `js($value)` | Alias for `Js::from()`. |
 | `is_enum($value)` | True for `UnitEnum` / `BackedEnum`. |
@@ -239,6 +239,7 @@ t('item.count', 5);                       // → trans_choice
 num(1234.5)->currency('USD');             // → "USD 1,234.50"
 num(2048)->filesize();                    // → "2 MB"
 num(1500000)->currency('USD', abbreviate: true);  // → "USD 1.5M"
+num(0.065)->currency(maxPrecision: 6);    // → "0.065" (at least 2 decimals, at most 6, half-up; default stays 2dp)
 ```
 
 ### The `AtomComponent` Livewire trait
