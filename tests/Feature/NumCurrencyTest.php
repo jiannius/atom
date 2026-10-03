@@ -53,10 +53,12 @@ it('rounds half-down when asked', function () {
     expect(num(-0.125)->currency(roundingMode: 'half-down'))->toBe('-0.12');
 });
 
-it('refuses an unknown rounding mode', function () {
-    expect(fn () => num(1)->currency(roundingMode: 'banker'))->toThrow(InvalidArgumentException::class);
-    expect(fn () => num('abc')->currency(roundingMode: 'nope'))->toThrow(InvalidArgumentException::class);
+it('refuses an unknown rounding mode and names it as the caller wrote it', function () {
+    expect(fn () => num(1)->currency(roundingMode: 'BANKER'))->toThrow(InvalidArgumentException::class, 'Unknown rounding mode [BANKER]');
+    expect(fn () => num('abc')->currency(roundingMode: 'nope'))->toThrow(InvalidArgumentException::class, 'Unknown rounding mode [nope]');
 });
+
+// The "intl missing" guard in currency() is untested: intl can't be unloaded in-process.
 
 it('formats with at least 2 and at most maxPrecision decimals, half-up', function (mixed $in, string $expected) {
     expect(num($in)->currency(maxPrecision: 6))->toBe($expected);

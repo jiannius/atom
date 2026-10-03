@@ -25,9 +25,9 @@ if (!function_exists('num')) {
 
             public function currency($in = null, $rounding = false, $bracket = false, $abbreviate = false, ?int $maxPrecision = null, string $roundingMode = 'half-up') : string
             {
-                $roundingMode = strtolower($roundingMode);
+                $mode = strtolower($roundingMode);
 
-                if (!in_array($roundingMode, ['half-up', 'half-even', 'half-down'], true)) {
+                if (!in_array($mode, ['half-up', 'half-even', 'half-down'], true)) {
                     throw new InvalidArgumentException("Unknown rounding mode [$roundingMode]; use 'half-up', 'half-even' or 'half-down'.");
                 }
 
@@ -41,7 +41,7 @@ if (!function_exists('num')) {
                 }
                 else {
                     $amount = $rounding ? (round((float) $value * 2, 1)/2) : $value;
-                    $formatted = $this->formatDecimals($amount, $maxPrecision, $roundingMode);
+                    $formatted = $this->formatDecimals($amount, $maxPrecision, $mode);
                     $currency = $in ? ($in.' '.$formatted) : $formatted;
                 }
         
