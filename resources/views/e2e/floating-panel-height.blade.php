@@ -66,7 +66,7 @@
     </div>
 </div>
 
-<div style="height: 2000px"></div>
+<div data-spacer style="height: 2000px"></div>
 
 @livewireScripts
 </atom:html>

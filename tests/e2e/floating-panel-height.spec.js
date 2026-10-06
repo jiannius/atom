@@ -251,3 +251,60 @@ test('a panel\'s own max-height, from a class or inline, is never raised', async
     }
   }
 })
+
+test('a capped panel keeps its own scroll position through a reposition', async ({ page }) => {
+  await open(page, { width: 1366, height: 620 })
+  await expect.poll(() => panel(page).evaluate((el) => el.offsetHeight < el.scrollHeight)).toBe(true)
+
+  // the user has scrolled the panel down to the time row
+  await panel(page).evaluate((el) => { el.scrollTop = 40 })
+  expect(await panel(page).evaluate((el) => el.scrollTop)).toBe(40)
+
+  // a small page scroll makes autoUpdate reposition the open panel; it stays capped
+  // (a few px more room, still short of its natural height)
+  await page.evaluate(() => window.scrollTo(0, 10))
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(10)
+  await page.waitForTimeout(300)
+
+  expect(await panel(page).evaluate((el) => el.offsetHeight < el.scrollHeight)).toBe(true)
+  // reset-to-measure drops the scroll position (overflow goes back to visible); it must be put back
+  expect(await panel(page).evaluate((el) => el.scrollTop)).toBeGreaterThan(0)
+})
+
+test('flip measures the natural height, so a capped panel moves to the roomier side', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 620 })
+  await page.goto('/atom/e2e/floating-panel-height?top=400')
+  await page.addStyleTag({ content: CONSUMER_CSS })
+  await page.waitForFunction(() => window.Alpine)
+
+  // Make the page end exactly where the window does when scrolled to the bottom. Growing the
+  // window then also scrolls the page up by as much, so the field moves DOWN by the growth
+  // while the room below it stays the same: one resize that opens room above but none below.
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll('[data-probe]:not([data-probe="date"])')) el.style.display = 'none'
+    // field at page y 400, 40px tall; the page is 770 tall, so scrolled to the end at 620 it sits at y 250
+    document.querySelector('[data-spacer]').style.height = (770 - 440) + 'px'
+    window.scrollTo(0, 1e6)
+  })
+  expect(await page.evaluate(() => window.scrollY)).toBe(150)
+
+  await stack(page).getByPlaceholder('Select date').click()
+  await expect(panel(page)).toBeVisible()
+
+  const geometry = () => Promise.all([panel(page).boundingBox(), stack(page).getByPlaceholder('Select date').boundingBox()])
+    .then(([p, f]) => ({ p, f }))
+
+  // at 620 the field has 243px above and 325px below, the panel needs 353: it opens below, capped to 325
+  await expect.poll(() => panel(page).evaluate((el) => el.offsetHeight < el.scrollHeight)).toBe(true)
+  let { p, f } = await geometry()
+  expect(p.y).toBeGreaterThanOrEqual(f.y + f.height)
+
+  // 750px: still 325 below, now 373 above, which holds the whole panel
+  await page.setViewportSize({ width: 1366, height: 750 })
+
+  await expect.poll(async () => {
+    ({ p, f } = await geometry())
+    return p.y + p.height <= f.y
+  }).toBe(true)
+  expect(await panel(page).evaluate((el) => el.offsetHeight >= el.scrollHeight)).toBe(true)
+})
