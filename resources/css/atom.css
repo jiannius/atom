@@ -199,7 +199,11 @@ button {
     scroll its search row away. Mark the region data-atom-scroll-region (a direct
     child of the panel) and the panel becomes a column that pins every other row
     and lets the region shrink and scroll alone. A capped panel without a marked
-    region keeps scrolling as a whole. The :popover-open guard stops display:flex,
+    region keeps scrolling as a whole. The region never shrinks below 6rem: in a
+    window too short for the pinned rows plus a usable list, the panel's own cap
+    takes over and scrolls the lot, rather than squeezing the list to nothing
+    behind a search row nobody can leave. (A list with fewer rows than that, in a
+    panel that is capped anyway, gets a little blank space.) The :popover-open guard stops display:flex,
     an author rule, from beating the UA's display:none on a closed popover. **/
 [data-atom-capped]:has(> [data-atom-scroll-region]):is(:not([popover]), :popover-open) {
     display: flex;
@@ -212,7 +216,7 @@ button {
 
 [data-atom-capped]:has(> [data-atom-scroll-region]) > [data-atom-scroll-region] {
     flex: 0 1 auto;
-    min-height: 0;
+    min-height: 6rem;
 }
 
 /** Rating — two-layer clip fill (base + accent overlay), structural so it works without Tailwind **/

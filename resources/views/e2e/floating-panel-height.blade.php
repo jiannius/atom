@@ -80,6 +80,10 @@
         <atom:input.color />
     </div>
 
+    <div data-probe="text-color" style="margin-top: 24px; width: 300px">
+        <atom:tiptap.toolbar.text-color />
+    </div>
+
     <div data-probe="mention" style="margin-top: 24px; width: 300px">
         <button type="button" data-mention-anchor>Mention anchor</button>
         <atom:tiptap.mention :options="collect(range(1, 60))->map(fn ($n) => 'Person '.$n)->all()" />

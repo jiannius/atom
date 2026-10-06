@@ -18,6 +18,7 @@ const CONSUMER_CSS = `
   *, ::before, ::after { box-sizing: border-box; }
   body { margin: 0; }
   .flex { display: flex; }
+  .inline-flex { display: inline-flex; }
   .flex-col { flex-direction: column; }
   .items-center { align-items: center; }
   .justify-center { justify-content: center; }
@@ -34,6 +35,8 @@ const CONSUMER_CSS = `
   .size-4 { width: 16px; height: 16px; }
   .size-5 { width: 20px; height: 20px; }
   .size-6 { width: 24px; height: 24px; }
+  .w-6 { width: 24px; }
+  .h-6 { height: 24px; }
   [data-atom-icon] > * { width: 100%; height: 100%; }
   .relative { position: relative; }
   .absolute { position: absolute; }
@@ -92,6 +95,15 @@ const cases = [
     top: 100,
     open: async (root) => root.locator('[data-atom-dropdown-trigger]').click(),
     panel: (root) => root.locator('[popover]'),
+    lastRow: ':scope > div',
+    pinned: null,
+  },
+  {
+    name: 'tiptap toolbar text colour',
+    probe: 'text-color',
+    top: 230,
+    open: async (root) => root.locator('button[aria-label="Text Color"]').click(),
+    panel: (root) => root.locator('[data-atom-menu]'),
     lastRow: ':scope > div',
     pinned: null,
   },
@@ -168,7 +180,7 @@ for (const c of cases) {
     expect(result.scrollY).toBe(0)
 
     // the cap really bit: the list was squeezed under the 300/400px it has when nothing caps it
-    expect(result.regionHeight).toBeLessThan(c.probe === 'mention' ? 300 : 400)
+    expect(result.regionHeight).toBeLessThan(['mention', 'text-color'].includes(c.probe) ? 300 : 400)
   })
 }
 
@@ -289,4 +301,62 @@ test('a list that fits its room is not capped, and the marker is taken off when 
   await page.setViewportSize({ width: 1366, height: 900 })
 
   await expect.poll(() => panel.evaluate((el) => [el.hasAttribute('data-atom-capped'), el.style.maxHeight, el.style.overflowY, getComputedStyle(el).display])).toEqual([false, '', '', 'block'])
+})
+
+test('a window too short for the list falls back to scrolling the panel, with the list still usable', async ({ page }) => {
+  // 160px: the room under the field cannot hold the search row plus even a few options
+  await page.setViewportSize({ width: 1366, height: 160 })
+  await page.goto('/atom/e2e/floating-panel-height?top=10')
+  await page.addStyleTag({ content: CONSUMER_CSS })
+  await page.waitForFunction(() => window.Alpine)
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll('[data-probe]')) {
+      if (el.dataset.probe !== 'select-searchable') el.style.display = 'none'
+    }
+  })
+
+  const root = page.locator('[data-probe="select-searchable"]')
+  await root.locator('[data-atom-dropdown] > button').click()
+
+  const panel = root.locator('[popover]')
+  await expect(panel).toHaveAttribute('data-atom-capped', '')
+
+  const result = await panel.evaluate((pop) => {
+    const region = pop.querySelector(':scope > [data-atom-scroll-region]')
+    const search = pop.querySelector('[data-atom-select-search]')
+    const hitsItself = (el) => {
+      const r = el.getBoundingClientRect()
+      const p = pop.getBoundingClientRect()
+      const cy = r.top + r.height / 2
+      // the point has to be inside the panel's own box to count as reachable at all
+      if (cy < p.top || cy > p.bottom) return false
+      const hit = document.elementFromPoint(r.left + r.width / 2, cy)
+      return !!hit && el.contains(hit)
+    }
+
+    // the panel scrolls (never the page), then the list does
+    pop.scrollTop = pop.scrollHeight
+    region.scrollTop = region.scrollHeight
+    const rows = region.querySelectorAll('[data-atom-option]')
+    const lastRowReachable = hitsItself(rows[rows.length - 1])
+    const regionHeight = region.clientHeight
+
+    pop.scrollTop = 0
+    return {
+      lastRowReachable,
+      searchReachable: hitsItself(search),
+      regionHeight,
+      floor: 6 * parseFloat(getComputedStyle(document.documentElement).fontSize),
+      panelScrolls: pop.scrollHeight > pop.clientHeight + 1,
+      scrollY: window.scrollY,
+    }
+  })
+
+  // the list keeps a floor of 6rem instead of collapsing behind the search row
+  expect(result.regionHeight).toBeGreaterThanOrEqual(result.floor)
+  // so what no longer fits is scrolled by the panel
+  expect(result.panelScrolls).toBe(true)
+  expect(result.lastRowReachable, 'last option reachable').toBe(true)
+  expect(result.searchReachable, 'search box reachable').toBe(true)
+  expect(result.scrollY).toBe(0)
 })
