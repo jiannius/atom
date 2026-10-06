@@ -19,7 +19,7 @@ if (is_string($options)) {
     x-on:keydown.down.prevent="arrowDown()"
     x-bind:class="(!show || !filteredOptions.length) && 'invisible'"
     class="fixed max-w-lg min-w-72 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-lg z-10 bg-white dark:bg-zinc-800/50">
-        <ul class="flex flex-col max-h-[300px] overflow-auto p-2">
+        <ul class="flex flex-col max-h-[300px] overflow-auto p-2" data-atom-scroll-region>
             <template x-for="(opt, i) in filteredOptions" hidden>
                 <li
                 x-on:mouseover="pointer = i"

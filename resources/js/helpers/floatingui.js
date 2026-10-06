@@ -26,6 +26,13 @@ export default (anchor, element, config = {}) => {
     let updatePosition = () => {
         let scrolled = element.scrollTop
 
+        // A panel with a marked scroll region (a search row over a long list)
+        // scrolls that region, not itself. Taking the cap off turns the panel
+        // back into a block and the region back to its natural height, which
+        // clamps its scroll position, so remember it.
+        let region = element.querySelector(':scope > [data-atom-scroll-region]')
+        let regionScrolled = region?.scrollTop
+
         // Measure the panel at its natural height. Left over from the previous
         // pass, the cap would make flip() think it fits on the side it is
         // already on and never move it to the roomier one.
@@ -35,6 +42,7 @@ export default (anchor, element, config = {}) => {
             }
 
             Object.assign(element.style, inlineBeforeSize.get(element))
+            element.removeAttribute('data-atom-capped')
         }
 
         computePosition(anchor, element, {
@@ -63,8 +71,15 @@ export default (anchor, element, config = {}) => {
                         // so it can only be tightened here, never raised.
                         if (floating.offsetHeight > max) {
                             Object.assign(floating.style, { maxHeight: max+'px', overflowY: 'auto' })
+                            // atom.css turns a capped panel that has a scroll
+                            // region into a column that pins its other rows and
+                            // lets the region take the squeeze.
+                            floating.setAttribute('data-atom-capped', '')
                             // Clearing the cap above dropped the scroll position; put it back.
                             floating.scrollTop = scrolled
+                            if (region) {
+                                region.scrollTop = regionScrolled
+                            }
                         }
                     },
                 })] : []),

@@ -64,6 +64,30 @@
     <div data-probe="select" style="margin-top: 24px; width: 300px">
         <atom:select variant="listbox" :options="collect(range(1, 60))->map(fn ($n) => ['value' => $n, 'label' => 'Option '.$n])->all()" />
     </div>
+
+    {{-- Panels with a search row over their own scroll region. Each is hidden but
+         the one under test, then put near the top of a short window, so the whole
+         panel is capped well below its natural height. --}}
+    <div data-probe="select-searchable" style="margin-top: 24px; width: 300px">
+        <atom:select variant="listbox" searchable :options="collect(range(1, 80))->map(fn ($n) => ['value' => $n, 'label' => 'Option '.$n])->all()" />
+    </div>
+
+    <div data-probe="filter-searchable" style="margin-top: 24px; width: 300px">
+        <atom:select variant="filter" searchable :options="collect(range(1, 80))->map(fn ($n) => ['value' => $n, 'label' => 'Choice '.$n])->all()" />
+    </div>
+
+    <div data-probe="color" style="margin-top: 24px; width: 300px">
+        <atom:input.color />
+    </div>
+
+    <div data-probe="text-color" style="margin-top: 24px; width: 300px">
+        <atom:tiptap.toolbar.text-color />
+    </div>
+
+    <div data-probe="mention" style="margin-top: 24px; width: 300px">
+        <button type="button" data-mention-anchor>Mention anchor</button>
+        <atom:tiptap.mention :options="collect(range(1, 60))->map(fn ($n) => 'Person '.$n)->all()" />
+    </div>
 </div>
 
 <div data-spacer style="height: 2000px"></div>
