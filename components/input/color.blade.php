@@ -44,7 +44,7 @@ data-atom-color-input>
         </div>
 
         <atom:menu popover>
-            <div class="grow grid grid-cols-11 gap-1 p-2 max-h-[400px] overflow-auto">
+            <div class="grow grid grid-cols-11 gap-1 p-2 max-h-[400px] overflow-auto" data-atom-scroll-region>
                 @foreach (Arr::collapse(\Jiannius\Atom\Services\Color::all()) as $color)
                     <div
                     x-on:click="color = @js($color)"

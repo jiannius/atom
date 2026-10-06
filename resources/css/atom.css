@@ -192,6 +192,29 @@ button {
     overflow: auto;
 }
 
+/** Capped panel with a scroll region — floatingui.js caps a panel taller than its
+    room and sets data-atom-capped on it, so the whole panel scrolls. A panel
+    that holds its own scroll region (a select's option list under its search
+    row, a mention list, the colour grid) would then scroll twice and could
+    scroll its search row away. Mark the region data-atom-scroll-region (a direct
+    child of the panel) and the panel becomes a column that pins every other row
+    and lets the region shrink and scroll alone. A capped panel without a marked
+    region keeps scrolling as a whole. The :popover-open guard stops display:flex,
+    an author rule, from beating the UA's display:none on a closed popover. **/
+[data-atom-capped]:has(> [data-atom-scroll-region]):is(:not([popover]), :popover-open) {
+    display: flex;
+    flex-direction: column;
+}
+
+[data-atom-capped]:has(> [data-atom-scroll-region]) > * {
+    flex-shrink: 0;
+}
+
+[data-atom-capped]:has(> [data-atom-scroll-region]) > [data-atom-scroll-region] {
+    flex: 0 1 auto;
+    min-height: 0;
+}
+
 /** Rating — two-layer clip fill (base + accent overlay), structural so it works without Tailwind **/
 [data-atom-rating-track] {
     position: relative;
