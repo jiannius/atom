@@ -180,3 +180,66 @@ test('a table-filter native select chips its option label, not its value', async
   await bar.getByRole('button', { name: /More filters/ }).click()
   await expect(dialog.locator('select')).toHaveValue('')
 })
+
+// Issue #80: the default (popover) More filters menu was not `locked`, so dropdown.js closed it
+// on any click inside it. A date-picker or a filter select in the slot could not be used.
+// Real mouse clicks throughout: the bug lives in the click handler on the dropdown root.
+
+const moreFilters = async page => {
+  await page.goto('/atom/e2e/table-filters-more')
+  await page.waitForLoadState('networkidle')
+
+  const trigger = page.getByRole('button', { name: /More filters/ })
+  const root = page.locator('[data-atom-dropdown]').filter({ has: page.getByRole('button', { name: /More filters/ }) }).first()
+  const menu = root.locator('[data-atom-menu]').first()
+
+  return { trigger, root, menu }
+}
+
+test('More filters: a date-picker inside stays usable, the menu stays open', async ({ page }) => {
+  const { trigger, menu } = await moreFilters(page)
+
+  await expect(menu).toBeHidden()
+  await trigger.click()
+  await expect(menu).toBeVisible()
+
+  await menu.locator('[data-atom-date-picker] input[type="text"]').click()
+  const calendar = menu.locator('[data-atom-date-picker] [data-atom-menu]')
+  await expect(calendar).toBeVisible()
+  await expect(menu).toBeVisible()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+})
+
+test('More filters: a filter select inside opens its panel, the menu stays open', async ({ page }) => {
+  const { trigger, menu } = await moreFilters(page)
+
+  await trigger.click()
+  await expect(menu).toBeVisible()
+
+  await menu.getByRole('combobox', { name: 'Category' }).click()
+  const option = page.locator('[data-atom-option]').filter({ hasText: 'Category X' }).first()
+  await expect(option).toBeVisible()
+  await expect(menu).toBeVisible()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+  // picking an option works and still leaves the menu open
+  await option.click()
+  await expect(menu).toBeVisible()
+  await expect(page.locator('[data-atom-table-filter-chip]').filter({ hasText: 'Category X' })).toBeVisible()
+})
+
+test('More filters: Escape and a click outside still dismiss the menu', async ({ page }) => {
+  const { trigger, menu } = await moreFilters(page)
+
+  await trigger.click()
+  await expect(menu).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+  await trigger.click()
+  await expect(menu).toBeVisible()
+  await page.mouse.click(700, 500)
+  await expect(menu).toBeHidden()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+})

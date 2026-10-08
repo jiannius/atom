@@ -45,7 +45,7 @@ data-atom-table-filters>
                     </atom:button>
                 </atom:modal.trigger>
             @else
-                <atom:dropdown class="shrink-0">
+                <atom:dropdown class="shrink-0" locked>
                     <atom:button variant="ghost">{{ t('More filters') }} <atom:icon.dropdown /></atom:button>
                     <atom:menu popover class="p-3 min-w-sm flex flex-wrap items-center gap-3">
                         {{ $more }}
