@@ -5,12 +5,16 @@ export default (config) => {
         placement: config.placement,
 
         get trigger() {
-            // The fallbacks must skip the popover: with a trigger that is not a
+            // Every lookup must skip the popover. With a trigger that is not a
             // <button> (a link), the first menu item would be picked, and a click
-            // on it would count as a trigger click and never close the menu.
-            let outside = (el) => !this.popover?.contains(el)
+            // on it would count as a trigger click and never close the menu. The
+            // same goes for a data-atom-dropdown-trigger inside the menu: a
+            // date-picker or colour input in a "More filters" menu marks its own
+            // trigger, which is not this dropdown's.
+            let popover = this.popover
+            let outside = (el) => !popover?.contains(el)
 
-            return this.$root.querySelector('[data-atom-dropdown-trigger]')
+            return [...this.$root.querySelectorAll('[data-atom-dropdown-trigger]')].find(outside)
                 || [...this.$root.querySelectorAll('button')].find(outside)
                 || [...this.$root.children].find(outside)
         },

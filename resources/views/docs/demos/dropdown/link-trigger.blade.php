@@ -1,6 +1,6 @@
 <div class="flex">
     <atom:dropdown>
-        <atom:link>Choose a prefix</atom:link>
+        <atom:link href="#" x-on:click.prevent>Choose a prefix</atom:link>
 
         <atom:menu popover class="w-40">
             <atom:menu.item>INV</atom:menu.item>

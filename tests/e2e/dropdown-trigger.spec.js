@@ -102,6 +102,66 @@ test('data-atom-dropdown-trigger still wins over an earlier button', async ({ pa
   await expect(menu).toBeHidden()
 })
 
+test('a date-picker inside the menu does not steal the outer trigger', async ({ page }) => {
+  // The date-picker marks its own input wrapper data-atom-dropdown-trigger. The outer
+  // dropdown's lookup used to return that first match even though it sits inside the
+  // outer MENU, so "More filters" stopped toggling and floating-ui anchored to the input.
+  await page.goto('/atom/e2e/dropdown-trigger')
+
+  const outer = probe(page, 'nested-picker').locator('[data-atom-dropdown]').first()
+  const trigger = outer.getByRole('button', { name: 'More filters' })
+  const menu = outer.locator('[data-atom-menu]').first()
+  const input = menu.locator('input[type="text"]')
+
+  await expect(menu).toBeHidden()
+  await trigger.click()
+  await expect(menu).toBeVisible()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  await expect(input).not.toHaveAttribute('aria-expanded', 'true')
+  await expect(menu.locator('[data-atom-dropdown-trigger]')).not.toHaveAttribute('aria-expanded', 'true')
+
+  // The outer menu is anchored under its own button, not under the inner input.
+  const t = await trigger.boundingBox()
+  const m = await menu.boundingBox()
+  expect(Math.abs(m.x - t.x)).toBeLessThan(60)
+
+  // The inner picker still opens its own calendar from its own trigger.
+  await input.click()
+  const inner = menu.locator('[data-atom-date-picker] [data-atom-menu]')
+  await expect(inner).toBeVisible()
+  await expect(menu).toBeVisible()
+
+  // Escape closes the calendar first, then the outer menu, and aria follows the outer trigger.
+  await page.keyboard.press('Escape')
+  await expect(inner).toBeHidden()
+  await expect(menu).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+})
+
+test('a data-atom-dropdown-trigger inside the menu is ignored by the outer dropdown', async ({ page }) => {
+  await page.goto('/atom/e2e/dropdown-trigger')
+
+  const outer = probe(page, 'nested-marker').locator('[data-atom-dropdown]')
+  const trigger = outer.getByRole('button', { name: 'Outer' })
+  const menu = outer.locator('[data-atom-menu]')
+  const marker = menu.locator('[data-atom-dropdown-trigger]')
+
+  await trigger.click()
+  await expect(menu).toBeVisible()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  await expect(marker).not.toHaveAttribute('aria-expanded')
+  await expect(marker).not.toHaveAttribute('aria-haspopup')
+
+  // Escape rather than a second click on the trigger: the browser's own light-dismiss closes a
+  // popover on pointerdown and the click that follows opens it again, for every dropdown.
+  await page.keyboard.press('Escape')
+  await expect(menu).toBeHidden()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await expect(marker).not.toHaveAttribute('aria-expanded')
+})
+
 test('the docs demo with a link trigger closes on an item click', async ({ page }) => {
   await page.goto('/atom/docs/dropdown')
 
