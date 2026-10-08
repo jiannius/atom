@@ -5,9 +5,14 @@ export default (config) => {
         placement: config.placement,
 
         get trigger() {
+            // The fallbacks must skip the popover: with a trigger that is not a
+            // <button> (a link), the first menu item would be picked, and a click
+            // on it would count as a trigger click and never close the menu.
+            let outside = (el) => !this.popover?.contains(el)
+
             return this.$root.querySelector('[data-atom-dropdown-trigger]')
-                || this.$root.querySelector('button')
-                || this.$root.querySelector(':scope > *')
+                || [...this.$root.querySelectorAll('button')].find(outside)
+                || [...this.$root.children].find(outside)
         },
 
         get popover() {
