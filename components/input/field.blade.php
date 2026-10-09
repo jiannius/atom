@@ -1,4 +1,5 @@
 @props([
+    'label' => null,
     'inline' => false,
     'caption' => null,
     'required' => false,
@@ -7,16 +8,16 @@
     'labelId' => null,
 ])
 
-<div {{ $attributes->except('label')->class(['group/field', 'grid md:grid-cols-5' => $inline]) }}>
+<div {{ $attributes->class(['group/field', 'grid md:grid-cols-5' => $inline]) }}>
     @if (isset($label) && $label instanceof \Illuminate\View\ComponentSlot)
         <div class="{{ $inline ? 'py-2 md:col-span-2' : 'pb-2' }}">
             {{ $label }}
         </div>
-    @elseif ($label = $attributes->get('label'))
+    @elseif ($label)
         <div class="{{ $inline ? 'py-2 md:col-span-2' : 'pb-2' }}">
             <atom:label :for="$for" :id="$labelId">
                 <div class="inline-flex items-center justify-center gap-2">
-                    {!! t($label) !!}
+                    {{ t($label) }}
 
                     @if ($required)
                         <atom:icon.asterisk class="text-red-500 dark:text-red-300 shrink-0 size-3"/>
