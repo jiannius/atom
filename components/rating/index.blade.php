@@ -37,7 +37,7 @@ x-modelable="value"
             @if ($slot->isNotEmpty())
                 <label for="{{ $id }}" class="dark:text-white">{{ $slot }}</label>
             @elseif ($label)
-                <label for="{{ $id }}" class="dark:text-white">{!! t($label) !!}</label>
+                <label for="{{ $id }}" class="dark:text-white">{{ t($label) }}</label>
             @endif
 
             @if ($caption)

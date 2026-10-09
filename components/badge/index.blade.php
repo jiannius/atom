@@ -45,7 +45,7 @@ $classes = Arr::toCssClasses([
         @else
             <div class="grow truncate">
                 @if ($label)
-                    {!! t($label) !!}
+                    {{ t($label) }}
                 @elseif (is_enum($status))
                     {{ $status->label() }}
                 @elseif (data_get($status, 'label'))
@@ -77,7 +77,7 @@ $classes = Arr::toCssClasses([
         @else
             <div class="grow truncate">
                 @if ($label)
-                    {!! t($label) !!}
+                    {{ t($label) }}
                 @elseif (is_enum($status))
                     {{ $status->label() }}
                 @elseif (data_get($status, 'label'))

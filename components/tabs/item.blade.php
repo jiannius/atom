@@ -74,6 +74,6 @@ $classes = [
     @if ($slot->isNotEmpty())
         {{ $slot }}
     @else
-        {!! $label !!}
+        {{ $label }}
     @endif
 </{{ $element }}>
