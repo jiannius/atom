@@ -9,11 +9,14 @@
 @php
 $color ??= (is_enum($status) ? $status->color() : data_get($status, 'color'));
 
-// the hex branch computes its colours; a caller `style` is appended last so it wins
-$style = ! str($color)->startsWith('#') ? null : Arr::toCssStyles(array_filter([
-    'color: '.$color,
-    'background-color: '.\Jiannius\Atom\Services\Color::shade($color, 70, 0.4),
-    'border-color: '.\Jiannius\Atom\Services\Color::shade($color, 50, 0.4),
+// only a strict hex colour takes the hex branch, anything else falls through to the named colours;
+// it computes its colours and a caller `style` is appended last so it wins
+$hex = \Jiannius\Atom\Services\Color::isHex($color) ? trim($color) : null;
+
+$style = ! $hex ? null : Arr::toCssStyles(array_filter([
+    'color: '.$hex,
+    'background-color: '.\Jiannius\Atom\Services\Color::shade($hex, 70, 0.4),
+    'border-color: '.\Jiannius\Atom\Services\Color::shade($hex, 50, 0.4),
     $attributes->get('style'),
 ]));
 
@@ -28,7 +31,7 @@ $classes = Arr::toCssClasses([
 ]);
 @endphp
 
-@if (str($color)->startsWith('#'))
+@if ($hex)
     <div
     @class([
         $classes,
