@@ -206,9 +206,14 @@ describe('calendar component payload', function () {
         ]);
     });
 
-    it('shows three rows a day by default, and every row for max false', function () {
+    it('shows three rows a day by default, and every row for max false, 0 or none', function () {
         expect(calendarPayload(calendarRender())['config']['max'])->toBe(3)
-            ->and(calendarPayload(calendarRender(':max="false"'))['config']['max'])->toBeNull();
+            ->and(calendarPayload(calendarRender(':max="false"'))['config']['max'])->toBeNull()
+            ->and(calendarPayload(calendarRender(':max="0"'))['config']['max'])->toBeNull()
+            ->and(calendarPayload(calendarRender('max="0"'))['config']['max'])->toBeNull()
+            ->and(calendarPayload(calendarRender('max="false"'))['config']['max'])->toBeNull()
+            ->and(calendarPayload(calendarRender('max="none"'))['config']['max'])->toBeNull()
+            ->and(calendarPayload(calendarRender(':max="5"'))['config']['max'])->toBe(5);
     });
 
     it('drops an unsafe link and keeps the item', function () {

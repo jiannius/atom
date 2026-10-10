@@ -877,7 +877,7 @@ describe('calendar config', function () {
             'date_format' => 'j M Y"><script>',
             'slot_duration' => 7,
             'scroll_time' => '25:99',
-            'max' => 0,
+            'max' => 'many',
         ])->config();
 
         expect($config)->toMatchArray([
@@ -890,6 +890,26 @@ describe('calendar config', function () {
             'max' => 3,
         ]);
     });
+
+    it('shows every row for each way of saying so, and falls back to 3 for a number it cannot use', function (mixed $max, ?int $expected) {
+        expect(Calendar::make(['max' => $max])->max)->toBe($expected);
+    })->with([
+        'null' => [null, null],
+        'false' => [false, null],
+        'zero' => [0, null],
+        'zero as text' => ['0', null],
+        'false as text' => ['false', null],
+        'False in other case' => [' False ', null],
+        'none' => ['none', null],
+        'None in other case' => ['NONE', null],
+        'a number' => [5, 5],
+        'a number as text' => ['5', 5],
+        'one' => [1, 1],
+        'negative' => [-1, 3],
+        'text' => ['many', 3],
+        'true' => [true, 3],
+        'an array' => [[2], 3],
+    ]);
 
     it('opens on the first view when the requested one is not offered', function () {
         expect(Calendar::make(['views' => ['week', 'day'], 'view' => 'month'])->view)->toBe('week');

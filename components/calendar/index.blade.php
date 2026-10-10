@@ -28,8 +28,8 @@ $calendar = \Jiannius\Atom\Services\Calendar::make([
     'view' => $view,
     'week_start' => $weekStart,
     'weekend' => $weekend,
-    // an explicit null falls back to the default 3 in @props, so false asks for no limit
-    'max' => $max === false ? null : $max,
+    // an explicit null falls back to the default 3 in @props, so no limit is false, 0 or none
+    'max' => $max,
     'time_format' => $timeFormat,
     'date_format' => $dateFormat,
     'selectable' => $selectable,

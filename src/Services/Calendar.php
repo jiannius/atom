@@ -105,7 +105,11 @@ class Calendar
             : ['saturday', 'sunday'];
 
         $max = array_key_exists('max', $options) ? $options['max'] : 3;
-        $this->max = $max === null ? null : (is_numeric($max) && (int) $max >= 1 ? (int) $max : 3);
+        // no limit is written null, false, 0, '0', 'false' or 'none' (a prop can only say it with a string or a number); any other number below 1 or text is the default
+        $unlimited = $max === null || $max === false || $max === 0
+            || (is_string($max) && in_array(strtolower(trim($max)), ['0', 'false', 'none'], true));
+
+        $this->max = $unlimited ? null : (is_numeric($max) && (int) $max >= 1 ? (int) $max : 3);
 
         $this->timeFormat = self::resolveFormat($options['time_format'] ?? null, 'time', self::DEFAULT_TIME_FORMAT);
         $this->dateFormat = self::resolveFormat($options['date_format'] ?? null, 'date', self::DEFAULT_DATE_FORMAT);
