@@ -7,7 +7,7 @@ $ctaUrl = safe_url(data_get($cta, 'url'));
 
 @if ($cta && $ctaUrl)
 <x-mail::button :url="$ctaUrl">
-{!! data_get($cta, 'label') !!}
+{{ data_get($cta, 'label') }}
 </x-mail::button>
 @endif
 </x-mail::message>

@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Js;
 use Illuminate\Support\Number;
 use Jiannius\Atom\Services\Carbon;
@@ -101,6 +102,8 @@ if (!function_exists('t')) {
     function t($str, $count = 1, $params = [])
     {
         if (empty($str)) return '';
+
+        if ($str instanceof Htmlable) return $str;
 
         if (is_numeric($count)) return trans_choice($str, $count, $params);
         if (is_array($count)) return __($str, $count);

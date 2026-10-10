@@ -860,6 +860,17 @@ class Search implements WebAction
 
 Actions without `authorize()` are callable by anyone, including guests — which is right for something like `GetOptions` (country and dial-code lists on public forms) and wrong for almost everything else. An action inheriting from an opted-in parent inherits the contract.
 
+### Upgrading to 3.34.4
+
+**This is a security fix. Upgrade soon if any label, badge colour or embed icon in your app can come from a user or the database.** Component labels were printed as HTML, so a label built from user-entered text (`<atom:badge :label="$contact->name">`) could run script in the page. A badge `color` that only started with `#` was written into the `style` attribute, so it could add CSS declarations.
+
+- **Labels are text now** in `badge`, `radio`, `checkbox`, `toggle`, `rating`, `slider`, tab items, every form field label (`input`, `textarea`, `select`, `date-picker`, `time-picker`, `radio.group`, `tiptap`) and the button label of the generic mail. **Nothing to do** if you pass plain text.
+- **A label that already contains HTML entities** (`Tom &amp; Jerry`) is now shown literally. Pass the raw text (`Tom & Jerry`).
+- **A label that carries markup on purpose** now shows the tags as text. Wrap it in `Illuminate\Support\HtmlString` (`:label="new HtmlString('<b>New</b>')"`), and escape every user or database value inside it with `e()`. `t()` passes an `HtmlString` through unchanged.
+- **`<atom:embed>`'s `icon` only prints raw SVG from an `HtmlString`.** A plain string starting with `<` now shows the file icon. Named icons are unchanged. This replaces the 3.29.12 note below.
+- **Toast, alert and confirm `heading`, `subheading` and `message`, and breadcrumb titles,** are sent to the browser as plain text. An `HtmlString` there shows its tags as text; they were never rendered as HTML.
+- **A badge `color` is a hex colour only when it is `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`.** Any other value starting with `#` renders the default grey badge. Valid hex colours render as before, and a 4-digit hex (`#f00a`) now gets the right shade (it used to be wrong).
+
 ### Upgrading to 3.29.14
 
 **This is a security fix for stored Tiptap JSON documents. Upgrade soon if any user can write to an `AsTiptapContent` column, to an `<atom:tiptap>` field, or to anything you pass to `Content::sanitize()` or `Content::render()` as JSON.**
@@ -931,7 +942,7 @@ Allowed: `http`, `https`, `mailto`, `tel`, `sms`, and any URL with no scheme (`/
 - **A `title`, `url` or error message that is already HTML-encoded** (`Tom &amp; Jerry`) is now shown literally. Pass the raw text (`Tom & Jerry`).
 - **An error message that carries markup on purpose** (`atom:error :errors="[...]"` with `<b>`) now shows the tags as text. Laravel's own validation messages never do.
 - **An embed `src` on another scheme** (`javascript:`, `data:`, `blob:`) no longer renders. Nothing in atom's own `file->url` produces one.
-- **`embed`'s `icon` prop is trusted markup when it starts with `<svg`.** Only pass developer-written SVG; never a database or user value.
+- **`embed`'s `icon` prop was trusted markup when it started with `<svg`.** Since 3.34.4 only an `HtmlString` prints as SVG; see [Upgrading to 3.34.4](#upgrading-to-3344).
 - **`<atom:sharer>` needs [sharer.js](https://ellisonleao.github.io/sharer.js) on the page.** atom has never bundled it. Without it the component used to throw `Sharer is not defined` in the console; it now stays quiet, but the share buttons do nothing until you load it, for example `<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`. The copy-link button does not need it.
 - **Two share buttons that never worked are fixed** (checked against sharer.js 0.5.4). The X button sent `data-sharer="twitter-x"`, a key sharer.js does not have, so it did nothing; it now sends `x` and keeps its icon and label. The email button opened a blank popup for its `mailto:` link; it now carries `data-link="true"`, so the mail client opens. sharer.js opens its popups without `noopener` and has no option for it, and atom does not patch it: the popups only ever go to the social sites' own addresses.
 - **`Content::sanitize()` and `Content::render()` no longer report an error for input with nothing to render.** A script-only, style-only, comment-only, `<html></html>` or head-only value used to hit `report()` on every call (a `TypeError` from tiptap-php). They now return `''` without a report or a log line. **Content that is only whitespace, Unicode spaces such as U+3000 or a no-break space included, renders `''`** the same way. Two nested-mark shapes (`<code>><code>c` and `<p><strong>a<em><strong>c</strong></em></strong></p>`) threw an `ErrorException` from tiptap-php, reported on every call; atom now folds the marks of one type on a node into one (the attributes are merged, a later value winning only for the same key, and a `link` keeps its first valid href), which also repairs the malformed output simple repeats such as `<code><code>c</code></code>` used to produce (nested duplicate tags). If you filtered these out of your error tracker, you can drop the filter.

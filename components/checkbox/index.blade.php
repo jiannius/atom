@@ -58,7 +58,7 @@ if ($disabled ?? false) {
                 </div>
             @elseif ($label)
                 <div class="dark:text-white">
-                    {!! t($label) !!}
+                    {{ t($label) }}
                 </div>
             @endif
         </div>

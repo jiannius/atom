@@ -37,7 +37,7 @@ $merges = ['name' => $name];
                 @if ($slot->isNotEmpty())
                     {{ $slot }}
                 @elseif ($label)
-                    {!! t($label) !!}
+                    {{ t($label) }}
                 @endif
             </div>
         </div>

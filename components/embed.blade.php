@@ -8,6 +8,12 @@
 $src ??= $file?->url;
 $icon ??= 'file';
 
+// Raw SVG markup is only printed from an Htmlable the caller built on purpose. A plain
+// string is a name, so one that looks like markup (a record's value) is not an icon at all.
+if (is_string($icon) && str_starts_with(ltrim($icon), '<')) {
+    $icon = 'file';
+}
+
 // The src is a URL the browser loads, so only http(s) and scheme-less (relative,
 // protocol-relative) values get through; anything else (javascript:, vbscript:, data:)
 // falls back to the icon. The scheme is read the way the WHATWG URL parser does: after
@@ -71,7 +77,7 @@ $merges = [
     <iframe src="{{ $src }}" {{ $attributes->class($classes)->merge($merges) }}></iframe>
 @elseif ($type === 'icon')
     <div {{ $attributes->class($classes)->merge($merges) }}>
-        @if (str($icon)->startsWith('<svg')) {!! $icon !!}
+        @if ($icon instanceof \Illuminate\Contracts\Support\Htmlable) {{ $icon }}
         @else <x-dynamic-component :component="'atom::icon.'.$icon" />
         @endif
     </div>

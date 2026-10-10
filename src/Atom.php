@@ -207,9 +207,9 @@ class Atom
             'url',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = t($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = t($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => t($m));
+        if (data_get($params, 'heading')) $params['heading'] = (string) t($params['heading']);
+        if (data_get($params, 'subheading')) $params['subheading'] = (string) t($params['subheading']);
+        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => (string) t($m));
 
         app('livewire')->current()->dispatch('atom-toast-show', ...$params);
     }
@@ -236,9 +236,9 @@ class Atom
             'onDismissed',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = t($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = t($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => t($m));
+        if (data_get($params, 'heading')) $params['heading'] = (string) t($params['heading']);
+        if (data_get($params, 'subheading')) $params['subheading'] = (string) t($params['subheading']);
+        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => (string) t($m));
 
         $component = app('livewire')->current();
 
@@ -286,9 +286,9 @@ class Atom
             'onRejected',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = t($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = t($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => t($m));
+        if (data_get($params, 'heading')) $params['heading'] = (string) t($params['heading']);
+        if (data_get($params, 'subheading')) $params['subheading'] = (string) t($params['subheading']);
+        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => (string) t($m));
 
         $component = app('livewire')->current();
 
@@ -310,13 +310,13 @@ class Atom
 
             public function home($title, $url = null)
             {
-                $this->home = ['title' => t($title), 'url' => $url];
+                $this->home = ['title' => (string) t($title), 'url' => $url];
                 return $this;
             }
 
             public function push($title, $url = null, $icon = null)
             {
-                $this->items[] = ['title' => t($title), 'url' => $url ?? url()->current(), 'icon' => $icon];
+                $this->items[] = ['title' => (string) t($title), 'url' => $url ?? url()->current(), 'icon' => $icon];
                 return $this;
             }
 
