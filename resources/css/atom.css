@@ -475,6 +475,8 @@ html.dark [data-atom-slider-bubble] {
    with --atom-calendar-grid-height. */
 [data-atom-calendar-grid] {
     position: relative;
+    /* its own stacking context: the sticky header (z-index 4) must not rise over a host's menu or overlay */
+    isolation: isolate;
     overflow: auto;
     overscroll-behavior: contain;
     max-height: var(--atom-calendar-grid-height, min(70vh, 48rem));
@@ -526,12 +528,13 @@ html.dark [data-atom-slider-bubble] {
     min-width: 0;
 }
 
-/* a block sits by percentages of the day (set by the layout), is at least 20px tall, and is in front of the hour lines */
+/* a block sits by percentages of the day (set by the layout), is at least half an hour tall (what the layout's lanes
+   count on, whatever the hour is), and is in front of the hour lines */
 [data-atom-calendar-block] {
     position: absolute;
     z-index: 1;
     box-sizing: border-box;
-    min-height: 20px;
+    min-height: calc(var(--atom-calendar-hour) / 2);
     padding-right: 2px;
 }
 

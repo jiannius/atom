@@ -84,6 +84,9 @@ class E2EServiceProvider extends ServiceProvider
             Auth::setUser(new GenericUser(['id' => 1, 'timezone' => in_array($timezone, timezone_identifiers_list(), true) ? $timezone : 'Asia/Kuala_Lumpur']));
             Carbon::setTestNow(Carbon::parse((string) $request->query('now', '2026-10-09T02:30:00Z')));
 
+            // the viewer's language, for the titles that are written differently in it
+            app()->setLocale(in_array($request->query('locale'), ['en', 'zh', 'ms'], true) ? $request->query('locale') : 'en');
+
             return view('atom::e2e.calendar-grid');
         });
     }

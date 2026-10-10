@@ -55,6 +55,11 @@ const payloadFor = (days, extra = {}) => ({
         months: monthNames,
         months_short: monthNames.map((name) => name.slice(0, 3)),
         meridiem: [[0, 'am', 'AM'], [720, 'pm', 'PM']],
+        week_title: {
+            same_month: ['j', 'j F Y'],
+            cross_month: ['j M', 'j M Y'],
+            cross_year: ['j M Y', 'j M Y'],
+        },
     },
     config: { views: ['month', 'week', 'day'], timeFormat: 'g:i A', dateFormat: 'j M Y', slotDuration: 30, nowIndicator: true },
     items: [],
@@ -88,6 +93,24 @@ test.describe('what the toolbar names', () => {
         const over = engineAt(windowFrom('2026-09-28'), 'week', '2026-10-30').title
 
         expect(over).toMatchObject({ month: '26 Oct – 1 Nov', year: '2026' })
+    })
+
+    test('a week is written as the server says the locale writes it: Chinese puts the year first and has no lighter half', () => {
+        const zh = (days, anchor) => {
+            const engine = engineAt(days, 'week', anchor)
+
+            engine.payload.labels.week_title = {
+                same_month: ['Y年n月j日', 'j日'],
+                cross_month: ['Y年n月j日', 'n月j日'],
+                cross_year: ['Y年n月j日', 'Y年n月j日'],
+            }
+
+            return engine.title
+        }
+
+        expect(zh(windowFrom('2026-09-28'), '2026-10-09')).toEqual({ month: '2026年10月5日 – 11日', year: '', text: '2026年10月5日 – 11日' })
+        expect(zh(windowFrom('2026-09-28'), '2026-10-30').text).toBe('2026年10月26日 – 11月1日')
+        expect(zh(windowFrom('2026-12-28'), '2026-12-30').text).toBe('2026年12月28日 – 2027年1月3日')
     })
 
     test('the days a view shows: the week of the anchor, or the anchor', () => {
@@ -182,12 +205,43 @@ test.describe('the now line', () => {
     })
 })
 
+test.describe('today', () => {
+    test('is the clock\'s date once it passes midnight, with no render to say so, and the grid marks it', () => {
+        const engine = engineAt(windowFrom('2026-09-28'), 'week', '2026-10-09')
+
+        engine.todayDate = '2026-10-09'
+        engine.clockSeed = { moment: '2026-10-09T23:59:30', at: Date.now() - 20000 }
+        engine.tick()
+
+        expect(engine.todayDate).toBe('2026-10-09')
+        expect(engine.grid.columns.find((column) => column.today).date).toBe('2026-10-09')
+
+        engine.clockSeed = { moment: '2026-10-09T23:59:30', at: Date.now() - 60000 }
+        engine.tick()
+
+        expect(engine.nowMoment).toBe('2026-10-10T00:00')
+        expect(engine.todayDate).toBe('2026-10-10')
+        expect(engine.grid.columns.find((column) => column.today).date).toBe('2026-10-10')
+        expect(engine.grid.columns.find((column) => column.date === '2026-10-09').past).toBe(true)
+    })
+
+    test('is the payload\'s when there is no clock', () => {
+        const engine = engineAt(windowFrom('2026-09-28'), 'week', '2026-10-09')
+
+        engine.todayDate = '2026-10-09'
+        engine.clockSeed = { moment: '', at: Date.now() }
+        engine.tick()
+
+        expect(engine.todayDate).toBe('2026-10-09')
+    })
+})
+
 test.describe('blocks', () => {
-    test('sit by percentages of the day and of the column, never shorter than 20px, and moved up to stay inside the day', () => {
+    test('sit by percentages of the day and of the column, never shorter than half an hour, and moved up to stay inside the day', () => {
         const engine = calendar()
 
         expect(engine.blockStyle({ top: 37.5, height: 4.1667, left: 50, width: 50 })).toEqual({
-            top: 'min(37.5%, calc(100% - 20px))',
+            top: 'min(37.5%, calc(100% - calc(var(--atom-calendar-hour) / 2)))',
             height: '4.1667%',
             left: '50%',
             width: '50%',

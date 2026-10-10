@@ -148,14 +148,14 @@ test.describe('side-by-side lanes', () => {
     })
 
     test('two short items close together do not sit on top of each other: lanes follow what is drawn', () => {
-        // 10 minutes each, 15 apart: logically apart, but each is drawn 20px (about 25 minutes) tall
+        // 10 minutes each, 26 apart: logically apart, but each is drawn half an hour tall
         const list = blocks([
             timed('a', '2026-10-09T09:00', '2026-10-09T09:10'),
-            timed('b', '2026-10-09T09:15', '2026-10-09T09:25'),
+            timed('b', '2026-10-09T09:26', '2026-10-09T09:36'),
         ])
 
         expect(list.map((b) => b.columns)).toEqual([2, 2])
-        expect(MIN_DRAWN_MINUTES).toBeGreaterThanOrEqual(25)
+        expect(MIN_DRAWN_MINUTES).toBe(30)
 
         // far enough apart to clear each other
         const apart = blocks([
@@ -164,6 +164,38 @@ test.describe('side-by-side lanes', () => {
         ])
 
         expect(apart.map((b) => b.columns)).toEqual([1, 1])
+    })
+
+    test('an item at the end of the day is drawn from higher up, and the lanes count on that', () => {
+        // Late has no end and starts at 23:50: it is drawn from 23:30 (half an hour above the end of the day), over the
+        // last of Evening, which ends at 23:45. They are logically apart and drawn together, so they go side by side.
+        const list = blocks([
+            timed('evening', '2026-10-09T23:00', '2026-10-09T23:45'),
+            timed('late', '2026-10-09T23:50'),
+        ])
+
+        expect(block(list, 'evening')).toMatchObject({ column: 0, columns: 2 })
+        expect(block(list, 'late')).toMatchObject({ column: 1, columns: 2, startMinute: 1430, endMinute: 1440 })
+
+        // one that ends before where Late is drawn from is not in its way
+        const clear = blocks([
+            timed('evening', '2026-10-09T22:00', '2026-10-09T23:15'),
+            timed('late', '2026-10-09T23:50'),
+        ])
+
+        expect(clear.map((b) => b.columns)).toEqual([1, 1])
+    })
+
+    test('a cluster ends with its latest segment, not its last: C under B, though A is still running', () => {
+        const list = blocks([
+            timed('a', '2026-10-09T09:00', '2026-10-09T12:00'),
+            timed('b', '2026-10-09T09:30', '2026-10-09T10:00'),
+            timed('c', '2026-10-09T10:30', '2026-10-09T11:00'),
+        ])
+
+        expect(block(list, 'a')).toMatchObject({ column: 0, columns: 2 })
+        expect(block(list, 'b')).toMatchObject({ column: 1, columns: 2 })
+        expect(block(list, 'c')).toMatchObject({ column: 1, columns: 2, left: 50, width: 50 })
     })
 
     test('blocks come back in start order, ties in the order the host gave them', () => {
@@ -178,8 +210,8 @@ test.describe('side-by-side lanes', () => {
 
     test('packColumns writes the column and the cluster size on what it is given', () => {
         const segments = [
-            { index: 0, start: 0, end: 60, drawnEnd: 60 },
-            { index: 1, start: 30, end: 90, drawnEnd: 90 },
+            { index: 0, drawnStart: 0, drawnEnd: 60 },
+            { index: 1, drawnStart: 30, drawnEnd: 90 },
         ]
 
         packColumns(segments)
@@ -197,7 +229,6 @@ test.describe('the all-day row', () => {
         ])
 
         expect(row.chips.map((c) => [c.id, c.col, c.span, c.row])).toEqual([['launch', 1, 5, 1], ['holiday', 3, 1, 2]])
-        expect(row.rows).toBe(2)
     })
 
     test('a bar that starts before the shown days is cut at the edge and says it carries on', () => {
@@ -213,7 +244,6 @@ test.describe('the all-day row', () => {
 
         expect(row.chips).toHaveLength(3)
         expect(row.more).toEqual([{ key: '2026-10-05:more:2026-10-07', date: '2026-10-07', col: 3, row: 4, count: 3 }])
-        expect(row.rows).toBe(4)
     })
 
     test('a limit of null shows every lane', () => {
@@ -221,7 +251,7 @@ test.describe('the all-day row', () => {
 
         expect(row.chips).toHaveLength(5)
         expect(row.more).toEqual([])
-        expect(row.rows).toBe(5)
+        expect(Math.max(...row.chips.map((chip) => chip.row))).toBe(5)
     })
 
     test('a day view has one column, and a multi-day bar is one column wide in it', () => {
@@ -231,7 +261,7 @@ test.describe('the all-day row', () => {
     })
 
     test('with nothing all-day there are no rows', () => {
-        expect(allDayRow(week, [timed('a', '2026-10-07T10:00', '2026-10-07T11:00')])).toEqual({ chips: [], more: [], rows: 0 })
+        expect(allDayRow(week, [timed('a', '2026-10-07T10:00', '2026-10-07T11:00')])).toEqual({ chips: [], more: [] })
     })
 })
 

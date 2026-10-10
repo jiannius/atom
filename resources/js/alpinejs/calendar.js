@@ -18,8 +18,9 @@ const IMPLEMENTED_VIEWS = ['month', 'week', 'day']
 // How often the browser looks at its clock for the now line. It moves when the minute does.
 const CLOCK_INTERVAL = 10000
 
-// The shortest a block is drawn; atom.css sets the same 20px as its min-height, and the block is moved up to fit above the day's end.
-const MIN_BLOCK = '20px'
+// The shortest a block is drawn, half an hour of the grid; atom.css sets the same as its min-height (and grid.js's
+// MIN_DRAWN_MINUTES is that half hour), and the block is moved up to fit above the day's end.
+const MIN_BLOCK = 'calc(var(--atom-calendar-hour) / 2)'
 
 // How far under the header the scroll-time line is put, in px
 const SCROLL_MARGIN = 8
@@ -43,6 +44,9 @@ export default () => ({
     // the wall-clock minute the now line stands at, `YYYY-MM-DDTHH:mm`: the server's clock, carried on by the browser's
     nowMoment: '',
     clockSeed: null,
+    // the viewer's date today: the payload's, then the one the ticking clock reads. It changes once a day, so what is drawn
+    // from it (the today marker) is laid out again then and not with the clock.
+    todayDate: '',
     scrollPending: false,
     hours: Array.from({ length: 24 }, (_, hour) => hour),
 
@@ -62,7 +66,7 @@ export default () => ({
     get title () {
         if (!this.payload) return { month: '', year: '', text: '' }
 
-        let text = (month, year) => ({ month, year, text: month + ' ' + year })
+        let text = (month, year) => ({ month, year, text: [month, year].filter(Boolean).join(' ') })
         let labels = this.labels
 
         if (this.view === 'month') {
@@ -80,12 +84,16 @@ export default () => ({
 
         if (this.view === 'day') return text(format(first, 'j F', labels), format(first, 'Y', labels))
 
-        // a week: "5 – 11 October 2026", "28 Sep – 4 Oct 2026", or "28 Dec 2026 – 3 Jan 2027"
-        if (monthOf(first) === monthOf(last)) return text(format(first, 'j', labels) + ' – ' + format(last, 'j F', labels), format(last, 'Y', labels))
+        // a week: the server says how the locale writes it, as a format for each end ("5 – 11 October 2026", "28 Sep – 4 Oct
+        // 2026", "28 Dec 2026 – 3 Jan 2027"); a year at the end is the lighter half of the title, as in the other views
+        let shape = monthOf(first) === monthOf(last) ? 'same_month' : (first.slice(0, 4) === last.slice(0, 4) ? 'cross_month' : 'cross_year')
+        let [from, to] = labels.week_title?.[shape] ?? ['j M Y', 'j M Y']
+        let year = /\s*Y$/.test(to)
 
-        if (first.slice(0, 4) === last.slice(0, 4)) return text(format(first, 'j M', labels) + ' – ' + format(last, 'j M', labels), format(last, 'Y', labels))
-
-        return text(format(first, 'j M Y', labels) + ' – ' + format(last, 'j M', labels), format(last, 'Y', labels))
+        return text(
+            format(first, from, labels) + ' – ' + format(last, year ? to.replace(/\s*Y$/, '') : to, labels),
+            year ? format(last, 'Y', labels) : '',
+        )
     },
 
     // The days the week or day view shows: the week of the anchor, or the anchor alone. The window is whole weeks, so
@@ -104,10 +112,10 @@ export default () => ({
     },
 
     get grid () {
-        if (!this.payload || this.view === 'month') return { columns: [], allDay: { chips: [], more: [], rows: 0 } }
+        if (!this.payload || this.view === 'month') return { columns: [], allDay: { chips: [], more: [] } }
 
         return timeGrid(this.gridDays, this.payload.items, {
-            today: this.payload.today,
+            today: this.todayDate,
             max: this.config.max ?? null,
             slotDuration: this.config.slotDuration ?? 30,
         })
@@ -125,7 +133,7 @@ export default () => ({
 
         return monthLayout(this.payload.window.days, this.payload.items, {
             max: this.config.max ?? null,
-            today: this.payload.today,
+            today: this.todayDate,
         })
     },
 
@@ -218,6 +226,7 @@ export default () => ({
 
         this.payload = payload
         this.anchor = payload.anchor
+        this.todayDate = payload.today
         this.seedClock()
 
         if (first || !this.views.includes(this.view)) {
@@ -292,7 +301,7 @@ export default () => ({
     },
 
     today () {
-        return this.navigate(this.payload.today)
+        return this.navigate(this.todayDate)
     },
 
     setView (view) {
@@ -389,6 +398,9 @@ export default () => ({
         let moment = nowAt(this.clockSeed?.moment, Date.now() - (this.clockSeed?.at ?? 0))
 
         if (moment !== this.nowMoment) this.nowMoment = moment
+
+        // the clock passing midnight is a new today, though no render came to say so
+        if (moment && dateOf(moment) !== this.todayDate) this.todayDate = dateOf(moment)
     },
 
     // The now line in a day's column: its place in the day and the time it stands for, or null when it is not that

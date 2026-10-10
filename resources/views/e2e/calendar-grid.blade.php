@@ -63,6 +63,20 @@
             ['id' => 'hour', 'title' => 'The repeated hour', 'start' => '2026-11-01T01:30:00-07:00', 'end' => '2026-11-01T01:30:00-08:00'],
             ['id' => 'noon', 'title' => 'Noon', 'start' => '2026-11-01T12:00:00-08:00', 'end' => '2026-11-01T13:00:00-08:00'],
         ],
+        // short items a little apart, and the end of the day: what the lanes must keep from overlapping in pixels
+        'tight' => [
+            ['id' => 'tight-a', 'title' => 'Tight A', 'start' => '2026-10-09T09:00:00+08:00', 'end' => '2026-10-09T09:10:00+08:00'],
+            ['id' => 'tight-b', 'title' => 'Tight B', 'start' => '2026-10-09T09:26:00+08:00', 'end' => '2026-10-09T09:36:00+08:00'],
+            ['id' => 'tight-c', 'title' => 'Tight C', 'start' => '2026-10-09T12:00:00+08:00', 'end' => '2026-10-09T12:10:00+08:00'],
+            ['id' => 'tight-d', 'title' => 'Tight D', 'start' => '2026-10-09T12:29:00+08:00', 'end' => '2026-10-09T12:39:00+08:00'],
+            ['id' => 'tight-e', 'title' => 'Tight E', 'start' => '2026-10-09T23:00:00+08:00', 'end' => '2026-10-09T23:45:00+08:00'],
+            ['id' => 'tight-f', 'title' => 'Tight F', 'start' => '2026-10-09T23:50:00+08:00'],
+        ],
+        // 02:30 on 2026-03-08 in Kuala Lumpur: a time that does not exist on a clock in Los Angeles, that day, so a browser
+        // that reads the item on its own clock puts it somewhere else
+        'kl-gap' => [
+            ['id' => 'gap', 'title' => 'Gap item', 'start' => '2026-03-08T02:30:00+08:00', 'end' => '2026-03-08T03:30:00+08:00'],
+        ],
         // the look: overlaps, an all-day row, an item with no end, a short one, and today's now line
         default => [
             ['id' => 'launch', 'title' => 'Launch week', 'start' => '2026-10-05', 'end' => '2026-10-09', 'color' => 'purple'],

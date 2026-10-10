@@ -6,9 +6,10 @@ import { dayEntries, packBars, span } from './layout.js'
 
 export const DAY_MINUTES = 1440
 
-// The shortest an item is drawn: 20px, which at the grid's 3rem an hour is a little over 25 minutes. Lanes are
-// worked out on what is drawn, so two short items close together sit side by side instead of on top of each other.
-export const MIN_DRAWN_MINUTES = 25
+// The shortest an item is drawn: half an hour of the grid, whatever the hour is tall (atom.css gives a block
+// `min-height: calc(var(--atom-calendar-hour) / 2)`, and the browser clamps it the same way). Lanes are worked out
+// on what is drawn, so two short items close together sit side by side instead of on top of each other.
+export const MIN_DRAWN_MINUTES = 30
 
 // A timed item under this long has no room for a second line: it prints "Title · 10:00" in one.
 export const COMPACT_MINUTES = 45
@@ -26,25 +27,26 @@ export const segmentOn = (item, date, slotDuration = 30) => {
     if (date < first || date > last) return null
 
     let start = date === first ? minuteOf(item.start) : 0
-    let end = item.end ? (date === dateOf(item.end) ? minuteOf(item.end) : DAY_MINUTES) : start + slotDuration
+    let end = item.end ? (date === dateOf(item.end) ? minuteOf(item.end) : DAY_MINUTES) : start
 
     if (end <= start) end = start + slotDuration
 
     return { start, end: Math.min(end, DAY_MINUTES), before: date > first, after: date < last }
 }
 
-// Side-by-side lanes for one day's segments. Segments that overlap, one through another, are a cluster, and every
+// Side-by-side lanes for one day's segments, on what is drawn of them: `drawnStart` and `drawnEnd`, which a segment
+// that is short or at the end of the day has moved out from its time (see columnBlocks). Segments that overlap, one through another, are a cluster, and every
 // segment of a cluster is as wide as one of its columns, so the widths stay put however the cluster is read.
 // Within a cluster the earlier segment goes first, the longer one first on a tie, and each takes the first column
 // whose last segment has ended. Writes `column` and `columns` on each segment, and returns them in start order.
 export const packColumns = (segments) => {
-    let sorted = [...segments].sort((a, b) => (a.start - b.start) || (b.drawnEnd - a.drawnEnd) || (a.index - b.index))
+    let sorted = [...segments].sort((a, b) => (a.drawnStart - b.drawnStart) || (b.drawnEnd - a.drawnEnd) || (a.index - b.index))
     let cluster = []
     let clusterEnd = -1
     let ends = []
 
     let close = () => {
-        let columns = Math.max(0, ...cluster.map((segment) => segment.column + 1))
+        let columns = cluster.reduce((most, segment) => Math.max(most, segment.column + 1), 0)
 
         cluster.forEach((segment) => { segment.columns = columns })
         cluster = []
@@ -52,9 +54,9 @@ export const packColumns = (segments) => {
     }
 
     for (let segment of sorted) {
-        if (cluster.length && segment.start >= clusterEnd) close()
+        if (cluster.length && segment.drawnStart >= clusterEnd) close()
 
-        let column = ends.findIndex((end) => end <= segment.start)
+        let column = ends.findIndex((end) => end <= segment.drawnStart)
 
         if (column === -1) column = ends.length
 
@@ -80,11 +82,16 @@ export const columnBlocks = (items, date, { slotDuration = 30 } = {}) => {
         let part = segmentOn(item, date, slotDuration)
 
         if (part) {
+            // A block is never drawn shorter than MIN_DRAWN_MINUTES, and one that would run past the end of the day is moved
+            // up to fit: what it covers is from drawnStart to drawnEnd, and the lanes are worked out on that.
+            let drawnStart = Math.min(part.start, DAY_MINUTES - MIN_DRAWN_MINUTES)
+
             segments.push({
                 item,
                 index,
                 ...part,
-                drawnEnd: Math.max(part.end, Math.min(part.start + MIN_DRAWN_MINUTES, DAY_MINUTES)),
+                drawnStart,
+                drawnEnd: Math.max(part.end, drawnStart + MIN_DRAWN_MINUTES),
             })
         }
     })
@@ -110,9 +117,9 @@ export const columnBlocks = (items, date, { slotDuration = 30 } = {}) => {
 
 // The all-day row: every all-day item over the shown days as a bar in a lane, the same bars as the month view's,
 // with `max` lanes and a "+N more" after them (`max` null shows every lane). A bar is its item plus
-// { key, kind: 'bar', col, span, row, before, after }, where `row` counts from 1; `rows` is how many rows the row needs.
+// { key, kind: 'bar', col, span, row, before, after }, where `row` counts from 1.
 export const allDayRow = (days, items, { max = 3 } = {}) => {
-    if (!days.length) return { chips: [], more: [], rows: 0 }
+    if (!days.length) return { chips: [], more: [] }
 
     let first = days[0].date
     let last = days[days.length - 1].date
@@ -164,9 +171,7 @@ export const allDayRow = (days, items, { max = 3 } = {}) => {
         }
     })
 
-    let lanes = bars.length ? Math.max(...bars.map((bar) => bar.lane)) + 1 : 0
-
-    return { chips, more, rows: Math.min(max ?? lanes, lanes) + (more.length ? 1 : 0) }
+    return { chips, more }
 }
 
 // The time grid: the shown `days` (the payload's window days, contiguous) as columns of timed blocks, and the all-day

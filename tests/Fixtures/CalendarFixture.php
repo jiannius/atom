@@ -105,9 +105,10 @@ class CalendarFixture extends Component
                 ['id' => 25, 'title' => 'Beta', 'start' => $local('2026-10-27 15:00'), 'end' => $local('2026-10-27 16:00'), 'color' => 'yellow'],
                 ['id' => 26, 'title' => 'Gamma', 'start' => $local('2026-10-27 15:30'), 'end' => $local('2026-10-27 16:30'), 'color' => 'zinc'],
                 ['id' => 30, 'title' => 'Offsite', 'start' => '2026-10-27', 'end' => '2026-10-29', 'color' => 'purple'],
-                // Wednesday 28 October: a 10 minute item, one with no end at the end of the day, and four all-day items (one over the lane limit)
+                // Wednesday 28 October: a 10 minute item, one with no end at the end of the day (and one before it, which the first is drawn over unless the lanes count on what is drawn), and four all-day items (one over the lane limit)
                 ['id' => 27, 'title' => 'Quick call', 'start' => $local('2026-10-28 11:00'), 'end' => $local('2026-10-28 11:10')],
                 ['id' => 28, 'title' => 'Late call', 'start' => $local('2026-10-28 23:50')],
+                ['id' => 33, 'title' => 'Evening wrap', 'start' => $local('2026-10-28 23:00'), 'end' => $local('2026-10-28 23:45')],
                 ['id' => 29, 'title' => 'Public holiday', 'start' => '2026-10-28', 'color' => 'green'],
                 ['id' => 31, 'title' => 'Training', 'start' => '2026-10-28', 'color' => 'blue'],
                 ['id' => 32, 'title' => 'Audit', 'start' => '2026-10-28', 'color' => 'red'],

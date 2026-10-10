@@ -325,8 +325,8 @@ describe('calendar component markup', function () {
         $html = calendarRender('month="2026-10"');
         $shown = domQuery($html, '//*[@x-show][not(ancestor::template)]');
 
-        // the loading spinner, the view switcher, the month grid and the week and day grid; the rest are cloned from templates by Alpine
-        expect(array_map(fn ($el) => $el->getAttribute('x-show'), $shown))->toBe(['loading', 'views.length > 1', "view === 'month'", "view !== 'month'"]);
+        // the title's year (a week in Chinese has none), the loading spinner, the view switcher, the month grid and the week and day grid; the rest are cloned from templates by Alpine
+        expect(array_map(fn ($el) => $el->getAttribute('x-show'), $shown))->toBe(['title.year', 'loading', 'views.length > 1', "view === 'month'", "view !== 'month'"]);
 
         foreach ($shown as $element) {
             expect($element->hasAttribute('x-cloak'))->toBeTrue($element->getAttribute('x-show'));

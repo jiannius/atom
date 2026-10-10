@@ -324,17 +324,23 @@ test.describe('where things sit in the grid', () => {
         expect(await page.evaluate(() => window.__clicks)).toEqual([20, 21, 22, 24, 25, 26])
     })
 
-    test('an item with no end is one slot tall; a short one is never under 20px; none runs past the day', async ({ page }) => {
+    test('an item with no end is one slot tall; a short one is never under half an hour; none runs past the day', async ({ page }) => {
         // Late call has no end and starts at 23:50
         const late = await place(page, 'Late call', '2026-10-28')
 
         expect(late.box.y + late.box.height).toBeLessThanOrEqual(late.col.y + late.col.height + 0.5)
-        expect(late.box.height).toBeGreaterThanOrEqual(19.5)
+        expect(late.box.height).toBeGreaterThanOrEqual(1.5 * await rem(page) - 0.5)
 
-        // Quick call lasts ten minutes: eight pixels of day, drawn 20
+        // it is drawn up from the end of the day, over where Evening wrap (23:00 to 23:45) is, so the two sit side by side
+        const evening = await place(page, 'Evening wrap', '2026-10-28')
+
+        expect(intersects(late.box, evening.box)).toBe(false)
+        expect(late.left).not.toBeCloseTo(evening.left, 2)
+
+        // Quick call lasts ten minutes (seven pixels of day), drawn half an hour tall
         const quick = await place(page, 'Quick call', '2026-10-28')
 
-        expect(quick.box.height).toBeCloseTo(20, 0)
+        expect(quick.box.height).toBeCloseTo(1.5 * await rem(page), 0)
 
         await page.goto('/atom/e2e/calendar?view=week&date=2026-10-14')
         await expect(columns(page)).toHaveCount(7)
@@ -663,6 +669,22 @@ test.describe('on a narrow screen', () => {
         expect(headAfter.x).toBeCloseTo(bodyAfter.x, 0)
     })
 
+    test('the now line is exactly its column wide, in the day view and in the week', async ({ page }) => {
+        for (const view of ['day', 'week']) {
+            await openGrid(page, 'view=' + view)
+
+            const col = await column(page, '2026-10-09', 'grid').boundingBox()
+            const line = await nowLine(page, 'grid').boundingBox()
+            const scroller = await grid(page, 'grid').boundingBox()
+
+            expect(line.x, view).toBeCloseTo(col.x, 0)
+            expect(line.x + line.width, view).toBeCloseTo(col.x + col.width, 0)
+
+            // and in the day view that is the scroller's edge, so nothing is drawn past it
+            if (view === 'day') expect(line.x + line.width).toBeLessThanOrEqual(scroller.x + scroller.width + 0.5)
+        }
+    })
+
     test('the toolbar still fits and the page does not scroll sideways', async ({ page }) => {
         await open(page, 'view=week')
 
@@ -711,3 +733,146 @@ for (const timezoneId of ['America/Los_Angeles', 'Pacific/Kiritimati']) {
         })
     })
 }
+
+test.describe('an item is drawn at least half an hour tall, whatever an hour is', () => {
+    const hours = [null, '2rem', '4rem']
+
+    for (const hour of hours) {
+        test(`at ${hour ?? 'the default'} an hour, short items a little apart and the last of the day never cover each other`, async ({ page }) => {
+            await openGrid(page, 'scenario=tight&view=week&scroll=00:00')
+
+            if (hour) await probe(page, 'grid').evaluate((el, value) => el.style.setProperty('--atom-calendar-hour', value), hour)
+
+            const boxes = {}
+
+            for (const name of ['A', 'B', 'C', 'D', 'E', 'F']) boxes[name] = await block(page, 'Tight ' + name, 'grid').boundingBox()
+
+            // 26 minutes apart, 29 minutes apart, and an item drawn up from the end of the day over the one before it
+            for (const [a, b] of [['A', 'B'], ['C', 'D'], ['E', 'F']]) {
+                expect(intersects(boxes[a], boxes[b]), `Tight ${a} covers Tight ${b}`).toBe(false)
+            }
+
+            // the minimum is half an hour of this grid's hour
+            const rows = probe(page, 'grid').locator('[data-atom-calendar-hour]')
+            const hourHeight = (await rows.nth(1).boundingBox()).y - (await rows.nth(0).boundingBox()).y
+
+            for (const name of ['A', 'B', 'C', 'D']) expect(boxes[name].height).toBeGreaterThanOrEqual(hourHeight / 2 - 0.5)
+
+            // and the last one is moved up to stay inside its column
+            const col = await column(page, '2026-10-09', 'grid').boundingBox()
+
+            expect(boxes.F.y + boxes.F.height).toBeLessThanOrEqual(col.y + col.height + 0.5)
+        })
+    }
+})
+
+test.describe('stacking', () => {
+    test('a host overlay with a low z-index is over the sticky header, not under it', async ({ page }) => {
+        await openGrid(page, 'view=week')
+
+        const hit = await page.evaluate(() => {
+            const top = document.querySelector('[data-probe="grid"] [data-atom-calendar-grid-top]').getBoundingClientRect()
+            const overlay = document.createElement('div')
+
+            overlay.id = 'host-overlay'
+            overlay.style.cssText = `position:fixed;z-index:3;left:${top.x}px;top:${top.y}px;width:${top.width}px;height:${top.height}px;background:red`
+            document.body.appendChild(overlay)
+
+            return document.elementFromPoint(top.x + 100, top.y + 10)?.id
+        })
+
+        expect(hit).toBe('host-overlay')
+    })
+})
+
+test.describe('today after midnight', () => {
+    test('moves to the next day on the clock alone: the column, the header and the month view', async ({ page }) => {
+        // 23:59:30 in Kuala Lumpur
+        await page.clock.install({ time: new Date('2026-10-09T15:59:30Z') })
+        await openGrid(page, 'now=2026-10-09T15:59:30Z')
+
+        const head = (date) => probe(page, 'grid').locator(`[data-atom-calendar-column-head][data-date="${date}"] span`).last()
+
+        await expect(column(page, '2026-10-09', 'grid')).toHaveAttribute('aria-current', 'date')
+        await expect(head('2026-10-09')).toHaveClass(/bg-zinc-900/)
+
+        await page.clock.runFor('01:00')
+
+        await expect(column(page, '2026-10-10', 'grid')).toHaveAttribute('aria-current', 'date')
+        await expect(column(page, '2026-10-09', 'grid')).not.toHaveAttribute('aria-current', 'date')
+        await expect(probe(page, 'grid').locator('[data-atom-calendar-column][aria-current="date"]')).toHaveCount(1)
+        await expect(head('2026-10-10')).toHaveClass(/bg-zinc-900/)
+        await expect(head('2026-10-09')).not.toHaveClass(/bg-zinc-900/)
+
+        await button(page, 'Month', 'grid').click()
+        await expect(probe(page, 'grid').locator('[role="gridcell"][aria-current="date"]')).toHaveAttribute('data-date', '2026-10-10')
+    })
+})
+
+test.describe('a minute passing', () => {
+    test('moves the now line and nothing else in the grid', async ({ page }) => {
+        await page.clock.install({ time: new Date('2026-10-09T02:30:00Z') })
+        await openGrid(page)
+        await expect(nowLine(page, 'grid')).toHaveAttribute('data-time', '10:30 AM')
+
+        await page.evaluate(() => {
+            window.__mutations = []
+
+            const note = (records) => {
+                for (const record of records) {
+                    const element = record.target.nodeType === 1 ? record.target : record.target.parentElement
+
+                    if (!element.closest('[data-atom-calendar-now-line]')) window.__mutations.push(record.type + ' ' + (record.attributeName ?? '') + ' on ' + element.tagName + '.' + element.className)
+                }
+            }
+
+            window.__observer = new MutationObserver(note)
+            window.__observer.observe(document.querySelector('[data-probe="grid"] [data-atom-calendar-grid]'), { subtree: true, childList: true, attributes: true, characterData: true })
+            window.__note = note
+        })
+
+        await page.clock.runFor('05:00')
+        await expect(nowLine(page, 'grid')).toHaveAttribute('data-time', '10:35 AM')
+
+        const mutations = await page.evaluate(() => {
+            window.__note(window.__observer.takeRecords())
+
+            return window.__mutations
+        })
+
+        expect(mutations).toEqual([])
+    })
+})
+
+test.describe('a viewer in Kuala Lumpur, in a browser in Los Angeles', () => {
+    test.use({ timezoneId: 'America/Los_Angeles' })
+
+    test('an item at a time the browser\'s own clock skips that day is still where the server says', async ({ page }) => {
+        await openGrid(page, 'scenario=kl-gap&date=2026-03-08&view=day&scroll=00:00')
+
+        const gap = await place(page, 'Gap item', '2026-03-08', 'grid')
+
+        // 02:30 on the wall clock of the viewer, whatever the browser's does that morning
+        expect(gap.top).toBeCloseTo(150 / 1440, 4)
+        expect(gap.height).toBeCloseTo(60 / 1440, 4)
+        await expect(chipOf(page, 'Gap item', 'grid')).toContainText('2:30 AM – 3:30 AM')
+    })
+})
+
+test.describe('the week title in the viewer\'s language', () => {
+    const cases = [
+        ['en', '2026-10-09', '5 – 11 October 2026'],
+        ['en', '2026-12-31', '28 Dec 2026 – 3 Jan 2027'],
+        ['zh', '2026-10-09', '2026年10月5日 – 11日'],
+        ['zh', '2026-10-30', '2026年10月26日 – 11月1日'],
+        ['zh', '2026-12-31', '2026年12月28日 – 2027年1月3日'],
+    ]
+
+    for (const [locale, date, text] of cases) {
+        test(`${locale}, week of ${date}: ${text}`, async ({ page }) => {
+            await openGrid(page, `locale=${locale}&view=week&date=${date}`)
+
+            await expect(title(page, 'grid')).toHaveText(text)
+        })
+    }
+})

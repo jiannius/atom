@@ -93,14 +93,14 @@ data-atom-calendar
                 <atom:date-picker x-model="jump">
                     <button type="button" x-bind:aria-label="labels.ui?.choose_date" class="flex items-center gap-1.5 rounded-sm text-base @2xl:text-lg outline-offset-2 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
                         <span x-text="title.month" class="font-semibold text-zinc-900 dark:text-white"></span>
-                        <span x-text="title.year" class="font-normal text-zinc-500 dark:text-zinc-400"></span>
+                        <span x-cloak x-show="title.year" x-text="title.year" class="font-normal text-zinc-500 dark:text-zinc-400"></span>
                         <atom:icon.dropdown class="size-4 text-zinc-500 dark:text-zinc-400" />
                     </button>
                 </atom:date-picker>
             @else
                 <div class="flex items-center gap-1.5 text-base @2xl:text-lg">
                     <span x-text="title.month" class="font-semibold text-zinc-900 dark:text-white"></span>
-                    <span x-text="title.year" class="font-normal text-zinc-500 dark:text-zinc-400"></span>
+                    <span x-cloak x-show="title.year" x-text="title.year" class="font-normal text-zinc-500 dark:text-zinc-400"></span>
                 </div>
             @endif
 
@@ -207,7 +207,7 @@ data-atom-calendar
              a body of 24 hours, so a narrow screen scrolls the week sideways with its header and its hour gutter
              (which stays at the left) still in step. Where things sit is atom.css's: the hour height, the lanes and the
              now line are positioned there and by percentages from the layout, never by utilities. --}}
-        <div x-cloak x-show="view !== 'month'" x-ref="grid" x-bind:data-view="view" x-bind:style="{ '--atom-calendar-columns': grid.columns.length }" data-atom-calendar-grid>
+        <div x-cloak x-show="view !== 'month'" x-bind:style="{ '--atom-calendar-columns': grid.columns.length }" data-atom-calendar-grid>
             <div data-atom-calendar-grid-inner>
                 <div data-atom-calendar-grid-top class="bg-white dark:bg-zinc-800">
                     <div data-atom-calendar-grid-row class="border-b border-zinc-200 dark:border-zinc-700">
@@ -316,7 +316,7 @@ data-atom-calendar
                     <div x-text="popoverDate ? weekdayName(popoverDate) : ''" class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"></div>
                     <div
                     x-text="popoverDate ? Number(popoverDate.slice(8, 10)) : ''"
-                    x-bind:class="popoverDate && popoverDate === payload?.today ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-900 dark:text-zinc-100'"
+                    x-bind:class="popoverDate && popoverDate === todayDate ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-900 dark:text-zinc-100'"
                     class="inline-flex size-9 items-center justify-center rounded-full text-2xl font-semibold tabular-nums"></div>
                 </div>
 
