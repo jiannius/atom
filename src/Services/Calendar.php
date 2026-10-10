@@ -5,6 +5,7 @@ namespace Jiannius\Atom\Services;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Closure;
+use DateTimeInterface;
 use InvalidArgumentException;
 
 /**
@@ -251,10 +252,17 @@ class Calendar
     }
 
     /**
-     * Resolve a client- or host-supplied anchor (`Y-m-d` or `Y-m`, years 1000 to 9000) to a local date, else today.
+     * Resolve a client- or host-supplied anchor (`Y-m-d` or `Y-m`, years 1000 to 9000, or a date object) to a local date, else today.
+     *
+     * A date object is an instant: its date is the one it falls on in the viewer's timezone. A date-only value is
+     * better given as `Y-m-d`, which is taken as it is.
      */
     public function anchor(mixed $value = null): string
     {
+        if ($value instanceof DateTimeInterface) {
+            $value = CarbonImmutable::instance($value)->setTimezone(self::timezone())->format('Y-m-d');
+        }
+
         if (is_string($value) && preg_match('/^(\d{4})-(\d{2})(?:-(\d{2}))?$/D', trim($value), $match)) {
             $year = (int) $match[1];
             $month = (int) $match[2];

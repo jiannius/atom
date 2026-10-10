@@ -200,6 +200,26 @@ describe('calendar anchor', function () {
             ->and($calendar->anchor('2026-10'))->toBe('2026-10-01');
     });
 
+    it('takes the local date of a date object, in the viewer timezone', function (DateTimeInterface $value, string $viewer, string $expected) {
+        calendarTestViewer($viewer);
+
+        expect(Calendar::make()->anchor($value))->toBe($expected)
+            ->and(Calendar::make()->window($value)['anchor'])->toBe($expected);
+    })->with([
+        'Carbon, already the next day for the viewer' => [fn () => Carbon::parse('2026-10-09 20:00:00', 'UTC'), 'Asia/Kuala_Lumpur', '2026-10-10'],
+        'Carbon, the day before for the viewer' => [fn () => Carbon::parse('2026-10-09 03:00:00', 'UTC'), 'America/Los_Angeles', '2026-10-08'],
+        'Carbon in the viewer zone itself' => [fn () => Carbon::parse('2026-10-09 23:30:00', 'Asia/Kuala_Lumpur'), 'Asia/Kuala_Lumpur', '2026-10-09'],
+        'an immutable one' => [fn () => new DateTimeImmutable('2026-10-09 20:00:00', new DateTimeZone('UTC')), 'Asia/Kuala_Lumpur', '2026-10-10'],
+        'a plain DateTime' => [fn () => new DateTime('2026-03-14 12:00:00', new DateTimeZone('UTC')), 'UTC', '2026-03-14'],
+    ]);
+
+    it('falls back to today for a date object outside the years it supports', function () {
+        Carbon::setTestNow('2026-03-14 12:00:00');
+
+        expect(Calendar::make()->anchor(Carbon::create(9999, 12, 31, 12, 0, 0, 'UTC')))->toBe('2026-03-14')
+            ->and(Calendar::make()->anchor(Carbon::create(500, 1, 1, 12, 0, 0, 'UTC')))->toBe('2026-03-14');
+    });
+
     it('falls back to the current month for a value a client could send', function (mixed $value) {
         Carbon::setTestNow('2026-03-14 12:00:00');
 

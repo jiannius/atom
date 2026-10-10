@@ -158,6 +158,17 @@ describe('calendar component payload', function () {
             ->and($payload['window']['start'])->toBe('2026-01-26');
     });
 
+    it('takes the anchor from a bound Carbon property, as the local date of that instant', function () {
+        $date = Carbon::parse('2026-02-14 20:00:00', 'UTC');
+
+        // the viewer in these tests is in UTC (see beforeEach)
+        expect(calendarPayload(calendarRenderBound(['date' => $date]))['anchor'])->toBe('2026-02-14');
+
+        Auth::setUser(new GenericUser(['id' => 1, 'timezone' => 'Asia/Kuala_Lumpur']));
+
+        expect(calendarPayload(calendarRenderBound(['date' => $date]))['anchor'])->toBe('2026-02-15');
+    });
+
     it('falls back to the current month for an anchor a client could send', function (mixed $sent) {
         Carbon::setTestNow('2026-10-09 10:30:00');
 
