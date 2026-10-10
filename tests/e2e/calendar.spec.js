@@ -97,6 +97,68 @@ test.describe('bound to a Livewire property', () => {
         await expect(bars.last()).not.toHaveAttribute('data-after', '')
     })
 
+    test('a bar that carries on into another week shows its focus outline, notch or not', async ({ page }) => {
+        // the rig has no Tailwind: the outline the chip's focus-visible utilities would draw, as any element would get it
+        await page.addStyleTag({ content: ':focus-visible { outline: 2px solid rgb(255, 0, 0); outline-offset: 1px }' })
+
+        const redPixelsAround = async (locator) => {
+            await locator.scrollIntoViewIfNeeded()
+
+            const box = await locator.boundingBox()
+            const png = await page.screenshot({
+                clip: { x: Math.max(box.x - 6, 0), y: Math.max(box.y - 6, 0), width: box.width + 12, height: box.height + 12 },
+            })
+
+            return page.evaluate(async (base64) => {
+                const image = new Image()
+
+                image.src = 'data:image/png;base64,' + base64
+                await image.decode()
+
+                const canvas = document.createElement('canvas')
+
+                canvas.width = image.width
+                canvas.height = image.height
+
+                const context = canvas.getContext('2d')
+
+                context.drawImage(image, 0, 0)
+
+                const { data } = context.getImageData(0, 0, canvas.width, canvas.height)
+                let red = 0
+
+                for (let i = 0; i < data.length; i += 4) {
+                    if (data[i] > 200 && data[i + 1] < 60 && data[i + 2] < 60) red++
+                }
+
+                return red
+            }, png.toString('base64'))
+        }
+
+        // the measurement itself: a bar inside one week, with no notch, shows it
+        const plain = chip(page, 'Launch week')
+
+        await plain.focus()
+        expect(await redPixelsAround(plain), 'a plain bar, focused').toBeGreaterThan(40)
+        await plain.blur()
+
+        const bars = probe(page).locator('[data-atom-calendar-chip="bar"]', { hasText: 'Conference' })
+
+        for (const [index, edge] of [[0, 'data-after'], [1, 'data-before']]) {
+            const bar = bars.nth(index)
+
+            await expect(bar).toHaveAttribute(edge, '')
+            expect(await redPixelsAround(bar), `${edge} bar, not focused`).toBe(0)
+
+            await bar.focus()
+
+            await expect(bar).toBeFocused()
+            expect(await redPixelsAround(bar), `${edge} bar, focused`).toBeGreaterThan(40)
+
+            await bar.blur()
+        }
+    })
+
     test('shows three rows a day, then "+N more" with the exact number left over', async ({ page }) => {
         const wednesday = await day(page, '2026-10-14').boundingBox()
         const inside = async (locator) => {

@@ -431,6 +431,13 @@ html.dark [data-atom-slider-bubble] {
     clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 50%, calc(100% - 5px) 100%, 0 100%, 5px 50%);
 }
 
+/* clip-path clips the outline along with the bar, since the outline is drawn outside its box: a focused bar drops
+   the notch so the focus ring shows. Same specificity as the rules above, and after them. */
+[data-atom-calendar-chip="bar"][data-before]:focus-visible,
+[data-atom-calendar-chip="bar"][data-after]:focus-visible {
+    clip-path: none;
+}
+
 /* a colour given as a hex is validated on the server and painted from here: the tint, the accent edge and the dot */
 [data-atom-calendar-chip="bar"][data-atom-calendar-hex] {
     background-color: color-mix(in oklab, var(--atom-calendar-hue) 18%, transparent);
