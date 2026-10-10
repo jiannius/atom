@@ -23,6 +23,9 @@ export default () => ({
     view: 'month',
     anchor: '',
     loading: false,
+    // where the last click that asked the server for another window is heading, until the server has answered
+    pending: null,
+    requests: 0,
     jump: null,
     popoverDate: null,
 
@@ -157,17 +160,23 @@ export default () => ({
         this.closeDay(false)
 
         let { start, end } = this.payload.window
-        let inWindow = this.view === 'month'
+
+        // with a window on its way the screen is not where the next step starts: it always asks the server
+        let inWindow = !this.pending && (this.view === 'month'
             ? monthOf(target) === monthOf(this.payload.anchor)
-            : target >= start && target <= end
+            : target >= start && target <= end)
 
         if (inWindow) {
             this.anchor = target
+            // the picker in the title shows the day on screen too
+            this.jump = toLocalDate(target)
             this.$wire.$set(this.model, target, false)
 
             return
         }
 
+        this.pending = target
+        this.requests++
         this.loading = true
 
         try {
@@ -175,16 +184,20 @@ export default () => ({
         } catch (error) {
             console.error('[atom:calendar]', error)
         } finally {
-            this.loading = false
+            if (--this.requests === 0) {
+                this.pending = null
+                this.loading = false
+            }
         }
     },
 
+    // Step from where the last click is heading, so two quick clicks on Next go two months, not one twice.
     prev () {
-        return this.navigate(addMonths(this.anchor, -1))
+        return this.navigate(addMonths(this.pending ?? this.anchor, -1))
     },
 
     next () {
-        return this.navigate(addMonths(this.anchor, 1))
+        return this.navigate(addMonths(this.pending ?? this.anchor, 1))
     },
 
     today () {
@@ -237,6 +250,8 @@ export default () => ({
 
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
+                // not the modal's either: a dialog closes on Escape by itself unless it is prevented
+                event.preventDefault()
                 event.stopPropagation()
                 this.closeDay()
             }

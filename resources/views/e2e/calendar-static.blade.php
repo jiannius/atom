@@ -56,6 +56,22 @@
     <div class="flex" style="width: 900px" data-flex-parent>
         <atom:calendar month="2026-10" data-probe="flex" />
     </div>
+
+    {{-- a calendar inside an atom modal, a native dialog: Escape has to close the day list and leave the modal --}}
+    <atom:button x-on:click="$dispatch('atom-modal-show', { name: 'calendar-modal' })" data-open-modal>Open calendar</atom:button>
+
+    <atom:modal name="calendar-modal" style="width: 760px" data-modal>
+        <atom:calendar
+        month="2026-10"
+        :items="[
+            ['id' => 'm1', 'title' => 'First', 'start' => '2026-10-12'],
+            ['id' => 'm2', 'title' => 'Second', 'start' => '2026-10-12'],
+            ['id' => 'm3', 'title' => 'Third', 'start' => '2026-10-12'],
+            ['id' => 'm4', 'title' => 'Fourth', 'start' => '2026-10-12'],
+            ['id' => 'm5', 'title' => 'Fifth', 'start' => '2026-10-12'],
+        ]"
+        data-probe="modal" />
+    </atom:modal>
 </div>
 
 @livewireScripts

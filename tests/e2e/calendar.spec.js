@@ -385,6 +385,52 @@ test.describe('navigating', () => {
         expect(requests.count).toBe(1)
     })
 
+    test('two quick clicks on Next reach the month after next, not the next month twice', async ({ page }) => {
+        await page.route(/livewire.*update/, async (route) => {
+            await new Promise((resolve) => setTimeout(resolve, 500))
+            await route.continue()
+        })
+
+        const next = probe(page).getByRole('button', { name: 'Next' })
+
+        await next.click()
+        await next.click()
+
+        await expect(title(page)).toHaveText('December 2026')
+        await expect(page.locator('span[data-date]')).toHaveText('2026-12-09')
+        await expect(probe(page).locator('[x-show="loading"]')).toBeHidden()
+    })
+
+    test('Next then Previous before the answer arrives ends on the month it started on', async ({ page }) => {
+        await page.route(/livewire.*update/, async (route) => {
+            await new Promise((resolve) => setTimeout(resolve, 500))
+            await route.continue()
+        })
+
+        await probe(page).getByRole('button', { name: 'Next' }).click()
+        await probe(page).getByRole('button', { name: 'Previous' }).click()
+
+        await expect(probe(page).locator('[x-show="loading"]')).toBeHidden()
+        await expect(title(page)).toHaveText('October 2026')
+        await expect(page.locator('span[data-date]')).toHaveText('2026-10-09')
+        expect(await page.evaluate(() => window.Alpine.evaluate(document.querySelector('[data-probe="calendar"]'), '$wire.date'))).toBe('2026-10-09')
+    })
+
+    test('the date picker follows Today after a day was picked inside the month', async ({ page }) => {
+        const requests = countRequests(page)
+
+        await probe(page).getByRole('button', { name: 'Choose date' }).click()
+        await probe(page).locator('.pika-button[data-pika-year="2026"][data-pika-month="9"][data-pika-day="20"]').click()
+        await expect.poll(() => page.evaluate(() => window.Alpine.evaluate(document.querySelector('[data-probe="calendar"]'), '$wire.date'))).toBe('2026-10-20')
+
+        await probe(page).getByRole('button', { name: 'Today' }).click()
+        await expect.poll(() => page.evaluate(() => window.Alpine.evaluate(document.querySelector('[data-probe="calendar"]'), '$wire.date'))).toBe('2026-10-09')
+
+        await probe(page).getByRole('button', { name: 'Choose date' }).click()
+        await expect(probe(page).locator('.is-selected .pika-button')).toHaveAttribute('data-pika-day', '9')
+        expect(requests.count).toBe(0)
+    })
+
     test('the date picker offers the day on screen when it opens', async ({ page }) => {
         await probe(page).getByRole('button', { name: 'Choose date' }).click()
 
@@ -594,6 +640,26 @@ test.describe('static, with nothing bound', () => {
         await chip(page, 'Static item', 'static').click()
 
         await expect(page.locator('[data-clicked]')).toHaveText('a')
+    })
+
+    test('Escape closes the day list inside a modal and leaves the modal open', async ({ page }) => {
+        await page.locator('[data-open-modal]').click()
+
+        const dialog = page.locator('[data-modal]')
+
+        await expect(dialog).toHaveAttribute('open', '')
+        await probe(page, 'modal').locator('[data-atom-calendar-more]').click()
+        await expect(popover(page, 'modal')).toBeVisible()
+
+        await page.keyboard.press('Escape')
+
+        await expect(popover(page, 'modal')).toBeHidden()
+        await page.waitForTimeout(250)
+        await expect(dialog).toHaveAttribute('open', '')
+
+        // with no day list open, Escape is the modal's again
+        await page.keyboard.press('Escape')
+        await expect(dialog).not.toHaveAttribute('open', '')
     })
 
     test('fills a flex parent instead of collapsing to nothing', async ({ page }) => {
