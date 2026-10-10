@@ -59,6 +59,12 @@ test.describe('bound to a Livewire property', () => {
         await expect(day(page, '2026-10-09')).toHaveAttribute('aria-current', 'date')
     })
 
+    test('Alpine strips every x-cloak it was given, so none stays hidden for good', async ({ page }) => {
+        await expect(probe(page).locator('[x-cloak]')).toHaveCount(0)
+        await expect(probe(page).locator('[role="grid"]')).toBeVisible()
+        await expect(probe(page).locator('[x-show="loading"]')).toBeHidden()
+    })
+
     test('labels a day with its date and how many items it holds', async ({ page }) => {
         await expect(day(page, '2026-10-14')).toHaveAttribute('aria-label', 'Wednesday, 14 Oct 2026, 5 items')
         await expect(day(page, '2026-10-09')).toHaveAttribute('aria-label', 'Friday, 9 Oct 2026, 3 items')
@@ -660,6 +666,11 @@ test.describe('static, with nothing bound', () => {
         // with no day list open, Escape is the modal's again
         await page.keyboard.press('Escape')
         await expect(dialog).not.toHaveAttribute('open', '')
+    })
+
+    test('Alpine strips every x-cloak it was given there too', async ({ page }) => {
+        await expect(probe(page, 'static').locator('[x-cloak]')).toHaveCount(0)
+        await expect(probe(page, 'static').locator('[role="grid"]')).toBeVisible()
     })
 
     test('fills a flex parent instead of collapsing to nothing', async ({ page }) => {

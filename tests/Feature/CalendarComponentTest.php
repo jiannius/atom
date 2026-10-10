@@ -310,6 +310,18 @@ describe('calendar component markup', function () {
             ->and($second->getAttribute('data-atom-calendar-payload'))->toBe($first->getAttribute('data-atom-calendar-payload'));
     });
 
+    it('cloaks every x-show element that is on the page before Alpine starts, so none flashes', function () {
+        $html = calendarRender('month="2026-10"');
+        $shown = domQuery($html, '//*[@x-show][not(ancestor::template)]');
+
+        // the loading spinner, the view switcher and the month grid; the rest are cloned from templates by Alpine
+        expect(array_map(fn ($el) => $el->getAttribute('x-show'), $shown))->toBe(['loading', 'views.length > 1', "view === 'month'"]);
+
+        foreach ($shown as $element) {
+            expect($element->hasAttribute('x-cloak'))->toBeTrue($element->getAttribute('x-show'));
+        }
+    });
+
     it('prints one icon template for each icon an item uses, and one for the warning', function () {
         $html = calendarRender('month="2026-10" :items="$items"', ['items' => [
             ['id' => 1, 'title' => 'a', 'start' => '2026-10-09', 'icon' => 'calendar'],

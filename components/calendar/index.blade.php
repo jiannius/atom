@@ -104,7 +104,7 @@ data-atom-calendar
                 </div>
             @endif
 
-            <span x-show="loading" class="inline-flex text-zinc-500 dark:text-zinc-400"><atom:icon.loading class="size-4" /></span>
+            <span x-cloak x-show="loading" class="inline-flex text-zinc-500 dark:text-zinc-400"><atom:icon.loading class="size-4" /></span>
 
             <div x-text="title.text" role="status" aria-live="polite" data-atom-calendar-sr></div>
         </div>
@@ -114,7 +114,7 @@ data-atom-calendar
                 {{ $slot }}
             @endif
 
-            <div wire:ignore x-show="views.length > 1" role="group" class="inline-flex items-center rounded-md bg-zinc-100 p-1 dark:bg-zinc-700">
+            <div wire:ignore x-cloak x-show="views.length > 1" role="group" class="inline-flex items-center rounded-md bg-zinc-100 p-1 dark:bg-zinc-700">
                 <template x-for="name in views" :key="name">
                     <button
                     type="button"
@@ -129,7 +129,7 @@ data-atom-calendar
     </div>
 
     <div wire:ignore data-atom-calendar-body>
-        <div x-show="view === 'month'" role="grid">
+        <div x-cloak x-show="view === 'month'" role="grid">
             <div role="row" data-atom-calendar-weekdays class="border-b border-zinc-200 dark:border-zinc-700">
                 <template x-for="day in labels.weekdays" :key="day.key">
                     <div role="columnheader" x-text="day.short" x-bind:aria-label="day.long" class="py-2 text-center text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"></div>
