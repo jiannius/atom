@@ -347,6 +347,10 @@ class Calendar
                 'all_day' => (string) __('All day'),
                 'more' => (string) __('+:count more'),
                 'overdue' => (string) __('Overdue'),
+                'item' => (string) __(':count item'),
+                'items' => (string) __(':count items'),
+                'close' => (string) __('Close'),
+                'choose_date' => (string) __('Choose date'),
             ],
         ];
     }

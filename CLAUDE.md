@@ -114,7 +114,7 @@ Entry point bundled by Vite. It:
 - Registers Alpine data factories (`modal`, `editor`, `select`, `tooltip`, `dropdown`, `lightbox`, `telInput`, `emailInput`, `breadcrumbs`, `datePicker`, `timePicker`, `dateRange`, `calendar`, chart variants) and the `$clipboard` magic.
 - Loads `@alpinejs/intersect` and `@marcreichel/alpine-autosize` plugins.
 
-The Vite config builds `resources/css/atom.css`, `resources/css/editor.css`, `resources/css/calendar.css`, `resources/js/atom.js` to `dist/`, with the calendar package split into its own chunk. The build output is committed and served by the package itself (not by the consuming app), so **`npm run build` must be run and the resulting `dist/` committed whenever JS/CSS sources change**.
+The Vite config builds `resources/css/atom.css`, `resources/css/editor.css`, `resources/js/atom.js` to `dist/`. The build output is committed and served by the package itself (not by the consuming app), so **`npm run build` must be run and the resulting `dist/` committed whenever JS/CSS sources change**.
 
 ## Conventions worth knowing
 

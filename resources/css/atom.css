@@ -358,3 +358,138 @@ html.dark [data-atom-slider-bubble] {
     background: #fff;
     color: #18181b;
 }
+
+/** Calendar — the month grid and its overlays are laid out here, not with utilities, because chips are
+    placed by grid line and the day list is hit-tested and positioned against that geometry; both have to
+    hold in a consumer whose Tailwind never saw these class names. Colour, type and spacing stay in the
+    markup. **/
+[data-atom-calendar] {
+    container-type: inline-size;
+}
+
+[data-atom-calendar-weekdays],
+[data-atom-calendar-week-bg],
+[data-atom-calendar-chips] {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+/* every week is as tall as the tallest one */
+[data-atom-calendar-weeks] {
+    display: grid;
+    grid-auto-rows: 1fr;
+}
+
+[data-atom-calendar-week] {
+    position: relative;
+}
+
+/* the cells under the chips: backgrounds, lines, and what a click on empty space lands on */
+[data-atom-calendar-week-bg] {
+    position: absolute;
+    inset: 0;
+}
+
+/* row 1 holds the day numbers, the rows under it one chip each. The layer lets a click through to the
+   cell beneath it; only a chip or a "+N more" takes one. */
+[data-atom-calendar-chips] {
+    position: relative;
+    grid-template-rows: 1.75rem;
+    grid-auto-rows: 1.25rem;
+    row-gap: 0.125rem;
+    align-content: start;
+    min-height: 7rem;
+    padding: 0.25rem;
+    pointer-events: none;
+}
+
+[data-atom-calendar-slot],
+[data-atom-calendar-more] {
+    min-width: 0;
+    pointer-events: auto;
+}
+
+/* a bar that carries on into the next or from the previous week ends in a notch instead of a corner */
+[data-atom-calendar-chip="bar"][data-before] {
+    border-left-width: 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding-left: 0.75rem;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 5px 50%);
+}
+
+[data-atom-calendar-chip="bar"][data-after] {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 50%, calc(100% - 5px) 100%, 0 100%);
+}
+
+[data-atom-calendar-chip="bar"][data-before][data-after] {
+    clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 50%, calc(100% - 5px) 100%, 0 100%, 5px 50%);
+}
+
+/* a colour given as a hex is validated on the server and painted from here: the tint, the accent edge and the dot */
+[data-atom-calendar-chip="bar"][data-atom-calendar-hex] {
+    background-color: color-mix(in oklab, var(--atom-calendar-hue) 18%, transparent);
+    border-left-color: var(--atom-calendar-hue);
+}
+
+[data-atom-calendar-dot][data-atom-calendar-hex] {
+    background-color: var(--atom-calendar-hue);
+}
+
+/* the narrow layout's dots, one row per day */
+[data-atom-calendar-dots] {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+
+/* The day list: a top-layer popover, positioned in viewport coordinates by floating-ui, so a closed one
+   keeps its UA display:none and an open one is fixed (see the dropdown note above). */
+[data-atom-calendar-popover] {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+}
+
+[data-atom-calendar-popover] > [data-atom-scroll-region] {
+    max-height: 16rem;
+    overflow-y: auto;
+}
+
+/* Text for assistive tech only (the overdue label, the live title). Structural for the reason the page
+   title above is: it must stay hidden wherever sr-only is not compiled. */
+[data-atom-calendar-sr] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Narrow: no room for titles, so a day shows its number and up to four dots, and a tap opens the day list
+   that carries the titles. Container, not viewport: the calendar may sit in a narrow column of a wide page. */
+@container (max-width: 600px) {
+    [data-atom-calendar-chips] {
+        min-height: 4rem;
+    }
+
+    [data-atom-calendar-chips] > [data-atom-calendar-slot],
+    [data-atom-calendar-chips] > [data-atom-calendar-more] {
+        display: none;
+    }
+
+    [data-atom-calendar-number] {
+        justify-content: center;
+    }
+
+    [data-atom-calendar-dots] {
+        display: flex;
+    }
+}
