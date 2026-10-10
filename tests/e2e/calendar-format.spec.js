@@ -23,6 +23,47 @@ for (const [locale, { labels, cases }] of Object.entries(corpus.locales)) {
     })
 }
 
+// Every minute of a day, held to what Calendar::format() printed (as runs of [startMinute, value]).
+for (const [locale, { labels, sweep }] of Object.entries(corpus.locales)) {
+    test(`prints the period of the day at every minute as PHP does in ${locale}`, () => {
+        const at = (runs, minute) => runs.filter(([start]) => start <= minute).pop()[1]
+        const wrong = []
+
+        for (let minute = 0; minute < 1440; minute++) {
+            const moment = '2026-10-05T' + String(Math.floor(minute / 60)).padStart(2, '0') + ':' + String(minute % 60).padStart(2, '0')
+
+            for (const token of ['a', 'A']) {
+                const got = format(moment, token, labels)
+
+                if (got !== at(sweep[token], minute)) wrong.push({ moment, token, got, expected: at(sweep[token], minute) })
+            }
+        }
+
+        expect(wrong).toEqual([])
+    })
+}
+
+test('zh prints noon from 11:30 to 12:29 and the afternoon from 12:30', () => {
+    const { labels } = corpus.locales.zh
+
+    expect(['11:29', '11:30', '11:45', '12:29', '12:30', '12:45'].map((time) => format('2026-10-05T' + time, 'a', labels)))
+        .toEqual(['上午', '中午', '中午', '中午', '下午', '下午'])
+})
+
+test('prints a month in the form its locale uses beside a day, by where the day stands in the pattern', () => {
+    const { labels } = corpus.locales.lt
+
+    // 2026-03-02: kovas on its own, kovo beside a day (lt takes it on either side)
+    expect(format('2026-03-02', 'F Y', labels)).toBe('kovas 2026')
+    expect(format('2026-03-02', 'j F', labels)).toBe('2 kovo')
+    expect(format('2026-03-02', 'F j', labels)).toBe('kovo 2')
+
+    const croatian = corpus.locales.hr.labels
+
+    expect(format('2026-03-02', 'j F', croatian)).toBe('2 ožujka')
+    expect(format('2026-03-02', 'F j', croatian)).toBe('ožujak 2')
+})
+
 test('every token prints something other than itself, and a letter that is not a token is a literal', () => {
     const { labels } = corpus.locales.en
     const tokens = TOKENS.date + TOKENS.time
@@ -51,5 +92,5 @@ test('an unreadable moment prints nothing, and a label missing from the payload 
 
     expect(format('not a date', 'Y', labels)).toBe('')
     expect(format('2026-02-31', 'Y', labels)).toBe('')
-    expect(format('2026-10-09', 'M F l a', {})).toBe('   ')
+    expect(format('2026-10-09', 'M F l a A', {})).toBe('    ')
 })

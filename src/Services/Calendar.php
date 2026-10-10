@@ -176,6 +176,7 @@ class Calendar
     /**
      * Format a date in the viewer's locale with a valid format; `D l M F a A` are translated, the rest is numeric.
      * `a` and `A` follow the locale's own period of the day (zh: 凌晨, 早上, 上午, 中午, 下午, 晚上), which is what labels()['meridiem'] carries.
+     * Every name labels() carries is read from this same translatedFormat(), so the two print the same.
      * The date is printed as given: convert it to the viewer's timezone first. Throws on a format isFormat() refuses.
      */
     public static function format(CarbonInterface $date, string $format): string
@@ -305,10 +306,16 @@ class Calendar
     /**
      * Translated names and strings the browser prints, so no date or string is formatted in JS.
      *
-     * `months` and `months_short` are the long and short names for `F` and `M`; `weekdays` carry `D` and `l`; `meridiem.lower` and
-     * `meridiem.upper` are `a` and `A` for each hour 0 to 23, since some locales name more than two periods of the day.
+     * Every name is what format() prints for its token, taken from translatedFormat() itself rather than from Carbon's name
+     * lookups, which disagree with it in some locales (es, nl, lv, hr, lt): `months` and `months_short` are `F` and `M`,
+     * `weekdays` carry `D` and `l`, and `meridiem` is the list of times of the day at which `a` and `A` change, as
+     * `[startMinute, lower, upper]` from midnight, since a locale can name the period by the minute (zh: 中午 from 11:30 to
+     * 12:29, 下午 from 12:30). A locale whose period also depends on the date is not covered: the list is read from one Monday.
+     * `month_forms` holds the month names that change with the day of the month in the format (ru, pl, cs, uk, hr, lt: genitive
+     * in `j F`), as `day_before` (a day token earlier in the format) and `day_after` lists, and only where they differ from the
+     * standalone ones. One more known gap: ka prints a weekday differently beside other tokens.
      *
-     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, meridiem: array{lower: list<string>, upper: list<string>}, am: string, pm: string, ui: array<string, string>}
+     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string>}
      */
     public function labels(): array
     {
@@ -317,24 +324,23 @@ class Calendar
 
         $weekdays = collect(self::WEEKDAYS)->map(fn ($key, $i) => [
             'key' => $key,
-            'short' => $monday->addDays($i)->shortDayName,
-            'long' => $monday->addDays($i)->dayName,
+            'short' => $monday->addDays($i)->translatedFormat('D'),
+            'long' => $monday->addDays($i)->translatedFormat('l'),
         ]);
 
         $offset = array_search($this->weekStart, self::WEEKDAYS, true);
 
+        $month = fn (int $number, string $token) => CarbonImmutable::create(2026, $number, 1, 0, 0, 0, 'UTC')->locale($locale)->translatedFormat($token);
+
+        $months = collect(range(1, 12))->map(fn ($number) => $month($number, 'F'))->all();
+        $monthsShort = collect(range(1, 12))->map(fn ($number) => $month($number, 'M'))->all();
+
         return [
             'weekdays' => $weekdays->slice($offset)->merge($weekdays->slice(0, $offset))->values()->all(),
-            'months' => collect(range(1, 12))
-                ->map(fn ($month) => CarbonImmutable::create(2026, $month, 1, 0, 0, 0, 'UTC')->locale($locale)->monthName)
-                ->all(),
-            'months_short' => collect(range(1, 12))
-                ->map(fn ($month) => CarbonImmutable::create(2026, $month, 1, 0, 0, 0, 'UTC')->locale($locale)->shortMonthName)
-                ->all(),
-            'meridiem' => [
-                'lower' => collect(range(0, 23))->map(fn ($hour) => $monday->setTime($hour, 0)->translatedFormat('a'))->all(),
-                'upper' => collect(range(0, 23))->map(fn ($hour) => $monday->setTime($hour, 0)->translatedFormat('A'))->all(),
-            ],
+            'months' => $months,
+            'months_short' => $monthsShort,
+            'month_forms' => self::monthForms($locale, ['F' => $months, 'M' => $monthsShort]),
+            'meridiem' => self::meridiemTransitions($locale),
             'am' => (string) __('AM'),
             'pm' => (string) __('PM'),
             'ui' => [
@@ -353,6 +359,69 @@ class Calendar
                 'choose_date' => (string) __('Choose date'),
             ],
         ];
+    }
+
+    /**
+     * The month names a locale prints differently when the format has a day of the month, from the same translatedFormat() as format().
+     *
+     * Carbon picks the form from the whole format: Russian, Polish, Czech, Croatian and others print the genitive in `j F`, and
+     * Lithuanian in `F j` too. Only a form that differs from the standalone name is returned, under `F` or `M`.
+     *
+     * @param  array<string, list<string>>  $standalone  the standalone names, by token
+     * @return array<string, array<string, list<string>>>
+     */
+    protected static function monthForms(string $locale, array $standalone): array
+    {
+        $forms = [];
+
+        foreach ($standalone as $token => $names) {
+            foreach (['day_before' => ['25 '.$token, '/^25\s+/u'], 'day_after' => [$token.' 25', '/\s+25$/u']] as $kind => [$format, $day]) {
+                $printed = collect(range(1, 12))->map(function ($number) use ($locale, $format, $day) {
+                    $text = CarbonImmutable::create(2026, $number, 25, 0, 0, 0, 'UTC')->locale($locale)->translatedFormat(str_replace('25', 'j', $format));
+
+                    return preg_match($day, $text) ? preg_replace($day, '', $text) : null;
+                })->all();
+
+                if (! in_array(null, $printed, true) && $printed !== $names) {
+                    $forms[$token][$kind] = $printed;
+                }
+            }
+        }
+
+        return $forms;
+    }
+
+    /**
+     * The minutes of the day at which `a` and `A` change in a locale, each with what they print from there on.
+     *
+     * Read from every minute of one day, so a locale that names the period by the minute (zh) is right at 11:45 and 12:30.
+     * The result depends on the locale alone and is kept for the process: labels() runs on every render.
+     *
+     * @return list<array{0: int, 1: string, 2: string}>
+     */
+    protected static function meridiemTransitions(string $locale): array
+    {
+        static $known = [];
+
+        if (isset($known[$locale])) {
+            return $known[$locale];
+        }
+
+        $midnight = CarbonImmutable::parse('2026-10-05', 'UTC')->locale($locale);
+        $transitions = [];
+
+        for ($minute = 0; $minute < 1440; $minute++) {
+            $moment = $midnight->setTime(intdiv($minute, 60), $minute % 60);
+            $lower = $moment->translatedFormat('a');
+            $upper = $moment->translatedFormat('A');
+            $last = $transitions[array_key_last($transitions)] ?? null;
+
+            if (! $last || $last[1] !== $lower || $last[2] !== $upper) {
+                $transitions[] = [$minute, $lower, $upper];
+            }
+        }
+
+        return $known[$locale] = $transitions;
     }
 
     /**

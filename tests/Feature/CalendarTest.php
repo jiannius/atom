@@ -1018,8 +1018,8 @@ describe('calendar display formats', function () {
 
         expect($labels['months'])->toHaveCount(12)
             ->and($labels['months_short'])->toHaveCount(12)
-            ->and($labels['meridiem']['lower'])->toHaveCount(24)
-            ->and($labels['meridiem']['upper'])->toHaveCount(24);
+            ->and($labels['meridiem'])->not->toBeEmpty()
+            ->and($labels['meridiem'][0][0])->toBe(0);
 
         foreach (range(1, 12) as $month) {
             $date = Carbon::create(2026, $month, 1, 0, 0, 0, 'UTC');
@@ -1037,26 +1037,24 @@ describe('calendar display formats', function () {
 
         foreach (range(0, 23) as $hour) {
             $date = Carbon::parse('2026-10-05', 'UTC')->setTime($hour, 0);
+            $period = collect($labels['meridiem'])->last(fn ($transition) => $transition[0] <= $hour * 60);
 
-            expect(Calendar::format($date, 'a'))->toBe($labels['meridiem']['lower'][$hour])
-                ->and(Calendar::format($date, 'A'))->toBe($labels['meridiem']['upper'][$hour]);
+            expect(Calendar::format($date, 'a'))->toBe($period[1])
+                ->and(Calendar::format($date, 'A'))->toBe($period[2]);
         }
     })->with(['en', 'zh', 'ms', 'fr']);
 
     it('has English lower and upper case meridiems, and translates them under zh', function () {
         $english = Calendar::make()->labels();
 
-        expect($english['meridiem']['lower'][0])->toBe('am')
-            ->and($english['meridiem']['upper'][0])->toBe('AM')
-            ->and($english['meridiem']['lower'][12])->toBe('pm')
-            ->and($english['meridiem']['upper'][23])->toBe('PM')
+        expect($english['meridiem'])->toBe([[0, 'am', 'AM'], [720, 'pm', 'PM']])
             ->and($english['months_short'][9])->toBe('Oct');
 
         app()->setLocale('zh');
 
         $chinese = Calendar::make()->labels();
 
-        expect($chinese['meridiem']['upper'][15])->toBe('下午')
+        expect($chinese['meridiem'])->toBe([[0, '凌晨', '凌晨'], [360, '早上', '早上'], [540, '上午', '上午'], [690, '中午', '中午'], [750, '下午', '下午'], [1080, '晚上', '晚上']])
             ->and($chinese['months_short'][9])->toBe('10月');
     });
 });
