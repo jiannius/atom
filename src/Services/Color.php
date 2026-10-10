@@ -86,16 +86,23 @@ class Color
     }
 
     /**
-     * Shade a color
+     * Check a value is a strict hex colour: #rgb, #rgba, #rrggbb or #rrggbbaa.
+     */
+    public static function isHex(mixed $color): bool
+    {
+        return is_string($color) && preg_match('/^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/Di', trim($color)) === 1;
+    }
+
+    /**
+     * Shade a hex color; returns null for anything that is not one.
      */
     public static function shade($color, $percent, $alpha = 1)
     {
-        if (!$color) return;
+        if (! self::isHex($color)) return;
 
-        $color = str_replace('#', '', $color);
-        $rgb = '';
+        $color = substr(trim($color), 1);
 
-        if (strlen($color) == 3) {
+        if (strlen($color) <= 4) {
             $r = hexdec(substr($color, 0, 1) . substr($color, 0, 1));
             $g = hexdec(substr($color, 1, 1) . substr($color, 1, 1));
             $b = hexdec(substr($color, 2, 1) . substr($color, 2, 1));
