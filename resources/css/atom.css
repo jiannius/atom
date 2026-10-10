@@ -363,8 +363,11 @@ html.dark [data-atom-slider-bubble] {
     placed by grid line and the day list is hit-tested and positioned against that geometry; both have to
     hold in a consumer whose Tailwind never saw these class names. Colour, type and spacing stay in the
     markup. **/
+/* Size containment leaves the root no content width of its own, so as a flex item or an auto grid track it
+   would collapse to nothing: it asks for the width of its parent instead. */
 [data-atom-calendar] {
     container-type: inline-size;
+    width: 100%;
 }
 
 [data-atom-calendar-weekdays],

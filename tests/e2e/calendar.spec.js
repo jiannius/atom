@@ -574,6 +574,18 @@ test.describe('static, with nothing bound', () => {
 
         await expect(page.locator('[data-clicked]')).toHaveText('a')
     })
+
+    test('fills a flex parent instead of collapsing to nothing', async ({ page }) => {
+        const root = probe(page, 'flex')
+
+        await expect(root.locator('[data-atom-calendar-day]').first()).toBeVisible()
+
+        const box = await root.boundingBox()
+        const parent = await page.locator('[data-flex-parent]').boundingBox()
+
+        expect(box.width).toBeGreaterThan(parent.width - 2)
+        expect((await root.locator('[data-atom-calendar-day]').first().boundingBox()).width).toBeGreaterThan(100)
+    })
 })
 
 for (const timezoneId of ['America/Los_Angeles', 'Pacific/Kiritimati']) {

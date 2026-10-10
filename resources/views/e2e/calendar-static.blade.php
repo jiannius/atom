@@ -51,6 +51,11 @@
         ['id' => 'f', 'title' => 'Dinner', 'start' => '2026-10-12T19:00+08:00'],
     ]"
     data-probe="static" />
+
+    {{-- the same calendar as a flex item, where a container-type: inline-size element has no content width to offer --}}
+    <div class="flex" style="width: 900px" data-flex-parent>
+        <atom:calendar month="2026-10" data-probe="flex" />
+    </div>
 </div>
 
 @livewireScripts
