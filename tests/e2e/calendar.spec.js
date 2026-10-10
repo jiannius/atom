@@ -424,6 +424,27 @@ test.describe('a Livewire re-render', () => {
         await open(page)
     })
 
+    test('a render that only moves the clock leaves the payload alone, so nothing is laid out again', async ({ page }) => {
+        const root = probe(page)
+
+        await page.evaluate(() => {
+            const el = document.querySelector('[data-probe="calendar"]')
+
+            window.__payloadWrites = 0
+            window.__nowBefore = el.getAttribute('data-atom-calendar-now')
+            new MutationObserver((records) => { window.__payloadWrites += records.length })
+                .observe(el, { attributes: true, attributeFilter: ['data-atom-calendar-payload'] })
+        })
+
+        await bump(page)
+        await bump(page)
+        await page.waitForTimeout(200)
+
+        expect(await page.evaluate(() => window.__payloadWrites)).toBe(0)
+        // the clock did move: it is what the now-indicator will read
+        expect(await root.getAttribute('data-atom-calendar-now')).not.toBe(await page.evaluate(() => window.__nowBefore))
+    })
+
     test('leaves the chips and the cells where they were, the very same nodes', async ({ page }) => {
         await page.evaluate(() => {
             const root = document.querySelector('[data-probe="calendar"]')

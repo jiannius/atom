@@ -106,7 +106,8 @@ describe('calendar component payload', function () {
         $html = calendarRender('month="2026-10" :items="[[\'id\' => 1, \'title\' => \'Dentist\', \'start\' => \'2026-10-09T09:30\', \'color\' => \'red\']]"');
         $payload = calendarPayload($html);
 
-        expect($payload)->toHaveKeys(['anchor', 'today', 'now', 'timezone', 'window', 'labels', 'config', 'items'])
+        expect($payload)->toHaveKeys(['anchor', 'today', 'timezone', 'window', 'labels', 'config', 'items'])
+            ->and($payload)->not->toHaveKey('now')
             ->and($payload['anchor'])->toBe('2026-10-01')
             ->and($payload['today'])->toBe('2026-10-09')
             ->and($payload['window']['days'])->toHaveCount(42)
@@ -288,6 +289,20 @@ describe('calendar component markup', function () {
 
         expect($previous[0]->getAttribute('aria-label'))->toBe('Previous')
             ->and($next[0]->getAttribute('aria-label'))->toBe('Next');
+    });
+
+    it('prints the clock on an attribute of its own, so a render seconds later leaves the payload alone', function () {
+        $attributes = 'month="2026-10" :items="[[\'id\' => 1, \'title\' => \'Dentist\', \'start\' => \'2026-10-09T09:30\']]"';
+
+        Carbon::setTestNow('2026-10-09 10:30:00');
+        $first = calendarRoot(calendarRender($attributes));
+
+        Carbon::setTestNow('2026-10-09 10:30:09');
+        $second = calendarRoot(calendarRender($attributes));
+
+        expect($first->getAttribute('data-atom-calendar-now'))->toBe('2026-10-09T10:30:00')
+            ->and($second->getAttribute('data-atom-calendar-now'))->toBe('2026-10-09T10:30:09')
+            ->and($second->getAttribute('data-atom-calendar-payload'))->toBe($first->getAttribute('data-atom-calendar-payload'));
     });
 
     it('prints one icon template for each icon an item uses, and one for the warning', function () {

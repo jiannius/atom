@@ -237,6 +237,9 @@ class Calendar
 
     /**
      * The viewer's local date and time now, as `Y-m-d\TH:i:s`.
+     *
+     * Not part of payload(): the browser lays the month out from the payload and reads it again whenever it changes,
+     * so a clock inside it would redo the layout on every render. The component prints this on an attribute of its own.
      */
     public function clock(): string
     {
@@ -478,7 +481,6 @@ class Calendar
         return [
             'anchor' => $window['anchor'],
             'today' => $this->today(),
-            'now' => $this->clock(),
             'timezone' => self::timezone(),
             'window' => [
                 'start' => $window['start'],

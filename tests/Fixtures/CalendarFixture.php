@@ -11,8 +11,8 @@ use Livewire\Component;
  * A Livewire host for <atom:calendar>: a bound anchor date, a fixed set of items in October and
  * November 2026, and two buttons that re-render the component, one of which changes the data.
  *
- * Time is frozen at 2026-10-09 10:30 on every request (boot() runs on each Livewire update), so
- * "today" is stable. Items are built in the viewer's own zone, so their wall clock is what is written here.
+ * Time starts at 2026-10-09 10:30 on every request (boot() runs on each Livewire update), and each render
+ * is one second later per bump, so "today" is stable and the clock is not. Items are built in the viewer's own zone, so their wall clock is what is written here.
  */
 class CalendarFixture extends Component
 {
@@ -97,6 +97,9 @@ class CalendarFixture extends Component
      */
     public function render()
     {
+        // the clock is not frozen between renders in real life: each one is a second later than the last
+        Carbon::setTestNow(Carbon::parse('2026-10-09 10:30:00')->addSeconds($this->renders));
+
         return view('atom-test::calendar');
     }
 }

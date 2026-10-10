@@ -71,6 +71,10 @@ $icons = collect($payload['items'])->pluck('icon')->push('warning')->filter()->u
 x-data="calendar"
 @if ($model) data-atom-calendar-model="{{ $model }}" @endif
 data-atom-calendar-palette="{{ json_encode($palette, JSON_THROW_ON_ERROR) }}"
+{{-- The clock is an attribute of its own and not part of the payload: the engine lays the month out again whenever
+     the payload changes, which a clock that moves every second would make every render. The week and day views'
+     now-indicator reads this one. --}}
+data-atom-calendar-now="{{ $calendar->clock() }}"
 data-atom-calendar-payload="{{ json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) }}"
 data-atom-calendar
 {{ $attributes->whereDoesntStartWith('wire:model')->class([

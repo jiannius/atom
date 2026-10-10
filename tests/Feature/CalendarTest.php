@@ -738,14 +738,29 @@ describe('calendar payload', function () {
             ['id' => 1, 'title' => 'Standup', 'start' => '2026-10-09T01:30:00Z'],
         ]);
 
-        expect($payload)->toHaveKeys(['anchor', 'today', 'now', 'timezone', 'window', 'labels', 'config', 'items'])
+        expect($payload)->toHaveKeys(['anchor', 'today', 'timezone', 'window', 'labels', 'config', 'items'])
+            ->and($payload)->not->toHaveKey('now')
             ->and($payload['anchor'])->toBe('2026-10-01')
             ->and($payload['today'])->toBe('2026-10-09')
-            ->and($payload['now'])->toBe('2026-10-09T18:30:00')
             ->and($payload['timezone'])->toBe('Asia/Kuala_Lumpur')
             ->and($payload['window'])->toHaveKeys(['start', 'end', 'days'])
             ->and($payload['items'][0]['start'])->toBe('2026-10-09T09:30')
             ->and(json_encode($payload))->toBeString();
+    });
+
+    it('is the same payload at two moments of one day, since the clock is not part of it', function () {
+        calendarTestViewer('Asia/Kuala_Lumpur');
+
+        $calendar = Calendar::make(['views' => ['month', 'week']]);
+        $items = [['id' => 1, 'title' => 'Standup', 'start' => '2026-10-09T09:30']];
+
+        Carbon::setTestNow('2026-10-09 10:30:00');
+        $first = json_encode($calendar->payload('2026-10', $items));
+
+        Carbon::setTestNow('2026-10-09 10:30:07');
+        $second = json_encode($calendar->payload('2026-10', $items));
+
+        expect($second)->toBe($first);
     });
 
     it('calls an items closure with the window instants', function () {
