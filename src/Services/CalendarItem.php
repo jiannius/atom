@@ -20,7 +20,7 @@ use Stringable;
  * - href has passed safe_url(), or is null.
  *
  * A missing id, title or start throws: it is a programming error. A start that will not parse skips
- * the item (null), reported once; a bad colour, icon, href or end is dropped and the item stays.
+ * the item (null), reported once (so does a repeated id, in Calendar::items(), which keeps the first); a bad colour, icon, href or end is dropped and the item stays.
  */
 class CalendarItem
 {
@@ -273,19 +273,39 @@ class CalendarItem
      */
     protected static function reportOnce(int|string $id, string $field, mixed $value): void
     {
-        $key = md5($id.'|'.$field.'|'.(is_scalar($value) ? $value : gettype($value)));
+        self::reportKeyOnce(
+            md5($id.'|'.$field.'|'.(is_scalar($value) ? $value : gettype($value))),
+            'Calendar item '.self::describe($id).' has an unreadable '.$field.'.',
+        );
+    }
 
+    /**
+     * Report an id that an earlier item already holds, once per id; the later item is dropped by the caller.
+     */
+    public static function reportDuplicate(int|string $id): void
+    {
+        self::reportKeyOnce(
+            md5($id.'|duplicate'),
+            'Calendar item '.self::describe($id).' repeats an id; the first item was kept.',
+        );
+    }
+
+    /**
+     * Report a message once per key, with a cap on the keys held so a long-lived worker never goes permanently silent.
+     */
+    protected static function reportKeyOnce(string $key, string $message): void
+    {
         if (isset(self::$reported[$key])) {
             return;
         }
 
-        // a full set starts over, so a long-lived worker never goes permanently silent
+        // a full set starts over
         if (count(self::$reported) >= self::REPORTED_LIMIT) {
             self::$reported = [];
         }
 
         self::$reported[$key] = true;
 
-        report(new InvalidArgumentException('Calendar item '.self::describe($id).' has an unreadable '.$field.'.'));
+        report(new InvalidArgumentException($message));
     }
 }

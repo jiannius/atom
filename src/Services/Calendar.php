@@ -273,7 +273,7 @@ class Calendar
     }
 
     /**
-     * Normalise items into payload items; one that cannot be placed is skipped, one that is not an item or repeats an id throws.
+     * Normalise items into payload items; one that cannot be placed, or repeats an earlier item's id, is skipped and reported once; one that is not an item throws.
      *
      * @param  iterable<mixed>  $items
      * @return list<array<string, mixed>>
@@ -297,7 +297,9 @@ class Calendar
             $key = (string) $item['id'];
 
             if (isset($seen[$key])) {
-                throw new InvalidArgumentException('Calendar item id is not unique: '.CalendarItem::describe($item['id']));
+                CalendarItem::reportDuplicate($item['id']);
+
+                continue;
             }
 
             $seen[$key] = true;

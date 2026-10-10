@@ -552,26 +552,45 @@ describe('calendar item validation', function () {
         'null' => [null],
     ])->throws(InvalidArgumentException::class);
 
-    it('throws on a repeated id', function () {
-        Calendar::make()->items([
-            ['id' => 1, 'title' => 'A', 'start' => '2026-10-09'],
-            ['id' => 1, 'title' => 'B', 'start' => '2026-10-10'],
-        ]);
-    })->throws(InvalidArgumentException::class);
+    it('keeps the first item of a repeated id, drops the later one, and reports it once', function () {
+        Exceptions::fake();
+
+        $id = 'dup-'.uniqid();
+        $items = [
+            ['id' => $id, 'title' => 'First', 'start' => '2026-10-09'],
+            ['id' => $id, 'title' => 'Second', 'start' => '2026-10-10'],
+        ];
+
+        $result = Calendar::make()->items($items);
+
+        expect($result)->toHaveCount(1)
+            ->and($result[0])->toMatchArray(['id' => $id, 'title' => 'First', 'start' => '2026-10-09']);
+
+        Exceptions::assertReportedCount(1);
+        Exceptions::assertReported(fn (InvalidArgumentException $e) => str_contains($e->getMessage(), 'repeats an id'));
+    });
 
     it('treats 1 and "1" as the same id, because the browser keys items by it', function () {
-        Calendar::make()->items([
-            ['id' => 1, 'title' => 'A', 'start' => '2026-10-09'],
-            ['id' => '1', 'title' => 'B', 'start' => '2026-10-10'],
+        Exceptions::fake();
+
+        $id = random_int(100000, 999999);
+
+        $result = Calendar::make()->items([
+            ['id' => $id, 'title' => 'A', 'start' => '2026-10-09'],
+            ['id' => (string) $id, 'title' => 'B', 'start' => '2026-10-10'],
         ]);
-    })->throws(InvalidArgumentException::class, 'not unique');
+
+        expect($result)->toHaveCount(1)
+            ->and($result[0]['title'])->toBe('A');
+
+        Exceptions::assertReportedCount(1);
+    });
 
     it('keeps a message free of the raw id', function () {
         $id = "x\n<script>alert(1)</script>".str_repeat('y', 200);
         $messages = [];
 
         foreach ([
-            [['id' => $id, 'title' => 'A', 'start' => '2026-10-09'], ['id' => $id, 'title' => 'B', 'start' => '2026-10-10']],
             [['id' => $id, 'start' => '2026-10-09']],
             [['id' => $id, 'title' => 'A']],
         ] as $items) {
@@ -582,13 +601,29 @@ describe('calendar item validation', function () {
             }
         }
 
-        expect($messages)->toHaveCount(3);
+        expect($messages)->toHaveCount(2);
 
         foreach ($messages as $message) {
             expect($message)->not->toContain("\n")
                 ->not->toContain('<script>alert(1)</script>'.str_repeat('y', 200))
                 ->and(strlen($message))->toBeLessThan(120);
         }
+    });
+
+    it('does not put a raw id in what it reports for a repeated id', function () {
+        Exceptions::fake();
+
+        $id = "dup\n<script>".uniqid().str_repeat('z', 200);
+
+        Calendar::make()->items([
+            ['id' => $id, 'title' => 'A', 'start' => '2026-10-09'],
+            ['id' => $id, 'title' => 'B', 'start' => '2026-10-10'],
+        ]);
+
+        Exceptions::assertReportedCount(1);
+        Exceptions::assertReported(fn (InvalidArgumentException $e) => ! str_contains($e->getMessage(), "\n")
+            && ! str_contains($e->getMessage(), $id)
+            && strlen($e->getMessage()) < 120);
     });
 
     it('accepts an Arrayable', function () {
