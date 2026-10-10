@@ -233,10 +233,11 @@ data-atom-calendar
 
     {{-- Icons are Blade components and cannot be rendered from JS: the server prints one template for each
          icon the items use, and the engine clones it. This sits in the morphable part of the root, so a new
-         icon arrives with the payload it belongs to. --}}
+         icon arrives with the payload it belongs to. Each template is keyed by its icon: unkeyed, the morph
+         matches them by position and patches the name without the glyph inside. --}}
     <div hidden>
         @foreach ($icons as $icon)
-            <template data-atom-calendar-icon="{{ $icon }}"><x-dynamic-component :component="'atom::icon.'.$icon" class="size-3" /></template>
+            <template wire:key="atom-calendar-icon-{{ $icon }}" data-atom-calendar-icon="{{ $icon }}"><x-dynamic-component :component="'atom::icon.'.$icon" class="size-3" /></template>
         @endforeach
     </div>
 </div>

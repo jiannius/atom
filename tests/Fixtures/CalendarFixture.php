@@ -74,6 +74,8 @@ class CalendarFixture extends Component
             ['id' => 14, 'title' => 'Month end review', 'start' => '2026-11-20'],
             ['id' => 15, 'title' => 'November kick-off', 'start' => $local('2026-11-02 09:00'), 'end' => $local('2026-11-02 10:00'), 'color' => 'red'],
             ['id' => 16, 'title' => 'Septembers tail', 'start' => '2026-09-29'],
+            // November's window uses no icon but the warning, so the set of icon templates changes between windows
+            ['id' => 17, 'title' => 'Contract overdue', 'start' => '2026-11-12', 'danger' => true],
         ];
 
         if ($this->extra) {

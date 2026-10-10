@@ -302,6 +302,19 @@ describe('calendar component markup', function () {
         expect($names)->toBe(['calendar', 'warning']);
     });
 
+    it('keys each icon template by its icon, so a morph cannot hand one the glyph of another', function () {
+        $html = calendarRender('month="2026-10" :items="$items"', ['items' => [
+            ['id' => 1, 'title' => 'a', 'start' => '2026-10-09', 'icon' => 'calendar'],
+        ]]);
+
+        $keys = array_map(
+            fn ($template) => $template->getAttribute('data-atom-calendar-icon').'='.$template->getAttribute('wire:key'),
+            domQuery($html, '//template[@data-atom-calendar-icon]'),
+        );
+
+        expect($keys)->toBe(['calendar=atom-calendar-icon-calendar', 'warning=atom-calendar-icon-warning']);
+    });
+
     it('prints the colour palette with every preset, and lets config add or override one', function () {
         $presets = json_decode(calendarRoot(calendarRender())->getAttribute('data-atom-calendar-palette'), true);
 

@@ -296,6 +296,44 @@ test.describe('navigating', () => {
         expect(requests.count).toBe(2)
     })
 
+    test('every icon template holds its own glyph after the window changes, and a danger chip shows the warning', async ({ page }) => {
+        const template = (name) => probe(page).locator(`template[data-atom-calendar-icon="${name}"]`)
+        const html = (name) => template(name).evaluate((el) => el.innerHTML.trim())
+
+        // what the server printed on first load is the reference for each glyph
+        const reference = { calendar: await html('calendar'), warning: await html('warning') }
+
+        expect(reference.calendar).toContain('<svg')
+        expect(reference.warning).toContain('<svg')
+        expect(reference.warning).not.toBe(reference.calendar)
+
+        const check = async (names) => {
+            await expect(probe(page).locator('template[data-atom-calendar-icon]')).toHaveCount(names.length)
+
+            for (const name of names) {
+                expect(await html(name), name).toBe(reference[name])
+            }
+        }
+
+        await check(['calendar', 'warning'])
+
+        await probe(page).getByRole('button', { name: 'Next' }).click()
+        await expect(title(page)).toHaveText('November 2026')
+        await check(['warning'])
+
+        const danger = chip(page, 'Contract overdue').locator('[data-atom-icon]')
+        await expect(danger).toHaveCount(1)
+        expect(await danger.evaluate((el) => el.outerHTML.trim())).toBe(reference.warning)
+
+        await probe(page).getByRole('button', { name: 'Previous' }).click()
+        await expect(title(page)).toHaveText('October 2026')
+        await check(['calendar', 'warning'])
+
+        const docs = chip(page, 'Open the docs').locator('[data-atom-icon]')
+        await expect(docs).toHaveCount(1)
+        expect(await docs.evaluate((el) => el.outerHTML.trim())).toBe(reference.calendar)
+    })
+
     test('Today brings it back from another month, and does nothing more when already there', async ({ page }) => {
         const requests = countRequests(page)
 
