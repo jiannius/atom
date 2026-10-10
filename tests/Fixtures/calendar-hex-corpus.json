@@ -1,0 +1,41 @@
+{
+    "_": "What a calendar item's `color` may be when it is a hex: #rgb, #rgba, #rrggbb or #rrggbbaa, and nothing else. One corpus for both sides: tests/Feature/CalendarTest.php holds Color::isHex() and the payload to it, tests/e2e/calendar-factory.spec.js holds the engine's isHex() and colors.js's parseHex() to it. A value with leading or trailing space is not here: the server trims it before it is in the payload, the browser never sees one.",
+    "hex": [
+        "#abc",
+        "#ABC",
+        "#abcd",
+        "#ABCD",
+        "#aabbcc",
+        "#AABBCC",
+        "#aabbccdd",
+        "#AABBCCDD",
+        "#000",
+        "#fff",
+        "#0000",
+        "#ffffff",
+        "#00000000",
+        "#ff8800",
+        "#ff880080"
+    ],
+    "notHex": [
+        "",
+        "#",
+        "#a",
+        "#ab",
+        "#abcde",
+        "#abcdef0",
+        "#abcdef012",
+        "#abcdef0123",
+        "#aabbccddee",
+        "abc",
+        "aabbcc",
+        "#ggg",
+        "#abg",
+        "#aabbcg",
+        "##abc",
+        "#ab c",
+        "#abc;",
+        "#abc}",
+        "rgb(0,0,0)"
+    ]
+}

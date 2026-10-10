@@ -397,6 +397,8 @@ html.dark [data-atom-slider-bubble] {
 
 [data-atom-calendar-week] {
     position: relative;
+    /* what is raised inside a week (the ghost of a move) stays inside it: a host's overlay is over the whole calendar */
+    isolation: isolate;
 }
 
 /* the cells under the chips: backgrounds, lines, and what a click on empty space lands on */
@@ -547,12 +549,30 @@ html.dark [data-atom-calendar-chip="block"][data-atom-calendar-hex] {
     padding-right: 2px;
 }
 
-/* In a cascade a later item is over the one before it (blocks are in start order, so it is later in the document, and no z-index is
-   needed). One under a pointer or the keyboard comes to the front, so what is covered can be read and reached; 2 is over the other
-   blocks (1) and under the sticky header and gutter (3 and 4). */
-[data-atom-calendar-block]:hover,
-[data-atom-calendar-block]:focus-within {
-    z-index: 2;
+/* A block's own width is what decides what fits in it, not the screen's: it is a container, and a block too narrow for a time (a
+   lane of three in a week column, a week on a phone) drops the time, so the title gets the room. A short block's title is its whole
+   line; a taller block's is two lines. The ghost of a move or a resize is the same item and is measured the same way. */
+[data-atom-calendar-block],
+[data-atom-calendar-preview] {
+    container: atom-calendar-block / inline-size;
+}
+
+@container atom-calendar-block (max-width: 9rem) {
+    [data-atom-calendar-item-time] {
+        display: none;
+    }
+
+    [data-atom-calendar-chip="block"]:not([data-compact]) [data-atom-calendar-item-title],
+    [data-atom-calendar-ghost-body]:not([data-compact]) [data-atom-calendar-item-title] {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        white-space: normal;
+        overflow: hidden;
+        overflow-wrap: anywhere;
+        text-overflow: clip;
+    }
 }
 
 [data-atom-calendar-lines] {

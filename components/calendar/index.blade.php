@@ -84,11 +84,12 @@ data-atom-calendar
         {{-- Everything the engine drives is wire:ignore: Livewire re-renders around it and never into it. --}}
         <div wire:ignore class="flex min-w-0 items-center gap-3">
             @if ($model)
-                <atom:button.group>
-                    <atom:button size="sm" icon="left" :aria-label="t('Previous')" x-on:click="prev()" />
-                    <atom:button size="sm" x-on:click="today()">{{ t('Today') }}</atom:button>
-                    <atom:button size="sm" icon="right" :aria-label="t('Next')" x-on:click="next()" />
-                </atom:button.group>
+                {{-- Ghost, so the buttons take the toolbar's own ground in either theme: the default button is a white box, a slab in dark mode. --}}
+                <div class="flex items-center gap-1">
+                    <atom:button variant="ghost" size="sm" icon="left" :aria-label="t('Previous')" x-on:click="prev()" />
+                    <atom:button variant="ghost" size="sm" x-on:click="today()">{{ t('Today') }}</atom:button>
+                    <atom:button variant="ghost" size="sm" icon="right" :aria-label="t('Next')" x-on:click="next()" />
+                </div>
 
                 <atom:date-picker x-model="jump">
                     <button type="button" x-bind:aria-label="labels.ui?.choose_date" data-atom-calendar-title class="flex items-center gap-1.5 rounded-sm text-base @2xl:text-lg outline-offset-2 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
@@ -306,10 +307,7 @@ data-atom-calendar
                         class="border-l border-zinc-200 dark:border-zinc-700">
                             <template x-for="chip in column.blocks" :key="chip.key">
                                 <div x-bind:style="blockStyle(chip)" data-atom-calendar-block>
-                                    {{-- the tint is translucent in dark mode: an opaque base under it, so a block over another (the cascade) does not show it through --}}
-                                    <div class="h-full rounded-md bg-white dark:bg-zinc-800">
-                                        <atom:calendar.chip />
-                                    </div>
+                                    <atom:calendar.chip />
                                 </div>
                             </template>
 
@@ -321,14 +319,17 @@ data-atom-calendar
 
                             {{-- A gesture in progress (the engine's `preview`): the selection, the item waiting for the host, or
                                  the ghost of one being moved or resized. Over the blocks and the now line, and it takes no pointer. --}}
-                            <template x-for="shape in column.preview" :key="shape.key">
+                            <template x-for="shape in (previews[column.date] ?? [])" :key="shape.key">
                                 <div x-bind:style="blockStyle(shape)" x-bind:data-kind="shape.kind" x-bind:data-before="shape.before ? '' : null" x-bind:data-after="shape.after ? '' : null" aria-hidden="true" data-atom-calendar-preview>
                                     <template x-if="shape.kind === 'select'">
-                                        <div class="h-full overflow-hidden rounded-md bg-zinc-900/5 px-1.5 py-0.5 text-xs font-medium tabular-nums text-zinc-700 ring-1 ring-inset ring-zinc-500 dark:bg-white/10 dark:text-zinc-200 dark:ring-zinc-400" x-text="timeRange(shape)"></div>
+                                        {{-- a shape of its own is on a ground of its own: what is under a selection or an item waiting for the host (an item in the same hours) must not show through its label --}}
+                                        <div class="h-full rounded-md bg-white dark:bg-zinc-800">
+                                            <div class="h-full overflow-hidden rounded-md bg-zinc-900/5 px-1.5 py-0.5 text-xs font-medium tabular-nums text-zinc-700 ring-1 ring-inset ring-zinc-500 dark:bg-white/10 dark:text-zinc-200 dark:ring-zinc-400" x-text="timeRange(shape)"></div>
+                                        </div>
                                     </template>
 
                                     <template x-if="shape.kind === 'pending'">
-                                        <div data-atom-calendar-pending class="flex h-full flex-col overflow-hidden rounded-md px-1.5 py-0.5 text-xs text-zinc-700 ring-1 ring-inset ring-zinc-500 dark:text-zinc-200 dark:ring-zinc-400">
+                                        <div data-atom-calendar-pending class="flex h-full flex-col overflow-hidden rounded-md bg-white px-1.5 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 ring-1 ring-inset ring-zinc-500 dark:text-zinc-200 dark:ring-zinc-400">
                                             <span class="flex min-w-0 items-center gap-1 font-semibold">
                                                 <span x-effect="setIcon($el, 'loading')" class="inline-flex shrink-0"></span>
                                                 <span x-text="shape.title || timeRange(shape)" class="truncate"></span>
@@ -342,13 +343,14 @@ data-atom-calendar
                                             x-bind:class="[colorClass(shape, 'tint'), shape.danger ? 'border-red-600 dark:border-red-400' : colorClass(shape, 'accent')]"
                                             x-bind:style="hue(shape)"
                                             x-bind:data-atom-calendar-hex="isHex(shape) && !shape.danger ? '' : null"
+                                            x-bind:data-compact="shape.compact ? '' : null"
                                             data-atom-calendar-ghost-body
                                             class="flex h-full min-w-0 flex-col overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-xs">
                                                 <span class="flex min-w-0 items-center gap-1">
-                                                    <span x-text="shape.title" x-bind:class="shape.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" class="truncate font-semibold"></span>
-                                                    <span x-show="shape.compact" x-text="'· ' + timeLabel(shape)" class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
+                                                    <span x-text="shape.title" x-bind:class="shape.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" data-atom-calendar-item-title class="truncate font-semibold"></span>
+                                                    <span x-show="shape.compact" x-text="'· ' + timeLabel(shape)" data-atom-calendar-item-time class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
                                                 </span>
-                                                <span x-show="!shape.compact" x-text="timeRange(shape)" class="truncate font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
+                                                <span x-show="!shape.compact" x-text="timeRange(shape)" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
                                             </div>
 
                                             <template x-if="shape.kind === 'resize'">

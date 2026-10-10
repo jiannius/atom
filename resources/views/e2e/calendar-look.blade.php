@@ -4,8 +4,7 @@
      on its own is the structure atom.css owns; the look is read with Tailwind injected (the contact sheet, tests/e2e/calendar-look.spec.js).
 
      The gestures that draw a selection, a ghost or a pending item are not wired yet, so a state is set on the engine by hand:
-     ?state=select|move|resize|pending|popover, or window.atomLook.apply(state) once the page is up. ?overlap=cascade lays
-     overlapping items out one over the next instead of side by side (a prototype, see the engine's `overlap`). ?view=week|day|month,
+     ?state=select|move|resize|pending|popover, or window.atomLook.apply(state) once the page is up. ?view=week|day|month,
      ?locale=zh and ?scroll=HH:MM as in the other calendar pages. --}}
 <livewire:atom-e2e-calendar-look />
 
@@ -35,12 +34,11 @@
     window.atomLook = {
         engine: () => window.Alpine.$data(document.querySelector('[data-atom-calendar]')),
 
-        apply (state = 'none', overlap = 'lanes') {
+        apply (state = 'none') {
             const engine = this.engine()
 
             engine.closeDay(false)
             engine.preview = null
-            engine.overlap = overlap === 'cascade' ? 'cascade' : 'lanes'
 
             if (state === 'popover') {
                 // a busy month day, or the all-day row's "+N more" in the week
@@ -58,7 +56,7 @@
     document.addEventListener('alpine:initialized', () => {
         const query = new URLSearchParams(location.search)
 
-        if (query.has('state') || query.has('overlap')) window.atomLook.apply(query.get('state') ?? 'none', query.get('overlap') ?? 'lanes')
+        if (query.has('state')) window.atomLook.apply(query.get('state'))
     })
 </script>
 

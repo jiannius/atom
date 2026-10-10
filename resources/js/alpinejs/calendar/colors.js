@@ -13,13 +13,13 @@ export const EDGE_CONTRAST = 3.4
 
 // #rgb, #rgba, #rrggbb or #rrggbbaa as [r, g, b], or null; the alpha is left out, as the item's tint is drawn from the colour alone
 export const parseHex = (value) => {
-    let digits = typeof value === 'string' ? value.replace(/^#/, '') : ''
+    // the hash is part of it, as in the server's Color::isHex() and the engine's isHex(): `abc` is no colour
+    let digits = typeof value === 'string' && /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value) ? value.slice(1) : null
 
-    if (!/^[0-9a-f]+$/i.test(digits)) return null
+    if (digits === null) return null
 
-    if (digits.length === 3 || digits.length === 4) digits = [...digits.slice(0, 3)].map((digit) => digit + digit).join('')
-    else if (digits.length === 6 || digits.length === 8) digits = digits.slice(0, 6)
-    else return null
+    if (digits.length <= 4) digits = [...digits.slice(0, 3)].map((digit) => digit + digit).join('')
+    else digits = digits.slice(0, 6)
 
     return [0, 2, 4].map((at) => parseInt(digits.slice(at, at + 2), 16))
 }

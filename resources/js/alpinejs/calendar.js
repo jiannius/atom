@@ -3,7 +3,7 @@ import safeUrl from '../helpers/safe-url.js'
 import { edgeColors } from './calendar/colors.js'
 import { addDays, addMonths, dateOf, fromLocalDate, minuteOf, monthOf, nowAt, parseDate, toLocalDate } from './calendar/dates.js'
 import { format } from './calendar/format.js'
-import { DAY_MINUTES, timeGrid } from './calendar/grid.js'
+import { DAY_MINUTES, isLifted, previewShapes, timeGrid } from './calendar/grid.js'
 import { dayEntries, isBar, monthLayout } from './calendar/layout.js'
 
 // <atom:calendar>. The server computes the window, the labels and the items and hands them over as one
@@ -28,7 +28,8 @@ const SCROLL_MARGIN = 8
 
 const pad = (n) => String(n).padStart(2, '0')
 
-const HEX = /^#[0-9a-f]{3,8}$/i
+// 3, 4, 6 or 8 digits (#rgb, #rgba, #rrggbb, #rrggbbaa), as the server's Color::isHex() and colors.js read them: a 5 or 7 digit one is no colour
+const HEX = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 
 // a title's year, when the locale writes it last
 const YEAR_AT_END = /\s*Y$/
@@ -56,9 +57,6 @@ export default () => ({
     // strings, or null. The gestures that set it (selecting, dragging and resizing) are not wired yet: this is the state they
     // will set, and the look fixture sets it by hand to show each one. See previewBlocks() in calendar/grid.js.
     preview: null,
-    // How timed items that overlap are laid out in the week and day views: 'lanes' side by side, or 'cascade' one over the next.
-    // Only the look fixture sets 'cascade', so the two can be compared (see packCascade() in calendar/grid.js).
-    overlap: 'lanes',
     hours: Array.from({ length: 24 }, (_, hour) => hour),
 
     get labels () {
@@ -132,9 +130,15 @@ export default () => ({
             today: this.todayDate,
             max: this.config.max ?? null,
             slotDuration: this.config.slotDuration ?? 30,
-            overlap: this.overlap,
-            preview: this.preview,
         })
+    },
+
+    // What a gesture in progress draws in each column of the time grid, by date. Apart from `grid` on purpose: the blocks are laid out
+    // from the payload alone, so a preview that changes (a drag changes it on every move) leaves them as they are.
+    get previews () {
+        if (!this.payload || this.view === 'month') return {}
+
+        return previewShapes(this.grid.columns, this.payload.items, this.preview, { slotDuration: this.config.slotDuration ?? 30 })
     },
 
     // The gutter's labels: the time format without its minutes ("9 AM"), or a 24-hour one as it is ("09:00").
@@ -462,6 +466,11 @@ export default () => ({
 
         event.preventDefault()
         this.itemClick(chip, event)
+    },
+
+    // The original of an item being moved or resized is drawn faint while its ghost is up
+    isLifted (chip) {
+        return isLifted(this.preview, chip.id)
     },
 
     // Preset names map to the classes the Blade file printed; a hex colour has none and is painted

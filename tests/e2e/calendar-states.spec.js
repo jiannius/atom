@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { CASCADE_MAX, CASCADE_STEP, columnBlocks, previewBlocks, timeGrid } from '../../resources/js/alpinejs/calendar/grid.js'
+import { isLifted, previewBlocks, previewShapes, timeGrid } from '../../resources/js/alpinejs/calendar/grid.js'
 import { monthLayout } from '../../resources/js/alpinejs/calendar/layout.js'
 import { EDGE_CONTRAST, contrast, DARK_GROUND, edgeColors, LIGHT_GROUND, parseHex } from '../../resources/js/alpinejs/calendar/colors.js'
 import { addDays } from '../../resources/js/alpinejs/calendar/dates.js'
 
-// The states a gesture draws (a selection, an item waiting for the host, the ghost of a move or a resize), the cascade way of laying
-// out overlapping items, and the colours of a hex item's edge. All pure: items in, shapes out. The gestures that set the state are
+// The states a gesture draws (a selection, an item waiting for the host, the ghost of a move or a resize) and the colours of a hex
+// item's edge. All pure: items in, shapes out. The gestures that set the state are
 // not wired yet; the shapes are what they will set, and tests/e2e/calendar-look.spec.js looks at them in a browser.
 
 const bar = (id, start, end = null, extra = {}) => ({ id, title: String(id), start, end, allDay: true, color: null, icon: null, danger: false, href: null, ...extra })
@@ -66,49 +66,56 @@ test.describe('what a move and a resize draw in the time grid', () => {
         timed('design', '2026-10-09T10:00', '2026-10-09T11:30', { color: 'orange', title: 'Design review' }),
         timed('client', '2026-10-09T10:00', '2026-10-09T11:00', { color: 'red', title: 'Client call' }),
     ]
+    const grid = timeGrid(week, items, { today: '2026-10-09' })
+    const shapesFor = (preview) => previewShapes(grid.columns, items, preview)
 
     test('the item as it would be at the new time, with its own colour and title', () => {
-        const preview = { kind: 'move', id: 'design', start: '2026-10-08T13:30', end: '2026-10-08T15:00' }
-        const grid = timeGrid(week, items, { today: '2026-10-09', preview })
-        const column = grid.columns.find((c) => c.date === '2026-10-08')
+        const shapes = shapesFor({ kind: 'move', id: 'design', start: '2026-10-08T13:30', end: '2026-10-08T15:00' })
 
-        expect(column.preview).toHaveLength(1)
-        expect(column.preview[0]).toMatchObject({ kind: 'move', title: 'Design review', color: 'orange', start: '2026-10-08T13:30', end: '2026-10-08T15:00' })
-        expect(column.preview[0].top).toBeCloseTo(13.5 / 24 * 100, 3)
-        // the other days have none
-        expect(grid.columns.filter((c) => c.preview.length).map((c) => c.date)).toEqual(['2026-10-08'])
+        expect(shapes['2026-10-08']).toHaveLength(1)
+        expect(shapes['2026-10-08'][0]).toMatchObject({ kind: 'move', title: 'Design review', color: 'orange', start: '2026-10-08T13:30', end: '2026-10-08T15:00' })
+        expect(shapes['2026-10-08'][0].top).toBeCloseTo(13.5 / 24 * 100, 3)
+        // every column has a key, and the other days have none
+        expect(Object.keys(shapes)).toEqual(week.map((day) => day.date))
+        expect(Object.entries(shapes).filter(([, list]) => list.length).map(([date]) => date)).toEqual(['2026-10-08'])
     })
 
-    test('the original stays where it is, lifted; the others are not', () => {
-        const grid = timeGrid(week, items, { today: '2026-10-09', preview: { kind: 'move', id: 'design', start: '2026-10-08T13:30', end: '2026-10-08T15:00' } })
+    test('the original stays where it is, and is lifted while a move or a resize is up: by the preview, not by the block', () => {
+        const preview = { kind: 'move', id: 'design', start: '2026-10-08T13:30', end: '2026-10-08T15:00' }
         const blocks = grid.columns.find((c) => c.date === '2026-10-09').blocks
 
-        expect(blocks.find((b) => b.id === 'design')).toMatchObject({ lifted: true, top: expect.closeTo(10 / 24 * 100, 3) })
-        expect(blocks.find((b) => b.id === 'client').lifted).toBe(false)
+        // the grid knows nothing of the preview: nothing on a block says lifted, so a preview that changes leaves every block as it is
+        expect(blocks.some((b) => 'lifted' in b)).toBe(false)
+        expect(blocks.find((b) => b.id === 'design').top).toBeCloseTo(10 / 24 * 100, 3)
+
+        expect(isLifted(preview, 'design')).toBe(true)
+        expect(isLifted(preview, 'client')).toBe(false)
+        expect(isLifted({ ...preview, kind: 'resize' }, 'design')).toBe(true)
+        // an id that is a number in the payload and a string in the preview is the same item
+        expect(isLifted({ ...preview, id: '7' }, 7)).toBe(true)
     })
 
     test('a resize keeps the lane of the item it resizes, and only the end moves', () => {
-        const preview = { kind: 'resize', id: 'client', start: '2026-10-09T10:00', end: '2026-10-09T12:15' }
-        const column = timeGrid(week, items, { today: '2026-10-09', preview }).columns.find((c) => c.date === '2026-10-09')
-        const lane = column.blocks.find((b) => b.id === 'client')
+        const shapes = shapesFor({ kind: 'resize', id: 'client', start: '2026-10-09T10:00', end: '2026-10-09T12:15' })['2026-10-09']
+        const lane = grid.columns.find((c) => c.date === '2026-10-09').blocks.find((b) => b.id === 'client')
 
         expect(lane.width).toBe(50)
-        expect(column.preview[0]).toMatchObject({ kind: 'resize', left: lane.left, width: lane.width })
-        expect(column.preview[0].top).toBeCloseTo(lane.top, 3)
-        expect(column.preview[0].height).toBeCloseTo(2.25 / 24 * 100, 3)
+        expect(shapes[0]).toMatchObject({ kind: 'resize', left: lane.left, width: lane.width })
+        expect(shapes[0].top).toBeCloseTo(lane.top, 3)
+        expect(shapes[0].height).toBeCloseTo(2.25 / 24 * 100, 3)
     })
 
     test('an item that is not there is a ghost with no title of its own, and nothing is lifted', () => {
-        const grid = timeGrid(week, items, { today: '2026-10-09', preview: { kind: 'move', id: 'gone', start: '2026-10-09T09:00', end: '2026-10-09T10:00' } })
+        const preview = { kind: 'move', id: 'gone', start: '2026-10-09T09:00', end: '2026-10-09T10:00' }
 
-        expect(grid.columns.flatMap((c) => c.blocks).some((b) => b.lifted)).toBe(false)
-        expect(grid.columns.find((c) => c.date === '2026-10-09').preview[0].title).toBe('')
+        expect(shapesFor(preview)['2026-10-09'][0].title).toBe('')
+        expect(items.some((item) => isLifted(preview, item.id))).toBe(false)
     })
 
-    test('a selection lifts nothing', () => {
-        const grid = timeGrid(week, items, { today: '2026-10-09', preview: { kind: 'select', id: 'design', start: '2026-10-09T10:00', end: '2026-10-09T11:00' } })
-
-        expect(grid.columns.flatMap((c) => c.blocks).some((b) => b.lifted)).toBe(false)
+    test('a selection, an item waiting for the host and no preview lift nothing', () => {
+        for (const preview of [{ kind: 'select', id: 'design', start: '2026-10-09T10:00', end: '2026-10-09T11:00' }, { kind: 'pending', id: 'design', start: '2026-10-09T10:00', end: '2026-10-09T11:00' }, null, { kind: 'move', start: '2026-10-09T10:00', end: '2026-10-09T11:00' }]) {
+            expect(items.some((item) => isLifted(preview, item.id))).toBe(false)
+        }
     })
 })
 
@@ -167,61 +174,6 @@ test.describe('what a gesture draws in the month', () => {
 
         expect(weeks.every((w) => w.selection === null && w.ghost === null)).toBe(true)
         expect(weeks.flatMap((w) => w.days).some((d) => d.selected)).toBe(false)
-    })
-})
-
-test.describe('overlapping items one over the next (the cascade)', () => {
-    const cascade = (items, date = '2026-10-09') => columnBlocks(items, date, { overlap: 'cascade' })
-    const block = (list, id) => list.find((b) => b.id === id)
-
-    test('items that start together share a level side by side; a later start goes one level in, over them', () => {
-        const list = cascade([
-            timed('a', '2026-10-09T09:00', '2026-10-09T10:30'),
-            timed('b', '2026-10-09T09:00', '2026-10-09T10:00'),
-            timed('c', '2026-10-09T09:30', '2026-10-09T11:00'),
-        ])
-
-        // a and b are one group at level 0: half of the column each
-        expect(block(list, 'a')).toMatchObject({ left: 0, width: 50, level: 0 })
-        expect(block(list, 'b')).toMatchObject({ left: 50, width: 50, level: 0 })
-        // c is one level in, as wide as is left, and in front
-        expect(block(list, 'c')).toMatchObject({ left: CASCADE_STEP, width: 100 - CASCADE_STEP, level: 1 })
-    })
-
-    test('an item alone is the whole column, and two that do not overlap are not a cascade', () => {
-        const list = cascade([timed('a', '2026-10-09T09:00', '2026-10-09T10:00'), timed('b', '2026-10-09T10:00', '2026-10-09T11:00')])
-
-        expect(block(list, 'a')).toMatchObject({ left: 0, width: 100, level: 0 })
-        expect(block(list, 'b')).toMatchObject({ left: 0, width: 100, level: 0 })
-    })
-
-    test('a chain goes one level in each step, and never further in than CASCADE_MAX of the column in all', () => {
-        const items = Array.from({ length: 8 }, (_, i) => timed('t' + i, `2026-10-09T${String(9 + i).padStart(2, '0')}:00`, '2026-10-09T18:00'))
-        const list = cascade(items)
-
-        expect(block(list, 't1').level).toBe(1)
-        expect(block(list, 't7').level).toBe(7)
-        expect(Math.max(...list.map((b) => b.left))).toBeLessThanOrEqual(CASCADE_MAX + 0.001)
-        // each is in front of the one before it, and wide enough to read
-        expect(list.map((b) => b.level)).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
-        expect(Math.min(...list.map((b) => b.width))).toBeGreaterThanOrEqual(100 - CASCADE_MAX - 0.001)
-    })
-
-    test('a later item inside a longer one goes in one level, and one that starts after the first ended goes back out', () => {
-        const list = cascade([
-            timed('long', '2026-10-09T09:00', '2026-10-09T12:00'),
-            timed('inside', '2026-10-09T10:00', '2026-10-09T10:30'),
-            timed('after', '2026-10-09T12:00', '2026-10-09T13:00'),
-        ])
-
-        expect(block(list, 'inside').level).toBe(1)
-        expect(block(list, 'after')).toMatchObject({ level: 0, left: 0, width: 100 })
-    })
-
-    test('the default is side by side, as before', () => {
-        const items = [timed('a', '2026-10-09T09:00', '2026-10-09T10:00'), timed('b', '2026-10-09T09:30', '2026-10-09T10:30')]
-
-        expect(columnBlocks(items, '2026-10-09').map((b) => [b.left, b.width, b.level])).toEqual([[0, 50, 0], [50, 50, 0]])
     })
 })
 

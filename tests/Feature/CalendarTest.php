@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Exceptions;
 use Jiannius\Atom\Services\Calendar;
 use Jiannius\Atom\Services\CalendarItem;
 use Jiannius\Atom\Services\Carbon;
+use Jiannius\Atom\Services\Color;
 
 enum CalendarTestStatus: string
 {
@@ -700,6 +701,23 @@ describe('calendar item safety', function () {
         'an array' => [['red'], null],
         'nothing' => [null, null],
     ]);
+
+    it('reads a hex of 3, 4, 6 or 8 digits and no other length, the same corpus the browser is held to', function () {
+        $corpus = json_decode(file_get_contents(__DIR__.'/../Fixtures/calendar-hex-corpus.json'), true, 512, JSON_THROW_ON_ERROR);
+
+        expect($corpus['hex'])->not->toBeEmpty()->and($corpus['notHex'])->not->toBeEmpty();
+
+        foreach ($corpus['hex'] as $value) {
+            expect(Color::isHex($value))->toBeTrue($value);
+            // on the item it is lower-cased and is the colour
+            expect(calendarTestItem(['start' => '2026-10-09', 'color' => $value])['color'])->toBe(strtolower($value));
+        }
+
+        foreach ($corpus['notHex'] as $value) {
+            expect(Color::isHex($value))->toBeFalse($value);
+            expect(calendarTestItem(['start' => '2026-10-09', 'color' => $value])['color'])->toBeNull($value);
+        }
+    });
 
     it('takes a colour from an enum that has color()', function () {
         expect(calendarTestItem(['start' => '2026-10-09', 'color' => CalendarTestStatus::DONE])['color'])->toBe('green');

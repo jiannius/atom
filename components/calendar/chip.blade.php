@@ -63,7 +63,7 @@
     x-bind:data-before="chip.before ? '' : null"
     x-bind:data-after="chip.after ? '' : null"
     x-bind:data-compact="chip.compact ? '' : null"
-    x-bind:data-lifted="chip.lifted ? '' : null"
+    x-bind:data-lifted="isLifted(chip) ? '' : null"
     x-bind:data-atom-calendar-hex="isHex(chip) && !chip.danger ? '' : null"
     x-bind:style="hue(chip)"
     x-bind:class="[colorClass(chip, 'tint'), chip.danger ? 'border-red-600 dark:border-red-400' : colorClass(chip, 'accent')]"
@@ -74,10 +74,10 @@
     class="flex h-full w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-xs ring-1 ring-white dark:ring-zinc-800 outline-offset-1 hover:brightness-95 dark:hover:brightness-125 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
         <span class="flex min-w-0 items-center gap-1">
             <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-600 dark:text-zinc-300'" class="inline-flex shrink-0"></span>
-            <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" class="truncate font-semibold"></span>
-            <span x-show="chip.compact" x-text="'· ' + timeLabel(chip)" class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
+            <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" data-atom-calendar-item-title class="truncate font-semibold"></span>
+            <span x-show="chip.compact" x-text="'· ' + timeLabel(chip)" data-atom-calendar-item-time class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
             <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
         </span>
-        <span x-show="!chip.compact" x-text="timeRange(chip)" class="truncate font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
+        <span x-show="!chip.compact" x-text="timeRange(chip)" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
     </a>
 </template>

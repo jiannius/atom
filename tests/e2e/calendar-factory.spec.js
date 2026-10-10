@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { test, expect } from '@playwright/test'
 import calendar from '../../resources/js/alpinejs/calendar.js'
+import { parseHex } from '../../resources/js/alpinejs/calendar/colors.js'
 import { addDays } from '../../resources/js/alpinejs/calendar/dates.js'
 
 // The calendar factory's own logic, driven in node with no Alpine and no DOM: a payload is put on it
@@ -39,6 +42,39 @@ test.describe('colour classes', () => {
 
         expect(engine.colorClass({ color: 'red' }, 'tint')).toBe('tint-red')
         expect(engine.colorClass({ color: '#ff8800' }, 'tint')).toBe('')
+    })
+})
+
+// One corpus for both sides: tests/Fixtures/calendar-hex-corpus.json is also read by tests/Feature/CalendarTest.php, which holds the server's
+// Color::isHex() and the item's colour to it. Three places read a hex (the server, the engine's isHex() and colors.js's parseHex()), and a
+// length one of them takes and another does not paints an item with a tint and no edge, or no tint and an edge.
+const hexCorpus = JSON.parse(readFileSync(join(process.cwd(), 'tests/Fixtures/calendar-hex-corpus.json'), 'utf8'))
+
+test.describe('what is a hex colour', () => {
+    test('3, 4, 6 and 8 digits are, whatever the case', () => {
+        const engine = calendar()
+
+        expect(hexCorpus.hex.length).toBeGreaterThan(10)
+
+        for (const value of hexCorpus.hex) {
+            expect(engine.isHex({ color: value }), value).toBe(true)
+            expect(parseHex(value), value).not.toBe(null)
+        }
+    })
+
+    test('no other length is, nor anything that is not hex digits after the hash (5 and 7 digits used to be)', () => {
+        const engine = calendar()
+
+        expect(hexCorpus.notHex.length).toBeGreaterThan(10)
+
+        for (const value of hexCorpus.notHex) {
+            expect(engine.isHex({ color: value }), value).toBe(false)
+            expect(parseHex(value), value).toBe(null)
+        }
+
+        // an item with no colour, or one that is not a string
+        expect(engine.isHex({ color: null })).toBe(false)
+        expect(engine.isHex({ color: 0x00ff00 })).toBe(false)
     })
 })
 
@@ -281,5 +317,47 @@ test.describe('blocks', () => {
 
         expect(engine.timeRange({ start: '2026-10-09T09:30', end: '2026-10-09T10:00' })).toBe('9:30 AM – 10:00 AM')
         expect(engine.timeRange({ start: '2026-10-09T15:00', end: null })).toBe('3:00 PM')
+    })
+})
+
+test.describe('the preview and the grid', () => {
+    const timedItem = (id, start, end) => ({ id, title: id, start, end, allDay: false, color: 'blue', icon: null, danger: false, href: null })
+
+    test('the grid is laid out from the payload alone: a preview that changes does not change it, and `previews` has a key for every column', () => {
+        const engine = engineAt(windowFrom('2026-09-28'), 'week', '2026-10-09')
+
+        engine.payload.items = [timedItem('a', '2026-10-09T10:00', '2026-10-09T11:00'), timedItem('b', '2026-10-09T10:30', '2026-10-09T11:30')]
+
+        const before = JSON.stringify(engine.grid)
+
+        expect(Object.keys(engine.previews)).toEqual(engine.grid.columns.map((column) => column.date))
+
+        for (const preview of [{ kind: 'select', start: '2026-10-09T09:00', end: '2026-10-09T10:00' }, { kind: 'move', id: 'a', start: '2026-10-10T09:00', end: '2026-10-10T10:00' }, { kind: 'resize', id: 'b', start: '2026-10-09T10:30', end: '2026-10-09T12:30' }]) {
+            engine.preview = preview
+
+            expect(JSON.stringify(engine.grid)).toBe(before)
+        }
+    })
+
+    test('what a preview draws is its own: shapes in the column it is in, and the original is lifted by the template from the preview', () => {
+        const engine = engineAt(windowFrom('2026-09-28'), 'week', '2026-10-09')
+
+        engine.payload.items = [timedItem('a', '2026-10-09T10:00', '2026-10-09T11:00'), timedItem('b', '2026-10-09T10:30', '2026-10-09T11:30')]
+        engine.preview = { kind: 'resize', id: 'b', start: '2026-10-09T10:30', end: '2026-10-09T12:30' }
+
+        // b is the second lane of two; its ghost keeps it
+        expect(engine.previews['2026-10-09']).toHaveLength(1)
+        expect(engine.previews['2026-10-09'][0]).toMatchObject({ kind: 'resize', left: 50, width: 50 })
+        expect(engine.isLifted({ id: 'b' })).toBe(true)
+        expect(engine.isLifted({ id: 'a' })).toBe(false)
+
+        engine.preview = null
+
+        expect(engine.isLifted({ id: 'b' })).toBe(false)
+        expect(Object.values(engine.previews).flat()).toEqual([])
+
+        // no grid in the month view, so nothing to draw on
+        engine.view = 'month'
+        expect(engine.previews).toEqual({})
     })
 })
