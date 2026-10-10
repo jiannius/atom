@@ -836,6 +836,47 @@ describe('calendar payload', function () {
     });
 });
 
+describe('the week title', function () {
+    it('has a pair of display formats, first day and last day, for a week in a month, over two months and over two years', function () {
+        $titles = Calendar::make()->labels()['week_title'];
+
+        expect($titles)->toBe([
+            'same_month' => ['j', 'j F Y'],
+            'cross_month' => ['j M', 'j M Y'],
+            'cross_year' => ['j M Y', 'j M Y'],
+        ]);
+    });
+
+    it('uses only formats the browser formatter prints, in every locale', function (string $locale) {
+        app()->setLocale($locale);
+
+        foreach (Calendar::make()->labels()['week_title'] as $shape => $pair) {
+            expect($pair)->toHaveCount(2, $shape);
+
+            foreach ($pair as $format) {
+                expect(Calendar::isFormat($format))->toBeTrue("{$locale} {$shape}: {$format}");
+            }
+        }
+    })->with(['en', 'ms', 'zh', 'zh_CN', 'zh-TW', 'fr', 'ru']);
+
+    it('reads like English in Malay and in a locale with no patterns of its own', function (string $locale) {
+        app()->setLocale($locale);
+
+        expect(Calendar::make()->labels()['week_title'])->toBe(Calendar::weekTitle('en'));
+    })->with(['ms', 'fr', 'ru']);
+
+    it('writes Chinese year first, and the day alone for the end of a week in the same month', function (string $locale) {
+        app()->setLocale($locale);
+
+        $titles = Calendar::make()->labels()['week_title'];
+        $print = fn (string $shape, string $first, string $last) => Calendar::format(Carbon::parse($first), $titles[$shape][0]).' – '.Calendar::format(Carbon::parse($last), $titles[$shape][1]);
+
+        expect($print('same_month', '2026-10-05', '2026-10-11'))->toBe('2026年10月5日 – 11日')
+            ->and($print('cross_month', '2026-10-26', '2026-11-01'))->toBe('2026年10月26日 – 11月1日')
+            ->and($print('cross_year', '2026-12-28', '2027-01-03'))->toBe('2026年12月28日 – 2027年1月3日');
+    })->with(['zh', 'zh_CN', 'zh-TW']);
+});
+
 describe('calendar config', function () {
     it('defaults to a month view, Monday, a Saturday and Sunday weekend, 3 rows, 12-hour time and drag on', function () {
         expect(Calendar::make()->config())->toBe([

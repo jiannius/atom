@@ -329,8 +329,9 @@ class Calendar
      * `month_forms` holds the month names that change with the day of the month in the format (ru, pl, cs, uk, hr, lt: genitive
      * in `j F`), as `day_before` (a day token earlier in the format) and `day_after` lists, and only where they differ from the
      * standalone ones. One more known gap: ka prints a weekday differently beside other tokens.
+     * `week_title` is how the week view's title is written in the locale, see weekTitle().
      *
-     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string>}
+     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, week_title: array<string, list<string>>, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string>}
      */
     public function labels(): array
     {
@@ -355,6 +356,7 @@ class Calendar
             'months' => $months,
             'months_short' => $monthsShort,
             'month_forms' => self::monthForms($locale, ['F' => $months, 'M' => $monthsShort]),
+            'week_title' => self::weekTitle($locale),
             'meridiem' => self::meridiemTransitions($locale),
             'am' => (string) __('AM'),
             'pm' => (string) __('PM'),
@@ -373,6 +375,34 @@ class Calendar
                 'close' => (string) __('Close'),
                 'choose_date' => (string) __('Choose date'),
             ],
+        ];
+    }
+
+    /**
+     * How the week view's title is written in a locale: the first day's display format and the last day's, for a week inside
+     * one month, over two months and over two years (`5 – 11 October 2026`, `28 Sep – 4 Oct 2026`, `28 Dec 2026 – 3 Jan 2027`).
+     *
+     * The browser prints each end with FORMAT_TOKENS and puts ` – ` between them, so the order of year, month and day is the
+     * locale's and not the browser's: Chinese writes `2026年10月5日 – 11日`. A trailing `Y` in the last format is split off as the
+     * year, which the title shows lighter. A locale without its own patterns reads like English, day before month before year.
+     * Not tied to the `date-format` prop, which is for the dates inside the views.
+     *
+     * @return array{same_month: list<string>, cross_month: list<string>, cross_year: list<string>}
+     */
+    public static function weekTitle(string $locale): array
+    {
+        if (str_starts_with(strtolower($locale), 'zh')) {
+            return [
+                'same_month' => ['Y年n月j日', 'j日'],
+                'cross_month' => ['Y年n月j日', 'n月j日'],
+                'cross_year' => ['Y年n月j日', 'Y年n月j日'],
+            ];
+        }
+
+        return [
+            'same_month' => ['j', 'j F Y'],
+            'cross_month' => ['j M', 'j M Y'],
+            'cross_year' => ['j M Y', 'j M Y'],
         ];
     }
 
