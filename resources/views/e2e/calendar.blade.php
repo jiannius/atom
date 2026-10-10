@@ -5,6 +5,7 @@
      leans on, so a chip has a size and a click lands where it would in an app. They name no calendar element:
      the markup's class list decides, and what atom.css owns (the grid) stays atom.css's. --}}
 <style>
+    *, ::before, ::after { box-sizing: border-box }
     .flex { display: flex }
     .inline-flex { display: inline-flex }
     .items-center { align-items: center }
@@ -15,6 +16,9 @@
     .shrink-0 { flex-shrink: 0 }
     .min-w-0 { min-width: 0 }
     .w-full { width: 100% }
+    .h-full { height: 100% }
+    .flex-col { flex-direction: column }
+    .overflow-hidden { overflow: hidden }
     .w-64 { width: 16rem }
     .h-5 { height: 1.25rem }
     .h-6 { height: 1.5rem }

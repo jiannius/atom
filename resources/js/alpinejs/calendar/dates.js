@@ -81,3 +81,26 @@ export const toLocalDate = (date) => {
 
     return new Date(y, m - 1, d).toISOString()
 }
+
+// A moment's time as minutes after midnight; a bare date is 0.
+export const minuteOf = (moment) => {
+    let { h, i } = parseTime(moment)
+
+    return h * 60 + i
+}
+
+// What the clock reads `elapsed` milliseconds after the server said it was `seed` (`YYYY-MM-DDTHH:mm:ss`),
+// as `YYYY-MM-DDTHH:mm`, or '' when the seed is not a moment. The wall clock simply carries on from the seed:
+// nothing is converted, so a day with a daylight-saving change is off by the hour it moved by until the
+// server says the time again.
+export const nowAt = (seed, elapsed) => {
+    let match = /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})/.exec(String(seed))
+
+    if (!match || !parseDate(match[1]) || !Number.isFinite(elapsed)) return ''
+
+    let seconds = Number(match[2]) * 3600 + Number(match[3]) * 60 + Number(match[4]) + Math.max(0, Math.floor(elapsed / 1000))
+    let days = Math.floor(seconds / 86400)
+    let rest = seconds - days * 86400
+
+    return addDays(match[1], days) + 'T' + pad(Math.floor(rest / 3600)) + ':' + pad(Math.floor((rest % 3600) / 60))
+}

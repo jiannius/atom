@@ -1,7 +1,8 @@
 import floatingui from '../helpers/floatingui.js'
 import safeUrl from '../helpers/safe-url.js'
-import { addMonths, dateOf, fromLocalDate, monthOf, parseDate, toLocalDate } from './calendar/dates.js'
+import { addDays, addMonths, dateOf, fromLocalDate, minuteOf, monthOf, nowAt, parseDate, toLocalDate } from './calendar/dates.js'
 import { format } from './calendar/format.js'
+import { DAY_MINUTES, timeGrid } from './calendar/grid.js'
 import { dayEntries, isBar, monthLayout } from './calendar/layout.js'
 
 // <atom:calendar>. The server computes the window, the labels and the items and hands them over as one
@@ -11,8 +12,19 @@ import { dayEntries, isBar, monthLayout } from './calendar/layout.js'
 // only, and every colour class comes from the palette the Blade file prints (class strings stay in Blade
 // so the host's Tailwind sees them).
 
-// The views the body can draw. The payload's config may ask for more; week and day come with the time grid.
-const IMPLEMENTED_VIEWS = ['month']
+// The views the body can draw. The payload's config may ask for fewer, never for more.
+const IMPLEMENTED_VIEWS = ['month', 'week', 'day']
+
+// How often the browser looks at its clock for the now line. It moves when the minute does.
+const CLOCK_INTERVAL = 10000
+
+// The shortest a block is drawn; atom.css sets the same 20px as its min-height, and the block is moved up to fit above the day's end.
+const MIN_BLOCK = '20px'
+
+// How far under the header the scroll-time line is put, in px
+const SCROLL_MARGIN = 8
+
+const pad = (n) => String(n).padStart(2, '0')
 
 const HEX = /^#[0-9a-f]{3,8}$/i
 
@@ -28,6 +40,11 @@ export default () => ({
     requests: 0,
     jump: null,
     popoverDate: null,
+    // the wall-clock minute the now line stands at, `YYYY-MM-DDTHH:mm`: the server's clock, carried on by the browser's
+    nowMoment: '',
+    clockSeed: null,
+    scrollPending: false,
+    hours: Array.from({ length: 24 }, (_, hour) => hour),
 
     get labels () {
         return this.payload?.labels ?? {}
@@ -41,16 +58,66 @@ export default () => ({
         return (this.config.views ?? []).filter((view) => IMPLEMENTED_VIEWS.includes(view))
     },
 
-    // The month view always shows the window the server built around its anchor, and names that month.
+    // What the toolbar names: the month the server built the window around, or the week or day on screen.
     get title () {
-        let date = this.payload?.anchor
+        if (!this.payload) return { month: '', year: '', text: '' }
 
-        if (!date) return { month: '', year: '', text: '' }
+        let text = (month, year) => ({ month, year, text: month + ' ' + year })
+        let labels = this.labels
 
-        let month = format(date, 'F', this.labels)
-        let year = format(date, 'Y', this.labels)
+        if (this.view === 'month') {
+            let date = this.payload.anchor
 
-        return { month, year, text: month + ' ' + year }
+            return text(format(date, 'F', labels), format(date, 'Y', labels))
+        }
+
+        let days = this.gridDays
+
+        if (!days.length) return { month: '', year: '', text: '' }
+
+        let first = days[0].date
+        let last = days[days.length - 1].date
+
+        if (this.view === 'day') return text(format(first, 'j F', labels), format(first, 'Y', labels))
+
+        // a week: "5 – 11 October 2026", "28 Sep – 4 Oct 2026", or "28 Dec 2026 – 3 Jan 2027"
+        if (monthOf(first) === monthOf(last)) return text(format(first, 'j', labels) + ' – ' + format(last, 'j F', labels), format(last, 'Y', labels))
+
+        if (first.slice(0, 4) === last.slice(0, 4)) return text(format(first, 'j M', labels) + ' – ' + format(last, 'j M', labels), format(last, 'Y', labels))
+
+        return text(format(first, 'j M Y', labels) + ' – ' + format(last, 'j M', labels), format(last, 'Y', labels))
+    },
+
+    // The days the week or day view shows: the week of the anchor, or the anchor alone. The window is whole weeks, so
+    // a week is always inside it.
+    get gridDays () {
+        let days = this.payload?.window?.days ?? []
+        let at = days.findIndex((day) => day.date === this.anchor)
+
+        if (at === -1) at = 0
+
+        if (this.view === 'day') return days.slice(at, at + 1)
+
+        let from = at - (at % 7)
+
+        return days.slice(from, from + 7)
+    },
+
+    get grid () {
+        if (!this.payload || this.view === 'month') return { columns: [], allDay: { chips: [], more: [], rows: 0 } }
+
+        return timeGrid(this.gridDays, this.payload.items, {
+            today: this.payload.today,
+            max: this.config.max ?? null,
+            slotDuration: this.config.slotDuration ?? 30,
+        })
+    },
+
+    // The gutter's labels: the time format without its minutes ("9 AM"), or a 24-hour one as it is ("09:00").
+    get hourFormat () {
+        let pattern = String(this.config.timeFormat ?? 'g:i A')
+
+        return /[gh]/.test(pattern) ? pattern.replace(/[:.]?i/, '') : pattern
     },
 
     get weeks () {
@@ -102,8 +169,21 @@ export default () => ({
         // The day list lives in the top layer: it must not outlive a wire:navigate page swap.
         document.addEventListener('livewire:navigating', () => this.closeDay(false), { signal })
 
+        // The now line moves with the minute. The clock is read off an attribute the observer above does not watch, so a
+        // render that only moves the clock lays nothing out again; from there the browser's own elapsed time carries it.
+        let clock = setInterval(() => this.tick(), CLOCK_INTERVAL)
+
+        // The time grid opens at `scroll-time` once it can be measured: it is hidden (no size) in the month view, and
+        // in a closed modal, until it is shown.
+        let grid = this.$root.querySelector('[data-atom-calendar-grid]')
+        let resize = typeof ResizeObserver === 'function' && grid ? new ResizeObserver(() => this.scrollGrid()) : null
+
+        resize?.observe(grid)
+
         this.$root._atomCalendarCleanup = () => {
             observer.disconnect()
+            resize?.disconnect()
+            clearInterval(clock)
             controller.abort()
             this.closeDay(false)
             delete this.$root._atomCalendarCleanup
@@ -138,9 +218,11 @@ export default () => ({
 
         this.payload = payload
         this.anchor = payload.anchor
+        this.seedClock()
 
         if (first || !this.views.includes(this.view)) {
             this.view = this.views.includes(payload.config.view) ? payload.config.view : (this.views[0] ?? 'month')
+            this.scrollPending = this.view !== 'month'
         }
 
         this.jump = toLocalDate(payload.anchor)
@@ -191,13 +273,22 @@ export default () => ({
         }
     },
 
-    // Step from where the last click is heading, so two quick clicks on Next go two months, not one twice.
+    // Step from where the last click is heading, so two quick clicks on Next go two months (or weeks, or days), not
+    // one twice. A month steps by month, a week by seven days and a day by one.
+    step (direction) {
+        let from = this.pending ?? this.anchor
+
+        return this.navigate(this.view === 'month'
+            ? addMonths(from, direction)
+            : addDays(from, direction * (this.view === 'week' ? 7 : 1)))
+    },
+
     prev () {
-        return this.navigate(addMonths(this.pending ?? this.anchor, -1))
+        return this.step(-1)
     },
 
     next () {
-        return this.navigate(addMonths(this.pending ?? this.anchor, 1))
+        return this.step(1)
     },
 
     today () {
@@ -208,6 +299,10 @@ export default () => ({
         if (!this.views.includes(view) || view === this.view) return
 
         this.closeDay(false)
+
+        // the grid is hidden in the month view and has no scroll position there: it opens at `scroll-time` again
+        if (this.view === 'month') this.scrollPending = true
+
         this.view = view
 
         // the month view shows the window of the server's anchor: come back to the month the anchor is in
@@ -234,8 +329,9 @@ export default () => ({
 
         if (!panel.matches(':popover-open')) panel.showPopover()
 
-        // anchored to the day's own cell, which stays put when the list is opened from a chip inside it
-        let anchor = this.$root.querySelector('[data-atom-calendar-day][data-date="' + date + '"]') ?? trigger
+        // anchored to the day's own cell, which stays put when the list is opened from a chip inside it; in the time
+        // grid a day is a column as tall as the day, so the "+N more" it was opened from is the anchor
+        let anchor = (this.view === 'month' ? this.$root.querySelector('[data-atom-calendar-day][data-date="' + date + '"]') : null) ?? trigger
 
         this.floatCleanup = floatingui(anchor, panel, { placement: 'bottom-start' })
 
@@ -283,6 +379,42 @@ export default () => ({
         if (day.count > 0) this.openDay(day.date, event.currentTarget)
     },
 
+    seedClock () {
+        this.clockSeed = { moment: this.$root.getAttribute('data-atom-calendar-now') ?? '', at: Date.now() }
+        this.tick()
+    },
+
+    // Where the browser's clock says the server's was: the seed plus the time since it was read.
+    tick () {
+        let moment = nowAt(this.clockSeed?.moment, Date.now() - (this.clockSeed?.at ?? 0))
+
+        if (moment !== this.nowMoment) this.nowMoment = moment
+    },
+
+    // The now line in a day's column: its place in the day and the time it stands for, or null when it is not that
+    // day, the indicator is off or there is no clock.
+    nowLine (column) {
+        if (!this.config.nowIndicator || !this.nowMoment || dateOf(this.nowMoment) !== column.date) return null
+
+        return { top: (minuteOf(this.nowMoment) / DAY_MINUTES * 100) + '%', time: format(this.nowMoment, this.config.timeFormat, this.labels) }
+    },
+
+    // Open the time grid at `scroll-time`, with that time just under the header that stays on top.
+    scrollGrid () {
+        let grid = this.$root.querySelector('[data-atom-calendar-grid]')
+        let top = grid?.querySelector('[data-atom-calendar-grid-top]')
+        let body = grid?.querySelector('[data-atom-calendar-grid-body]')
+
+        if (!this.scrollPending || !grid?.clientHeight || !top || !body) return
+
+        this.scrollPending = false
+
+        let [hour, minute] = String(this.config.scrollTime ?? '06:00').split(':').map(Number)
+
+        // a little below the header, so the hour's label (centred on its line) is not cut in half by it
+        grid.scrollTop = body.offsetTop + ((hour * 60 + minute) / DAY_MINUTES) * body.offsetHeight - top.offsetHeight - SCROLL_MARGIN
+    },
+
     // A link goes where it says, through the same scheme check the server made; anything else is a button
     // that tells the host which item was chosen.
     link (chip) {
@@ -319,6 +451,28 @@ export default () => ({
 
     hue (chip) {
         return this.isHex(chip) ? { '--atom-calendar-hue': chip.color } : {}
+    },
+
+    // A timed block's place in its column: its top and height in the day and its lane across the column. It is never
+    // drawn shorter than MIN_BLOCK, and is moved up to stay above the end of the day.
+    blockStyle (block) {
+        return {
+            top: 'min(' + block.top + '%, calc(100% - ' + MIN_BLOCK + '))',
+            height: block.height + '%',
+            left: block.left + '%',
+            width: block.width + '%',
+        }
+    },
+
+    hourLabel (hour) {
+        return hour === 0 ? '' : format('2026-01-01T' + pad(hour) + ':00', this.hourFormat, this.labels)
+    },
+
+    // "9:30 AM – 10:00 AM", or the start alone for an item with no end
+    timeRange (chip) {
+        let start = format(chip.start, this.config.timeFormat, this.labels)
+
+        return chip.end ? start + ' – ' + format(chip.end, this.config.timeFormat, this.labels) : start
     },
 
     slotStyle (item) {

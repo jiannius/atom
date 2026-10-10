@@ -8,6 +8,8 @@
 
     <atom:calendar
     wire:model="date"
+    :views="['month', 'week', 'day']"
+    :view="$view"
     :items="fn ($from, $to) => $this->calendarItems($from, $to)"
     data-probe="calendar">
         {{-- host toolbar content: it is server-rendered and morphs with the page, unlike the calendar's body --}}

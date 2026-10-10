@@ -325,8 +325,8 @@ describe('calendar component markup', function () {
         $html = calendarRender('month="2026-10"');
         $shown = domQuery($html, '//*[@x-show][not(ancestor::template)]');
 
-        // the loading spinner, the view switcher and the month grid; the rest are cloned from templates by Alpine
-        expect(array_map(fn ($el) => $el->getAttribute('x-show'), $shown))->toBe(['loading', 'views.length > 1', "view === 'month'"]);
+        // the loading spinner, the view switcher, the month grid and the week and day grid; the rest are cloned from templates by Alpine
+        expect(array_map(fn ($el) => $el->getAttribute('x-show'), $shown))->toBe(['loading', 'views.length > 1', "view === 'month'", "view !== 'month'"]);
 
         foreach ($shown as $element) {
             expect($element->hasAttribute('x-cloak'))->toBeTrue($element->getAttribute('x-show'));
@@ -454,15 +454,16 @@ describe('calendar source guards', function () {
                 continue;
             }
 
+            // the class attributes, which include the strings an x-bind:class chooses between (a colour may carry an opacity)
             preg_match_all('/class="([^"]*)"/', $contents, $matches);
 
             foreach ($matches[1] as $classes) {
-                $tokens = preg_split('/\s+/', trim($classes));
+                $tokens = array_filter(preg_split('/[\s\'?]+/', trim($classes)));
                 $hasWidth = (bool) array_filter($tokens, fn ($t) => preg_match('/^border(-[trblxy])?$/', $t) || str_starts_with($t, 'not-first:border-l'));
 
                 if ($hasWidth) {
-                    expect(array_filter($tokens, fn ($t) => preg_match('/^border-zinc-\d+$/', $t)))->not->toBe([], $path.': '.$classes);
-                    expect(array_filter($tokens, fn ($t) => preg_match('/^dark:border-zinc-\d+$/', $t)))->not->toBe([], $path.': '.$classes);
+                    expect(array_filter($tokens, fn ($t) => preg_match('/^border-zinc-\d+(\/\d+)?$/', $t)))->not->toBe([], $path.': '.$classes);
+                    expect(array_filter($tokens, fn ($t) => preg_match('/^dark:border-zinc-\d+(\/\d+)?$/', $t)))->not->toBe([], $path.': '.$classes);
                 }
             }
         }

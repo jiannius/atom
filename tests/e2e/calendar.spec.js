@@ -341,8 +341,10 @@ test.describe('bound to a Livewire property', () => {
         await expect(chip(page, 'Team standup').locator('svg')).toHaveCount(0)
     })
 
-    test('has no switcher when there is one view', async ({ page }) => {
-        await expect(probe(page).getByRole('button', { name: 'Month' })).toBeHidden()
+    test('has a switcher for the views it is given, with the one on screen pressed', async ({ page }) => {
+        await expect(probe(page).getByRole('button', { name: 'Month', exact: true })).toHaveAttribute('aria-pressed', 'true')
+        await expect(probe(page).getByRole('button', { name: 'Week', exact: true })).toHaveAttribute('aria-pressed', 'false')
+        await expect(probe(page).getByRole('button', { name: 'Day', exact: true })).toHaveAttribute('aria-pressed', 'false')
     })
 })
 
@@ -702,6 +704,9 @@ test.describe('static, with nothing bound', () => {
         await expect(probe(page, 'static').getByRole('button', { name: 'Previous' })).toHaveCount(0)
         await expect(probe(page, 'static').getByRole('button', { name: 'Today' })).toHaveCount(0)
         await expect(probe(page, 'static').getByRole('button', { name: 'Choose date' })).toHaveCount(0)
+
+        // one view, so nothing to switch between
+        await expect(probe(page, 'static').getByRole('button', { name: 'Month', exact: true })).toBeHidden()
     })
 
     test('lays out its items and opens a day list', async ({ page }) => {

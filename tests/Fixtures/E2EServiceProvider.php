@@ -2,8 +2,12 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
+use Illuminate\Auth\GenericUser;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Jiannius\Atom\Services\Carbon;
 use Livewire\Livewire;
 
 class E2EServiceProvider extends ServiceProvider
@@ -73,5 +77,14 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/form-error-toast', fn () => view('atom::e2e.form-error-toast'));
         Route::middleware('web')->get('/atom/e2e/calendar', fn () => view('atom::e2e.calendar'));
         Route::middleware('web')->get('/atom/e2e/calendar-static', fn () => view('atom::e2e.calendar-static'));
+        Route::middleware('web')->get('/atom/e2e/calendar-grid', function (Request $request) {
+            // the viewer's timezone and the moment it is now, so the week and day views can be looked at on a day the clocks change
+            $timezone = (string) $request->query('tz', 'Asia/Kuala_Lumpur');
+
+            Auth::setUser(new GenericUser(['id' => 1, 'timezone' => in_array($timezone, timezone_identifiers_list(), true) ? $timezone : 'Asia/Kuala_Lumpur']));
+            Carbon::setTestNow(Carbon::parse((string) $request->query('now', '2026-10-09T02:30:00Z')));
+
+            return view('atom::e2e.calendar-grid');
+        });
     }
 }

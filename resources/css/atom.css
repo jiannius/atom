@@ -370,10 +370,15 @@ html.dark [data-atom-slider-bubble] {
 }
 
 /* Layered on purpose, unlike the rest of this file: atom.css is unlayered and would beat a host's
-   `w-96` (@layer utilities) on the calendar. In @layer base it still applies where nothing sets a width. */
+   `w-96` (@layer utilities) on the calendar. In @layer base it still applies where nothing sets a width.
+   The same goes for the time grid's measures: a host sets `--atom-calendar-hour` (what an hour is tall) or the
+   others from a utility class and they win, and the grid is laid out from them and not from numbers. */
 @layer base {
     [data-atom-calendar] {
         width: 100%;
+        --atom-calendar-hour: 3rem;
+        --atom-calendar-gutter: 3.5rem;
+        --atom-calendar-min-column: 6rem;
     }
 }
 
@@ -446,9 +451,158 @@ html.dark [data-atom-slider-bubble] {
 }
 
 /* a colour given as a hex is validated on the server and painted from here: the tint, the accent edge and the dot */
-[data-atom-calendar-chip="bar"][data-atom-calendar-hex] {
+[data-atom-calendar-chip="bar"][data-atom-calendar-hex],
+[data-atom-calendar-chip="block"][data-atom-calendar-hex] {
     background-color: color-mix(in oklab, var(--atom-calendar-hue) 18%, transparent);
     border-left-color: var(--atom-calendar-hue);
+}
+
+/* a block that carries on from the day before, or into the next, is cut square on that edge */
+[data-atom-calendar-chip="block"][data-before] {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+[data-atom-calendar-chip="block"][data-after] {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* The week and day views. One scroller (`overflow: auto`, so a narrow screen scrolls the week sideways and a tall
+   grid scrolls up and down) holds a header that sticks to the top and an hour gutter that sticks to the left. A day
+   is 24 rows of --atom-calendar-hour: blocks are placed in a column by percentages of the day, the hour lines and
+   labels by that height, and the columns never get narrower than --atom-calendar-min-column. A host caps the height
+   with --atom-calendar-grid-height. */
+[data-atom-calendar-grid] {
+    position: relative;
+    overflow: auto;
+    overscroll-behavior: contain;
+    max-height: var(--atom-calendar-grid-height, min(70vh, 48rem));
+}
+
+[data-atom-calendar-grid-inner] {
+    min-width: calc(var(--atom-calendar-gutter) + var(--atom-calendar-columns, 7) * var(--atom-calendar-min-column));
+}
+
+[data-atom-calendar-grid-top] {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+}
+
+[data-atom-calendar-grid-row],
+[data-atom-calendar-grid-body] {
+    display: grid;
+    grid-template-columns: var(--atom-calendar-gutter) repeat(var(--atom-calendar-columns, 7), minmax(0, 1fr));
+}
+
+[data-atom-calendar-grid-body] {
+    position: relative;
+}
+
+[data-atom-calendar-gutter] {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+}
+
+[data-atom-calendar-hour] {
+    position: relative;
+    box-sizing: border-box;
+    height: var(--atom-calendar-hour);
+}
+
+[data-atom-calendar-hour-label] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    line-height: 1;
+    white-space: nowrap;
+    transform: translateY(-50%);
+}
+
+[data-atom-calendar-column] {
+    position: relative;
+    min-width: 0;
+}
+
+/* a block sits by percentages of the day (set by the layout), is at least 20px tall, and is in front of the hour lines */
+[data-atom-calendar-block] {
+    position: absolute;
+    z-index: 1;
+    box-sizing: border-box;
+    min-height: 20px;
+    padding-right: 2px;
+}
+
+[data-atom-calendar-lines] {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--atom-calendar-gutter);
+    right: 0;
+    pointer-events: none;
+}
+
+[data-atom-calendar-line] {
+    position: relative;
+    box-sizing: border-box;
+    height: var(--atom-calendar-hour);
+}
+
+[data-atom-calendar-half] {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+}
+
+/* the line for the current time, across today's column only */
+[data-atom-calendar-now-line] {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    height: 2px;
+    margin-top: -1px;
+    pointer-events: none;
+}
+
+[data-atom-calendar-now-line] > span {
+    position: absolute;
+    left: 0;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+}
+
+/* the all-day row: the bars of the month view, in lanes over the columns */
+[data-atom-calendar-allday-area] {
+    position: relative;
+    grid-column: 2 / -1;
+    min-width: 0;
+}
+
+[data-atom-calendar-allday-bg],
+[data-atom-calendar-allday-chips] {
+    display: grid;
+    grid-template-columns: repeat(var(--atom-calendar-columns, 7), minmax(0, 1fr));
+}
+
+[data-atom-calendar-allday-bg] {
+    position: absolute;
+    inset: 0;
+}
+
+[data-atom-calendar-allday-chips] {
+    position: relative;
+    grid-auto-rows: 1.25rem;
+    row-gap: 0.125rem;
+    align-content: start;
+    min-height: 2rem;
+    padding: 0.25rem;
+    pointer-events: none;
 }
 
 [data-atom-calendar-dot][data-atom-calendar-hex] {

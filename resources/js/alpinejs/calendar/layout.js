@@ -42,6 +42,30 @@ export const dayEntries = (items, date) => items
     })
     .map((entry) => entry.item)
 
+// Give each bar the lowest lane that is free across its whole run, longer and earlier first, so they stack the
+// way they read. A bar is { entry, startCol, endCol }; the lane is written on it as `lane`. Shared by the month
+// view's weeks and the time grid's all-day row.
+export const packBars = (bars) => {
+    bars.sort((a, b) => (a.startCol - b.startCol)
+        || ((b.endCol - b.startCol) - (a.endCol - a.startCol))
+        || (Number(b.entry.item.allDay) - Number(a.entry.item.allDay))
+        || byStart(a.entry, b.entry))
+
+    let lanes = []
+
+    for (let bar of bars) {
+        let lane = 0
+
+        while (lanes[lane]?.some((other) => other.startCol <= bar.endCol && other.endCol >= bar.startCol)) lane++
+
+        lanes[lane] ??= []
+        lanes[lane].push(bar)
+        bar.lane = lane
+    }
+
+    return bars
+}
+
 // Lay the window's weeks out for the month view.
 //
 // `days` is the payload's window days (a multiple of seven), `items` the payload's items. Every week
@@ -82,25 +106,12 @@ export const monthLayout = (days, items, { max = 3, today = null } = {}) => {
             }
         }
 
-        bars.sort((a, b) => (a.startCol - b.startCol)
-            || ((b.endCol - b.startCol) - (a.endCol - a.startCol))
-            || (Number(b.entry.item.allDay) - Number(a.entry.item.allDay))
-            || byStart(a.entry, b.entry))
+        packBars(bars)
 
-        // lanes: the lowest one free across the bar's whole run
-        let lanes = []
         let used = week.map(() => new Set())
 
         for (let bar of bars) {
-            let lane = 0
-
-            while (lanes[lane]?.some((other) => other.startCol <= bar.endCol && other.endCol >= bar.startCol)) lane++
-
-            lanes[lane] ??= []
-            lanes[lane].push(bar)
-            bar.lane = lane
-
-            for (let col = bar.startCol; col <= bar.endCol; col++) used[col].add(lane)
+            for (let col = bar.startCol; col <= bar.endCol; col++) used[col].add(bar.lane)
         }
 
         // a dot row takes the first row its own day has free

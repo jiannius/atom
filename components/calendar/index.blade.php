@@ -203,6 +203,104 @@ data-atom-calendar
             </div>
         </div>
 
+        {{-- The week and day views: one scroller holds a header that stays on top (the days, then the all-day row) and
+             a body of 24 hours, so a narrow screen scrolls the week sideways with its header and its hour gutter
+             (which stays at the left) still in step. Where things sit is atom.css's: the hour height, the lanes and the
+             now line are positioned there and by percentages from the layout, never by utilities. --}}
+        <div x-cloak x-show="view !== 'month'" x-ref="grid" x-bind:data-view="view" x-bind:style="{ '--atom-calendar-columns': grid.columns.length }" data-atom-calendar-grid>
+            <div data-atom-calendar-grid-inner>
+                <div data-atom-calendar-grid-top class="bg-white dark:bg-zinc-800">
+                    <div data-atom-calendar-grid-row class="border-b border-zinc-200 dark:border-zinc-700">
+                        <div data-atom-calendar-gutter class="bg-white dark:bg-zinc-800"></div>
+
+                        <template x-for="column in grid.columns" :key="column.date">
+                            <div x-bind:data-date="column.date" data-atom-calendar-column-head class="flex flex-col items-center gap-0.5 border-l border-zinc-200 dark:border-zinc-700 py-2">
+                                <span x-text="weekdayName(column.date)" class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"></span>
+                                <span
+                                x-text="column.number"
+                                x-bind:class="column.today ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : (column.past ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-zinc-100')"
+                                class="inline-flex size-8 items-center justify-center rounded-full text-lg font-semibold tabular-nums"></span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div data-atom-calendar-grid-row data-atom-calendar-allday class="border-b border-zinc-200 dark:border-zinc-700">
+                        <div data-atom-calendar-gutter class="bg-white dark:bg-zinc-800 pr-2 pt-2 text-right text-xs text-zinc-500 dark:text-zinc-400">
+                            <span x-text="labels.ui?.all_day"></span>
+                        </div>
+
+                        <div data-atom-calendar-allday-area>
+                            <div data-atom-calendar-allday-bg aria-hidden="true">
+                                <template x-for="column in grid.columns" :key="'allday-' + column.date">
+                                    <div x-bind:class="column.weekend ? 'bg-zinc-50 dark:bg-zinc-900/30' : ''" class="border-l border-zinc-200 dark:border-zinc-700"></div>
+                                </template>
+                            </div>
+
+                            <div data-atom-calendar-allday-chips>
+                                <template x-for="chip in grid.allDay.chips" :key="chip.key">
+                                    <div x-bind:style="slotStyle(chip)" data-atom-calendar-slot>
+                                        <atom:calendar.chip />
+                                    </div>
+                                </template>
+
+                                <template x-for="more in grid.allDay.more" :key="more.key">
+                                    <button
+                                    type="button"
+                                    x-bind:style="slotStyle(more)"
+                                    x-on:click="openDay(more.date, $event.currentTarget)"
+                                    x-text="moreLabel(more.count)"
+                                    data-atom-calendar-more
+                                    class="h-5 w-full rounded-sm px-1.5 text-left text-xs font-medium text-zinc-600 outline-offset-1 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700/60 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"></button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div data-atom-calendar-grid-body>
+                    <div data-atom-calendar-gutter aria-hidden="true" class="bg-white dark:bg-zinc-800">
+                        <template x-for="hour in hours" :key="hour">
+                            <div data-atom-calendar-hour>
+                                <span x-text="hourLabel(hour)" data-atom-calendar-hour-label class="pr-2 text-xs tabular-nums text-zinc-500 dark:text-zinc-400"></span>
+                            </div>
+                        </template>
+                    </div>
+
+                    <template x-for="column in grid.columns" :key="column.date">
+                        <div
+                        role="group"
+                        x-bind:aria-label="dayLabel(column)"
+                        x-bind:aria-current="column.today ? 'date' : null"
+                        x-bind:data-date="column.date"
+                        x-bind:class="column.weekend ? 'bg-zinc-50 dark:bg-zinc-900/30' : ''"
+                        data-atom-calendar-column
+                        class="border-l border-zinc-200 dark:border-zinc-700">
+                            <template x-for="chip in column.blocks" :key="chip.key">
+                                <div x-bind:style="blockStyle(chip)" data-atom-calendar-block>
+                                    <atom:calendar.chip />
+                                </div>
+                            </template>
+
+                            <template x-if="nowLine(column)">
+                                <div x-bind:style="{ top: nowLine(column).top }" x-bind:data-time="nowLine(column).time" aria-hidden="true" data-atom-calendar-now-line class="bg-red-500">
+                                    <span class="bg-red-500"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    {{-- the hour lines, over the columns' tint and under the blocks --}}
+                    <div data-atom-calendar-lines aria-hidden="true">
+                        <template x-for="hour in hours" :key="hour">
+                            <div data-atom-calendar-line x-bind:class="hour === 0 ? '' : 'border-t border-zinc-200 dark:border-zinc-700'">
+                                <div data-atom-calendar-half class="border-t border-dashed border-zinc-100 dark:border-zinc-700/50"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- The day list: every item of one day. A manual popover, so a second click on the same day closes it
              rather than light-dismissing and reopening it. --}}
         <div
