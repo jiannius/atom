@@ -26,11 +26,15 @@ class CalendarItem
 {
     public const COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'zinc', 'gray'];
 
+    public const REPORTED_LIMIT = 100;
+
+    public const DESCRIBE_WIDTH = 40;
+
     /** @var array<string, true> */
     protected static array $reported = [];
 
     /**
-     * Normalise one item. Returns null when the item cannot be placed (its start will not parse).
+     * Normalise one item; null when it cannot be placed because its start will not parse.
      *
      * @param  array{draggable?: bool, resizable?: bool}  $defaults  what the component's props say
      * @return array<string, mixed>|null
@@ -48,11 +52,11 @@ class CalendarItem
         $title = $data['title'] ?? null;
 
         if (! is_string($title) && ! is_numeric($title) && ! $title instanceof Stringable) {
-            throw new InvalidArgumentException('Calendar item '.$id.' needs a title.');
+            throw new InvalidArgumentException('Calendar item '.self::describe($id).' needs a title.');
         }
 
         if (($data['start'] ?? null) === null || $data['start'] === '') {
-            throw new InvalidArgumentException('Calendar item '.$id.' needs a start.');
+            throw new InvalidArgumentException('Calendar item '.self::describe($id).' needs a start.');
         }
 
         $start = self::moment($data['start']);
@@ -63,9 +67,10 @@ class CalendarItem
             return null;
         }
 
-        $end = array_key_exists('end', $data) && $data['end'] !== null && $data['end'] !== '' ? self::moment($data['end']) : null;
+        $hasEnd = array_key_exists('end', $data) && $data['end'] !== null && $data['end'] !== '';
+        $end = $hasEnd ? self::moment($data['end']) : null;
 
-        if (($data['end'] ?? null) !== null && ($data['end'] ?? '') !== '' && ! $end) {
+        if ($hasEnd && ! $end) {
             self::reportOnce($id, 'end', $data['end']);
         }
 
@@ -91,7 +96,7 @@ class CalendarItem
     }
 
     /**
-     * The colour names an item may use: the presets plus any name added in config('atom.calendar.colors').
+     * The colour names an item may use: the presets plus any added in config('atom.calendar.colors').
      *
      * @return list<string>
      */
@@ -105,8 +110,7 @@ class CalendarItem
     }
 
     /**
-     * Split a wall-clock string (`Y-m-d`, or date, `T` or space, `H:i[:s[.f]]`, and an optional `Z` / `+08:00`
-     * offset after a time) into its parts. Null when the shape or any part is invalid.
+     * Split a wall-clock string (`Y-m-d`, optionally with `H:i[:s[.f]]` and a `Z` / `+08:00` offset) into its parts, or null.
      *
      * @return array{date: string, time: ?string, offset: ?string}|null
      */
@@ -160,9 +164,7 @@ class CalendarItem
     }
 
     /**
-     * Read a date or datetime into the viewer's local date and time. A bare `Y-m-d` is a calendar date and is
-     * never converted; a Carbon / DateTime keeps its own zone, an offset string is exact, and a string with no
-     * offset is read in the app timezone.
+     * Read a date or datetime as the viewer's local date and time; a bare `Y-m-d` is never converted, an offset-less string is app time.
      *
      * @return array{bare: bool, date: string, time: ?string, instant: ?Carbon}|null
      */
@@ -186,7 +188,7 @@ class CalendarItem
     }
 
     /**
-     * Start and end dates of an all-day item. An instant end runs up to that instant minus one second.
+     * Start and end dates of an all-day item; an instant end runs up to that instant minus one second.
      *
      * @return array{0: string, 1: ?string}
      */
@@ -202,7 +204,7 @@ class CalendarItem
     }
 
     /**
-     * Start and end wall-clock minutes of a timed item. A bare date is local midnight.
+     * Start and end wall-clock minutes of a timed item; a bare date is local midnight.
      *
      * @return array{0: string, 1: ?string}
      */
@@ -215,7 +217,7 @@ class CalendarItem
     }
 
     /**
-     * A colour the calendar knows: a preset or configured name, or a strict hex. Anything else is dropped.
+     * A preset or configured colour name, or a strict hex; anything else is null.
      */
     protected static function color(mixed $color): ?string
     {
@@ -237,7 +239,7 @@ class CalendarItem
     }
 
     /**
-     * An atom icon name that exists, else null. The name is checked as a slug before it touches the filesystem.
+     * An atom icon name that exists, else null; the name is checked as a slug before it touches the filesystem.
      */
     protected static function icon(mixed $icon): ?string
     {
@@ -259,19 +261,31 @@ class CalendarItem
     }
 
     /**
-     * Report a value the calendar could not read, once per item field and value. The message names the id and
-     * field, never the value.
+     * An id as it is safe to print in a message: JSON-encoded and cut short.
+     */
+    public static function describe(int|string $id): string
+    {
+        return mb_strimwidth((string) json_encode($id, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE), 0, self::DESCRIBE_WIDTH, '...');
+    }
+
+    /**
+     * Report a value the calendar could not read, once per item field and value, naming the field and never the value.
      */
     protected static function reportOnce(int|string $id, string $field, mixed $value): void
     {
         $key = md5($id.'|'.$field.'|'.(is_scalar($value) ? $value : gettype($value)));
 
-        if (isset(self::$reported[$key]) || count(self::$reported) >= 100) {
+        if (isset(self::$reported[$key])) {
             return;
+        }
+
+        // a full set starts over, so a long-lived worker never goes permanently silent
+        if (count(self::$reported) >= self::REPORTED_LIMIT) {
+            self::$reported = [];
         }
 
         self::$reported[$key] = true;
 
-        report(new InvalidArgumentException('Calendar item '.$id.' has an unreadable '.$field.'.'));
+        report(new InvalidArgumentException('Calendar item '.self::describe($id).' has an unreadable '.$field.'.'));
     }
 }

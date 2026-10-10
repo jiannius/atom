@@ -22,6 +22,10 @@ class Calendar
 
     public const WINDOW_DAYS = 42;
 
+    public const MIN_YEAR = 1000;
+
+    public const MAX_YEAR = 9000;
+
     public const SLOT_DURATIONS = [5, 10, 15, 20, 30, 60];
 
     public const TIME_FORMATS = ['g:i A', 'g:iA', 'h:i A', 'h:iA', 'H:i', 'G:i'];
@@ -55,7 +59,7 @@ class Calendar
     public bool $nowIndicator;
 
     /**
-     * Build a calendar from the component's props. Anything unrecognised falls back to its default.
+     * Build a calendar from the component's props; anything unrecognised falls back to its default.
      *
      * @param  array{views?: mixed, view?: mixed, week_start?: mixed, weekend?: mixed, max?: mixed, time_format?: mixed, selectable?: mixed, draggable?: mixed, resizable?: mixed, slot_duration?: mixed, scroll_time?: mixed, now_indicator?: mixed}  $options
      */
@@ -131,8 +135,7 @@ class Calendar
     }
 
     /**
-     * Convert a local wall-clock string (`Y-m-d` or `Y-m-d\TH:i[:s]`, as the calendar's events carry)
-     * to an instant in the app timezone. A bare date is local midnight. Throws on anything else.
+     * Convert a local wall-clock string (`Y-m-d` or `Y-m-d\TH:i[:s]`) to an app-timezone instant; throws on anything else.
      */
     public static function fromLocal(string $value): Carbon
     {
@@ -171,8 +174,7 @@ class Calendar
     }
 
     /**
-     * Resolve a client- or host-supplied anchor to a local date. Accepts `Y-m-d` and `Y-m`;
-     * anything else (an invalid date, an overflowing year, a non-string) falls back to today.
+     * Resolve a client- or host-supplied anchor (`Y-m-d` or `Y-m`, years 1000 to 9000) to a local date, else today.
      */
     public function anchor(mixed $value = null): string
     {
@@ -181,7 +183,7 @@ class Calendar
             $month = (int) $match[2];
             $day = isset($match[3]) ? (int) $match[3] : 1;
 
-            if ($year >= 1000 && checkdate($month, $day, $year)) {
+            if ($year >= self::MIN_YEAR && $year <= self::MAX_YEAR && checkdate($month, $day, $year)) {
                 return sprintf('%04d-%02d-%02d', $year, $month, $day);
             }
         }
@@ -190,10 +192,7 @@ class Calendar
     }
 
     /**
-     * The window for an anchor: the 6-week month grid that contains it, whichever view is showing.
-     *
-     * `from` / `to` are app-timezone instants for local midnight of the first day and the end of the
-     * last day, which is what the host's items query receives.
+     * The 6-week month grid containing the anchor; `from` and `to` are app-timezone instants, `to` inclusive (23:59:59.999999).
      *
      * @return array{anchor: string, start: string, end: string, days: list<array{date: string, weekday: string, weekend: bool, outside: bool}>, from: Carbon, to: Carbon}
      */
@@ -274,8 +273,7 @@ class Calendar
     }
 
     /**
-     * Normalise items into payload items. An item the calendar cannot place is skipped; one that is
-     * not an item at all (no id, title or start) throws, as does a repeated id.
+     * Normalise items into payload items; one that cannot be placed is skipped, one that is not an item or repeats an id throws.
      *
      * @param  iterable<mixed>  $items
      * @return list<array<string, mixed>>
@@ -295,10 +293,11 @@ class Calendar
                 continue;
             }
 
-            $key = gettype($item['id']).':'.$item['id'];
+            // the browser keys items by id, so 1 and '1' are the same item there
+            $key = (string) $item['id'];
 
             if (isset($seen[$key])) {
-                throw new InvalidArgumentException('Calendar item id is not unique: '.$item['id']);
+                throw new InvalidArgumentException('Calendar item id is not unique: '.CalendarItem::describe($item['id']));
             }
 
             $seen[$key] = true;
@@ -309,8 +308,7 @@ class Calendar
     }
 
     /**
-     * The one payload the browser reads: anchor, today, now, window, labels, config and items.
-     * `$items` is an iterable, or a closure called with the window's `$from` / `$to` instants.
+     * The one payload the browser reads; `$items` is an iterable, or a closure called with the window's `$from` and `$to`.
      *
      * @param  iterable<mixed>|Closure(Carbon, Carbon): iterable<mixed>  $items
      * @return array<string, mixed>
