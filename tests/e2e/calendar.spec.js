@@ -327,6 +327,15 @@ test.describe('bound to a Livewire property', () => {
         await expect(danger.getByText('Overdue', { exact: true })).toHaveCount(1)
     })
 
+    test('an item with no colour is zinc, not blue', async ({ page }) => {
+        // Open the docs has no colour: its bar takes the zinc palette entry the server printed
+        const bar = chip(page, 'Open the docs')
+
+        await expect(bar).toHaveClass(/bg-zinc-100/)
+        await expect(bar).toHaveClass(/border-zinc-500/)
+        await expect(bar).not.toHaveClass(/sky/)
+    })
+
     test('clones the icon the server rendered for an item', async ({ page }) => {
         await expect(chip(page, 'Open the docs').locator('svg')).toHaveCount(1)
         await expect(chip(page, 'Team standup').locator('svg')).toHaveCount(0)

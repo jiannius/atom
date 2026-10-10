@@ -312,7 +312,9 @@ export default () => ({
     colorClass (chip, part) {
         if (this.isHex(chip)) return ''
 
-        return (this.palette[chip.color] ?? this.palette.blue ?? {})[part] ?? ''
+        // an item with no colour (or one the palette does not know) is neutral: zinc, not blue, so a host that
+        // restyles blue does not recolour the items that never asked for it
+        return (this.palette[chip.color] ?? this.palette.zinc ?? {})[part] ?? ''
     },
 
     hue (chip) {
