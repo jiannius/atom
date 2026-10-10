@@ -53,7 +53,8 @@
 </template>
 
 {{-- A timed item in a day column of the week and day views: a block as tall as it lasts, in its lane. Short ones print
-     "Title · 10:00" on one line, longer ones the time range under the title. --}}
+     "Title · 10:00" on one line, longer ones the time range under the title. Its name is said whole (itemLabel()): the date,
+     the time range and what its colour or overdue stands for are not in its text alone, which a narrow block drops in part. --}}
 <template x-if="chip.kind === 'block'">
     <a
     x-bind:href="link(chip)"
@@ -62,6 +63,7 @@
     x-bind:title="chip.title"
     x-bind:data-before="chip.before ? '' : null"
     x-bind:data-after="chip.after ? '' : null"
+    x-bind:aria-label="itemLabel(chip)"
     x-bind:data-compact="chip.compact ? '' : null"
     x-bind:data-lifted="isLifted(chip) ? '' : null"
     x-bind:data-atom-calendar-hex="isHex(chip) && !chip.danger ? '' : null"

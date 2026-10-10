@@ -14,6 +14,7 @@
     'scrollTime' => '06:00',
     'nowIndicator' => true,
     'month' => null,
+    'name' => null,
 ])
 
 @php
@@ -41,6 +42,12 @@ $calendar = \Jiannius\Atom\Services\Calendar::make([
 ]);
 
 $payload = $calendar->payload($anchor, $items ?? []);
+
+// What the ids inside the calendar are built from (the popover a day opens, the body a view switch controls, the title a grid is named by).
+// Derived and never random: an id is Livewire's morph key where it falls back to one, so a new one each render would replace the node.
+// A `name` is the host's own handle; a bound calendar is its component and its property; one with neither takes a number from the engine
+// when it starts, which is the same for as long as the page lives. Two calendars on a page need two names (or two components).
+$uid = $name ? 'atom-calendar-'.\Illuminate\Support\Str::slug((string) $name) : ($model && $component ? $attributes->fieldId('atom-calendar', method_exists($component, 'getId') ? $component->getId() : $component->getName(), $model) : null);
 
 // A colour is decoration: tint behind a chip, an accent edge and a dot, each readable against its
 // ground in light and dark. Chip text stays neutral. The strings are written out here, not built in
@@ -70,6 +77,7 @@ $icons = collect($payload['items'])->pluck('icon')->push('warning', 'loading')->
 <div
 x-data="calendar"
 @if ($model) data-atom-calendar-model="{{ $model }}" @endif
+@if ($uid) data-atom-calendar-uid="{{ $uid }}" @endif
 data-atom-calendar-palette="{{ json_encode($palette, JSON_THROW_ON_ERROR) }}"
 {{-- The clock is an attribute of its own and not part of the payload: the engine lays the month out again whenever
      the payload changes, which a clock that moves every second would make every render. The week and day views'
@@ -92,7 +100,7 @@ data-atom-calendar
                 </div>
 
                 <atom:date-picker x-model="jump">
-                    <button type="button" x-bind:aria-label="labels.ui?.choose_date" data-atom-calendar-title class="flex items-center gap-1.5 rounded-sm text-base @2xl:text-lg outline-offset-2 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
+                    <button type="button" x-bind:aria-label="title.text + ', ' + (labels.ui?.choose_date ?? '')" data-atom-calendar-title class="flex items-center gap-1.5 rounded-sm text-base @2xl:text-lg outline-offset-2 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
                         <span x-text="title.month" class="font-semibold text-zinc-900 dark:text-white"></span>
                         <span x-cloak x-show="title.year" x-text="title.year" data-atom-calendar-title-year class="font-normal text-zinc-500 dark:text-zinc-400"></span>
                         <atom:icon.dropdown class="size-4 text-zinc-500 dark:text-zinc-400" />
@@ -107,7 +115,7 @@ data-atom-calendar
 
             <span x-cloak x-show="loading" class="inline-flex text-zinc-500 dark:text-zinc-400"><atom:icon.loading class="size-4" /></span>
 
-            <div x-text="title.text" role="status" aria-live="polite" data-atom-calendar-sr></div>
+            <div x-text="title.text" x-bind:id="uid + '-title'" role="status" aria-live="polite" data-atom-calendar-sr></div>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
@@ -115,12 +123,13 @@ data-atom-calendar
                 {{ $slot }}
             @endif
 
-            <div wire:ignore x-cloak x-show="views.length > 1" role="group" class="inline-flex items-center rounded-md bg-zinc-100 p-1 dark:bg-zinc-700">
+            <div wire:ignore x-cloak x-show="views.length > 1" role="group" x-bind:aria-label="labels.ui?.view" class="inline-flex items-center rounded-md bg-zinc-100 p-1 dark:bg-zinc-700">
                 <template x-for="name in views" :key="name">
                     <button
                     type="button"
                     x-on:click="setView(name)"
                     x-bind:aria-pressed="view === name ? 'true' : 'false'"
+                    x-bind:aria-controls="uid + '-body'"
                     x-bind:class="view === name ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-800 dark:text-white' : 'text-zinc-600 dark:text-zinc-300'"
                     class="h-6 rounded-sm px-3 text-sm font-medium outline-offset-1 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"
                     x-text="labels.ui?.[name]"></button>
@@ -129,8 +138,8 @@ data-atom-calendar
         </div>
     </div>
 
-    <div wire:ignore data-atom-calendar-body>
-        <div x-cloak x-show="view === 'month'" role="grid">
+    <div wire:ignore x-bind:id="uid + '-body'" data-atom-calendar-body>
+        <div x-cloak x-show="view === 'month'" role="grid" x-bind:aria-labelledby="uid + '-title'">
             <div role="row" data-atom-calendar-weekdays>
                 <template x-for="day in labels.weekdays" :key="day.key">
                     <div role="columnheader" x-text="day.short" x-bind:aria-label="day.long" class="py-2 text-center text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"></div>
@@ -147,14 +156,20 @@ data-atom-calendar
                                 x-bind:data-date="day.date"
                                 x-bind:aria-label="dayLabel(day)"
                                 x-bind:aria-current="day.today ? 'date' : null"
+                                x-bind:aria-haspopup="day.count > 0 ? 'dialog' : null"
+                                x-bind:aria-expanded="day.count > 0 ? String(popoverDate === day.date) : null"
+                                x-bind:aria-controls="day.count > 0 ? uid + '-popover' : null"
+                                x-bind:tabindex="day.date === tabDate ? 0 : -1"
                                 x-bind:class="{
                                     'bg-zinc-50 dark:bg-zinc-900/40': day.outside,
                                     'bg-zinc-50 dark:bg-zinc-900/30': day.weekend && !day.outside,
                                     'cursor-pointer': day.count > 0 && !config.selectable,
                                 }"
                                 x-on:click="dayClick(day, $event)"
+                                x-on:focus="focusDate = day.date"
+                                x-on:keydown="dayKey(day, $event)"
                                 data-atom-calendar-day
-                                class="border-t border-zinc-200 dark:border-zinc-700 not-first:border-l"></div>
+                                class="border-t border-zinc-200 dark:border-zinc-700 not-first:border-l outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"></div>
                             </template>
                         </div>
 
@@ -185,6 +200,9 @@ data-atom-calendar
                                 type="button"
                                 x-bind:style="slotStyle(more)"
                                 x-on:click="openDay(more.date, $event.currentTarget)"
+                                aria-haspopup="dialog"
+                                x-bind:aria-expanded="String(popoverDate === more.date)"
+                                x-bind:aria-controls="uid + '-popover'"
                                 x-text="moreLabel(more.count)"
                                 data-atom-calendar-more
                                 class="h-5 w-full rounded-sm px-1.5 text-left text-xs font-medium text-zinc-600 outline-offset-1 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700/60 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"></button>
@@ -237,20 +255,30 @@ data-atom-calendar
              a body of 24 hours, so a narrow screen scrolls the week sideways with its header and its hour gutter
              (which stays at the left) still in step. Where things sit is atom.css's: the hour height, the lanes and the
              now line are positioned there and by percentages from the layout, never by utilities. --}}
-        <div x-cloak x-show="view !== 'month'" x-bind:style="{ '--atom-calendar-columns': grid.columns.length }" data-atom-calendar-grid>
+        <div x-cloak x-show="view !== 'month'" role="group" x-bind:aria-labelledby="uid + '-title'" x-bind:style="{ '--atom-calendar-columns': grid.columns.length }" data-atom-calendar-grid>
             <div data-atom-calendar-grid-inner>
                 <div data-atom-calendar-grid-top class="bg-white dark:bg-zinc-800">
                     <div data-atom-calendar-grid-row class="border-b border-zinc-200 dark:border-zinc-700">
                         <div data-atom-calendar-gutter class="bg-white dark:bg-zinc-800"></div>
 
                         <template x-for="column in grid.columns" :key="column.date">
-                            <div x-bind:data-date="column.date" data-atom-calendar-column-head class="flex flex-col items-center gap-0.5 border-l border-zinc-200 dark:border-zinc-700 py-2">
+                            {{-- A day's header opens that day in the day view. In the day view it is the title of the one column there is: it stays as it is, out of the tab order and said to be disabled. --}}
+                            <button
+                            type="button"
+                            x-bind:data-date="column.date"
+                            x-bind:aria-label="(labels.ui?.open_day ?? '').replace(':date', () => longDate(column.date))"
+                            x-bind:aria-disabled="view === 'day' ? 'true' : null"
+                            x-bind:tabindex="view === 'day' ? -1 : null"
+                            x-bind:class="view === 'day' ? 'cursor-default' : 'cursor-pointer'"
+                            x-on:click="showDay(column.date)"
+                            data-atom-calendar-column-head
+                            class="flex flex-col items-center gap-0.5 border-l border-zinc-200 dark:border-zinc-700 py-2 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
                                 <span x-text="weekdayName(column.date)" class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"></span>
                                 <span
                                 x-text="column.number"
                                 x-bind:class="column.today ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : (column.past ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-zinc-100')"
                                 class="inline-flex size-8 items-center justify-center rounded-full text-lg font-semibold tabular-nums"></span>
-                            </div>
+                            </button>
                         </template>
                     </div>
 
@@ -278,6 +306,9 @@ data-atom-calendar
                                     type="button"
                                     x-bind:style="slotStyle(more)"
                                     x-on:click="openDay(more.date, $event.currentTarget)"
+                                    aria-haspopup="dialog"
+                                    x-bind:aria-expanded="String(popoverDate === more.date)"
+                                    x-bind:aria-controls="uid + '-popover'"
                                     x-text="moreLabel(more.count)"
                                     data-atom-calendar-more
                                     class="h-5 w-full rounded-sm px-1.5 text-left text-xs font-medium text-zinc-600 outline-offset-1 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700/60 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"></button>
@@ -385,7 +416,9 @@ data-atom-calendar
         role="dialog"
         tabindex="-1"
         x-ref="popover"
+        x-bind:id="uid + '-popover'"
         x-bind:aria-label="popoverLabel"
+        x-on:keydown.tab="popoverTab($event)"
         data-atom-calendar-popover
         class="w-64 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-0 text-zinc-900 dark:text-zinc-100 shadow-xs outline-hidden">
             <div class="flex items-start justify-between gap-2 p-3 pb-2">

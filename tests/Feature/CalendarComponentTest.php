@@ -498,3 +498,121 @@ describe('calendar replaces the third-party wrapper', function () {
         }
     });
 });
+
+describe('calendar accessibility markup', function () {
+    /**
+     * Render a bound calendar inside a component that has the given Livewire id.
+     */
+    function calendarRenderAs(string $id, string $attributes = 'wire:model="date"'): string
+    {
+        $component = new class($id)
+        {
+            public string $date = '2026-10-09';
+
+            public function __construct(private string $id) {}
+
+            public function getName(): string
+            {
+                return 'calendar-test';
+            }
+
+            public function getId(): string
+            {
+                return $this->id;
+            }
+        };
+
+        return withLivewireContext($component, fn () => calendarRender($attributes));
+    }
+
+    it('builds its ids from a name: slugged, and the same on every render', function () {
+        $first = calendarRoot(calendarRender('name="Team plan"'));
+        $second = calendarRoot(calendarRender('name="Team plan"'));
+
+        expect($first->getAttribute('data-atom-calendar-uid'))->toBe('atom-calendar-team-plan')
+            ->and($second->getAttribute('data-atom-calendar-uid'))->toBe('atom-calendar-team-plan');
+    });
+
+    it('does not print the name as an attribute of its own', function () {
+        expect(calendarRoot(calendarRender('name="Team plan"'))->hasAttribute('name'))->toBeFalse();
+    });
+
+    it('derives the ids of a bound calendar from its component and its property, so a render gives the same ones', function () {
+        $one = calendarRoot(calendarRenderAs('abc123'))->getAttribute('data-atom-calendar-uid');
+
+        expect($one)->toStartWith('atom-calendar-')
+            ->and(calendarRoot(calendarRenderAs('abc123'))->getAttribute('data-atom-calendar-uid'))->toBe($one)
+            // another component with the same property is another calendar
+            ->and(calendarRoot(calendarRenderAs('def456'))->getAttribute('data-atom-calendar-uid'))->not->toBe($one);
+    });
+
+    it('lets two calendars of one component tell apart by their property', function () {
+        $first = calendarRoot(calendarRenderAs('abc123', 'wire:model="date"'))->getAttribute('data-atom-calendar-uid');
+        $second = calendarRoot(calendarRenderAs('abc123', 'wire:model="other"'))->getAttribute('data-atom-calendar-uid');
+
+        expect($first)->not->toBe($second);
+    });
+
+    it('leaves a calendar with neither a name nor a property to take its id from the engine, which numbers them in the order the page starts them', function () {
+        expect(calendarRoot(calendarRender())->hasAttribute('data-atom-calendar-uid'))->toBeFalse();
+    });
+
+    it('puts no id of its own on the root, which would be a morph key', function () {
+        expect(calendarRoot(calendarRender('name="x"'))->hasAttribute('id'))->toBeFalse()
+            ->and(calendarRoot(calendarRenderAs('abc123'))->hasAttribute('id'))->toBeFalse();
+    });
+
+    it('carries the words the keyboard and the names need, translated', function () {
+        $ui = calendarPayload(calendarRender())['labels']['ui'];
+
+        expect($ui)->toHaveKeys(['view', 'open_day', 'colors', 'overdue', 'all_day', 'choose_date'])
+            ->and($ui['open_day'])->toContain(':date')
+            ->and($ui['colors'])->toHaveKeys(['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'zinc', 'gray'])
+            ->and($ui['colors']['blue'])->toBe('Blue');
+    });
+
+    it('makes the header of a day in the week view a button, named for the day', function () {
+        $heads = domQuery(calendarRender(), '//*[@data-atom-calendar-column-head]');
+
+        expect($heads)->toHaveCount(1)
+            ->and($heads[0]->nodeName)->toBe('button')
+            ->and($heads[0]->getAttribute('type'))->toBe('button')
+            ->and($heads[0]->getAttribute('x-on:click'))->toBe('showDay(column.date)')
+            ->and($heads[0]->getAttribute('x-bind:aria-label'))->toContain('open_day');
+    });
+
+    it('names a block of the time grid in full, and no other item', function () {
+        $chips = file_get_contents(__DIR__.'/../../components/calendar/chip.blade.php');
+
+        // the block is the only one that drops its time when it is narrow: its name says what its text may not
+        preg_match('/<template x-if="chip.kind === \'block\'">(.*?)<\/template>/s', $chips, $block);
+
+        expect(substr_count($chips, 'itemLabel(chip)'))->toBe(1)
+            ->and($block[1])->toContain('x-bind:aria-label="itemLabel(chip)"');
+    });
+
+    it('gives each day of the month one roving tab stop, a key handler, and what a day with a list says about it', function () {
+        $cell = domQuery(calendarRender(), '//*[@data-atom-calendar-day]')[0];
+
+        expect($cell->getAttribute('x-bind:tabindex'))->toBe('day.date === tabDate ? 0 : -1')
+            ->and($cell->getAttribute('x-on:keydown'))->toBe('dayKey(day, $event)')
+            ->and($cell->getAttribute('x-bind:aria-haspopup'))->toContain('dialog')
+            ->and($cell->getAttribute('x-bind:aria-controls'))->toContain("'-popover'");
+    });
+
+    it('names the grids, the body and the list by ids the same uid builds', function () {
+        $html = calendarRender();
+
+        expect(domQuery($html, '//*[@role="grid"]')[0]->getAttribute('x-bind:aria-labelledby'))->toBe("uid + '-title'")
+            ->and(domQuery($html, '//*[@data-atom-calendar-grid]')[0]->getAttribute('x-bind:aria-labelledby'))->toBe("uid + '-title'")
+            ->and(domQuery($html, '//*[@data-atom-calendar-body]')[0]->getAttribute('x-bind:id'))->toBe("uid + '-body'")
+            ->and(domQuery($html, '//*[@data-atom-calendar-popover]')[0]->getAttribute('x-bind:id'))->toBe("uid + '-popover'");
+    });
+
+    it('renders the same markup twice, so no id in it is random', function () {
+        Carbon::setTestNow('2026-10-09 10:30:00');
+
+        expect(calendarRender('name="a"'))->toBe(calendarRender('name="a"'))
+            ->and(calendarRenderAs('abc123'))->toBe(calendarRenderAs('abc123'));
+    });
+});

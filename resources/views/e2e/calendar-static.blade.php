@@ -62,6 +62,9 @@
         <atom:calendar class="w-96" month="2026-10" data-probe="sized" />
     </div>
 
+    {{-- one with a name of its own: its ids are built from it --}}
+    <atom:calendar name="Team plan" month="2026-10" :items="[['id' => 't1', 'title' => 'Team item', 'start' => '2026-10-12']]" data-probe="named" />
+
     {{-- a calendar inside an atom modal, a native dialog: Escape has to close the day list and leave the modal --}}
     <atom:button x-on:click="$dispatch('atom-modal-show', { name: 'calendar-modal' })" data-open-modal>Open calendar</atom:button>
 

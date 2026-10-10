@@ -34,10 +34,19 @@ const HEX = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 // a title's year, when the locale writes it last
 const YEAR_AT_END = /\s*Y$/
 
+// What a calendar with no `name` and no bound property builds its ids from: the order the page started them in
+let instances = 0
+
 export default () => ({
     payload: null,
     palette: {},
     model: null,
+    // what the ids inside the calendar are built from (see index.blade.php)
+    uid: '',
+    // The day of the month view that is the one tab stop of its grid, and where the arrow keys go from. It follows the focus, and a
+    // key that leaves the window sets it to where the focus is heading; `keyPending` is that, until the window has come.
+    focusDate: null,
+    keyPending: false,
     view: 'month',
     anchor: '',
     loading: false,
@@ -170,6 +179,19 @@ export default () => ({
         }))
     },
 
+    // The one day of the month view the Tab key stops on: the one that has the focus, or was last moved to, while it is in the window;
+    // else today (when the month shown is today's), else the day the calendar is anchored to. Never none, so the grid is always reachable.
+    get tabDate () {
+        let days = this.payload?.window?.days ?? []
+        let has = (date) => Boolean(date) && days.some((day) => day.date === date)
+        let anchor = this.payload?.anchor
+
+        if (has(this.focusDate)) return this.focusDate
+        if (has(this.todayDate) && monthOf(this.todayDate) === monthOf(anchor)) return this.todayDate
+
+        return has(anchor) ? anchor : (days[0]?.date ?? '')
+    },
+
     get popoverLabel () {
         return this.popoverDate ? this.longDate(this.popoverDate) : ''
     },
@@ -182,6 +204,7 @@ export default () => ({
         let { signal } = controller
 
         this.model = this.$root.dataset.atomCalendarModel || null
+        this.uid = this.$root.dataset.atomCalendarUid || 'atom-calendar-' + (++instances)
         this.palette = this.readJson(this.$root.dataset.atomCalendarPalette) ?? {}
         this.read()
 
@@ -245,6 +268,13 @@ export default () => ({
 
         let first = this.payload === null
 
+        // The focus is on a day of the month when the window changes (a key that left the old one, or a render): the days of a new window
+        // are new nodes, so it is put back on the day it was on once they are drawn.
+        let restoreFocus = !first && this.view === 'month' && (this.keyPending || this.dayHasFocus())
+
+        // a new month by the toolbar or the picker is a new place to start from, and not by a key that is still on its way there
+        if (!first && !this.keyPending && monthOf(payload.anchor) !== monthOf(this.payload.anchor)) this.focusDate = null
+
         this.payload = payload
         this.anchor = payload.anchor
         this.todayDate = payload.today
@@ -259,6 +289,84 @@ export default () => ({
 
         // the day list follows the data: an item that went away leaves it, and an empty day closes it
         if (this.popoverDate && !dayEntries(payload.items, this.popoverDate).length) this.closeDay(false)
+
+        if (restoreFocus) this.$nextTick(() => this.focusDay())
+    },
+
+    // Is the focus on a day of the month grid?
+    dayHasFocus () {
+        let active = document.activeElement
+
+        return Boolean(active) && this.$root.contains(active) && active.matches('[data-atom-calendar-day]')
+    },
+
+    // Put the focus on the day that is the tab stop of the month grid.
+    focusDay () {
+        let cell = this.$root.querySelector('[data-atom-calendar-day][data-date="' + this.tabDate + '"]')
+
+        if (cell && document.activeElement !== cell) cell.focus()
+    },
+
+    // The keys of the month grid, from the day that has the focus. Arrows go a day or a week, Home and End to the ends of the week row,
+    // PageUp and PageDown a month; Enter and Space open the day's list. A day outside the window asks the server for another one
+    // (a calendar with no bound property has nowhere to go), and the focus follows once it is drawn.
+    dayKey (day, event) {
+        if (event.target !== event.currentTarget || event.ctrlKey || event.metaKey || event.altKey || this.view !== 'month' || !this.payload) return
+
+        // two quick presses go on from where the first one is heading, as the buttons of the toolbar do
+        let from = this.keyPending && this.focusDate ? this.focusDate : day.date
+        let days = this.payload.window.days
+        let row = Math.floor(days.findIndex((candidate) => candidate.date === day.date) / 7) * 7
+        let byMonth = false
+        let target
+
+        switch (event.key) {
+            case 'ArrowLeft': target = addDays(from, -1); break
+            case 'ArrowRight': target = addDays(from, 1); break
+            case 'ArrowUp': target = addDays(from, -7); break
+            case 'ArrowDown': target = addDays(from, 7); break
+            case 'Home': target = days[row]?.date; break
+            case 'End': target = days[row + 6]?.date; break
+            case 'PageUp': target = addMonths(from, -1); byMonth = true; break
+            case 'PageDown': target = addMonths(from, 1); byMonth = true; break
+            case 'Enter':
+            case ' ':
+                event.preventDefault()
+                this.openDay(day.date, event.currentTarget)
+
+                return
+            default: return
+        }
+
+        event.preventDefault()
+
+        if (target) this.moveFocus(target, byMonth)
+    },
+
+    // Take the focus to a day: at once if it is in the grid (a month does not change by walking onto a day of the next one), else by asking for
+    // the window around it. A month step always lands on the new month.
+    async moveFocus (target, byMonth = false) {
+        let shown = byMonth ? monthOf(target) === monthOf(this.payload.anchor) : this.payload.window.days.some((day) => day.date === target)
+
+        if (shown && !this.pending) {
+            this.focusDate = target
+            this.focusDay()
+
+            return
+        }
+
+        if (!this.model) return
+
+        // the last key to leave the window owns the flag: an answer to an earlier one does not clear it
+        let token = this.keyPending = Symbol()
+
+        this.focusDate = target
+
+        try {
+            await this.navigate(target)
+        } finally {
+            if (this.keyPending === token) this.keyPending = false
+        }
     },
 
     // Move to a date (`Y-m-d`). Staying inside the window needs no round trip; leaving it asks the server
@@ -323,6 +431,19 @@ export default () => ({
 
     today () {
         return this.navigate(this.todayDate)
+    },
+
+    // A day's header in the week view: that day, by the day. The window holds the whole week, so it asks for nothing.
+    showDay (date) {
+        if (this.view === 'day' || !parseDate(date)) return
+
+        this.closeDay(false)
+        this.anchor = date
+        this.jump = toLocalDate(date)
+
+        if (this.model) this.navigate(date)
+
+        this.setView('day')
     },
 
     setView (view) {
@@ -400,6 +521,19 @@ export default () => ({
         if (panel?.matches(':popover-open')) panel.hidePopover()
 
         if (restoreFocus && trigger?.isConnected) trigger.focus({ preventScroll: true })
+    },
+
+    // Tab at either end of the day list leaves it for the trigger it opened from, as it would on a page: the list is after the
+    // grid in the document, so the next stop would be the page's, a long way from the day.
+    popoverTab (event) {
+        let panel = this.$refs.popover
+        let items = [...panel.querySelectorAll('button, a[href], [tabindex="0"]')].filter((el) => !el.disabled && el.checkVisibility?.() !== false)
+        let active = document.activeElement
+
+        if (event.shiftKey ? (active === panel || active === items[0]) : active === items.at(-1)) {
+            event.preventDefault()
+            this.closeDay()
+        }
     },
 
     dayClick (day, event) {
@@ -544,6 +678,20 @@ export default () => ({
 
     timeLabel (chip) {
         return format(chip.start, this.config.timeFormat, this.labels)
+    },
+
+    // What a timed block is called: its title, the day, its time, and what its colour or overdue stands for, which the block
+    // says in part (a narrow one drops its time) or not at all. A hex colour has no name to give.
+    itemLabel (chip) {
+        let ui = this.labels.ui ?? {}
+        let color = chip.danger || this.isHex(chip) ? null : ui.colors?.[chip.color]
+
+        return [
+            chip.title,
+            this.longDate(chip.date ?? dateOf(chip.start)),
+            chip.allDay ? ui.all_day : this.timeRange(chip),
+            chip.danger ? ui.overdue : color,
+        ].filter(Boolean).join(', ')
     },
 
     longDate (date) {

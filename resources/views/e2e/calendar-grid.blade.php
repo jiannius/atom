@@ -77,6 +77,14 @@
         'kl-gap' => [
             ['id' => 'gap', 'title' => 'Gap item', 'start' => '2026-03-08T02:30:00+08:00', 'end' => '2026-03-08T03:30:00+08:00'],
         ],
+        // what a block is called: one of each kind of colour (a name, a hex, none) and an overdue one, given out of order
+        'names' => [
+            ['id' => 'n-late', 'title' => 'Server upgrade', 'start' => '2026-10-09T14:00:00+08:00', 'end' => '2026-10-09T15:30:00+08:00', 'color' => 'red', 'danger' => true],
+            ['id' => 'n-plain', 'title' => 'Plain item', 'start' => '2026-10-09T11:00:00+08:00', 'end' => '2026-10-09T12:00:00+08:00'],
+            ['id' => 'n-hex', 'title' => 'Hex item', 'start' => '2026-10-09T16:00:00+08:00', 'end' => '2026-10-09T17:00:00+08:00', 'color' => '#ff8800'],
+            ['id' => 'n-blue', 'title' => 'Planning', 'start' => '2026-10-09T09:00:00+08:00', 'end' => '2026-10-09T10:00:00+08:00', 'color' => 'blue'],
+            ['id' => 'n-open', 'title' => 'Open end', 'start' => '2026-10-09T18:00:00+08:00', 'color' => 'green'],
+        ],
         // the look: overlaps, an all-day row, an item with no end, a short one, and today's now line
         default => [
             ['id' => 'launch', 'title' => 'Launch week', 'start' => '2026-10-05', 'end' => '2026-10-09', 'color' => 'purple'],

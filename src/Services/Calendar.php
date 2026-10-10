@@ -331,7 +331,7 @@ class Calendar
      * standalone ones. One more known gap: ka prints a weekday differently beside other tokens.
      * `week_title`, `month_title` and `day_title` are how the title of each view is written in the locale, see weekTitle().
      *
-     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, week_title: array<string, list<string>>, month_title: string, day_title: string, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string>}
+     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, week_title: array<string, list<string>>, month_title: string, day_title: string, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string|array<string, string>>}
      */
     public function labels(): array
     {
@@ -376,6 +376,20 @@ class Calendar
                 'items' => (string) __(':count items'),
                 'close' => (string) __('Close'),
                 'choose_date' => (string) __('Choose date'),
+                'view' => (string) __('View'),
+                'open_day' => (string) __('Open :date in day view'),
+                // what a colour of the preset palette is called, for the name of an item: a host's own colour has no name here
+                'colors' => [
+                    'red' => (string) __('Red'),
+                    'orange' => (string) __('Orange'),
+                    'yellow' => (string) __('Yellow'),
+                    'green' => (string) __('Green'),
+                    'blue' => (string) __('Blue'),
+                    'purple' => (string) __('Purple'),
+                    'black' => (string) __('Black'),
+                    'zinc' => (string) __('Grey'),
+                    'gray' => (string) __('Grey'),
+                ],
             ],
         ];
     }

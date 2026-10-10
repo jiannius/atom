@@ -21,7 +21,7 @@
     "isEntry": true
   },
   "resources/js/atom.js": {
-    "file": "assets/atom-Cb5xHVa1.js",
+    "file": "assets/atom-BXGaHWiB.js",
     "name": "atom",
     "src": "resources/js/atom.js",
     "isEntry": true,
@@ -33,7 +33,7 @@
     ]
   },
   "resources/js/tiptap.js": {
-    "file": "assets/tiptap-DnrstakP.js",
+    "file": "assets/tiptap-lbMUHHP9.js",
     "name": "tiptap",
     "src": "resources/js/tiptap.js",
     "isDynamicEntry": true,

@@ -78,6 +78,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/form-error-toast', fn () => view('atom::e2e.form-error-toast'));
         Route::middleware('web')->get('/atom/e2e/calendar', fn () => view('atom::e2e.calendar'));
         Route::middleware('web')->get('/atom/e2e/calendar-static', fn () => view('atom::e2e.calendar-static'));
+        Route::middleware('web')->get('/atom/e2e/calendar-twin', fn () => view('atom::e2e.calendar-twin'));
         Route::middleware('web')->get('/atom/e2e/calendar-look', function (Request $request) {
             // the viewer's language, for the titles written differently in it
             app()->setLocale(in_array($request->query('locale'), ['en', 'zh', 'ms'], true) ? $request->query('locale') : 'en');
