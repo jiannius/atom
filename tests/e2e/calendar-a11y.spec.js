@@ -372,7 +372,8 @@ test.describe('what the controls are called', () => {
         }
 
         await expect(probe(page).getByRole('group', { name: /October 2026/ })).toHaveCount(1)
-        await expect(probe(page).getByRole('group', { name: /^Friday, 9 Oct 2026, \d+ items$/ })).toHaveAttribute('aria-current', 'date')
+        // the column holds the timed blocks (one, the stand-up): the all-day items are in the row above it, and are not counted
+        await expect(probe(page).getByRole('group', { name: 'Friday, 9 Oct 2026, 1 item', exact: true })).toHaveAttribute('aria-current', 'date')
     })
 })
 
@@ -394,10 +395,32 @@ test.describe('the header of a day in the week view opens that day', () => {
         await expect(title(page)).toHaveText('9 October 2026')
         expect(requests.count).toBe(0)
 
-        // the one column's header has nowhere to go: it is said to be disabled and is out of the tab order, and keeps the focus it had
-        await expect(header).toHaveAttribute('aria-disabled', 'true')
-        await expect(header).toHaveAttribute('tabindex', '-1')
-        await expect(header).toBeFocused()
+        // the one column's header has nowhere to go: it is no longer a button, and there is no control named for opening the day
+        await expect(header).toHaveCount(0)
+        await expect(probe(page).locator('[data-atom-calendar-column-head][aria-disabled]')).toHaveCount(0)
+        await expect(probe(page).locator('button[data-atom-calendar-column-head]')).toHaveCount(0)
+    })
+
+    test('in the day view the header is the title of the day: a group named with the long date, which is not a tab stop', async ({ page }) => {
+        await open(page, '/atom/e2e/calendar?view=day')
+
+        const head = probe(page).getByRole('group', { name: 'Friday, 9 Oct 2026', exact: true })
+
+        await expect(head).toHaveCount(1)
+        await expect(head).toHaveAttribute('data-atom-calendar-column-head', '')
+        await expect(head).toHaveAttribute('tabindex', '-1')
+        expect(await head.evaluate((el) => el.tagName)).toBe('DIV')
+    })
+
+    test('pressing the header of a day takes the focus to the day, not to the page', async ({ page }) => {
+        await open(page, '/atom/e2e/calendar?view=week')
+
+        await probe(page).getByRole('button', { name: 'Open Friday, 9 Oct 2026 in day view', exact: true }).focus()
+        await page.keyboard.press('Enter')
+
+        await expect(probe(page).locator('[data-atom-calendar-column]')).toHaveAttribute('data-date', '2026-10-09')
+        await expect(probe(page).locator('[data-atom-calendar-column-head]')).toBeFocused()
+        expect(await page.evaluate(() => document.activeElement === document.body)).toBe(false)
     })
 
     test('the keyboard does the same: Enter on a focused header', async ({ page }) => {
@@ -490,12 +513,42 @@ test.describe('ids are derived, and two calendars do not share one', () => {
     test('a name is what the ids are built from', async ({ page }) => {
         await open(page, '/atom/e2e/calendar-static')
 
-        expect(await idsOf(page, 'named')).toEqual({
-            uid: 'atom-calendar-team-plan',
-            body: 'atom-calendar-team-plan-body',
-            popover: 'atom-calendar-team-plan-popover',
-            title: 'atom-calendar-team-plan-title',
+        const ids = await idsOf(page, 'named')
+
+        // the slug of the name, and a hash of the name as written
+        expect(ids.uid).toMatch(/^atom-calendar-team-plan-[0-9a-f]{8}$/)
+        expect(ids).toEqual({
+            uid: ids.uid,
+            body: ids.uid + '-body',
+            popover: ids.uid + '-popover',
+            title: ids.uid + '-title',
         })
+    })
+
+    test('names a slug cannot tell apart, or cannot read, are still different calendars', async ({ page }) => {
+        await open(page, '/atom/e2e/calendar-static')
+
+        const uids = []
+
+        for (const name of ['named', 'slug-team-plan', 'name-cjk-1', 'name-cjk-2', 'name-punctuation', 'name-number']) {
+            uids.push((await idsOf(page, name)).uid)
+        }
+
+        expect(new Set(uids).size).toBe(uids.length)
+        // a name that is all punctuation is a hash and no slug, and none ends as `atom-calendar-`
+        for (const uid of uids) expect(uid).toMatch(/^atom-calendar-([a-z0-9-]+-)?[0-9a-f]{8}$/)
+    })
+
+    test('a calendar with no name is numbered by the engine, and a name that is a number is not that number', async ({ page }) => {
+        await open(page, '/atom/e2e/calendar-static')
+
+        const numbered = await idsOf(page, 'static')
+        const named = await idsOf(page, 'name-number')
+
+        // (the engine's number is in no attribute: it is the id of the body that says it)
+        expect(numbered.body).toMatch(/^atom-calendar-n\d+-body$/)
+        expect(named.uid).toMatch(/^atom-calendar-1-[0-9a-f]{8}$/)
+        expect(named.uid).not.toBe('atom-calendar-1')
     })
 
     test('two components bound to a property of the same name do not collide, and keep their ids when they render again', async ({ page }) => {
@@ -526,5 +579,378 @@ test.describe('ids are derived, and two calendars do not share one', () => {
         await answer
         await expect(page.locator('[data-renders]').first()).toHaveText('1')
         expect(await read()).toEqual(before)
+    })
+})
+
+// ---- the review of phase 5 ----
+
+// the answer to every Livewire update comes `ms` later than the browser asked for it
+async function delayUpdates (page, ms) {
+    await page.route((url) => url.pathname.includes('livewire') && url.pathname.endsWith('/update'), async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, ms))
+        await route.continue()
+    })
+}
+
+const inGrid = (page) => page.evaluate(() => Boolean(document.activeElement?.closest('[role="grid"]')))
+
+test.describe('a key that is waiting for the next window does not take the focus back from where the viewer went', () => {
+    test.beforeEach(async ({ page }) => {
+        await open(page)
+        await delayUpdates(page, 1200)
+    })
+
+    test('Shift+Tab out of the grid while the window is on its way: it lands, and the focus is where it was taken', async ({ page }) => {
+        await cell(page, '2026-11-08').focus()
+
+        const answer = page.waitForResponse(isUpdate)
+
+        await page.keyboard.press('ArrowRight')
+        // the key out of the grid: Shift+Tab goes to the chips of the week before it, which are the grid's own, so the viewer is put on the toolbar
+        await page.getByRole('button', { name: 'Today', exact: true }).focus()
+        await page.evaluate(() => { window.__away = document.activeElement })
+        expect(await inGrid(page)).toBe(false)
+
+        await answer
+        await expect(title(page)).toHaveText('November 2026')
+        // a frame for what the grid does after a render
+        await page.waitForTimeout(200)
+
+        expect(await page.evaluate(() => document.activeElement === window.__away)).toBe(true)
+        expect(await inGrid(page)).toBe(false)
+    })
+
+    test('a click on the page, outside the grid, does the same', async ({ page }) => {
+        await cell(page, '2026-11-08').focus()
+
+        const answer = page.waitForResponse(isUpdate)
+
+        await page.keyboard.press('ArrowRight')
+        await page.locator('[data-renders]').click()
+        await answer
+        await expect(title(page)).toHaveText('November 2026')
+        await page.waitForTimeout(200)
+
+        expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true)
+    })
+
+    test('the focus going nowhere after it left (the control it went to is blurred) is not taken either', async ({ page }) => {
+        await cell(page, '2026-11-08').focus()
+
+        const answer = page.waitForResponse(isUpdate)
+
+        await page.keyboard.press('ArrowRight')
+        await page.getByRole('button', { name: 'Today', exact: true }).focus()
+        await page.evaluate(() => document.activeElement.blur())
+        await answer
+        await expect(title(page)).toHaveText('November 2026')
+        await page.waitForTimeout(200)
+
+        expect(await inGrid(page)).toBe(false)
+    })
+
+    test('the key owns the focus while nobody has it: a node it left dropped it to the page, and it is put on the day the key was heading for', async ({ page }) => {
+        await cell(page, '2026-11-08').focus()
+
+        const answer = page.waitForResponse(isUpdate)
+
+        await page.keyboard.press('ArrowRight')
+        // the day it was on is taken out of the page by something else before the window comes: the focus is on the page itself
+        await page.evaluate(() => document.activeElement.blur())
+        expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true)
+
+        await answer
+        await expect(title(page)).toHaveText('November 2026')
+        await expect(cell(page, '2026-11-09')).toBeFocused()
+    })
+
+    test('with the focus left alone, it goes to the day the key was heading for, which the old window did not have', async ({ page }) => {
+        // 10-09 is a week that is not in November's window: the node that had the focus is gone when the window comes
+        await cell(page, '2026-10-09').focus()
+        await page.keyboard.press('PageDown')
+        await expect(title(page)).toHaveText('November 2026')
+        await expect(cell(page, '2026-11-09')).toBeFocused()
+        expect(await tabStops(page)).toEqual(['2026-11-09'])
+    })
+})
+
+test.describe('the live title is said when it changes, not when the payload does', () => {
+    test('an items-only change writes nothing to it, and a month does, once', async ({ page }) => {
+        await open(page)
+        await page.evaluate(() => {
+            window.__live = 0
+            new MutationObserver((records) => { window.__live += records.length })
+                .observe(document.querySelector('[data-probe="calendar"] [role="status"]'), { childList: true, characterData: true, subtree: true, attributes: true })
+        })
+
+        let answer = page.waitForResponse(isUpdate)
+
+        await page.evaluate(() => window.Livewire.first().toggleExtra())
+        await answer
+        await expect(probe(page).locator('[data-atom-calendar-chip]', { hasText: 'Added later' })).toBeVisible()
+        await page.waitForTimeout(150)
+        expect(await page.evaluate(() => window.__live)).toBe(0)
+
+        answer = page.waitForResponse(isUpdate)
+        await page.getByRole('button', { name: 'Next', exact: true }).click()
+        await answer
+        await expect(title(page)).toHaveText('November 2026')
+        await page.waitForTimeout(150)
+        expect(await page.evaluate(() => window.__live)).toBe(1)
+    })
+})
+
+test.describe('an item is named in full wherever it is drawn', () => {
+    const named = (page, name, scope = 'calendar') => probe(page, scope).getByRole('button', { name, exact: true })
+
+    test('a block that crosses midnight names both ends, in either column it is drawn in', async ({ page }) => {
+        await open(page, '/atom/e2e/calendar?view=week&date=2026-10-23')
+
+        const name = 'Night shift, Thursday, 22 Oct 2026, 10:00 PM to Friday, 23 Oct 2026, 2:00 AM'
+
+        await expect(named(page, name)).toHaveCount(2)
+        await expect(probe(page).locator('[data-atom-calendar-column][data-date="2026-10-23"]').getByRole('button', { name, exact: true })).toHaveCount(1)
+    })
+
+    test('a block carries no tooltip beside its name', async ({ page }) => {
+        await open(page, '/atom/e2e/calendar?view=week&date=2026-10-23')
+        await expect(probe(page).locator('[data-atom-calendar-chip="block"]').first()).toBeVisible()
+        await expect(probe(page).locator('[data-atom-calendar-chip="block"][title]')).toHaveCount(0)
+    })
+
+    test('a bar names its title, its first and last day, and its colour', async ({ page }) => {
+        await open(page)
+        await expect(named(page, 'Launch week, Monday, 5 Oct 2026 to Friday, 9 Oct 2026, Purple')).toHaveCount(1)
+    })
+
+    test('a day item in the month says it is for the whole day, an overdue one says so', async ({ page }) => {
+        await open(page)
+        await expect(named(page, 'Invoice overdue, Friday, 9 Oct 2026, All day, Overdue')).toHaveCount(1)
+    })
+
+    test('a timed item in the month: title, day, time range, colour', async ({ page }) => {
+        await open(page)
+        await expect(named(page, 'Dentist, Wednesday, 14 Oct 2026, 8:00 AM – 9:00 AM, Red')).toHaveCount(1)
+        // a colour of its own has no name to give
+        await expect(named(page, 'Hex colour, Tuesday, 20 Oct 2026, 2:00 PM – 3:00 PM')).toHaveCount(1)
+    })
+
+    test('an item that crosses midnight is named whole in the month too', async ({ page }) => {
+        await open(page)
+        await expect(named(page, 'Night shift, Thursday, 22 Oct 2026, 10:00 PM to Friday, 23 Oct 2026, 2:00 AM')).toHaveCount(1)
+    })
+
+    test('the rows of the day list have the same names', async ({ page }) => {
+        await open(page)
+        await cell(page, '2026-10-09').focus()
+        await page.keyboard.press('Enter')
+        await expect(popover(page)).toBeVisible()
+        await expect(popover(page).getByRole('button', { name: 'Launch week, Monday, 5 Oct 2026 to Friday, 9 Oct 2026, Purple', exact: true })).toHaveCount(1)
+        await expect(popover(page).getByRole('button', { name: 'Team standup, Friday, 9 Oct 2026, 9:30 AM – 10:00 AM, Blue', exact: true })).toHaveCount(1)
+    })
+
+    test('an all-day bar in the week view is named the same way', async ({ page }) => {
+        await open(page, '/atom/e2e/calendar-grid?view=week')
+        await expect(probe(page, 'grid').getByRole('button', { name: 'Launch week, Monday, 5 Oct 2026 to Friday, 9 Oct 2026, Purple', exact: true })).toHaveCount(1)
+        await expect(probe(page, 'grid').getByRole('button', { name: 'Public holiday, Saturday, 10 Oct 2026, All day, Green', exact: true })).toHaveCount(1)
+    })
+
+    test('a chip has a tooltip with its whole title only where the title shown is cut short', async ({ page }) => {
+        await open(page)
+
+        const chip = (text) => probe(page).locator('[data-atom-calendar-chip="dot"]', { hasText: text }).first()
+
+        await expect(chip('Dentist')).not.toHaveAttribute('title', /.*/)
+        await chip('Dentist').hover()
+        await expect(chip('Dentist')).not.toHaveAttribute('title', /.*/)
+
+        // squeezed until it is cut: the title is on it
+        await page.addStyleTag({ content: '[data-atom-calendar-chip="dot"] [data-atom-calendar-chip-title] { max-width: 20px }' })
+        await page.mouse.move(0, 0)
+        await chip('Dentist').hover({ position: { x: 3, y: 3 } })
+        await expect(chip('Dentist')).toHaveAttribute('title', 'Dentist')
+    })
+})
+
+test.describe('what a day or a "+N more" says about the list', () => {
+    const readSource = (page) => page.evaluate(() => {
+        const root = document.querySelector('[data-probe="calendar"]')
+        const data = window.Alpine.$data(root)
+
+        return { date: data.popoverDate, source: data.popoverSource }
+    })
+
+    test('only the one that opened the list is expanded', async ({ page }) => {
+        await open(page)
+
+        const more = probe(page).locator('[data-atom-calendar-more]').first()
+
+        await more.focus()
+        await page.keyboard.press('Enter')
+        await expect(popover(page)).toBeVisible()
+
+        const { date } = await readSource(page)
+
+        await expect(more).toHaveAttribute('aria-expanded', 'true')
+        await expect(cell(page, date)).toHaveAttribute('aria-expanded', 'false')
+
+        await page.keyboard.press('Escape')
+        await expect(popover(page)).toBeHidden()
+
+        await cell(page, date).focus()
+        await page.keyboard.press('Enter')
+        await expect(popover(page)).toBeVisible()
+        await expect(cell(page, date)).toHaveAttribute('aria-expanded', 'true')
+        await expect(more).toHaveAttribute('aria-expanded', 'false')
+    })
+})
+
+test.describe('Escape belongs to the day list only while the focus is in it or on what opened it', () => {
+    test('with the focus somewhere else, the list stays and the page gets the key', async ({ page }) => {
+        await open(page)
+        await cell(page, '2026-10-09').focus()
+        await page.keyboard.press('Enter')
+        await expect(popover(page)).toBeVisible()
+
+        await page.locator('[data-bump]').focus()
+        await page.evaluate(() => {
+            window.__escape = null
+            document.addEventListener('keydown', (event) => { if (event.key === 'Escape') window.__escape = { prevented: event.defaultPrevented } })
+        })
+        await page.keyboard.press('Escape')
+
+        expect(await page.evaluate(() => window.__escape)).toEqual({ prevented: false })
+        await expect(popover(page)).toBeVisible()
+    })
+
+    test('in the list it closes it, and the focus is on the trigger', async ({ page }) => {
+        await open(page)
+        await cell(page, '2026-10-09').focus()
+        await page.keyboard.press('Enter')
+        await page.keyboard.press('Escape')
+        await expect(popover(page)).toBeHidden()
+        await expect(cell(page, '2026-10-09')).toBeFocused()
+    })
+})
+
+test.describe('the day list closing under the focus does not drop it to the page', () => {
+    test('opened from a day: the focus goes to that day', async ({ page }) => {
+        await open(page)
+
+        let answer = page.waitForResponse(isUpdate)
+
+        await page.evaluate(() => window.Livewire.first().toggleLone())
+        await answer
+        await expect(probe(page).locator('[data-atom-calendar-chip]', { hasText: 'Lone item' })).toBeVisible()
+
+        await cell(page, '2026-10-16').focus()
+        await page.keyboard.press('Enter')
+        await expect(popover(page)).toBeVisible()
+
+        answer = page.waitForResponse(isUpdate)
+        await page.evaluate(() => window.Livewire.first().toggleLone())
+        await answer
+        await expect(popover(page)).toBeHidden()
+        await expect(cell(page, '2026-10-16')).toBeFocused()
+    })
+
+    test('opened from a "+N more" that goes with the items: the focus goes to the day that is the tab stop', async ({ page }) => {
+        await open(page)
+
+        let answer = page.waitForResponse(isUpdate)
+
+        await page.evaluate(() => window.Livewire.first().toggleCrowd())
+        await answer
+
+        // the "+N more" of 17 October, found by where the engine put it
+        const index = await page.evaluate(() => window.Alpine.$data(document.querySelector('[data-probe="calendar"]')).weeks.flatMap((week) => week.more).findIndex((more) => more.date === '2026-10-17'))
+
+        expect(index).toBeGreaterThanOrEqual(0)
+
+        const all = probe(page).locator('[data-atom-calendar-more]')
+        const before = await all.count()
+        const more = all.nth(index)
+
+        await more.focus()
+        await page.keyboard.press('Enter')
+        await expect(popover(page)).toBeVisible()
+
+        answer = page.waitForResponse(isUpdate)
+        await page.evaluate(() => window.Livewire.first().toggleCrowd())
+        await answer
+        await expect(popover(page)).toBeHidden()
+        await expect(all).toHaveCount(before - 1)
+
+        const stop = (await tabStops(page))[0]
+
+        expect(stop).toBeTruthy()
+        await expect(cell(page, stop)).toBeFocused()
+    })
+
+    test('with the focus outside the list, closing it moves nothing', async ({ page }) => {
+        await open(page)
+
+        let answer = page.waitForResponse(isUpdate)
+
+        await page.evaluate(() => window.Livewire.first().toggleLone())
+        await answer
+        await expect(probe(page).locator('[data-atom-calendar-chip]', { hasText: 'Lone item' })).toBeVisible()
+
+        await cell(page, '2026-10-16').focus()
+        await page.keyboard.press('Enter')
+        await expect(popover(page)).toBeVisible()
+        await page.locator('[data-bump]').focus()
+
+        answer = page.waitForResponse(isUpdate)
+        await page.evaluate(() => window.Livewire.first().toggleLone())
+        await answer
+        await expect(popover(page)).toBeHidden()
+        await expect(page.locator('[data-bump]')).toBeFocused()
+    })
+})
+
+test.describe('keys that are not the grid\'s', () => {
+    test('Shift with an arrow or a page key is left alone (it is for selecting a range): nothing moves and nothing is prevented', async ({ page }) => {
+        await open(page)
+        await cell(page, '2026-10-14').focus()
+        await page.evaluate(() => {
+            window.__prevented = []
+            document.addEventListener('keydown', (event) => window.__prevented.push([event.key, event.defaultPrevented]))
+        })
+
+        for (const key of ['Shift+ArrowRight', 'Shift+ArrowDown', 'Shift+PageDown', 'Shift+PageUp']) await page.keyboard.press(key)
+
+        expect(await focused(page)).toBe('2026-10-14')
+        expect((await page.evaluate(() => window.__prevented)).filter(([key]) => key !== 'Shift').every(([, prevented]) => prevented === false)).toBe(true)
+        await expect(title(page)).toHaveText('October 2026')
+    })
+
+    test('on a selectable calendar Enter and Space open no list, as a click opens none', async ({ page }) => {
+        await open(page, '/atom/e2e/calendar-static')
+
+        const day = cell(page, '2026-10-12', 'selectable')
+
+        await day.focus()
+        await page.keyboard.press('Enter')
+        await page.keyboard.press(' ')
+        await expect(popover(page, 'selectable')).toBeHidden()
+
+        await day.click()
+        await expect(popover(page, 'selectable')).toBeHidden()
+    })
+})
+
+test.describe('a week that starts on a Sunday', () => {
+    test('Home is the Sunday and End the Saturday of the row', async ({ page }) => {
+        await open(page, '/atom/e2e/calendar-grid?view=month&weekStart=sunday')
+
+        await expect(cells(page, 'grid').first()).toHaveAttribute('data-date', '2026-09-27')
+
+        await cell(page, '2026-10-14', 'grid').focus()
+        await page.keyboard.press('Home')
+        await expect(cell(page, '2026-10-11', 'grid')).toBeFocused()
+
+        await page.keyboard.press('End')
+        await expect(cell(page, '2026-10-17', 'grid')).toBeFocused()
     })
 })

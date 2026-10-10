@@ -525,12 +525,52 @@ describe('calendar accessibility markup', function () {
         return withLivewireContext($component, fn () => calendarRender($attributes));
     }
 
-    it('builds its ids from a name: slugged, and the same on every render', function () {
+    /**
+     * The uid a calendar of this name prints.
+     */
+    function calendarUidOf(string $name): string
+    {
+        return calendarRoot(calendarRender('name="'.$name.'"'))->getAttribute('data-atom-calendar-uid');
+    }
+
+    it('builds its ids from a name: slugged with a hash of the name, and the same on every render', function () {
         $first = calendarRoot(calendarRender('name="Team plan"'));
         $second = calendarRoot(calendarRender('name="Team plan"'));
 
-        expect($first->getAttribute('data-atom-calendar-uid'))->toBe('atom-calendar-team-plan')
-            ->and($second->getAttribute('data-atom-calendar-uid'))->toBe('atom-calendar-team-plan');
+        expect($first->getAttribute('data-atom-calendar-uid'))->toBe('atom-calendar-team-plan-'.substr(md5('Team plan'), 0, 8))
+            ->and($second->getAttribute('data-atom-calendar-uid'))->toBe($first->getAttribute('data-atom-calendar-uid'));
+    });
+
+    it('tells apart names that make the same slug', function () {
+        expect(calendarUidOf('Team plan'))->not->toBe(calendarUidOf('team-plan'))
+            ->and(calendarUidOf('Team plan'))->toStartWith('atom-calendar-team-plan-')
+            ->and(calendarUidOf('team-plan'))->toStartWith('atom-calendar-team-plan-');
+    });
+
+    it('tells apart names that have nothing for a slug to keep, and does not leave an id with nothing after `atom-calendar-`', function () {
+        $uids = array_map(calendarUidOf(...), ['日本語', '团队', '!!!', '???', '1', 'n1']);
+
+        expect($uids)->toHaveCount(count(array_unique($uids)));
+
+        foreach ($uids as $uid) {
+            expect($uid)->toMatch('/^atom-calendar-([a-z0-9-]+-)?[0-9a-f]{8}$/');
+        }
+
+        // a name that is all punctuation is the hash alone
+        expect(calendarUidOf('!!!'))->toBe('atom-calendar-'.substr(md5('!!!'), 0, 8));
+    });
+
+    it('never gives a name the id the engine numbers a calendar with no name by', function () {
+        // the engine's are `atom-calendar-n<k>`, with nothing after the number; a name always ends in its hash
+        foreach (['1', 'n1', 'n', '2'] as $name) {
+            expect(calendarUidOf($name))->not->toMatch('/^atom-calendar-n?\d+$/');
+        }
+    });
+
+    it('keeps the engine fallback out of the names\' way in the browser module', function () {
+        expect(file_get_contents(__DIR__.'/../../resources/js/alpinejs/calendar.js'))
+            ->toContain("'atom-calendar-n' + (++instances)")
+            ->not->toContain("'atom-calendar-' + (++instances)");
     });
 
     it('does not print the name as an attribute of its own', function () {
@@ -565,8 +605,10 @@ describe('calendar accessibility markup', function () {
     it('carries the words the keyboard and the names need, translated', function () {
         $ui = calendarPayload(calendarRender())['labels']['ui'];
 
-        expect($ui)->toHaveKeys(['view', 'open_day', 'colors', 'overdue', 'all_day', 'choose_date'])
+        expect($ui)->toHaveKeys(['view', 'open_day', 'colors', 'overdue', 'all_day', 'choose_date', 'range'])
             ->and($ui['open_day'])->toContain(':date')
+            // an item over more than a day is named from its first end to its last
+            ->and($ui['range'])->toContain(':start')->toContain(':end')
             ->and($ui['colors'])->toHaveKeys(['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'zinc', 'gray'])
             ->and($ui['colors']['blue'])->toBe('Blue');
     });
@@ -574,21 +616,57 @@ describe('calendar accessibility markup', function () {
     it('makes the header of a day in the week view a button, named for the day', function () {
         $heads = domQuery(calendarRender(), '//*[@data-atom-calendar-column-head]');
 
-        expect($heads)->toHaveCount(1)
-            ->and($heads[0]->nodeName)->toBe('button')
-            ->and($heads[0]->getAttribute('type'))->toBe('button')
-            ->and($heads[0]->getAttribute('x-on:click'))->toBe('showDay(column.date)')
-            ->and($heads[0]->getAttribute('x-bind:aria-label'))->toContain('open_day');
+        $buttons = array_values(array_filter($heads, fn ($head) => $head->nodeName === 'button'));
+
+        expect($buttons)->toHaveCount(1)
+            ->and($buttons[0]->getAttribute('type'))->toBe('button')
+            ->and($buttons[0]->getAttribute('x-on:click'))->toBe('showDay(column.date)')
+            ->and($buttons[0]->getAttribute('x-bind:aria-label'))->toContain('open_day')
+            // it is a button only outside the day view
+            ->and($buttons[0]->parentNode->getAttribute('x-for'))->toContain("view === 'day' ? [] : grid.columns");
     });
 
-    it('names a block of the time grid in full, and no other item', function () {
+    it('makes the header of the one day of the day view a group named for the day, which is no button and not disabled', function () {
+        $heads = array_values(array_filter(domQuery(calendarRender(), '//*[@data-atom-calendar-column-head]'), fn ($head) => $head->nodeName !== 'button'));
+
+        expect($heads)->toHaveCount(1)
+            ->and($heads[0]->nodeName)->toBe('div')
+            ->and($heads[0]->getAttribute('role'))->toBe('group')
+            ->and($heads[0]->getAttribute('tabindex'))->toBe('-1')
+            ->and($heads[0]->getAttribute('x-bind:aria-label'))->toBe('longDate(column.date)')
+            ->and($heads[0]->hasAttribute('x-bind:aria-disabled'))->toBeFalse()
+            ->and($heads[0]->parentNode->getAttribute('x-for'))->toContain("view === 'day' ? grid.columns : []");
+    });
+
+    it('says a column holds the blocks that are in it, and the live title is written from a text that moves only with the title', function () {
+        $html = calendarRender();
+
+        expect(domQuery($html, '//*[@data-atom-calendar-column]')[0]->getAttribute('x-bind:aria-label'))->toBe('dayLabel(column, column.blocks.length)')
+            ->and(domQuery($html, '//*[@role="status"]')[0]->getAttribute('x-text'))->toBe('liveTitle');
+    });
+
+    it('keys a day\'s and a "+N more"\'s aria-expanded off what opened the list', function () {
+        $html = calendarRender();
+
+        expect(domQuery($html, '//*[@data-atom-calendar-day]')[0]->getAttribute('x-bind:aria-expanded'))->toContain("popoverSource === 'day'")
+            ->and(domQuery($html, '//*[@data-atom-calendar-more]')[0]->getAttribute('x-bind:aria-expanded'))->toContain("popoverSource === 'more'")
+            ->and(domQuery($html, '//*[@data-atom-calendar-more]')[1]->getAttribute('x-bind:aria-expanded'))->toContain("popoverSource === 'more'");
+    });
+
+    it('names every kind of item in full, and gives none a tooltip beside its name', function () {
         $chips = file_get_contents(__DIR__.'/../../components/calendar/chip.blade.php');
 
-        // the block is the only one that drops its time when it is narrow: its name says what its text may not
-        preg_match('/<template x-if="chip.kind === \'block\'">(.*?)<\/template>/s', $chips, $block);
+        preg_match_all('/<template x-if="chip.kind === \'(bar|dot|block)\'">(.*?)<\/template>/s', $chips, $kinds, PREG_SET_ORDER);
 
-        expect(substr_count($chips, 'itemLabel(chip)'))->toBe(1)
-            ->and($block[1])->toContain('x-bind:aria-label="itemLabel(chip)"');
+        expect($kinds)->toHaveCount(3);
+
+        foreach ($kinds as [, $kind, $markup]) {
+            expect($markup)->toContain('x-bind:aria-label="itemLabel(chip)"', $kind)
+                // a `title` beside a name is read out as well: a tooltip is put on by tooltip(), and only when the title shown is cut
+                ->not->toContain('x-bind:title=');
+        }
+
+        expect(substr_count($chips, 'tooltip($el)'))->toBe(2);
     });
 
     it('gives each day of the month one roving tab stop, a key handler, and what a day with a list says about it', function () {

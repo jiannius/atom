@@ -3,13 +3,14 @@
      item within one day is a dot, its time and its title on the ground. Colour is decoration and the
      text stays neutral, so any colour reads. The classes of a colour come from the palette in
      calendar/index.blade.php through colorClass(); a danger item swaps in red and an icon, so it is
-     not colour alone. --}}
+     not colour alone. Each is named whole by itemLabel(), and a tooltip with the title alone is put on only while the title shown
+     is cut short (tooltip()), so a screen reader does not read it twice. --}}
 <template x-if="chip.kind === 'bar'">
     <a
     x-bind:href="link(chip)"
     x-bind:role="link(chip) ? null : 'button'"
     x-bind:tabindex="link(chip) ? null : 0"
-    x-bind:title="chip.title"
+    x-bind:aria-label="itemLabel(chip)"
     x-bind:data-before="chip.before ? '' : null"
     x-bind:data-after="chip.after ? '' : null"
     x-bind:data-lifted="chip.lifted ? '' : null"
@@ -19,10 +20,11 @@
     x-on:click="itemClick(chip, $event)"
     x-on:keydown.enter="itemKey(chip, $event)"
     x-on:keydown.space="itemKey(chip, $event)"
+    x-on:mouseenter="tooltip($el)"
     data-atom-calendar-chip="bar"
     class="flex h-5 w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm border-l-[3px] px-1.5 text-xs font-medium outline-offset-1 hover:brightness-95 dark:hover:brightness-125 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
         <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-600 dark:text-zinc-300'" class="inline-flex shrink-0"></span>
-        <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" class="truncate"></span>
+        <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" data-atom-calendar-chip-title class="truncate"></span>
         <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
     </a>
 </template>
@@ -32,11 +34,12 @@
     x-bind:href="link(chip)"
     x-bind:role="link(chip) ? null : 'button'"
     x-bind:tabindex="link(chip) ? null : 0"
-    x-bind:title="chip.title"
+    x-bind:aria-label="itemLabel(chip)"
     x-bind:data-lifted="chip.lifted ? '' : null"
     x-on:click="itemClick(chip, $event)"
     x-on:keydown.enter="itemKey(chip, $event)"
     x-on:keydown.space="itemKey(chip, $event)"
+    x-on:mouseenter="tooltip($el)"
     data-atom-calendar-chip="dot"
     class="flex h-5 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm px-1 text-xs outline-offset-1 hover:bg-zinc-100 dark:hover:bg-zinc-700/60 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
         <span
@@ -47,7 +50,7 @@
         class="size-2 shrink-0 rounded-full"></span>
         <span x-text="timeLabel(chip)" class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-400"></span>
         <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-600 dark:text-zinc-300'" class="inline-flex shrink-0"></span>
-        <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" class="truncate font-medium"></span>
+        <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" data-atom-calendar-chip-title class="truncate font-medium"></span>
         <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
     </a>
 </template>
@@ -60,7 +63,6 @@
     x-bind:href="link(chip)"
     x-bind:role="link(chip) ? null : 'button'"
     x-bind:tabindex="link(chip) ? null : 0"
-    x-bind:title="chip.title"
     x-bind:data-before="chip.before ? '' : null"
     x-bind:data-after="chip.after ? '' : null"
     x-bind:aria-label="itemLabel(chip)"

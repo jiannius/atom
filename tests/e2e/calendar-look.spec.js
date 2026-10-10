@@ -251,7 +251,7 @@ test.describe('with Tailwind: contrast against the ground each thing is on', () 
                 test.skip(!ok, SKIP_REASON)
 
                 // the text of that one block, on that one date
-                await page.addStyleTag({ content: `[data-atom-calendar-column][data-date="${date}"] [data-atom-calendar-chip="block"][title="${title}"] span { color: ${poor} !important }` })
+                await page.addStyleTag({ content: `[data-atom-calendar-column][data-date="${date}"] [data-atom-calendar-chip="block"][aria-label^="${title},"] span { color: ${poor} !important }` })
                 await page.waitForTimeout(100)
 
                 // nothing else on the page fails (the sweeps above hold that), so any low row is the one that was put there

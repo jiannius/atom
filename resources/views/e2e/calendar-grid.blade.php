@@ -112,6 +112,7 @@
     :month="request('date', '2026-10-09')"
     :views="['month', 'week', 'day']"
     :view="request('view', 'week')"
+    :week-start="request('weekStart', 'monday')"
     :scroll-time="request('scroll', '06:00')"
     :now-indicator="request('indicator', '1') !== '0'"
     :items="$items"

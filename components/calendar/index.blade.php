@@ -45,9 +45,11 @@ $payload = $calendar->payload($anchor, $items ?? []);
 
 // What the ids inside the calendar are built from (the popover a day opens, the body a view switch controls, the title a grid is named by).
 // Derived and never random: an id is Livewire's morph key where it falls back to one, so a new one each render would replace the node.
-// A `name` is the host's own handle; a bound calendar is its component and its property; one with neither takes a number from the engine
-// when it starts, which is the same for as long as the page lives. Two calendars on a page need two names (or two components).
-$uid = $name ? 'atom-calendar-'.\Illuminate\Support\Str::slug((string) $name) : ($model && $component ? $attributes->fieldId('atom-calendar', method_exists($component, 'getId') ? $component->getId() : $component->getName(), $model) : null);
+// A `name` is the host's own handle, as a slug and a hash of the name as written (the slug alone is the same for "Team plan" and "team-plan",
+// and empty for a name that is all punctuation); a bound calendar is its component and its property; one with neither takes a number from
+// the engine when it starts (`n1`, `n2`), which is the same for as long as the page lives. Two calendars bound to the same property of
+// the same component need a `name` each, or they have one id between them.
+$uid = $name ? 'atom-calendar-'.collect([\Illuminate\Support\Str::slug((string) $name), substr(md5((string) $name), 0, 8)])->filter()->implode('-') : ($model && $component ? $attributes->fieldId('atom-calendar', method_exists($component, 'getId') ? $component->getId() : $component->getName(), $model) : null);
 
 // A colour is decoration: tint behind a chip, an accent edge and a dot, each readable against its
 // ground in light and dark. Chip text stays neutral. The strings are written out here, not built in
@@ -115,7 +117,8 @@ data-atom-calendar
 
             <span x-cloak x-show="loading" class="inline-flex text-zinc-500 dark:text-zinc-400"><atom:icon.loading class="size-4" /></span>
 
-            <div x-text="title.text" x-bind:id="uid + '-title'" role="status" aria-live="polite" data-atom-calendar-sr></div>
+            {{-- Said when the title changes (a month, a week, a day), not when the payload does: `liveTitle` is written only for a new text. --}}
+            <div x-text="liveTitle" x-bind:id="uid + '-title'" role="status" aria-live="polite" data-atom-calendar-sr></div>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
@@ -157,7 +160,7 @@ data-atom-calendar
                                 x-bind:aria-label="dayLabel(day)"
                                 x-bind:aria-current="day.today ? 'date' : null"
                                 x-bind:aria-haspopup="day.count > 0 ? 'dialog' : null"
-                                x-bind:aria-expanded="day.count > 0 ? String(popoverDate === day.date) : null"
+                                x-bind:aria-expanded="day.count > 0 ? String(popoverDate === day.date && popoverSource === 'day') : null"
                                 x-bind:aria-controls="day.count > 0 ? uid + '-popover' : null"
                                 x-bind:tabindex="day.date === tabDate ? 0 : -1"
                                 x-bind:class="{
@@ -201,7 +204,7 @@ data-atom-calendar
                                 x-bind:style="slotStyle(more)"
                                 x-on:click="openDay(more.date, $event.currentTarget)"
                                 aria-haspopup="dialog"
-                                x-bind:aria-expanded="String(popoverDate === more.date)"
+                                x-bind:aria-expanded="String(popoverDate === more.date && popoverSource === 'more')"
                                 x-bind:aria-controls="uid + '-popover'"
                                 x-text="moreLabel(more.count)"
                                 data-atom-calendar-more
@@ -261,24 +264,39 @@ data-atom-calendar
                     <div data-atom-calendar-grid-row class="border-b border-zinc-200 dark:border-zinc-700">
                         <div data-atom-calendar-gutter class="bg-white dark:bg-zinc-800"></div>
 
-                        <template x-for="column in grid.columns" :key="column.date">
-                            {{-- A day's header opens that day in the day view. In the day view it is the title of the one column there is: it stays as it is, out of the tab order and said to be disabled. --}}
+                        {{-- A day's header opens that day in the day view. In the day view it is the title of the one column there is, and there is
+                             nothing to press: a group named for the day, which the focus can be put on (not a tab stop). --}}
+                        <template x-for="column in (view === 'day' ? [] : grid.columns)" :key="column.date">
                             <button
                             type="button"
                             x-bind:data-date="column.date"
                             x-bind:aria-label="(labels.ui?.open_day ?? '').replace(':date', () => longDate(column.date))"
-                            x-bind:aria-disabled="view === 'day' ? 'true' : null"
-                            x-bind:tabindex="view === 'day' ? -1 : null"
-                            x-bind:class="view === 'day' ? 'cursor-default' : 'cursor-pointer'"
                             x-on:click="showDay(column.date)"
                             data-atom-calendar-column-head
-                            class="flex flex-col items-center gap-0.5 border-l border-zinc-200 dark:border-zinc-700 py-2 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
+                            class="flex cursor-pointer flex-col items-center gap-0.5 border-l border-zinc-200 dark:border-zinc-700 py-2 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
                                 <span x-text="weekdayName(column.date)" class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"></span>
                                 <span
                                 x-text="column.number"
                                 x-bind:class="column.today ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : (column.past ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-zinc-100')"
                                 class="inline-flex size-8 items-center justify-center rounded-full text-lg font-semibold tabular-nums"></span>
                             </button>
+                        </template>
+
+                        <template x-for="column in (view === 'day' ? grid.columns : [])" :key="column.date">
+                            <div
+                            role="group"
+                            tabindex="-1"
+                            x-bind:data-date="column.date"
+                            x-bind:aria-label="longDate(column.date)"
+                            data-atom-calendar-column-head
+                            class="flex flex-col items-center gap-0.5 border-l border-zinc-200 dark:border-zinc-700 py-2 outline-offset-[-2px] focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
+                                <span x-text="weekdayName(column.date)" aria-hidden="true" class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"></span>
+                                <span
+                                x-text="column.number"
+                                aria-hidden="true"
+                                x-bind:class="column.today ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : (column.past ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-zinc-100')"
+                                class="inline-flex size-8 items-center justify-center rounded-full text-lg font-semibold tabular-nums"></span>
+                            </div>
                         </template>
                     </div>
 
@@ -307,7 +325,7 @@ data-atom-calendar
                                     x-bind:style="slotStyle(more)"
                                     x-on:click="openDay(more.date, $event.currentTarget)"
                                     aria-haspopup="dialog"
-                                    x-bind:aria-expanded="String(popoverDate === more.date)"
+                                    x-bind:aria-expanded="String(popoverDate === more.date && popoverSource === 'more')"
                                     x-bind:aria-controls="uid + '-popover'"
                                     x-text="moreLabel(more.count)"
                                     data-atom-calendar-more
@@ -330,7 +348,7 @@ data-atom-calendar
                     <template x-for="column in grid.columns" :key="column.date">
                         <div
                         role="group"
-                        x-bind:aria-label="dayLabel(column)"
+                        x-bind:aria-label="dayLabel(column, column.blocks.length)"
                         x-bind:aria-current="column.today ? 'date' : null"
                         x-bind:data-date="column.date"
                         x-bind:class="column.weekend ? 'bg-zinc-50 dark:bg-zinc-900/30' : ''"

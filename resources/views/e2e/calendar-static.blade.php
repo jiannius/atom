@@ -65,6 +65,17 @@
     {{-- one with a name of its own: its ids are built from it --}}
     <atom:calendar name="Team plan" month="2026-10" :items="[['id' => 't1', 'title' => 'Team item', 'start' => '2026-10-12']]" data-probe="named" />
 
+    {{-- names that a slug alone would give one id: the same words in another case or with other punctuation, names with no letters of
+         their own, and a number, which is what the engine numbers the calendars that have no name by --}}
+    <atom:calendar name="team-plan" month="2026-10" data-probe="slug-team-plan" />
+    <atom:calendar name="日本語" month="2026-10" data-probe="name-cjk-1" />
+    <atom:calendar name="团队" month="2026-10" data-probe="name-cjk-2" />
+    <atom:calendar name="!!!" month="2026-10" data-probe="name-punctuation" />
+    <atom:calendar name="1" month="2026-10" data-probe="name-number" />
+
+    {{-- selectable: a day is for selecting a range, so a key opens no list, as a click opens none --}}
+    <atom:calendar selectable month="2026-10" :items="[['id' => 's1', 'title' => 'Selectable item', 'start' => '2026-10-12']]" data-probe="selectable" />
+
     {{-- a calendar inside an atom modal, a native dialog: Escape has to close the day list and leave the modal --}}
     <atom:button x-on:click="$dispatch('atom-modal-show', { name: 'calendar-modal' })" data-open-modal>Open calendar</atom:button>
 

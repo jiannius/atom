@@ -30,6 +30,12 @@ class CalendarFixture extends Component
 
     public bool $extra = false;
 
+    /** One item on 16 October, a day with none otherwise: a day the list can be opened on and then emptied. */
+    public bool $lone = false;
+
+    /** Four items on 17 October, over the month's limit of three, so that day has a "+N more" that goes when they do. */
+    public bool $crowd = false;
+
     /**
      * Open at the date and in the view the page's query string names, for a test that needs to start in the grid.
      */
@@ -62,6 +68,22 @@ class CalendarFixture extends Component
     public function toggleExtra(): void
     {
         $this->extra = ! $this->extra;
+    }
+
+    /**
+     * Add or take away the one item of 16 October.
+     */
+    public function toggleLone(): void
+    {
+        $this->lone = ! $this->lone;
+    }
+
+    /**
+     * Add or take away the four items of 17 October.
+     */
+    public function toggleCrowd(): void
+    {
+        $this->crowd = ! $this->crowd;
     }
 
     /**
@@ -113,6 +135,16 @@ class CalendarFixture extends Component
                 ['id' => 31, 'title' => 'Training', 'start' => '2026-10-28', 'color' => 'blue'],
                 ['id' => 32, 'title' => 'Audit', 'start' => '2026-10-28', 'color' => 'red'],
             ]);
+        }
+
+        if ($this->lone) {
+            $items[] = ['id' => 90, 'title' => 'Lone item', 'start' => '2026-10-16'];
+        }
+
+        if ($this->crowd) {
+            foreach (range(1, 4) as $number) {
+                $items[] = ['id' => 90 + $number, 'title' => 'Crowd '.$number, 'start' => '2026-10-17'];
+            }
         }
 
         if ($this->extra) {

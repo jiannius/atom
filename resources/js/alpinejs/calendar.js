@@ -4,7 +4,7 @@ import { edgeColors } from './calendar/colors.js'
 import { addDays, addMonths, dateOf, fromLocalDate, minuteOf, monthOf, nowAt, parseDate, toLocalDate } from './calendar/dates.js'
 import { format } from './calendar/format.js'
 import { DAY_MINUTES, isLifted, previewShapes, timeGrid } from './calendar/grid.js'
-import { dayEntries, isBar, monthLayout } from './calendar/layout.js'
+import { dayEntries, isBar, monthLayout, span } from './calendar/layout.js'
 
 // <atom:calendar>. The server computes the window, the labels and the items and hands them over as one
 // JSON payload on the root's data-atom-calendar-payload attribute; this factory only lays it out. It holds
@@ -34,19 +34,24 @@ const HEX = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 // a title's year, when the locale writes it last
 const YEAR_AT_END = /\s*Y$/
 
-// What a calendar with no `name` and no bound property builds its ids from: the order the page started them in
+// What a calendar with no `name` and no bound property builds its ids from: the order the page started them in. The `n` keeps
+// them apart from the ids a name builds, which end in a hash (a name of "1" is `atom-calendar-1-<hash>`).
 let instances = 0
 
 export default () => ({
     payload: null,
     palette: {},
     model: null,
+    // The root element, kept: Alpine's `$root` is resolved from the element that was evaluating last, and is gone (undefined) when
+    // that one has been taken out of the page, as a header that is pressed is when it is replaced. What runs after a render uses this.
+    rootEl: null,
     // what the ids inside the calendar are built from (see index.blade.php)
     uid: '',
     // The day of the month view that is the one tab stop of its grid, and where the arrow keys go from. It follows the focus, and a
     // key that leaves the window sets it to where the focus is heading; `keyPending` is that, until the window has come.
     focusDate: null,
     keyPending: false,
+    keyAbort: null,
     view: 'month',
     anchor: '',
     loading: false,
@@ -55,6 +60,10 @@ export default () => ({
     requests: 0,
     jump: null,
     popoverDate: null,
+    // what opened the day list, 'day' (the day's own cell) or 'more' (a "+N more"): only that one says it is expanded
+    popoverSource: '',
+    // what the live region says: the title, written only when its text changes, so a payload that moves nothing the title says is not read out again
+    liveTitle: '',
     // the wall-clock minute the now line stands at, `YYYY-MM-DDTHH:mm`: the server's clock, carried on by the browser's
     nowMoment: '',
     clockSeed: null,
@@ -203,10 +212,13 @@ export default () => ({
         let controller = new AbortController()
         let { signal } = controller
 
+        this.rootEl = this.$root
         this.model = this.$root.dataset.atomCalendarModel || null
-        this.uid = this.$root.dataset.atomCalendarUid || 'atom-calendar-' + (++instances)
+        this.uid = this.$root.dataset.atomCalendarUid || 'atom-calendar-n' + (++instances)
         this.palette = this.readJson(this.$root.dataset.atomCalendarPalette) ?? {}
         this.read()
+        this.liveTitle = this.title.text
+        this.$watch('title.text', (text) => { this.liveTitle = text })
 
         let observer = new MutationObserver(() => this.read())
         observer.observe(this.$root, { attributes: true, attributeFilter: ['data-atom-calendar-payload'] })
@@ -237,6 +249,7 @@ export default () => ({
             resize?.disconnect()
             clearInterval(clock)
             controller.abort()
+            this.keyAbort?.abort()
             this.closeDay(false)
             delete this.$root._atomCalendarCleanup
         }
@@ -269,8 +282,9 @@ export default () => ({
         let first = this.payload === null
 
         // The focus is on a day of the month when the window changes (a key that left the old one, or a render): the days of a new window
-        // are new nodes, so it is put back on the day it was on once they are drawn.
-        let restoreFocus = !first && this.view === 'month' && (this.keyPending || this.dayHasFocus())
+        // are new nodes, so it is put back on the day it was on once they are drawn. A key that is still on its way owns the focus only
+        // while it is nobody's (the page's, or a day's): a Tab or a click elsewhere in the meantime took it, and it is not taken back.
+        let restoreFocus = !first && this.view === 'month' && (this.dayHasFocus() || (this.keyPending && this.focusIsFree()))
 
         // a new month by the toolbar or the picker is a new place to start from, and not by a key that is still on its way there
         if (!first && !this.keyPending && monthOf(payload.anchor) !== monthOf(this.payload.anchor)) this.focusDate = null
@@ -287,22 +301,50 @@ export default () => ({
 
         this.jump = toLocalDate(payload.anchor)
 
-        // the day list follows the data: an item that went away leaves it, and an empty day closes it
-        if (this.popoverDate && !dayEntries(payload.items, this.popoverDate).length) this.closeDay(false)
+        // the day list follows the data: an item that went away leaves it, and an empty day closes it. If the focus was in it,
+        // it is taken to where the list came from, so it does not fall to the page.
+        if (this.popoverDate && !dayEntries(payload.items, this.popoverDate).length) {
+            let trigger = this.popoverTrigger
+            let inside = this.$refs.popover?.contains(document.activeElement)
+
+            this.closeDay(false)
+
+            if (inside) this.$nextTick(() => this.focusAfterList(trigger))
+            else if (restoreFocus) this.$nextTick(() => this.focusDay())
+
+            return
+        }
 
         if (restoreFocus) this.$nextTick(() => this.focusDay())
+    },
+
+    // Is the focus nobody's: on the page itself (the node it was on is gone), or on a day of this grid?
+    focusIsFree () {
+        let active = document.activeElement
+
+        return !active || active === document.body || this.dayHasFocus()
+    },
+
+    // Where the focus goes when the day list closes under it: the button or day it opened from, or if that is gone the day that is the
+    // month's tab stop, or the title.
+    focusAfterList (trigger) {
+        if (trigger?.isConnected) return trigger.focus({ preventScroll: true })
+
+        if (this.view === 'month') return this.focusDay()
+
+        this.rootEl.querySelector('button[data-atom-calendar-title]')?.focus({ preventScroll: true })
     },
 
     // Is the focus on a day of the month grid?
     dayHasFocus () {
         let active = document.activeElement
 
-        return Boolean(active) && this.$root.contains(active) && active.matches('[data-atom-calendar-day]')
+        return Boolean(active) && this.rootEl.contains(active) && active.matches('[data-atom-calendar-day]')
     },
 
     // Put the focus on the day that is the tab stop of the month grid.
     focusDay () {
-        let cell = this.$root.querySelector('[data-atom-calendar-day][data-date="' + this.tabDate + '"]')
+        let cell = this.rootEl.querySelector('[data-atom-calendar-day][data-date="' + this.tabDate + '"]')
 
         if (cell && document.activeElement !== cell) cell.focus()
     },
@@ -312,6 +354,9 @@ export default () => ({
     // (a calendar with no bound property has nowhere to go), and the focus follows once it is drawn.
     dayKey (day, event) {
         if (event.target !== event.currentTarget || event.ctrlKey || event.metaKey || event.altKey || this.view !== 'month' || !this.payload) return
+
+        // Shift with an arrow or a page key is for selecting a range, which is not wired yet: it is left to the browser
+        if (event.shiftKey && /^(Arrow|Page)/.test(event.key)) return
 
         // two quick presses go on from where the first one is heading, as the buttons of the toolbar do
         let from = this.keyPending && this.focusDate ? this.focusDate : day.date
@@ -331,6 +376,9 @@ export default () => ({
             case 'PageDown': target = addMonths(from, 1); byMonth = true; break
             case 'Enter':
             case ' ':
+                // as a click is, where a click selects instead
+                if (this.config.selectable) return
+
                 event.preventDefault()
                 this.openDay(day.date, event.currentTarget)
 
@@ -362,10 +410,26 @@ export default () => ({
 
         this.focusDate = target
 
+        // the focus is the key's until the window comes, unless the viewer takes it somewhere else first (a Tab, or a click, out of the grid)
+        this.keyAbort?.abort()
+
+        let abort = this.keyAbort = new AbortController()
+        let leave = (event) => {
+            if (!this.rootEl.querySelector('[role="grid"]')?.contains(event.target)) this.keyPending = false
+        }
+
+        document.addEventListener('focusin', leave, { signal: abort.signal, capture: true })
+        document.addEventListener('pointerdown', leave, { signal: abort.signal, capture: true })
+
         try {
             await this.navigate(target)
         } finally {
             if (this.keyPending === token) this.keyPending = false
+
+            if (this.keyAbort === abort) {
+                abort.abort()
+                this.keyAbort = null
+            }
         }
     },
 
@@ -437,6 +501,10 @@ export default () => ({
     showDay (date) {
         if (this.view === 'day' || !parseDate(date)) return
 
+        // the header that is pressed is gone in the day view (it is the day's title there, nothing to press): the focus goes to the title
+        let head = document.activeElement?.closest?.('[data-atom-calendar-column-head]')
+        let focused = Boolean(head) && this.rootEl.contains(head)
+
         this.closeDay(false)
         this.anchor = date
         this.jump = toLocalDate(date)
@@ -444,6 +512,8 @@ export default () => ({
         if (this.model) this.navigate(date)
 
         this.setView('day')
+
+        if (focused) this.$nextTick(() => this.rootEl.querySelector('[data-atom-calendar-column-head]')?.focus({ preventScroll: true }))
     },
 
     setView (view) {
@@ -477,6 +547,7 @@ export default () => ({
 
         this.popoverDate = date
         this.popoverTrigger = trigger
+        this.popoverSource = trigger?.matches?.('[data-atom-calendar-day]') ? 'day' : 'more'
 
         if (!panel.matches(':popover-open')) panel.showPopover()
 
@@ -496,7 +567,10 @@ export default () => ({
         }, { signal, capture: true })
 
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') {
+            // only when the focus is in the list or on what opened it: an Escape pressed anywhere else on the page is the page's
+            let here = panel.contains(event.target) || Boolean(this.popoverTrigger?.contains(event.target))
+
+            if (event.key === 'Escape' && here) {
                 // not the modal's either: a dialog closes on Escape by itself unless it is prevented
                 event.preventDefault()
                 event.stopPropagation()
@@ -517,6 +591,7 @@ export default () => ({
         this.floatCleanup = null
         this.popoverDate = null
         this.popoverTrigger = null
+        this.popoverSource = ''
 
         if (panel?.matches(':popover-open')) panel.hidePopover()
 
@@ -586,6 +661,14 @@ export default () => ({
     // that tells the host which item was chosen.
     link (chip) {
         return typeof chip.href === 'string' ? safeUrl(chip.href) : null
+    },
+
+    // The whole title as a tooltip, only while the one shown is cut short: the name of the item says it in full (and a `title` beside a name is read as well)
+    tooltip (el) {
+        let text = el.querySelector('[data-atom-calendar-chip-title]')
+
+        if (text && text.scrollWidth > text.clientWidth) el.setAttribute('title', text.textContent)
+        else el.removeAttribute('title')
     },
 
     itemClick (chip, event) {
@@ -680,28 +763,39 @@ export default () => ({
         return format(chip.start, this.config.timeFormat, this.labels)
     },
 
-    // What a timed block is called: its title, the day, its time, and what its colour or overdue stands for, which the block
-    // says in part (a narrow one drops its time) or not at all. A hex colour has no name to give.
+    // What an item is called, wherever it is drawn (a block, a bar, a chip, a row of the day list): its title, when, and what its colour
+    // or overdue stands for, which the chip says in part (a narrow one drops its time) or not at all. A hex colour has no name to give.
     itemLabel (chip) {
         let ui = this.labels.ui ?? {}
         let color = chip.danger || this.isHex(chip) ? null : ui.colors?.[chip.color]
 
-        return [
-            chip.title,
-            this.longDate(chip.date ?? dateOf(chip.start)),
-            chip.allDay ? ui.all_day : this.timeRange(chip),
-            chip.danger ? ui.overdue : color,
-        ].filter(Boolean).join(', ')
+        return [chip.title, this.itemWhen(chip), chip.danger ? ui.overdue : color].filter(Boolean).join(', ')
+    },
+
+    // When an item is: its day and time; or, for one that covers more than a day, from its first day to its last, both ends said whole
+    itemWhen (chip) {
+        let ui = this.labels.ui ?? {}
+        let { first, last } = span(chip)
+        let range = (from, to) => (ui.range ?? ':start to :end').replace(/:(start|end)/g, (_, which) => (which === 'start' ? from : to))
+
+        if (chip.allDay) return first === last ? [this.longDate(first), ui.all_day].filter(Boolean).join(', ') : range(this.longDate(first), this.longDate(last))
+
+        if (first !== last && chip.end) {
+            return range(
+                this.longDate(first) + ', ' + this.timeLabel(chip),
+                this.longDate(dateOf(chip.end)) + ', ' + format(chip.end, this.config.timeFormat, this.labels),
+            )
+        }
+
+        return this.longDate(first) + ', ' + this.timeRange(chip)
     },
 
     longDate (date) {
         return format(date, 'l', this.labels) + ', ' + format(date, this.config.dateFormat, this.labels)
     },
 
-    dayLabel (day) {
-        let count = day.count > 0 ? ', ' + this.countLabel(day.count) : ''
-
-        return this.longDate(day.date) + count
+    dayLabel (day, count = day.count) {
+        return this.longDate(day.date) + (count > 0 ? ', ' + this.countLabel(count) : '')
     },
 
     countLabel (count) {

@@ -108,12 +108,15 @@ test.describe('the views', () => {
         expect(requests.count).toBe(0)
     })
 
-    test('a column is labelled with its date and how many items it holds', async ({ page }) => {
+    test('a column is labelled with its date and how many blocks it holds, the all-day items it does not hold left out', async ({ page }) => {
         await button(page, 'Week').click()
 
-        await expect(column(page, '2026-10-09')).toHaveAttribute('aria-label', 'Friday, 9 Oct 2026, 3 items')
+        // Friday has three items (a bar over the week, an overdue day item and the stand-up): one of them is timed, and is the one in the column
+        await expect(column(page, '2026-10-09')).toHaveAttribute('aria-label', 'Friday, 9 Oct 2026, 1 item')
         await expect(column(page, '2026-10-09')).toHaveAttribute('role', 'group')
-        await expect(column(page, '2026-10-06')).toHaveAttribute('aria-label', 'Tuesday, 6 Oct 2026, 2 items')
+        await expect(column(page, '2026-10-09').locator('[data-atom-calendar-block]')).toHaveCount(1)
+        // Tuesday has two, both across the all-day row: nothing in its column to count
+        await expect(column(page, '2026-10-06')).toHaveAttribute('aria-label', 'Tuesday, 6 Oct 2026')
     })
 
     test('switching view keeps the day on screen: week, day, and back to the same month with no request', async ({ page }) => {
