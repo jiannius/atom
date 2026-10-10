@@ -329,9 +329,9 @@ class Calendar
      * `month_forms` holds the month names that change with the day of the month in the format (ru, pl, cs, uk, hr, lt: genitive
      * in `j F`), as `day_before` (a day token earlier in the format) and `day_after` lists, and only where they differ from the
      * standalone ones. One more known gap: ka prints a weekday differently beside other tokens.
-     * `week_title` is how the week view's title is written in the locale, see weekTitle().
+     * `week_title`, `month_title` and `day_title` are how the title of each view is written in the locale, see weekTitle().
      *
-     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, week_title: array<string, list<string>>, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string>}
+     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, week_title: array<string, list<string>>, month_title: string, day_title: string, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string>}
      */
     public function labels(): array
     {
@@ -357,6 +357,8 @@ class Calendar
             'months_short' => $monthsShort,
             'month_forms' => self::monthForms($locale, ['F' => $months, 'M' => $monthsShort]),
             'week_title' => self::weekTitle($locale),
+            'month_title' => self::monthTitle($locale),
+            'day_title' => self::dayTitle($locale),
             'meridiem' => self::meridiemTransitions($locale),
             'am' => (string) __('AM'),
             'pm' => (string) __('PM'),
@@ -404,6 +406,26 @@ class Calendar
             'cross_month' => ['j M', 'j M Y'],
             'cross_year' => ['j M Y', 'j M Y'],
         ];
+    }
+
+    /**
+     * How the month view's title is written in a locale, as one display format: `October 2026`, Chinese `2026年10月`.
+     *
+     * Like weekTitle() it is a format the browser formatter prints, and a trailing `Y` is split off as the year, which the title
+     * shows lighter; Chinese has no trailing year, so the whole title is one weight. A locale without a pattern of its own reads
+     * like English.
+     */
+    public static function monthTitle(string $locale): string
+    {
+        return str_starts_with(strtolower($locale), 'zh') ? 'Y年n月' : 'F Y';
+    }
+
+    /**
+     * How the day view's title is written in a locale, as one display format: `9 October 2026`, Chinese `2026年10月9日`. See monthTitle().
+     */
+    public static function dayTitle(string $locale): string
+    {
+        return str_starts_with(strtolower($locale), 'zh') ? 'Y年n月j日' : 'j F Y';
     }
 
     /**

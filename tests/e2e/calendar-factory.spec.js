@@ -113,6 +113,25 @@ test.describe('what the toolbar names', () => {
         expect(zh(windowFrom('2026-12-28'), '2026-12-30').text).toBe('2026年12月28日 – 2027年1月3日')
     })
 
+    test('a month and a day are written as the server says the locale writes them: Chinese puts the year first and has no lighter half', () => {
+        const days = windowFrom('2026-09-28')
+        const zh = (view, anchor) => {
+            const engine = engineAt(days, view, anchor)
+
+            engine.payload.labels.month_title = 'Y年n月'
+            engine.payload.labels.day_title = 'Y年n月j日'
+
+            return engine.title
+        }
+
+        expect(zh('month', '2026-10-09')).toEqual({ month: '2026年10月', year: '', text: '2026年10月' })
+        expect(zh('day', '2026-10-09')).toEqual({ month: '2026年10月9日', year: '', text: '2026年10月9日' })
+
+        // with no pattern from the server (an older payload) it reads like English
+        expect(engineAt(days, 'month', '2026-10-09').title).toMatchObject({ month: 'October', year: '2026' })
+        expect(engineAt(days, 'day', '2026-10-09').title).toMatchObject({ month: '9 October', year: '2026' })
+    })
+
     test('the days a view shows: the week of the anchor, or the anchor', () => {
         const days = windowFrom('2026-09-28')
 

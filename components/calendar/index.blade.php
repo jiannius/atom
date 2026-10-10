@@ -91,16 +91,16 @@ data-atom-calendar
                 </atom:button.group>
 
                 <atom:date-picker x-model="jump">
-                    <button type="button" x-bind:aria-label="labels.ui?.choose_date" class="flex items-center gap-1.5 rounded-sm text-base @2xl:text-lg outline-offset-2 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
+                    <button type="button" x-bind:aria-label="labels.ui?.choose_date" data-atom-calendar-title class="flex items-center gap-1.5 rounded-sm text-base @2xl:text-lg outline-offset-2 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
                         <span x-text="title.month" class="font-semibold text-zinc-900 dark:text-white"></span>
-                        <span x-cloak x-show="title.year" x-text="title.year" class="font-normal text-zinc-500 dark:text-zinc-400"></span>
+                        <span x-cloak x-show="title.year" x-text="title.year" data-atom-calendar-title-year class="font-normal text-zinc-500 dark:text-zinc-400"></span>
                         <atom:icon.dropdown class="size-4 text-zinc-500 dark:text-zinc-400" />
                     </button>
                 </atom:date-picker>
             @else
-                <div class="flex items-center gap-1.5 text-base @2xl:text-lg">
+                <div data-atom-calendar-title class="flex items-center gap-1.5 text-base @2xl:text-lg">
                     <span x-text="title.month" class="font-semibold text-zinc-900 dark:text-white"></span>
-                    <span x-cloak x-show="title.year" x-text="title.year" class="font-normal text-zinc-500 dark:text-zinc-400"></span>
+                    <span x-cloak x-show="title.year" x-text="title.year" data-atom-calendar-title-year class="font-normal text-zinc-500 dark:text-zinc-400"></span>
                 </div>
             @endif
 

@@ -29,6 +29,9 @@ const pad = (n) => String(n).padStart(2, '0')
 
 const HEX = /^#[0-9a-f]{3,8}$/i
 
+// a title's year, when the locale writes it last
+const YEAR_AT_END = /\s*Y$/
+
 export default () => ({
     payload: null,
     palette: {},
@@ -62,18 +65,22 @@ export default () => ({
         return (this.config.views ?? []).filter((view) => IMPLEMENTED_VIEWS.includes(view))
     },
 
-    // What the toolbar names: the month the server built the window around, or the week or day on screen.
+    // What the toolbar names: the month the server built the window around, or the week or day on screen, each written the
+    // way the server says the locale writes it. A year at the end of a title is its lighter half.
     get title () {
         if (!this.payload) return { month: '', year: '', text: '' }
 
-        let text = (month, year) => ({ month, year, text: [month, year].filter(Boolean).join(' ') })
         let labels = this.labels
+        let text = (month, year) => ({ month, year, text: [month, year].filter(Boolean).join(' ') })
 
-        if (this.view === 'month') {
-            let date = this.payload.anchor
+        // one date in one display format, its trailing year split off
+        let one = (date, pattern) => {
+            let year = YEAR_AT_END.test(pattern)
 
-            return text(format(date, 'F', labels), format(date, 'Y', labels))
+            return text(format(date, year ? pattern.replace(YEAR_AT_END, '') : pattern, labels), year ? format(date, 'Y', labels) : '')
         }
+
+        if (this.view === 'month') return one(this.payload.anchor, labels.month_title ?? 'F Y')
 
         let days = this.gridDays
 
@@ -82,16 +89,15 @@ export default () => ({
         let first = days[0].date
         let last = days[days.length - 1].date
 
-        if (this.view === 'day') return text(format(first, 'j F', labels), format(first, 'Y', labels))
+        if (this.view === 'day') return one(first, labels.day_title ?? 'j F Y')
 
-        // a week: the server says how the locale writes it, as a format for each end ("5 – 11 October 2026", "28 Sep – 4 Oct
-        // 2026", "28 Dec 2026 – 3 Jan 2027"); a year at the end is the lighter half of the title, as in the other views
+        // a week: a format for each end ("5 – 11 October 2026", "28 Sep – 4 Oct 2026", "28 Dec 2026 – 3 Jan 2027")
         let shape = monthOf(first) === monthOf(last) ? 'same_month' : (first.slice(0, 4) === last.slice(0, 4) ? 'cross_month' : 'cross_year')
         let [from, to] = labels.week_title?.[shape] ?? ['j M Y', 'j M Y']
-        let year = /\s*Y$/.test(to)
+        let year = YEAR_AT_END.test(to)
 
         return text(
-            format(first, from, labels) + ' – ' + format(last, year ? to.replace(/\s*Y$/, '') : to, labels),
+            format(first, from, labels) + ' – ' + format(last, year ? to.replace(YEAR_AT_END, '') : to, labels),
             year ? format(last, 'Y', labels) : '',
         )
     },

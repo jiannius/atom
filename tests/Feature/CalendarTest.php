@@ -877,6 +877,56 @@ describe('the week title', function () {
     })->with(['zh', 'zh_CN', 'zh-TW']);
 });
 
+describe('the month and day titles', function () {
+    it('are one display format each, in English `F Y` and `j F Y`', function () {
+        $labels = Calendar::make()->labels();
+
+        expect($labels['month_title'])->toBe('F Y')
+            ->and($labels['day_title'])->toBe('j F Y');
+    });
+
+    it('uses only formats the browser formatter prints, in every locale', function (string $locale) {
+        app()->setLocale($locale);
+
+        $labels = Calendar::make()->labels();
+
+        expect(Calendar::isFormat($labels['month_title']))->toBeTrue("{$locale} month")
+            ->and(Calendar::isFormat($labels['day_title']))->toBeTrue("{$locale} day");
+    })->with(['en', 'ms', 'zh', 'zh_CN', 'zh-TW', 'fr', 'ru']);
+
+    it('reads like English in Malay and in a locale with no patterns of its own', function (string $locale) {
+        app()->setLocale($locale);
+
+        $labels = Calendar::make()->labels();
+
+        expect($labels['month_title'])->toBe(Calendar::monthTitle('en'))
+            ->and($labels['day_title'])->toBe(Calendar::dayTitle('en'));
+    })->with(['ms', 'fr', 'ru']);
+
+    it('writes Chinese year first, in one weight, with the 年 月 日 marks', function (string $locale) {
+        app()->setLocale($locale);
+
+        $labels = Calendar::make()->labels();
+        $date = Carbon::parse('2026-10-09');
+
+        expect(Calendar::format($date, $labels['month_title']))->toBe('2026年10月')
+            ->and(Calendar::format($date, $labels['day_title']))->toBe('2026年10月9日')
+            // no trailing year: the browser has no lighter half to split off
+            ->and($labels['month_title'])->not->toEndWith('Y')
+            ->and($labels['day_title'])->not->toEndWith('Y');
+    })->with(['zh', 'zh_CN', 'zh-TW']);
+
+    it('keeps the year last in English, which the title shows lighter', function () {
+        $labels = Calendar::make()->labels();
+        $date = Carbon::parse('2026-10-09');
+
+        expect(Calendar::format($date, $labels['month_title']))->toBe('October 2026')
+            ->and(Calendar::format($date, $labels['day_title']))->toBe('9 October 2026')
+            ->and($labels['month_title'])->toEndWith('Y')
+            ->and($labels['day_title'])->toEndWith('Y');
+    });
+});
+
 describe('calendar config', function () {
     it('defaults to a month view, Monday, a Saturday and Sunday weekend, 3 rows, 12-hour time and drag on', function () {
         expect(Calendar::make()->config())->toBe([

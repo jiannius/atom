@@ -879,3 +879,38 @@ test.describe('the week title in the viewer\'s language', () => {
         })
     }
 })
+
+test.describe('the month and day titles in the viewer\'s language', () => {
+    // [locale, view, date, the title, the lighter half of it]
+    const cases = [
+        ['en', 'month', '2026-10-09', 'October 2026', '2026'],
+        ['en', 'day', '2026-10-09', '9 October 2026', '2026'],
+        ['ms', 'month', '2026-10-09', 'Oktober 2026', '2026'],
+        ['ms', 'day', '2026-10-09', '9 Oktober 2026', '2026'],
+        ['zh', 'month', '2026-10-09', '2026年10月', ''],
+        ['zh', 'month', '2027-01-15', '2027年1月', ''],
+        ['zh', 'day', '2026-10-09', '2026年10月9日', ''],
+        ['zh', 'day', '2026-12-31', '2026年12月31日', ''],
+    ]
+
+    for (const [locale, view, date, text, year] of cases) {
+        test(`${locale}, ${view} of ${date}: ${text}`, async ({ page }) => {
+            await openGrid(page, `locale=${locale}&view=${view}&date=${date}`)
+
+            await expect(title(page, 'grid')).toHaveText(text)
+
+            // what is on screen is the same words, with the lighter year only where the locale writes it last
+            const heading = probe(page, 'grid').locator('[data-atom-calendar-title]')
+            const lighter = heading.locator('[data-atom-calendar-title-year]')
+
+            await expect(heading).toHaveText(text)
+
+            if (year) {
+                await expect(lighter).toBeVisible()
+                await expect(lighter).toHaveText(year)
+            } else {
+                await expect(lighter).toBeHidden()
+            }
+        })
+    }
+})
