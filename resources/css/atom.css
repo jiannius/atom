@@ -367,7 +367,14 @@ html.dark [data-atom-slider-bubble] {
    would collapse to nothing: it asks for the width of its parent instead. */
 [data-atom-calendar] {
     container-type: inline-size;
-    width: 100%;
+}
+
+/* Layered on purpose, unlike the rest of this file: atom.css is unlayered and would beat a host's
+   `w-96` (@layer utilities) on the calendar. In @layer base it still applies where nothing sets a width. */
+@layer base {
+    [data-atom-calendar] {
+        width: 100%;
+    }
 }
 
 [data-atom-calendar-weekdays],

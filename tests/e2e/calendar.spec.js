@@ -746,6 +746,18 @@ test.describe('static, with nothing bound', () => {
         expect(box.width).toBeGreaterThan(parent.width - 2)
         expect((await root.locator('[data-atom-calendar-day]').first().boundingBox()).width).toBeGreaterThan(100)
     })
+
+    // A host's Tailwind utilities land in @layer utilities. The rig has no Tailwind, so stand one in: an
+    // unlayered atom rule would beat it, a layered one must not. In px, because the rig's root font size is
+    // 14px, so Tailwind's 24rem would come out at 336.
+    test('leaves the width to a host utility class', async ({ page }) => {
+        await page.addStyleTag({ content: '@layer base, utilities; @layer utilities { .w-96 { width: 384px } }' })
+
+        const root = probe(page, 'sized')
+
+        await expect(root.locator('[data-atom-calendar-day]').first()).toBeVisible()
+        expect((await root.boundingBox()).width).toBe(384)
+    })
 })
 
 for (const timezoneId of ['America/Los_Angeles', 'Pacific/Kiritimati']) {

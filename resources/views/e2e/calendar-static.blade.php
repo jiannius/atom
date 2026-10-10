@@ -57,6 +57,11 @@
         <atom:calendar month="2026-10" data-probe="flex" />
     </div>
 
+    {{-- a host's own width utility on the calendar, inside a flex parent; the test supplies the utility's rule --}}
+    <div class="flex" style="width: 900px">
+        <atom:calendar class="w-96" month="2026-10" data-probe="sized" />
+    </div>
+
     {{-- a calendar inside an atom modal, a native dialog: Escape has to close the day list and leave the modal --}}
     <atom:button x-on:click="$dispatch('atom-modal-show', { name: 'calendar-modal' })" data-open-modal>Open calendar</atom:button>
 
