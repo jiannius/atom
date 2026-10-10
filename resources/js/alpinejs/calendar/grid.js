@@ -11,7 +11,8 @@ export const DAY_MINUTES = 1440
 // on what is drawn, so two short items close together sit side by side instead of on top of each other.
 export const MIN_DRAWN_MINUTES = 30
 
-// A timed item under this long has no room for a second line: it prints "Title · 10:00" in one.
+// A timed item under this long has no room for a second line: it prints "Title · 10:00" in one. Two lines and the block's
+// padding are 2.25rem of text-xs, which a 3.5rem hour gives from 39 minutes; 45 leaves room to spare.
 export const COMPACT_MINUTES = 45
 
 // The part of a timed item that falls on one date, in wall-clock minutes from that date's midnight, or null.

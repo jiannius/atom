@@ -5,9 +5,12 @@ import { test, expect } from '@playwright/test'
 // page (/atom/e2e/calendar-grid) whose viewer's timezone and clock the query string sets, for the days the clocks
 // change. ?busy=1 adds a crowded week (26 October) to the fixture.
 //
-// The rig has no Tailwind. What these tests measure is what atom.css owns: the hour height (3rem), the lanes
+// The rig has no Tailwind. What these tests measure is what atom.css owns: the hour height (3.5rem), the lanes
 // and the blocks' place in the day, the sticky header and gutter, the horizontal scroll. Colour and type are looked at
 // in the screenshots.
+
+// what an hour of the grid is tall by default, in rem
+const HOUR = 3.5
 
 const probe = (page, name = 'calendar') => page.locator(`[data-probe="${name}"]`)
 const grid = (page, name) => probe(page, name).locator('[data-atom-calendar-grid]')
@@ -261,7 +264,7 @@ test.describe('where things sit in the grid', () => {
         await expect(columns(page)).toHaveCount(7)
     })
 
-    test('an hour is 3rem tall, and the gutter has a label for each', async ({ page }) => {
+    test('an hour is 3.5rem tall, and the gutter has a label for each', async ({ page }) => {
         const hours = probe(page).locator('[data-atom-calendar-hour]')
 
         await expect(hours).toHaveCount(24)
@@ -269,7 +272,7 @@ test.describe('where things sit in the grid', () => {
         const a = await hours.nth(7).boundingBox()
         const b = await hours.nth(8).boundingBox()
 
-        expect(b.y - a.y).toBeCloseTo(3 * await rem(page), 0)
+        expect(b.y - a.y).toBeCloseTo(HOUR * await rem(page), 0)
         await expect(probe(page).locator('[data-atom-calendar-hour-label]').nth(13)).toHaveText('1 PM')
         await expect(probe(page).locator('[data-atom-calendar-hour-label]').nth(12)).toHaveText('12 PM')
         await expect(probe(page).locator('[data-atom-calendar-hour-label]').nth(0)).toHaveText('')
@@ -282,8 +285,8 @@ test.describe('where things sit in the grid', () => {
         expect(solo.top).toBeCloseTo(13 / 24, 2)
         expect(solo.height).toBeCloseTo(1 / 24, 2)
 
-        // and in pixels: 13 hours of 3rem below the top of the column
-        expect(solo.box.y - solo.col.y).toBeCloseTo(13 * 3 * await rem(page), 0)
+        // and in pixels: 13 hours of 3.5rem below the top of the column
+        expect(solo.box.y - solo.col.y).toBeCloseTo(13 * HOUR * await rem(page), 0)
     })
 
     test('overlapping items sit side by side and never cover each other', async ({ page }) => {
@@ -329,7 +332,7 @@ test.describe('where things sit in the grid', () => {
         const late = await place(page, 'Late call', '2026-10-28')
 
         expect(late.box.y + late.box.height).toBeLessThanOrEqual(late.col.y + late.col.height + 0.5)
-        expect(late.box.height).toBeGreaterThanOrEqual(1.5 * await rem(page) - 0.5)
+        expect(late.box.height).toBeGreaterThanOrEqual(HOUR / 2 * await rem(page) - 0.5)
 
         // it is drawn up from the end of the day, over where Evening wrap (23:00 to 23:45) is, so the two sit side by side
         const evening = await place(page, 'Evening wrap', '2026-10-28')
@@ -337,20 +340,20 @@ test.describe('where things sit in the grid', () => {
         expect(intersects(late.box, evening.box)).toBe(false)
         expect(late.left).not.toBeCloseTo(evening.left, 2)
 
-        // Quick call lasts ten minutes (seven pixels of day), drawn half an hour tall
+        // Quick call lasts ten minutes, drawn half an hour tall
         const quick = await place(page, 'Quick call', '2026-10-28')
 
-        expect(quick.box.height).toBeCloseTo(1.5 * await rem(page), 0)
+        expect(quick.box.height).toBeCloseTo(HOUR / 2 * await rem(page), 0)
 
         await page.goto('/atom/e2e/calendar?view=week&date=2026-10-14')
         await expect(columns(page)).toHaveCount(7)
 
-        // Call the bank, 15:00 with no end: one 30 minute slot (1.5rem); Dentist, 08:00 to 09:00: an hour (3rem)
+        // Call the bank, 15:00 with no end: one 30 minute slot (half an hour); Dentist, 08:00 to 09:00: an hour
         const bank = await place(page, 'Call the bank', '2026-10-14')
         const dentist = await place(page, 'Dentist', '2026-10-14')
 
-        expect(bank.box.height).toBeCloseTo(1.5 * await rem(page), 0)
-        expect(dentist.box.height).toBeCloseTo(3 * await rem(page), 0)
+        expect(bank.box.height).toBeCloseTo(HOUR / 2 * await rem(page), 0)
+        expect(dentist.box.height).toBeCloseTo(HOUR * await rem(page), 0)
         expect(bank.top).toBeCloseTo(15 / 24, 2)
     })
 
@@ -591,7 +594,7 @@ test.describe('a day the clocks change, for a viewer in Los Angeles', () => {
         // 01:30 PDT to 01:30 PST is an hour, and on the wall clock nothing: one slot, which overlaps both
         const hour = await place(page, 'The repeated hour', '2026-11-01', 'grid')
 
-        expect(hour.box.height).toBeCloseTo(1.5 * await rem(page), 0)
+        expect(hour.box.height).toBeCloseTo(HOUR / 2 * await rem(page), 0)
         expect(hour.top).toBeCloseTo(90 / 1440, 3)
 
         // three that overlap: a third of the column each, and no one covering another

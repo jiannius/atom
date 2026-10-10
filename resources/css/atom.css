@@ -376,7 +376,7 @@ html.dark [data-atom-slider-bubble] {
 @layer base {
     [data-atom-calendar] {
         width: 100%;
-        --atom-calendar-hour: 3rem;
+        --atom-calendar-hour: 3.5rem;
         --atom-calendar-gutter: 3.5rem;
         --atom-calendar-min-column: 6rem;
     }
