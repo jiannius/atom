@@ -570,8 +570,23 @@ html.dark [data-atom-calendar-chip="block"][data-atom-calendar-hex] {
         line-clamp: 2;
         white-space: normal;
         overflow: hidden;
-        overflow-wrap: anywhere;
-        text-overflow: clip;
+        /* a line breaks between words only: a word wider than the lane stays whole on its line and is cut off by an ellipsis
+           (`anywhere` would break it in the middle: "Worksh" / "op A") */
+        overflow-wrap: normal;
+        word-break: normal;
+        text-overflow: ellipsis;
+    }
+}
+
+/* WebKit clamps lines in a -webkit-box but draws no ellipsis on a line that is a single word too wide for it, so it gets
+   two lines of height on a plain block, which does */
+@supports (font: -apple-system-body) {
+    @container atom-calendar-block (max-width: 9rem) {
+        [data-atom-calendar-chip="block"]:not([data-compact]) [data-atom-calendar-item-title],
+        [data-atom-calendar-ghost-body]:not([data-compact]) [data-atom-calendar-item-title] {
+            display: block;
+            max-height: 2lh;
+        }
     }
 }
 

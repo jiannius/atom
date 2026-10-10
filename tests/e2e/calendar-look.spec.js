@@ -564,6 +564,109 @@ test.describe('with Tailwind: a narrow block gives the room of its time to its t
     })
 })
 
+// A title in a narrow block wraps between words and nowhere else: a line never starts or ends inside a word. A word wider than its lane is
+// not split ("Worksh" / "op A"): it stays whole on its line and is cut off by an ellipsis.
+test.describe('a narrow block breaks its title between words, and cuts a word that is too long', () => {
+    test.describe.configure({ timeout: 60000 })
+
+    // every title of a block in the grid, with the lines it is drawn in (a Range per character, grouped by the line it is on) and whether a
+    // line is cut off at the right
+    const titles = (page) => look(page).locator('[data-atom-calendar-block] [data-atom-calendar-item-title]').evaluateAll((els) => els.map((el) => {
+        const node = el.firstChild
+        const range = document.createRange()
+        const lines = []
+
+        for (let i = 0; i < node.length; i++) {
+            range.setStart(node, i)
+            range.setEnd(node, i + 1)
+
+            const rect = range.getClientRects()[0]
+
+            if (!rect) continue
+
+            const line = lines.at(-1)
+
+            if (!line || Math.abs(rect.top - line.top) > 3) lines.push({ top: rect.top, from: i, to: i + 1 })
+            else line.to = i + 1
+        }
+
+        const text = node.data
+        const style = getComputedStyle(el)
+
+        return {
+            text,
+            // a line begins at a word when the character before it is a space (or there is none), and ends at one when the next is
+            splits: lines.flatMap((line) => {
+                const start = text.slice(line.from, line.to).search(/\S/)
+                const end = text.slice(line.from, line.to).trimEnd().length
+
+                if (start === -1) return []
+
+                const first = line.from + start
+                const last = line.from + end
+
+                // a hyphen is a place a word may break, as it is in every browser: "check-" / "in" is two words' worth of line
+                const inside = (at) => at > 0 && at < text.length && /\S/.test(text[at - 1]) && /\S/.test(text[at]) && text[at - 1] !== '-'
+
+                return [first, last].filter(inside).map((at) => text.slice(0, at) + ' | ' + text.slice(at))
+            }),
+            lines: lines.length,
+            cut: el.scrollWidth > el.clientWidth + 0.5,
+            overflow: style.textOverflow,
+        }
+    }))
+
+    for (const [name, viewport, view, tailwind] of [
+        ['1280, the week', WIDE, 'week', true],
+        ['1280, the day', WIDE, 'day', true],
+        ['390, the week', NARROW, 'week', true],
+        ['390, the day', NARROW, 'day', true],
+        ['1280, the week, on the bare rig (a larger type, so more words are too long)', WIDE, 'week', false],
+        ['390, the week, on the bare rig', NARROW, 'week', false],
+    ]) {
+        test(`${name}: no line starts or ends inside a word`, async ({ page }) => {
+            await page.setViewportSize(viewport)
+
+            const ok = await openLook(page, { view, tailwind, query: 'scroll=08:00' })
+
+            test.skip(!ok, SKIP_REASON)
+
+            const list = await titles(page)
+
+            expect(list.length).toBeGreaterThan(5)
+
+            for (const title of list) expect(title.splits, `"${title.text}" is split: ${JSON.stringify(title.splits)}`).toEqual([])
+
+            // not vacuous: in the week a lane of three is narrower than a word, and those titles do wrap; with Tailwind's type one word is wider than its lane
+            if (view === 'week') expect(list.filter((title) => title.lines > 1).length, 'some title wraps').toBeGreaterThan(0)
+            if (view === 'week' && tailwind) expect(list.filter((title) => title.cut).length, 'some word is too long for its lane').toBeGreaterThan(0)
+        })
+    }
+
+    test('a word too long for its lane is cut by an ellipsis, and a title of several words is clamped to two lines', async ({ page }) => {
+        await page.setViewportSize(WIDE)
+
+        const ok = await openLook(page, { view: 'week', query: 'scroll=08:00' })
+
+        test.skip(!ok, SKIP_REASON)
+
+        const list = await titles(page)
+        const cut = list.filter((title) => title.cut)
+
+        expect(cut.length).toBeGreaterThan(0)
+
+        for (const title of cut) expect(title.overflow, title.text).toBe('ellipsis')
+
+        // a block of several words keeps its two lines (or its single one) and is not taller than that
+        const tall = await look(page).locator('[data-atom-calendar-block]', { hasText: 'Workshop A' }).first().locator('[data-atom-calendar-item-title]').evaluate((el) => ({
+            height: el.getBoundingClientRect().height,
+            line: parseFloat(getComputedStyle(el).lineHeight),
+        }))
+
+        expect(tall.height).toBeLessThanOrEqual(tall.line * 2 + 1)
+    })
+})
+
 test.describe('on the bare rig: a preview that changes leaves the blocks alone', () => {
     // every record the page's mutation observer makes about a block: the node itself added or removed, or anything inside it changed
     const watchBlocks = (page) => page.evaluate(() => {
