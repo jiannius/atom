@@ -72,11 +72,79 @@ export const packColumns = (segments) => {
     return sorted
 }
 
+// How far apart (minutes) two items start and still count as starting together, in the cascade.
+export const CASCADE_TOGETHER = 15
+
+// How much of the column's width each level of the cascade is moved in, and the most it moves in all.
+export const CASCADE_STEP = 12
+export const CASCADE_MAX = 36
+
+// The other way to lay overlapping items out, as Google Calendar and Schedule-X do: not side by side but one over
+// the next, each later one moved in from the left and drawn on top, so a title stays as wide as the column allows.
+// Items that start together (within CASCADE_TOGETHER minutes) share a level side by side, since the later one would
+// cover the earlier one's title; a later start goes one level in over every earlier item it overlaps. Same clusters as
+// packColumns. Writes `left`, `width` (percent of the column) and `level` on each segment, and returns them in start order.
+export const packCascade = (segments) => {
+    let sorted = [...segments].sort((a, b) => (a.drawnStart - b.drawnStart) || (b.drawnEnd - a.drawnEnd) || (a.index - b.index))
+    let clusters = []
+
+    for (let segment of sorted) {
+        let last = clusters[clusters.length - 1]
+
+        if (last && segment.drawnStart < last.end) {
+            last.segments.push(segment)
+            last.end = Math.max(last.end, segment.drawnEnd)
+        } else {
+            clusters.push({ segments: [segment], end: segment.drawnEnd })
+        }
+    }
+
+    for (let { segments: cluster } of clusters) {
+        // groups of items that start together
+        let groups = []
+
+        for (let segment of cluster) {
+            let group = groups[groups.length - 1]
+
+            if (group && segment.drawnStart - group.start < CASCADE_TOGETHER) group.segments.push(segment)
+            else groups.push({ start: segment.drawnStart, segments: [segment], level: 0 })
+        }
+
+        // a group goes one level in from the deepest earlier group it overlaps
+        groups.forEach((group, i) => {
+            let end = Math.max(...group.segments.map((segment) => segment.drawnEnd))
+
+            group.end = end
+            group.level = 0
+
+            for (let earlier of groups.slice(0, i)) {
+                if (earlier.end > group.start) group.level = Math.max(group.level, earlier.level + 1)
+            }
+        })
+
+        let depth = Math.max(...groups.map((group) => group.level))
+        let step = depth ? Math.min(CASCADE_STEP, CASCADE_MAX / depth) : 0
+
+        for (let group of groups) {
+            let left = group.level * step
+            let each = (100 - left) / group.segments.length
+
+            group.segments.forEach((segment, i) => {
+                segment.left = left + i * each
+                segment.width = each
+                segment.level = group.level
+            })
+        }
+    }
+
+    return sorted
+}
+
 const round = (value) => Math.round(value * 10000) / 10000
 
 // One date's timed segments as blocks: where each sits in the day (top and height, as a percentage of the day),
 // which lane (left and width, as a percentage of the column), and whether it carries on from or into another day.
-export const columnBlocks = (items, date, { slotDuration = 30 } = {}) => {
+export const columnBlocks = (items, date, { slotDuration = 30, overlap = 'lanes', lifted = null } = {}) => {
     let segments = []
 
     items.forEach((item, index) => {
@@ -97,7 +165,10 @@ export const columnBlocks = (items, date, { slotDuration = 30 } = {}) => {
         }
     })
 
-    return packColumns(segments).map((segment) => ({
+    let cascade = overlap === 'cascade'
+    let placed = cascade ? packCascade(segments) : packColumns(segments)
+
+    return placed.map((segment) => ({
         ...segment.item,
         key: date + ':' + segment.item.id,
         kind: 'block',
@@ -106,14 +177,50 @@ export const columnBlocks = (items, date, { slotDuration = 30 } = {}) => {
         endMinute: segment.end,
         top: round(segment.start / DAY_MINUTES * 100),
         height: round((segment.end - segment.start) / DAY_MINUTES * 100),
-        left: round(segment.column / segment.columns * 100),
-        width: round(100 / segment.columns),
-        column: segment.column,
-        columns: segment.columns,
+        left: round(cascade ? segment.left : segment.column / segment.columns * 100),
+        width: round(cascade ? segment.width : 100 / segment.columns),
+        // the cascade stacks: a later level is in front of the one before it
+        level: cascade ? segment.level : 0,
+        column: cascade ? undefined : segment.column,
+        columns: cascade ? undefined : segment.columns,
         compact: segment.end - segment.start < COMPACT_MINUTES,
         before: segment.before,
         after: segment.after,
+        lifted: lifted !== null && String(segment.item.id) === String(lifted),
     }))
+}
+
+// What a gesture in progress draws on one date's column, as shapes placed like blocks (top and height in percent of the day,
+// the whole width): `preview` is { kind: 'select' | 'pending' | 'move' | 'resize', start, end, id? } in wall-clock strings. A
+// selection and a pending item are plain boxes; a move or a resize is the item `id` as it would be at the new time, so it
+// carries that item's fields. Nothing here changes an item: the original stays where it is, drawn lifted (see columnBlocks).
+export const previewBlocks = (preview, items, date, { slotDuration = 30 } = {}) => {
+    if (!preview || preview.allDay || !preview.start) return []
+
+    let part = segmentOn({ start: preview.start, end: preview.end, allDay: false }, date, slotDuration)
+
+    if (!part) return []
+
+    let item = preview.id === undefined || preview.id === null ? null : items.find((candidate) => String(candidate.id) === String(preview.id))
+
+    return [{
+        ...(item ?? {}),
+        key: 'preview:' + date,
+        kind: preview.kind,
+        title: preview.title ?? item?.title ?? '',
+        date,
+        // the whole of the gesture's range, for its label; the part on this date is what is drawn
+        start: preview.start,
+        end: preview.end,
+        top: round(part.start / DAY_MINUTES * 100),
+        height: round((part.end - part.start) / DAY_MINUTES * 100),
+        left: 0,
+        width: 100,
+        level: 0,
+        compact: part.end - part.start < COMPACT_MINUTES,
+        before: part.before,
+        after: part.after,
+    }]
 }
 
 // The all-day row: every all-day item over the shown days as a bar in a lane, the same bars as the month view's,
@@ -176,19 +283,32 @@ export const allDayRow = (days, items, { max = 3 } = {}) => {
 }
 
 // The time grid: the shown `days` (the payload's window days, contiguous) as columns of timed blocks, and the all-day
-// row over them. A column is { date, number, col, weekend, outside, today, past, count, blocks }, `count` being every
-// item of the day, all-day ones too, for its label.
-export const timeGrid = (days, items, { today = null, max = 3, slotDuration = 30 } = {}) => ({
-    columns: days.map((day, col) => ({
-        date: day.date,
-        number: Number(day.date.slice(8, 10)),
-        col: col + 1,
-        weekend: Boolean(day.weekend),
-        outside: Boolean(day.outside),
-        today: day.date === today,
-        past: today !== null && day.date < today,
-        count: dayEntries(items, day.date).length,
-        blocks: columnBlocks(items, day.date, { slotDuration }),
-    })),
+// row over them. A column is { date, number, col, weekend, outside, today, past, count, blocks, preview }, `count` being every
+// item of the day, all-day ones too, for its label, and `preview` what a gesture in progress draws there.
+export const timeGrid = (days, items, { today = null, max = 3, slotDuration = 30, overlap = 'lanes', preview = null } = {}) => ({
+    columns: days.map((day, col) => {
+        let blocks = columnBlocks(items, day.date, { slotDuration, overlap, lifted: preview && ['move', 'resize'].includes(preview.kind) ? preview.id : null })
+        let shapes = previewBlocks(preview, items, day.date, { slotDuration })
+
+        // a resize stays in the lane of the item it resizes (a move has no lane yet: it is where it is dropped)
+        if (preview?.kind === 'resize') {
+            let lane = blocks.find((block) => block.lifted)
+
+            if (lane) shapes.forEach((shape) => Object.assign(shape, { left: lane.left, width: lane.width, level: lane.level }))
+        }
+
+        return {
+            date: day.date,
+            number: Number(day.date.slice(8, 10)),
+            col: col + 1,
+            weekend: Boolean(day.weekend),
+            outside: Boolean(day.outside),
+            today: day.date === today,
+            past: today !== null && day.date < today,
+            count: dayEntries(items, day.date).length,
+            blocks,
+            preview: shapes,
+        }
+    }),
     allDay: allDayRow(days, items, { max }),
 })

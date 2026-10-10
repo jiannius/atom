@@ -769,6 +769,35 @@ test.describe('an item is drawn at least half an hour tall, whatever an hour is'
     }
 })
 
+test.describe('scrolling out of the grid', () => {
+    test('a scroll that has reached the end of the grid goes on into the page, and a sideways one does not leave the week', async ({ page }) => {
+        await openGrid(page, 'view=week')
+
+        // overscroll-behavior: sideways contained, up and down chained (the grid is most of a phone's screen)
+        const behaviour = await grid(page, 'grid').evaluate((el) => ({ x: getComputedStyle(el).overscrollBehaviorX, y: getComputedStyle(el).overscrollBehaviorY }))
+
+        expect(behaviour).toEqual({ x: 'contain', y: 'auto' })
+
+        // a page long enough to scroll, and the grid at the bottom of its day
+        await page.evaluate(() => {
+            const spacer = document.createElement('div')
+
+            spacer.style.height = '3000px'
+            document.body.append(spacer)
+
+            const scroller = document.querySelector('[data-probe="grid"] [data-atom-calendar-grid]')
+
+            scroller.scrollTop = scroller.scrollHeight
+        })
+
+        const box = await grid(page, 'grid').boundingBox()
+
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+        await page.mouse.wheel(0, 400)
+        await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
+    })
+})
+
 test.describe('stacking', () => {
     test('a host overlay with a low z-index is over the sticky header, not under it', async ({ page }) => {
         await openGrid(page, 'view=week')

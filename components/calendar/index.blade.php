@@ -49,8 +49,8 @@ $payload = $calendar->payload($anchor, $items ?? []);
 $palette = [
     'red' => ['tint' => 'bg-red-100 dark:bg-red-500/20', 'accent' => 'border-red-600 dark:border-red-400', 'dot' => 'bg-red-600 dark:bg-red-400'],
     'orange' => ['tint' => 'bg-orange-100 dark:bg-orange-500/20', 'accent' => 'border-orange-600 dark:border-orange-400', 'dot' => 'bg-orange-600 dark:bg-orange-400'],
-    'yellow' => ['tint' => 'bg-yellow-100 dark:bg-yellow-500/20', 'accent' => 'border-yellow-600 dark:border-yellow-400', 'dot' => 'bg-yellow-600 dark:bg-yellow-400'],
-    'green' => ['tint' => 'bg-green-100 dark:bg-green-500/20', 'accent' => 'border-green-600 dark:border-green-400', 'dot' => 'bg-green-600 dark:bg-green-400'],
+    'yellow' => ['tint' => 'bg-yellow-100 dark:bg-yellow-500/20', 'accent' => 'border-yellow-700 dark:border-yellow-400', 'dot' => 'bg-yellow-700 dark:bg-yellow-400'],
+    'green' => ['tint' => 'bg-green-100 dark:bg-green-500/20', 'accent' => 'border-green-700 dark:border-green-400', 'dot' => 'bg-green-700 dark:bg-green-400'],
     'blue' => ['tint' => 'bg-sky-100 dark:bg-sky-500/20', 'accent' => 'border-sky-600 dark:border-sky-400', 'dot' => 'bg-sky-600 dark:bg-sky-400'],
     'purple' => ['tint' => 'bg-purple-100 dark:bg-purple-500/20', 'accent' => 'border-purple-600 dark:border-purple-400', 'dot' => 'bg-purple-600 dark:bg-purple-400'],
     'black' => ['tint' => 'bg-zinc-200 dark:bg-zinc-100/15', 'accent' => 'border-zinc-900 dark:border-zinc-100', 'dot' => 'bg-zinc-900 dark:bg-zinc-100'],
@@ -64,7 +64,7 @@ foreach ((array) config('atom.calendar.colors', []) as $name => $classes) {
     }
 }
 
-$icons = collect($payload['items'])->pluck('icon')->push('warning')->filter()->unique()->values();
+$icons = collect($payload['items'])->pluck('icon')->push('warning', 'loading')->filter()->unique()->values();
 @endphp
 
 <div
@@ -130,7 +130,7 @@ data-atom-calendar
 
     <div wire:ignore data-atom-calendar-body>
         <div x-cloak x-show="view === 'month'" role="grid">
-            <div role="row" data-atom-calendar-weekdays class="border-b border-zinc-200 dark:border-zinc-700">
+            <div role="row" data-atom-calendar-weekdays>
                 <template x-for="day in labels.weekdays" :key="day.key">
                     <div role="columnheader" x-text="day.short" x-bind:aria-label="day.long" class="py-2 text-center text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"></div>
                 </template>
@@ -157,12 +157,18 @@ data-atom-calendar
                             </template>
                         </div>
 
+                        {{-- A gesture in progress, drawn from the engine's `preview`: a box over the days selected (or waiting for the
+                             host), under the chips, and the ghost of an item being moved or resized among them. Neither takes a pointer. --}}
+                        <template x-if="week.selection">
+                            <div x-bind:style="spanStyle(week.selection)" x-bind:data-kind="week.selection.kind" aria-hidden="true" data-atom-calendar-selection class="rounded-md bg-zinc-900/5 ring-1 ring-inset ring-zinc-500 dark:bg-white/[.07] dark:ring-zinc-400"></div>
+                        </template>
+
                         <div data-atom-calendar-chips>
                             <template x-for="day in week.days" :key="'number-' + day.date">
                                 <div x-bind:style="{ gridColumn: String(day.col), gridRow: '1' }" data-atom-calendar-number class="flex items-center">
                                     <span
                                     x-text="day.number"
-                                    x-bind:class="day.today ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : (day.outside || day.past ? 'text-zinc-500 dark:text-zinc-400' : 'text-zinc-900 dark:text-zinc-100')"
+                                    x-bind:class="day.today ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : (day.outside || day.past ? 'text-zinc-600 dark:text-zinc-400' : 'text-zinc-900 dark:text-zinc-100')"
                                     class="inline-flex size-6 items-center justify-center rounded-full text-sm font-medium tabular-nums"></span>
                                 </div>
                             </template>
@@ -183,6 +189,29 @@ data-atom-calendar
                                 class="h-5 w-full rounded-sm px-1.5 text-left text-xs font-medium text-zinc-600 outline-offset-1 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700/60 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"></button>
                             </template>
 
+                            <template x-if="week.ghost">
+                                <div x-bind:style="slotStyle(week.ghost)" x-bind:data-kind="week.ghost.kind" x-bind:data-before="week.ghost.before ? '' : null" x-bind:data-after="week.ghost.after ? '' : null" aria-hidden="true" data-atom-calendar-ghost class="rounded-sm bg-white shadow-lg ring-1 ring-zinc-900/10 dark:bg-zinc-800 dark:ring-white/20">
+                                    <template x-if="week.ghost.kind === 'pending'">
+                                        <div data-atom-calendar-pending class="flex h-5 min-w-0 items-center gap-1 rounded-sm px-1.5 text-xs font-medium text-zinc-700 ring-1 ring-inset ring-zinc-500 dark:text-zinc-200 dark:ring-zinc-400">
+                                            <span x-effect="setIcon($el, 'loading')" class="inline-flex shrink-0"></span>
+                                            <span x-text="week.ghost.title" class="truncate"></span>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="week.ghost.kind !== 'pending'">
+                                        <div
+                                        x-bind:class="[colorClass(week.ghost, 'tint'), week.ghost.danger ? 'border-red-600 dark:border-red-400' : colorClass(week.ghost, 'accent')]"
+                                        x-bind:style="hue(week.ghost)"
+                                        x-bind:data-atom-calendar-hex="isHex(week.ghost) && !week.ghost.danger ? '' : null"
+                                        data-atom-calendar-ghost-body
+                                        class="relative flex h-5 min-w-0 items-center gap-1 rounded-sm border-l-[3px] px-1.5 text-xs font-medium">
+                                            <span x-text="week.ghost.title" x-bind:class="week.ghost.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" class="truncate"></span>
+                                            <span x-show="week.ghost.kind === 'resize'" aria-hidden="true" class="absolute inset-y-1 right-1 w-1 rounded-full bg-zinc-600 dark:bg-zinc-300"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+
                             <template x-for="day in week.days" :key="'dots-' + day.date">
                                 <div x-show="day.dots.length" x-bind:style="{ gridColumn: String(day.col), gridRow: '2' }" data-atom-calendar-dots>
                                     <template x-for="dot in day.dots" :key="dot.id">
@@ -194,7 +223,7 @@ data-atom-calendar
                                         class="size-1.5 shrink-0 rounded-full"></span>
                                     </template>
 
-                                    <span x-show="day.extra" x-text="'+' + day.extra" class="text-xs leading-none text-zinc-500 dark:text-zinc-400"></span>
+                                    <span x-show="day.extra" x-text="'+' + day.extra" class="text-xs leading-none text-zinc-600 dark:text-zinc-400"></span>
                                 </div>
                             </template>
                         </div>
@@ -277,13 +306,59 @@ data-atom-calendar
                         class="border-l border-zinc-200 dark:border-zinc-700">
                             <template x-for="chip in column.blocks" :key="chip.key">
                                 <div x-bind:style="blockStyle(chip)" data-atom-calendar-block>
-                                    <atom:calendar.chip />
+                                    {{-- the tint is translucent in dark mode: an opaque base under it, so a block over another (the cascade) does not show it through --}}
+                                    <div class="h-full rounded-md bg-white dark:bg-zinc-800">
+                                        <atom:calendar.chip />
+                                    </div>
                                 </div>
                             </template>
 
                             <template x-if="nowLine(column)">
-                                <div x-bind:style="{ top: nowLine(column).top }" x-bind:data-time="nowLine(column).time" aria-hidden="true" data-atom-calendar-now-line class="bg-red-500">
-                                    <span class="bg-red-500"></span>
+                                <div x-bind:style="{ top: nowLine(column).top }" x-bind:data-time="nowLine(column).time" aria-hidden="true" data-atom-calendar-now-line class="bg-red-500 dark:bg-red-400">
+                                    <span class="bg-red-500 dark:bg-red-400"></span>
+                                </div>
+                            </template>
+
+                            {{-- A gesture in progress (the engine's `preview`): the selection, the item waiting for the host, or
+                                 the ghost of one being moved or resized. Over the blocks and the now line, and it takes no pointer. --}}
+                            <template x-for="shape in column.preview" :key="shape.key">
+                                <div x-bind:style="blockStyle(shape)" x-bind:data-kind="shape.kind" x-bind:data-before="shape.before ? '' : null" x-bind:data-after="shape.after ? '' : null" aria-hidden="true" data-atom-calendar-preview>
+                                    <template x-if="shape.kind === 'select'">
+                                        <div class="h-full overflow-hidden rounded-md bg-zinc-900/5 px-1.5 py-0.5 text-xs font-medium tabular-nums text-zinc-700 ring-1 ring-inset ring-zinc-500 dark:bg-white/10 dark:text-zinc-200 dark:ring-zinc-400" x-text="timeRange(shape)"></div>
+                                    </template>
+
+                                    <template x-if="shape.kind === 'pending'">
+                                        <div data-atom-calendar-pending class="flex h-full flex-col overflow-hidden rounded-md px-1.5 py-0.5 text-xs text-zinc-700 ring-1 ring-inset ring-zinc-500 dark:text-zinc-200 dark:ring-zinc-400">
+                                            <span class="flex min-w-0 items-center gap-1 font-semibold">
+                                                <span x-effect="setIcon($el, 'loading')" class="inline-flex shrink-0"></span>
+                                                <span x-text="shape.title || timeRange(shape)" class="truncate"></span>
+                                            </span>
+                                        </div>
+                                    </template>
+
+                                    <template x-if="shape.kind === 'move' || shape.kind === 'resize'">
+                                        <div class="relative h-full rounded-md bg-white shadow-lg ring-1 ring-zinc-900/10 dark:bg-zinc-800 dark:ring-white/20">
+                                            <div
+                                            x-bind:class="[colorClass(shape, 'tint'), shape.danger ? 'border-red-600 dark:border-red-400' : colorClass(shape, 'accent')]"
+                                            x-bind:style="hue(shape)"
+                                            x-bind:data-atom-calendar-hex="isHex(shape) && !shape.danger ? '' : null"
+                                            data-atom-calendar-ghost-body
+                                            class="flex h-full min-w-0 flex-col overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-xs">
+                                                <span class="flex min-w-0 items-center gap-1">
+                                                    <span x-text="shape.title" x-bind:class="shape.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" class="truncate font-semibold"></span>
+                                                    <span x-show="shape.compact" x-text="'· ' + timeLabel(shape)" class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
+                                                </span>
+                                                <span x-show="!shape.compact" x-text="timeRange(shape)" class="truncate font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
+                                            </div>
+
+                                            <template x-if="shape.kind === 'resize'">
+                                                <div>
+                                                    <span aria-hidden="true" class="absolute inset-x-0 bottom-0.5 mx-auto h-1 w-6 rounded-full bg-zinc-600 dark:bg-zinc-300"></span>
+                                                    <span x-text="endLabel(shape)" class="absolute -bottom-3 right-1 rounded-sm bg-zinc-900 px-1.5 py-0.5 text-xs font-medium tabular-nums text-white dark:bg-white dark:text-zinc-900"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
                                 </div>
                             </template>
                         </div>

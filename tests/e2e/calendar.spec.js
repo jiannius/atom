@@ -319,7 +319,10 @@ test.describe('bound to a Livewire property', () => {
 
         await expect(dot).toHaveAttribute('data-atom-calendar-hex', '')
         expect(await dot.evaluate((el) => el.style.getPropertyValue('--atom-calendar-hue'))).toBe('#ff8800')
-        expect(await dot.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(255, 136, 0)')
+        // the dot is the colour moved to show on a light ground (3:1, see calendar/colors.js): the orange is darkened, and the dark theme's value is kept beside it
+        expect(await dot.evaluate((el) => el.style.getPropertyValue('--atom-calendar-edge'))).toBe('#cc6d00')
+        expect(await dot.evaluate((el) => el.style.getPropertyValue('--atom-calendar-edge-dark'))).toBe('#ff8800')
+        expect(await dot.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(204, 109, 0)')
 
         const danger = chip(page, 'Invoice overdue')
 
@@ -380,11 +383,13 @@ test.describe('navigating', () => {
         const html = (name) => template(name).evaluate((el) => el.innerHTML.trim())
 
         // what the server printed on first load is the reference for each glyph
-        const reference = { calendar: await html('calendar'), warning: await html('warning') }
+        const reference = { calendar: await html('calendar'), warning: await html('warning'), loading: await html('loading') }
 
         expect(reference.calendar).toContain('<svg')
         expect(reference.warning).toContain('<svg')
+        expect(reference.loading).toContain('<svg')
         expect(reference.warning).not.toBe(reference.calendar)
+        expect(reference.loading).not.toBe(reference.calendar)
 
         const check = async (names) => {
             await expect(probe(page).locator('template[data-atom-calendar-icon]')).toHaveCount(names.length)
@@ -394,11 +399,12 @@ test.describe('navigating', () => {
             }
         }
 
-        await check(['calendar', 'warning'])
+        // the warning, and the spinner of an item waiting for the host, are always there
+        await check(['calendar', 'warning', 'loading'])
 
         await probe(page).getByRole('button', { name: 'Next' }).click()
         await expect(title(page)).toHaveText('November 2026')
-        await check(['warning'])
+        await check(['warning', 'loading'])
 
         const danger = chip(page, 'Contract overdue').locator('[data-atom-icon]')
         await expect(danger).toHaveCount(1)
@@ -406,7 +412,7 @@ test.describe('navigating', () => {
 
         await probe(page).getByRole('button', { name: 'Previous' }).click()
         await expect(title(page)).toHaveText('October 2026')
-        await check(['calendar', 'warning'])
+        await check(['calendar', 'warning', 'loading'])
 
         const docs = chip(page, 'Open the docs').locator('[data-atom-icon]')
         await expect(docs).toHaveCount(1)

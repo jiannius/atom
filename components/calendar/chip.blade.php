@@ -12,6 +12,7 @@
     x-bind:title="chip.title"
     x-bind:data-before="chip.before ? '' : null"
     x-bind:data-after="chip.after ? '' : null"
+    x-bind:data-lifted="chip.lifted ? '' : null"
     x-bind:data-atom-calendar-hex="isHex(chip) && !chip.danger ? '' : null"
     x-bind:style="hue(chip)"
     x-bind:class="[colorClass(chip, 'tint'), chip.danger ? 'border-red-600 dark:border-red-400' : colorClass(chip, 'accent')]"
@@ -32,6 +33,7 @@
     x-bind:role="link(chip) ? null : 'button'"
     x-bind:tabindex="link(chip) ? null : 0"
     x-bind:title="chip.title"
+    x-bind:data-lifted="chip.lifted ? '' : null"
     x-on:click="itemClick(chip, $event)"
     x-on:keydown.enter="itemKey(chip, $event)"
     x-on:keydown.space="itemKey(chip, $event)"
@@ -43,7 +45,7 @@
         x-bind:style="hue(chip)"
         data-atom-calendar-dot
         class="size-2 shrink-0 rounded-full"></span>
-        <span x-text="timeLabel(chip)" class="shrink-0 font-normal tabular-nums text-zinc-500 dark:text-zinc-400"></span>
+        <span x-text="timeLabel(chip)" class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-400"></span>
         <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-600 dark:text-zinc-300'" class="inline-flex shrink-0"></span>
         <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" class="truncate font-medium"></span>
         <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
@@ -61,6 +63,7 @@
     x-bind:data-before="chip.before ? '' : null"
     x-bind:data-after="chip.after ? '' : null"
     x-bind:data-compact="chip.compact ? '' : null"
+    x-bind:data-lifted="chip.lifted ? '' : null"
     x-bind:data-atom-calendar-hex="isHex(chip) && !chip.danger ? '' : null"
     x-bind:style="hue(chip)"
     x-bind:class="[colorClass(chip, 'tint'), chip.danger ? 'border-red-600 dark:border-red-400' : colorClass(chip, 'accent')]"

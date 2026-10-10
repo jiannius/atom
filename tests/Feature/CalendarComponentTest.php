@@ -333,7 +333,7 @@ describe('calendar component markup', function () {
         }
     });
 
-    it('prints one icon template for each icon an item uses, and one for the warning', function () {
+    it('prints one icon template for each icon an item uses, and one each for the warning and for the spinner of an item waiting for the host', function () {
         $html = calendarRender('month="2026-10" :items="$items"', ['items' => [
             ['id' => 1, 'title' => 'a', 'start' => '2026-10-09', 'icon' => 'calendar'],
             ['id' => 2, 'title' => 'b', 'start' => '2026-10-09', 'icon' => 'calendar'],
@@ -342,7 +342,7 @@ describe('calendar component markup', function () {
 
         $names = array_map(fn ($template) => $template->getAttribute('data-atom-calendar-icon'), domQuery($html, '//template[@data-atom-calendar-icon]'));
 
-        expect($names)->toBe(['calendar', 'warning']);
+        expect($names)->toBe(['calendar', 'warning', 'loading']);
     });
 
     it('keys each icon template by its icon, so a morph cannot hand one the glyph of another', function () {
@@ -355,7 +355,7 @@ describe('calendar component markup', function () {
             domQuery($html, '//template[@data-atom-calendar-icon]'),
         );
 
-        expect($keys)->toBe(['calendar=atom-calendar-icon-calendar', 'warning=atom-calendar-icon-warning']);
+        expect($keys)->toBe(['calendar=atom-calendar-icon-calendar', 'warning=atom-calendar-icon-warning', 'loading=atom-calendar-icon-loading']);
     });
 
     it('prints the colour palette with every preset, and lets config add or override one', function () {

@@ -1,5 +1,6 @@
 import floatingui from '../helpers/floatingui.js'
 import safeUrl from '../helpers/safe-url.js'
+import { edgeColors } from './calendar/colors.js'
 import { addDays, addMonths, dateOf, fromLocalDate, minuteOf, monthOf, nowAt, parseDate, toLocalDate } from './calendar/dates.js'
 import { format } from './calendar/format.js'
 import { DAY_MINUTES, timeGrid } from './calendar/grid.js'
@@ -51,6 +52,13 @@ export default () => ({
     // from it (the today marker) is laid out again then and not with the clock.
     todayDate: '',
     scrollPending: false,
+    // What a gesture in progress draws, as { kind: 'select' | 'pending' | 'move' | 'resize', start, end, id?, title? } in wall-clock
+    // strings, or null. The gestures that set it (selecting, dragging and resizing) are not wired yet: this is the state they
+    // will set, and the look fixture sets it by hand to show each one. See previewBlocks() in calendar/grid.js.
+    preview: null,
+    // How timed items that overlap are laid out in the week and day views: 'lanes' side by side, or 'cascade' one over the next.
+    // Only the look fixture sets 'cascade', so the two can be compared (see packCascade() in calendar/grid.js).
+    overlap: 'lanes',
     hours: Array.from({ length: 24 }, (_, hour) => hour),
 
     get labels () {
@@ -124,6 +132,8 @@ export default () => ({
             today: this.todayDate,
             max: this.config.max ?? null,
             slotDuration: this.config.slotDuration ?? 30,
+            overlap: this.overlap,
+            preview: this.preview,
         })
     },
 
@@ -140,6 +150,7 @@ export default () => ({
         return monthLayout(this.payload.window.days, this.payload.items, {
             max: this.config.max ?? null,
             today: this.todayDate,
+            preview: this.preview,
         })
     },
 
@@ -467,8 +478,16 @@ export default () => ({
         return (this.palette[chip.color] ?? this.palette.zinc ?? {})[part] ?? ''
     },
 
+    // A hex colour: the colour itself for the tint, and the edge and the dot moved only as far as they need to show against the light
+    // ground and the dark one (see calendar/colors.js); atom.css picks one by theme.
     hue (chip) {
-        return this.isHex(chip) ? { '--atom-calendar-hue': chip.color } : {}
+        if (!this.isHex(chip)) return {}
+
+        let edge = edgeColors(chip.color)
+
+        return edge
+            ? { '--atom-calendar-hue': chip.color, '--atom-calendar-edge': edge.light, '--atom-calendar-edge-dark': edge.dark }
+            : { '--atom-calendar-hue': chip.color }
     },
 
     // A timed block's place in its column: its top and height in the day and its lane across the column. It is never
@@ -480,6 +499,16 @@ export default () => ({
             left: block.left + '%',
             width: block.width + '%',
         }
+    },
+
+    // The end of a range as the time of day, for the label a resize shows beside its edge
+    endLabel (shape) {
+        return shape.end ? format(shape.end, this.config.timeFormat, this.labels) : ''
+    },
+
+    // A selection's or a ghost's place over a month week's days, as shares of the week's width
+    spanStyle (shape) {
+        return { left: shape.left + '%', width: shape.width + '%' }
     },
 
     hourLabel (hour) {

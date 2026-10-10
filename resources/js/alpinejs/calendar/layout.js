@@ -75,12 +75,29 @@ export const packBars = (bars) => {
 // within one day is a dot row that takes the first row its day has free. Only `max` rows are shown
 // on a day, then "+N more" in the row after them; `max` null shows every row.
 //
-// Returns weeks of { key, days, chips, more }. A day is { date, number, col, weekend, outside,
-// today, past, count, dots, extra }, where `dots` are up to four of the day's items for the narrow
+// Returns weeks of { key, days, chips, more, selection, ghost }. A day is { date, number, col, weekend, outside,
+// today, past, selected, count, dots, extra }, where `dots` are up to four of the day's items for the narrow
 // layout. A chip is its item plus { key, kind: 'bar' | 'dot', col, span, row, before, after }.
-export const monthLayout = (days, items, { max = 3, today = null } = {}) => {
+export const monthLayout = (days, items, { max = 3, today = null, preview = null } = {}) => {
     let entries = items.map((item, index) => ({ item, index, ...span(item), bar: isBar(item) }))
     let weeks = []
+
+    // What a gesture in progress covers: the dates of `preview` ({ kind: 'select' | 'pending' | 'move' | 'resize', start, end, id? }).
+    // A selection and a pending item are a box over the days; a move or a resize is the item `id` as a bar over the days it
+    // would then cover, and the original is drawn lifted; an item waiting for the host is both, the striped box and a bar with its
+    // title. Nothing about the items themselves changes.
+    let covered = null
+    let lifted = null
+    let moved = null
+
+    if (preview?.start) {
+        covered = span({ start: preview.start, end: preview.end, allDay: preview.allDay ?? !String(preview.start).includes('T') })
+
+        if (preview.kind === 'move' || preview.kind === 'resize') {
+            lifted = preview.id !== undefined && preview.id !== null ? String(preview.id) : null
+            moved = items.find((item) => String(item.id) === lifted) ?? null
+        }
+    }
 
     for (let start = 0; start < days.length; start += 7) {
         let week = days.slice(start, start + 7)
@@ -149,6 +166,7 @@ export const monthLayout = (days, items, { max = 3, today = null } = {}) => {
                     row: lane + 2,
                     before: false,
                     after: false,
+                    lifted: lifted !== null && String(entry.item.id) === lifted,
                     ...extra,
                 })
             }
@@ -165,10 +183,33 @@ export const monthLayout = (days, items, { max = 3, today = null } = {}) => {
             }
         })
 
+        // the part of the gesture that falls in this week
+        let selection = null
+        let ghost = null
+
+        if (covered && covered.last >= first && covered.first <= last) {
+            let startCol = Math.max(0, diffDays(first, covered.first))
+            let endCol = Math.min(week.length - 1, diffDays(first, covered.last))
+            let place = { col: startCol + 1, span: endCol - startCol + 1, before: covered.first < first, after: covered.last > last }
+
+            let box = { key: first + ':preview', kind: preview.kind, title: preview.title ?? '', start: preview.start, end: preview.end, left: startCol / week.length * 100, width: place.span / week.length * 100, ...place }
+
+            if (moved || lifted !== null) {
+                ghost = { ...(moved ?? {}), title: preview.title ?? moved?.title ?? '', start: preview.start, end: preview.end, key: first + ':preview', kind: preview.kind, row: 2, ...place }
+            } else {
+                selection = box
+
+                // an item waiting for the host is also a bar with its title and a spinner, in front of whatever is on the days
+                if (preview.kind === 'pending') ghost = { ...box, row: 2 }
+            }
+        }
+
         weeks.push({
             key: first,
             chips,
             more,
+            selection,
+            ghost,
             days: week.map((day, col) => {
                 let list = dayEntries(items, day.date)
 
@@ -180,6 +221,7 @@ export const monthLayout = (days, items, { max = 3, today = null } = {}) => {
                     outside: Boolean(day.outside),
                     today: day.date === today,
                     past: today !== null && day.date < today,
+                    selected: Boolean(selection) && col + 1 >= selection.col && col + 1 < selection.col + selection.span,
                     count: counts[col].total,
                     dots: list.slice(0, 4),
                     extra: Math.max(0, list.length - 4),

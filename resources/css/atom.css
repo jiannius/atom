@@ -454,7 +454,13 @@ html.dark [data-atom-slider-bubble] {
 [data-atom-calendar-chip="bar"][data-atom-calendar-hex],
 [data-atom-calendar-chip="block"][data-atom-calendar-hex] {
     background-color: color-mix(in oklab, var(--atom-calendar-hue) 18%, transparent);
-    border-left-color: var(--atom-calendar-hue);
+    border-left-color: var(--atom-calendar-edge, var(--atom-calendar-hue));
+}
+
+/* the edge and the dot of a hex colour are moved to show against the ground of the theme (calendar/colors.js) */
+html.dark [data-atom-calendar-chip="bar"][data-atom-calendar-hex],
+html.dark [data-atom-calendar-chip="block"][data-atom-calendar-hex] {
+    border-left-color: var(--atom-calendar-edge-dark, var(--atom-calendar-hue));
 }
 
 /* a block that carries on from the day before, or into the next, is cut square on that edge */
@@ -478,7 +484,10 @@ html.dark [data-atom-slider-bubble] {
     /* its own stacking context: the sticky header (z-index 4) must not rise over a host's menu or overlay */
     isolation: isolate;
     overflow: auto;
-    overscroll-behavior: contain;
+    /* Sideways, a week that has been scrolled to its end does not go on into the browser's back and forward swipe. Up and down it
+       does chain to the page: the grid is most of a phone's screen, and a scroller that keeps a swipe that has reached its end
+       leaves the page stuck until the next swipe lands outside it. */
+    overscroll-behavior-x: contain;
     max-height: var(--atom-calendar-grid-height, min(70vh, 48rem));
 }
 
@@ -538,6 +547,14 @@ html.dark [data-atom-slider-bubble] {
     padding-right: 2px;
 }
 
+/* In a cascade a later item is over the one before it (blocks are in start order, so it is later in the document, and no z-index is
+   needed). One under a pointer or the keyboard comes to the front, so what is covered can be read and reached; 2 is over the other
+   blocks (1) and under the sticky header and gutter (3 and 4). */
+[data-atom-calendar-block]:hover,
+[data-atom-calendar-block]:focus-within {
+    z-index: 2;
+}
+
 [data-atom-calendar-lines] {
     position: absolute;
     top: 0;
@@ -558,6 +575,62 @@ html.dark [data-atom-slider-bubble] {
     top: 50%;
     left: 0;
     right: 0;
+}
+
+/* What a gesture in progress draws (the engine's `preview`): a box over the days or the hours selected, the item waiting for the
+   host, the ghost of one being moved or resized. They sit where a block sits, in front of it, and never take a pointer, so the
+   grid under them is still what a pointer hits. The item being moved stays where it is, lifted. */
+[data-atom-calendar-preview] {
+    position: absolute;
+    z-index: 2;
+    box-sizing: border-box;
+    min-height: calc(var(--atom-calendar-hour) / 2);
+    padding-right: 2px;
+    pointer-events: none;
+}
+
+[data-atom-calendar-preview][data-before] > * {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+[data-atom-calendar-preview][data-after] > * {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+[data-atom-calendar-selection] {
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    box-sizing: border-box;
+    pointer-events: none;
+}
+
+[data-atom-calendar-ghost] {
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+    pointer-events: none;
+}
+
+[data-atom-calendar-chip][data-lifted] {
+    opacity: 0.5;
+}
+
+/* waiting for the host: the selection's box, striped */
+[data-atom-calendar-pending],
+[data-atom-calendar-selection][data-kind="pending"] {
+    background-image: repeating-linear-gradient(135deg, color-mix(in oklab, currentColor 10%, transparent) 0 6px, transparent 6px 12px);
+}
+
+[data-atom-calendar-ghost-body][data-atom-calendar-hex] {
+    background-color: color-mix(in oklab, var(--atom-calendar-hue) 18%, transparent);
+    border-left-color: var(--atom-calendar-edge, var(--atom-calendar-hue));
+}
+
+html.dark [data-atom-calendar-ghost-body][data-atom-calendar-hex] {
+    border-left-color: var(--atom-calendar-edge-dark, var(--atom-calendar-hue));
 }
 
 /* the line for the current time, across today's column only */
@@ -609,7 +682,11 @@ html.dark [data-atom-slider-bubble] {
 }
 
 [data-atom-calendar-dot][data-atom-calendar-hex] {
-    background-color: var(--atom-calendar-hue);
+    background-color: var(--atom-calendar-edge, var(--atom-calendar-hue));
+}
+
+html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
+    background-color: var(--atom-calendar-edge-dark, var(--atom-calendar-hue));
 }
 
 /* the narrow layout's dots, one row per day */
