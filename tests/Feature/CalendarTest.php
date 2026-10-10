@@ -810,6 +810,7 @@ describe('calendar config', function () {
             'weekend' => ['saturday', 'sunday'],
             'max' => 3,
             'timeFormat' => 'g:i A',
+            'dateFormat' => 'j M Y',
             'selectable' => false,
             'draggable' => true,
             'resizable' => true,
@@ -827,6 +828,7 @@ describe('calendar config', function () {
             'weekend' => ['friday', 'saturday', 'funday'],
             'max' => null,
             'time_format' => 'H:i',
+            'date_format' => 'D, j M Y',
             'selectable' => true,
             'draggable' => 'false',
             'resizable' => false,
@@ -842,6 +844,7 @@ describe('calendar config', function () {
             'weekend' => ['friday', 'saturday'],
             'max' => null,
             'timeFormat' => 'H:i',
+            'dateFormat' => 'D, j M Y',
             'selectable' => true,
             'draggable' => false,
             'resizable' => false,
@@ -856,6 +859,7 @@ describe('calendar config', function () {
             'views' => ['agenda'],
             'view' => 'year',
             'time_format' => 'Y-m-d"><script>',
+            'date_format' => 'j M Y"><script>',
             'slot_duration' => 7,
             'scroll_time' => '25:99',
             'max' => 0,
@@ -865,6 +869,7 @@ describe('calendar config', function () {
             'views' => ['month'],
             'view' => 'month',
             'timeFormat' => 'g:i A',
+            'dateFormat' => 'j M Y',
             'slotDuration' => 30,
             'scrollTime' => '06:00',
             'max' => 3,
@@ -873,5 +878,185 @@ describe('calendar config', function () {
 
     it('opens on the first view when the requested one is not offered', function () {
         expect(Calendar::make(['views' => ['week', 'day'], 'view' => 'month'])->view)->toBe('week');
+    });
+});
+
+describe('calendar display formats', function () {
+    it('accepts a format built from the supported tokens and literals', function (string $format) {
+        expect(Calendar::isFormat($format))->toBeTrue()
+            ->and(Calendar::make(['time_format' => $format])->timeFormat)->toBe(
+                strpbrk($format, Calendar::FORMAT_TOKENS['time']) !== false ? $format : Calendar::DEFAULT_TIME_FORMAT,
+            );
+    })->with([
+        'g:i A', 'g:iA', 'h:i a', 'H:i', 'G:i', 'D, j M Y H:i', 'l j F Y, g:i a', 'd/m/y H:i', 'd-m-Y G.i',
+        'Y年n月j日 H:i', 'j M (D) g:i A',
+    ]);
+
+    it('accepts a date format that holds a date token', function (string $format) {
+        expect(Calendar::make(['date_format' => $format])->dateFormat)->toBe($format);
+    })->with(['D, j M Y', 'l, j F Y', 'd/m/Y', 'Y-m-d', 'n/j/y', 'Y年n月j日']);
+
+    it('refuses a format with a token outside the set, and falls back silently', function (string $format) {
+        expect(Calendar::isFormat($format))->toBeFalse()
+            ->and(Calendar::make(['time_format' => $format, 'date_format' => $format])->config())->toMatchArray([
+                'timeFormat' => 'g:i A',
+                'dateFormat' => 'j M Y',
+            ]);
+    })->with([
+        'unix timestamp' => 'U',
+        'timezone id' => 'e',
+        'timezone abbreviation' => 'T',
+        'microseconds' => 'u',
+        'ordinal suffix, English only' => 'jS',
+        'l jS' => 'l jS',
+        'iso week' => 'W',
+        'day of year' => 'z',
+        'unpadded 24h with seconds' => 'H:i:s',
+        'a literal word' => 'H:i \h',
+        'a backslash' => 'H\\:i',
+        'a letter that is not a token' => 'g:i x',
+        'html' => 'Y-m-d"><script>',
+        'a tag' => '<b>H:i</b>',
+        'an ampersand' => 'H&i',
+        'a quote' => "H:i'",
+        'a backtick' => 'H`i',
+        'a newline' => "H:i\n",
+        'a tab' => "H\ti",
+        'a NUL' => "H:i\0",
+        'a right-to-left mark' => "H:i\u{200F}",
+        'a line separator' => "H:i\u{2028}",
+        'invalid UTF-8' => "H:i\xff",
+        'empty' => '',
+        'only literals' => ':- ,',
+        'too long' => 'd/m/Y d/m/Y d/m/Y d/m/Y d/m/Y d/m/Y',
+    ]);
+
+    it('refuses what is not a string', function (mixed $format) {
+        expect(Calendar::isFormat($format))->toBeFalse()
+            ->and(Calendar::make(['time_format' => $format, 'date_format' => $format])->config())->toMatchArray([
+                'timeFormat' => 'g:i A',
+                'dateFormat' => 'j M Y',
+            ]);
+    })->with([
+        'an array' => [['H:i']],
+        'null' => [null],
+        'an int' => [12],
+        'a bool' => [true],
+        'an object' => [new stdClass],
+    ]);
+
+    it('holds the length limit exactly', function () {
+        $ok = str_repeat('d', 16).str_repeat('-', 16);
+
+        expect(Calendar::isFormat($ok))->toBeTrue()
+            ->and(Calendar::isFormat($ok.'-'))->toBeFalse()
+            ->and(Calendar::isFormat(str_repeat('年', 31).'Y'))->toBeTrue()
+            ->and(Calendar::isFormat(str_repeat('年', 32).'Y'))->toBeFalse();
+    });
+
+    it('needs a token of its own kind', function () {
+        $config = Calendar::make(['time_format' => 'j M Y', 'date_format' => 'H:i'])->config();
+
+        expect($config['timeFormat'])->toBe('g:i A')
+            ->and($config['dateFormat'])->toBe('j M Y');
+
+        expect(Calendar::make(['time_format' => 'j M g:i A', 'date_format' => 'j M g:i A'])->config())->toMatchArray([
+            'timeFormat' => 'j M g:i A',
+            'dateFormat' => 'j M g:i A',
+        ]);
+    });
+
+    it('pins the supported tokens', function () {
+        expect(Calendar::FORMAT_TOKENS)->toBe(['date' => 'djDlmnMFyY', 'time' => 'gGhHiaA'])
+            ->and(Calendar::DEFAULT_TIME_FORMAT)->toBe('g:i A')
+            ->and(Calendar::DEFAULT_DATE_FORMAT)->toBe('j M Y');
+    });
+
+    it('formats a date with every token', function () {
+        $date = Carbon::parse('2026-03-02 15:05:00', 'UTC');
+
+        expect(Calendar::format($date, 'd j D l m n M F y Y'))->toBe('02 2 Mon Monday 03 3 Mar March 26 2026')
+            ->and(Calendar::format($date, 'g G h H i a A'))->toBe('3 15 03 15 05 pm PM')
+            ->and(Calendar::format($date, 'D, j M Y'))->toBe('Mon, 2 Mar 2026')
+            ->and(Calendar::format($date->setTime(0, 7), 'g:i A'))->toBe('12:07 AM')
+            ->and(Calendar::format($date->setTime(12, 7), 'g:i a'))->toBe('12:07 pm')
+            ->and(Calendar::format($date, 'Y年n月j日'))->toBe('2026年3月2日');
+    });
+
+    it('formats the wall clock it is given and leaves the date alone', function () {
+        $date = Carbon::parse('2026-03-02 15:05:00', 'Asia/Kuala_Lumpur');
+
+        app()->setLocale('zh');
+
+        expect(Calendar::format($date, 'H:i'))->toBe('15:05')
+            ->and($date->locale)->not->toBe('zh');
+    });
+
+    it('translates D, l, M, F, a and A for the viewer locale', function () {
+        app()->setLocale('zh');
+
+        $date = Carbon::parse('2026-10-05 15:05:00', 'UTC');
+
+        expect(Calendar::format($date, 'D'))->toBe('周一')
+            ->and(Calendar::format($date, 'l'))->toBe('星期一')
+            ->and(Calendar::format($date, 'M'))->toBe('10月')
+            ->and(Calendar::format($date, 'F'))->toBe('十月')
+            ->and(Calendar::format($date, 'a'))->toBe('下午')
+            ->and(Calendar::format($date, 'A'))->toBe('下午')
+            ->and(Calendar::format($date->setTime(8, 0), 'A'))->toBe('早上')
+            ->and(Calendar::format($date, 'j M Y'))->toBe('5 10月 2026');
+    });
+
+    it('throws on a format it would not accept', function (string $format) {
+        Calendar::format(Carbon::parse('2026-10-05 15:05:00', 'UTC'), $format);
+    })->with(['U', 'jS', "H:i\n", '<b>H</b>', 'H\\:i', ''])->throws(InvalidArgumentException::class);
+
+    it('carries every name the browser formatter needs, the same as the server prints them', function (string $locale) {
+        app()->setLocale($locale);
+
+        $labels = Calendar::make(['week_start' => 'monday'])->labels();
+
+        expect($labels['months'])->toHaveCount(12)
+            ->and($labels['months_short'])->toHaveCount(12)
+            ->and($labels['meridiem']['lower'])->toHaveCount(24)
+            ->and($labels['meridiem']['upper'])->toHaveCount(24);
+
+        foreach (range(1, 12) as $month) {
+            $date = Carbon::create(2026, $month, 1, 0, 0, 0, 'UTC');
+
+            expect(Calendar::format($date, 'F'))->toBe($labels['months'][$month - 1])
+                ->and(Calendar::format($date, 'M'))->toBe($labels['months_short'][$month - 1]);
+        }
+
+        foreach ($labels['weekdays'] as $i => $weekday) {
+            $date = Carbon::parse('2026-10-05', 'UTC')->addDays($i);
+
+            expect(Calendar::format($date, 'D'))->toBe($weekday['short'])
+                ->and(Calendar::format($date, 'l'))->toBe($weekday['long']);
+        }
+
+        foreach (range(0, 23) as $hour) {
+            $date = Carbon::parse('2026-10-05', 'UTC')->setTime($hour, 0);
+
+            expect(Calendar::format($date, 'a'))->toBe($labels['meridiem']['lower'][$hour])
+                ->and(Calendar::format($date, 'A'))->toBe($labels['meridiem']['upper'][$hour]);
+        }
+    })->with(['en', 'zh', 'ms', 'fr']);
+
+    it('has English lower and upper case meridiems, and translates them under zh', function () {
+        $english = Calendar::make()->labels();
+
+        expect($english['meridiem']['lower'][0])->toBe('am')
+            ->and($english['meridiem']['upper'][0])->toBe('AM')
+            ->and($english['meridiem']['lower'][12])->toBe('pm')
+            ->and($english['meridiem']['upper'][23])->toBe('PM')
+            ->and($english['months_short'][9])->toBe('Oct');
+
+        app()->setLocale('zh');
+
+        $chinese = Calendar::make()->labels();
+
+        expect($chinese['meridiem']['upper'][15])->toBe('下午')
+            ->and($chinese['months_short'][9])->toBe('10月');
     });
 });

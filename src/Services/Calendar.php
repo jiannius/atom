@@ -3,6 +3,7 @@
 namespace Jiannius\Atom\Services;
 
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Closure;
 use InvalidArgumentException;
 
@@ -28,9 +29,21 @@ class Calendar
 
     public const SLOT_DURATIONS = [5, 10, 15, 20, 30, 60];
 
-    public const TIME_FORMATS = ['g:i A', 'g:iA', 'h:i A', 'h:iA', 'H:i', 'G:i'];
+    /**
+     * The PHP date() tokens a display format may use, one string of single-character tokens per kind.
+     * Any other ASCII letter is refused, and so is a backslash: there is no escape, so a literal letter cannot be written.
+     * The browser formatter mirrors exactly this set, nothing else, and `S` (the English-only ordinal suffix) is not in it.
+     */
+    public const FORMAT_TOKENS = [
+        'date' => 'djDlmnMFyY',
+        'time' => 'gGhHiaA',
+    ];
+
+    public const FORMAT_MAX_LENGTH = 32;
 
     public const DEFAULT_TIME_FORMAT = 'g:i A';
+
+    public const DEFAULT_DATE_FORMAT = 'j M Y';
 
     /** @var list<string> */
     public array $views;
@@ -45,6 +58,8 @@ class Calendar
     public ?int $max;
 
     public string $timeFormat;
+
+    public string $dateFormat;
 
     public bool $selectable;
 
@@ -61,7 +76,7 @@ class Calendar
     /**
      * Build a calendar from the component's props; anything unrecognised falls back to its default.
      *
-     * @param  array{views?: mixed, view?: mixed, week_start?: mixed, weekend?: mixed, max?: mixed, time_format?: mixed, selectable?: mixed, draggable?: mixed, resizable?: mixed, slot_duration?: mixed, scroll_time?: mixed, now_indicator?: mixed}  $options
+     * @param  array{views?: mixed, view?: mixed, week_start?: mixed, weekend?: mixed, max?: mixed, time_format?: mixed, date_format?: mixed, selectable?: mixed, draggable?: mixed, resizable?: mixed, slot_duration?: mixed, scroll_time?: mixed, now_indicator?: mixed}  $options
      */
     public function __construct(array $options = [])
     {
@@ -92,8 +107,8 @@ class Calendar
         $max = array_key_exists('max', $options) ? $options['max'] : 3;
         $this->max = $max === null ? null : (is_numeric($max) && (int) $max >= 1 ? (int) $max : 3);
 
-        $format = $options['time_format'] ?? null;
-        $this->timeFormat = is_string($format) && in_array($format, self::TIME_FORMATS, true) ? $format : self::DEFAULT_TIME_FORMAT;
+        $this->timeFormat = self::resolveFormat($options['time_format'] ?? null, 'time', self::DEFAULT_TIME_FORMAT);
+        $this->dateFormat = self::resolveFormat($options['date_format'] ?? null, 'date', self::DEFAULT_DATE_FORMAT);
 
         $this->selectable = filter_var($options['selectable'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $this->draggable = filter_var($options['draggable'] ?? true, FILTER_VALIDATE_BOOLEAN);
@@ -116,6 +131,60 @@ class Calendar
     public static function make(array $options = []): static
     {
         return new static($options);
+    }
+
+    /**
+     * Whether a value is a display format built only from FORMAT_TOKENS and literals, and uses at least one token.
+     *
+     * Literals are digits, spaces, punctuation and non-ASCII characters (`Y年n月j日`). Refused: any other ASCII letter,
+     * a backslash, the HTML-significant characters
+     * < > " ' & and the backtick, control, format and line-separator characters, invalid UTF-8, a non-string, and
+     * a string over FORMAT_MAX_LENGTH characters.
+     */
+    public static function isFormat(mixed $format): bool
+    {
+        if (! is_string($format) || $format === '' || ! preg_match('//u', $format)) {
+            return false;
+        }
+
+        if (mb_strlen($format, 'UTF-8') > self::FORMAT_MAX_LENGTH || preg_match('/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}<>"\'&`\\\\]/u', $format)) {
+            return false;
+        }
+
+        // ASCII only: ctype_alpha() follows the process locale and would call a byte of 年 a letter
+        preg_match_all('/[A-Za-z]/', $format, $letters);
+
+        $tokens = self::FORMAT_TOKENS['date'].self::FORMAT_TOKENS['time'];
+
+        foreach ($letters[0] as $letter) {
+            if (! str_contains($tokens, $letter)) {
+                return false;
+            }
+        }
+
+        return $letters[0] !== [];
+    }
+
+    /**
+     * The format when it is valid and holds at least one token of the kind (`date` or `time`), else the default.
+     */
+    public static function resolveFormat(mixed $format, string $kind, string $default): string
+    {
+        return self::isFormat($format) && strpbrk($format, self::FORMAT_TOKENS[$kind]) !== false ? $format : $default;
+    }
+
+    /**
+     * Format a date in the viewer's locale with a valid format; `D l M F a A` are translated, the rest is numeric.
+     * `a` and `A` follow the locale's own period of the day (zh: 凌晨, 早上, 上午, 中午, 下午, 晚上), which is what labels()['meridiem'] carries.
+     * The date is printed as given: convert it to the viewer's timezone first. Throws on a format isFormat() refuses.
+     */
+    public static function format(CarbonInterface $date, string $format): string
+    {
+        if (! self::isFormat($format)) {
+            throw new InvalidArgumentException('Not a calendar display format: '.$format);
+        }
+
+        return $date->copy()->locale(app()->getLocale())->translatedFormat($format);
     }
 
     /**
@@ -236,7 +305,10 @@ class Calendar
     /**
      * Translated names and strings the browser prints, so no date or string is formatted in JS.
      *
-     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, am: string, pm: string, ui: array<string, string>}
+     * `months` and `months_short` are the long and short names for `F` and `M`; `weekdays` carry `D` and `l`; `meridiem.lower` and
+     * `meridiem.upper` are `a` and `A` for each hour 0 to 23, since some locales name more than two periods of the day.
+     *
+     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, meridiem: array{lower: list<string>, upper: list<string>}, am: string, pm: string, ui: array<string, string>}
      */
     public function labels(): array
     {
@@ -256,6 +328,13 @@ class Calendar
             'months' => collect(range(1, 12))
                 ->map(fn ($month) => CarbonImmutable::create(2026, $month, 1, 0, 0, 0, 'UTC')->locale($locale)->monthName)
                 ->all(),
+            'months_short' => collect(range(1, 12))
+                ->map(fn ($month) => CarbonImmutable::create(2026, $month, 1, 0, 0, 0, 'UTC')->locale($locale)->shortMonthName)
+                ->all(),
+            'meridiem' => [
+                'lower' => collect(range(0, 23))->map(fn ($hour) => $monday->setTime($hour, 0)->translatedFormat('a'))->all(),
+                'upper' => collect(range(0, 23))->map(fn ($hour) => $monday->setTime($hour, 0)->translatedFormat('A'))->all(),
+            ],
             'am' => (string) __('AM'),
             'pm' => (string) __('PM'),
             'ui' => [
@@ -353,6 +432,7 @@ class Calendar
             'weekend' => $this->weekend,
             'max' => $this->max,
             'timeFormat' => $this->timeFormat,
+            'dateFormat' => $this->dateFormat,
             'selectable' => $this->selectable,
             'draggable' => $this->draggable,
             'resizable' => $this->resizable,
