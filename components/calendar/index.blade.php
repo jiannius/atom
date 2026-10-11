@@ -149,7 +149,7 @@ data-atom-calendar
                 </template>
             </div>
 
-            <div data-atom-calendar-weeks>
+            <div x-on:pointerdown="selectStart($event, 'month')" data-atom-calendar-weeks>
                 <template x-for="week in weeks" :key="week.key">
                     <div data-atom-calendar-week>
                         <div role="row" data-atom-calendar-week-bg>
@@ -305,10 +305,10 @@ data-atom-calendar
                             <span x-text="labels.ui?.all_day"></span>
                         </div>
 
-                        <div data-atom-calendar-allday-area>
+                        <div x-on:pointerdown="selectStart($event, 'allday')" data-atom-calendar-allday-area>
                             <div data-atom-calendar-allday-bg aria-hidden="true">
                                 <template x-for="column in grid.columns" :key="'allday-' + column.date">
-                                    <div x-bind:class="column.weekend ? 'bg-zinc-50 dark:bg-zinc-900/30' : ''" class="border-l border-zinc-200 dark:border-zinc-700"></div>
+                                    <div x-bind:data-date="column.date" x-bind:class="column.weekend ? 'bg-zinc-50 dark:bg-zinc-900/30' : ''" class="border-l border-zinc-200 dark:border-zinc-700"></div>
                                 </template>
                             </div>
 
@@ -332,11 +332,26 @@ data-atom-calendar
                                     class="h-5 w-full rounded-sm px-1.5 text-left text-xs font-medium text-zinc-600 outline-offset-1 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700/60 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"></button>
                                 </template>
                             </div>
+
+                            {{-- A selection in the all-day row, or an item waiting for the host there (the engine's `preview`, as in the columns): a box
+                                 over the days. In front of the bars, so the placeholder is seen, and it takes no pointer. --}}
+                            <div aria-hidden="true" data-atom-calendar-allday-over>
+                                <template x-if="allDayPreview">
+                                    <div x-bind:style="spanStyle(allDayPreview)" x-bind:data-kind="allDayPreview.kind" data-atom-calendar-selection class="rounded-md bg-zinc-900/5 ring-1 ring-inset ring-zinc-500 dark:bg-white/[.07] dark:ring-zinc-400">
+                                        <template x-if="allDayPreview.kind === 'pending'">
+                                            <div data-atom-calendar-pending class="m-1 flex h-5 min-w-0 items-center gap-1 rounded-sm bg-white px-1.5 text-xs font-medium text-zinc-700 ring-1 ring-inset ring-zinc-500 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-400">
+                                                <span x-effect="setIcon($el, 'loading')" class="inline-flex shrink-0"></span>
+                                                <span x-text="allDayPreview.title" class="truncate"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div data-atom-calendar-grid-body>
+                <div x-on:pointerdown="selectStart($event, 'grid')" data-atom-calendar-grid-body>
                     <div data-atom-calendar-gutter aria-hidden="true" class="bg-white dark:bg-zinc-800">
                         <template x-for="hour in hours" :key="hour">
                             <div data-atom-calendar-hour>

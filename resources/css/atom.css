@@ -716,6 +716,30 @@ html.dark [data-atom-calendar-ghost-body][data-atom-calendar-hex] {
     pointer-events: none;
 }
 
+/* a selection (or an item waiting for the host) in the all-day row: a box over the days, in front of the bars, taking no pointer */
+[data-atom-calendar-allday-over] {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* On a touch screen a long press is how a selection starts, and the browser must not answer it with a text selection or a callout: the empty
+   days and slots are not text, and a block's own text is left to be selected. */
+@media (pointer: coarse) {
+    [data-atom-calendar-week-bg],
+    [data-atom-calendar-allday-bg],
+    [data-atom-calendar-column] {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    [data-atom-calendar-block] {
+        -webkit-user-select: text;
+        user-select: text;
+    }
+}
+
 [data-atom-calendar-dot][data-atom-calendar-hex] {
     background-color: var(--atom-calendar-edge, var(--atom-calendar-hue));
 }

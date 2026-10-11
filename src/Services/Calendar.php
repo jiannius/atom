@@ -378,6 +378,8 @@ class Calendar
                 'choose_date' => (string) __('Choose date'),
                 'view' => (string) __('View'),
                 'open_day' => (string) __('Open :date in day view'),
+                // the title of the placeholder that stands where a selection was while the host creates what it asked for
+                'creating' => (string) __('Creating...'),
                 // an item that covers more than a day, for its name: ":start" and ":end" are each a day, and a time when the item has one
                 'range' => (string) __(':start to :end'),
                 // what a colour of the preset palette is called, for the name of an item: a host's own colour has no name here

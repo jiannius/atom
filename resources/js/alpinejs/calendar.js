@@ -3,7 +3,8 @@ import safeUrl from '../helpers/safe-url.js'
 import { edgeColors } from './calendar/colors.js'
 import { addDays, addMonths, dateOf, fromLocalDate, minuteOf, monthOf, nowAt, parseDate, toLocalDate } from './calendar/dates.js'
 import { format } from './calendar/format.js'
-import { DAY_MINUTES, isLifted, previewShapes, timeGrid } from './calendar/grid.js'
+import { allDayShape, DAY_MINUTES, isLifted, previewShapes, timeGrid } from './calendar/grid.js'
+import { dayCell, hasMoved, indexAtX, LONG_PRESS, minuteAt, momentAt, selectionRange } from './calendar/gestures.js'
 import { dayEntries, isBar, monthLayout, span } from './calendar/layout.js'
 
 // <atom:calendar>. The server computes the window, the labels and the items and hands them over as one
@@ -25,6 +26,12 @@ const MIN_BLOCK = 'calc(var(--atom-calendar-hour) / 2)'
 
 // How far under the header the scroll-time line is put, in px
 const SCROLL_MARGIN = 8
+
+// A finger moves a little on its own while it presses; past this it is scrolling, and the selection that was waiting for a long press is given up
+const TOUCH_SLOP = 10
+
+// What a press that starts a selection must not be on: an item, a "+N more" and a block of the time grid take their own click
+const NOT_EMPTY_SPACE = '[data-atom-calendar-slot], [data-atom-calendar-more], [data-atom-calendar-block]'
 
 const pad = (n) => String(n).padStart(2, '0')
 
@@ -71,10 +78,19 @@ export default () => ({
     // from it (the today marker) is laid out again then and not with the clock.
     todayDate: '',
     scrollPending: false,
-    // What a gesture in progress draws, as { kind: 'select' | 'pending' | 'move' | 'resize', start, end, id?, title? } in wall-clock
-    // strings, or null. The gestures that set it (selecting, dragging and resizing) are not wired yet: this is the state they
-    // will set, and the look fixture sets it by hand to show each one. See previewBlocks() in calendar/grid.js.
+    // What a gesture in progress draws, as { kind: 'select' | 'pending' | 'move' | 'resize', start, end, allDay?, id?, title? } in wall-clock
+    // strings, or null. Selecting sets it ('select' while the pointer is down and after it, until the next payload; 'pending' while the host
+    // holds the selection with waitUntil); dragging and resizing are not wired yet, and the look fixture sets each state by hand to show it.
+    // See previewBlocks() in calendar/grid.js.
     preview: null,
+    // The selection the pointer is making, or null: { area, id, touch, origin, anchor, current, active, timer, abort }. See selectStart().
+    gesture: null,
+    // Held while a select waits for the host (see commitSelect): the placeholder is taken down when its promise settles, unless another gesture has put something else up
+    pendingToken: null,
+    // What takes a selection down that nothing is holding: see lingerSelection()
+    lingerAbort: null,
+    // the payload attribute as it was last read, so a render that leaves it as it was is not a new payload
+    payloadText: '',
     hours: Array.from({ length: 24 }, (_, hour) => hour),
 
     get labels () {
@@ -166,6 +182,13 @@ export default () => ({
         return /[gh]/.test(pattern) ? pattern.replace(/[:.]?i/, '') : pattern
     },
 
+    // What a selection, or an item waiting for the host, covers in the all-day row
+    get allDayPreview () {
+        if (!this.payload || this.view === 'month') return null
+
+        return allDayShape(this.gridDays, this.preview)
+    },
+
     get weeks () {
         if (!this.payload) return []
 
@@ -250,6 +273,9 @@ export default () => ({
             clearInterval(clock)
             controller.abort()
             this.keyAbort?.abort()
+            this.endSelect()
+            this.lingerAbort?.abort()
+            this.pendingToken = null
             this.closeDay(false)
             delete this.$root._atomCalendarCleanup
         }
@@ -271,7 +297,8 @@ export default () => ({
 
     // Take the payload on the root. A payload that cannot be read keeps what is already on screen.
     read () {
-        let payload = this.readJson(this.$root.getAttribute('data-atom-calendar-payload'))
+        let text = this.$root.getAttribute('data-atom-calendar-payload')
+        let payload = this.readJson(text)
 
         if (!payload || !Array.isArray(payload.window?.days) || !Array.isArray(payload.items) || !payload.labels || !payload.config) {
             console.warn('[atom:calendar] the payload could not be read, keeping what is shown')
@@ -280,6 +307,12 @@ export default () => ({
         }
 
         let first = this.payload === null
+
+        // A new payload is the answer to what was selected, so a selection that nothing holds is done with. One being made, and one the host holds
+        // with waitUntil, are not the render's to take down.
+        if (!first && text !== this.payloadText) this.clearSelection()
+
+        this.payloadText = text
 
         // The focus is on a day of the month when the window changes (a key that left the old one, or a render): the days of a new window
         // are new nodes, so it is put back on the day it was on once they are drawn. A key that is still on its way owns the focus only
@@ -442,6 +475,7 @@ export default () => ({
         if (!target || !this.model || !this.payload) return
 
         this.closeDay(false)
+        this.clearSelection()
 
         let { start, end } = this.payload.window
 
@@ -520,6 +554,7 @@ export default () => ({
         if (!this.views.includes(view) || view === this.view) return
 
         this.closeDay(false)
+        this.clearSelection()
 
         // the grid is hidden in the month view and has no scroll position there: it opens at `scroll-time` again
         if (this.view === 'month') this.scrollPending = true
@@ -612,10 +647,218 @@ export default () => ({
     },
 
     dayClick (day, event) {
-        // selecting a range to create an item is a different gesture, not wired yet
+        // on a selectable calendar a click on a day is a selection of that day (selectStart), which opens no list
         if (this.config.selectable) return
 
         if (day.count > 0) this.openDay(day.date, event.currentTarget)
+    },
+
+    // Selecting, to create. A press on empty space (a month day, the all-day row, a slot of the time grid) selects the day or the slot under it, and a
+    // drag selects a range from where it was pressed to where it is let go: over days (the month and the all-day row, across weeks too) or over slots
+    // (the time grid, on into the next column, one range of time). A click is the same gesture that has not gone far, so there is one path, from
+    // pointerdown to pointerup, on pointer events alone: a mouse or a pen drags at once, a touch only after a long press (a finger that moves before
+    // that is scrolling, and is left to), and a tap is a click.
+    // The calendar creates nothing: it tells the host with `calendar-select` (see commitSelect).
+    selectStart (event, area) {
+        if (!this.config.selectable || !this.payload || this.gesture || event.button !== 0 || event.isPrimary === false) return
+
+        if (event.target.closest?.(NOT_EMPTY_SPACE)) return
+
+        if (area === 'grid' && !event.target.closest?.('[data-atom-calendar-column]')) return
+
+        let anchor = this.cellAt(area, event.clientX, event.clientY)
+
+        if (!anchor) return
+
+        let abort = new AbortController()
+        let { signal } = abort
+        let touch = event.pointerType === 'touch'
+        let gesture = this.gesture = { area, id: event.pointerId, touch, origin: { x: event.clientX, y: event.clientY }, anchor, current: anchor, active: false, timer: null, abort }
+
+        // on the document, so a pointer that leaves the calendar (or the window) is still followed, and can be let go anywhere
+        document.addEventListener('pointermove', (move) => this.selectMove(move), { signal })
+        document.addEventListener('pointerup', (up) => this.selectEnd(up), { signal })
+        document.addEventListener('pointercancel', (cancel) => { if (cancel.pointerId === gesture.id) this.endSelect() }, { signal })
+
+        // Escape gives the selection up, and it is the selection's: not the modal's the calendar may be in
+        document.addEventListener('keydown', (key) => {
+            if (key.key !== 'Escape') return
+
+            key.preventDefault()
+            key.stopPropagation()
+            this.cancelSelect()
+        }, { signal, capture: true })
+
+        // dragging over the days must not select their text, nor start the browser's own drag
+        document.addEventListener('selectstart', (select) => select.preventDefault(), { signal })
+        document.addEventListener('dragstart', (drag) => drag.preventDefault(), { signal })
+
+        if (touch) {
+            document.addEventListener('contextmenu', (menu) => menu.preventDefault(), { signal })
+
+            // Once the long press has come the finger is the selection's, and the page must not scroll under it. Listened to on the calendar and not the
+            // document, where a listener is passive by default and cannot prevent anything.
+            this.rootEl.addEventListener('touchmove', (move) => {
+                if (gesture.active && move.cancelable) move.preventDefault()
+            }, { signal, passive: false })
+
+            gesture.timer = setTimeout(() => {
+                gesture.active = true
+                this.showSelect()
+            }, LONG_PRESS)
+        }
+    },
+
+    selectMove (event) {
+        let gesture = this.gesture
+
+        if (!gesture || event.pointerId !== gesture.id) return
+
+        let point = { x: event.clientX, y: event.clientY }
+
+        if (!gesture.active) {
+            // a finger that moves before the long press is scrolling, which is not a selection
+            if (gesture.touch) {
+                if (hasMoved(gesture.origin, point, TOUCH_SLOP)) this.endSelect()
+
+                return
+            }
+
+            if (!hasMoved(gesture.origin, point)) return
+
+            gesture.active = true
+        }
+
+        let cell = this.cellAt(gesture.area, point.x, point.y)
+
+        if (cell) {
+            gesture.current = cell
+            this.showSelect()
+        }
+    },
+
+    // Let go: where the pointer is now ends the range, a click or a drag alike
+    selectEnd (event) {
+        let gesture = this.gesture
+
+        if (!gesture || event.pointerId !== gesture.id) return
+
+        if (gesture.active) gesture.current = this.cellAt(gesture.area, event.clientX, event.clientY) ?? gesture.current
+
+        let range = selectionRange(gesture.anchor, gesture.current, { slotDuration: this.config.slotDuration ?? 30 })
+
+        this.endSelect()
+        this.commitSelect(range)
+    },
+
+    // Draw the range the gesture covers, when it is not what is up
+    showSelect () {
+        let gesture = this.gesture
+        let range = selectionRange(gesture.anchor, gesture.current, { slotDuration: this.config.slotDuration ?? 30 })
+
+        if (this.preview?.kind === 'select' && this.preview.start === range.start && this.preview.end === range.end) return
+
+        // a selection made while another waits for the host is the one on screen: the placeholder of the other is not taken down when its promise settles
+        this.pendingToken = null
+        this.preview = { kind: 'select', ...range }
+    },
+
+    // Stop following the pointer: the gesture is over, whatever it came to
+    endSelect () {
+        let gesture = this.gesture
+
+        if (!gesture) return
+
+        clearTimeout(gesture.timer)
+        gesture.abort.abort()
+        this.gesture = null
+    },
+
+    // Escape: the selection is not made, and the host is told nothing
+    cancelSelect () {
+        let showing = this.gesture?.active
+
+        this.endSelect()
+
+        if (showing && this.preview?.kind === 'select') this.preview = null
+    },
+
+    // Tell the host. `calendar-select` bubbles from the calendar with { start, end, allDay, waitUntil } in the viewer's wall clock, as the payload's
+    // items are: `YYYY-MM-DDTHH:mm` for a time (the end is the first minute after the range), `YYYY-MM-DD` for days (the end is the last day, included).
+    // Either goes straight to the server's Calendar::fromLocal(). The host holds the selection with `waitUntil(promise)`, called while it handles the
+    // event: a placeholder (a box with a spinner and a title) stays where the selection was until the promise has settled, resolved or rejected, and
+    // goes then, the new item having come with the payload. A selection that nothing holds stays until the next payload, a new gesture, Escape or a
+    // press anywhere else (see lingerSelection), so a host that opens a form for it has the range in view while the form is up.
+    commitSelect (range) {
+        let promises = []
+
+        this.pendingToken = null
+        this.preview = { kind: 'select', ...range }
+
+        this.rootEl.dispatchEvent(new CustomEvent('calendar-select', {
+            bubbles: true,
+            cancelable: true,
+            detail: { ...range, waitUntil: (promise) => { promises.push(Promise.resolve(promise)) } },
+        }))
+
+        // what is given after the event has been handled is too late: the promises are read here, once
+        if (!promises.length) return this.lingerSelection()
+
+        let token = this.pendingToken = Symbol()
+
+        this.preview = { kind: 'pending', ...range, title: this.labels.ui?.creating ?? '' }
+
+        Promise.allSettled(promises).then(() => {
+            if (this.pendingToken !== token) return
+
+            this.pendingToken = null
+            this.preview = null
+        })
+    },
+
+    // What a selection that nothing holds waits for, besides the next payload: a press anywhere (a click on the page ends it, as a click outside a
+    // field does) and Escape
+    lingerSelection () {
+        this.lingerAbort?.abort()
+
+        let abort = this.lingerAbort = new AbortController()
+        let { signal } = abort
+
+        document.addEventListener('pointerdown', () => this.clearSelection(), { signal, capture: true })
+        document.addEventListener('keydown', (event) => { if (event.key === 'Escape') this.clearSelection() }, { signal, capture: true })
+    },
+
+    // Take down a selection that nothing holds; one being made, and one the host holds, are left
+    clearSelection () {
+        this.lingerAbort?.abort()
+        this.lingerAbort = null
+
+        if (!this.gesture && this.preview?.kind === 'select') this.preview = null
+    },
+
+    // The day or the slot under a point, read from where things are drawn now (a payload that arrives mid-gesture, or a scroll, moves them): a date
+    // (`Y-m-d`) in the month view and the all-day row, the start of a slot (`Y-m-dTH:i`) in the time grid. A point outside is on the nearest.
+    cellAt (area, x, y) {
+        let all = (selector) => [...this.rootEl.querySelectorAll(selector)]
+
+        if (area === 'month') {
+            let cell = dayCell(all('[data-atom-calendar-week]').map((week) => week.getBoundingClientRect()), x, y)
+
+            return cell ? (this.payload.window.days[cell.row * 7 + cell.col]?.date ?? null) : null
+        }
+
+        if (area === 'allday') {
+            let days = all('[data-atom-calendar-allday-bg] > [data-date]')
+
+            return days[indexAtX(days.map((day) => day.getBoundingClientRect()), x)]?.dataset.date ?? null
+        }
+
+        let columns = all('[data-atom-calendar-column]')
+        let at = indexAtX(columns.map((column) => column.getBoundingClientRect()), x)
+
+        if (at === -1) return null
+
+        return momentAt(columns[at].dataset.date, minuteAt(y, columns[at].getBoundingClientRect(), this.config.slotDuration ?? 30))
     },
 
     seedClock () {

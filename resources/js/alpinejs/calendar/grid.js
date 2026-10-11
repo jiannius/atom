@@ -148,6 +148,32 @@ export const previewBlocks = (preview, items, date, { slotDuration = 30 } = {}) 
     }]
 }
 
+// What a selection, or an item waiting for the host, covers in the all-day row: the part of its dates over the shown `days`, as shares of the
+// row's width (the same percentages the month view's selection takes), or null. The row is where an all-day range lives: a timed one is in the
+// columns (previewBlocks), and a gesture that has no part in the shown days draws nothing.
+export const allDayShape = (days, preview) => {
+    if (!preview?.allDay || !preview.start || !days.length || !['select', 'pending'].includes(preview.kind)) return null
+
+    let { first, last } = span({ start: preview.start, end: preview.end, allDay: true })
+    let from = days[0].date
+    let to = days[days.length - 1].date
+
+    if (last < from || first > to) return null
+
+    let startCol = Math.max(0, diffDays(from, first))
+    let endCol = Math.min(days.length - 1, diffDays(from, last))
+
+    return {
+        key: 'allday-preview',
+        kind: preview.kind,
+        title: preview.title ?? '',
+        left: startCol / days.length * 100,
+        width: (endCol - startCol + 1) / days.length * 100,
+        before: first < from,
+        after: last > to,
+    }
+}
+
 // The all-day row: every all-day item over the shown days as a bar in a lane, the same bars as the month view's,
 // with `max` lanes and a "+N more" after them (`max` null shows every lane). A bar is its item plus
 // { key, kind: 'bar', col, span, row, before, after }, where `row` counts from 1.
