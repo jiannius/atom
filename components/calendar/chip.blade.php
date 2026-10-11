@@ -4,7 +4,9 @@
      text stays neutral, so any colour reads. The classes of a colour come from the palette in
      calendar/index.blade.php through colorClass(); a danger item swaps in red and an icon, so it is
      not colour alone. Each is named whole by itemLabel(), and a tooltip with the title alone is put on only while the title shown
-     is cut short (tooltip()), so a screen reader does not read it twice. --}}
+     is cut short (tooltip()), so a screen reader does not read it twice. A press on one starts a move (itemPress()), and on its handle, the
+     end of a bar or the bottom edge of a block, a resize: the handle is for the pointer alone and is not in the tab order or the accessibility tree,
+     as an item is moved and resized with the pointer only; what is done with the keyboard is the item's own click. --}}
 <template x-if="chip.kind === 'bar'">
     <a
     x-bind:href="link(chip)"
@@ -13,10 +15,13 @@
     x-bind:aria-label="itemLabel(chip)"
     x-bind:data-before="chip.before ? '' : null"
     x-bind:data-after="chip.after ? '' : null"
-    x-bind:data-lifted="chip.lifted ? '' : null"
+    x-bind:data-lifted="isLifted(chip) ? '' : null"
     x-bind:data-atom-calendar-hex="isHex(chip) && !chip.danger ? '' : null"
     x-bind:style="hue(chip)"
     x-bind:class="[colorClass(chip, 'tint'), chip.danger ? 'border-red-600 dark:border-red-400' : colorClass(chip, 'accent')]"
+    x-on:pointerdown="itemPress(chip, $event)"
+    x-bind:data-draggable="canDrag(chip) ? '' : null"
+    x-bind:draggable="canDrag(chip) ? 'false' : null"
     x-on:click="itemClick(chip, $event)"
     x-on:keydown.enter="itemKey(chip, $event)"
     x-on:keydown.space="itemKey(chip, $event)"
@@ -26,6 +31,7 @@
         <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-600 dark:text-zinc-300'" class="inline-flex shrink-0"></span>
         <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" data-atom-calendar-chip-title class="truncate"></span>
         <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
+        <span x-show="canResize(chip)" aria-hidden="true" data-atom-calendar-handle="end"></span>
     </a>
 </template>
 
@@ -35,7 +41,10 @@
     x-bind:role="link(chip) ? null : 'button'"
     x-bind:tabindex="link(chip) ? null : 0"
     x-bind:aria-label="itemLabel(chip)"
-    x-bind:data-lifted="chip.lifted ? '' : null"
+    x-bind:data-lifted="isLifted(chip) ? '' : null"
+    x-on:pointerdown="itemPress(chip, $event)"
+    x-bind:data-draggable="canDrag(chip) ? '' : null"
+    x-bind:draggable="canDrag(chip) ? 'false' : null"
     x-on:click="itemClick(chip, $event)"
     x-on:keydown.enter="itemKey(chip, $event)"
     x-on:keydown.space="itemKey(chip, $event)"
@@ -71,6 +80,9 @@
     x-bind:data-atom-calendar-hex="isHex(chip) && !chip.danger ? '' : null"
     x-bind:style="hue(chip)"
     x-bind:class="[colorClass(chip, 'tint'), chip.danger ? 'border-red-600 dark:border-red-400' : colorClass(chip, 'accent')]"
+    x-on:pointerdown="itemPress(chip, $event)"
+    x-bind:data-draggable="canDrag(chip) ? '' : null"
+    x-bind:draggable="canDrag(chip) ? 'false' : null"
     x-on:click="itemClick(chip, $event)"
     x-on:keydown.enter="itemKey(chip, $event)"
     x-on:keydown.space="itemKey(chip, $event)"
@@ -83,5 +95,6 @@
             <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
         </span>
         <span x-show="!chip.compact" x-text="timeRange(chip)" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
+        <span x-show="canResize(chip)" aria-hidden="true" data-atom-calendar-handle="end"></span>
     </a>
 </template>

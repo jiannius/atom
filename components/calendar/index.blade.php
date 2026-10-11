@@ -339,6 +339,22 @@ data-atom-calendar
                                     data-atom-calendar-more
                                     class="h-5 w-full rounded-sm px-1.5 text-left text-xs font-medium text-zinc-600 outline-offset-1 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700/60 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"></button>
                                 </template>
+
+                                {{-- An all-day item being moved or resized, over the days it would then cover (the engine's `preview`): the ghost the month's weeks have,
+                                     among the bars, taking no pointer. The item stays where it is, lifted. --}}
+                                <template x-if="allDayItemGhost">
+                                    <div x-bind:style="slotStyle(allDayItemGhost)" x-bind:data-kind="allDayItemGhost.kind" x-bind:data-before="allDayItemGhost.before ? '' : null" x-bind:data-after="allDayItemGhost.after ? '' : null" aria-hidden="true" data-atom-calendar-ghost class="rounded-sm bg-white shadow-lg ring-1 ring-zinc-900/10 dark:bg-zinc-800 dark:ring-white/20">
+                                        <div
+                                        x-bind:class="[colorClass(allDayItemGhost, 'tint'), allDayItemGhost.danger ? 'border-red-600 dark:border-red-400' : colorClass(allDayItemGhost, 'accent')]"
+                                        x-bind:style="hue(allDayItemGhost)"
+                                        x-bind:data-atom-calendar-hex="isHex(allDayItemGhost) && !allDayItemGhost.danger ? '' : null"
+                                        data-atom-calendar-ghost-body
+                                        class="relative flex h-5 min-w-0 items-center gap-1 rounded-sm border-l-[3px] px-1.5 text-xs font-medium">
+                                            <span x-text="allDayItemGhost.title" x-bind:class="allDayItemGhost.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" class="truncate"></span>
+                                            <span x-show="allDayItemGhost.kind === 'resize'" aria-hidden="true" class="absolute inset-y-1 right-1 w-1 rounded-full bg-zinc-600 dark:bg-zinc-300"></span>
+                                        </div>
+                                    </div>
+                                </template>
                             </div>
 
                             {{-- A selection in the all-day row, or an item waiting for the host there (the engine's `preview`, as in the columns): a box

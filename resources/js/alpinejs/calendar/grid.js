@@ -260,15 +260,65 @@ export const isLifted = (preview, id) => Boolean(preview)
     && String(preview.id) === String(id)
 
 // What a gesture in progress draws in each of the grid's columns: { [date]: shapes }, a key for every column. A resize stays in
-// the lane of the item it resizes, so it is given that block's `left` and `width` (a move has no lane yet: it is where it is dropped).
-export const previewShapes = (columns, items, preview, { slotDuration = 30 } = {}) => Object.fromEntries(columns.map((column) => {
-    let shapes = previewBlocks(preview, items, column.date, { slotDuration })
+// the lane of the item it resizes, so it is given that block's `left` and `width`. A move is laid out among what is on the day it is over,
+// as the item would be if it were dropped there (the original left out), so that it takes a lane beside the items it overlaps and does not
+// cover them.
+export const previewShapes = (columns, items, preview, { slotDuration = 30 } = {}) => {
+    let moved = null
 
-    if (preview?.kind === 'resize') {
-        let lane = column.blocks.find((block) => isLifted(preview, block.id))
+    if (preview?.kind === 'move' && !preview.allDay && preview.start) {
+        let item = items.find((candidate) => String(candidate.id) === String(preview.id))
 
-        if (lane) shapes.forEach((shape) => Object.assign(shape, { left: lane.left, width: lane.width }))
+        if (item) moved = { ...item, start: preview.start, end: preview.end, allDay: false }
     }
 
-    return [column.date, shapes]
-}))
+    return Object.fromEntries(columns.map((column) => {
+        let shapes = previewBlocks(preview, items, column.date, { slotDuration })
+
+        if (preview?.kind === 'resize') {
+            let lane = column.blocks.find((block) => isLifted(preview, block.id))
+
+            if (lane) shapes.forEach((shape) => Object.assign(shape, { left: lane.left, width: lane.width }))
+        }
+
+        if (moved && shapes.length) {
+            let others = items.filter((candidate) => String(candidate.id) !== String(moved.id))
+            let lane = columnBlocks([...others, moved], column.date, { slotDuration }).find((block) => String(block.id) === String(moved.id))
+
+            if (lane) shapes.forEach((shape) => Object.assign(shape, { left: lane.left, width: lane.width }))
+        }
+
+        return [column.date, shapes]
+    }))
+}
+
+// The ghost of an all-day item being moved or resized, in the all-day row: the item as a bar over the shown `days` it would then cover, placed
+// like the row's own bars ({ col, span, row: 1 }, the first lane, in front of whatever is there), or null. A timed item's ghost is in the
+// columns (previewBlocks), and one that has no part in the shown days draws nothing.
+export const allDayGhost = (days, items, preview) => {
+    if (!preview?.allDay || !preview.start || !days.length || !['move', 'resize'].includes(preview.kind)) return null
+
+    let item = items.find((candidate) => String(candidate.id) === String(preview.id))
+    let { first, last } = span({ start: preview.start, end: preview.end, allDay: true })
+    let from = days[0].date
+    let to = days[days.length - 1].date
+
+    if (last < from || first > to) return null
+
+    let startCol = Math.max(0, diffDays(from, first))
+    let endCol = Math.min(days.length - 1, diffDays(from, last))
+
+    return {
+        ...(item ?? {}),
+        key: 'allday-ghost',
+        kind: preview.kind,
+        title: preview.title ?? item?.title ?? '',
+        start: preview.start,
+        end: preview.end,
+        col: startCol + 1,
+        span: endCol - startCol + 1,
+        row: 1,
+        before: first < from,
+        after: last > to,
+    }
+}

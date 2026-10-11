@@ -1,4 +1,4 @@
-import { addDays, dateOf, minuteOf } from './dates.js'
+import { addDays, dateOf, diffDays, minuteOf, timeOf } from './dates.js'
 import { DAY_MINUTES } from './grid.js'
 
 // What a pointer gesture on <atom:calendar> works out from where it is, as pure functions: no DOM, no Alpine, no clock. The factory reads
@@ -81,4 +81,57 @@ export const selectionRange = (anchor, current, { slotDuration = 30 } = {}) => {
     if (!String(first).includes('T')) return { start: first, end: last, allDay: true }
 
     return { start: first, end: addMinutes(last, slotDuration), allDay: false }
+}
+
+// How many minutes `to` is after `from`, two moments (or dates) on the wall clock; negative when it is before
+export const minutesBetween = (from, to) => diffDays(dateOf(from), dateOf(to)) * DAY_MINUTES + minuteOf(to) - minuteOf(from)
+
+// An item moved, as the range it covers then: the date part of it by `days` (the month and the all-day row, which keep the time of day), or the
+// moment by `minutes` (the time grid, where the date follows the minutes). The length is kept: both ends move by the same. An all-day item
+// is dates, the last day included, and one with no end is one day; a timed item with no end keeps none.
+export const movedRange = (item, { days = 0, minutes = 0 } = {}) => {
+    if (item.allDay) {
+        return { start: addDays(dateOf(item.start), days), end: addDays(dateOf(item.end ?? item.start), days), allDay: true }
+    }
+
+    let shift = (moment) => (minutes ? addMinutes(moment, minutes) : addDays(dateOf(moment), days) + 'T' + timeOf(moment))
+
+    return { start: shift(item.start), end: item.end ? shift(item.end) : null, allDay: false }
+}
+
+// An item with its end moved to `target`, the start where it was. An all-day item takes a date for the last day it covers, and covers at least its
+// first. A timed item takes the moment its end is at (the time grid), or a date for the last day it covers (the month's bar: the time of day of
+// its end stays, and an end at midnight, which is the end of the day before, stays at the midnight that follows the new last day). A timed item
+// is at least one slot long.
+export const resizedRange = (item, target, { slotDuration = 30 } = {}) => {
+    if (item.allDay) {
+        let first = dateOf(item.start)
+
+        return { start: item.start, end: target < first ? first : dateOf(target), allDay: true }
+    }
+
+    let end = target
+
+    if (timeOf(target) === null) {
+        let time = timeOf(item.end ?? item.start)
+
+        end = time === '00:00' ? addDays(target, 1) + 'T00:00' : target + 'T' + time
+    }
+
+    if (minutesBetween(item.start, end) < slotDuration) end = addMinutes(item.start, slotDuration)
+
+    return { start: item.start, end, allDay: false }
+}
+
+// How far, in px, a time grid is scrolled in a frame by a pointer at `y`, up (negative) or down: nothing in the middle of the visible part
+// (`top` to `bottom`), and faster the closer to its edge, or past it. The region is short on a small screen: the edge zone is a third of it at most.
+export const scrollSpeed = (y, top, bottom, { edge = 48, max = 18 } = {}) => {
+    let zone = Math.min(edge, Math.max(0, (bottom - top) / 3))
+
+    if (zone <= 0) return 0
+
+    if (y < top + zone) return -Math.ceil(max * Math.min(1, (top + zone - y) / zone))
+    if (y > bottom - zone) return Math.ceil(max * Math.min(1, (y - (bottom - zone)) / zone))
+
+    return 0
 }

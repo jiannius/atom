@@ -653,6 +653,54 @@ html.dark [data-atom-calendar-chip="block"][data-atom-calendar-hex] {
     opacity: 0.5;
 }
 
+/* An item that can be picked up shows it, and has a handle on its end for the pointer to pull: a bar's right edge, a block's bottom edge. The handle
+   is no wider than a few px, and sits inside the item, so what is left of it is the item's own click. While a gesture is on, the whole body shows what
+   it does (`data-atom-calendar-gesture` is on the body, which a render never touches), and no text is selected under the pointer. */
+[data-atom-calendar-chip] {
+    position: relative;
+}
+
+[data-atom-calendar-chip][data-draggable] {
+    cursor: grab;
+}
+
+[data-atom-calendar-handle] {
+    position: absolute;
+}
+
+[data-atom-calendar-chip="bar"] > [data-atom-calendar-handle] {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: ew-resize;
+}
+
+[data-atom-calendar-chip="block"] > [data-atom-calendar-handle] {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 6px;
+    cursor: ns-resize;
+}
+
+[data-atom-calendar-body][data-atom-calendar-gesture] {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+[data-atom-calendar-body][data-atom-calendar-gesture="move"] * {
+    cursor: grabbing !important;
+}
+
+[data-atom-calendar-body][data-atom-calendar-gesture="resize-y"] * {
+    cursor: ns-resize !important;
+}
+
+[data-atom-calendar-body][data-atom-calendar-gesture="resize-x"] * {
+    cursor: ew-resize !important;
+}
+
 /* waiting for the host: the selection's box, striped */
 [data-atom-calendar-pending],
 [data-atom-calendar-selection][data-kind="pending"] {
@@ -737,6 +785,22 @@ html.dark [data-atom-calendar-ghost-body][data-atom-calendar-hex] {
     [data-atom-calendar-block] {
         -webkit-user-select: text;
         user-select: text;
+    }
+
+    /* an item that a long press picks up is not a text to select, and has no callout for a link: the press is the item's */
+    [data-atom-calendar-chip][data-draggable] {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    /* a finger needs more of an edge to pull than a pointer does */
+    [data-atom-calendar-chip="bar"] > [data-atom-calendar-handle] {
+        width: 14px;
+    }
+
+    [data-atom-calendar-chip="block"] > [data-atom-calendar-handle] {
+        height: 14px;
     }
 }
 
