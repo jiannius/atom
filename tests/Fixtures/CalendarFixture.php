@@ -42,6 +42,9 @@ class CalendarFixture extends Component
     /** Whether the month has an item that may be neither moved nor resized (an item's own flags beat the calendar's); ?locked=1. */
     public bool $locked = false;
 
+    /** Whether the calendar is wired as the README shows it, with x-on attributes on the tag; ?wired=1. */
+    public bool $wired = false;
+
     /** Where the items that were moved or resized were put, as the host stored them: [id => { start, end }], in the viewer's wall clock. */
     public array $placed = [];
 
@@ -77,6 +80,7 @@ class CalendarFixture extends Component
         $this->draggable = request()->query('draggable', '1') !== '0';
         $this->slot = (int) request()->query('slot', $this->slot);
         $this->locked = request()->boolean('locked');
+        $this->wired = request()->boolean('wired');
     }
 
     /**
