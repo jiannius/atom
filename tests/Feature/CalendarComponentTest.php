@@ -320,6 +320,12 @@ describe('calendar component markup', function () {
         expect($ui['creating'])->toBe('Creating...');
     });
 
+    it('names what is said while an item that was moved or resized waits for the host', function () {
+        $ui = calendarPayload(calendarRender('month="2026-10"'))['labels']['ui'];
+
+        expect($ui['saving'])->toBe('Saving...');
+    });
+
     it('keeps the host slot outside wire:ignore, so it morphs like the rest of the page', function () {
         $html = calendarRender('month="2026-10"', slot: '<button data-host-slot>Add</button>');
 

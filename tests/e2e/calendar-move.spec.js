@@ -738,6 +738,67 @@ test.describe('the focus of an item that is moved', () => {
     })
 })
 
+// The polite status the selection's wait is said in says the wait of an item that is moved or resized as well, and only the wait
+test.describe('an item waiting for the host is announced', () => {
+    const announcer = (page) => probe(page).locator('[data-atom-calendar-announce]')
+
+    test.beforeEach(async ({ page }) => {
+        await open(page)
+    })
+
+    test('"Saving..." while the host holds a move, through a payload that comes, and nothing once it is settled', async ({ page }) => {
+        await mode(page, 'hold')
+        await expect(announcer(page)).toHaveText('')
+
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+        await expect(announcer(page)).toHaveText('Saving...')
+
+        await page.evaluate(() => window.Livewire.first().toggleExtra())
+        await payloadArrived(page, 'Added later')
+        await expect(chipOf(page, 'bar', 'Added later')).toBeVisible()
+        await expect(announcer(page)).toHaveText('Saving...')
+
+        await page.evaluate(() => window.__holds[0].resolve())
+        await expect(announcer(page)).toHaveText('')
+    })
+
+    test('one that is resolved with no payload after it is settled, though it stays where it was put', async ({ page }) => {
+        await mode(page, 'hold')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+        await expect(announcer(page)).toHaveText('Saving...')
+
+        await page.evaluate(() => window.__holds[0].resolve())
+        await expect(announcer(page)).toHaveText('')
+        expect((await engine(page)).overrides).toEqual(['10'])
+    })
+
+    test('a resize is said the same way, and a rejected one stops being said', async ({ page }) => {
+        await mode(page, 'reject')
+        await drag(page, await middle(handleOf(page, 'bar', 'Launch week')), await inDay(page, '2026-10-22'))
+        await expect(announcer(page)).toHaveText('Saving...')
+
+        await page.evaluate(() => window.__settle.reject(new Error('no')))
+        await expect(announcer(page)).toHaveText('')
+    })
+
+    test('a move nobody holds, and one that is prevented, say nothing', async ({ page }) => {
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+        await expect(announcer(page)).toHaveText('')
+
+        await mode(page, 'prevent')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-23'))
+        await expect(announcer(page)).toHaveText('')
+    })
+
+    test('a selection that is being created is still said as it was', async ({ page }) => {
+        await open(page, 'selectable=1')
+        await page.evaluate(() => { window.__selectMode = 'wait' })
+
+        await page.mouse.click((await inDay(page, '2026-10-12')).x, (await inDay(page, '2026-10-12')).y)
+        await expect(announcer(page)).toHaveText('Creating...')
+    })
+})
+
 test.describe('Escape and the other ends of a drag that was not let go', () => {
     test.beforeEach(async ({ page }) => {
         await open(page)

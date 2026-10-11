@@ -248,9 +248,13 @@ export default () => ({
         return has(anchor) ? anchor : (days[0]?.date ?? '')
     },
 
-    // What the second live region says: that a selection is with the host, for as long as its placeholder (which is hidden from assistive tech) is up
+    // What the second live region says: that a selection is with the host, for as long as its placeholder (which is hidden from assistive tech) is up,
+    // and that an item that was moved or resized is, for as long as the host holds it with waitUntil (a settled one is not). Nothing else is said of
+    // either: where an item went is what the item's own name says once it is there.
     get announcement () {
-        return this.preview?.kind === 'pending' ? (this.labels.ui?.creating ?? '') : ''
+        if (this.preview?.kind === 'pending') return this.labels.ui?.creating ?? ''
+
+        return Object.values(this.overrides).some((entry) => entry.held) ? (this.labels.ui?.saving ?? '') : ''
     },
 
     get popoverLabel () {
