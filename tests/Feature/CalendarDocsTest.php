@@ -102,6 +102,15 @@ describe('the calendar docs page', function () {
         }
     });
 
+    it('sets what the week demo says it sets: its slot length, the time it opens at, and the now line', function () {
+        Carbon::setTestNow('2026-10-14 10:30:00');
+
+        $week = array_values(array_filter(calendarDocsPayloads(calendarDocsPage()), fn ($payload) => in_array('Quick check-in', array_column($payload['items'], 'title'), true)));
+
+        expect($week)->toHaveCount(1)
+            ->and($week[0]['config'])->toMatchArray(['slotDuration' => 15, 'scrollTime' => '07:30', 'nowIndicator' => true]);
+    });
+
     it('prints the source of the demos on the page', function () {
         $html = calendarDocsPage();
 
@@ -135,6 +144,122 @@ describe('the calendar section of the README', function () {
         foreach ($names[1] as $name) {
             expect($section)->toContain('| `'.str($name)->kebab().'` |');
         }
+    });
+
+    it('has a Quick start whose tag is the wired fixture and whose class has every method the tag calls', function () {
+        $section = calendarReadmeSection();
+
+        preg_match('/```blade\n(<atom:calendar\n.*?)\/>\n```/s', $section, $blade);
+        preg_match('/```php\n(use App.*?\n)```/s', $section, $php);
+
+        // the tag, line by line (but for its closing), is what the served fixture's `?wired=1` branch has
+        $tag = array_map('trim', explode("\n", rtrim($blade[1])));
+        $fixture = file_get_contents(__DIR__.'/../Fixtures/calendar.blade.php');
+        $wired = substr($fixture, strpos($fixture, '@if ($wired)'), strpos($fixture, '@else') - strpos($fixture, '@if ($wired)'));
+
+        expect($tag)->toContain('<atom:calendar');
+
+        foreach (array_filter($tag, fn ($line) => $line !== '<atom:calendar') as $line) {
+            expect($wired)->toContain("\n        ".$line."\n");
+        }
+
+        // the skill shows the same handlers
+        $skill = file_get_contents(__DIR__.'/../../resources/boost/skills/atom-components/SKILL.blade.php');
+
+        foreach (array_filter($tag, fn ($line) => str_starts_with($line, 'x-on:')) as $line) {
+            expect($skill)->toContain($line);
+        }
+
+        // every method the tag calls is declared by the README's class, with the parameters the fixture's has
+        preg_match_all('/\$wire\.(\w+)\(([^)]*(?:\([^)]*\))?[^)]*)\)\)?"/', $blade[1], $calls);
+
+        expect(array_unique($calls[1]))->toEqualCanonicalizing(['create', 'reschedule', 'edit']);
+
+        foreach (array_unique($calls[1]) as $method) {
+            expect(preg_match('/public function '.$method.'\(([^)]*)\): void/', $php[1], $declared))->toBe(1, 'the README class has no public '.$method.'()');
+
+            preg_match_all('/\$(\w+)/', $declared[1], $names);
+
+            expect(array_map(fn (ReflectionParameter $parameter) => $parameter->getName(), (new ReflectionMethod(Jiannius\Atom\Tests\Fixtures\CalendarFixture::class, $method))->getParameters()))->toBe($names[1], $method.'() of the fixture');
+        }
+    });
+
+    it('states, for each prop, the default the component has', function () {
+        $defaults = calendarPropDefaults();
+
+        // the Default column of the Props table, by the prop's tag name, with the backticks taken off
+        $section = calendarReadmeSection();
+        $table = substr($section, strpos($section, "\n### Props\n"));
+        $table = substr($table, 0, strpos($table, "\n### ", 5) ?: null);
+
+        preg_match_all('/^\| `([a-z-]+)` \| (.+?) \| /m', $table, $rows, PREG_SET_ORDER);
+
+        $documented = [];
+
+        foreach ($rows as $row) {
+            $documented[$row[1]] = str_replace('`', '', $row[2]);
+        }
+
+        expect($defaults)->toHaveCount(16)->and($documented)->toHaveCount(16);
+
+        foreach ($defaults as $name => $default) {
+            $cell = $documented[(string) str($name)->kebab()] ?? null;
+
+            // a default is written the way a reader reads it: on and off for a flag, none for null (or what a null falls back to, in words), and an array as its short syntax
+            $expected = match (true) {
+                $default === true => ['on'],
+                $default === false => ['off'],
+                $default === null => ['none', 'first of views'],
+                is_array($default) => ['['.implode(', ', array_map(fn ($value) => var_export($value, true), $default)).']'],
+                default => [(string) $default],
+            };
+
+            expect($cell)->toBeIn($expected, 'the README default of `'.$name.'`');
+        }
+    });
+
+    it('states, for each event, the detail keys and the cancelability the code has', function () {
+        $section = calendarReadmeSection();
+        $table = substr($section, strpos($section, "\n### Events\n"));
+        $table = substr($table, 0, strpos($table, "\n### ", 5) ?: null);
+
+        preg_match_all('/^\| `(calendar-[a-z-]+)` \| `\{ (.*?) \}` \| (.+) \|$/m', $table, $rows, PREG_SET_ORDER);
+
+        $facts = calendarEventFacts();
+        $documented = [];
+
+        foreach ($rows as [, $event, $keys, $description]) {
+            $keys = array_map('trim', explode(',', $keys));
+            sort($keys);
+
+            $documented[$event] = ['keys' => $keys, 'description' => $description];
+        }
+
+        expect(array_keys($documented))->toEqualCanonicalizing(array_keys($facts));
+
+        foreach ($facts as $event => $fact) {
+            expect($documented[$event]['keys'])->toBe($fact['keys'], 'the detail keys of '.$event);
+
+            // an event is documented as Not cancelable, or as Cancelable, when the code says; the click leaves it to Alpine and makes no claim
+            $says = str_contains($documented[$event]['description'], 'Not cancelable') ? false : (str_contains($documented[$event]['description'], 'Cancelable') ? true : null);
+
+            expect($says)->toBe($fact['cancelable'], 'the cancelability of '.$event);
+        }
+    });
+
+    it('lists the legacy events the tag guard throws for, and the guard lists every one the upgrade table does', function () {
+        $section = calendarReadmeSection();
+        $guard = file_get_contents(__DIR__.'/../../components/calendar/index.blade.php');
+
+        preg_match('/\$legacyEvents = \[(.*?)\n\];/s', $guard, $block);
+        preg_match_all("/^\s*'(calendar-[a-z-]+)' =>/m", $block[1], $guarded);
+
+        $table = substr($section, strpos($section, '**Events.**'));
+        $table = substr($table, 0, strpos($table, "\n\n", strpos($table, '| Old | Now |') ?: 0) ?: null);
+
+        preg_match_all('/`(calendar-(?:date|event)-[a-z]+|calendar-changed|calendar-mounted)`/', $table, $listed);
+
+        expect($guarded[1])->toHaveCount(7)->and(array_values(array_unique($listed[1])))->toEqualCanonicalizing($guarded[1]);
     });
 
     it('documents each event the calendar dispatches, and the guarded legacy props', function () {

@@ -261,7 +261,73 @@ it('names only calendar events and props the component has', function () {
 
     expect(array_values(array_unique($events[1])))->toEqualCanonicalizing(['calendar-select', 'calendar-item-move', 'calendar-item-resize', 'calendar-item-click']);
 
-    foreach (['views', 'view', 'weekStart', 'weekend', 'max', 'timeFormat', 'dateFormat', 'selectable', 'draggable', 'resizable', 'slotDuration', 'scrollTime', 'nowIndicator', 'name'] as $prop) {
-        expect($component)->toContain("'".$prop."' =>");
+    expect($component)->toContain("'views' =>");
+});
+
+// The skill's event line gives each event's detail keys, and says which are cancelable: both are what the dispatch sites in the browser code say.
+it('gives each calendar event the detail keys and cancelability the code has', function () {
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+    $facts = calendarEventFacts();
+
+    preg_match_all('/`(calendar-(?:select|item-[a-z]+))` `\{ ([^}]*) \}`/', $skill, $found, PREG_SET_ORDER);
+
+    $named = [];
+
+    foreach ($found as [, $event, $keys]) {
+        $keys = array_map('trim', explode(',', $keys));
+        sort($keys);
+
+        $named[$event] = $keys;
+    }
+
+    expect(array_keys($named))->toEqualCanonicalizing(array_keys($facts));
+
+    foreach ($facts as $event => $fact) {
+        expect($named[$event])->toBe($fact['keys'], 'the detail keys of '.$event);
+    }
+
+    // `calendar-select` ... not cancelable; `calendar-item-move` and `calendar-item-resize` ... are cancelable
+    expect(preg_match('/`calendar-select` `\{[^}]*\}`, (not cancelable)?/', $skill, $select))->toBe(1)
+        ->and(isset($select[1]))->toBe(! $facts['calendar-select']['cancelable'])
+        ->and(preg_match('/`calendar-item-move` `\{[^}]*\}` and `calendar-item-resize` `\{[^}]*\}` (are cancelable)/', $skill, $change))->toBe(1)
+        ->and($facts['calendar-item-move']['cancelable'])->toBeTrue()
+        ->and($facts['calendar-item-resize']['cancelable'])->toBeTrue();
+});
+
+// The props the skill names are read out of its own "Props:" sentence, not from a list written here, so one it adds that the component
+// does not have fails; a default it states in brackets is the component's.
+it('names only calendar props the component has, with the defaults it has', function () {
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+    $defaults = calendarPropDefaults();
+
+    $section = substr($skill, strpos($skill, '### Calendar'), strpos($skill, '### Actions') - strpos($skill, '### Calendar'));
+
+    expect(preg_match('/Props: (.+)/', $section, $sentence))->toBe(1);
+
+    // the names are the backticked words outside the brackets (a default sits inside one); `draggable` and `resizable` share a bracket
+    $outside = preg_replace('/\([^)]*\)/', '', $sentence[1]);
+
+    preg_match_all('/`([a-z]+(?:-[a-z]+)*)`/', $outside, $names);
+
+    $named = array_map(fn ($name) => (string) str($name)->camel(), $names[1]);
+
+    preg_match_all('/`([a-z]+(?:-[a-z]+)*)`(?: and `([a-z]+(?:-[a-z]+)*)`)? \(([^)]*)\)/', $sentence[1], $bracketed, PREG_SET_ORDER);
+
+    expect($named)->toContain('views', 'weekStart', 'nowIndicator', 'name')->and($named)->toHaveCount(14);
+
+    foreach ($named as $prop) {
+        expect(array_key_exists($prop, $defaults))->toBeTrue('the skill names `'.$prop.'`, which the component has no prop for');
+    }
+
+    foreach ($bracketed as $match) {
+        foreach (array_filter([$match[1], $match[2]]) as $kebab) {
+            $default = $defaults[(string) str($kebab)->camel()];
+
+            if (preg_match_all('/`([^`]+)`/', $match[3], $values)) {
+                expect(in_array((string) $default, $values[1], true))->toBeTrue('the default the skill gives `'.$kebab.'`');
+            } else {
+                expect($match[3])->toBe($default ? 'on' : 'off');
+            }
+        }
     }
 });
