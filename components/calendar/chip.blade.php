@@ -6,7 +6,8 @@
      not colour alone. Each is named whole by itemLabel(), and a tooltip with the title alone is put on only while the title shown
      is cut short (tooltip()), so a screen reader does not read it twice. A press on one starts a move (itemPress()), and on its handle, the
      end of a bar or the bottom edge of a block, a resize: the handle is for the pointer alone and is not in the tab order or the accessibility tree,
-     as an item is moved and resized with the pointer only; what is done with the keyboard is the item's own click. --}}
+     as an item is moved and resized with the pointer only; what is done with the keyboard is the item's own click. `data-atom-calendar-item` is the
+     item's id, which is how the chip that stands for it is found again once a move has drawn it somewhere else (see keepItemFocus()). --}}
 <template x-if="chip.kind === 'bar'">
     <a
     x-bind:href="link(chip)"
@@ -20,6 +21,7 @@
     x-bind:style="hue(chip)"
     x-bind:class="[colorClass(chip, 'tint'), chip.danger ? 'border-red-600 dark:border-red-400' : colorClass(chip, 'accent')]"
     x-on:pointerdown="itemPress(chip, $event)"
+    x-bind:data-atom-calendar-item="chip.id"
     x-bind:data-draggable="canDrag(chip) ? '' : null"
     x-bind:draggable="canDrag(chip) ? 'false' : null"
     x-on:click="itemClick(chip, $event)"
@@ -43,6 +45,7 @@
     x-bind:aria-label="itemLabel(chip)"
     x-bind:data-lifted="isLifted(chip) ? '' : null"
     x-on:pointerdown="itemPress(chip, $event)"
+    x-bind:data-atom-calendar-item="chip.id"
     x-bind:data-draggable="canDrag(chip) ? '' : null"
     x-bind:draggable="canDrag(chip) ? 'false' : null"
     x-on:click="itemClick(chip, $event)"
@@ -81,6 +84,7 @@
     x-bind:style="hue(chip)"
     x-bind:class="[colorClass(chip, 'tint'), chip.danger ? 'border-red-600 dark:border-red-400' : colorClass(chip, 'accent')]"
     x-on:pointerdown="itemPress(chip, $event)"
+    x-bind:data-atom-calendar-item="chip.id"
     x-bind:data-draggable="canDrag(chip) ? '' : null"
     x-bind:draggable="canDrag(chip) ? 'false' : null"
     x-on:click="itemClick(chip, $event)"

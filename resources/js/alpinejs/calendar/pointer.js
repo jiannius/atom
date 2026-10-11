@@ -282,9 +282,20 @@ export default {
         let { kind, area, active, anchor } = gesture
         let range = kind === 'select' || active ? this.gestureRange(gesture) : null
 
+        // an item that has the focus is drawn again where it is put, as a new node, and the focus would fall to the page with the old one
+        let focused = kind !== 'select' && active && Boolean(gesture.el?.isConnected) && document.activeElement === gesture.el
+
         this.endGesture(true, true)
 
-        if (kind !== 'select') return active ? this.commitChange(gesture, range) : null
+        if (kind !== 'select') {
+            if (!active) return null
+
+            this.commitChange(gesture, range)
+
+            if (focused) this.keepItemFocus(gesture.item.id)
+
+            return
+        }
 
         // In the narrow month a day shows no titles (see atom.css), so a tap on a day that has items opens its list, which does. A drag, and a
         // press that was held long enough to start one, still select, and so a busy day can still be created on.
@@ -386,6 +397,33 @@ export default {
         let payload = this.readJson(this.rootEl.getAttribute('data-atom-calendar-payload'))
 
         if (payload && Array.isArray(payload.items) && !payload.items.some((candidate) => String(candidate.id) === String(item.id))) this.cancelGesture()
+    },
+
+    // The item that was moved or resized had the focus, and its chip is drawn again where it was put (a new node, in another week or another column),
+    // and again when the host's payload comes and when a held move is settled: the focus is put back on the item's chip each time, by the item's id,
+    // for as long as it is nobody's (see init(), where `overrides` is watched). It is let go of when it is taken elsewhere, by a key or by a press.
+    keepItemFocus (id) {
+        this.focusItem = String(id)
+        this.$nextTick(() => this.focusChip())
+    },
+
+    focusChip () {
+        if (this.focusItem === null) return
+
+        let active = document.activeElement
+
+        if (active && active !== document.body) {
+            if (active.closest?.('[data-atom-calendar-chip]')?.getAttribute('data-atom-calendar-item') !== this.focusItem) this.focusItem = null
+
+            return
+        }
+
+        // the first one that is drawn, in the grid and not in the day list
+        let chip = [...this.rootEl.querySelectorAll('[data-atom-calendar-chip]')].find((el) => {
+            return el.getAttribute('data-atom-calendar-item') === this.focusItem && el.getClientRects().length > 0 && !el.closest('[popover]')
+        })
+
+        chip?.focus({ preventScroll: true })
     },
 
     // Whether a range is where the item already is

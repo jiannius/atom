@@ -614,6 +614,130 @@ test.describe('an item that is moved while an earlier move of it is still held',
     })
 })
 
+// A chip that is moved is drawn again where it is put, as a new node, and the focus that was on the old one would fall to the page
+test.describe('the focus of an item that is moved', () => {
+    // the host is made to re-render by a call and not a press, which would take the focus itself
+    const focusedItem = (page) => page.evaluate(() => document.activeElement?.closest?.('[data-atom-calendar-chip]')?.getAttribute('data-atom-calendar-item') ?? null)
+    const titleButton = (page) => probe(page).locator('button[data-atom-calendar-title]')
+
+    test('stays on it when it is moved in the month, to another week: it is on the chip that stands on the day it was put on', async ({ page }) => {
+        await open(page)
+        await chipOf(page, 'dot', 'Hex colour').focus()
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-28')
+        await expect(chipOf(page, 'dot', 'Hex colour')).toBeFocused()
+        expect(await focusedItem(page)).toBe('10')
+    })
+
+    test('and when it is pulled by its end', async ({ page }) => {
+        await open(page)
+        await chipOf(page, 'bar', 'Launch week').first().focus()
+        await drag(page, await middle(handleOf(page, 'bar', 'Launch week')), await inDay(page, '2026-10-28'))
+
+        await expect(chipOf(page, 'bar', 'Launch week')).toHaveCount(4)
+        expect(await focusedItem(page)).toBe('2')
+    })
+
+    test('and in the time grid', async ({ page }) => {
+        await open(page, 'view=week&date=2026-10-12')
+        await chipOf(page, 'block', 'Design review').focus()
+        await drag(page, await near(chipOf(page, 'block', 'Design review')), await at(page, '2026-10-15', 14.1))
+
+        expect(await moves(page)).toHaveLength(1)
+        await expect(chipOf(page, 'block', 'Design review')).toBeFocused()
+    })
+
+    test('and in the all-day row', async ({ page }) => {
+        await open(page, 'date=2026-10-09&view=week', '/atom/e2e/calendar-grid')
+
+        const holiday = chipOf(page, 'bar', 'Public holiday', 'grid')
+
+        await holiday.focus()
+        await drag(page, await middle(holiday), await inAllDay(page, '2026-10-11', holiday, 'grid'))
+
+        expect(await moves(page)).toHaveLength(1)
+        await expect(chipOf(page, 'bar', 'Public holiday', 'grid')).toBeFocused()
+    })
+
+    test('and when the host answers and the payload that comes draws it again', async ({ page }) => {
+        await open(page)
+        await mode(page, 'livewire')
+        await chipOf(page, 'dot', 'Hex colour').focus()
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
+
+        await expect.poll(async () => (await engine(page)).overrides).toEqual([])
+        await expect(chipOf(page, 'dot', 'Hex colour')).toBeFocused()
+    })
+
+    test('and while a held move is settled: through a payload, and when the promise is resolved', async ({ page }) => {
+        await open(page)
+        await mode(page, 'hold')
+        await chipOf(page, 'dot', 'Hex colour').focus()
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
+
+        await page.evaluate(() => window.Livewire.first().toggleExtra())
+        await payloadArrived(page, 'Added later')
+        await expect(chipOf(page, 'bar', 'Added later')).toBeVisible()
+        await expect(chipOf(page, 'dot', 'Hex colour')).toBeFocused()
+
+        // the host's answer is the payload that came, which has the item on the 20th
+        await page.evaluate(() => window.__holds[0].resolve())
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+        await expect(chipOf(page, 'dot', 'Hex colour')).toBeFocused()
+    })
+
+    test('is not given to an item that did not have it, and does not take it from what did', async ({ page }) => {
+        await open(page)
+        await titleButton(page).focus()
+
+        // a press by hand, which does not focus what it is on
+        const from = await middle(chipOf(page, 'dot', 'Hex colour'))
+        const to = await inDay(page, '2026-10-28')
+
+        await pointer(page, 'pointerdown', from, 'mouse', 1)
+        await pointer(page, 'pointermove', { x: from.x + 20, y: from.y }, 'mouse', 1)
+        await pointer(page, 'pointermove', to, 'mouse', 1)
+        await pointer(page, 'pointerup', to, 'mouse', 1)
+
+        expect(await moves(page)).toHaveLength(1)
+        await expect(titleButton(page)).toBeFocused()
+    })
+
+    test('is let go of when it is taken elsewhere: a payload that comes after does not pull it back', async ({ page }) => {
+        await open(page)
+        await mode(page, 'hold')
+        await chipOf(page, 'dot', 'Hex colour').focus()
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
+        await expect(chipOf(page, 'dot', 'Hex colour')).toBeFocused()
+
+        await titleButton(page).focus()
+        await page.evaluate(() => window.Livewire.first().toggleExtra())
+        await payloadArrived(page, 'Added later')
+        await expect(chipOf(page, 'bar', 'Added later')).toBeVisible()
+        await page.waitForTimeout(200)
+
+        await expect(titleButton(page)).toBeFocused()
+    })
+
+    test('and so is a press on the page, which leaves it on nobody', async ({ page }) => {
+        await open(page)
+        await mode(page, 'hold')
+        await chipOf(page, 'dot', 'Hex colour').focus()
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
+        await expect(chipOf(page, 'dot', 'Hex colour')).toBeFocused()
+
+        await page.mouse.click(2, 2)
+        await page.evaluate(() => document.activeElement?.blur())
+        await page.evaluate(() => window.Livewire.first().toggleExtra())
+        await payloadArrived(page, 'Added later')
+        await expect(chipOf(page, 'bar', 'Added later')).toBeVisible()
+        await page.waitForTimeout(200)
+
+        expect(await focusedItem(page)).toBe(null)
+    })
+})
+
 test.describe('Escape and the other ends of a drag that was not let go', () => {
     test.beforeEach(async ({ page }) => {
         await open(page)

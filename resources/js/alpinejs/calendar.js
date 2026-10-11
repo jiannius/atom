@@ -86,6 +86,8 @@ export default () => ({
     gesture: null,
     // Where the items that were moved or resized are drawn until the payload says: { [id]: { range: { start, end }, token, held, stale } }. See commitChange().
     overrides: {},
+    // The id of the item whose chip has the focus, kept on it while it is drawn again (see keepItemFocus()), or null
+    focusItem: null,
     // Held while a select waits for the host (see commitSelect): the placeholder is taken down when its promise settles, unless another gesture has put something else up
     pendingToken: null,
     // What takes a selection down that nothing is holding: see lingerSelection()
@@ -280,6 +282,13 @@ export default () => ({
             if (date && date !== this.anchor) this.navigate(date)
         })
 
+        // The focus that is kept on the chip of an item that was moved (see keepItemFocus()) follows it when the items are drawn again: a payload that is
+        // read and a held move that is settled both change `overrides`. It ends when it is taken elsewhere (see focusChip()) or by a press on the page.
+        this.$watch('overrides', () => {
+            if (this.focusItem !== null) this.$nextTick(() => this.focusChip())
+        })
+        document.addEventListener('pointerdown', () => { this.focusItem = null }, { signal, capture: true })
+
         // The day list lives in the top layer: it must not outlive a wire:navigate page swap. Nor does a gesture, which is on the document.
         document.addEventListener('livewire:navigating', () => {
             this.cancelGesture()
@@ -307,6 +316,7 @@ export default () => ({
             this.lingerAbort?.abort()
             this.pendingToken = null
             this.overrides = {}
+            this.focusItem = null
             this.closeDay(false)
             delete this.$root._atomCalendarCleanup
         }
