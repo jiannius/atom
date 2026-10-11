@@ -282,6 +282,44 @@ describe('calendar component markup', function () {
             ->and(domQuery($html, '//*[@data-atom-calendar-popover]/ancestor::*[@*[name()="wire:ignore"]]'))->toHaveCount(1);
     });
 
+    it('starts a selection from the three places empty space is: the month\'s weeks, the time grid\'s body and the all-day row', function () {
+        $html = calendarRender(':views="[\'month\', \'week\']" selectable month="2026-10"');
+
+        foreach (['month' => 'data-atom-calendar-weeks', 'grid' => 'data-atom-calendar-grid-body', 'allday' => 'data-atom-calendar-allday-area'] as $area => $marker) {
+            $starts = domQuery($html, '//*[@'.$marker.']');
+
+            expect($starts)->toHaveCount(1)
+                ->and($starts[0]->getAttribute('x-on:pointerdown'))->toBe('selectStart($event, \''.$area.'\')')
+                // inside the engine's body, which a morph does not reach, so a gesture in progress keeps its nodes
+                ->and(domQuery($html, '//*[@'.$marker.']/ancestor::*[@*[name()="wire:ignore"]]'))->toHaveCount(1);
+        }
+    });
+
+    it('gives each day of the all-day row its date, which is what a selection in the row reads off it', function () {
+        $html = calendarRender(':views="[\'week\']" selectable month="2026-10"');
+
+        // a cell is drawn by x-for, one for each column, so the template's one cell is what is read
+        $dates = array_map(fn ($cell) => $cell->getAttribute('x-bind:data-date'), domQuery($html, '//*[@data-atom-calendar-allday-bg]//*[@*[name()="x-bind:data-date"]]'));
+
+        expect($dates)->toBe(['column.date']);
+    });
+
+    it('draws a selection, and the placeholder that stands for it, in the all-day row without taking a pointer', function () {
+        $html = calendarRender(':views="[\'week\']" selectable month="2026-10"');
+        $over = domQuery($html, '//*[@data-atom-calendar-allday-over]');
+
+        expect($over)->toHaveCount(1)
+            ->and($over[0]->getAttribute('aria-hidden'))->toBe('true')
+            ->and(domQuery($html, '//*[@data-atom-calendar-allday-over]//*[@data-atom-calendar-selection]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-calendar-allday-over]//*[@data-atom-calendar-pending]'))->toHaveCount(1);
+    });
+
+    it('names the placeholder a selection leaves while the host creates what it asked for', function () {
+        $ui = calendarPayload(calendarRender('month="2026-10"'))['labels']['ui'];
+
+        expect($ui['creating'])->toBe('Creating...');
+    });
+
     it('keeps the host slot outside wire:ignore, so it morphs like the rest of the page', function () {
         $html = calendarRender('month="2026-10"', slot: '<button data-host-slot>Add</button>');
 

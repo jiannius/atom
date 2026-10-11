@@ -115,9 +115,21 @@
     :week-start="request('weekStart', 'monday')"
     :scroll-time="request('scroll', '06:00')"
     :now-indicator="request('indicator', '1') !== '0'"
+    :selectable="request('selectable') === '1'"
+    :slot-duration="(int) request('slot', 30)"
     :items="$items"
     data-probe="grid" />
 </div>
+
+<script>
+    // every `calendar-select` the host was told (?selectable=1), as it was told it
+    window.__selects = []
+    document.addEventListener('calendar-select', (event) => {
+        const { start, end, allDay } = event.detail
+
+        window.__selects.push({ start, end, allDay })
+    })
+</script>
 
 @livewireScripts
 </atom:html>

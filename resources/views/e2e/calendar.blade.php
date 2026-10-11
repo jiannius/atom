@@ -50,5 +50,25 @@
     <livewire:atom-e2e-calendar />
 </div>
 
+<script>
+    // What the host does with a selection (a calendar with `selectable`; ?selectable=1), set by the test: window.__selects is every
+    // `calendar-select` it was told, and window.__selectMode what it does about it. 'none' leaves the selection alone; 'wait' and 'reject' hold it
+    // with a promise that the test settles through window.__settle; 'livewire' creates the item on the server and holds the selection until that is done.
+    window.__selects = []
+    window.__selectMode = 'none'
+
+    document.addEventListener('calendar-select', (event) => {
+        const { start, end, allDay, waitUntil } = event.detail
+
+        window.__selects.push({ start, end, allDay })
+
+        if (window.__selectMode === 'wait' || window.__selectMode === 'reject') {
+            waitUntil(new Promise((resolve, reject) => { window.__settle = { resolve, reject } }))
+        } else if (window.__selectMode === 'livewire') {
+            waitUntil(window.Livewire.first().create(start, end, allDay))
+        }
+    })
+</script>
+
 @livewireScripts
 </atom:html>

@@ -10,9 +10,13 @@
     wire:model="date"
     :views="['month', 'week', 'day']"
     :view="$view"
+    :selectable="$selectable"
+    :week-start="$weekStart"
     :items="fn ($from, $to) => $this->calendarItems($from, $to)"
     data-probe="calendar">
         {{-- host toolbar content: it is server-rendered and morphs with the page, unlike the calendar's body --}}
         <span data-host-slot>Slot renders: {{ $renders }}</span>
     </atom:calendar>
+
+    <div data-created>{{ json_encode($created) }}</div>
 </div>

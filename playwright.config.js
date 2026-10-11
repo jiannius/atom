@@ -16,6 +16,13 @@ export default defineConfig({
       testMatch: /calendar-a11y\.spec\.js$/,
     },
     {
+      // the selection runs on pointer events by hand, and a touch (iOS) is WebKit's
+      name: 'webkit-select',
+      dependencies: ['chromium'],
+      use: { ...devices['Desktop Safari'] },
+      testMatch: /calendar-select\.spec\.js$/,
+    },
+    {
       name: 'webkit-look',
       dependencies: ['chromium'],
       use: { ...devices['Desktop Safari'] },

@@ -26,6 +26,15 @@ class CalendarFixture extends Component
     /** Whether the week of 26 October is crowded, for the week and day views; ?busy=1. Off, the month is the one the month view's tests count. */
     public bool $busy = false;
 
+    /** Whether the calendar creates on a click or a drag; ?selectable=1. */
+    public bool $selectable = false;
+
+    /** The first day of the week; ?weekStart=sunday. */
+    public string $weekStart = 'monday';
+
+    /** What create() was given and what it made of it, one row each, for a test to read off the page. */
+    public array $created = [];
+
     public int $renders = 0;
 
     public bool $extra = false;
@@ -44,6 +53,8 @@ class CalendarFixture extends Component
         $this->date = (string) request()->query('date', $this->date);
         $this->view = (string) request()->query('view', $this->view);
         $this->busy = request()->boolean('busy');
+        $this->selectable = request()->boolean('selectable');
+        $this->weekStart = (string) request()->query('weekStart', $this->weekStart);
     }
 
     /**
@@ -68,6 +79,22 @@ class CalendarFixture extends Component
     public function toggleExtra(): void
     {
         $this->extra = ! $this->extra;
+    }
+
+    /**
+     * Make an item of what a selection says, as a host does: the calendar's wall-clock strings go straight to Calendar::fromLocal(), which gives
+     * the instant in the app's timezone, and what is stored is that instant. The row is kept as the host got it and as it was stored, for the test.
+     */
+    public function create(string $start, string $end, bool $allDay): void
+    {
+        $this->created[] = [
+            'id' => 'created-'.(count($this->created) + 1),
+            'start' => $start,
+            'end' => $end,
+            'allDay' => $allDay,
+            'startUtc' => Calendar::fromLocal($start)->utc()->format('Y-m-d\TH:i:s\Z'),
+            'endUtc' => Calendar::fromLocal($end)->utc()->format('Y-m-d\TH:i:s\Z'),
+        ];
     }
 
     /**
@@ -149,6 +176,13 @@ class CalendarFixture extends Component
 
         if ($this->extra) {
             $items[] = ['id' => 99, 'title' => 'Added later', 'start' => '2026-10-09', 'color' => 'green'];
+        }
+
+        foreach ($this->created as $row) {
+            // what was stored is an instant; an all-day item is the date, the last day included
+            $items[] = $row['allDay']
+                ? ['id' => $row['id'], 'title' => 'Created', 'start' => $row['start'], 'end' => $row['end'], 'all_day' => true, 'color' => 'blue']
+                : ['id' => $row['id'], 'title' => 'Created', 'start' => Calendar::fromLocal($row['start']), 'end' => Calendar::fromLocal($row['end']), 'color' => 'blue'];
         }
 
         return collect($items)
