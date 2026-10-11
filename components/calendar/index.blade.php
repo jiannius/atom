@@ -18,6 +18,18 @@
 ])
 
 @php
+// The props of the event-calendar wrapper this component replaced. Passed now they would be printed as attributes and ignored, so the page would
+// show a month view where it asked for something else; a render that fails names them instead. `name` is not here: it is still a prop.
+$legacy = collect(['modes', 'periods'])->filter(fn ($prop) => $attributes->has($prop))->values();
+
+if ($legacy->isNotEmpty()) {
+    throw new \LogicException(
+        '<atom:calendar> no longer takes '.$legacy->map(fn ($prop) => '`'.$prop.'`')->implode(' or ').': the event-calendar wrapper is gone. '
+        .'Use `views` (month, week, day) where `periods` chose the views; there is no timeline mode, so drop `modes`. '
+        .'The item shape and the events changed too: see "Upgrading from the event-calendar wrapper" in the README.'
+    );
+}
+
 // The bound property is the anchor date. With none the calendar is static: it shows `month` (or the
 // current one) and its views can be switched, but there is nowhere to navigate to.
 $model = $attributes->wire('model')->value();

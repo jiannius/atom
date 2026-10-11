@@ -791,3 +791,63 @@ describe('calendar accessibility markup', function () {
             ->and(calendarRenderAs('abc123'))->toBe(calendarRenderAs('abc123'));
     });
 });
+
+describe('calendar refuses the props of the wrapper it replaced', function () {
+    /**
+     * Render with attributes and return the exception that stopped it (the view engine may wrap it), or null.
+     */
+    function calendarRenderFailure(string $attributes): ?Throwable
+    {
+        try {
+            calendarRender($attributes);
+        } catch (Throwable $e) {
+            while ($e->getPrevious() && ! $e instanceof LogicException) {
+                $e = $e->getPrevious();
+            }
+
+            return $e;
+        }
+
+        return null;
+    }
+
+    it('throws for each prop the old wrapper took and the new one has no meaning for', function (string $attributes, string $prop) {
+        $failure = calendarRenderFailure($attributes);
+
+        expect($failure)->toBeInstanceOf(LogicException::class)
+            ->and($failure->getMessage())->toContain('`'.$prop.'`')
+            ->and($failure->getMessage())->toContain('`views`')
+            ->and($failure->getMessage())->toContain('Upgrading from the event-calendar wrapper');
+    })->with([
+        'modes, bound' => [':modes="[\'calendar\']"', 'modes'],
+        'modes, plain' => ['modes="calendar"', 'modes'],
+        'periods, bound' => [':periods="[\'month\', \'week\']"', 'periods'],
+        'periods, plain' => ['periods="month"', 'periods'],
+    ]);
+
+    it('names both when both are passed', function () {
+        $failure = calendarRenderFailure(':modes="[\'calendar\']" :periods="[\'month\']"');
+
+        expect($failure->getMessage())->toContain('`modes`')->toContain('`periods`');
+    });
+
+    it('does not throw for any prop it does take, or for the old name that is still a prop', function () {
+        $html = calendarRender('name="team" month="2026-10" :views="[\'month\', \'week\', \'day\']" view="week" week-start="sunday" :weekend="[\'friday\', \'saturday\']" :max="2" time-format="H:i" date-format="d/m/Y" selectable :draggable="false" :resizable="false" :slot-duration="15" scroll-time="08:00" :now-indicator="false"');
+
+        expect(calendarPayload($html)['config'])->toMatchArray(['views' => ['month', 'week', 'day'], 'view' => 'week', 'weekStart' => 'sunday', 'max' => 2]);
+    });
+
+    it('does not mistake an attribute that only starts like one for a legacy prop', function () {
+        expect(calendarRender('data-modes="x" data-periods="y"'))->toContain('data-atom-calendar');
+    });
+
+    it('is not passed by any docs page, demo or e2e page of the package', function () {
+        $root = __DIR__.'/../../';
+
+        foreach (Finder::create()->files()->in([$root.'resources/views', $root.'tests/Fixtures'])->name('*.blade.php') as $file) {
+            preg_match_all('/<atom:calendar\b(?:[^>]|=>)*?(?:\s:?(?:modes|periods)\b)/s', $file->getContents(), $matches);
+
+            expect($matches[0])->toBe([], $file->getRelativePathname());
+        }
+    });
+});
