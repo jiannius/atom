@@ -74,8 +74,10 @@
     // What the host does with an item that was moved or resized: window.__moves and window.__resizes are every `calendar-item-move` and
     // `calendar-item-resize` it was told (the detail, as it was given), and window.__itemMode what it does about it. 'none' leaves the item where it
     // was put; 'prevent' says no (preventDefault); 'wait' and 'reject' hold it with a promise that the test settles through window.__settle; 'livewire'
-    // stores it on the server and holds it until that is done; 'livewire-free' stores it and holds nothing; 'quiet' stores it with no render and holds it.
+    // stores it on the server and holds it until that is done; 'livewire-free' stores it and holds nothing; 'quiet' stores it with no render and holds it;
+    // 'hold' holds each one with a promise of its own, window.__holds[n] being the nth, for a test that settles them in an order of its own.
     window.__moves = []
+    window.__holds = []
     window.__resizes = []
     window.__itemMode = 'none'
 
@@ -88,6 +90,8 @@
             event.preventDefault()
         } else if (window.__itemMode === 'wait' || window.__itemMode === 'reject') {
             waitUntil(new Promise((resolve, reject) => { window.__settle = { resolve, reject } }))
+        } else if (window.__itemMode === 'hold') {
+            waitUntil(new Promise((resolve, reject) => { window.__holds.push({ resolve, reject }) }))
         } else if (window.__itemMode === 'livewire') {
             waitUntil(window.Livewire.first().reschedule(id, start, end))
         } else if (window.__itemMode === 'livewire-free') {

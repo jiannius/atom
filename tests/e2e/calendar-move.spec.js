@@ -569,6 +569,51 @@ test.describe('what the host does about it', () => {
     })
 })
 
+test.describe('an item that is moved while an earlier move of it is still held', () => {
+    test.beforeEach(async ({ page }) => {
+        await open(page)
+        await mode(page, 'hold')
+
+        // Hex colour: 20 October 14:00, alone on its day. The first move holds it on the 22nd with a promise, and the second on the 23rd with another.
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-23'))
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-23')
+        expect(await page.evaluate(() => window.__holds.length)).toBe(2)
+    })
+
+    test('the earlier one resolving does not settle the later: a payload that comes after is still not taken over where it was put', async ({ page }) => {
+        await page.evaluate(() => window.__holds[0].resolve())
+        await page.waitForTimeout(200)
+
+        // a payload comes, and the later move is still held
+        await page.locator('[data-toggle-extra]').click()
+        await payloadArrived(page, 'Added later')
+        await page.waitForTimeout(200)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-23')
+        expect((await engine(page)).overrides).toEqual(['10'])
+
+        // it is the later one that is settled, and the payload that came is the answer: the 20th
+        await page.evaluate(() => window.__holds[1].resolve())
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+        expect((await engine(page)).overrides).toEqual([])
+    })
+
+    test('the earlier one rejected does not put the later back', async ({ page }) => {
+        await page.evaluate(() => window.__holds[0].reject(new Error('no')))
+        await page.waitForTimeout(200)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-23')
+        expect((await engine(page)).overrides).toEqual(['10'])
+
+        // and the later one, rejected, does
+        await page.evaluate(() => window.__holds[1].reject(new Error('no')))
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+        expect((await engine(page)).overrides).toEqual([])
+    })
+})
+
 test.describe('Escape and the other ends of a drag that was not let go', () => {
     test.beforeEach(async ({ page }) => {
         await open(page)
