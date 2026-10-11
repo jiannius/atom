@@ -202,12 +202,15 @@ export default {
     // are not on screen could not be reached otherwise. The top is the bottom of the header that stays on top. A frame that has scrolled it works out
     // what the pointer is over again, as the pointer itself has not moved.
     autoScroll (gesture) {
+        // the scroller is looked up once, and again only if it has left the page
+        let grid = null
+
         let step = () => {
             if (gesture.abort.signal.aborted) return
 
             gesture.frame = requestAnimationFrame(step)
 
-            let grid = this.rootEl.querySelector('[data-atom-calendar-grid]')
+            if (!grid?.isConnected) grid = this.rootEl.querySelector('[data-atom-calendar-grid]')
 
             if (!grid || grid.scrollHeight <= grid.clientHeight) return
 
