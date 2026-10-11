@@ -1277,6 +1277,94 @@ test.describe('a touch', () => {
     })
 })
 
+// A finger's gesture has its time grid scrolled under it as a mouse's does. The long press that starts it is a timer, and the frame that scrolls is
+// handed the gesture the timer started: the engine is Alpine's proxy of the gesture it keeps, and the two must still be one gesture to it.
+test.describe('the time grid scrolls under a finger at its edge', () => {
+    test.beforeEach(async ({ page }) => {
+        await open(page, 'view=week&date=2026-10-12&selectable=1')
+    })
+
+    async function edge (page) {
+        const grid = await probe(page).locator('[data-atom-calendar-grid]').boundingBox()
+
+        return grid.y + grid.height - 10
+    }
+
+    test('under a block that is picked up by a long press: the grid goes down, and the item goes to the hours it scrolls to', async ({ page }) => {
+        const from = await near(chipOf(page, 'block', 'Design review'))
+        const to = { x: from.x, y: await edge(page) }
+        const before = await scrollTop(page)
+
+        await pointer(page, 'pointerdown', from)
+        await expect(shapes(page)).toHaveCount(1, { timeout: 1500 })
+        await pointer(page, 'pointermove', to)
+
+        await expect.poll(() => scrollTop(page)).toBeGreaterThan(before + 120)
+        await page.waitForTimeout(400)
+        await pointer(page, 'pointerup', to)
+
+        const [move] = await moves(page)
+
+        expect(move.id).toBe(6)
+        expect(move.start > '2026-10-14T17:00').toBe(true)
+    })
+
+    test('under the pull of the end of a block by a finger', async ({ page }) => {
+        const handle = await middle(handleOf(page, 'block', 'Design review'))
+        const to = { x: handle.x, y: await edge(page) }
+        const before = await scrollTop(page)
+
+        await pointer(page, 'pointerdown', handle)
+        await expect(shapes(page)).toHaveCount(1, { timeout: 1500 })
+        await pointer(page, 'pointermove', to)
+
+        await expect.poll(() => scrollTop(page)).toBeGreaterThan(before + 120)
+        await page.waitForTimeout(400)
+        await pointer(page, 'pointerup', to)
+
+        const [resize] = await resizes(page)
+
+        expect(resize.end > '2026-10-14T17:00').toBe(true)
+    })
+
+    test('under a selection made by a long press', async ({ page }) => {
+        const from = await at(page, '2026-10-13', 9)
+        const start = { x: from.x, y: from.y + 4 }
+        const to = { x: from.x, y: await edge(page) }
+        const before = await scrollTop(page)
+
+        await pointer(page, 'pointerdown', start)
+        await expect.poll(async () => (await engine(page)).preview?.kind, { timeout: 1500 }).toBe('select')
+        await pointer(page, 'pointermove', to)
+
+        await expect.poll(() => scrollTop(page)).toBeGreaterThan(before + 120)
+        await page.waitForTimeout(400)
+        await pointer(page, 'pointerup', to)
+
+        const [select] = await page.evaluate(() => window.__selects ?? [])
+
+        expect(select?.end > '2026-10-13T17:00').toBe(true)
+    })
+
+    test('and it stops with the gesture: nothing scrolls after the finger is let go', async ({ page }) => {
+        const from = await near(chipOf(page, 'block', 'Design review'))
+        const to = { x: from.x, y: await edge(page) }
+
+        const before = await scrollTop(page)
+
+        await pointer(page, 'pointerdown', from)
+        await expect(shapes(page)).toHaveCount(1, { timeout: 1500 })
+        await pointer(page, 'pointermove', to)
+        await expect.poll(() => scrollTop(page)).toBeGreaterThan(before + 40)
+        await pointer(page, 'pointerup', to)
+
+        const after = await scrollTop(page)
+
+        await page.waitForTimeout(300)
+        expect(await scrollTop(page)).toBe(after)
+    })
+})
+
 test.describe('two calendars on a page, and one that goes', () => {
     test('a drag in one is not the other\'s: the other has no gesture, no ghost and no moved item', async ({ page }) => {
         await open(page, '', '/atom/e2e/calendar-twin')

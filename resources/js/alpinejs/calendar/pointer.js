@@ -95,7 +95,13 @@ export default {
         let { signal } = abort
         let touch = event.pointerType === 'touch'
         let point = { x: event.clientX, y: event.clientY }
-        let gesture = this.gesture = { ...spec, id: event.pointerId, touch, origin: point, point, active: false, timer: null, frame: null, abort }
+
+        // What is read back from `this.gesture` is Alpine's reactive proxy of the object put there, not the object: a timer or a frame that is handed
+        // the one and asks about the other (`this.gesture === gesture`) is never equal. So the gesture used here is the one read back, and what asks
+        // whether a gesture is still the current one asks its abort signal, which is the gesture's own and is the same from either side.
+        this.gesture = { ...spec, id: event.pointerId, touch, origin: point, point, active: false, timer: null, frame: null, abort }
+
+        let gesture = this.gesture
 
         document.addEventListener('pointermove', (move) => this.gestureMove(move), { signal })
         document.addEventListener('pointerup', (up) => this.gestureEnd(up), { signal })
@@ -195,7 +201,7 @@ export default {
     // what the pointer is over again, as the pointer itself has not moved.
     autoScroll (gesture) {
         let step = () => {
-            if (this.gesture !== gesture) return
+            if (gesture.abort.signal.aborted) return
 
             gesture.frame = requestAnimationFrame(step)
 
