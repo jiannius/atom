@@ -825,6 +825,62 @@ describe('calendar refuses the props of the wrapper it replaced', function () {
         'periods, plain' => ['periods="month"', 'periods'],
     ]);
 
+    it('throws for an x-model on the tag, which the root no longer honours, and points at wire:model', function (string $attribute) {
+        $failure = calendarRenderFailure($attribute);
+
+        expect($failure)->toBeInstanceOf(LogicException::class)
+            ->and($failure->getMessage())->toContain('`'.explode('=', $attribute)[0].'`')
+            ->and($failure->getMessage())->toContain('`wire:model="date"`')
+            ->and($failure->getMessage())->toContain('Upgrading from the event-calendar wrapper');
+    })->with([
+        'plain' => ['x-model="date"'],
+        'with a modifier' => ['x-model.live="date"'],
+        'with an argument' => ['x-model:value="date"'],
+    ]);
+
+    it('throws for a listener of each event the old wrapper dispatched, in both spellings, and names the replacement', function (string $old, string $replacement) {
+        foreach (['x-on:', '@'] as $prefix) {
+            foreach (['', '.window', '.prevent', '.document.prevent'] as $modifier) {
+                $attribute = $prefix.$old.$modifier;
+                $failure = calendarRenderFailure($attribute.'="open($event)"');
+
+                expect($failure)->toBeInstanceOf(LogicException::class, $attribute)
+                    ->and($failure->getMessage())->toContain('`'.$attribute.'`')
+                    ->and($failure->getMessage())->toContain($replacement)
+                    ->and($failure->getMessage())->toContain('Upgrading from the event-calendar wrapper');
+            }
+        }
+    })->with([
+        'date clicked' => ['calendar-date-clicked', '`calendar-select`'],
+        'date selected' => ['calendar-date-selected', '`calendar-select`'],
+        'event clicked' => ['calendar-event-clicked', '`calendar-item-click`'],
+        'event dropped' => ['calendar-event-dropped', '`calendar-item-move`'],
+        'event resized' => ['calendar-event-resized', '`calendar-item-resize`'],
+        'changed' => ['calendar-changed', '`items` closure'],
+        'mounted' => ['calendar-mounted', 'no calendar object'],
+    ]);
+
+    it('lists every legacy attribute at once', function () {
+        $failure = calendarRenderFailure('modes="calendar" x-model="date" x-on:calendar-changed="fetch($event)" @calendar-event-clicked="open($event)"');
+
+        expect($failure->getMessage())->toContain('`modes`')
+            ->toContain('`x-model`')
+            ->toContain('`x-on:calendar-changed`')
+            ->toContain('`@calendar-event-clicked`');
+    });
+
+    it('does not throw for wire:model, data attributes, the new events, or a name that only starts like an old one', function (string $attributes) {
+        expect(calendarRender($attributes))->toContain('data-atom-calendar');
+    })->with([
+        'wire:model' => ['wire:model="date"'],
+        'wire:model.live' => ['wire:model.live="date"'],
+        'data attributes named after old events' => ['data-calendar-changed="1" data-x-model="a" data-calendar-event-clicked="1"'],
+        'x-on, the new events' => ['x-on:calendar-select="a" x-on:calendar-item-move="b" x-on:calendar-item-resize.window="c" x-on:calendar-item-click.prevent="d"'],
+        'at, the new events' => ['@calendar-select="a" @calendar-item-move="b" @calendar-item-click.window="d"'],
+        'an old name as a prefix of a longer one' => ['x-on:calendar-changed-by-me="a" x-on:calendar-mounted-later="b"'],
+        'other x- attributes' => ['x-data="{ a: 1 }" x-on:click="a" x-bind:class="b" x-modelable="c"'],
+    ]);
+
     it('names both when both are passed', function () {
         $failure = calendarRenderFailure(':modes="[\'calendar\']" :periods="[\'month\']"');
 

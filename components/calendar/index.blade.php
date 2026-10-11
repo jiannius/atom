@@ -18,14 +18,41 @@
 ])
 
 @php
-// The props of the event-calendar wrapper this component replaced. Passed now they would be printed as attributes and ignored, so the page would
-// show a month view where it asked for something else; a render that fails names them instead. `name` is not here: it is still a prop.
-$legacy = collect(['modes', 'periods'])->filter(fn ($prop) => $attributes->has($prop))->values();
+// What the event-calendar wrapper this component replaced took on the tag. Passed now it would be printed as an attribute and ignored: the page
+// would show a month view where it asked for something else, a listener would never be called, a binding would never be written. A render that
+// fails names each one instead. `name` is not here: it is still a prop. A dispatcher elsewhere in the page (an add-calendar-events dispatch) is
+// not on the tag, so it cannot be seen from here; the README's upgrade section says to search for it.
+$legacyProps = [
+    'modes' => 'there is no timeline mode, so drop it (the views are `views`: month, week, day)',
+    'periods' => 'use `views` (month, week, day)',
+];
+$legacyEvents = [
+    'calendar-date-clicked' => '`calendar-select` (a click is a one-day select; needs `selectable`)',
+    'calendar-date-selected' => '`calendar-select`',
+    'calendar-event-clicked' => '`calendar-item-click`',
+    'calendar-event-dropped' => '`calendar-item-move`',
+    'calendar-event-resized' => '`calendar-item-resize`',
+    'calendar-changed' => 'nothing: the `items` closure is called for the window on every render',
+    'calendar-mounted' => 'nothing: there is no calendar object to wait for',
+];
 
-if ($legacy->isNotEmpty()) {
+$legacy = [];
+
+foreach (array_keys($attributes->getAttributes()) as $attribute) {
+    $lowered = strtolower((string) $attribute);
+
+    if (isset($legacyProps[$lowered])) {
+        $legacy[] = '`'.$attribute.'` is gone: '.$legacyProps[$lowered].'.';
+    } elseif ($lowered === 'x-model' || str_starts_with($lowered, 'x-model.') || str_starts_with($lowered, 'x-model:')) {
+        $legacy[] = '`'.$attribute.'` no longer binds: the root is not `x-modelable`. Use `wire:model="date"` (a `Y-m-d` string), or none.';
+    } elseif (preg_match('/^(?:x-on:|@)([^.]+)/', $lowered, $listener) && isset($legacyEvents[$listener[1]])) {
+        $legacy[] = '`'.$attribute.'` listens for an event that is no longer dispatched. Use '.$legacyEvents[$listener[1]].'.';
+    }
+}
+
+if ($legacy !== []) {
     throw new \LogicException(
-        '<atom:calendar> no longer takes '.$legacy->map(fn ($prop) => '`'.$prop.'`')->implode(' or ').': the event-calendar wrapper is gone. '
-        .'Use `views` (month, week, day) where `periods` chose the views; there is no timeline mode, so drop `modes`. '
+        '<atom:calendar> still uses the event-calendar wrapper it replaced. '.implode(' ', $legacy).' '
         .'The item shape and the events changed too: see "Upgrading from the event-calendar wrapper" in the README.'
     );
 }
