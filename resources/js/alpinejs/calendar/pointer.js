@@ -120,7 +120,9 @@ export default {
 
             key.preventDefault()
             key.stopPropagation()
-            this.cancelGesture()
+
+            // the one end that leaves the button down: its release is still to come
+            this.cancelGesture(false)
         }, { signal, capture: true })
 
         // dragging over the days must not select their text, nor start the browser's own drag of a link
@@ -336,8 +338,10 @@ export default {
         if (held && apply) this.read()
     },
 
-    // The click that follows a drag, on the item it began on: it is not let through. It follows the release, which has not come yet when the drag
-    // was given up (Escape) with the button still down.
+    // The click that follows a drag, on the item it began on: it is not let through. It follows the release, which has not come yet only when the drag
+    // was given up (Escape) with the button still down. Any other end has had its release, or lost it where nothing heard it, and a click that
+    // comes later is the viewer's: so it is a short window, not a wait for a release that may never come. The next press ends the wait too, since
+    // the release it was for is not coming.
     eatClick (gesture, released) {
         let abort = new AbortController()
         let { signal } = abort
@@ -352,6 +356,8 @@ export default {
             abort.abort()
         }, { capture: true, signal })
 
+        document.addEventListener('pointerdown', () => abort.abort(), { capture: true, signal })
+
         if (released) done()
         else {
             document.addEventListener('pointerup', done, { capture: true, signal, once: true })
@@ -359,8 +365,9 @@ export default {
         }
     },
 
-    // Escape, a release nobody heard, the browser taking a touch: the gesture is not made, and the host is told nothing
-    cancelGesture (released = false) {
+    // Escape, a release nobody heard, the browser taking a touch: the gesture is not made, and the host is told nothing. `released` is false only for
+    // Escape, which leaves the button down.
+    cancelGesture (released = true) {
         let gesture = this.gesture
         let showing = gesture?.active
 

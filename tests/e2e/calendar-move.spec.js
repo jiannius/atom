@@ -660,6 +660,70 @@ test.describe('Escape and the other ends of a drag that was not let go', () => {
         expect(await moves(page)).toEqual([])
     })
 
+    // A drag that is given up with its release lost, where nothing heard it (the button was let go outside the window): the press and the moves are the
+    // pointer's own events, sent by hand with the button down, and no release follows
+    async function holdStandupWithoutRelease (page) {
+        const from = await middle(chipOf(page, 'dot', 'Team standup'))
+        const to = await inDay(page, '2026-10-14')
+
+        await page.evaluate(([x, y, toX, toY]) => {
+            const send = (kind, px, py) => document.elementFromPoint(px, py).dispatchEvent(new PointerEvent(kind, { pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1, bubbles: true, cancelable: true, composed: true, clientX: px, clientY: py }))
+
+            send('pointerdown', x, y)
+            send('pointermove', toX, toY)
+        }, [from.x, from.y, to.x, to.y])
+
+        await expect(ghosts(page)).toHaveCount(1)
+
+        return { from, to }
+    }
+
+    test('a drag given up with its release lost does not wait for a release: a click on the item a while after, with no press before it, is the viewer\'s', async ({ page }) => {
+        await holdStandupWithoutRelease(page)
+
+        await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+        await expect(ghosts(page)).toHaveCount(0)
+        await page.waitForTimeout(250)
+
+        // a click with no press before it: what a switch or a screen reader's "activate" sends
+        await chipOf(page, 'dot', 'Team standup').evaluate((el) => el.click())
+
+        expect(await page.evaluate(() => window.__clicks)).toEqual([1])
+        expect(await moves(page)).toEqual([])
+    })
+
+    test('and so with any other end that has no release to wait for: a context menu, a pointer moving with no button down, the page hidden', async ({ page }) => {
+        const ends = [
+            () => document.elementFromPoint(5, 5).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })),
+            () => document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, pointerType: 'mouse', isPrimary: true, buttons: 0, bubbles: true })),
+            () => {
+                Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' })
+                document.dispatchEvent(new Event('visibilitychange'))
+            },
+        ]
+
+        for (const end of ends) {
+            await holdStandupWithoutRelease(page)
+
+            await page.evaluate(end)
+            await expect(ghosts(page)).toHaveCount(0)
+            await page.waitForTimeout(250)
+            await page.evaluate(() => { window.__clicks = [] })
+            await chipOf(page, 'dot', 'Team standup').evaluate((el) => el.click())
+
+            expect(await page.evaluate(() => window.__clicks)).toEqual([1])
+        }
+    })
+
+    test('and a press, which is not the release that was lost, ends the wait for it even before the window has run out', async ({ page }) => {
+        const { from } = await holdStandupWithoutRelease(page)
+
+        await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+        await page.mouse.click(from.x, from.y)
+
+        expect(await page.evaluate(() => window.__clicks)).toEqual([1])
+    })
+
     test('a context menu opening gives it up', async ({ page }) => {
         const { to } = await holdStandup(page)
 
