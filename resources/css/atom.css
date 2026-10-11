@@ -784,8 +784,18 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
 }
 
 /* Narrow: no room for titles, so a day shows its number and up to four dots, and a tap opens the day list
-   that carries the titles. Container, not viewport: the calendar may sit in a narrow column of a wide page. */
+   that carries the titles. Container, not viewport: the calendar may sit in a narrow column of a wide page.
+   The probe is how the engine learns which layout is on: it is shown by this rule and only by it, so what the
+   engine does with a tap on a selectable calendar (open the list where the titles are hidden) cannot drift from it. */
+[data-atom-calendar-narrow] {
+    display: none;
+}
+
 @container (max-width: 600px) {
+    [data-atom-calendar-narrow] {
+        display: block;
+    }
+
     [data-atom-calendar-chips] {
         min-height: 4rem;
     }

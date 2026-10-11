@@ -76,6 +76,12 @@
     {{-- selectable: a day is for selecting a range, so a key opens no list, as a click opens none --}}
     <atom:calendar selectable month="2026-10" :items="[['id' => 's1', 'title' => 'Selectable item', 'start' => '2026-10-12']]" data-probe="selectable" />
 
+    {{-- a selectable calendar inside a form: a press in that form, outside the calendar, is a press elsewhere on the page for it --}}
+    <form x-on:submit.prevent data-form>
+        <atom:calendar selectable month="2026-10" :items="[['id' => 'f1', 'title' => 'In a form', 'start' => '2026-10-12']]" data-probe="in-form" />
+        <button type="button" data-form-button>A button of the form</button>
+    </form>
+
     {{-- a calendar inside an atom modal, a native dialog: Escape has to close the day list and leave the modal --}}
     <atom:button x-on:click="$dispatch('atom-modal-show', { name: 'calendar-modal' })" data-open-modal>Open calendar</atom:button>
 

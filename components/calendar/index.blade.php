@@ -119,6 +119,10 @@ data-atom-calendar
 
             {{-- Said when the title changes (a month, a week, a day), not when the payload does: `liveTitle` is written only for a new text. --}}
             <div x-text="liveTitle" x-bind:id="uid + '-title'" role="status" aria-live="polite" data-atom-calendar-sr></div>
+
+            {{-- Said while a selection waits for the host: its placeholder is hidden from assistive tech, so this is what tells that something is being made. A region
+                 of its own: the title's is written only when the title changes, and must not be read out for this. --}}
+            <div x-text="announcement" role="status" aria-live="polite" data-atom-calendar-sr data-atom-calendar-announce></div>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
@@ -142,6 +146,10 @@ data-atom-calendar
     </div>
 
     <div wire:ignore x-bind:id="uid + '-body'" data-atom-calendar-body>
+        {{-- Shown by atom.css where the month is laid out narrow, and by nothing else: the engine asks it whether the narrow layout is on (isNarrow()),
+             so that is decided in one place, by the stylesheet's own container rule. Not `hidden`: a Preflight's [hidden] rule would beat what shows it. --}}
+        <div aria-hidden="true" data-atom-calendar-narrow></div>
+
         <div x-cloak x-show="view === 'month'" role="grid" x-bind:aria-labelledby="uid + '-title'">
             <div role="row" data-atom-calendar-weekdays>
                 <template x-for="day in labels.weekdays" :key="day.key">

@@ -33,6 +33,10 @@ const TOUCH_SLOP = 10
 // What a press that starts a selection must not be on: an item, a "+N more" and a block of the time grid take their own click
 const NOT_EMPTY_SPACE = '[data-atom-calendar-slot], [data-atom-calendar-more], [data-atom-calendar-block]'
 
+// A press inside one of these is the host's own: a form it opens beside the calendar, a day list, a dialog. It does not take down the
+// selection that form is for (see lingerSelection), unless the calendar is inside it.
+const KEEPS_SELECTION = '[popover], dialog, form'
+
 const pad = (n) => String(n).padStart(2, '0')
 
 // 3, 4, 6 or 8 digits (#rgb, #rgba, #rrggbb, #rrggbbaa), as the server's Color::isHex() and colors.js read them: a 5 or 7 digit one is no colour
@@ -91,6 +95,8 @@ export default () => ({
     lingerAbort: null,
     // the payload attribute as it was last read, so a render that leaves it as it was is not a new payload
     payloadText: '',
+    // a payload came while a gesture was on: it waits for the gesture to end (see read() and endSelect())
+    payloadHeld: false,
     hours: Array.from({ length: 24 }, (_, hour) => hour),
 
     get labels () {
@@ -224,6 +230,11 @@ export default () => ({
         return has(anchor) ? anchor : (days[0]?.date ?? '')
     },
 
+    // What the second live region says: that a selection is with the host, for as long as its placeholder (which is hidden from assistive tech) is up
+    get announcement () {
+        return this.preview?.kind === 'pending' ? (this.labels.ui?.creating ?? '') : ''
+    },
+
     get popoverLabel () {
         return this.popoverDate ? this.longDate(this.popoverDate) : ''
     },
@@ -273,7 +284,7 @@ export default () => ({
             clearInterval(clock)
             controller.abort()
             this.keyAbort?.abort()
-            this.endSelect()
+            this.endSelect(false)
             this.lingerAbort?.abort()
             this.pendingToken = null
             this.closeDay(false)
@@ -295,8 +306,15 @@ export default () => ({
         }
     },
 
-    // Take the payload on the root. A payload that cannot be read keeps what is already on screen.
+    // Take the payload on the root. A payload that cannot be read keeps what is already on screen. While a gesture is on nothing is taken: the
+    // days, the rows and the boxes the pointer is measured against stay as they are under it, and the latest payload is read when the gesture ends.
     read () {
+        if (this.gesture) {
+            this.payloadHeld = true
+
+            return
+        }
+
         let text = this.$root.getAttribute('data-atom-calendar-payload')
         let payload = this.readJson(text)
 
@@ -409,10 +427,16 @@ export default () => ({
             case 'PageDown': target = addMonths(from, 1); byMonth = true; break
             case 'Enter':
             case ' ':
-                // as a click is, where a click selects instead
-                if (this.config.selectable) return
-
                 event.preventDefault()
+
+                // A day with items opens its list, as it does on a calendar that is not selectable. On one that is, an empty day is selected, as a click on
+                // it selects it: a day with nothing in it has nothing for a list to open.
+                if (this.config.selectable && !dayEntries(this.payload.items, day.date).length) {
+                    if (!this.gesture && !event.repeat) this.commitSelect(selectionRange(day.date, day.date))
+
+                    return
+                }
+
                 this.openDay(day.date, event.currentTarget)
 
                 return
@@ -647,7 +671,7 @@ export default () => ({
     },
 
     dayClick (day, event) {
-        // on a selectable calendar a click on a day is a selection of that day (selectStart), which opens no list
+        // on a selectable calendar a press on a day is a selection (selectStart), which opens its list only where a tap does (see selectEnd)
         if (this.config.selectable) return
 
         if (day.count > 0) this.openDay(day.date, event.currentTarget)
@@ -661,6 +685,10 @@ export default () => ({
     // The calendar creates nothing: it tells the host with `calendar-select` (see commitSelect).
     selectStart (event, area) {
         if (!this.config.selectable || !this.payload || this.gesture || event.button !== 0 || event.isPrimary === false) return
+
+        // A press with a key held is not a selection's. Ctrl with the button is the context-menu click of a Mac: it sends a contextmenu and no
+        // pointerup, so it would leave a gesture that nothing ends. Shift is kept for a range by keys, Alt and Meta for the browser's and the system's own.
+        if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return
 
         if (event.target.closest?.(NOT_EMPTY_SPACE)) return
 
@@ -679,6 +707,13 @@ export default () => ({
         document.addEventListener('pointermove', (move) => this.selectMove(move), { signal })
         document.addEventListener('pointerup', (up) => this.selectEnd(up), { signal })
         document.addEventListener('pointercancel', (cancel) => { if (cancel.pointerId === gesture.id) this.endSelect() }, { signal })
+
+        // A release that nothing heard must not leave the selection following the pointer: the window lost its focus or its page (a click in a
+        // context menu, a switch of window or tab) or a menu opened. A touch's long press sends a contextmenu of its own, which is prevented below.
+        window.addEventListener('blur', () => this.cancelSelect(), { signal })
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') this.cancelSelect() }, { signal })
+
+        if (!touch) document.addEventListener('contextmenu', () => this.cancelSelect(), { signal })
 
         // Escape gives the selection up, and it is the selection's: not the modal's the calendar may be in
         document.addEventListener('keydown', (key) => {
@@ -714,6 +749,9 @@ export default () => ({
 
         if (!gesture || event.pointerId !== gesture.id) return
 
+        // A mouse or a pen that moves with no button down was let go where nothing heard it: the selection is given up, not followed
+        if (!gesture.touch && event.buttons === 0) return this.cancelSelect()
+
         let point = { x: event.clientX, y: event.clientY }
 
         if (!gesture.active) {
@@ -745,10 +783,26 @@ export default () => ({
 
         if (gesture.active) gesture.current = this.cellAt(gesture.area, event.clientX, event.clientY) ?? gesture.current
 
-        let range = selectionRange(gesture.anchor, gesture.current, { slotDuration: this.config.slotDuration ?? 30 })
+        let { anchor, area, active } = gesture
+        let range = selectionRange(anchor, gesture.current, { slotDuration: this.config.slotDuration ?? 30 })
 
         this.endSelect()
+
+        // In the narrow month a day shows no titles (see atom.css), so a tap on a day that has items opens its list, which does. A drag, and a
+        // press that was held long enough to start one, still select, and so a busy day can still be created on.
+        if (!active && area === 'month' && this.isNarrow() && dayEntries(this.payload.items, anchor).length) {
+            return this.openDay(anchor, this.rootEl.querySelector('[data-atom-calendar-day][data-date="' + anchor + '"]'))
+        }
+
         this.commitSelect(range)
+    },
+
+    // Whether the month is laid out narrow. Not measured here: the stylesheet is asked, through a probe that its own container query shows (the
+    // same rule that hides the titles), so the two cannot disagree on the width or on what it is the width of.
+    isNarrow () {
+        let probe = this.rootEl.querySelector('[data-atom-calendar-narrow]')
+
+        return Boolean(probe) && getComputedStyle(probe).display !== 'none'
     },
 
     // Draw the range the gesture covers, when it is not what is up
@@ -763,8 +817,9 @@ export default () => ({
         this.preview = { kind: 'select', ...range }
     },
 
-    // Stop following the pointer: the gesture is over, whatever it came to
-    endSelect () {
+    // Stop following the pointer: the gesture is over, whatever it came to. The payload that came meanwhile is taken now, `apply` being false
+    // only where the calendar is being torn down.
+    endSelect (apply = true) {
         let gesture = this.gesture
 
         if (!gesture) return
@@ -772,6 +827,12 @@ export default () => ({
         clearTimeout(gesture.timer)
         gesture.abort.abort()
         this.gesture = null
+
+        let held = this.payloadHeld
+
+        this.payloadHeld = false
+
+        if (held && apply) this.read()
     },
 
     // Escape: the selection is not made, and the host is told nothing
@@ -788,7 +849,7 @@ export default () => ({
     // Either goes straight to the server's Calendar::fromLocal(). The host holds the selection with `waitUntil(promise)`, called while it handles the
     // event: a placeholder (a box with a spinner and a title) stays where the selection was until the promise has settled, resolved or rejected, and
     // goes then, the new item having come with the payload. A selection that nothing holds stays until the next payload, a new gesture, Escape or a
-    // press anywhere else (see lingerSelection), so a host that opens a form for it has the range in view while the form is up.
+    // press elsewhere on the page (see lingerSelection), so a host that opens a form for it has the range in view while the form is up.
     commitSelect (range) {
         let promises = []
 
@@ -797,7 +858,8 @@ export default () => ({
 
         this.rootEl.dispatchEvent(new CustomEvent('calendar-select', {
             bubbles: true,
-            cancelable: true,
+            // the host holds the selection with waitUntil: there is nothing for a handler to cancel, and `.prevent` is a no-op
+            cancelable: false,
             detail: { ...range, waitUntil: (promise) => { promises.push(Promise.resolve(promise)) } },
         }))
 
@@ -816,15 +878,20 @@ export default () => ({
         })
     },
 
-    // What a selection that nothing holds waits for, besides the next payload: a press anywhere (a click on the page ends it, as a click outside a
-    // field does) and Escape
+    // What a selection that nothing holds waits for, besides the next payload: a press on the page (a click on it ends the selection, as a click outside
+    // a field does) and Escape. A press in a popover, a dialog or a form does not: that is the host's form for the selection, a non-modal one beside the
+    // calendar, and pressing in it must leave the range in view. Unless the calendar is inside it, as it is in a modal: that press is on the page.
     lingerSelection () {
         this.lingerAbort?.abort()
 
         let abort = this.lingerAbort = new AbortController()
         let { signal } = abort
 
-        document.addEventListener('pointerdown', () => this.clearSelection(), { signal, capture: true })
+        document.addEventListener('pointerdown', (event) => {
+            let keeper = event.target.closest?.(KEEPS_SELECTION)
+
+            if (!keeper || keeper.contains(this.rootEl)) this.clearSelection()
+        }, { signal, capture: true })
         document.addEventListener('keydown', (event) => { if (event.key === 'Escape') this.clearSelection() }, { signal, capture: true })
     },
 
