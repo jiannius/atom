@@ -11,6 +11,9 @@
     :views="['month', 'week', 'day']"
     :view="$view"
     :selectable="$selectable"
+    :draggable="$draggable"
+    :resizable="$draggable"
+    :slot-duration="$slot"
     :week-start="$weekStart"
     :items="fn ($from, $to) => $this->calendarItems($from, $to)"
     data-probe="calendar">
@@ -19,4 +22,5 @@
     </atom:calendar>
 
     <div data-created>{{ json_encode($created) }}</div>
+    <div data-rescheduled>{{ json_encode($rescheduled) }}</div>
 </div>

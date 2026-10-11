@@ -77,6 +77,14 @@
         'kl-gap' => [
             ['id' => 'gap', 'title' => 'Gap item', 'start' => '2026-03-08T02:30:00+08:00', 'end' => '2026-03-08T03:30:00+08:00'],
         ],
+        // the flags: an item's own beat the calendar's, and a calendar that cannot move or resize anything (?draggable=0) beats none
+        'flags' => [
+            ['id' => 'free', 'title' => 'Free item', 'start' => '2026-10-09T10:00:00+08:00', 'end' => '2026-10-09T11:00:00+08:00'],
+            ['id' => 'locked', 'title' => 'Locked item', 'start' => '2026-10-09T13:00:00+08:00', 'end' => '2026-10-09T14:00:00+08:00', 'draggable' => false],
+            ['id' => 'fixed', 'title' => 'Fixed length', 'start' => '2026-10-09T15:00:00+08:00', 'end' => '2026-10-09T16:00:00+08:00', 'resizable' => false],
+            ['id' => 'day-free', 'title' => 'Free day', 'start' => '2026-10-08', 'end' => '2026-10-09'],
+            ['id' => 'day-fixed', 'title' => 'Fixed day', 'start' => '2026-10-10', 'resizable' => false],
+        ],
         // what a block is called: one of each kind of colour (a name, a hex, none) and an overdue one, given out of order
         'names' => [
             ['id' => 'n-late', 'title' => 'Server upgrade', 'start' => '2026-10-09T14:00:00+08:00', 'end' => '2026-10-09T15:30:00+08:00', 'color' => 'red', 'danger' => true],
@@ -116,6 +124,8 @@
     :scroll-time="request('scroll', '06:00')"
     :now-indicator="request('indicator', '1') !== '0'"
     :selectable="request('selectable') === '1'"
+    :draggable="request('draggable', '1') !== '0'"
+    :resizable="request('resizable', '1') !== '0'"
     :slot-duration="(int) request('slot', 30)"
     :items="$items"
     data-probe="grid" />
@@ -129,6 +139,12 @@
 
         window.__selects.push({ start, end, allDay })
     })
+
+    // every item the host was told was moved or resized, as it was told
+    window.__moves = []
+    window.__resizes = []
+    document.addEventListener('calendar-item-move', (event) => window.__moves.push({ id: event.detail.id, start: event.detail.start, end: event.detail.end, allDay: event.detail.allDay }))
+    document.addEventListener('calendar-item-resize', (event) => window.__resizes.push({ id: event.detail.id, start: event.detail.start, end: event.detail.end }))
 </script>
 
 @livewireScripts

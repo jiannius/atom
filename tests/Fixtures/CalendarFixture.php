@@ -5,6 +5,7 @@ namespace Jiannius\Atom\Tests\Fixtures;
 use Jiannius\Atom\Services\Calendar;
 use Jiannius\Atom\Services\Carbon;
 use Jiannius\Atom\Traits\AtomComponent;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 /**
@@ -32,6 +33,24 @@ class CalendarFixture extends Component
     /** The first day of the week; ?weekStart=sunday. */
     public string $weekStart = 'monday';
 
+    /** Whether items can be dragged and pulled by their end; ?draggable=0 turns both off. */
+    public bool $draggable = true;
+
+    /** The time grid's slot length in minutes; ?slot=15. */
+    public int $slot = 30;
+
+    /** Whether the month has an item that may be neither moved nor resized (an item's own flags beat the calendar's); ?locked=1. */
+    public bool $locked = false;
+
+    /** Where the items that were moved or resized were put, as the host stored them: [id => { start, end }], in the viewer's wall clock. */
+    public array $placed = [];
+
+    /** What reschedule() was given, one row each, for a test to read off the page. */
+    public array $rescheduled = [];
+
+    /** Ids of items the host has taken away, for a test that removes the item that is being dragged. */
+    public array $hidden = [];
+
     /** What create() was given and what it made of it, one row each, for a test to read off the page. */
     public array $created = [];
 
@@ -55,6 +74,9 @@ class CalendarFixture extends Component
         $this->busy = request()->boolean('busy');
         $this->selectable = request()->boolean('selectable');
         $this->weekStart = (string) request()->query('weekStart', $this->weekStart);
+        $this->draggable = request()->query('draggable', '1') !== '0';
+        $this->slot = (int) request()->query('slot', $this->slot);
+        $this->locked = request()->boolean('locked');
     }
 
     /**
@@ -94,6 +116,46 @@ class CalendarFixture extends Component
             'allDay' => $allDay,
             'startUtc' => Calendar::fromLocal($start)->utc()->format('Y-m-d\TH:i:s\Z'),
             'endUtc' => Calendar::fromLocal($end)->utc()->format('Y-m-d\TH:i:s\Z'),
+        ];
+    }
+
+    /**
+     * Put an item where a move or a resize says, as a host does: the calendar's wall-clock strings are what is stored (an instant, through
+     * Calendar::fromLocal(), for a time), and the next render has the item there.
+     */
+    public function reschedule(int|string $id, string $start, ?string $end): void
+    {
+        $this->place($id, $start, $end);
+    }
+
+    /**
+     * The same, answering with no render: the calendar has no payload to take the item's place from, and keeps it where it was put.
+     */
+    #[Renderless]
+    public function rescheduleQuiet(int|string $id, string $start, ?string $end): void
+    {
+        $this->place($id, $start, $end);
+    }
+
+    /**
+     * Take an item away, as another user deleting it would.
+     */
+    public function hide(int|string $id): void
+    {
+        $this->hidden[] = $id;
+    }
+
+    /**
+     * Store where an item was put, and what the host was given.
+     */
+    protected function place(int|string $id, string $start, ?string $end): void
+    {
+        $this->placed[(string) $id] = ['start' => $start, 'end' => $end];
+        $this->rescheduled[] = [
+            'id' => $id,
+            'start' => $start,
+            'end' => $end,
+            'startUtc' => str_contains($start, 'T') ? Calendar::fromLocal($start)->utc()->format('Y-m-d\TH:i:s\Z') : null,
         ];
     }
 
@@ -164,6 +226,11 @@ class CalendarFixture extends Component
             ]);
         }
 
+        if ($this->locked) {
+            $items[] = ['id' => 80, 'title' => 'Locked item', 'start' => '2026-10-13', 'end' => '2026-10-14', 'draggable' => false, 'resizable' => false];
+            $items[] = ['id' => 81, 'title' => 'Fixed length', 'start' => '2026-10-15', 'resizable' => false];
+        }
+
         if ($this->lone) {
             $items[] = ['id' => 90, 'title' => 'Lone item', 'start' => '2026-10-16'];
         }
@@ -185,7 +252,23 @@ class CalendarFixture extends Component
                 : ['id' => $row['id'], 'title' => 'Created', 'start' => Calendar::fromLocal($row['start']), 'end' => Calendar::fromLocal($row['end']), 'color' => 'blue'];
         }
 
+        // where the host put the items that were moved or resized: a date for an all-day item, an instant for a timed one
+        $items = array_map(function (array $item) {
+            $row = $this->placed[(string) $item['id']] ?? null;
+
+            if (! $row) {
+                return $item;
+            }
+
+            if (! str_contains($row['start'], 'T')) {
+                return [...$item, 'start' => $row['start'], 'end' => $row['end'], 'all_day' => true];
+            }
+
+            return [...$item, 'start' => Calendar::fromLocal($row['start']), 'end' => $row['end'] ? Calendar::fromLocal($row['end']) : null, 'all_day' => false];
+        }, $items);
+
         return collect($items)
+            ->reject(fn (array $item) => in_array($item['id'], $this->hidden, true))
             ->filter(function (array $item) use ($from, $to) {
                 $start = $item['start'] instanceof Carbon ? $item['start'] : Carbon::parse($item['start'], Calendar::appTimezone());
 

@@ -70,5 +70,36 @@
     })
 </script>
 
+<script>
+    // What the host does with an item that was moved or resized: window.__moves and window.__resizes are every `calendar-item-move` and
+    // `calendar-item-resize` it was told (the detail, as it was given), and window.__itemMode what it does about it. 'none' leaves the item where it
+    // was put; 'prevent' says no (preventDefault); 'wait' and 'reject' hold it with a promise that the test settles through window.__settle; 'livewire'
+    // stores it on the server and holds it until that is done; 'livewire-free' stores it and holds nothing; 'quiet' stores it with no render and holds it.
+    window.__moves = []
+    window.__resizes = []
+    window.__itemMode = 'none'
+
+    const answer = (event, log) => {
+        const { id, start, end, allDay, waitUntil } = event.detail
+
+        log.push(allDay === undefined ? { id, start, end } : { id, start, end, allDay })
+
+        if (window.__itemMode === 'prevent') {
+            event.preventDefault()
+        } else if (window.__itemMode === 'wait' || window.__itemMode === 'reject') {
+            waitUntil(new Promise((resolve, reject) => { window.__settle = { resolve, reject } }))
+        } else if (window.__itemMode === 'livewire') {
+            waitUntil(window.Livewire.first().reschedule(id, start, end))
+        } else if (window.__itemMode === 'livewire-free') {
+            window.Livewire.first().reschedule(id, start, end)
+        } else if (window.__itemMode === 'quiet') {
+            waitUntil(window.Livewire.first().rescheduleQuiet(id, start, end))
+        }
+    }
+
+    document.addEventListener('calendar-item-move', (event) => answer(event, window.__moves))
+    document.addEventListener('calendar-item-resize', (event) => answer(event, window.__resizes))
+</script>
+
 @livewireScripts
 </atom:html>

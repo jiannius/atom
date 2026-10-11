@@ -23,6 +23,13 @@ export default defineConfig({
       testMatch: /calendar-select\.spec\.js$/,
     },
     {
+      // moving and resizing run on the same pointer events, and a touch (iOS) is WebKit's
+      name: 'webkit-move',
+      dependencies: ['chromium'],
+      use: { ...devices['Desktop Safari'] },
+      testMatch: /calendar-move\.spec\.js$/,
+    },
+    {
       name: 'webkit-look',
       dependencies: ['chromium'],
       use: { ...devices['Desktop Safari'] },
