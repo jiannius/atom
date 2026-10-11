@@ -51,6 +51,9 @@ class CalendarFixture extends Component
     /** What reschedule() was given, one row each, for a test to read off the page. */
     public array $rescheduled = [];
 
+    /** The ids edit() was given, for a test to read off the page. */
+    public array $edited = [];
+
     /** Ids of items the host has taken away, for a test that removes the item that is being dragged. */
     public array $hidden = [];
 
@@ -130,6 +133,14 @@ class CalendarFixture extends Component
     public function reschedule(int|string $id, string $start, ?string $end): void
     {
         $this->place($id, $start, $end);
+    }
+
+    /**
+     * What the click on an item sends, as the README's example has it: the host opens its form for the id there.
+     */
+    public function edit(int|string $id): void
+    {
+        $this->edited[] = $id;
     }
 
     /**

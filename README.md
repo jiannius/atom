@@ -697,7 +697,7 @@ class Index extends Component
         return Event::query()
             ->where('starts_at', '<=', $to)
             ->where(fn ($query) => $query
-                ->where('ends_at', '>', $from)
+                ->where('ends_at', '>=', $from)
                 ->orWhere(fn ($query) => $query->whereNull('ends_at')->where('starts_at', '>=', $from)))
             ->get()
             ->map(fn (Event $event) => [
@@ -726,6 +726,13 @@ class Index extends Component
         $event->update($this->instants($start, $end, $event->all_day));
     }
 
+    public function edit(int $id): void
+    {
+        $this->authorize('update', Event::findOrFail($id));
+
+        /** Open your edit form for this event here. */
+    }
+
     /** What the calendar says is the viewer's wall clock; what is stored is an instant. */
     protected function instants(string $start, ?string $end, bool $allDay): array
     {
@@ -751,7 +758,7 @@ class Index extends Component
     x-on:calendar-item-click="$wire.edit($event.detail.id)" />
 ```
 
-`create()` and `reschedule()` are Livewire actions, so the browser can call them with any arguments: authorise and scope them as you would any action.
+`create()`, `reschedule()` and `edit()` are Livewire actions, so the browser can call them with any arguments: authorise and scope them as you would any action. The query asks for `ends_at >= $from`, a harmless over-fetch of anything that ends exactly at the window's start, so that an item with no length that sits on the window's first instant is not dropped.
 
 ### How the window and the data flow work
 
@@ -833,6 +840,8 @@ Everything the calendar shows and says is in the **viewer's timezone**, `Jianniu
 
 **Convert every date the calendar gives you with `Calendar::fromLocal()`** (`Jiannius\Atom\Services\Calendar`). Events carry wall-clock strings (`2026-10-09T09:30`, or `2026-10-09` for days), and `fromLocal()` turns one into an instant in the application timezone, daylight saving included. It throws `InvalidArgumentException` for anything that is not `Y-m-d` or `Y-m-dTH:i[:s]` with no offset. Do not hand the string to Eloquent as it is, and do not give it a Carbon in another zone: Eloquent writes a Carbon's wall clock without converting it. A bare date (`allDay: true`) is a date, not an instant: store it as one, or add the day after its end as in the example above.
 
+**Building dates for the viewer.** `Calendar::now()` is the current moment as a `Carbon` in the viewer's timezone, so `Calendar::now()->startOfWeek()` is the start of the viewer's week and not the server's (the docs demos use it). `Calendar::timezone()` is the viewer's zone name and `Calendar::appTimezone()` is `config('app.timezone')`, the zone `fromLocal()` returns and the `items` closure's `$from` and `$to` are in. Plain `now()` is in the application timezone.
+
 ### Events
 
 The calendar dispatches bubbling events from its root. Listen with `x-on:` on the tag, on an element around it, or on `document`. Times are the viewer's wall clock.
@@ -879,7 +888,7 @@ With no `wire:model` the calendar is static. It shows `month` (or the current mo
 
 ### Upgrading from the event-calendar wrapper
 
-The old `<atom:calendar>` wrapped `@event-calendar/core`. It is gone, together with that package and its `calendar` JS chunk and CSS file, and the new component is built into `atom.js` and `atom.css`. The tag is the same, nothing else is. A page that still passes the old props throws when it renders, so the first `composer update` on a development machine shows you every place to change.
+The old `<atom:calendar>` wrapped `@event-calendar/core`. It is gone, together with that package and its `calendar` JS chunk and CSS file, and the new component is built into `atom.js` and `atom.css`. The tag is the same, nothing else is. A render throws, naming the attribute and what replaces it, when the tag itself carries any of these: the props `modes` and `periods`; an `x-model` (with or without modifiers; `wire:model` is fine); or an `x-on:` or `@` listener, with any modifier (`.window`, `.prevent`...), for `calendar-date-clicked`, `calendar-date-selected`, `calendar-event-clicked`, `calendar-event-dropped`, `calendar-event-resized`, `calendar-changed` or `calendar-mounted`. Anything that is not on the tag cannot be seen, and does not throw: it stops working without a message. That is a `$dispatch('add-calendar-events', ...)` (or `update-` or `remove-`) from anywhere on the page, a listener you put on `window` or `document` in a script, and CSS aimed at the old markup. Search your code for `-calendar-events`, `calendar-` and `ec-`.
 
 **Props**
 
@@ -891,7 +900,9 @@ The old `<atom:calendar>` wrapped `@event-calendar/core`. It is gone, together w
 | First day of the week was Sunday | `week-start` defaults to `monday`: pass `week-start="sunday"` to keep Sunday. |
 | A day grew to fit its items | A day shows `max` rows (`3`) and "+N more". `:max="false"` for the old behaviour. |
 | Every click and drag selected | `selectable` is off by default. Add it to keep creating. Drag and resize stay on. |
-| `x-model="date"` (an ISO instant) | `wire:model="date"` (`Y-m-d`), or none. |
+| `x-model="date"` (an ISO instant) | `wire:model="date"` (`Y-m-d`), or none. Passing `x-model` throws. |
+| Offset-less strings were read, and everything drawn, in the browser's timezone | An offset-less string is read in `config('app.timezone')`, and everything is drawn in the viewer's timezone, `Carbon::getLocalTimezone()` (the signed-in user's `timezone`, else `TIMEZONE` in the environment, else `Asia/Kuala_Lumpur`), whatever the browser says. A host with neither a `timezone` on its users nor `TIMEZONE` set shows everyone Kuala Lumpur time: set one. See Dates and timezones. |
+| CSS aimed at `.ec-*` classes, `--ec-*` variables or `[&_.ec-event]` utilities on the tag | No longer applies: none of that markup exists. The look comes from the `color` presets, `config('atom.calendar.colors')` and the `--atom-calendar-*` variables above; delete the old rules. |
 
 **Getting items in.** The `add-calendar-events`, `update-calendar-events` and `remove-calendar-events` window events are gone, and so is the `calendar-changed` event that told you to fetch. The calendar asks your `items` closure for the window on every render, and a normal re-render after you save is the update, so a `#[Renderless]` fetch method and the events around it can be deleted. A host that fetched in `calendar-changed` replaces that with the closure and the overlap query in the Quick start.
 
@@ -901,7 +912,7 @@ The old `<atom:calendar>` wrapped `@event-calendar/core`. It is gone, together w
 |---|---|
 | `start_at`, `end_at` | `start`, `end` (an end that is a date is the last day, included) |
 | `all_day` | `all_day` |
-| `bg_color`, `background_color` | `color`: a preset name or a hex colour. An item with none is **zinc**, whatever the wrapper's default drew. |
+| `bg_color`, `background_color` | `color`: a preset name or a hex colour. An item with none is **zinc**: the old default was a dark zinc-600 fill in a Tailwind v4 host (red-800 only where a Tailwind v3 build applied the wrapper's `[&_.ec-event]:bg-red-800`), the new one is the lighter zinc preset chip, a pale tint with a zinc edge and neutral text. |
 | `draggable`, `resizable` | `draggable`, `resizable` |
 | `text_color`, `class`, `style`, `meta`, `editable`, `resources` | Removed. Text is always neutral; look the record up by `id` from the event. |
 | | New: `icon`, `danger`, `href` |
@@ -915,6 +926,8 @@ The old `<atom:calendar>` wrapped `@event-calendar/core`. It is gone, together w
 | `calendar-event-dropped` | `calendar-item-move` |
 | `calendar-event-resized` | `calendar-item-resize` |
 | `calendar-changed`, `calendar-mounted` | Removed |
+
+An `x-on:` or `@` listener for any of the old events, on the tag, throws and names its replacement; one on `window`, `document` or a wrapping element is not on the tag, so it is silent: search for it.
 
 Every date in an event goes through `Calendar::fromLocal()` where an `info.startUtc` was used before; see Dates and timezones. The `is-loading` class a host could bind is not needed: the toolbar shows its own spinner while it waits for a window.
 

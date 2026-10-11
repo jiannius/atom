@@ -7,7 +7,7 @@
     </div>
 
     @if ($wired)
-        {{-- the wiring the README documents: x-on on the tag, $wire methods, waitUntil --}}
+        {{-- the wiring the README's Quick start shows, line for line (CalendarDocsTest holds the two together): x-on on the tag, $wire methods, waitUntil --}}
         <atom:calendar
         wire:model="date"
         :views="['month', 'week', 'day']"
@@ -17,6 +17,7 @@
         x-on:calendar-select="$event.detail.waitUntil($wire.create($event.detail.start, $event.detail.end, $event.detail.allDay))"
         x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
         x-on:calendar-item-resize="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
+        x-on:calendar-item-click="$wire.edit($event.detail.id)"
         data-probe="calendar" />
     @else
         <atom:calendar
@@ -37,4 +38,5 @@
 
     <div data-created>{{ json_encode($created) }}</div>
     <div data-rescheduled>{{ json_encode($rescheduled) }}</div>
+    <div data-edited>{{ json_encode($edited) }}</div>
 </div>

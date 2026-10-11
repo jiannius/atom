@@ -15,4 +15,4 @@ $items = [
 ];
 @endphp
 
-<atom:calendar :views="['month', 'week', 'day']" view="week" :items="$items" />
+<atom:calendar :views="['month', 'week', 'day']" view="week" :slot-duration="15" scroll-time="07:30" :now-indicator="true" :items="$items" />

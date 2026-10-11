@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test'
 
-// The wiring the README shows, as it is written there: x-on attributes on the <atom:calendar> tag that call $wire methods and hand their
-// promise to waitUntil. The Livewire fixture (/atom/e2e/calendar?wired=1, frozen at 2026-10-09 10:30 in Kuala Lumpur) has the two actions the
-// README's example has, create() and reschedule(), and shows what they were given. No host script on the page answers: only the tag does.
+// The wiring the README shows: x-on attributes on the <atom:calendar> tag that call $wire methods and hand their promise to waitUntil.
+// CalendarDocsTest holds the fixture's tag to the README's Quick start line by line, and its methods to the README class's. The Livewire
+// fixture (/atom/e2e/calendar?wired=1, frozen at 2026-10-09 10:30 in Kuala Lumpur) has the three actions the README's example has, create(),
+// reschedule() and edit(), and shows what they were given. No host script on the page answers: only the tag does.
 
 const HOUR = 3.5
 
@@ -81,4 +82,26 @@ test('a selection handled by x-on creates on the server, and the new item comes 
 
     await expect(column(page, '2026-10-15').locator('[data-atom-calendar-block]', { hasText: 'Created' })).toBeVisible()
     await expect(calendar(page).locator('[data-atom-calendar-pending]')).toHaveCount(0)
+})
+
+test('a click on an item handled by x-on on the tag calls edit() with its id, and a drag does not', async ({ page }) => {
+    await open(page)
+
+    const edited = () => page.evaluate(() => JSON.parse(JSON.stringify(window.Livewire.first().edited)))
+
+    // Dentist, id 5: a plain click, and the keyboard's way (Enter on a focused block)
+    await block(page, 'Dentist').click()
+    await expect.poll(edited).toEqual([5])
+
+    await block(page, 'Lunch with Sam').locator('[data-atom-calendar-chip]').focus()
+    await page.keyboard.press('Enter')
+    await expect.poll(edited).toEqual([5, 7])
+
+    // a drag of an item moves it and is not a click
+    const from = await block(page, 'Design review').boundingBox()
+    const next = await column(page, '2026-10-15').boundingBox()
+
+    await drag(page, { x: from.x + from.width / 2, y: from.y + 10 }, { x: next.x + next.width / 2, y: from.y + 10 })
+    await expect.poll(() => rescheduled(page)).toHaveLength(1)
+    expect(await edited()).toEqual([5, 7])
 })
