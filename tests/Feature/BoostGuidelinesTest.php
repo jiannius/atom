@@ -235,3 +235,33 @@ it('keeps the moved rules in the skill as well', function () {
         ->and($skill)->toContain('**Scope the query anyway.**')
         ->and($skill)->toContain('Never use bare `grid-cols-2`');
 });
+
+// A host's agent only learns how the calendar is wired, and the three ways it goes wrong silently (a public items method, a date that
+// is not converted, a save that nothing holds), from the skill; the always-on guideline points at it.
+it('documents the calendar wiring and its silent footguns in the skill', function () {
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+    expect($skill)->toContain('### Calendar')
+        ->and($skill)->toContain('**The items method must be `protected`.**')
+        ->and($skill)->toContain('`Jiannius\Atom\Services\Calendar::fromLocal($string)`')
+        ->and($skill)->toContain('**Load by overlap, not by start.**')
+        ->and($skill)->toContain('->whereNull(\'ends_at\')')
+        ->and($skill)->toContain('**Pass the promise of your save to `waitUntil()`**')
+        ->and($skill)->toContain('**Do not put `#[Renderless]` on the handler**')
+        ->and($skill)->toContain('`modes` and `periods`')
+        ->and(boostFile('guidelines/core.blade.php'))->toContain('the calendar');
+});
+
+// The skill's calendar section is the wiring the README shows: its events and props are the ones the component has.
+it('names only calendar events and props the component has', function () {
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+    $component = file_get_contents(__DIR__.'/../../components/calendar/index.blade.php');
+
+    preg_match_all('/(calendar-(?:select|item-[a-z]+))/', $skill, $events);
+
+    expect(array_values(array_unique($events[1])))->toEqualCanonicalizing(['calendar-select', 'calendar-item-move', 'calendar-item-resize', 'calendar-item-click']);
+
+    foreach (['views', 'view', 'weekStart', 'weekend', 'max', 'timeFormat', 'dateFormat', 'selectable', 'draggable', 'resizable', 'slotDuration', 'scrollTime', 'nowIndicator', 'name'] as $prop) {
+        expect($component)->toContain("'".$prop."' =>");
+    }
+});

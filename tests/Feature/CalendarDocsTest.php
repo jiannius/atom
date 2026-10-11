@@ -109,3 +109,57 @@ describe('the calendar docs page', function () {
             ->and($html)->toContain('week-start=&quot;sunday&quot;');
     });
 });
+
+describe('the calendar section of the README', function () {
+    /**
+     * The README's Calendar section, up to the next top-level heading.
+     */
+    function calendarReadmeSection(): string
+    {
+        $readme = file_get_contents(__DIR__.'/../../README.md');
+        $start = strpos($readme, "\n## Calendar\n");
+
+        expect($start)->not->toBeFalse();
+
+        return substr($readme, $start, strpos($readme, "\n## ", $start + 5) - $start);
+    }
+
+    it('lists every prop of the component, by its tag name', function () {
+        preg_match('/@props\(\[(.*?)\]\)/s', file_get_contents(__DIR__.'/../../components/calendar/index.blade.php'), $props);
+        preg_match_all("/^\s*'([A-Za-z]+)' =>/m", $props[1], $names);
+
+        $section = calendarReadmeSection();
+
+        expect($names[1])->toHaveCount(16);
+
+        foreach ($names[1] as $name) {
+            expect($section)->toContain('| `'.str($name)->kebab().'` |');
+        }
+    });
+
+    it('documents each event the calendar dispatches, and the guarded legacy props', function () {
+        $section = calendarReadmeSection();
+
+        foreach (['calendar-select', 'calendar-item-move', 'calendar-item-resize', 'calendar-item-click'] as $event) {
+            expect($section)->toContain('| `'.$event.'` |');
+        }
+
+        expect($section)->toContain('### Upgrading from the event-calendar wrapper')
+            ->and($section)->toContain('`Calendar::fromLocal()`')
+            ->and($section)->toContain('waitUntil')
+            ->and($section)->toContain('`#[Renderless]`')
+            ->and($section)->toContain('Passing `periods` throws')
+            ->and($section)->toContain('Passing `modes` throws');
+    });
+
+    it('dispatches only events the README names', function () {
+        $js = file_get_contents(__DIR__.'/../../resources/js/alpinejs/calendar.js').file_get_contents(__DIR__.'/../../resources/js/alpinejs/calendar/pointer.js');
+
+        preg_match_all("/(?:CustomEvent\(|\\\$dispatch\()\s*(?:kind === 'move' \? )?'(calendar-[a-z-]+)'(?: : '(calendar-[a-z-]+)')?/", $js, $found);
+
+        $dispatched = array_values(array_unique(array_filter([...$found[1], ...$found[2]])));
+        sort($dispatched);
+
+        expect($dispatched)->toBe(['calendar-item-click', 'calendar-item-move', 'calendar-item-resize', 'calendar-select']);
+    });
+});
