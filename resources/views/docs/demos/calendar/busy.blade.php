@@ -8,4 +8,4 @@ $busy = collect(range(1, 6))->map(fn (int $n) => [
 ])->all();
 @endphp
 
-<atom:calendar week-start="sunday" time-format="H:i" date-format="D, d/m/Y" :items="$busy" />
+<atom:calendar :max="2" :items="$busy" />
