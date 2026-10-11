@@ -19,7 +19,7 @@ const column = (page, date, name) => probe(page, name).locator(`[data-atom-calen
 const block = (page, title, name) => probe(page, name).locator('[data-atom-calendar-block]', { hasText: title })
 const chipOf = (page, title, name) => probe(page, name).locator('[data-atom-calendar-chip="block"]', { hasText: title })
 const nowLine = (page, name) => probe(page, name).locator('[data-atom-calendar-now-line]')
-const title = (page, name) => probe(page, name).locator('[role="status"]')
+const title = (page, name) => probe(page, name).locator('[role="status"]:not([data-atom-calendar-announce])')
 const button = (page, label, name) => probe(page, name).getByRole('button', { name: label, exact: true })
 
 const isUpdate = (response) => response.url().includes('livewire') && response.request().method() === 'POST'

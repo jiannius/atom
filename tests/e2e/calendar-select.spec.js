@@ -34,9 +34,9 @@ async function open (page, query = '', path = '/atom/e2e/calendar') {
 
 const selects = (page) => page.evaluate(() => window.__selects)
 const engine = (page) => page.evaluate(() => {
-    const { preview, gesture } = window.Alpine.$data(document.querySelector('[data-atom-calendar]'))
+    const { preview, gesture, payload } = window.Alpine.$data(document.querySelector('[data-atom-calendar]'))
 
-    return { preview: preview ? { ...preview } : null, gesture: gesture !== null }
+    return { preview: preview ? { ...preview } : null, gesture: gesture !== null, items: payload.items.length, anchor: payload.anchor }
 })
 
 // a point in a month day, low in the cell: clear of the day number and the chips
@@ -540,22 +540,31 @@ test.describe('waitUntil and a selection in the making', () => {
     })
 })
 
+// A payload that comes while the pointer is down waits: the days, the rows and the boxes the pointer is measured against stay as they are
+// under it, and it is applied when the gesture ends, by a release or by giving the selection up.
+const payloadArrived = (page, text) => page.waitForFunction((needle) => document.querySelector('[data-atom-calendar]').getAttribute('data-atom-calendar-payload').includes(needle), text)
+
 test.describe('while a selection is being made and a payload comes', () => {
-    test('in the month: the selection is not dropped or changed, and the range is what the pointer ends on', async ({ page }) => {
+    test('in the month: the selection is not dropped or changed, the payload waits, and the range is what the pointer ends on', async ({ page }) => {
         await open(page, 'selectable=1')
 
         const from = await inDay(page, '2026-10-12')
         const middle = await inDay(page, '2026-10-14')
         const to = await inDay(page, '2026-10-16')
+        const added = probe(page).locator('[data-atom-calendar-chip]', { hasText: 'Added later' })
+        const before = (await engine(page)).items
 
         await page.mouse.move(from.x, from.y)
         await page.mouse.down()
         await page.mouse.move(middle.x, middle.y, { steps: 5 })
 
-        // the host re-renders with another item while the pointer is down
+        // the host re-renders with another item while the pointer is down: it has come to the page, and the calendar has not taken it
         await page.evaluate(() => window.Livewire.first().toggleExtra())
-        await expect(probe(page).locator('[data-atom-calendar-chip]', { hasText: 'Added later' })).toBeVisible()
+        await payloadArrived(page, 'Added later')
+        await page.waitForTimeout(250)
 
+        await expect(added).toHaveCount(0)
+        expect((await engine(page)).items).toBe(before)
         await expect(boxes(page)).toHaveCount(1)
         expect((await engine(page)).gesture).toBe(true)
 
@@ -567,6 +576,11 @@ test.describe('while a selection is being made and a payload comes', () => {
         await page.mouse.up()
 
         expect(await selects(page)).toEqual([{ start: '2026-10-12', end: '2026-10-16', allDay: true }])
+
+        // let go: the payload is applied, and the selection that was made is still up
+        await expect(added).toBeVisible()
+        expect((await engine(page)).items).toBe(before + 1)
+        await expect(boxes(page)).toHaveCount(1)
     })
 
     test('in the time grid: the same', async ({ page }) => {
@@ -575,22 +589,80 @@ test.describe('while a selection is being made and a payload comes', () => {
         const from = await at(page, '2026-10-13', 9)
         const middle = await at(page, '2026-10-13', 10)
         const to = await at(page, '2026-10-13', 11.25)
+        const before = (await engine(page)).items
 
         await page.mouse.move(from.x, from.y + 4)
         await page.mouse.down()
         await page.mouse.move(middle.x, middle.y, { steps: 5 })
 
         await page.evaluate(() => window.Livewire.first().toggleExtra())
+        await payloadArrived(page, 'Added later')
         await expect(page.locator('[data-renders]')).toHaveText('0')
         await page.waitForTimeout(300)
 
         await expect(shapes(page)).toHaveCount(1)
         expect((await engine(page)).gesture).toBe(true)
+        expect((await engine(page)).items).toBe(before)
 
         await page.mouse.move(to.x, to.y, { steps: 5 })
         await page.mouse.up()
 
         expect(await selects(page)).toEqual([{ start: '2026-10-13T09:00', end: '2026-10-13T11:30', allDay: false }])
+        expect((await engine(page)).items).toBe(before + 1)
+    })
+
+    test('a payload that moves the window waits too: the pointer ends on the days it was over, and the new month is drawn after', async ({ page }) => {
+        await open(page, 'selectable=1')
+
+        const from = await inDay(page, '2026-10-12')
+        const to = await inDay(page, '2026-10-16')
+
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        await page.mouse.move(to.x, to.y, { steps: 5 })
+
+        // the host moves to November while the pointer is down: another window, other days under the same boxes
+        await page.evaluate(() => window.Livewire.first().$set('date', '2026-11-15'))
+        await payloadArrived(page, '"anchor":"2026-11-15"')
+        await page.waitForTimeout(250)
+
+        expect((await engine(page)).anchor).toBe('2026-10-09')
+        await expect(page.locator('[data-atom-calendar-title]')).toContainText('October')
+        await expect(cell(page, '2026-10-16')).toBeVisible()
+        await expect(boxes(page)).toHaveCount(1)
+
+        await page.mouse.up()
+
+        // the days of the grid the pointer was on, not those of the one that came
+        expect(await selects(page)).toEqual([{ start: '2026-10-12', end: '2026-10-16', allDay: true }])
+
+        await expect(page.locator('[data-atom-calendar-title]')).toContainText('November')
+        await expect(cell(page, '2026-11-15')).toBeVisible()
+        expect((await engine(page)).anchor).toBe('2026-11-15')
+    })
+
+    test('giving the selection up takes the payload that waited, as a release does', async ({ page }) => {
+        await open(page, 'selectable=1')
+
+        const from = await inDay(page, '2026-10-12')
+        const to = await inDay(page, '2026-10-15')
+        const added = probe(page).locator('[data-atom-calendar-chip]', { hasText: 'Added later' })
+
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        await page.mouse.move(to.x, to.y, { steps: 5 })
+
+        await page.evaluate(() => window.Livewire.first().toggleExtra())
+        await payloadArrived(page, 'Added later')
+        await page.waitForTimeout(250)
+        await expect(added).toHaveCount(0)
+
+        await page.keyboard.press('Escape')
+
+        await expect(added).toBeVisible()
+        await expect(boxes(page)).toHaveCount(0)
+        await page.mouse.up()
+        expect(await selects(page)).toEqual([])
     })
 })
 
@@ -971,5 +1043,469 @@ test.describe('the time grid on a touch', () => {
         await pointer(page, 'pointerup', to)
 
         expect((await selects(page)).at(-1)).toEqual({ start: '2026-10-13T09:00', end: '2026-10-13T11:30', allDay: false })
+    })
+})
+
+// A gesture follows the pointer until something ends it. These are the presses and the losses that end nothing by themselves (a Mac's
+// Ctrl+click is a context-menu click: a press and a contextmenu and no release), so each has its own guard, and each test is for one.
+test.describe('a gesture that nothing ends', () => {
+    test.beforeEach(async ({ page }) => {
+        await open(page, 'selectable=1')
+    })
+
+    for (const key of ['Control', 'Meta', 'Alt', 'Shift']) {
+        test(`a click with ${key} held creates nothing, and starts no gesture`, async ({ page }) => {
+            const point = await inDay(page, '2026-10-12')
+
+            await page.keyboard.down(key)
+            await click(page, point)
+            await drag(page, point, await inDay(page, '2026-10-15'))
+            await page.keyboard.up(key)
+
+            expect(await selects(page)).toEqual([])
+            expect((await engine(page)).gesture).toBe(false)
+            await expect(boxes(page)).toHaveCount(0)
+        })
+    }
+
+    // the press as a browser sends it, whatever the engine does with a real key held (WebKit's Ctrl+click is a context-menu click of its own)
+    for (const modifier of ['ctrlKey', 'metaKey', 'altKey', 'shiftKey']) {
+        test(`a pointerdown with ${modifier} starts no gesture, and the click after it is a selection as ever`, async ({ page }) => {
+            const point = await inDay(page, '2026-10-12')
+
+            await page.evaluate(([x, y, key]) => {
+                document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1, bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y, [key]: true }))
+            }, [point.x, point.y, modifier])
+
+            expect((await engine(page)).gesture).toBe(false)
+
+            await click(page, point)
+
+            expect(await selects(page)).toEqual([{ start: '2026-10-12', end: '2026-10-12', allDay: true }])
+        })
+    }
+
+    test('a press whose release never came: the pointer moving with no button down gives it up, and the click after is the only selection', async ({ page }) => {
+        const stuck = await inDay(page, '2026-10-12')
+
+        // the press of a mouse, as a browser sends it, and then nothing: no pointerup
+        await pointer(page, 'pointerdown', stuck, 'mouse', 1)
+        expect((await engine(page)).gesture).toBe(true)
+
+        // the pointer comes back over the days with no button down: nothing follows it
+        const hover = await inDay(page, '2026-10-16')
+
+        await page.mouse.move(hover.x - 40, hover.y, { steps: 4 })
+        await page.mouse.move(hover.x, hover.y, { steps: 4 })
+
+        expect((await engine(page)).gesture).toBe(false)
+        await expect(boxes(page)).toHaveCount(0)
+
+        // the next click commits that day alone, not a range from the day that was stuck
+        await click(page, hover)
+
+        expect(await selects(page)).toEqual([{ start: '2026-10-16', end: '2026-10-16', allDay: true }])
+    })
+
+    test('a selection made after a stuck one is not blocked by it', async ({ page }) => {
+        await pointer(page, 'pointerdown', await inDay(page, '2026-10-12'), 'mouse', 1)
+
+        const hover = await inDay(page, '2026-10-14')
+
+        await page.mouse.move(hover.x, hover.y, { steps: 3 })
+        await drag(page, await inDay(page, '2026-10-19'), await inDay(page, '2026-10-21'))
+
+        expect(await selects(page)).toEqual([{ start: '2026-10-19', end: '2026-10-21', allDay: true }])
+    })
+
+    test('a context menu opening gives the gesture up', async ({ page }) => {
+        const point = await inDay(page, '2026-10-12')
+
+        await pointer(page, 'pointerdown', point, 'mouse', 1)
+        expect((await engine(page)).gesture).toBe(true)
+
+        await page.evaluate(([x, y]) => document.elementFromPoint(x, y).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: x, clientY: y })), [point.x, point.y])
+
+        expect((await engine(page)).gesture).toBe(false)
+    })
+
+    test('the window losing its focus mid-drag gives the selection up: nothing is drawn, and the release that comes after tells nothing', async ({ page }) => {
+        const from = await inDay(page, '2026-10-12')
+        const to = await inDay(page, '2026-10-15')
+
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        await page.mouse.move(to.x, to.y, { steps: 5 })
+        await expect(boxes(page)).toHaveCount(1)
+
+        await page.evaluate(() => window.dispatchEvent(new Event('blur')))
+
+        await expect(boxes(page)).toHaveCount(0)
+        expect((await engine(page)).gesture).toBe(false)
+
+        await page.mouse.move(from.x, from.y, { steps: 3 })
+        await page.mouse.up()
+
+        expect(await selects(page)).toEqual([])
+        await expect(boxes(page)).toHaveCount(0)
+    })
+
+    test('so does the page being hidden (another tab)', async ({ page }) => {
+        const from = await inDay(page, '2026-10-12')
+        const to = await inDay(page, '2026-10-15')
+
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        await page.mouse.move(to.x, to.y, { steps: 5 })
+        await expect(boxes(page)).toHaveCount(1)
+
+        await page.evaluate(() => {
+            Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' })
+            document.dispatchEvent(new Event('visibilitychange'))
+        })
+
+        await expect(boxes(page)).toHaveCount(0)
+        expect((await engine(page)).gesture).toBe(false)
+
+        await page.mouse.up()
+        expect(await selects(page)).toEqual([])
+    })
+
+    test('a visibilitychange of a page that is still showing ends nothing', async ({ page }) => {
+        const from = await inDay(page, '2026-10-12')
+        const to = await inDay(page, '2026-10-15')
+
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        await page.mouse.move(to.x, to.y, { steps: 5 })
+
+        await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+        expect((await engine(page)).gesture).toBe(true)
+
+        await page.mouse.up()
+        expect(await selects(page)).toEqual([{ start: '2026-10-12', end: '2026-10-15', allDay: true }])
+    })
+
+    test('a touch is not given up by a pointer that moves with no button down: it never has one', async ({ page }) => {
+        const from = await inDay(page, '2026-10-12')
+        const to = await inDay(page, '2026-10-15')
+
+        await pointer(page, 'pointerdown', from)
+        await expect(boxes(page)).toHaveCount(1, { timeout: 1500 })
+        await pointer(page, 'pointermove', to)
+        expect((await engine(page)).gesture).toBe(true)
+        await pointer(page, 'pointerup', to)
+
+        expect(await selects(page)).toEqual([{ start: '2026-10-12', end: '2026-10-15', allDay: true }])
+    })
+})
+
+// Where the month is laid out narrow (atom.css, a container of 600px or less) a day shows no titles, only dots, and the day list is what carries
+// them. A tap on a day that has items opens it; a tap on an empty day, and a drag or a long press anywhere, still select.
+test.describe('the month at 390px, which is narrow', () => {
+    test.use({ viewport: { width: 390, height: 844 } })
+
+    test.beforeEach(async ({ page }) => {
+        await open(page, 'selectable=1')
+        await cell(page, '2026-10-21').scrollIntoViewIfNeeded()
+    })
+
+    test('the titles are hidden, which is what the tap is for', async ({ page }) => {
+        await expect(probe(page).locator('[data-atom-calendar-slot]').first()).toBeHidden()
+    })
+
+    test('a click on a day that has items opens its list, and selects nothing', async ({ page }) => {
+        await click(page, await inDay(page, '2026-10-21'))
+
+        await expect(popover(page)).toBeVisible()
+        await expect(popover(page)).toContainText('Open the docs')
+        await expect(popover(page)).toHaveAttribute('aria-label', /21 Oct 2026/)
+        expect(await selects(page)).toEqual([])
+        await expect(boxes(page)).toHaveCount(0)
+        expect((await engine(page)).gesture).toBe(false)
+    })
+
+    test('the list takes the focus, and Escape gives it back to the day', async ({ page }) => {
+        await click(page, await inDay(page, '2026-10-21'))
+        await expect(popover(page)).toBeVisible()
+        expect(await page.evaluate(() => document.activeElement.matches('[data-atom-calendar-popover]'))).toBe(true)
+
+        await page.keyboard.press('Escape')
+        await expect(popover(page)).toBeHidden()
+        await expect(cell(page, '2026-10-21')).toBeFocused()
+    })
+
+    test('a click on an empty day selects it', async ({ page }) => {
+        await click(page, await inDay(page, '2026-10-19'))
+
+        expect(await selects(page)).toEqual([{ start: '2026-10-19', end: '2026-10-19', allDay: true }])
+        await expect(popover(page)).toBeHidden()
+    })
+
+    test('a drag from or across a day that has items still selects, and opens no list', async ({ page }) => {
+        await drag(page, await inDay(page, '2026-10-21'), await inDay(page, '2026-10-23'))
+
+        expect(await selects(page)).toEqual([{ start: '2026-10-21', end: '2026-10-23', allDay: true }])
+        await expect(popover(page)).toBeHidden()
+    })
+
+    test('a tap of a finger opens the list as a click does', async ({ page }) => {
+        const point = await inDay(page, '2026-10-21')
+
+        await pointer(page, 'pointerdown', point)
+        await pointer(page, 'pointerup', point)
+
+        await expect(popover(page)).toBeVisible()
+        expect(await selects(page)).toEqual([])
+    })
+
+    test('a finger held long enough selects the day, so a busy day can still be created on', async ({ page }) => {
+        const point = await inDay(page, '2026-10-21')
+
+        await pointer(page, 'pointerdown', point)
+        await expect(boxes(page)).toHaveCount(1, { timeout: 1500 })
+        await pointer(page, 'pointerup', point)
+
+        expect(await selects(page)).toEqual([{ start: '2026-10-21', end: '2026-10-21', allDay: true }])
+        await expect(popover(page)).toBeHidden()
+    })
+
+    test('a long press and a move selects a range', async ({ page }) => {
+        const from = await inDay(page, '2026-10-21')
+        const to = await inDay(page, '2026-10-22')
+
+        await pointer(page, 'pointerdown', from)
+        await expect(boxes(page)).toHaveCount(1, { timeout: 1500 })
+        await pointer(page, 'pointermove', to)
+        await pointer(page, 'pointerup', to)
+
+        expect(await selects(page)).toEqual([{ start: '2026-10-21', end: '2026-10-22', allDay: true }])
+    })
+})
+
+test.describe('where narrow begins', () => {
+    // what the page adds around the calendar is measured, so the container can be set to a width and not the screen
+    async function widthOf (page, container) {
+        const gap = await page.evaluate(() => window.innerWidth - document.querySelector('[data-atom-calendar]').getBoundingClientRect().width)
+
+        await page.setViewportSize({ width: container + Math.round(gap), height: 844 })
+
+        return page.evaluate(() => document.querySelector('[data-atom-calendar]').getBoundingClientRect().width)
+    }
+
+    for (const [container, narrow] of [[600, true], [601, false], [390, true], [1000, false]]) {
+        test(`a container of ${container}px is ${narrow ? 'narrow' : 'wide'}, as the stylesheet hides the titles`, async ({ page }) => {
+            await open(page, 'selectable=1')
+
+            expect(await widthOf(page, container)).toBe(container)
+
+            const state = await page.evaluate(() => {
+                const slot = document.querySelector('[data-atom-calendar-slot]')
+
+                return {
+                    engine: window.Alpine.$data(document.querySelector('[data-atom-calendar]')).isNarrow(),
+                    hidden: getComputedStyle(slot).display === 'none',
+                }
+            })
+
+            expect(state).toEqual({ engine: narrow, hidden: narrow })
+
+            // and what a tap does follows it
+            await cell(page, '2026-10-21').scrollIntoViewIfNeeded()
+            await click(page, await inDay(page, '2026-10-21'))
+
+            if (narrow) {
+                await expect(popover(page)).toBeVisible()
+                expect(await selects(page)).toEqual([])
+            } else {
+                expect(await selects(page)).toEqual([{ start: '2026-10-21', end: '2026-10-21', allDay: true }])
+                await expect(popover(page)).toBeHidden()
+            }
+        })
+    }
+
+    test('the week and the day view are not the month: a tap on a slot selects at any width', async ({ page }) => {
+        await open(page, 'selectable=1&view=week&date=2026-10-12')
+        await page.setViewportSize({ width: 390, height: 844 })
+
+        await click(page, await at(page, '2026-10-13', 10.1))
+
+        expect(await selects(page)).toEqual([{ start: '2026-10-13T10:00', end: '2026-10-13T10:30', allDay: false }])
+    })
+})
+
+test.describe('a selection that is not held, and a press in the host\'s own form', () => {
+    test.beforeEach(async ({ page }) => {
+        await open(page, 'selectable=1')
+        await click(page, await inDay(page, '2026-10-12'))
+        await expect(boxes(page)).toHaveCount(1)
+    })
+
+    // what a host puts beside the calendar to ask for what the selection is for: a form, a dialog that is not a modal, a popover
+    const hostElement = (page, kind) => page.evaluate((what) => {
+        const holder = document.createElement(what === 'form' ? 'form' : what === 'dialog' ? 'dialog' : 'div')
+
+        holder.id = 'host-' + what
+
+        if (what === 'popover') holder.setAttribute('popover', 'manual')
+
+        holder.innerHTML = '<label>Name <input type="text" id="host-input"></label><button type="button" id="host-button">Save</button>'
+        holder.style.cssText = 'position: fixed; top: 4px; right: 4px; width: 200px; height: 80px; background: white; border: 1px solid'
+        document.body.append(holder)
+
+        if (what === 'dialog') holder.show()
+        if (what === 'popover') holder.showPopover()
+    }, kind)
+
+    for (const kind of ['form', 'dialog', 'popover']) {
+        test(`a press in a ${kind} of the host's leaves the range in view`, async ({ page }) => {
+            await hostElement(page, kind)
+
+            await page.locator('#host-input').click()
+            await page.locator('#host-button').click()
+
+            await expect(boxes(page)).toHaveCount(1)
+            expect((await engine(page)).preview).toMatchObject({ kind: 'select', start: '2026-10-12' })
+        })
+    }
+
+    test('a press on the page, outside those, still takes it down', async ({ page }) => {
+        await hostElement(page, 'form')
+        await page.locator('#host-input').click()
+        await expect(boxes(page)).toHaveCount(1)
+
+        await page.locator('body').click({ position: { x: 5, y: 300 } })
+        await expect(boxes(page)).toHaveCount(0)
+    })
+
+    test('Escape takes it down wherever the focus is, in the form too', async ({ page }) => {
+        await hostElement(page, 'form')
+        await page.locator('#host-input').click()
+        await page.keyboard.press('Escape')
+
+        await expect(boxes(page)).toHaveCount(0)
+    })
+})
+
+test.describe('a selectable calendar inside a form', () => {
+    test('a press in that form, which is the page for the calendar, takes the selection down', async ({ page }) => {
+        await open(page, '', '/atom/e2e/calendar-static')
+
+        const inForm = probe(page, 'in-form')
+        const box = inForm.locator('[data-atom-calendar-week] [data-atom-calendar-selection]')
+
+        await inForm.scrollIntoViewIfNeeded()
+
+        const day = await inForm.locator('[data-atom-calendar-day][data-date="2026-10-13"]').boundingBox()
+
+        await click(page, { x: day.x + day.width / 2, y: day.y + day.height * 0.9 })
+        await expect(box).toHaveCount(1)
+
+        // a button of the form, outside the calendar: the calendar is inside the form, so this is a press elsewhere on the page
+        await page.locator('[data-form-button]').click()
+        await expect(box).toHaveCount(0)
+    })
+})
+
+test.describe('a selection waiting for the host is announced', () => {
+    const announcer = (page) => probe(page).locator('[data-atom-calendar-announce]')
+    const live = (page) => probe(page).locator('[role="status"]:not([data-atom-calendar-announce])')
+
+    test('a polite status of its own says it while the placeholder is up, and nothing before or after', async ({ page }) => {
+        await open(page, 'selectable=1')
+        await page.evaluate(() => { window.__selectMode = 'wait' })
+
+        await expect(announcer(page)).toHaveAttribute('role', 'status')
+        await expect(announcer(page)).toHaveAttribute('aria-live', 'polite')
+        await expect(announcer(page)).toHaveText('')
+
+        await click(page, await inDay(page, '2026-10-12'))
+        await expect(boxes(page).first()).toHaveAttribute('data-kind', 'pending')
+        await expect(announcer(page)).toHaveText('Creating...')
+
+        await page.evaluate(() => window.__settle.resolve())
+        await expect(boxes(page)).toHaveCount(0)
+        await expect(announcer(page)).toHaveText('')
+    })
+
+    test('a selection nobody holds says nothing', async ({ page }) => {
+        await open(page, 'selectable=1')
+
+        await click(page, await inDay(page, '2026-10-12'))
+        await expect(boxes(page)).toHaveCount(1)
+        await expect(announcer(page)).toHaveText('')
+    })
+
+    test('it is a region of its own: the title\'s is not written to, and still says the month', async ({ page }) => {
+        await open(page, 'selectable=1')
+        await page.evaluate(() => {
+            window.__selectMode = 'wait'
+            window.__live = 0
+            new MutationObserver((records) => { window.__live += records.length })
+                .observe(document.querySelector('[data-probe="calendar"] [role="status"]'), { childList: true, characterData: true, subtree: true, attributes: true })
+        })
+
+        await expect(live(page)).toHaveCount(1)
+
+        await click(page, await inDay(page, '2026-10-12'))
+        await expect(announcer(page)).toHaveText('Creating...')
+        await page.evaluate(() => window.__settle.resolve())
+        await expect(announcer(page)).toHaveText('')
+
+        expect(await page.evaluate(() => window.__live)).toBe(0)
+        await expect(live(page)).toHaveText('October 2026')
+    })
+
+    test('it is for assistive tech only: a pixel, out of the way, and the placeholder stays hidden from it', async ({ page }) => {
+        await open(page, 'selectable=1')
+
+        const box = await announcer(page).evaluate((el) => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height }))
+
+        expect(box).toEqual({ width: 1, height: 1 })
+
+        await page.evaluate(() => { window.__selectMode = 'wait' })
+        await click(page, await inDay(page, '2026-10-12'))
+        await expect(boxes(page).first()).toHaveAttribute('data-kind', 'pending')
+        await expect(boxes(page).first()).toHaveAttribute('aria-hidden', 'true')
+    })
+
+    test('in the time grid too', async ({ page }) => {
+        await open(page, 'selectable=1&view=week&date=2026-10-12')
+        await page.evaluate(() => { window.__selectMode = 'wait' })
+
+        await click(page, await at(page, '2026-10-13', 10.1))
+        await expect(announcer(page)).toHaveText('Creating...')
+
+        await page.evaluate(() => window.__settle.reject(new Error('refused')))
+        await expect(announcer(page)).toHaveText('')
+    })
+})
+
+test.describe('calendar-select is not cancelable', () => {
+    test('preventDefault() in a handler changes nothing: the event says so, and the placeholder and the next selection are as ever', async ({ page }) => {
+        await open(page, 'selectable=1')
+        await page.evaluate(() => {
+            window.__selectMode = 'wait'
+            window.__seen = []
+            document.addEventListener('calendar-select', (event) => {
+                const { cancelable } = event
+
+                event.preventDefault()
+                window.__seen.push({ cancelable, defaultPrevented: event.defaultPrevented })
+            })
+        })
+
+        await click(page, await inDay(page, '2026-10-12'))
+
+        expect(await page.evaluate(() => window.__seen)).toEqual([{ cancelable: false, defaultPrevented: false }])
+        await expect(boxes(page).first()).toHaveAttribute('data-kind', 'pending')
+        await expect(ghosts(page)).toContainText('Creating...')
+
+        // a later selection is made and told as ever
+        await click(page, await inDay(page, '2026-10-15'))
+
+        expect(await selects(page)).toHaveLength(2)
+        expect(await page.evaluate(() => window.__seen)).toHaveLength(2)
+        await expect(boxes(page)).toHaveCount(1)
     })
 })

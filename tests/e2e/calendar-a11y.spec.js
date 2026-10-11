@@ -11,7 +11,7 @@ const probe = (page, name = 'calendar') => page.locator(`[data-probe="${name}"]`
 const cells = (page, name) => probe(page, name).locator('[data-atom-calendar-day]')
 const cell = (page, date, name) => probe(page, name).locator(`[data-atom-calendar-day][data-date="${date}"]`)
 const popover = (page, name) => probe(page, name).locator('[data-atom-calendar-popover]')
-const title = (page, name) => probe(page, name).locator('[role="status"]')
+const title = (page, name) => probe(page, name).locator('[role="status"]:not([data-atom-calendar-announce])')
 
 const isUpdate = (response) => response.url().includes('livewire') && response.request().method() === 'POST'
 
@@ -924,19 +924,99 @@ test.describe('keys that are not the grid\'s', () => {
         expect((await page.evaluate(() => window.__prevented)).filter(([key]) => key !== 'Shift').every(([, prevented]) => prevented === false)).toBe(true)
         await expect(title(page)).toHaveText('October 2026')
     })
+})
 
-    test('on a selectable calendar Enter and Space open no list, as a click opens none', async ({ page }) => {
+// A selectable calendar's days are for selecting, and a key does what a click does on one: on a day with nothing in it, selects it; on a day with
+// items, which a narrow screen's tap opens the list of, opens it. The day that is selected tells the host as a click does.
+test.describe('Enter and Space on a day of a selectable calendar', () => {
+    const boxes = (page) => probe(page, 'selectable').locator('[data-atom-calendar-week] [data-atom-calendar-selection]')
+    const heard = (page) => page.evaluate(() => window.__keySelects)
+
+    test.beforeEach(async ({ page }) => {
         await open(page, '/atom/e2e/calendar-static')
+        await page.evaluate(() => {
+            window.__keySelects = []
+            document.addEventListener('calendar-select', (event) => {
+                const { start, end, allDay } = event.detail
 
+                window.__keySelects.push({ start, end, allDay })
+            })
+        })
+    })
+
+    test('on a day that has items they open its list with the focus in it, and Escape gives the focus back to the day', async ({ page }) => {
         const day = cell(page, '2026-10-12', 'selectable')
 
         await day.focus()
         await page.keyboard.press('Enter')
-        await page.keyboard.press(' ')
-        await expect(popover(page, 'selectable')).toBeHidden()
 
-        await day.click()
+        await expect(popover(page, 'selectable')).toBeVisible()
+        await expect(day).toHaveAttribute('aria-expanded', 'true')
+        expect(await page.evaluate(() => document.activeElement.matches('[data-atom-calendar-popover]'))).toBe(true)
+        expect(await heard(page)).toEqual([])
+        await expect(boxes(page)).toHaveCount(0)
+
+        await page.keyboard.press('Escape')
         await expect(popover(page, 'selectable')).toBeHidden()
+        await expect(day).toBeFocused()
+
+        await page.keyboard.press(' ')
+        await expect(popover(page, 'selectable')).toBeVisible()
+        expect(await heard(page)).toEqual([])
+    })
+
+    test('on a day with nothing in it they select that day, as a click does, and the focus stays on it', async ({ page }) => {
+        const day = cell(page, '2026-10-13', 'selectable')
+
+        await day.focus()
+        await page.keyboard.press('Enter')
+
+        expect(await heard(page)).toEqual([{ start: '2026-10-13', end: '2026-10-13', allDay: true }])
+        await expect(boxes(page)).toHaveCount(1)
+        await expect(popover(page, 'selectable')).toBeHidden()
+        await expect(day).toBeFocused()
+
+        await cell(page, '2026-10-14', 'selectable').focus()
+        await page.keyboard.press(' ')
+
+        expect(await heard(page)).toEqual([
+            { start: '2026-10-13', end: '2026-10-13', allDay: true },
+            { start: '2026-10-14', end: '2026-10-14', allDay: true },
+        ])
+    })
+
+    test('a key held down selects once, and Escape takes the selection down', async ({ page }) => {
+        await cell(page, '2026-10-13', 'selectable').focus()
+        await page.keyboard.down('Enter')
+        await page.keyboard.down('Enter')
+        await page.keyboard.down('Enter')
+        await page.keyboard.up('Enter')
+
+        expect(await heard(page)).toHaveLength(1)
+
+        await page.keyboard.press('Escape')
+        await expect(boxes(page)).toHaveCount(0)
+    })
+
+    test('a calendar that is not selectable is as it was: an empty day opens nothing, a day with items opens its list', async ({ page }) => {
+        const day = cell(page, '2026-10-09', 'static')
+
+        await day.focus()
+        await page.keyboard.press('Enter')
+        await expect(popover(page, 'static')).toBeVisible()
+        await page.keyboard.press('Escape')
+
+        await cell(page, '2026-10-13', 'static').focus()
+        await page.keyboard.press('Enter')
+        await expect(popover(page, 'static')).toBeHidden()
+        expect(await heard(page)).toEqual([])
+    })
+
+    test('a click on a day with items still selects it where the screen is wide', async ({ page }) => {
+        await cell(page, '2026-10-12', 'selectable').click()
+
+        await expect(popover(page, 'selectable')).toBeHidden()
+        expect(await heard(page)).toEqual([{ start: '2026-10-12', end: '2026-10-12', allDay: true }])
     })
 })
 

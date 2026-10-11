@@ -683,6 +683,37 @@ describe('calendar accessibility markup', function () {
             ->and(domQuery($html, '//*[@role="status"]')[0]->getAttribute('x-text'))->toBe('liveTitle');
     });
 
+    it('has a second polite status for a selection that waits for the host, apart from the title\'s, with the text only the engine writes', function () {
+        $html = calendarRender();
+        $statuses = domQuery($html, '//*[@role="status"]');
+        $announce = domQuery($html, '//*[@data-atom-calendar-announce]');
+
+        expect($statuses)->toHaveCount(2)
+            ->and($statuses[0]->getAttribute('x-text'))->toBe('liveTitle')
+            ->and($statuses[0]->hasAttribute('data-atom-calendar-announce'))->toBeFalse()
+            ->and($announce)->toHaveCount(1)
+            ->and($announce[0]->getAttribute('role'))->toBe('status')
+            ->and($announce[0]->getAttribute('aria-live'))->toBe('polite')
+            ->and($announce[0]->getAttribute('x-text'))->toBe('announcement')
+            ->and($announce[0]->hasAttribute('data-atom-calendar-sr'))->toBeTrue()
+            ->and($announce[0]->textContent)->toBe('');
+    });
+
+    it('carries the probe the engine asks whether the month is narrow, hidden from assistive tech and not by the hidden attribute', function () {
+        $probe = domQuery(calendarRender(), '//*[@data-atom-calendar-narrow]');
+
+        expect($probe)->toHaveCount(1)
+            ->and($probe[0]->getAttribute('aria-hidden'))->toBe('true')
+            ->and($probe[0]->hasAttribute('hidden'))->toBeFalse()
+            ->and($probe[0]->parentNode->hasAttribute('data-atom-calendar-body'))->toBeTrue();
+
+        // the stylesheet shows it inside the same container rule that hides the titles, and nowhere else
+        $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/atom.css');
+
+        expect($css)->toMatch('/\[data-atom-calendar-narrow\]\s*\{\s*display:\s*none;/')
+            ->and($css)->toMatch('/@container \(max-width: 600px\) \{\s*\[data-atom-calendar-narrow\]\s*\{\s*display:\s*block;/');
+    });
+
     it('keys a day\'s and a "+N more"\'s aria-expanded off what opened the list', function () {
         $html = calendarRender();
 

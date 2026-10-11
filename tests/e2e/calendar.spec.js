@@ -13,7 +13,7 @@ const days = (page, name) => probe(page, name).locator('[data-atom-calendar-day]
 const day = (page, date, name) => probe(page, name).locator(`[data-atom-calendar-day][data-date="${date}"]`)
 const chip = (page, title, name) => probe(page, name).locator('[data-atom-calendar-chip]', { hasText: title })
 const popover = (page, name) => probe(page, name).locator('[data-atom-calendar-popover]')
-const title = (page, name) => probe(page, name).locator('[role="status"]')
+const title = (page, name) => probe(page, name).locator('[role="status"]:not([data-atom-calendar-announce])')
 
 const isUpdate = (response) => response.url().includes('livewire') && response.request().method() === 'POST'
 
