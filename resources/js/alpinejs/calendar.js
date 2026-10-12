@@ -139,7 +139,8 @@ export default () => ({
     // The payload's items, with the ones that were moved or resized where they were put: until the payload says otherwise (see commitChange).
     // The payload's own objects, not Alpine's proxies of them, and the same array for as long as neither the payload nor the moved items change.
     get items () {
-        let items = raw(this.payload)?.items ?? []
+        // read through the payload's proxy (so that Alpine sees the read, and a payload whose items are replaced draws again), then unwrapped
+        let items = raw(this.payload?.items ?? [])
         let { overrides } = this
 
         // what is moved, as text: a moved item is one id and one range, and the entries are replaced, never changed
@@ -147,7 +148,7 @@ export default () => ({
 
         if (!moved) return items
 
-        return memoise(this, 'items', [items, moved], () => items.map((item) => (overrides[String(item.id)] ? { ...item, ...raw(overrides[String(item.id)]).range } : item)))
+        return memoise(this, 'items', [items, items.length, moved], () => items.map((item) => (overrides[String(item.id)] ? { ...item, ...raw(overrides[String(item.id)]).range } : item)))
     },
 
     get views () {
@@ -194,9 +195,9 @@ export default () => ({
     // The days the week or day view shows: the week of the anchor, or the anchor alone. The window is whole weeks, so
     // a week is always inside it.
     get gridDays () {
-        let days = raw(this.payload)?.window?.days ?? []
+        let days = raw(this.payload?.window?.days ?? [])
 
-        return memoise(this, 'gridDays', [days, this.anchor, this.view], () => {
+        return memoise(this, 'gridDays', [days, days.length, this.anchor, this.view], () => {
             let at = days.findIndex((day) => day.date === this.anchor)
 
             if (at === -1) at = 0
@@ -222,7 +223,7 @@ export default () => ({
         let max = this.config.max ?? null
         let slotDuration = this.config.slotDuration ?? 30
 
-        return memoise(this, 'grid', [items, days, today, max, slotDuration], () => timeGrid(days, items, { today, max, slotDuration }))
+        return memoise(this, 'grid', [items, items.length, days, today, max, slotDuration], () => timeGrid(days, items, { today, max, slotDuration }))
     },
 
     // What a gesture in progress draws in each column of the time grid, by date. Apart from `grid` on purpose: the blocks are laid out
@@ -262,11 +263,11 @@ export default () => ({
     get weeks () {
         if (!this.payload) return []
 
-        let days = raw(this.payload).window.days
+        let days = raw(this.payload.window.days)
         let { items, todayDate: today, previewKey } = this
         let max = this.config.max ?? null
 
-        return memoise(this, 'weeks', [days, items, max, today, previewKey], () => monthLayout(days, items, { max, today, preview: raw(this.preview) }))
+        return memoise(this, 'weeks', [days, days.length, items, items.length, max, today, previewKey], () => monthLayout(days, items, { max, today, preview: raw(this.preview) }))
     },
 
     get popoverEntries () {

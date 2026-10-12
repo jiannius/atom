@@ -144,3 +144,29 @@ test('a cell the pointer enters lays the month out once, however many bindings r
 
     expect(result).toEqual(Array.from({ length: 6 }, () => ({ same: true, changed: true })))
 })
+
+// A page that sets the payload's items on the engine by hand (the look fixture does) is not given a stale layout: the items are read the way Alpine
+// can see, so replacing them draws again, in every view.
+for (const view of ['month', 'week']) {
+    test(`${view}: items replaced on the payload in place are drawn`, async ({ page }) => {
+        await open(page, '?view=' + view + '&date=2026-10-13')
+
+        await page.evaluate(() => {
+            const data = window.Alpine.$data(document.querySelector('[data-atom-calendar]'))
+            const one = (id, title, start, end, allDay) => ({ id, title, start, end, allDay, color: null, icon: null, danger: false, href: null, draggable: true, resizable: true })
+
+            data.payload.items = [one('r1', 'Replaced in place', '2026-10-13T09:00', '2026-10-13T10:00', false)]
+        })
+
+        await expect(chip(page, 'Replaced in place').first()).toBeVisible()
+        await expect(calendar(page).locator('[data-atom-calendar-chip]:visible')).toHaveCount(1)
+
+        await page.evaluate(() => {
+            const data = window.Alpine.$data(document.querySelector('[data-atom-calendar]'))
+
+            data.payload.items.push({ id: 'r2', title: 'Pushed in place', start: '2026-10-14T09:00', end: '2026-10-14T10:00', allDay: false, color: null, icon: null, danger: false, href: null, draggable: true, resizable: true })
+        })
+
+        await expect(chip(page, 'Pushed in place').first()).toBeVisible()
+    })
+}
