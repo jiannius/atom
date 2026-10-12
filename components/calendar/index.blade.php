@@ -106,8 +106,11 @@ $palette = [
     'gray' => ['tint' => 'bg-zinc-100 dark:bg-zinc-500/20', 'accent' => 'border-zinc-500 dark:border-zinc-400', 'dot' => 'bg-zinc-500 dark:bg-zinc-400'],
 ];
 
+// A name an item can never carry (see CalendarItem::colors(), the one list of the names that may) is no use in the palette.
+$names = \Jiannius\Atom\Services\CalendarItem::colors();
+
 foreach ((array) config('atom.calendar.colors', []) as $name => $classes) {
-    if (is_string($name) && is_array($classes)) {
+    if (in_array($name, $names, true) && is_array($classes)) {
         $palette[$name] = collect($classes)->only(['tint', 'accent', 'dot'])->filter(fn ($class) => is_string($class))->all() + ($palette[$name] ?? []);
     }
 }

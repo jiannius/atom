@@ -3,6 +3,7 @@
 use Illuminate\Auth\GenericUser;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ViewErrorBag;
+use Jiannius\Atom\Services\CalendarItem;
 use Jiannius\Atom\Services\Carbon;
 use Symfony\Component\Finder\Finder;
 
@@ -423,6 +424,24 @@ describe('calendar component markup', function () {
             ->and($merged['red']['dot'])->toBe('bg-rose-500')
             ->and($merged['red']['tint'])->toBe($presets['red']['tint'])
             ->and($merged)->not->toHaveKey('broken');
+    });
+
+    it('only puts a colour name in the palette that an item is allowed to carry', function () {
+        config()->set('atom.calendar.colors', [
+            'brand' => ['dot' => 'bg-brand-500'],
+            'Brand' => ['dot' => 'bg-shouting'],
+            'has space' => ['dot' => 'bg-space'],
+            '9lives' => ['dot' => 'bg-digit'],
+            '#ff0000' => ['dot' => 'bg-hex'],
+            'with_underscore' => ['dot' => 'bg-underscore'],
+            5 => ['dot' => 'bg-int'],
+        ]);
+
+        $palette = json_decode(calendarRoot(calendarRender())->getAttribute('data-atom-calendar-palette'), true);
+
+        expect(array_keys($palette))->toBe(CalendarItem::colors())
+            ->and($palette)->toHaveKey('brand')
+            ->and($palette)->not->toHaveKeys(['Brand', 'has space', '9lives', '#ff0000', 'with_underscore', '5']);
     });
 
     it('accepts a configured colour name on an item', function () {
