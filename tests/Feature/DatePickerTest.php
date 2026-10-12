@@ -49,7 +49,7 @@ describe('time-picker', function () {
     it('selects the hour and minute on click instead of stepping them', function () {
         $html = Blade::render('<atom:time-picker />');
 
-        // smgdms#156: a click used to step the value, and a number input ignores maxlength.
+        // a host app's report: a click used to step the value, and a number input ignores maxlength.
         expect($html)
             ->toContain('x-on:click.stop="$el.select()"')
             ->toContain('x-on:focus="$el.select()"')

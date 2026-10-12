@@ -4,7 +4,7 @@
         <atom:button wire:click="bump" data-bump>Bump</atom:button>
     </div>
 
-    {{-- mirrors the smgdms repro: a time-flagged single date-picker bound with .live, so
+    {{-- mirrors a host app's repro: a time-flagged single date-picker bound with .live, so
          picking a day round-trips to the server while the panel stays open (the time
          flag keeps the popover open after a date pick, unlike the plain date-only
          variant which closes itself immediately) --}}

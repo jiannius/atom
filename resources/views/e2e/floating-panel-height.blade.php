@@ -1,6 +1,6 @@
 <atom:html title="E2E: Floating Panel Height" :vite="[]" :dark="false" class="min-h-screen bg-white">
 {{-- Plain-Blade page (no Livewire) for the floating-panel height spec. ?top=N pushes the
-     fields N px down the page, so the spec can put a field at the y the smgdms report
+     fields N px down the page, so the spec can put a field at the y a host app's report
      had it (about 284) and the page spacer below lets it scroll for the below-the-fold
      checks. Tailwind utilities are stood in for by the spec (the rig compiles none). --}}
 <style>

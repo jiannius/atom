@@ -163,5 +163,5 @@ git -C "$MAIN" push origin v3.6.0
 - Boost + editor docs updated; BoostGuidelinesTest green.
 - main has the squash commit; `v3.6.0` tagged + pushed; worktree removed; memory updated.
 
-## VERIFY-ON-HUMBLEBEAR (post-ship debt — atom's rig can't test these)
+## VERIFY-ON-A-HOST-APP (post-ship debt — atom's rig can't test these)
 Editor: image upload→persist, `wire:model` JSON round-trip, `<atom:tiptap.content>` SSR vs the live editor's HTML, chat send/paste/drop, mention `@`-trigger/keyboard/`$wire`-callback/positioning, atom.js `type=module` + Livewire `navigate`, `atom:tiptap-migrate` on real data, the `<atom:editor>` alias parity. Plus the pre-tiptap debt (recaptcha v3.5.18, select a11y v3.5.19, table cross-page v3.5.20, uploader drag-drop v3.5.21).

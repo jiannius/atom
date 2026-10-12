@@ -57,7 +57,7 @@ test('a caller whitespace-normal beats the nowrap default and the text wraps', a
   expect(wrapHead).toBeGreaterThan(nowrapHead + 15)
 })
 
-// firmhive #4: a table with one long value stretched past its box. `truncate` on
+// A host app's report: a table with one long value stretched past its box. `truncate` on
 // the cell lets the value ellipsise instead; the table is NOT given w-full, which
 // would squeeze a wide table's nowrap cells below their content.
 const tableWidth = (page, box) => width(page, `#${box} table`)

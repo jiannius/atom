@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 // Drives /atom/e2e/floating-panel-height (resources/views/e2e/floating-panel-height.blade.php).
 //
-// Reported from smgdms: on a short screen (1366x620, 1280x650, field at y of about 284) an open
+// Reported from a host app: on a short screen (1366x620, 1280x650, field at y of about 284) an open
 // <atom:date-picker time> panel, about 360px tall, fits neither below the field nor above it.
 // floating-ui picked the side with less overflow and clipped the rest, and the panel had no
 // max-height, so the TIME row (below) or the calendar header (above) sat off-screen with no way

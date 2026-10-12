@@ -103,4 +103,4 @@ Plus icon and logo galleries (auto-generated). Remaining ~27 components launch w
 
 ## Verification
 
-No test suite exists in this package. Verify by installing the branch in a host app (e.g. toocrm-l13), then walking `/atom/docs`, each priority page, a fallback page, and both galleries with Playwright. Confirm: sidebar navigation and search, live examples render, copy buttons work, prop tables populate, local-only gating (route absent when env is not local).
+No test suite exists in this package. Verify by installing the branch in a host app (e.g. a local test app), then walking `/atom/docs`, each priority page, a fallback page, and both galleries with Playwright. Confirm: sidebar navigation and search, live examples render, copy buttons work, prop tables populate, local-only gating (route absent when env is not local).

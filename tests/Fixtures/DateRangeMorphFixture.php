@@ -15,7 +15,7 @@ class DateRangeMorphFixture extends Component
 
     /**
      * Re-render the component so Livewire morphs the markup around the range picker
-     * (a wire:ignore'd tree) — the trigger the smgdms report blamed for a duplicated
+     * (a wire:ignore'd tree) — the trigger a host app's report blamed for a duplicated
      * calendar pair.
      */
     public function bump(): void

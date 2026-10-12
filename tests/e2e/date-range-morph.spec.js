@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 // Drives the Livewire fixture at /atom/e2e/date-range-morph (tests/Fixtures/DateRangeMorphFixture.php).
 //
-// Regression cover for smgauto/smgdms#141: <atom:date-picker variant="range"> showed a 2x2
+// Regression cover for a host app's report: <atom:date-picker variant="range"> showed a 2x2
 // grid of calendars (the bottom pair duplicating the top pair, both on the same
 // un-navigated month) instead of one pair, after the dropdown reopened following certain
 // Livewire re-renders.

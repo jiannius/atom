@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Blade;
 
 /*
- * Dark-mode contrast guards (humblebear#337). Measured in a real browser on
+ * Dark-mode contrast guards (a host app's report). Measured in a real browser on
  * zinc-900 and zinc-800 grounds, text >= 4.5:1 and a control boundary >= 3:1.
  * These only pin the class strings that measurement was taken from.
  */

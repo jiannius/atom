@@ -5,7 +5,7 @@
 
 ## Problem
 
-`<atom:table>` (v3.4.0) ships only one loading affordance: a dim overlay on pagination/sort (rows persist). The originally-designed loading model also wanted **skeleton rows on first load** and a loading cue on **filter/search**. Those were descoped because the table can't generically know the consumer's filter property to target a `wire:loading` (humblebear uses `$filters`, but that's convention, not guaranteed), and first-load skeleton naively triggered on null data would clobber **static/standalone tables** (which also have null `$paginate`).
+`<atom:table>` (v3.4.0) ships only one loading affordance: a dim overlay on pagination/sort (rows persist). The originally-designed loading model also wanted **skeleton rows on first load** and a loading cue on **filter/search**. Those were descoped because the table can't generically know the consumer's filter property to target a `wire:loading` (one host app uses `$filters`, but that's convention, not guaranteed), and first-load skeleton naively triggered on null data would clobber **static/standalone tables** (which also have null `$paginate`).
 
 ## Approach
 

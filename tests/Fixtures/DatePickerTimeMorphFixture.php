@@ -15,7 +15,7 @@ class DatePickerTimeMorphFixture extends Component
 
     /**
      * Re-render the component so Livewire morphs the markup around the date picker —
-     * the trigger the smgdms report blamed for wiping the open panel's calendar.
+     * the trigger a host app's report blamed for wiping the open panel's calendar.
      */
     public function bump(): void
     {

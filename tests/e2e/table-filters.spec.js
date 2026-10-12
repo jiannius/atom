@@ -71,7 +71,7 @@ test('Clear all removes every chip', async ({ page }) => {
 // A filter select takes no `label` prop from <atom:table.filters>, so there is no field
 // label to anchor to, and role="combobox" takes no accessible name from its own content
 // the way a button does. The trigger showed "Status" and announced nothing — reported on
-// three smgdms listings (jiannius/atom#38). Asserting through getByRole checks that the
+// three host app listings (jiannius/atom#38). Asserting through getByRole checks that the
 // name actually COMPUTES, which is what a screen reader does; the Pest suite can only see
 // that the attribute is present.
 test('every filter trigger resolves an accessible name', async ({ page }) => {

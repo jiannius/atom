@@ -177,7 +177,7 @@ Documented in the Boost table section.
 - **Pest (markup):** assert `components/table/index.blade.php` renders the
   `x-on:table-filter:changed.window` listener; assert `select.filter`,
   `date-picker.range`, and `table.search` markup dispatch `table-filter:changed`.
-- **Verify-on-humblebear (runtime, unavailable in atom's rig — `/atom/docs` is
+- **Verify-on-a-host-app (runtime, unavailable in atom's rig — `/atom/docs` is
   not Livewire-backed):** change a filter with rows checked → selection clears;
   search → clears; chip remove → clears; nothing-selected filter change → no
   spurious request; page/sort → selection persists.

@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test'
 // NOTE: pixel-layout assertions are unreliable here — the package-served
 // /atom/docs only ships atom's ~2KB base CSS, not a full Tailwind build, so
 // layout utilities (flex/items-center/...) are absent. The icon↔label
-// alignment fix is verified by NavlistTest (source) + humblebear (full
+// alignment fix is verified by NavlistTest (source) + a host app (full
 // Tailwind). x-show visibility below is driven by Alpine, not Tailwind, so it
 // is valid in this environment.
 

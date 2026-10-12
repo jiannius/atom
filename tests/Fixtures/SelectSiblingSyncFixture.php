@@ -6,7 +6,7 @@ use Jiannius\Atom\Traits\AtomComponent;
 use Livewire\Component;
 
 /**
- * Modelled on humblebear's bank-statement import (jiannius/humblebear#378): the
+ * Modelled on a host app's import flow: the
  * component's root is a modal, an "upload" step inserts a mapping form, and
  * picking the Date Column makes the server re-guess the Date Format — a value
  * the user never touched, changed by a sibling select's updated* hook.

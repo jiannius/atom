@@ -65,7 +65,7 @@ Registered in `resources/js/atom.js` alongside the other `Alpine.data(...)` fact
 
 ### Styling
 
-Same strategy as `<atom:modal>`: Tailwind arbitrary-variant utility classes inline in the blade (`[&[data-open]]:…`, `[&::backdrop]:…`, scale/opacity transitions), no new CSS file. The palette is top-anchored (not vertically centered), has no close-X, and leads with the search header. Consuming apps rebuild Tailwind to pick up the new utility classes (the established humblebear rule — atom ships base CSS only).
+Same strategy as `<atom:modal>`: Tailwind arbitrary-variant utility classes inline in the blade (`[&[data-open]]:…`, `[&::backdrop]:…`, scale/opacity transitions), no new CSS file. The palette is top-anchored (not vertically centered), has no close-X, and leads with the search header. Consuming apps rebuild Tailwind to pick up the new utility classes (the established host-app rule — atom ships base CSS only).
 
 ## Data flow
 

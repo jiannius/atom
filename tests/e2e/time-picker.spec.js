@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 // Drives the demo at /atom/docs/time-picker (resources/views/docs/demos/time-picker/basic.blade.php).
 //
-// Regression cover for smgdms#156: the hour and minute inputs stepped their value on every
+// Regression cover for a host app's report: the hour and minute inputs stepped their value on every
 // click (x-on:click.stop="up('hr')", from fa59957), so clicking a field to edit it changed it,
 // and type="number" ignored maxlength. A click now selects the field's text so typing replaces it.
 const picker = (page) => page.locator('[x-data="timePicker()"]').first()
