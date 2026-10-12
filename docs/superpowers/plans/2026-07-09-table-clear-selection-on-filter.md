@@ -260,7 +260,7 @@ Expected: all green (existing count + 6 new selection tests).
 Run: `npx playwright test`
 Expected: all pass (the added `x-data="{}"` + listener on the table root must not break the existing `table-filters` / `table-overflow` / other specs).
 
-> Worktree note: Playwright + testbench need the worktree's own deps — a real `composer install` in the worktree (a symlinked `vendor` makes `testbench serve` resolve the package to the main checkout and serve the wrong code), and `node_modules` (symlink from the main checkout is fine for the build; if `npx playwright` mis-resolves, run a real `npm ci`). See the [[atom-testing]] memory.
+> Worktree note: Playwright + testbench need the worktree's own deps — a real `composer install` in the worktree (a symlinked `vendor` makes `testbench serve` resolve the package to the main checkout and serve the wrong code), and `node_modules` (symlink from the main checkout is fine for the build; if `npx playwright` mis-resolves, run a real `npm ci`).
 
 - [ ] **Step 5: Commit**
 

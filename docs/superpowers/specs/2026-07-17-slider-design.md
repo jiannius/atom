@@ -122,7 +122,7 @@ Follow the atom test rig (Pest + Testbench + Playwright), same as recent compone
 - **Playwright e2e** (`*.spec.js`): drag the thumb → value + fill % update; arrow-key nav changes
   value; `wire:model` round-trips to a Livewire property; bubble hidden at rest and shown on
   focus/hover; disabled blocks interaction.
-- **Worktree gotcha (memory [[atom-testing]] L22):** must run a real `composer install` in the
+- **Worktree gotcha:** must run a real `composer install` in the
   worktree — symlinking `vendor` makes `testbench serve` resolve `Jiannius\Atom` to the MAIN
   checkout and serve main's dist/PHP, hiding worktree edits. Worktree also needs its own `npm ci`.
 

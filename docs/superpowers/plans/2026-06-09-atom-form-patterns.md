@@ -12,7 +12,7 @@
 
 ## Testing note — atom has no automated test suite
 
-atom ships no Pest/PHPUnit suite (Testbench is an unused dev dep). Per-task verification is **visual via `/atom/docs`**, using a host app's live-verification rig (see `[[atom-release-flow]]` memory): back up + symlink `<host-app>/vendor/jiannius/atom` → this worktree, then visit `https://<host-app>.test/atom/docs/<component>`; restore afterward. Every component change ships with a demo partial that is rendered (and thus verified) on its docs page. There are no red/green test commands; the "verify" step means *render the demo and confirm the described behavior visually*.
+atom ships no Pest/PHPUnit suite (Testbench is an unused dev dep). Per-task verification is **visual via `/atom/docs`**, using a host app's live-verification rig: back up + symlink `<host-app>/vendor/jiannius/atom` → this worktree, then visit `https://<host-app>.test/atom/docs/<component>`; restore afterward. Every component change ships with a demo partial that is rendered (and thus verified) on its docs page. There are no red/green test commands; the "verify" step means *render the demo and confirm the described behavior visually*.
 
 All component edits are Blade-only. Each task commits independently.
 
@@ -493,9 +493,9 @@ git push origin v3.3.0
 
 Then remove the worktree (`ExitWorktree action: remove`, or `git worktree remove` + `git branch -D worktree-form-patterns`).
 
-- [ ] **Step 4: Update memory**
+- [ ] **Step 4: Update release notes**
 
-Update `[[atom-release-flow]]` latest version to v3.3.0; note the new `form.*` pattern components + `button color` exist (so future sessions reach for them).
+Update the release notes / version trail: latest version v3.3.0; note the new `form.*` pattern components + `button color` exist (so they get used).
 
 ---
 

@@ -12,7 +12,7 @@ Two distinct bug classes:
 - **Correlated-decision drift** — modal width and column count chosen independently and mispaired: 2-col in a `max-w-lg` modal (suffocated), or 1-col in a `max-w-4xl` modal (stretched inputs).
 - **Taste/knowledge drift** — 2 columns for a 3-field form (overkill), multiple checkboxes left as loose inline `<atom:checkbox>` stuck together instead of `<atom:checkbox.group>`, reaching for `variant="card"` when plain would do, gray delete buttons, ad-hoc footer layouts.
 
-### Audit evidence (host-apps: one consuming app, sudo, apikan, webu)
+### Audit evidence (four host apps)
 
 - **Modal width** spread across **9 distinct `max-w-*`** values (lg/xl/2xl dominate = 82%; md/3xl/4xl/5xl/6xl/7xl = freehand tail).
 - **`md:grid-cols-2`** over-applied (41×), plus bare `grid-cols-2` (13×) that does not collapse on mobile.
