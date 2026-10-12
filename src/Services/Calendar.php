@@ -28,6 +28,7 @@ class Calendar
 
     public const MIN_YEAR = 1000;
 
+    /** The last year an anchor may be in, so its 6-week window stays inside four digits. An item's bound is wider: CalendarItem::MAX_YEAR. */
     public const MAX_YEAR = 9000;
 
     public const SLOT_DURATIONS = [5, 10, 15, 20, 30, 60];

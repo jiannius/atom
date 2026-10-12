@@ -28,7 +28,10 @@ class CalendarItem
 {
     public const COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'zinc', 'gray'];
 
-    /** The years a date may be in, wherever it came from: the same bounds for a string, a date object and the viewer's local date once converted. */
+    /**
+     * The years an item's date may be in, wherever it came from: the same bounds for a string, a date object and the viewer's local date once converted.
+     * Not the anchor's (Calendar::MAX_YEAR is 9000): the last anchor's window runs into 9001, so an item there can still be drawn.
+     */
     public const MIN_YEAR = 1000;
 
     public const MAX_YEAR = 9999;
@@ -306,6 +309,8 @@ class CalendarItem
 
     /**
      * Report a message once per key, with a cap on the keys held so a long-lived worker never goes permanently silent.
+     *
+     * @internal for the calendar's own services (Calendar reports through it); not part of the package's API.
      */
     public static function reportKeyOnce(string $key, string $message): void
     {
