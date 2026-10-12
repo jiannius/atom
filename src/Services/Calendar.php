@@ -7,8 +7,8 @@ use Carbon\CarbonInterface;
 use Closure;
 use DateTimeInterface;
 use DateTimeZone;
-use Exception;
 use InvalidArgumentException;
+use Throwable;
 
 /**
  * The data side of <atom:calendar>: the visible window, the viewer's "today"
@@ -47,6 +47,9 @@ class Calendar
     public const DEFAULT_TIME_FORMAT = 'g:i A';
 
     public const DEFAULT_DATE_FORMAT = 'j M Y';
+
+    /** @var array<string, bool> */
+    protected static array $knownTimezones = [];
 
     /** @var list<string> */
     public array $views;
@@ -205,19 +208,39 @@ class Calendar
     {
         $zone = Carbon::getLocalTimezone();
 
-        if (is_string($zone) && $zone !== '') {
-            try {
-                new DateTimeZone($zone);
-
-                return $zone;
-            } catch (Exception) {
-                // reported below
-            }
+        if (is_string($zone) && $zone !== '' && self::isTimezone($zone)) {
+            return $zone;
         }
 
         CalendarItem::reportKeyOnce(md5('timezone|'.(is_scalar($zone) ? $zone : gettype($zone))), 'The viewer timezone is empty or not a timezone PHP knows; the calendar uses the app timezone.');
 
         return self::appTimezone();
+    }
+
+    /**
+     * Whether PHP knows a timezone name. The answer is kept per name, up to REPORTED_LIMIT names, so a junk value does not build and throw an exception on every call.
+     * It catches Throwable: a name with a NUL byte throws a ValueError, not an Exception, on PHP 8.4.
+     */
+    protected static function isTimezone(string $zone): bool
+    {
+        if (isset(self::$knownTimezones[$zone])) {
+            return self::$knownTimezones[$zone];
+        }
+
+        try {
+            new DateTimeZone($zone);
+
+            $known = true;
+        } catch (Throwable) {
+            $known = false;
+        }
+
+        // a full set starts over
+        if (count(self::$knownTimezones) >= CalendarItem::REPORTED_LIMIT) {
+            self::$knownTimezones = [];
+        }
+
+        return self::$knownTimezones[$zone] = $known;
     }
 
     /**

@@ -306,7 +306,23 @@ describe('calendar today', function () {
     })->with([
         'empty' => [''],
         'not a zone' => ['Not/AZone'],
+        'a NUL byte, which throws a ValueError and not an Exception' => ["UTC\0x"],
     ]);
+
+    it('keeps what it learned about a timezone name, and only a bounded number of names', function () {
+        Exceptions::fake();
+        config(['app.timezone' => 'UTC']);
+
+        foreach (range(1, CalendarItem::REPORTED_LIMIT * 3) as $i) {
+            Auth::setUser(new GenericUser(['id' => 1, 'timezone' => 'Not/AZone'.$i]));
+
+            expect(Calendar::timezone())->toBe('UTC');
+        }
+
+        $known = (new ReflectionProperty(Calendar::class, 'knownTimezones'))->getValue();
+
+        expect(count($known))->toBeLessThanOrEqual(CalendarItem::REPORTED_LIMIT)->and(count($known))->toBeGreaterThan(0);
+    });
 
     it('uses the local timezone when nobody is signed in', function () {
         Carbon::setTestNow('2026-10-09 17:30:00');
