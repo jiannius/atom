@@ -94,7 +94,7 @@ describe('input', function () {
 });
 
 describe('input label association', function () {
-    // Reported against smgdms (#65): on the New Client form, 17 of 18 visible inputs had no
+    // Reported against a host app: on one of its forms, 17 of 18 visible inputs had no
     // label[for], no wrapping <label> and no aria-label, so assistive tech announced them as
     // an unnamed "edit text". The visible "Name" / "Email" text was presentational only.
     // Playwright's getByLabel could not resolve a single field, which is a fair proxy for

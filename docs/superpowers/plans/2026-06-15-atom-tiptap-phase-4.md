@@ -349,7 +349,7 @@ Add a `<atom:docs.example title="Chat" .../>` block to `resources/views/docs/dem
 - One factory (`tiptap()`) with `config.chat` — matches v2's single-factory approach; non-chat path unchanged from Phase 2.
 - Chat `sync()` dispatches `{ body: getHTML(), files }` (HTML body, matches v2 chat contract) and clears; the main editor still emits JSON. This intentional divergence is because chat messages are lightweight/displayed-as-HTML, not persisted rich docs.
 - Fixed both v2 chat bugs: `paste`/`drop` now gate on `config.chat` AND are wired via `x-on:paste`/`x-on:drop` in the blade.
-- Mention block stays commented (Phase 5). No e2e here (chat enter-to-send + file tray need a Livewire server + real paste/drop, untestable in atom's rig) — verify on humblebear; Pest covers the rendered wiring.
+- Mention block stays commented (Phase 5). No e2e here (chat enter-to-send + file tray need a Livewire server + real paste/drop, untestable in atom's rig) — verify on a host app; Pest covers the rendered wiring.
 
 ## Done when
 - `vendor/bin/pest` green (TiptapTest now 10, no regressions).

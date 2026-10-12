@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test'
 
 // Drives the Livewire fixture at /atom/e2e/select-sibling-sync
-// (tests/Fixtures/SelectSiblingSyncFixture.php), modelled on humblebear's
-// bank-statement import (jiannius/humblebear#378).
+// (tests/Fixtures/SelectSiblingSyncFixture.php), modelled on a host app's
+// import flow.
 //
 // The report: picking the Date Column makes the server re-guess the Date Format,
 // the `.live` response carries the new value — and the Date Format select kept

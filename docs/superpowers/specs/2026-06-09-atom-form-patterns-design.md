@@ -12,15 +12,15 @@ Two distinct bug classes:
 - **Correlated-decision drift** — modal width and column count chosen independently and mispaired: 2-col in a `max-w-lg` modal (suffocated), or 1-col in a `max-w-4xl` modal (stretched inputs).
 - **Taste/knowledge drift** — 2 columns for a 3-field form (overkill), multiple checkboxes left as loose inline `<atom:checkbox>` stuck together instead of `<atom:checkbox.group>`, reaching for `variant="card"` when plain would do, gray delete buttons, ad-hoc footer layouts.
 
-### Audit evidence (host-apps: humblebear, sudo, apikan, webu)
+### Audit evidence (four host apps)
 
 - **Modal width** spread across **9 distinct `max-w-*`** values (lg/xl/2xl dominate = 82%; md/3xl/4xl/5xl/6xl/7xl = freehand tail).
 - **`md:grid-cols-2`** over-applied (41×), plus bare `grid-cols-2` (13×) that does not collapse on mobile.
-- **2-col never appears below `max-w-2xl`** in humblebear — empirical floor.
+- **2-col never appears below `max-w-2xl`** in that host app — empirical floor.
 - **Checkbox**: 67 loose `<atom:checkbox>` vs 28 `<atom:checkbox.group>`; `variant="card"` only 2 of 28 (rare/special).
 - **Delete buttons** written as `type="delete" variant="ghost"` — the `ghost` override *suppresses* the component's built-in de-emphasized-red styling, forcing gray.
 
-**humblebear is the reference "appropriate" UI** — all numeric rules below are derived from it.
+**One host app is the reference "appropriate" UI** — all numeric rules below are derived from it.
 
 ### Existing root cause in the guidance channel
 
@@ -39,7 +39,7 @@ All component changes are **additive and backward-compatible** — existing host
 
 ### 1. `<atom:form.grid>` (new — `components/form/grid.blade.php`) + `cols` convenience on `<atom:form>`
 
-**Why a per-group grid, not a whole-form grid:** humblebear forms apply a grid to a *field group* (e.g. journal/form: a grid around one field-pair, then a `<atom:textarea>` outside the grid, then the footer), interleaved with `<atom:separator>` and section headings. Wrapping the entire form slot in one grid would force separators/headings into grid cells. So the grid primitive operates on a **group of fields**, used as many times as needed within a form.
+**Why a per-group grid, not a whole-form grid:** that host app's forms apply a grid to a *field group* (e.g. journal/form: a grid around one field-pair, then a `<atom:textarea>` outside the grid, then the footer), interleaved with `<atom:separator>` and section headings. Wrapping the entire form slot in one grid would force separators/headings into grid cells. So the grid primitive operates on a **group of fields**, used as many times as needed within a form.
 
 - **`<atom:form.grid cols="auto|2|3">`** — the container-query grid primitive. Wraps a field group:
   - `cols="auto"` → `<div class="@container"><div class="grid gap-6 @2xl:grid-cols-2">{{ $slot }}</div></div>`. Columns respond to the **container's** width, not the viewport — narrow parent (card/panel) → 1 col automatically; wide parent (full modal/page) → 2 col. Width-gate becomes mechanical: "never 2-col in a too-narrow box" enforced by CSS.
@@ -66,7 +66,7 @@ Standardized form footer.
 - **Primary slot (left)** — defaults to `<atom:button type="submit">{{ t('Save') }}</atom:button>` when not overridden (or via a `submit` prop/label).
 - **Destructive slot (right)** — for the delete button.
 - Sticky-bottom treatment when rendered inside a modal.
-- **No Cancel button** — modal `×`/backdrop dismiss handles it (humblebear convention).
+- **No Cancel button** — modal `×`/backdrop dismiss handles it (host-app convention).
 
 ### 4. `color` prop on `<atom:button>` (`components/button/index.blade.php`, ghost branch)
 
@@ -123,4 +123,4 @@ New demo partial(s) under `resources/views/docs/demos/` (the file text IS the do
 
 ## Verification
 
-atom has no automated test suite. Verification = render the new demos at `/atom/docs` via the humblebear live-verification rig (symlink vendor → worktree), visually confirm: container-query column behavior at varying container widths, the modal/form/footer composition, and the ghost-red delete hover-invert.
+atom has no automated test suite. Verification = render the new demos at `/atom/docs` via a host app's live-verification rig (symlink vendor → worktree), visually confirm: container-query column behavior at varying container widths, the modal/form/footer composition, and the ghost-red delete hover-invert.

@@ -294,7 +294,7 @@ Add an `<atom:docs.example title="Mentions" .../>` block to `resources/views/doc
 - `mention` prop = string (callback name) | array (static options). Passed straight through as `:options`. The blade's `@php` splits string→callback, array→options. Custom item rendering via the `<atom:tiptap.mention>` slot is preserved for direct use.
 - The engine's `MentionConfiguration` + `Mention.configure` are ALREADY in `resources/js/tiptap.js` (Phase 1) — only added when `mentionTemplate` is found, i.e. when the mention block renders. No engine change needed.
 - The PHP `AtomMention` (Phase 3) renders stored mentions server-side. No change needed.
-- **NO e2e** — the suggestion popup + `$wire.$call` + floating-ui positioning need a real browser + Livewire server (untestable in atom's rig). Pest covers the rendered wiring; **verify the live `@`-trigger, keyboard nav, callback fetch, and positioning (incl. near viewport edges) on humblebear.**
+- **NO e2e** — the suggestion popup + `$wire.$call` + floating-ui positioning need a real browser + Livewire server (untestable in atom's rig). Pest covers the rendered wiring; **verify the live `@`-trigger, keyboard nav, callback fetch, and positioning (incl. near viewport edges) on a host app.**
 
 ## Done when
 - `vendor/bin/pest` green (TiptapTest 14, no regressions).

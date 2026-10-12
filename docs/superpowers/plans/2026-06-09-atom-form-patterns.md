@@ -12,7 +12,7 @@
 
 ## Testing note — atom has no automated test suite
 
-atom ships no Pest/PHPUnit suite (Testbench is an unused dev dep). Per-task verification is **visual via `/atom/docs`**, using the humblebear live-verification rig (see `[[atom-release-flow]]` memory): back up + symlink `humblebear/vendor/jiannius/atom` → this worktree, then visit `https://humblebear.test/atom/docs/<component>`; restore afterward. Every component change ships with a demo partial that is rendered (and thus verified) on its docs page. There are no red/green test commands; the "verify" step means *render the demo and confirm the described behavior visually*.
+atom ships no Pest/PHPUnit suite (Testbench is an unused dev dep). Per-task verification is **visual via `/atom/docs`**, using a host app's live-verification rig: back up + symlink `<host-app>/vendor/jiannius/atom` → this worktree, then visit `https://<host-app>.test/atom/docs/<component>`; restore afterward. Every component change ships with a demo partial that is rendered (and thus verified) on its docs page. There are no red/green test commands; the "verify" step means *render the demo and confirm the described behavior visually*.
 
 All component edits are Blade-only. Each task commits independently.
 
@@ -101,7 +101,7 @@ view="atom::docs.demos.button.ghost-colors"/>
 
 - [ ] **Step 5: Verify**
 
-Render `https://humblebear.test/atom/docs/button` (humblebear rig). Confirm: the 4 colored ghost buttons show transparent backgrounds with colored text at rest, and invert to a solid colored fill with light text on hover. The "Default" ghost is unchanged gray.
+Render `https://<host-app>.test/atom/docs/button` (host app rig). Confirm: the 4 colored ghost buttons show transparent backgrounds with colored text at rest, and invert to a solid colored fill with light text on hover. The "Default" ghost is unchanged gray.
 
 - [ ] **Step 6: Commit**
 
@@ -133,7 +133,7 @@ Expected: a single rename `components/form.blade.php -> components/form/index.bl
 
 - [ ] **Step 3: Verify `<atom:form>` still resolves**
 
-Render `https://humblebear.test/atom/docs/form`. Confirm the existing "Basic" form example still renders unchanged (inputs stack, submit button present).
+Render `https://<host-app>.test/atom/docs/form`. Confirm the existing "Basic" form example still renders unchanged (inputs stack, submit button present).
 
 - [ ] **Step 4: Commit**
 
@@ -252,7 +252,7 @@ view="atom::docs.demos.form.grid"/>
 
 - [ ] **Step 5: Verify**
 
-Render `https://humblebear.test/atom/docs/form`. Confirm: the narrow-container form shows the two inputs stacked (1 col); the wide-container form shows them side-by-side (2 col). Resize the browser — the columns should NOT change with viewport (they track the container).
+Render `https://<host-app>.test/atom/docs/form`. Confirm: the narrow-container form shows the two inputs stacked (1 col); the wide-container form shows them side-by-side (2 col). Resize the browser — the columns should NOT change with viewport (they track the container).
 
 - [ ] **Step 6: Commit**
 
@@ -321,7 +321,7 @@ view="atom::docs.demos.form.actions"/>
 
 - [ ] **Step 4: Verify**
 
-Render `https://humblebear.test/atom/docs/form`. Confirm: Save is left-aligned (primary), Delete is right-aligned, ghost-red, and inverts to solid red on hover.
+Render `https://<host-app>.test/atom/docs/form`. Confirm: Save is left-aligned (primary), Delete is right-aligned, ghost-red, and inverts to solid red on hover.
 
 - [ ] **Step 5: Commit**
 
@@ -410,7 +410,7 @@ view="atom::docs.demos.form.modal"/>
 
 - [ ] **Step 4: Verify**
 
-Render `https://humblebear.test/atom/docs/form`. Click "Edit contact". Confirm: a `max-w-2xl` modal opens; the 4 fields lay out 2-up (container is wide enough); a sticky footer shows Save (left) + ghost-red Delete (right).
+Render `https://<host-app>.test/atom/docs/form`. Click "Edit contact". Confirm: a `max-w-2xl` modal opens; the 4 fields lay out 2-up (container is wide enough); a sticky footer shows Save (left) + ghost-red Delete (right).
 
 - [ ] **Step 5: Commit**
 
@@ -476,7 +476,7 @@ Expected: `no js/css source changes`.
 
 - [ ] **Step 2: Final visual pass**
 
-Render `https://humblebear.test/atom/docs/button` and `.../atom/docs/form` once more; confirm all new examples render and behave as described in Tasks 1–5.
+Render `https://<host-app>.test/atom/docs/button` and `.../atom/docs/form` once more; confirm all new examples render and behave as described in Tasks 1–5.
 
 - [ ] **Step 3: Squash-merge to main, tag, push, clean up**
 
@@ -493,9 +493,9 @@ git push origin v3.3.0
 
 Then remove the worktree (`ExitWorktree action: remove`, or `git worktree remove` + `git branch -D worktree-form-patterns`).
 
-- [ ] **Step 4: Update memory**
+- [ ] **Step 4: Update release notes**
 
-Update `[[atom-release-flow]]` latest version to v3.3.0; note the new `form.*` pattern components + `button color` exist (so future sessions reach for them).
+Update the release notes / version trail: latest version v3.3.0; note the new `form.*` pattern components + `button color` exist (so they get used).
 
 ---
 

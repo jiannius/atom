@@ -8,7 +8,7 @@ use Symfony\Component\Finder\Finder;
  * one way to get one: a real form control takes <label for>, a composed widget is named
  * the other way round with aria-labelledby, and a control with no visible label needs
  * aria-label. What must never happen is a visible label that names nothing — the field
- * is then announced as an unnamed "edit text", which is what smgdms reported (#65).
+ * is then announced as an unnamed "edit text", which is what a host app reported.
  *
  * These are the server-rendered halves. tiptap's attributes are applied by ProseMirror at
  * runtime, so that one is asserted in tests/e2e/tiptap.spec.js.
@@ -159,7 +159,7 @@ describe('accessible names', function () {
     // own affordance — so there is no field label to anchor to. Its trigger does show the
     // filter's name, but role="combobox" takes no accessible name from its own content
     // the way a button does, so it was announced as an unnamed combobox. Reported on
-    // three smgdms listings (jiannius/atom#38).
+    // three host app listings (jiannius/atom#38).
     it('names a filter select, whose role takes no name from its own content', function (string $template, string $tag) {
         $html = renderBlade($template);
 

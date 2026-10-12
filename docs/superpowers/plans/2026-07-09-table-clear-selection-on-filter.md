@@ -98,7 +98,7 @@ git commit -m "feat(table): trashed-view toggle clears the checkbox selection"
 ### Task 2: Filters + search emit `table-filter:changed`; table clears on it
 
 Front-end wiring. Atom's rig isn't Livewire-backed, so the runtime clear is
-verify-on-humblebear; Pest asserts the wiring is present in the rendered markup.
+verify-on-a-host-app; Pest asserts the wiring is present in the rendered markup.
 
 **Files:**
 - Modify: `components/table/index.blade.php:27` (root `<div data-atom-table>`)
@@ -260,7 +260,7 @@ Expected: all green (existing count + 6 new selection tests).
 Run: `npx playwright test`
 Expected: all pass (the added `x-data="{}"` + listener on the table root must not break the existing `table-filters` / `table-overflow` / other specs).
 
-> Worktree note: Playwright + testbench need the worktree's own deps — a real `composer install` in the worktree (a symlinked `vendor` makes `testbench serve` resolve the package to the main checkout and serve the wrong code), and `node_modules` (symlink from the main checkout is fine for the build; if `npx playwright` mis-resolves, run a real `npm ci`). See the [[atom-testing]] memory.
+> Worktree note: Playwright + testbench need the worktree's own deps — a real `composer install` in the worktree (a symlinked `vendor` makes `testbench serve` resolve the package to the main checkout and serve the wrong code), and `node_modules` (symlink from the main checkout is fine for the build; if `npx playwright` mis-resolves, run a real `npm ci`).
 
 - [ ] **Step 5: Commit**
 
@@ -271,10 +271,10 @@ git commit -m "docs(boost): note table selection clears on filter/search/trashed
 
 ---
 
-## Verify-on-humblebear (post-merge, atom's rig can't test)
+## Verify-on-a-host-app (post-merge, atom's rig can't test)
 
 `/atom/docs` is not Livewire-backed, so the runtime clear is unverifiable here.
-On humblebear, confirm:
+On a host app, confirm:
 
 - Check rows → change a filter control → selection clears (bar disappears / count resets).
 - Check rows → run a search → clears.

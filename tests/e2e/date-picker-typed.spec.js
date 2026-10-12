@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 // Drives the Livewire fixture at /atom/e2e/date-picker-typed
 // (tests/Fixtures/DatePickerTypedFixture.php).
 //
-// humblebear#338: the date pickers' text inputs were `readonly`, so the calendar was the
+// a host app's report: the date pickers' text inputs were `readonly`, so the calendar was the
 // only way to pick a date. They now take a typed date (the display format, day-first
 // numerics or ISO), committed on blur or Enter and synced to wire:model / .live. An
 // entry that does not parse is put back to the last good value and never reaches the

@@ -114,7 +114,7 @@ it('returns a non-numeric value untouched with maxPrecision', function () {
     expect(num('abc')->currency('USD', maxPrecision: 6))->toBe('abc');
 });
 
-it('makes the invoice line from humblebear 401 add up', function () {
+it('makes the invoice line from a host app report add up', function () {
     $unit = num(0.065)->currency(maxPrecision: 6);
     $line = num(51 * 0.065)->currency();
 

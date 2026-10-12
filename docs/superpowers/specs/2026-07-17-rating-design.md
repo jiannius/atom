@@ -126,7 +126,7 @@ readonly (display an average), clearable, custom icon (`heart`), custom count.
   fill (percent var tracks pointer); click commits value; ArrowRight/Left change value via keyboard;
   clearable resets on re-click; readonly ignores interaction. Assert the reactive path via
   `--atom-rating-percent` + `aria-valuenow`, not pixel-perfect drag.
-- **Worktree gotcha** ([[atom-testing]]): real `composer install` + `npm ci` in the worktree (done);
+- **Worktree gotcha:** real `composer install` + `npm ci` in the worktree (done);
   symlinked vendor makes `testbench serve` resolve to the MAIN checkout.
 
 ## Ship

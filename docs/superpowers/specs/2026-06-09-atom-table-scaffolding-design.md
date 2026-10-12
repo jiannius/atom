@@ -5,7 +5,7 @@
 
 ## Problem
 
-`<atom:table>` standardizes table *rendering* (columns/rows/sort/checkboxes/pagination via the `$_table` state + `toTable()`/`filter()` Builder macros — all solid). But the surrounding **listing-page chrome** is hand-rolled on every admin page, causing the same UI drift the form-patterns work (v3.3.0) addressed. Evidence from humblebear (16 listing pages): **453** ad-hoc `filter` usages, search markup rewritten on every page, **no** filter-UI/active-filter/trashed/row-action/loading components.
+`<atom:table>` standardizes table *rendering* (columns/rows/sort/checkboxes/pagination via the `$_table` state + `toTable()`/`filter()` Builder macros — all solid). But the surrounding **listing-page chrome** is hand-rolled on every admin page, causing the same UI drift the form-patterns work (v3.3.0) addressed. Evidence from one host app (16 listing pages): **453** ad-hoc `filter` usages, search markup rewritten on every page, **no** filter-UI/active-filter/trashed/row-action/loading components.
 
 Key scoping finding: the filter **controls** already exist — `<atom:select variant="filter">` (`components/select/filter.blade.php`) and `<atom:date-picker variant="range">`. So this feature does NOT rebuild controls. It adds the **scaffolding** around them.
 
@@ -32,7 +32,7 @@ A filter bar that wraps filter controls and renders active-filter chips + Clear 
 - **Default slot** = always-visible controls (`<atom:select variant="filter">`, `<atom:date-picker variant="range">`, custom `<x-select.*>` wrappers, and `<atom:table.search>` / `<atom:table.trashed>`).
 - **`<x-slot:more>`** = overflow controls. Default presentation: a **"Filters (n) ▾" popover** (`<atom:dropdown>` + `<atom:menu popover>`). With `more="card"`: an expandable **card row** beneath the bar (toggle reveals an inline panel).
 - **Active chips + Clear all** render in a row below the controls: `(Status: Paid ✕) (Contact: Acme ✕) … Clear all`. ✕ clears that one filter; Clear all resets every registered filter. Chips appear for active filters whether inline or in the overflow group.
-- Layout: `grow flex flex-wrap items-center gap-3` (matches the hand-rolled humblebear pattern).
+- Layout: `grow flex flex-wrap items-center gap-3` (matches the hand-rolled host-app pattern).
 
 **Auto-register contract (the high-risk piece — validate first).**
 The bar is an Alpine component holding a reactive registry of active filters. Each filter control inside registers itself and keeps its entry current:
@@ -118,4 +118,4 @@ The **auto-register chip** contract must be validated by a Tier-C test early —
 
 ## Verification
 
-Automated: `composer test` (Tier A+B) and the Playwright suite (Tier C) all green. Manual spot-check via `testbench serve` / the humblebear rig as a sanity pass before release.
+Automated: `composer test` (Tier A+B) and the Playwright suite (Tier C) all green. Manual spot-check via `testbench serve` / a host app's rig as a sanity pass before release.

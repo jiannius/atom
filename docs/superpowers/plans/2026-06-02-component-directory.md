@@ -1887,7 +1887,7 @@ git commit -m "docs: document the /atom/docs component directory"
 
 **Files:** none (verification only)
 
-- [ ] **Step 1: Point a local host app at the branch.** In a consuming app (e.g. `toocrm-l13`), add a path repository to its `composer.json` (or update the existing one) and require the feature branch:
+- [ ] **Step 1: Point a local host app at the branch.** In a consuming app (e.g. a local test app), add a path repository to its `composer.json` (or update the existing one) and require the feature branch:
 
 ```bash
 # in the host app

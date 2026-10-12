@@ -11,7 +11,7 @@ test('importing the parser leaves the shared dayjs instance alone', () => {
   expect(dayjs('2024-10-01T16:00:00.000000Z', 'YYYY-MM-DD HH:mm:ss').toISOString()).toBe('2024-10-01T16:00:00.000Z')
 })
 
-// The parser behind the date pickers' typed input (humblebear#338), run in node.
+// The parser behind the date pickers' typed input (a host app's report), run in node.
 // The pickers' wiring to Livewire is covered against a real page in
 // date-picker-typed.spec.js.
 

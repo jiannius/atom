@@ -161,7 +161,7 @@ src/Tiptap/Extensions/*.php             # PHP-side custom node/mark defs
 ## Testing
 
 - **Pest** — `<atom:tiptap>` / `.content` / `.chat` render (presets + slot toolbar), a11y markup (role=toolbar, aria-label/aria-pressed wiring), `AsTiptapContent` get/set (JSON round-trip, dual-read of legacy HTML, image-node persistence via fake disk, `tiptapStoreImage` override), `atom:tiptap-migrate` HTML→JSON, `<atom:editor>` shim parity, SSR render via tiptap-php with custom extensions.
-- **Playwright** — limited (no Livewire server in the rig): editor mounts, toolbar buttons toggle marks, bubble menu appears on selection. Live wire:model / upload / mention runtime → verify on humblebear.
+- **Playwright** — limited (no Livewire server in the rig): editor mounts, toolbar buttons toggle marks, bubble menu appears on selection. Live wire:model / upload / mention runtime → verify on a host app.
 - **`npm run build`** + commit `dist/` (JS + CSS rewritten).
 
 ## Release
