@@ -54,11 +54,11 @@ export const dateOf = (moment) => String(moment).slice(0, 10)
 // The wall-clock time of a moment as `HH:mm`, or null for a bare date.
 export const timeOf = (moment) => String(moment).length > 10 ? String(moment).slice(11, 16) : null
 
-// null when the date is not one: nothing here throws on a date it cannot read
+// null when the date is not one, or the count is not a finite number: nothing here throws on a date it cannot read
 export const addDays = (date, days) => {
     let from = parseDate(date)
 
-    return from ? toDate(from.time + days * DAY) : null
+    return from && Number.isFinite(days) ? toDate(from.time + days * DAY) : null
 }
 
 // NaN when either date is not one
@@ -73,7 +73,7 @@ export const monthOf = (date) => String(date).slice(0, 7)
 export const addMonths = (date, months) => {
     let from = parseDate(date)
 
-    if (!from) return null
+    if (!from || !Number.isFinite(months)) return null
 
     let { y, m, d } = from
     let index = y * 12 + (m - 1) + months
@@ -94,11 +94,15 @@ export const fromLocalDate = (value) => {
     return pad(date.getFullYear(), 4) + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate())
 }
 
-// A calendar day as the browser-local midnight the date picker takes as its value.
+// A calendar day as the browser-local midnight the date picker takes as its value; null when it is not a day the browser can hold.
 export const toLocalDate = (date) => {
-    let { y, m, d } = parseDate(date)
+    let parsed = parseDate(date)
 
-    return new Date(y, m - 1, d).toISOString()
+    if (!parsed) return null
+
+    let local = new Date(parsed.y, parsed.m - 1, parsed.d)
+
+    return Number.isNaN(local.getTime()) ? null : local.toISOString()
 }
 
 // A moment's time as minutes after midnight; a bare date is 0.

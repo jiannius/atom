@@ -170,3 +170,25 @@ for (const view of ['month', 'week']) {
         await expect(chip(page, 'Pushed in place').first()).toBeVisible()
     })
 }
+
+test('a payload whose anchor is not a date leaves the picker where it was and throws nothing', async ({ page }) => {
+    const problems = await open(page, '?view=month&date=2026-10-13')
+    const data = () => page.evaluate(() => {
+        const state = window.Alpine.$data(document.querySelector('[data-atom-calendar]'))
+
+        return { jump: state.jump, anchor: state.anchor }
+    })
+    const before = await data()
+
+    await page.evaluate(() => {
+        const root = document.querySelector('[data-atom-calendar]')
+        const payload = JSON.parse(root.getAttribute('data-atom-calendar-payload'))
+
+        payload.anchor = 'next tuesday'
+        root.setAttribute('data-atom-calendar-payload', JSON.stringify(payload))
+    })
+
+    await expect.poll(async () => (await data()).anchor).toBe('next tuesday')
+    expect((await data()).jump).toBe(before.jump)
+    expect(problems).toEqual([])
+})

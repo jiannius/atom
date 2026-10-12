@@ -102,3 +102,17 @@ test('does not throw on a date it cannot read', () => {
     expect(addMonths('nope', 1)).toBeNull()
     expect(() => isoWeekday('nope')).not.toThrow()
 })
+
+test('answers null, and does not throw, for what is not a date or a count', () => {
+    for (const junk of [null, undefined, 'x', '2026-02-30', 42, {}, '']) {
+        expect(toLocalDate(junk)).toBeNull()
+    }
+
+    for (const count of [NaN, Infinity, -Infinity, undefined, null, 'x']) {
+        expect(addDays('2026-10-09', count)).toBeNull()
+        expect(addMonths('2026-10-09', count)).toBeNull()
+    }
+
+    expect(addDays('2026-10-09', 0)).toBe('2026-10-09')
+    expect(addMonths('2026-10-09', 0)).toBe('2026-10-09')
+})

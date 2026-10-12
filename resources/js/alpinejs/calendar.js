@@ -138,6 +138,8 @@ export default () => ({
 
     // The payload's items, with the ones that were moved or resized where they were put: until the payload says otherwise (see commitChange).
     // The payload's own objects, not Alpine's proxies of them, and the same array for as long as neither the payload nor the moved items change.
+    // The payload and its items are replace-only (the factory and Livewire always hand over a new payload): the layouts below are kept on the items
+    // array and its length, so a field of an item changed in place, or one item swapped for another in place, does not draw again.
     get items () {
         // read through the payload's proxy (so that Alpine sees the read, and a payload whose items are replaced draws again), then unwrapped
         let items = raw(this.payload?.items ?? [])
@@ -442,7 +444,8 @@ export default () => ({
             this.scrollPending = this.view !== 'month'
         }
 
-        this.jump = toLocalDate(payload.anchor)
+        // an anchor the browser cannot hold as a day leaves the picker where it was
+        this.jump = toLocalDate(payload.anchor) ?? this.jump
 
         // the day list follows the data: an item that went away leaves it, and an empty day closes it. If the focus was in it,
         // it is taken to where the list came from, so it does not fall to the page.
@@ -607,7 +610,7 @@ export default () => ({
         if (inWindow) {
             this.anchor = target
             // the picker in the title shows the day on screen too
-            this.jump = toLocalDate(target)
+            this.jump = toLocalDate(target) ?? this.jump
             this.$wire.$set(this.model, target, false)
 
             return
@@ -661,7 +664,7 @@ export default () => ({
 
         this.closeDay(false)
         this.anchor = date
-        this.jump = toLocalDate(date)
+        this.jump = toLocalDate(date) ?? this.jump
 
         if (this.model) this.navigate(date)
 
