@@ -40,6 +40,36 @@ const YEAR_AT_END = /\s*Y$/
 // them apart from the ids a name builds, which end in a hash (a name of "1" is `atom-calendar-1-<hash>`).
 let instances = 0
 
+// Alpine wraps the payload in a reactive proxy, and every property the layout reads off it goes through a trap: for a few hundred items that is most of the
+// cost of laying them out. The layout is handed the plain objects. (No Alpine in node, where the factory is driven by hand: the value is its own raw.)
+const raw = (value) => globalThis.Alpine?.raw?.(value) ?? value
+
+// What each calendar last worked out, by name, with the inputs it was worked out from: { [name]: { inputs, value } }. Kept here, not on the factory, so that
+// writing it is not a change Alpine reacts to. A calendar that is gone takes its entry with it.
+const memos = new WeakMap()
+
+// `compute()`'s answer, kept for as long as `inputs` are the same values (compared with ===, one by one) and worked out again as soon as one is not. A getter
+// is evaluated by every binding that reads it, and during a drag by every cell the pointer crosses: laying the month out once per binding is what made a drag cost
+// as many layouts as it had bindings. The inputs are everything the answer reads, so a stale answer cannot be given: when a getter starts reading something new,
+// that goes in its inputs (calendar-memo.spec.js changes each one and asks for a fresh layout). Read the inputs through `this` so that Alpine still tracks them.
+const memoise = (owner, name, inputs, compute) => {
+    // The calendar is told apart by its root element: `this` in a getter is the proxy of the scope being evaluated, a different one for each binding
+    let key = owner.rootEl ?? raw(owner)
+    let slots = memos.get(key)
+
+    if (!slots) memos.set(key, slots = {})
+
+    let held = slots[name]
+
+    if (held && held.inputs.length === inputs.length && held.inputs.every((input, at) => input === inputs[at])) return held.value
+
+    let value = compute()
+
+    slots[name] = { inputs, value }
+
+    return value
+}
+
 export default () => ({
     ...pointer,
 
@@ -106,14 +136,18 @@ export default () => ({
         return this.payload?.config ?? {}
     },
 
-    // The payload's items, with the ones that were moved or resized where they were put: until the payload says otherwise (see commitChange)
+    // The payload's items, with the ones that were moved or resized where they were put: until the payload says otherwise (see commitChange).
+    // The payload's own objects, not Alpine's proxies of them, and the same array for as long as neither the payload nor the moved items change.
     get items () {
-        let items = this.payload?.items ?? []
+        let items = raw(this.payload)?.items ?? []
         let { overrides } = this
 
-        if (!Object.keys(overrides).length) return items
+        // what is moved, as text: a moved item is one id and one range, and the entries are replaced, never changed
+        let moved = Object.entries(overrides).map(([id, entry]) => id + '\u0000' + entry.range.start + '\u0000' + entry.range.end).join('\u0001')
 
-        return items.map((item) => (overrides[String(item.id)] ? { ...item, ...overrides[String(item.id)].range } : item))
+        if (!moved) return items
+
+        return memoise(this, 'items', [items, moved], () => items.map((item) => (overrides[String(item.id)] ? { ...item, ...raw(overrides[String(item.id)]).range } : item)))
     },
 
     get views () {
@@ -160,26 +194,35 @@ export default () => ({
     // The days the week or day view shows: the week of the anchor, or the anchor alone. The window is whole weeks, so
     // a week is always inside it.
     get gridDays () {
-        let days = this.payload?.window?.days ?? []
-        let at = days.findIndex((day) => day.date === this.anchor)
+        let days = raw(this.payload)?.window?.days ?? []
 
-        if (at === -1) at = 0
+        return memoise(this, 'gridDays', [days, this.anchor, this.view], () => {
+            let at = days.findIndex((day) => day.date === this.anchor)
 
-        if (this.view === 'day') return days.slice(at, at + 1)
+            if (at === -1) at = 0
 
-        let from = at - (at % 7)
+            if (this.view === 'day') return days.slice(at, at + 1)
 
-        return days.slice(from, from + 7)
+            let from = at - (at % 7)
+
+            return days.slice(from, from + 7)
+        })
+    },
+
+    // What a gesture in progress covers, as text, for the layouts that draw it: whatever the preview holds is in it, so that a field a layout starts to read
+    // later cannot be left out of what they are worked out again on.
+    get previewKey () {
+        return this.preview ? JSON.stringify(this.preview) : ''
     },
 
     get grid () {
         if (!this.payload || this.view === 'month') return { columns: [], allDay: { chips: [], more: [] } }
 
-        return timeGrid(this.gridDays, this.items, {
-            today: this.todayDate,
-            max: this.config.max ?? null,
-            slotDuration: this.config.slotDuration ?? 30,
-        })
+        let { items, gridDays: days, todayDate: today } = this
+        let max = this.config.max ?? null
+        let slotDuration = this.config.slotDuration ?? 30
+
+        return memoise(this, 'grid', [items, days, today, max, slotDuration], () => timeGrid(days, items, { today, max, slotDuration }))
     },
 
     // What a gesture in progress draws in each column of the time grid, by date. Apart from `grid` on purpose: the blocks are laid out
@@ -187,7 +230,10 @@ export default () => ({
     get previews () {
         if (!this.payload || this.view === 'month') return {}
 
-        return previewShapes(this.grid.columns, this.items, this.preview, { slotDuration: this.config.slotDuration ?? 30 })
+        let { grid, items, previewKey } = this
+        let slotDuration = this.config.slotDuration ?? 30
+
+        return memoise(this, 'previews', [grid, items, previewKey, slotDuration], () => previewShapes(grid.columns, items, raw(this.preview), { slotDuration }))
     },
 
     // The gutter's labels: the time format without its minutes ("9 AM"), or a 24-hour one as it is ("09:00").
@@ -208,17 +254,19 @@ export default () => ({
     get allDayItemGhost () {
         if (!this.payload || this.view === 'month') return null
 
-        return allDayGhost(this.gridDays, this.items, this.preview)
+        let { gridDays: days, items, previewKey } = this
+
+        return memoise(this, 'allDayItemGhost', [days, items, previewKey], () => allDayGhost(days, items, raw(this.preview)))
     },
 
     get weeks () {
         if (!this.payload) return []
 
-        return monthLayout(this.payload.window.days, this.items, {
-            max: this.config.max ?? null,
-            today: this.todayDate,
-            preview: this.preview,
-        })
+        let days = raw(this.payload).window.days
+        let { items, todayDate: today, previewKey } = this
+        let max = this.config.max ?? null
+
+        return memoise(this, 'weeks', [days, items, max, today, previewKey], () => monthLayout(days, items, { max, today, preview: raw(this.preview) }))
     },
 
     get popoverEntries () {
