@@ -768,7 +768,7 @@ class Index extends Component
 - A save that re-renders your component (a normal Livewire action) sends a new payload, and the calendar draws only what changed, so a single created, moved or deleted item needs no extra code. A payload that arrives while someone is dragging, resizing or selecting waits until the gesture ends.
 - If your PHP changes the bound property, the calendar follows it.
 - The bound property's **name** is printed on the element (`data-atom-calendar-model`), so the browser can set it; its value is read on the server and is not printed. Two calendars bound to the same property name of the same component need a `name` each, so their ids differ.
-- **Payload size:** each render sends every item of the 6-week window to the browser as JSON on the calendar's root element, about 100 KB for 500 items. Keep the `items` closure's query to `$from` and `$to`, and select only the columns an item is built from.
+- **Payload size:** each render sends every item of the 6-week window to the browser as JSON on the calendar's root element: about 100 KB of JSON for 500 items, and nearly twice that in the HTML, because the attribute is escaped. Keep the `items` closure's query to `$from` and `$to`, and select only the columns an item is built from.
 - The calendar's body is `wire:ignore`d, so a re-render of your component never reaches into it. Anything you put in the default slot (extra toolbar content) is yours and renders with the page as usual.
 
 ### Props
