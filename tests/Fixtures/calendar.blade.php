@@ -7,16 +7,16 @@
     </div>
 
     @if ($wired)
-        {{-- the wiring the README's Quick start shows, line for line (CalendarDocsTest holds the two together): x-on on the tag, $wire methods, waitUntil --}}
+        {{-- the wiring the README's Quick start shows, line for line (CalendarDocsTest holds the two together): x-on on the tag, $wire methods, waitUntil, and `saved || Promise.reject()` to refuse --}}
         <atom:calendar
         wire:model="date"
         :views="['month', 'week', 'day']"
         :view="$view"
         selectable
         :items="fn ($from, $to) => $this->calendarItems($from, $to)"
-        x-on:calendar-select="$event.detail.waitUntil($wire.create($event.detail.start, $event.detail.end, $event.detail.allDay))"
-        x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
-        x-on:calendar-item-resize="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
+        x-on:calendar-select="$event.detail.waitUntil($wire.create($event.detail.start, $event.detail.end, $event.detail.allDay).then((saved) => saved || Promise.reject()))"
+        x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end).then((saved) => saved || Promise.reject()))"
+        x-on:calendar-item-resize="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end).then((saved) => saved || Promise.reject()))"
         x-on:calendar-item-click="$wire.edit($event.detail.id)"
         data-probe="calendar" />
     @else

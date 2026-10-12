@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
+use Illuminate\Support\Facades\Validator;
 use Jiannius\Atom\Services\Calendar;
 use Jiannius\Atom\Services\Carbon;
 use Jiannius\Atom\Traits\AtomComponent;
@@ -45,6 +46,9 @@ class CalendarFixture extends Component
     /** Whether the calendar is wired as the README shows it, with x-on attributes on the tag; ?wired=1. */
     public bool $wired = false;
 
+    /** Whether create() and reschedule() fail validation, as a host's validate() does when a rule is broken; ?strict=1. */
+    public bool $strict = false;
+
     /** Where the items that were moved or resized were put, as the host stored them: [id => { start, end }], in the viewer's wall clock. */
     public array $placed = [];
 
@@ -84,6 +88,7 @@ class CalendarFixture extends Component
         $this->slot = (int) request()->query('slot', $this->slot);
         $this->locked = request()->boolean('locked');
         $this->wired = request()->boolean('wired');
+        $this->strict = request()->boolean('strict');
     }
 
     /**
@@ -114,8 +119,10 @@ class CalendarFixture extends Component
      * Make an item of what a selection says, as a host does: the calendar's wall-clock strings go straight to Calendar::fromLocal(), which gives
      * the instant in the app's timezone, and what is stored is that instant. The row is kept as the host got it and as it was stored, for the test.
      */
-    public function create(string $start, string $end, bool $allDay): void
+    public function create(string $start, string $end, bool $allDay): bool
     {
+        $this->refuseWhenStrict($start);
+
         $this->created[] = [
             'id' => 'created-'.(count($this->created) + 1),
             'start' => $start,
@@ -124,15 +131,21 @@ class CalendarFixture extends Component
             'startUtc' => Calendar::fromLocal($start)->utc()->format('Y-m-d\TH:i:s\Z'),
             'endUtc' => Calendar::fromLocal($end)->utc()->format('Y-m-d\TH:i:s\Z'),
         ];
+
+        return true;
     }
 
     /**
      * Put an item where a move or a resize says, as a host does: the calendar's wall-clock strings are what is stored (an instant, through
      * Calendar::fromLocal(), for a time), and the next render has the item there.
      */
-    public function reschedule(int|string $id, string $start, ?string $end): void
+    public function reschedule(int|string $id, string $start, ?string $end): bool
     {
+        $this->refuseWhenStrict($start);
+
         $this->place($id, $start, $end);
+
+        return true;
     }
 
     /**
@@ -158,6 +171,17 @@ class CalendarFixture extends Component
     public function hide(int|string $id): void
     {
         $this->hidden[] = $id;
+    }
+
+    /**
+     * Fail validation as a host's validate() does, for `?strict=1`: a rule a timed start breaks (it asks for a bare date), so a move in the time grid is refused.
+     * Livewire catches the exception on the server, so the action's promise resolves with null; it does not reject.
+     */
+    protected function refuseWhenStrict(string $start): void
+    {
+        if ($this->strict) {
+            Validator::make(['start' => $start], ['start' => 'date_format:Y-m-d'])->validate();
+        }
     }
 
     /**

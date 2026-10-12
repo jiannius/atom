@@ -252,6 +252,20 @@ it('documents the calendar wiring and its silent footguns in the skill', functio
         ->and(boostFile('guidelines/core.blade.php'))->toContain('the calendar');
 });
 
+// Validation does not reject the promise of an action (Livewire answers 200, so it resolves null): the skill must teach the refusal that works.
+it('teaches the calendar refusal pattern and never says validation rejects the promise', function () {
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+    expect($skill)->toContain('saved || Promise.reject()')
+        ->and($skill)->toContain('does not reject the promise')
+        ->and($skill)->toContain('error modal')
+        ->and($skill)->toContain('return `false` to refuse and `true` once saved')
+        ->and($skill)->toContain('A renderless method must still `return true`')
+        ->and($skill)->not->toMatch('/(?:Livewire rejects|rejects the promise)[^.]*validat/i')
+        ->and($skill)->not->toContain('refuse by throwing')
+        ->and($skill)->not->toContain('a failed validation, an abort');
+});
+
 // The skill's calendar section is the wiring the README shows: its events and props are the ones the component has.
 it('names only calendar events and props the component has', function () {
     $skill = boostFile('skills/atom-components/SKILL.blade.php');
