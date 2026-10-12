@@ -487,7 +487,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:navlist>` | Sidebar nav container. Children: `<atom:navlist.item>`, `<atom:navlist.group>`, `<atom:navlist.badge>`. |
 | `<atom:navlist.group>` | `heading`, `expandable`, `expanded` (default `true`), `hiddenIfEmpty` (default `true`), `persistKey`. See [Remembering collapsed groups](#remembering-collapsed-groups). |
 | `<atom:breadcrumbs>` | `heading` (default `true`). Reads `$_breadcrumbs` populated by your `breadcrumbs()` method. |
-| `<atom:calendar>` | `name`, `modes` (`calendar`, `timeline`), `periods` (`month`, `week`, `day`). |
+| `<atom:calendar>` | Month, week and day calendar with a toolbar. `wire:model` binds the anchor date (`Y-m-d`); with none it is static. Props: `items` (an array, or `fn ($from, $to) => ...` for the visible window), `views`, `view`, `week-start`, `weekend`, `max`, `time-format`, `date-format`, `selectable`, `draggable`, `resizable`, `slot-duration`, `scroll-time`, `now-indicator`, `month`, `name`. Events: `calendar-select`, `calendar-item-move`, `calendar-item-resize`, `calendar-item-click`. See [Calendar](#calendar). |
 | `<atom:separator>` | `align` (`left`, `center`, `right`). Slot becomes the label. |
 | `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`, `vite`. |
 | `<atom:layouts.sidebar>` | App layout with sidebar + top bar. Props: `title`, `noindex`, `dark`, `editor`, `styles`, `scripts`, `vite`. Pass `dark` to get the darkmode bootstrap and the header's switcher. |
@@ -666,6 +666,274 @@ the event. A hand-rolled control opts in the same way:
 ```blade
 <input x-on:input="$dispatch('table-filter:changed')" />
 ```
+
+---
+
+## Calendar
+
+`<atom:calendar>` is a month, week and day calendar with a toolbar (today, previous and next, a date jump, a view switcher). It lays out the items you give it, lets people click, drag-select to create, and move or resize an item with the pointer, and tells your code what they did through events. It saves nothing itself. Live previews: `/atom/docs/calendar` (local environment).
+
+### Quick start (Livewire)
+
+Bind the anchor date with `wire:model` and pass the items as a closure of the visible window. The method behind the closure must be `protected`: the view is bound to the component, and a public method would be callable from the browser.
+
+```php
+use App\Models\Event;
+use Jiannius\Atom\Services\Calendar;
+use Jiannius\Atom\Services\Carbon;
+use Jiannius\Atom\Traits\AtomComponent;
+use Livewire\Component;
+
+class Index extends Component
+{
+    use AtomComponent;
+
+    /** The anchor: `Y-m-d` or `Y-m`. Empty, or anything unreadable, is the viewer's today. */
+    public string $date = '';
+
+    /** Every event that overlaps the window. */
+    protected function calendarItems(Carbon $from, Carbon $to): iterable
+    {
+        return Event::query()
+            ->where('starts_at', '<=', $to)
+            ->where(fn ($query) => $query
+                ->where('ends_at', '>=', $from)
+                ->orWhere(fn ($query) => $query->whereNull('ends_at')->where('starts_at', '>=', $from)))
+            ->get()
+            ->map(fn (Event $event) => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'start' => $event->starts_at,
+                'end' => $event->ends_at,
+                'all_day' => $event->all_day,
+                'color' => $event->color,
+            ]);
+    }
+
+    public function create(string $start, string $end, bool $allDay): void
+    {
+        $this->authorize('create', Event::class);
+
+        Event::create(['title' => 'New event', 'all_day' => $allDay, ...$this->instants($start, $end, $allDay)]);
+    }
+
+    public function reschedule(int $id, string $start, ?string $end): void
+    {
+        $event = Event::findOrFail($id);
+
+        $this->authorize('update', $event);
+
+        $event->update($this->instants($start, $end, $event->all_day));
+    }
+
+    public function edit(int $id): void
+    {
+        $this->authorize('update', Event::findOrFail($id));
+
+        /** Open your edit form for this event here. */
+    }
+
+    /** What the calendar says is the viewer's wall clock; what is stored is an instant. */
+    protected function instants(string $start, ?string $end, bool $allDay): array
+    {
+        $dayAfter = fn (string $date) => Calendar::fromLocal(Carbon::parse($date)->addDay()->toDateString());
+
+        return [
+            'starts_at' => Calendar::fromLocal($start),
+            'ends_at' => $end === null ? null : ($allDay ? $dayAfter($end) : Calendar::fromLocal($end)),
+        ];
+    }
+}
+```
+
+```blade
+<atom:calendar
+    wire:model="date"
+    :views="['month', 'week', 'day']"
+    selectable
+    :items="fn ($from, $to) => $this->calendarItems($from, $to)"
+    x-on:calendar-select="$event.detail.waitUntil($wire.create($event.detail.start, $event.detail.end, $event.detail.allDay))"
+    x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
+    x-on:calendar-item-resize="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
+    x-on:calendar-item-click="$wire.edit($event.detail.id)" />
+```
+
+`create()`, `reschedule()` and `edit()` are Livewire actions, so the browser can call them with any arguments: authorise and scope them as you would any action. The query asks for `ends_at >= $from`, a harmless over-fetch of anything that ends exactly at the window's start, so that an item with no length that sits on the window's first instant is not dropped.
+
+### How the window and the data flow work
+
+- **The window is always the 6-week month grid that contains the anchor**, whatever the view (42 days, whole weeks, from the first day of the week). Week and day are subsets of it, so switching view makes no request.
+- Your `items` closure is called on every render with the window's first and last moment, `$from` and `$to`, as `Jiannius\Atom\Services\Carbon` instants in the application timezone (`config('app.timezone')`), `$to` being the last microsecond of the last day. The browser never sends a range, so it cannot widen your query.
+- Moving the anchor inside the window (previous and next in a week or a day, the date jump, today) makes no request: the bound property is updated in the browser only, and goes to the server with the next request. Leaving the window sets the property and asks the server for the window around it, with a spinner in the toolbar meanwhile.
+- A save that re-renders your component (a normal Livewire action) sends a new payload, and the calendar draws only what changed, so a single created, moved or deleted item needs no extra code. A payload that arrives while someone is dragging, resizing or selecting waits until the gesture ends.
+- If your PHP changes the bound property, the calendar follows it.
+- The bound property's **name** is printed on the element (`data-atom-calendar-model`), so the browser can set it; its value is read on the server and is not printed. Two calendars bound to the same property name of the same component need a `name` each, so their ids differ.
+- **Payload size:** each render sends every item of the 6-week window to the browser as JSON on the calendar's root element: about 100 KB of JSON for 500 items, and nearly twice that in the HTML, because the attribute is escaped. Keep the `items` closure's query to `$from` and `$to`, and select only the columns an item is built from.
+- The calendar's body is `wire:ignore`d, so a re-render of your component never reaches into it. Anything you put in the default slot (extra toolbar content) is yours and renders with the page as usual.
+
+### Props
+
+| Prop | Default | |
+|---|---|---|
+| `items` | `[]` | An iterable of items, or a closure `fn (Carbon $from, Carbon $to) => iterable`. |
+| `views` | `['month']` | Any of `month`, `week`, `day`. More than one shows a switcher. |
+| `view` | first of `views` | The view it opens in. |
+| `week-start` | `monday` | Any weekday name. |
+| `weekend` | `['saturday', 'sunday']` | The days that get the weekend tint; pass your own where the weekend is not Saturday and Sunday. |
+| `max` | `3` | How many rows a day shows in the month (and in the all-day row of the week and day views) before "+N more". `false`, `0` or `none` shows every row. |
+| `time-format` | `g:i A` | Times on items, in the grid and in labels. `H:i` for 24-hour. |
+| `date-format` | `j M Y` | Dates in labels, such as the name of a day. |
+| `selectable` | off | Click or drag over empty space to create (fires `calendar-select`). |
+| `draggable` | on | Items can be moved. An item's own `draggable` wins. |
+| `resizable` | on | Items can be pulled by their end. An item's own `resizable` wins. |
+| `slot-duration` | `30` | Minutes a slot of the time grid is, and what a drag snaps to: `5`, `10`, `15`, `20`, `30` or `60`. |
+| `scroll-time` | `06:00` | The time the week and day views open at. |
+| `now-indicator` | on | The red "now" line in the week and day views. |
+| `month` | none | The anchor of a calendar with no `wire:model`. |
+| `name` | none | A handle of your own: the ids inside the calendar are built from it. |
+
+`time-format` and `date-format` take a set of `date()` tokens: `g G h H i a A` for a time, `d j D l m n M F y Y` for a date, plus spaces, digits, punctuation and non-ASCII text (`Y年n月j日`). There is no escape character, any other ASCII letter is refused, and a format that is refused, or has none of its kind's tokens, falls back to the default. Month, week and day titles are written the way the locale writes them (`October 2026`, `2026年10月`) and are not affected by `date-format`.
+
+Anything else you put on the tag (`class`, `data-*`, `x-on:*`) goes to the root element. It is a `width: 100%` container; give it a width with a utility class. The week and day views scroll sideways where a week does not fit (a column is never narrower than `--atom-calendar-min-column`, `6rem`), and `--atom-calendar-hour` (`3.5rem`) and `--atom-calendar-grid-height` (`min(70vh, 48rem)`) set an hour's height and the grid's height.
+
+### Items
+
+An item is an array (or `Arrayable`):
+
+| Key | Required | |
+|---|---|---|
+| `id` | yes | An integer or a non-empty string, unique in the calendar. The browser keys items by string, so `1` and `'1'` are one item. A repeated id keeps the first item and reports the rest. |
+| `title` | yes | Plain text. It is never printed as HTML. |
+| `start` | yes | A date or an instant, see below. |
+| `end` | no | See below. `null` is no end. |
+| `all_day` | no | Defaults to true for a bare `Y-m-d` start, false for an instant. |
+| `color` | no | A preset name, a name you added, a hex colour, or a backed enum with a `color()` method. |
+| `icon` | no | The name of an Atom icon (`check`, `calendar`). Anything that is not one is ignored. |
+| `danger` | no | The overdue look: red title, a warning icon, and "Overdue" for screen readers. |
+| `href` | no | Makes the item a link. It goes through `safe_url()`, so a `javascript:` URL is dropped and the item becomes a button. |
+| `draggable`, `resizable` | no | Override the calendar's props for this item. |
+
+**Dates.** A `DateTimeInterface` and an ISO string with an offset are exact instants. A string with no offset (`2026-10-09 09:30`) is read in `config('app.timezone')`. A bare `Y-m-d` is a calendar date and is never converted. An all-day item given an instant takes the viewer's date of that instant.
+
+**Ends.** An all-day item's `end` is the last day, included (`start` `2026-10-05`, `end` `2026-10-09` covers five days); given an instant, it covers up to one second before it, so a stored end of local midnight after the last day works. A timed item's `end` is exclusive. An `end` that is missing, unreadable or not after `start` is no end: the item is a short block (a dot, in the month).
+
+A missing `id`, `title` or `start` throws an `InvalidArgumentException`, because that is a bug in the code that builds the items. A `start` that cannot be read skips the item and reports it once.
+
+**Colours.** `red`, `orange`, `yellow`, `green`, `blue`, `purple`, `black`, `zinc` and `gray` are presets, each a tint, an accent edge and a dot that read in light and dark, with the text left neutral. An item with no colour, or a name the calendar does not know, is zinc. A hex colour (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`) is used as it is, and its edge is adjusted where it would not show. Add or replace a preset in `config/atom.php`:
+
+```php
+'calendar' => [
+    'colors' => [
+        'teal' => [
+            'tint' => 'bg-teal-100 dark:bg-teal-500/20',
+            'accent' => 'border-teal-600 dark:border-teal-400',
+            'dot' => 'bg-teal-600 dark:bg-teal-400',
+        ],
+    ],
+],
+```
+
+Names are lowercase letters, digits and dashes; a key you leave out keeps the preset's. Tailwind has to see those class strings, so make sure your build scans the file that holds them.
+
+### Dates and timezones
+
+Everything the calendar shows and says is in the **viewer's timezone**, `Jiannius\Atom\Services\Carbon::getLocalTimezone()` (the signed-in user's `timezone`, else the `TIMEZONE` environment variable, else `Asia/Kuala_Lumpur`): the same one `local()` and `pretty()` use, and not `config('app.timezone')`. The browser's own zone never matters.
+
+**Set the zone where it is read from.** `TIMEZONE` is read with `env()`, and `env()` is `null` once `php artisan config:cache` has run unless the value is a real environment variable of the server (the web server's or the container's, not only a line in `.env`). So give each user a `timezone`, or set `TIMEZONE` in the server's environment when config is cached: with neither, everyone gets Asia/Kuala_Lumpur. A user whose `timezone` is empty or is not a zone name PHP knows is shown `config('app.timezone')` instead, and it is reported once, rather than the calendar throwing.
+
+**Convert every date the calendar gives you with `Calendar::fromLocal()`** (`Jiannius\Atom\Services\Calendar`). Events carry wall-clock strings (`2026-10-09T09:30`, or `2026-10-09` for days), and `fromLocal()` turns one into an instant in the application timezone, daylight saving included. It throws `InvalidArgumentException` for anything that is not `Y-m-d` or `Y-m-dTH:i[:s]` with no offset. Do not hand the string to Eloquent as it is, and do not give it a Carbon in another zone: Eloquent writes a Carbon's wall clock without converting it. A bare date (`allDay: true`) is a date, not an instant: store it as one, or add the day after its end as in the example above.
+
+**Building dates for the viewer.** `Calendar::now()` is the current moment as a `Carbon` in the viewer's timezone, so `Calendar::now()->startOfWeek()` is the start of the viewer's week and not the server's (the docs demos use it). `Calendar::timezone()` is the viewer's zone name and `Calendar::appTimezone()` is `config('app.timezone')`, the zone `fromLocal()` returns and the `items` closure's `$from` and `$to` are in. Plain `now()` is in the application timezone.
+
+### Events
+
+The calendar dispatches bubbling events from its root. Listen with `x-on:` on the tag, on an element around it, or on `document`. Times are the viewer's wall clock.
+
+| Event | Detail | |
+|---|---|---|
+| `calendar-select` | `{ start, end, allDay, waitUntil }` | Click or drag over empty space, on a `selectable` calendar. Not cancelable. For days (the month, the all-day row) `start` and `end` are `Y-m-d` and **`end` is the last day, included**: one clicked day has `start === end`. For a time (the time grid) they are `Y-m-dTH:i` and **`end` is exclusive**, the first minute after the last slot. |
+| `calendar-item-move` | `{ id, start, end, allDay, waitUntil }` | An item was dropped somewhere else, with its length and, in the month, its time of day kept. `end` follows the same rules, and is `null` for a timed item that has none. Cancelable. |
+| `calendar-item-resize` | `{ id, start, end, waitUntil }` | An item's end was pulled. `start` stays. Cancelable. |
+| `calendar-item-click` | `{ id }` | An item without an `href` was clicked, or Enter or Space was pressed on it. This is also how a keyboard reaches an item: open your edit form from it. |
+
+`preventDefault()` on a move or a resize says no, and the item goes back at once. A drop that lands where the item already was fires nothing.
+
+### Saving a change: use `waitUntil`
+
+Pass the promise of your save to `waitUntil()` while you handle the event, as the example above does with `$wire.reschedule(...)`:
+
+```blade
+x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
+```
+
+- The item is drawn where it was dropped as soon as the pointer lets go, and the calendar says "Saving..." to screen readers while the promise is pending. A selection shows a "Creating..." placeholder where it was, until the promise settles.
+- If the promise **rejects**, the item goes back to where it was. Livewire rejects the promise of an action when the request fails, and when the method fails validation, aborts, or throws (a failed `authorize()` is a 403). A method that refuses by just returning resolves, so refuse by validating, authorising or throwing.
+- Without `waitUntil()`, the item stays where it was dropped until the payload changes, so a failed or refused save leaves it in the wrong place until something else re-renders the calendar with different data. Calling it has to happen while the event is being handled; a call made later is ignored.
+- A payload that arrives while the promise is pending does not move the item. Once it settles, a payload that arrived meanwhile takes over, and the item is where your server has it. With none, the item stays where it was put until the next one.
+- Do not make the method `#[Renderless]` unless you have thought it through. A renderless response sends no payload, so when its promise resolves the item stays exactly where it was dropped, even if your method changed the time (clamped it, applied a rule), and a created item never appears. A normal action re-renders, and the new payload is what the calendar shows. A move that always saves as dropped can be renderless.
+
+### Keyboard, touch and screen readers
+
+- **Month:** the grid has one tab stop (today, or the day last focused). Arrow keys move a day or a week, Home and End go to the ends of the week, PageUp and PageDown a month; a key that leaves the window asks the server for the next one, and the focus follows. Enter or Space opens the day's list of items. On a `selectable` calendar they select an empty day, as a click does. Escape closes the list or gives up a drag, and gives the focus back to where it was.
+- **Week and day:** each day is a labelled group, and its items are buttons, in the order they start, named with their title, day, time range and colour. A day's header opens that day in the day view.
+- **Dragging is pointer only.** Moving and resizing have no keyboard form: `calendar-item-click` is the alternative, so open an edit form with the date fields from it. Creating from the keyboard works in the month; in the time grid, select with the pointer. Escape gives up a gesture in progress.
+- **Pointer rules:** a press moves more than 5 px before it is a drag, so a click stays a click. On touch, a gesture starts after a half-second press, so a finger that scrolls keeps scrolling. A press with Ctrl, Cmd, Alt or Shift held is not a gesture.
+- **Narrow screens:** where the calendar is under 600 px wide (a measure of the calendar, not the screen), a month day shows its number and up to four dots instead of titles, and tapping a day with items opens its list (also on a `selectable` calendar; a drag or a long press still selects). The week and day views scroll sideways with the hour gutter and day headers kept in place; the day view fits a phone best.
+- Titles, day names, buttons and the "+N more" label go through `__()`; the month, week and day names follow the app locale.
+- **Right-to-left layouts are not supported.** The grid, the toolbar, the hour gutter and the arrow keys are all laid out and handled left to right, whatever `dir` says.
+
+### Without Livewire
+
+With no `wire:model` the calendar is static. It shows `month` (or the current month), lays out the items it is given, and switches views, but has no previous, next, today or date jump. Events still fire, so you can drive it from Alpine. Nothing sends a payload, so a moved item stays where it was dropped.
+
+```blade
+<atom:calendar month="2026-10" :items="$items" x-on:calendar-item-click="open($event.detail.id)" />
+```
+
+### Upgrading from the event-calendar wrapper
+
+The old `<atom:calendar>` wrapped `@event-calendar/core`. It is gone, together with that package and its `calendar` JS chunk and CSS file, and the new component is built into `atom.js` and `atom.css`. The tag is the same, nothing else is. A render throws, naming the attribute and what replaces it, when the tag itself carries any of these: the props `modes` and `periods`; an `x-model` (with or without modifiers; `wire:model` is fine); or an `x-on:` or `@` listener, with any modifier (`.window`, `.prevent`...), for `calendar-date-clicked`, `calendar-date-selected`, `calendar-event-clicked`, `calendar-event-dropped`, `calendar-event-resized`, `calendar-changed` or `calendar-mounted`. Anything that is not on the tag cannot be seen, and does not throw: it stops working without a message. That is a `$dispatch('add-calendar-events', ...)` (or `update-` or `remove-`) from anywhere on the page, a listener you put on `window` or `document` in a script, and CSS aimed at the old markup. Search your code for `-calendar-events`, `calendar-` and `ec-`.
+
+**Props**
+
+| Old | Now |
+|---|---|
+| `periods="['month', 'week', 'day']"` | `views`. Passing `periods` throws. |
+| `modes="['calendar', 'timeline']"` | Removed. There is no timeline, resource or list view. Passing `modes` throws. |
+| `name` | Still a prop, but it only keys the ids inside the calendar. It no longer picks which calendar an event is for. |
+| First day of the week was Sunday | `week-start` defaults to `monday`: pass `week-start="sunday"` to keep Sunday. |
+| A day grew to fit its items | A day shows `max` rows (`3`) and "+N more". `:max="false"` for the old behaviour. |
+| Every click and drag selected | `selectable` is off by default. Add it to keep creating. Drag and resize stay on. |
+| `x-model="date"` (an ISO instant) | `wire:model="date"` (`Y-m-d`), or none. Passing `x-model` throws. A property that still holds an ISO instant (`2026-10-09T10:00:00.000Z`) is not a date the calendar reads: it shows today, with no error. The anchor takes `Y-m-d` or `Y-m`, or a `DateTimeInterface`, which a Carbon-typed property is (read as the viewer's date). |
+| Offset-less strings were read, and everything drawn, in the browser's timezone | An offset-less string is read in `config('app.timezone')`, and everything is drawn in the viewer's timezone, `Carbon::getLocalTimezone()` (the signed-in user's `timezone`, else `TIMEZONE` in the environment, else `Asia/Kuala_Lumpur`), whatever the browser says. A host with neither a `timezone` on its users nor `TIMEZONE` set shows everyone Kuala Lumpur time: set one. With config cached, `TIMEZONE` has to be a real environment variable of the server, since a value that is only in `.env` is `null` then. See Dates and timezones. |
+| CSS aimed at `.ec-*` classes, `--ec-*` variables or `[&_.ec-event]` utilities on the tag | No longer applies: none of that markup exists. The look comes from the `color` presets, `config('atom.calendar.colors')` and the `--atom-calendar-*` variables above; delete the old rules. |
+
+**Getting items in.** The `add-calendar-events`, `update-calendar-events` and `remove-calendar-events` window events are gone, and so is the `calendar-changed` event that told you to fetch. The calendar asks your `items` closure for the window on every render, and a normal re-render after you save is the update, so a `#[Renderless]` fetch method and the events around it can be deleted. A host that fetched in `calendar-changed` replaces that with the closure and the overlap query in the Quick start.
+
+**Item fields**
+
+| Old | Now |
+|---|---|
+| `start_at`, `end_at` | `start`, `end` (an end that is a date is the last day, included) |
+| `all_day` | `all_day` |
+| `bg_color`, `background_color` | `color`: a preset name or a hex colour. An item with none is **zinc**: the old default was a dark zinc-600 fill in a Tailwind v4 host (red-800 only where a Tailwind v3 build applied the wrapper's `[&_.ec-event]:bg-red-800`), the new one is the lighter zinc preset chip, a pale tint with a zinc edge and neutral text. |
+| `draggable`, `resizable` | `draggable`, `resizable` |
+| `text_color`, `class`, `style`, `meta`, `editable`, `resources` | Removed. Text is always neutral; look the record up by `id` from the event. |
+| | New: `icon`, `danger`, `href` |
+
+**Events.** The old events carried `{ info, mode, period, calendar }`, with JavaScript dates and `startUtc` strings in `info`. The new ones carry the details above, as wall-clock strings, and the calendar object is not exposed.
+
+| Old | Now |
+|---|---|
+| `calendar-date-clicked`, `calendar-date-selected` | `calendar-select` (a click is a one-day select; needs `selectable`) |
+| `calendar-event-clicked` | `calendar-item-click` |
+| `calendar-event-dropped` | `calendar-item-move` |
+| `calendar-event-resized` | `calendar-item-resize` |
+| `calendar-changed`, `calendar-mounted` | Removed |
+
+An `x-on:` or `@` listener for any of the old events, on the tag, throws and names its replacement; one on `window`, `document` or a wrapping element is not on the tag, so it is silent: search for it.
+
+Every date in an event goes through `Calendar::fromLocal()` where an `info.startUtc` was used before; see Dates and timezones. The `is-loading` class a host could bind is not needed: the toolbar shows its own spinner while it waits for a window.
 
 ---
 

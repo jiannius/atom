@@ -358,3 +358,522 @@ html.dark [data-atom-slider-bubble] {
     background: #fff;
     color: #18181b;
 }
+
+/** Calendar — the month grid and its overlays are laid out here, not with utilities, because chips are
+    placed by grid line and the day list is hit-tested and positioned against that geometry; both have to
+    hold in a consumer whose Tailwind never saw these class names. Colour, type and spacing stay in the
+    markup. **/
+/* Size containment leaves the root no content width of its own, so as a flex item or an auto grid track it
+   would collapse to nothing: it asks for the width of its parent instead. */
+[data-atom-calendar] {
+    container-type: inline-size;
+}
+
+/* Layered on purpose, unlike the rest of this file: atom.css is unlayered and would beat a host's
+   `w-96` (@layer utilities) on the calendar. In @layer base it still applies where nothing sets a width.
+   The same goes for the time grid's measures: a host sets `--atom-calendar-hour` (what an hour is tall) or the
+   others from a utility class and they win, and the grid is laid out from them and not from numbers. */
+@layer base {
+    [data-atom-calendar] {
+        width: 100%;
+        --atom-calendar-hour: 3.5rem;
+        --atom-calendar-gutter: 3.5rem;
+        --atom-calendar-min-column: 6rem;
+    }
+}
+
+[data-atom-calendar-weekdays],
+[data-atom-calendar-week-bg],
+[data-atom-calendar-chips] {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+/* every week is as tall as the tallest one */
+[data-atom-calendar-weeks] {
+    display: grid;
+    grid-auto-rows: 1fr;
+}
+
+[data-atom-calendar-week] {
+    position: relative;
+    /* what is raised inside a week (the ghost of a move) stays inside it: a host's overlay is over the whole calendar */
+    isolation: isolate;
+}
+
+/* the cells under the chips: backgrounds, lines, and what a click on empty space lands on */
+[data-atom-calendar-week-bg] {
+    position: absolute;
+    inset: 0;
+}
+
+/* row 1 holds the day numbers, the rows under it one chip each. The layer lets a click through to the
+   cell beneath it; only a chip or a "+N more" takes one. */
+[data-atom-calendar-chips] {
+    position: relative;
+    grid-template-rows: 1.75rem;
+    grid-auto-rows: 1.25rem;
+    row-gap: 0.125rem;
+    align-content: start;
+    min-height: 7rem;
+    padding: 0.25rem;
+    pointer-events: none;
+}
+
+[data-atom-calendar-slot],
+[data-atom-calendar-more] {
+    min-width: 0;
+    pointer-events: auto;
+}
+
+/* a bar that carries on into the next or from the previous week ends in a notch instead of a corner */
+[data-atom-calendar-chip="bar"][data-before] {
+    border-left-width: 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding-left: 0.75rem;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 5px 50%);
+}
+
+[data-atom-calendar-chip="bar"][data-after] {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 50%, calc(100% - 5px) 100%, 0 100%);
+}
+
+[data-atom-calendar-chip="bar"][data-before][data-after] {
+    clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 50%, calc(100% - 5px) 100%, 0 100%, 5px 50%);
+}
+
+/* clip-path clips the outline along with the bar, since the outline is drawn outside its box: a focused bar drops
+   the notch so the focus ring shows. Same specificity as the rules above, and after them. */
+[data-atom-calendar-chip="bar"][data-before]:focus-visible,
+[data-atom-calendar-chip="bar"][data-after]:focus-visible {
+    clip-path: none;
+}
+
+/* a colour given as a hex is validated on the server and painted from here: the tint, the accent edge and the dot */
+[data-atom-calendar-chip="bar"][data-atom-calendar-hex],
+[data-atom-calendar-chip="block"][data-atom-calendar-hex] {
+    background-color: color-mix(in oklab, var(--atom-calendar-hue) 18%, transparent);
+    border-left-color: var(--atom-calendar-edge, var(--atom-calendar-hue));
+}
+
+/* the edge and the dot of a hex colour are moved to show against the ground of the theme (calendar/colors.js) */
+html.dark [data-atom-calendar-chip="bar"][data-atom-calendar-hex],
+html.dark [data-atom-calendar-chip="block"][data-atom-calendar-hex] {
+    border-left-color: var(--atom-calendar-edge-dark, var(--atom-calendar-hue));
+}
+
+/* a block that carries on from the day before, or into the next, is cut square on that edge */
+[data-atom-calendar-chip="block"][data-before] {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+[data-atom-calendar-chip="block"][data-after] {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* The week and day views. One scroller (`overflow: auto`, so a narrow screen scrolls the week sideways and a tall
+   grid scrolls up and down) holds a header that sticks to the top and an hour gutter that sticks to the left. A day
+   is 24 rows of --atom-calendar-hour: blocks are placed in a column by percentages of the day, the hour lines and
+   labels by that height, and the columns never get narrower than --atom-calendar-min-column. A host caps the height
+   with --atom-calendar-grid-height. */
+[data-atom-calendar-grid] {
+    position: relative;
+    /* its own stacking context: the sticky header (z-index 4) must not rise over a host's menu or overlay */
+    isolation: isolate;
+    overflow: auto;
+    /* Sideways, a week that has been scrolled to its end does not go on into the browser's back and forward swipe. Up and down it
+       does chain to the page: the grid is most of a phone's screen, and a scroller that keeps a swipe that has reached its end
+       leaves the page stuck until the next swipe lands outside it. */
+    overscroll-behavior-x: contain;
+    max-height: var(--atom-calendar-grid-height, min(70vh, 48rem));
+}
+
+[data-atom-calendar-grid-inner] {
+    min-width: calc(var(--atom-calendar-gutter) + var(--atom-calendar-columns, 7) * var(--atom-calendar-min-column));
+}
+
+[data-atom-calendar-grid-top] {
+    position: sticky;
+    top: 0;
+    z-index: 4;
+}
+
+[data-atom-calendar-grid-row],
+[data-atom-calendar-grid-body] {
+    display: grid;
+    grid-template-columns: var(--atom-calendar-gutter) repeat(var(--atom-calendar-columns, 7), minmax(0, 1fr));
+}
+
+[data-atom-calendar-grid-body] {
+    position: relative;
+}
+
+[data-atom-calendar-gutter] {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+}
+
+[data-atom-calendar-hour] {
+    position: relative;
+    box-sizing: border-box;
+    height: var(--atom-calendar-hour);
+}
+
+[data-atom-calendar-hour-label] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    line-height: 1;
+    white-space: nowrap;
+    transform: translateY(-50%);
+}
+
+[data-atom-calendar-column] {
+    position: relative;
+    min-width: 0;
+}
+
+/* a block sits by percentages of the day (set by the layout), is at least half an hour tall (what the layout's lanes
+   count on, whatever the hour is), and is in front of the hour lines */
+[data-atom-calendar-block] {
+    position: absolute;
+    z-index: 1;
+    box-sizing: border-box;
+    min-height: calc(var(--atom-calendar-hour) / 2);
+    padding-right: 2px;
+}
+
+/* A block's own width is what decides what fits in it, not the screen's: it is a container, and a block too narrow for a time (a
+   lane of three in a week column, a week on a phone) drops the time, so the title gets the room. A short block's title is its whole
+   line; a taller block's is two lines. The ghost of a move or a resize is the same item and is measured the same way. */
+[data-atom-calendar-block],
+[data-atom-calendar-preview] {
+    container: atom-calendar-block / inline-size;
+}
+
+@container atom-calendar-block (max-width: 9rem) {
+    [data-atom-calendar-item-time] {
+        display: none;
+    }
+
+    [data-atom-calendar-chip="block"]:not([data-compact]) [data-atom-calendar-item-title],
+    [data-atom-calendar-ghost-body]:not([data-compact]) [data-atom-calendar-item-title] {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        white-space: normal;
+        overflow: hidden;
+        /* a line breaks between words only: a word wider than the lane stays whole on its line and is cut off by an ellipsis
+           (`anywhere` would break it in the middle: "Worksh" / "op A") */
+        overflow-wrap: normal;
+        word-break: normal;
+        text-overflow: ellipsis;
+    }
+}
+
+/* WebKit clamps lines in a -webkit-box but draws no ellipsis on a line that is a single word too wide for it, so it gets
+   two lines of height on a plain block, which does */
+@supports (font: -apple-system-body) {
+    @container atom-calendar-block (max-width: 9rem) {
+        [data-atom-calendar-chip="block"]:not([data-compact]) [data-atom-calendar-item-title],
+        [data-atom-calendar-ghost-body]:not([data-compact]) [data-atom-calendar-item-title] {
+            display: block;
+            max-height: 2lh;
+        }
+    }
+}
+
+[data-atom-calendar-lines] {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--atom-calendar-gutter);
+    right: 0;
+    pointer-events: none;
+}
+
+[data-atom-calendar-line] {
+    position: relative;
+    box-sizing: border-box;
+    height: var(--atom-calendar-hour);
+}
+
+[data-atom-calendar-half] {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+}
+
+/* What a gesture in progress draws (the engine's `preview`): a box over the days or the hours selected, the item waiting for the
+   host, the ghost of one being moved or resized. They sit where a block sits, in front of it, and never take a pointer, so the
+   grid under them is still what a pointer hits. The item being moved stays where it is, lifted. */
+[data-atom-calendar-preview] {
+    position: absolute;
+    z-index: 2;
+    box-sizing: border-box;
+    min-height: calc(var(--atom-calendar-hour) / 2);
+    padding-right: 2px;
+    pointer-events: none;
+}
+
+[data-atom-calendar-preview][data-before] > * {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+[data-atom-calendar-preview][data-after] > * {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+[data-atom-calendar-selection] {
+    position: absolute;
+    top: 1px;
+    bottom: 1px;
+    box-sizing: border-box;
+    pointer-events: none;
+}
+
+[data-atom-calendar-ghost] {
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+    pointer-events: none;
+}
+
+[data-atom-calendar-chip][data-lifted] {
+    opacity: 0.5;
+}
+
+/* An item that can be picked up shows it, and has a handle on its end for the pointer to pull: a bar's right edge, a block's bottom edge. The handle
+   is no wider than a few px, and sits inside the item, so what is left of it is the item's own click. While a gesture is on, the whole body shows what
+   it does (`data-atom-calendar-gesture` is on the body, which a render never touches), and no text is selected under the pointer. */
+[data-atom-calendar-chip] {
+    position: relative;
+}
+
+[data-atom-calendar-chip][data-draggable] {
+    cursor: grab;
+}
+
+[data-atom-calendar-handle] {
+    position: absolute;
+}
+
+[data-atom-calendar-chip="bar"] > [data-atom-calendar-handle] {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: ew-resize;
+}
+
+[data-atom-calendar-chip="block"] > [data-atom-calendar-handle] {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 6px;
+    cursor: ns-resize;
+}
+
+[data-atom-calendar-body][data-atom-calendar-gesture] {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+[data-atom-calendar-body][data-atom-calendar-gesture="move"] * {
+    cursor: grabbing !important;
+}
+
+[data-atom-calendar-body][data-atom-calendar-gesture="resize-y"] * {
+    cursor: ns-resize !important;
+}
+
+[data-atom-calendar-body][data-atom-calendar-gesture="resize-x"] * {
+    cursor: ew-resize !important;
+}
+
+/* waiting for the host: the selection's box, striped */
+[data-atom-calendar-pending],
+[data-atom-calendar-selection][data-kind="pending"] {
+    background-image: repeating-linear-gradient(135deg, color-mix(in oklab, currentColor 10%, transparent) 0 6px, transparent 6px 12px);
+}
+
+[data-atom-calendar-ghost-body][data-atom-calendar-hex] {
+    background-color: color-mix(in oklab, var(--atom-calendar-hue) 18%, transparent);
+    border-left-color: var(--atom-calendar-edge, var(--atom-calendar-hue));
+}
+
+html.dark [data-atom-calendar-ghost-body][data-atom-calendar-hex] {
+    border-left-color: var(--atom-calendar-edge-dark, var(--atom-calendar-hue));
+}
+
+/* the line for the current time, across today's column only */
+[data-atom-calendar-now-line] {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    height: 2px;
+    margin-top: -1px;
+    pointer-events: none;
+}
+
+[data-atom-calendar-now-line] > span {
+    position: absolute;
+    left: 0;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+}
+
+/* the all-day row: the bars of the month view, in lanes over the columns */
+[data-atom-calendar-allday-area] {
+    position: relative;
+    grid-column: 2 / -1;
+    min-width: 0;
+}
+
+[data-atom-calendar-allday-bg],
+[data-atom-calendar-allday-chips] {
+    display: grid;
+    grid-template-columns: repeat(var(--atom-calendar-columns, 7), minmax(0, 1fr));
+}
+
+[data-atom-calendar-allday-bg] {
+    position: absolute;
+    inset: 0;
+}
+
+[data-atom-calendar-allday-chips] {
+    position: relative;
+    grid-auto-rows: 1.25rem;
+    row-gap: 0.125rem;
+    align-content: start;
+    min-height: 2rem;
+    padding: 0.25rem;
+    pointer-events: none;
+}
+
+/* a selection (or an item waiting for the host) in the all-day row: a box over the days, in front of the bars, taking no pointer */
+[data-atom-calendar-allday-over] {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* On a touch screen a long press is how a selection starts, and the browser must not answer it with a text selection or a callout: the empty
+   days and slots are not text, and a block's own text is left to be selected. */
+@media (pointer: coarse) {
+    [data-atom-calendar-week-bg],
+    [data-atom-calendar-allday-bg],
+    [data-atom-calendar-column] {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    [data-atom-calendar-block] {
+        -webkit-user-select: text;
+        user-select: text;
+    }
+
+    /* an item that a long press picks up is not a text to select, and has no callout for a link: the press is the item's */
+    [data-atom-calendar-chip][data-draggable] {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    /* a finger needs more of an edge to pull than a pointer does */
+    [data-atom-calendar-chip="bar"] > [data-atom-calendar-handle] {
+        width: 14px;
+    }
+
+    [data-atom-calendar-chip="block"] > [data-atom-calendar-handle] {
+        height: 14px;
+    }
+}
+
+[data-atom-calendar-dot][data-atom-calendar-hex] {
+    background-color: var(--atom-calendar-edge, var(--atom-calendar-hue));
+}
+
+html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
+    background-color: var(--atom-calendar-edge-dark, var(--atom-calendar-hue));
+}
+
+/* the narrow layout's dots, one row per day */
+[data-atom-calendar-dots] {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+
+/* The day list: a top-layer popover, positioned in viewport coordinates by floating-ui, so a closed one
+   keeps its UA display:none and an open one is fixed (see the dropdown note above). */
+[data-atom-calendar-popover] {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+}
+
+[data-atom-calendar-popover] > [data-atom-scroll-region] {
+    max-height: 16rem;
+    overflow-y: auto;
+}
+
+/* Text for assistive tech only (the overdue label, the live title). Structural for the reason the page
+   title above is: it must stay hidden wherever sr-only is not compiled. */
+[data-atom-calendar-sr] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Narrow: no room for titles, so a day shows its number and up to four dots, and a tap opens the day list
+   that carries the titles. Container, not viewport: the calendar may sit in a narrow column of a wide page.
+   The probe is how the engine learns which layout is on: it is shown by this rule and only by it, so what the
+   engine does with a tap on a selectable calendar (open the list where the titles are hidden) cannot drift from it. */
+[data-atom-calendar-narrow] {
+    display: none;
+}
+
+@container (max-width: 600px) {
+    [data-atom-calendar-narrow] {
+        display: block;
+    }
+
+    [data-atom-calendar-chips] {
+        min-height: 4rem;
+    }
+
+    [data-atom-calendar-chips] > [data-atom-calendar-slot],
+    [data-atom-calendar-chips] > [data-atom-calendar-more] {
+        display: none;
+    }
+
+    [data-atom-calendar-number] {
+        justify-content: center;
+    }
+
+    [data-atom-calendar-dots] {
+        display: flex;
+    }
+}

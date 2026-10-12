@@ -56,7 +56,7 @@ Views drift when they hand-roll what Atom already has.
 The rules above are the ones that apply to every view. The **`atom-components`
 skill** carries the rest — the `AtomComponent` trait and the method names it
 occupies, forms and reCAPTCHA, modals, tables (filters, bulk selection, sticky
-selection), navigation and breadcrumbs, toast/alert/confirm, dropdowns, tooltips,
+selection), navigation and breadcrumbs, the calendar, toast/alert/confirm, dropdowns, tooltips,
 status primitives, `<atom:select>` option sets, Actions and the `WebAction`
 contract, enums, the editor and the full sanitising rules, safe URLs, share buttons,
 mail, broadcasting, and the project conventions.
