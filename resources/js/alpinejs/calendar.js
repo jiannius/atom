@@ -497,7 +497,7 @@ export default () => ({
     dayKey (day, event) {
         if (event.target !== event.currentTarget || event.ctrlKey || event.metaKey || event.altKey || this.view !== 'month' || !this.payload) return
 
-        // Shift with an arrow or a page key is for selecting a range, which is not wired yet: it is left to the browser
+        // Shift with an arrow or a page key is for selecting a range, which the keyboard does not do here: it is left to the browser
         if (event.shiftKey && /^(Arrow|Page)/.test(event.key)) return
 
         // two quick presses go on from where the first one is heading, as the buttons of the toolbar do

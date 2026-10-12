@@ -6,7 +6,7 @@ import { addDays } from '../../resources/js/alpinejs/calendar/dates.js'
 
 // The states a gesture draws (a selection, an item waiting for the host, the ghost of a move or a resize) and the colours of a hex
 // item's edge. All pure: items in, shapes out. A selection and an item waiting for the host are set by the pointer (tests/e2e/calendar-select.spec.js);
-// a move and a resize are not wired yet; the shapes are what they will set, and tests/e2e/calendar-look.spec.js looks at them in a browser.
+// a move and a resize are set by the pointer too (tests/e2e/calendar-move.spec.js); tests/e2e/calendar-look.spec.js looks at the shapes in a browser.
 
 const bar = (id, start, end = null, extra = {}) => ({ id, title: String(id), start, end, allDay: true, color: null, icon: null, danger: false, href: null, ...extra })
 const timed = (id, start, end = null, extra = {}) => ({ ...bar(id, start, end), allDay: false, ...extra })
