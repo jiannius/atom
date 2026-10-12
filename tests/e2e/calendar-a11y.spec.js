@@ -582,7 +582,7 @@ test.describe('ids are derived, and two calendars do not share one', () => {
     })
 })
 
-// ---- the review of phase 5 ----
+// ---- the focus while the server's answer to a window is late ----
 
 // the answer to every Livewire update comes `ms` later than the browser asked for it
 async function delayUpdates (page, ms) {
@@ -996,6 +996,44 @@ test.describe('Enter and Space on a day of a selectable calendar', () => {
 
         await page.keyboard.press('Escape')
         await expect(boxes(page)).toHaveCount(0)
+    })
+
+    test('a second press on the day the host is still holding tells it nothing, a press on another day does, and the day is free again once it has answered', async ({ page }) => {
+        await page.evaluate(() => {
+            document.addEventListener('calendar-select', (event) => {
+                event.detail.waitUntil(new Promise((resolve) => { window.__release = resolve }))
+            })
+        })
+
+        const day = cell(page, '2026-10-13', 'selectable')
+
+        await day.focus()
+        await page.keyboard.press('Enter')
+        await expect(boxes(page).first()).toHaveAttribute('data-kind', 'pending')
+
+        await page.keyboard.press('Enter')
+        await page.keyboard.press(' ')
+        await page.keyboard.press('Enter')
+
+        expect(await heard(page)).toEqual([{ start: '2026-10-13', end: '2026-10-13', allDay: true }])
+
+        // another day is a selection of its own
+        await cell(page, '2026-10-14', 'selectable').focus()
+        await page.keyboard.press('Enter')
+
+        expect(await heard(page)).toEqual([
+            { start: '2026-10-13', end: '2026-10-13', allDay: true },
+            { start: '2026-10-14', end: '2026-10-14', allDay: true },
+        ])
+
+        // the host has answered: the placeholder goes, and the day can be selected again
+        await page.evaluate(() => window.__release())
+        await expect(boxes(page)).toHaveCount(0)
+
+        await day.focus()
+        await page.keyboard.press('Enter')
+
+        expect(await heard(page)).toHaveLength(3)
     })
 
     test('a calendar that is not selectable is as it was: an empty day opens nothing, a day with items opens its list', async ({ page }) => {

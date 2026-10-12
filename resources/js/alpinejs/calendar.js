@@ -523,7 +523,11 @@ export default () => ({
                 // A day with items opens its list, as it does on a calendar that is not selectable. On one that is, an empty day is selected, as a click on
                 // it selects it: a day with nothing in it has nothing for a list to open.
                 if (this.config.selectable && !dayEntries(this.items, day.date).length) {
-                    if (!this.gesture && !event.repeat) this.commitSelect(selectionRange(day.date, day.date))
+                    // Not while the host still holds a selection of this very day (a second press would tell it of the same day twice, and the first is still
+                    // being answered). Another day is a selection of its own, and this one is let go of.
+                    let held = this.preview?.kind === 'pending' && span(this.preview).first === day.date && span(this.preview).last === day.date
+
+                    if (!this.gesture && !event.repeat && !held) this.commitSelect(selectionRange(day.date, day.date))
 
                     return
                 }
