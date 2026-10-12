@@ -6,6 +6,8 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Closure;
 use DateTimeInterface;
+use DateTimeZone;
+use Exception;
 use InvalidArgumentException;
 
 /**
@@ -195,10 +197,27 @@ class Calendar
 
     /**
      * The viewer's timezone: the one source local(), pretty() and the calendar share.
+     *
+     * A user whose `timezone` is empty or not a zone PHP knows would make every date in the calendar throw, so it falls back to
+     * the app timezone, reported once (the value is not in the report).
      */
     public static function timezone(): string
     {
-        return Carbon::getLocalTimezone();
+        $zone = Carbon::getLocalTimezone();
+
+        if (is_string($zone) && $zone !== '') {
+            try {
+                new DateTimeZone($zone);
+
+                return $zone;
+            } catch (Exception) {
+                // reported below
+            }
+        }
+
+        CalendarItem::reportKeyOnce(md5('timezone|'.(is_scalar($zone) ? $zone : gettype($zone))), 'The viewer timezone is empty or not a timezone PHP knows; the calendar uses the app timezone.');
+
+        return self::appTimezone();
     }
 
     /**

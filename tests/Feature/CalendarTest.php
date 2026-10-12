@@ -289,6 +289,25 @@ describe('calendar today', function () {
         expect(Calendar::make()->clock())->toBe('2026-10-10T01:30:15');
     });
 
+    it('falls back to the app timezone, reported once, for a viewer whose timezone is empty or not a zone', function (string $zone) {
+        Exceptions::fake();
+        Carbon::setTestNow('2026-10-09 17:30:00');
+        config(['app.timezone' => 'UTC']);
+        Auth::setUser(new GenericUser(['id' => 1, 'timezone' => $zone]));
+
+        $calendar = Calendar::make();
+
+        expect(Calendar::timezone())->toBe('UTC')
+            ->and($calendar->today())->toBe('2026-10-09')
+            ->and($calendar->payload('2026-10-09')['timezone'])->toBe('UTC')
+            ->and(calendarTestItem(['start' => '2026-10-09T09:30:00Z'])['start'])->toBe('2026-10-09T09:30');
+
+        Exceptions::assertReportedCount(1);
+    })->with([
+        'empty' => [''],
+        'not a zone' => ['Not/AZone'],
+    ]);
+
     it('uses the local timezone when nobody is signed in', function () {
         Carbon::setTestNow('2026-10-09 17:30:00');
 
@@ -548,6 +567,69 @@ describe('calendar item times', function () {
         'a timestamp' => [1791500000],
         'an array' => [[2026, 10, 9]],
     ]);
+
+    it('skips an item whose date object is outside the years it supports, in the viewer timezone', function (DateTimeInterface $start) {
+        Exceptions::fake();
+        calendarTestViewer('Asia/Kuala_Lumpur');
+
+        $items = Calendar::make()->items([
+            ['id' => 'junk-start-'.md5(serialize($start)), 'title' => 'Junk', 'start' => $start],
+            ['id' => 'good', 'title' => 'Good', 'start' => '2026-10-09'],
+        ]);
+
+        expect($items)->toHaveCount(1)->and($items[0]['id'])->toBe('good');
+
+        Exceptions::assertReportedCount(1);
+    })->with([
+        'year 1' => [fn () => Carbon::create(1, 1, 1, 12, 0, 0, 'UTC')],
+        'year 0' => [fn () => new DateTimeImmutable('0000-06-01 12:00:00', new DateTimeZone('UTC'))],
+        'year 999' => [fn () => new DateTime('0999-12-31 12:00:00', new DateTimeZone('UTC'))],
+        'year 9999 that is year 10000 for the viewer' => [fn () => Carbon::create(9999, 12, 31, 23, 59, 59, 'UTC')],
+        'year 10000' => [fn () => new DateTimeImmutable('+10000-01-01 00:00:00', new DateTimeZone('UTC'))],
+    ]);
+
+    it('skips a string instant that is year 10000 once it is local', function () {
+        Exceptions::fake();
+        calendarTestViewer('Asia/Kuala_Lumpur');
+
+        expect(Calendar::make()->items([['id' => 'junk-string-instant', 'title' => 'A', 'start' => '9999-12-31T23:59:59Z']]))->toBe([]);
+
+        Exceptions::assertReportedCount(1);
+    });
+
+    it('keeps the item and drops an end outside the years it supports, as for an end that does not parse', function (DateTimeInterface|string $end, string $allDay) {
+        Exceptions::fake();
+        calendarTestViewer('Asia/Kuala_Lumpur');
+
+        $item = calendarTestItem(['id' => 'junk-end-'.md5(serialize($end).$allDay), 'start' => '2026-10-09T09:00:00+08:00', 'all_day' => $allDay === 'all-day', 'end' => $end]);
+
+        expect($item['end'])->toBeNull()->and($item['start'])->toBe($allDay === 'all-day' ? '2026-10-09' : '2026-10-09T09:00');
+
+        Exceptions::assertReportedCount(1);
+    })->with([
+        'the end of 9999 in UTC, year 10000 at +08:00, timed' => [fn () => Carbon::create(9999, 12, 31, 23, 59, 59, 'UTC'), 'timed'],
+        'the same, all-day' => [fn () => Carbon::create(9999, 12, 31, 23, 59, 59, 'UTC'), 'all-day'],
+        'the same as a string' => ['9999-12-31T23:59:59Z', 'timed'],
+        'year 0, timed' => [fn () => new DateTimeImmutable('0000-01-01 00:00:00', new DateTimeZone('UTC')), 'timed'],
+        'year 1, all-day' => [fn () => Carbon::create(1, 1, 1, 0, 0, 0, 'UTC'), 'all-day'],
+    ]);
+
+    it('reads the first and the last moment the calendar supports', function () {
+        calendarTestViewer('UTC');
+
+        expect(calendarTestItem(['start' => Carbon::create(1000, 1, 1, 0, 0, 0, 'UTC')])['start'])->toBe('1000-01-01T00:00')
+            ->and(calendarTestItem(['start' => Carbon::create(9999, 12, 31, 23, 59, 0, 'UTC')])['start'])->toBe('9999-12-31T23:59')
+            ->and(calendarTestItem(['start' => '2026-10-09T09:00:00Z', 'end' => Carbon::create(9999, 12, 31, 23, 59, 59, 'UTC')])['end'])->toBe('9999-12-31T23:59');
+    });
+
+    it('skips the first moment of year 1000 in UTC for a viewer west of it', function () {
+        Exceptions::fake();
+        calendarTestViewer('America/Los_Angeles');
+
+        expect(Calendar::make()->items([['id' => 'junk-west', 'title' => 'A', 'start' => Carbon::create(1000, 1, 1, 0, 0, 0, 'UTC')]]))->toBe([]);
+
+        Exceptions::assertReportedCount(1);
+    });
 });
 
 describe('calendar item validation', function () {

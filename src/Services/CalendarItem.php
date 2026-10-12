@@ -21,10 +21,17 @@ use Stringable;
  *
  * A missing id, title or start throws: it is a programming error. A start that will not parse skips
  * the item (null), reported once (so does a repeated id, in Calendar::items(), which keeps the first); a bad colour, icon, href or end is dropped and the item stays.
+ * "Will not parse" includes a year outside 1000 to 9999 once the date is in the viewer's timezone, so one junk date cannot take the calendar down: a start out of
+ * range skips the item, an end out of range is an unreadable end (reported once, dropped, the item stays).
  */
 class CalendarItem
 {
     public const COLORS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'black', 'zinc', 'gray'];
+
+    /** The years a date may be in, wherever it came from: the same bounds for a string, a date object and the viewer's local date once converted. */
+    public const MIN_YEAR = 1000;
+
+    public const MAX_YEAR = 9999;
 
     public const REPORTED_LIMIT = 100;
 
@@ -122,7 +129,7 @@ class CalendarItem
             return null;
         }
 
-        if ((int) $m[1] < 1000 || ! checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+        if ((int) $m[1] < self::MIN_YEAR || (int) $m[1] > self::MAX_YEAR || ! checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
             return null;
         }
 
@@ -165,6 +172,8 @@ class CalendarItem
 
     /**
      * Read a date or datetime as the viewer's local date and time; a bare `Y-m-d` is never converted, an offset-less string is app time.
+     * Null when it will not parse or when the local year, after the conversion, falls outside MIN_YEAR to MAX_YEAR: a date object
+     * of year 0 and a `9999-12-31T23:59:59Z` that is already year 10000 for a viewer east of UTC are as unreadable as a string that does not parse.
      *
      * @return array{bare: bool, date: string, time: ?string, instant: ?Carbon}|null
      */
@@ -183,6 +192,11 @@ class CalendarItem
         }
 
         $local = $instant->setTimezone(Calendar::timezone());
+        $year = (int) $local->format('Y');
+
+        if ($year < self::MIN_YEAR || $year > self::MAX_YEAR) {
+            return null;
+        }
 
         return ['bare' => false, 'date' => $local->format('Y-m-d'), 'time' => $local->format('H:i:s'), 'instant' => $instant];
     }
@@ -293,7 +307,7 @@ class CalendarItem
     /**
      * Report a message once per key, with a cap on the keys held so a long-lived worker never goes permanently silent.
      */
-    protected static function reportKeyOnce(string $key, string $message): void
+    public static function reportKeyOnce(string $key, string $message): void
     {
         if (isset(self::$reported[$key])) {
             return;
