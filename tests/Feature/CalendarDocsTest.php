@@ -163,6 +163,13 @@ describe('the calendar section of the README', function () {
             expect($wired)->toContain("\n        ".$line."\n");
         }
 
+        // a save that does not return true is a refusal: each handler that saves says so
+        foreach (['calendar-select', 'calendar-item-move', 'calendar-item-resize'] as $event) {
+            $line = collect($tag)->first(fn ($line) => str_starts_with($line, 'x-on:'.$event.'='));
+
+            expect(str_contains((string) $line, '.then((saved) => saved || Promise.reject())'))->toBeTrue('the README tag line for '.$event.' turns a save that did not return true into a rejection');
+        }
+
         // the skill shows the same handlers
         $skill = file_get_contents(__DIR__.'/../../resources/boost/skills/atom-components/SKILL.blade.php');
 
@@ -197,6 +204,8 @@ describe('the calendar section of the README', function () {
         expect($section)->toContain('saved || Promise.reject()')
             ->and($section)->toContain('does not reject it')
             ->and($section)->toContain('error modal')
+            ->and($section)->toContain('return `false` to refuse, `true` once saved')
+            ->and($section)->toContain('it must still `return true`')
             ->and($section)->not->toMatch('/(?:Livewire rejects|rejects the promise)[^.]*validat/i')
             ->and($section)->not->toContain('refuse by validating')
             ->and($section)->not->toContain('fails validation, aborts');

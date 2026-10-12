@@ -259,6 +259,8 @@ it('teaches the calendar refusal pattern and never says validation rejects the p
     expect($skill)->toContain('saved || Promise.reject()')
         ->and($skill)->toContain('does not reject the promise')
         ->and($skill)->toContain('error modal')
+        ->and($skill)->toContain('return `false` to refuse and `true` once saved')
+        ->and($skill)->toContain('A renderless method must still `return true`')
         ->and($skill)->not->toMatch('/(?:Livewire rejects|rejects the promise)[^.]*validat/i')
         ->and($skill)->not->toContain('refuse by throwing')
         ->and($skill)->not->toContain('a failed validation, an abort');
