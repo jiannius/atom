@@ -14,7 +14,7 @@
 
 ## Execution notes
 
-- Work entirely in the existing worktree (do NOT create a new one): `/Users/tj/Projects/jiannius/atom/.claude/worktrees/table-scaffolding`. All paths are relative to it.
+- Work entirely in the existing worktree (do NOT create a new one): `<worktree>`. All paths are relative to it.
 - Feature code is Blade + inline Alpine → no `dist/` rebuild. The harness adds dev-only deps/paths.
 - Phase 0 (harness) is foundational and contains a SPIKE — it must pass before later phases build on it.
 - `composer install` must be re-run after Phase 0 Task 1 adds dev deps.

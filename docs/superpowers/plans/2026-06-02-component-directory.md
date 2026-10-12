@@ -1891,7 +1891,7 @@ git commit -m "docs: document the /atom/docs component directory"
 
 ```bash
 # in the host app
-composer config repositories.atom path /Users/tj/Projects/jiannius/atom-worktree-path
+composer config repositories.atom path <worktree>
 composer require jiannius/atom:@dev
 php artisan view:clear && php artisan route:clear
 ```
