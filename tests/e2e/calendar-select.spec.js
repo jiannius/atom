@@ -1046,6 +1046,56 @@ test.describe('the time grid on a touch', () => {
     })
 })
 
+test.describe('a long press on the time grid, at its edge', () => {
+    // a slot of the 13th, scrolled so that it is just above the grid's visible bottom: in the 48px zone where the grid scrolls under a pointer
+    async function slotAtTheBottomEdge (page) {
+        const scroller = probe(page).locator('[data-atom-calendar-grid]')
+        const box = await scroller.boundingBox()
+        const slot = await at(page, '2026-10-13', 10.1)
+
+        await scroller.evaluate((el, by) => { el.scrollTop += by }, slot.y - (box.y + box.height - 20))
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+
+        const point = await at(page, '2026-10-13', 10.1)
+
+        expect(point.y).toBeGreaterThan(box.y + box.height - 48)
+        expect(point.y).toBeLessThan(box.y + box.height)
+
+        return point
+    }
+
+    const scrollTop = (page) => probe(page).locator('[data-atom-calendar-grid]').evaluate((el) => el.scrollTop)
+
+    test('held still where it was pressed, it selects the slot it was pressed in and scrolls nothing', async ({ page }) => {
+        await open(page, 'selectable=1&view=week&date=2026-10-12')
+
+        const from = await slotAtTheBottomEdge(page)
+        const before = await scrollTop(page)
+
+        await pointer(page, 'pointerdown', from)
+        await expect.poll(async () => (await engine(page)).preview?.kind, { timeout: 1500 }).toBe('select')
+        await page.waitForTimeout(300)
+        expect(await scrollTop(page)).toBe(before)
+        await pointer(page, 'pointerup', from)
+
+        expect(await scrollTop(page)).toBe(before)
+        expect(await selects(page)).toEqual([{ start: '2026-10-13T10:00', end: '2026-10-13T10:30', allDay: false }])
+    })
+
+    test('and once the finger moves on, the grid scrolls under it', async ({ page }) => {
+        await open(page, 'selectable=1&view=week&date=2026-10-12')
+
+        const from = await slotAtTheBottomEdge(page)
+        const before = await scrollTop(page)
+
+        await pointer(page, 'pointerdown', from)
+        await expect.poll(async () => (await engine(page)).preview?.kind, { timeout: 1500 }).toBe('select')
+        await pointer(page, 'pointermove', { x: from.x, y: from.y + 6 })
+        await expect.poll(() => scrollTop(page)).toBeGreaterThan(before + 60)
+        await pointer(page, 'pointerup', { x: from.x, y: from.y + 6 })
+    })
+})
+
 // A gesture follows the pointer until something ends it. These are the presses and the losses that end nothing by themselves (a Mac's
 // Ctrl+click is a context-menu click: a press and a contextmenu and no release), so each has its own guard, and each test is for one.
 test.describe('a gesture that nothing ends', () => {

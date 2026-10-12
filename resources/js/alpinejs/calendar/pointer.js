@@ -99,7 +99,7 @@ export default {
         // What is read back from `this.gesture` is Alpine's reactive proxy of the object put there, not the object: a timer or a frame that is handed
         // the one and asks about the other (`this.gesture === gesture`) is never equal. So the gesture used here is the one read back, and what asks
         // whether a gesture is still the current one asks its abort signal, which is the gesture's own and is the same from either side.
-        this.gesture = { ...spec, id: event.pointerId, touch, origin: point, point, active: false, timer: null, frame: null, abort }
+        this.gesture = { ...spec, id: event.pointerId, touch, origin: point, point, active: false, armed: false, timer: null, frame: null, abort }
 
         let gesture = this.gesture
 
@@ -200,7 +200,8 @@ export default {
 
     // The time grid scrolls under a pointer at its top or bottom edge, a little more the nearer the edge, for as long as it stays there: the hours that
     // are not on screen could not be reached otherwise. The top is the bottom of the header that stays on top. A frame that has scrolled it works out
-    // what the pointer is over again, as the pointer itself has not moved.
+    // what the pointer is over again, as the pointer itself has not moved. A pointer still where it was pressed (a finger that has only waited out the
+    // long press) has asked for none of it.
     autoScroll (gesture) {
         // the scroller is looked up once, and again only if it has left the page
         let grid = null
@@ -213,6 +214,13 @@ export default {
             if (!grid?.isConnected) grid = this.rootEl.querySelector('[data-atom-calendar-grid]')
 
             if (!grid || grid.scrollHeight <= grid.clientHeight) return
+
+            // a finger held still where it picked the item up is not dragging it to the edge
+            if (!gesture.armed) {
+                if (!hasMoved(gesture.origin, gesture.point)) return
+
+                gesture.armed = true
+            }
 
             let box = grid.getBoundingClientRect()
             let top = box.top + (grid.querySelector('[data-atom-calendar-grid-top]')?.offsetHeight ?? 0)

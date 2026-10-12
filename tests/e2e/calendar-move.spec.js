@@ -118,6 +118,9 @@ async function drag (page, from, ...through) {
 const scrollGrid = (page, top, name) => grid(page, name).evaluate((el, value) => { el.scrollTop = value }, top)
 const scrollTop = (page, name) => grid(page, name).evaluate((el) => el.scrollTop)
 
+// How near an edge of the grid's visible part a pointer scrolls it (see `scrollSpeed`): the top is the bottom of the header that stays on top
+const EDGE = 48
+
 // a pointer of the given kind, on the page, as the browser sends one
 const pointer = (page, type, point, pointerType = 'touch', id = 7) => page.evaluate(([kind, x, y, pointerKind, pointerId]) => {
     const target = document.elementFromPoint(x, y) ?? document.body
@@ -1568,6 +1571,71 @@ test.describe('a touch', () => {
         await pointer(page, 'pointerup', to)
 
         expect(await moves(page)).toEqual([{ id: 6, start: '2026-10-14T14:00', end: '2026-10-14T15:00', allDay: false }])
+    })
+})
+
+// A finger that long-presses an item within the edge zone of the grid has not asked for the grid to scroll: it is waiting. The grid scrolls only once the
+// finger has moved, as a mouse's drag has by the time it starts.
+test.describe('a long press at the edge of the time grid', () => {
+    test.beforeEach(async ({ page }) => {
+        await open(page, 'view=week&date=2026-10-12')
+    })
+
+    // Design review (10:00 to 11:00 on the 14th), scrolled so that its top is just above the grid's visible bottom
+    async function blockAtTheBottomEdge (page) {
+        const box = await grid(page).boundingBox()
+        const block = await chipOf(page, 'block', 'Design review').boundingBox()
+
+        await grid(page).evaluate((el, by) => { el.scrollTop -= by }, (box.y + box.height - 30) - block.y)
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+
+        const point = await near(chipOf(page, 'block', 'Design review'))
+
+        expect(point.y).toBeGreaterThan(box.y + box.height - EDGE)
+        expect(point.y).toBeLessThan(box.y + box.height)
+
+        return point
+    }
+
+    test('a finger that picks up a block there and lets go where it pressed scrolls nothing and moves nothing', async ({ page }) => {
+        const from = await blockAtTheBottomEdge(page)
+        const before = await scrollTop(page)
+
+        await pointer(page, 'pointerdown', from)
+        await expect(shapes(page)).toHaveCount(1, { timeout: 1500 })
+        // held still, as a finger is while it decides
+        await page.waitForTimeout(300)
+        expect(await scrollTop(page)).toBe(before)
+        await pointer(page, 'pointerup', from)
+
+        expect(await scrollTop(page)).toBe(before)
+        expect(await moves(page)).toEqual([])
+    })
+
+    test('a finger that nudges within the slop of its press has not asked for it either', async ({ page }) => {
+        const from = await blockAtTheBottomEdge(page)
+        const before = await scrollTop(page)
+
+        await pointer(page, 'pointerdown', from)
+        await expect(shapes(page)).toHaveCount(1, { timeout: 1500 })
+        await pointer(page, 'pointermove', { x: from.x, y: from.y + 3 })
+        await page.waitForTimeout(300)
+        await pointer(page, 'pointerup', { x: from.x, y: from.y + 3 })
+
+        expect(await scrollTop(page)).toBe(before)
+    })
+
+    test('and once the finger moves on, the grid scrolls under it', async ({ page }) => {
+        const from = await blockAtTheBottomEdge(page)
+        const before = await scrollTop(page)
+
+        await pointer(page, 'pointerdown', from)
+        await expect(shapes(page)).toHaveCount(1, { timeout: 1500 })
+        await page.waitForTimeout(150)
+        expect(await scrollTop(page)).toBe(before)
+        await pointer(page, 'pointermove', { x: from.x, y: from.y + 6 })
+        await expect.poll(() => scrollTop(page)).toBeGreaterThan(before + 60)
+        await pointer(page, 'pointerup', { x: from.x, y: from.y + 6 })
     })
 })
 
