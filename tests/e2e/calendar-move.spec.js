@@ -121,6 +121,23 @@ const scrollTop = (page, name) => grid(page, name).evaluate((el) => el.scrollTop
 // How near an edge of the grid's visible part a pointer scrolls it (see `scrollSpeed`): the top is the bottom of the header that stays on top
 const EDGE = 48
 
+// a pause between a finger's move and its release, which a test can lengthen to see what a slow one does (PAUSE=200)
+const PAUSE = Number(process.env.PAUSE ?? 0)
+
+// The points a test presses and lets go at must be clear of those edges: at one the grid scrolls under the pointer, and where the item lands depends
+// on how many frames pass between the move and the release. A layout that moves a point into the zone fails here, and not as a flake somewhere else.
+async function clearOfEdges (page, points, name) {
+    const { top, bottom } = await grid(page, name).evaluate((el) => ({
+        top: el.getBoundingClientRect().top + (el.querySelector('[data-atom-calendar-grid-top]')?.offsetHeight ?? 0),
+        bottom: el.getBoundingClientRect().bottom,
+    }))
+
+    for (const point of points) {
+        expect(point.y, `a point at y=${point.y} is within ${EDGE}px of the top of the grid's visible part (${top})`).toBeGreaterThan(top + EDGE)
+        expect(point.y, `a point at y=${point.y} is within ${EDGE}px of the bottom of the grid's visible part (${bottom})`).toBeLessThan(bottom - EDGE)
+    }
+}
+
 // a pointer of the given kind, on the page, as the browser sends one
 const pointer = (page, type, point, pointerType = 'touch', id = 7) => page.evaluate(([kind, x, y, pointerKind, pointerId]) => {
     const target = document.elementFromPoint(x, y) ?? document.body
@@ -645,7 +662,13 @@ test.describe('the focus of an item that is moved', () => {
     test('and in the time grid', async ({ page }) => {
         await open(page, 'view=week&date=2026-10-12')
         await chipOf(page, 'block', 'Design review').focus()
-        await drag(page, await near(chipOf(page, 'block', 'Design review')), await at(page, '2026-10-15', 14.1))
+        await scrollGrid(page, 400)
+
+        const from = await near(chipOf(page, 'block', 'Design review'))
+        const to = await at(page, '2026-10-15', 14.1)
+
+        await clearOfEdges(page, [from, to])
+        await drag(page, from, to)
 
         expect(await moves(page)).toHaveLength(1)
         await expect(chipOf(page, 'block', 'Design review')).toBeFocused()
@@ -1098,7 +1121,13 @@ test.describe('the time grid', () => {
         // Design review, 10:00 to 11:00 on the 14th: held in its 10:00 slot, put down in the 14:00 slot of the 15th, and it starts 4 hours later, a day on
         const block = chipOf(page, 'block', 'Design review')
 
-        await drag(page, await near(block), await at(page, '2026-10-15', 14.1))
+        await scrollGrid(page, 400)
+
+        const from = await near(block)
+        const to = await at(page, '2026-10-15', 14.1)
+
+        await clearOfEdges(page, [from, to])
+        await drag(page, from, to)
 
         expect(await moves(page)).toEqual([{ id: 6, start: '2026-10-15T14:00', end: '2026-10-15T15:00', allDay: false }])
 
@@ -1114,15 +1143,25 @@ test.describe('the time grid', () => {
 
     test('it snaps to the slot: a point a little before the next slot is still in this one', async ({ page }) => {
         // 13:55 is in the 13:30 slot, so the block that was held in its 10:00 slot is moved by 3 hours and a half
-        await drag(page, await near(chipOf(page, 'block', 'Design review')), await at(page, '2026-10-14', 13 + 55 / 60))
+        await scrollGrid(page, 400)
+
+        const from = await near(chipOf(page, 'block', 'Design review'))
+        const to = await at(page, '2026-10-14', 13 + 55 / 60)
+
+        await clearOfEdges(page, [from, to])
+        await drag(page, from, to)
 
         expect(await moves(page)).toEqual([{ id: 6, start: '2026-10-14T13:30', end: '2026-10-14T14:30', allDay: false }])
     })
 
     test('the ghost is drawn at the slot while the pointer is down, at the length of the item, and the original is lifted', async ({ page }) => {
         const block = chipOf(page, 'block', 'Design review')
+        await scrollGrid(page, 400)
+
         const from = await near(block)
         const to = await at(page, '2026-10-14', 13.2)
+
+        await clearOfEdges(page, [from, to])
 
         await page.mouse.move(from.x, from.y)
         await page.mouse.down()
@@ -1140,7 +1179,13 @@ test.describe('the time grid', () => {
 
     test('a block with no end moves with no end', async ({ page }) => {
         // Call the bank: 15:00, no end
-        await drag(page, await middle(chipOf(page, 'block', 'Call the bank')), await at(page, '2026-10-14', 16.1))
+        await scrollGrid(page, 400)
+
+        const from = await middle(chipOf(page, 'block', 'Call the bank'))
+        const to = await at(page, '2026-10-14', 16.1)
+
+        await clearOfEdges(page, [from, to])
+        await drag(page, from, to)
 
         expect(await moves(page)).toEqual([{ id: 8, start: '2026-10-14T16:00', end: null, allDay: false }])
     })
@@ -1160,12 +1205,18 @@ test.describe('the time grid', () => {
 
     test('the bottom edge of a block is pulled to another slot: the end changes, the start stays', async ({ page }) => {
         const handle = handleOf(page, 'block', 'Design review')
+
+        await scrollGrid(page, 400)
+
         const box = await handle.boundingBox()
+        const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+        const to = await at(page, '2026-10-14', 12.1)
 
         // a few px tall, on the bottom edge
         expect(box.height).toBeLessThan(8)
 
-        await drag(page, { x: box.x + box.width / 2, y: box.y + box.height / 2 }, await at(page, '2026-10-14', 12.1))
+        await clearOfEdges(page, [from, to])
+        await drag(page, from, to)
 
         // the pointer is in the 12:00 slot, so the block ends at the end of it
         expect(await resizes(page)).toEqual([{ id: 6, start: '2026-10-14T10:00', end: '2026-10-14T12:30' }])
@@ -1178,17 +1229,27 @@ test.describe('the time grid', () => {
     })
 
     test('a block is at least one slot long', async ({ page }) => {
-        const box = await handleOf(page, 'block', 'Design review').boundingBox()
+        await scrollGrid(page, 300)
 
-        await drag(page, { x: box.x + box.width / 2, y: box.y + box.height / 2 }, await at(page, '2026-10-14', 9))
+        const box = await handleOf(page, 'block', 'Design review').boundingBox()
+        const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+        const to = await at(page, '2026-10-14', 9)
+
+        await clearOfEdges(page, [from, to])
+        await drag(page, from, to)
 
         expect(await resizes(page)).toEqual([{ id: 6, start: '2026-10-14T10:00', end: '2026-10-14T10:30' }])
     })
 
     test('a block with no end has one when it is pulled, from where it was drawn to end', async ({ page }) => {
-        const box = await handleOf(page, 'block', 'Call the bank').boundingBox()
+        await scrollGrid(page, 400)
 
-        await drag(page, { x: box.x + box.width / 2, y: box.y + box.height / 2 }, await at(page, '2026-10-14', 16.1))
+        const box = await handleOf(page, 'block', 'Call the bank').boundingBox()
+        const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+        const to = await at(page, '2026-10-14', 16.1)
+
+        await clearOfEdges(page, [from, to])
+        await drag(page, from, to)
 
         // drawn as half an hour, 15:00 to 15:30, and pulled an hour on
         expect(await resizes(page)).toEqual([{ id: 8, start: '2026-10-14T15:00', end: '2026-10-14T16:30' }])
@@ -1561,13 +1622,17 @@ test.describe('a touch', () => {
 
     test('a block of the time grid is picked up by a long press too', async ({ page }) => {
         await open(page, 'view=week&date=2026-10-12')
+        await scrollGrid(page, 400)
 
         const from = await near(chipOf(page, 'block', 'Design review'))
         const to = await at(page, '2026-10-14', 14.1)
 
+        await clearOfEdges(page, [from, to])
         await pointer(page, 'pointerdown', from)
         await expect(shapes(page)).toHaveCount(1, { timeout: 1500 })
         await pointer(page, 'pointermove', to)
+        // a finger that is slow to let go: the grid is not scrolling under it
+        await page.waitForTimeout(PAUSE)
         await pointer(page, 'pointerup', to)
 
         expect(await moves(page)).toEqual([{ id: 6, start: '2026-10-14T14:00', end: '2026-10-14T15:00', allDay: false }])
