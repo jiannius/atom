@@ -171,17 +171,35 @@ describe('the calendar section of the README', function () {
         }
 
         // every method the tag calls is declared by the README's class, with the parameters the fixture's has
-        preg_match_all('/\$wire\.(\w+)\(([^)]*(?:\([^)]*\))?[^)]*)\)\)?"/', $blade[1], $calls);
+        preg_match_all('/\$wire\.(\w+)\(([^)]*)\)/', $blade[1], $calls);
 
         expect(array_unique($calls[1]))->toEqualCanonicalizing(['create', 'reschedule', 'edit']);
 
         foreach (array_unique($calls[1]) as $method) {
-            expect(preg_match('/public function '.$method.'\(([^)]*)\): void/', $php[1], $declared))->toBe(1, 'the README class has no public '.$method.'()');
+            expect(preg_match('/public function '.$method.'\(([^)]*)\): (void|bool)/', $php[1], $declared))->toBe(1, 'the README class has no public '.$method.'()');
+
+            // what the tag turns into a refusal when it is not true is what the class returns once it has saved
+            expect($declared[2])->toBe($method === 'edit' ? 'void' : 'bool', $method.'() of the README class');
 
             preg_match_all('/\$(\w+)/', $declared[1], $names);
 
+            expect((string) (new ReflectionMethod(Jiannius\Atom\Tests\Fixtures\CalendarFixture::class, $method))->getReturnType())->toBe($declared[2], $method.'() of the fixture returns what the README class does');
+
             expect(array_map(fn (ReflectionParameter $parameter) => $parameter->getName(), (new ReflectionMethod(Jiannius\Atom\Tests\Fixtures\CalendarFixture::class, $method))->getParameters()))->toBe($names[1], $method.'() of the fixture');
         }
+    });
+
+    // Livewire catches a ValidationException on the server and answers 200, so `$wire.method()` resolves with null: only a throw, an abort or a failed
+    // request rejects (and shows Livewire's error modal). The README once said validation rejects, so a failed save left the item where it was dropped.
+    it('refuses a save by what the method returns, and never says validation rejects the promise', function () {
+        $section = calendarReadmeSection();
+
+        expect($section)->toContain('saved || Promise.reject()')
+            ->and($section)->toContain('does not reject it')
+            ->and($section)->toContain('error modal')
+            ->and($section)->not->toMatch('/(?:Livewire rejects|rejects the promise)[^.]*validat/i')
+            ->and($section)->not->toContain('refuse by validating')
+            ->and($section)->not->toContain('fails validation, aborts');
     });
 
     it('states, for each prop, the default the component has', function () {

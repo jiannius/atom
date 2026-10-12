@@ -13,8 +13,8 @@ const block = (page, text) => calendar(page).locator('[data-atom-calendar-block]
 const rescheduled = (page) => page.evaluate(() => JSON.parse(JSON.stringify(window.Livewire.first().rescheduled)))
 const created = (page) => page.evaluate(() => JSON.parse(JSON.stringify(window.Livewire.first().created)))
 
-async function open (page) {
-    await page.goto('/atom/e2e/calendar?wired=1&view=week&date=2026-10-14')
+async function open (page, query = '') {
+    await page.goto('/atom/e2e/calendar?wired=1&view=week&date=2026-10-14' + query)
     await page.waitForFunction(() => window.Livewire !== undefined && window.Alpine !== undefined)
     await expect(calendar(page).locator('[data-atom-calendar-body]')).toBeVisible()
     await expect(page.locator('[data-atom-calendar] [x-cloak]')).toHaveCount(0)
@@ -104,4 +104,35 @@ test('a click on an item handled by x-on on the tag calls edit() with its id, an
     await drag(page, { x: from.x + from.width / 2, y: from.y + 10 }, { x: next.x + next.width / 2, y: from.y + 10 })
     await expect.poll(() => rescheduled(page)).toHaveLength(1)
     expect(await edited()).toEqual([5, 7])
+})
+
+// Livewire does not reject the promise of an action that fails validation: it catches the exception on the server, answers 200 and resolves null. So
+// the README's tag turns a save that did not return true into a rejection with `.then((saved) => saved || Promise.reject())`, and the item goes back.
+// The fixture's `?strict=1` makes reschedule() run a validation rule that a timed start breaks. Run against the tag as it was (without the `.then`) this
+// test fails: the item stays on the 15th.
+test('a move whose action fails validation goes back, with nothing stored and no error modal', async ({ page }) => {
+    await open(page, '&strict=1')
+
+    const from = await block(page, 'Design review').boundingBox()
+    const next = await column(page, '2026-10-15').boundingBox()
+    const rem = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
+    const answered = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().includes('/update'))
+
+    await drag(page, { x: from.x + from.width / 2, y: from.y + 10 }, { x: next.x + next.width / 2, y: from.y + 10 + HOUR * rem })
+
+    // the request was made, and answered normally: validation is not an HTTP error
+    expect((await answered).status()).toBe(200)
+
+    // nothing was stored, and the item is back on its original day
+    expect(await rescheduled(page)).toEqual([])
+    expect(await page.evaluate(() => window.Livewire.first().placed)).toEqual([])
+    await expect(column(page, '2026-10-14').locator('[data-atom-calendar-block]', { hasText: 'Design review' })).toBeVisible()
+    await expect(column(page, '2026-10-15').locator('[data-atom-calendar-block]', { hasText: 'Design review' })).toHaveCount(0)
+
+    // the engine let go of it, and the screen reader line for a save in flight is empty
+    await expect.poll(() => calendar(page).evaluate((root) => Object.keys(window.Alpine.$data(root).overrides))).toEqual([])
+    await expect(calendar(page).locator('[data-atom-calendar-announce]')).toHaveText('')
+
+    // a rejection from validation needs no error page: that is what a thrown exception or an abort() would have shown
+    await expect(page.locator('#livewire-error')).toHaveCount(0)
 })

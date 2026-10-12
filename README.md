@@ -710,20 +710,24 @@ class Index extends Component
             ]);
     }
 
-    public function create(string $start, string $end, bool $allDay): void
+    public function create(string $start, string $end, bool $allDay): bool
     {
         $this->authorize('create', Event::class);
 
         Event::create(['title' => 'New event', 'all_day' => $allDay, ...$this->instants($start, $end, $allDay)]);
+
+        return true;
     }
 
-    public function reschedule(int $id, string $start, ?string $end): void
+    public function reschedule(int $id, string $start, ?string $end): bool
     {
         $event = Event::findOrFail($id);
 
         $this->authorize('update', $event);
 
         $event->update($this->instants($start, $end, $event->all_day));
+
+        return true;
     }
 
     public function edit(int $id): void
@@ -752,13 +756,13 @@ class Index extends Component
     :views="['month', 'week', 'day']"
     selectable
     :items="fn ($from, $to) => $this->calendarItems($from, $to)"
-    x-on:calendar-select="$event.detail.waitUntil($wire.create($event.detail.start, $event.detail.end, $event.detail.allDay))"
-    x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
-    x-on:calendar-item-resize="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
+    x-on:calendar-select="$event.detail.waitUntil($wire.create($event.detail.start, $event.detail.end, $event.detail.allDay).then((saved) => saved || Promise.reject()))"
+    x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end).then((saved) => saved || Promise.reject()))"
+    x-on:calendar-item-resize="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end).then((saved) => saved || Promise.reject()))"
     x-on:calendar-item-click="$wire.edit($event.detail.id)" />
 ```
 
-`create()`, `reschedule()` and `edit()` are Livewire actions, so the browser can call them with any arguments: authorise and scope them as you would any action. The query asks for `ends_at >= $from`, a harmless over-fetch of anything that ends exactly at the window's start, so that an item with no length that sits on the window's first instant is not dropped.
+`create()`, `reschedule()` and `edit()` are Livewire actions, so the browser can call them with any arguments: authorise and scope them as you would any action. `create()` and `reschedule()` return `true` once they have saved, and the tag turns anything else into a refusal, see [Saving a change](#saving-a-change-use-waituntil). The query asks for `ends_at >= $from`, a harmless over-fetch of anything that ends exactly at the window's start, so that an item with no length that sits on the window's first instant is not dropped.
 
 ### How the window and the data flow work
 
@@ -863,12 +867,14 @@ The calendar dispatches bubbling events from its root. Listen with `x-on:` on th
 Pass the promise of your save to `waitUntil()` while you handle the event, as the example above does with `$wire.reschedule(...)`:
 
 ```blade
-x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
+x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end).then((saved) => saved || Promise.reject()))"
 ```
 
+where `reschedule()` ends with `return true;` once it has saved.
+
 - The item is drawn where it was dropped as soon as the pointer lets go, and the calendar says "Saving..." to screen readers while the promise is pending. A selection shows a "Creating..." placeholder where it was, until the promise settles.
-- If the promise **rejects**, the item goes back to where it was. Livewire rejects the promise of an action when the request fails, and when the method fails validation, aborts, or throws (a failed `authorize()` is a 403). A method that refuses by just returning resolves, so refuse by validating, authorising or throwing.
-- Without `waitUntil()`, the item stays where it was dropped until the payload changes, so a failed or refused save leaves it in the wrong place until something else re-renders the calendar with different data. Calling it has to happen while the event is being handled; a call made later is ignored.
+- If the promise **rejects**, the item goes back to where it was. **A failed `validate()` does not reject it.** Livewire catches a validation error on the server, answers normally, and `$wire.method()` resolves with `null`, the same as a method that saved and returned nothing, so the item would stay where it was dropped. Refuse in the tag instead: the method returns `true` once it has saved, and `.then((saved) => saved || Promise.reject())` turns anything else into a rejection. A failed `validate()` then puts the item back, the errors land in the error bag as usual, and nothing else is shown. A failed request rejects the promise as well, and so does a method that throws or calls `abort()` (a failed `authorize()` is a 403), but Livewire then shows its own error modal. A method that refuses by returning resolves, so it has to return something falsy, never `true`.
+- Without `waitUntil()`, or with a promise that resolves, the item stays where it was dropped until the payload changes, so a failed or refused save leaves it in the wrong place until something else re-renders the calendar with different data. Calling it has to happen while the event is being handled; a call made later is ignored.
 - A payload that arrives while the promise is pending does not move the item. Once it settles, a payload that arrived meanwhile takes over, and the item is where your server has it. With none, the item stays where it was put until the next one.
 - Do not make the method `#[Renderless]` unless you have thought it through. A renderless response sends no payload, so when its promise resolves the item stays exactly where it was dropped, even if your method changed the time (clamped it, applied a rule), and a created item never appears. A normal action re-renders, and the new payload is what the calendar shows. A move that always saves as dropped can be renderless.
 
