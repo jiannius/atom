@@ -1,5 +1,5 @@
-import { dateOf, diffDays, minuteOf } from './dates.js'
-import { dayEntries, packBars, span } from './layout.js'
+import { dateOf, diffDays, minuteOf, parseDate } from './dates.js'
+import { entriesOf, entriesOn, isPlaceable, packBars, span } from './layout.js'
 
 // Pure layout for the time grid of <atom:calendar>'s week and day views: no DOM, no Alpine, no clock. Like
 // layout.js it takes the payload's days and items and answers where everything sits, so it can be tested in node.
@@ -21,14 +21,14 @@ export const COMPACT_MINUTES = 45
 // daylight-saving change: a day is always 24 rows of wall-clock time, so the hour that does not exist is an empty
 // row, and an item that spans it is as tall as the wall clock says.
 export const segmentOn = (item, date, slotDuration = 30) => {
-    if (item.allDay) return null
+    if (item.allDay || !isPlaceable(item)) return null
 
     let { first, last } = span(item)
 
     if (date < first || date > last) return null
 
     let start = date === first ? minuteOf(item.start) : 0
-    let end = item.end ? (date === dateOf(item.end) ? minuteOf(item.end) : DAY_MINUTES) : start
+    let end = item.end && parseDate(dateOf(item.end)) ? (date === dateOf(item.end) ? minuteOf(item.end) : DAY_MINUTES) : start
 
     if (end <= start) end = start + slotDuration
 
@@ -185,7 +185,7 @@ export const allDayRow = (days, items, { max = 3 } = {}) => {
     let bars = []
 
     items.forEach((item, index) => {
-        if (!item.allDay) return
+        if (!item.allDay || !isPlaceable(item)) return
 
         let entry = { item, index, ...span(item) }
 
@@ -237,20 +237,26 @@ export const allDayRow = (days, items, { max = 3 } = {}) => {
 // row over them. A column is { date, number, col, weekend, outside, today, past, count, blocks }, `count` being every
 // item of the day, all-day ones too, for its label. Nothing here knows of a gesture in progress: what it draws is
 // `previewShapes`, so that a preview that changes does not lay the blocks out again.
-export const timeGrid = (days, items, { today = null, max = 3, slotDuration = 30 } = {}) => ({
-    columns: days.map((day, col) => ({
-        date: day.date,
-        number: Number(day.date.slice(8, 10)),
-        col: col + 1,
-        weekend: Boolean(day.weekend),
-        outside: Boolean(day.outside),
-        today: day.date === today,
-        past: today !== null && day.date < today,
-        count: dayEntries(items, day.date).length,
-        blocks: columnBlocks(items, day.date, { slotDuration }),
-    })),
-    allDay: allDayRow(days, items, { max }),
-})
+export const timeGrid = (days, items, { today = null, max = 3, slotDuration = 30 } = {}) => {
+    // an item whose dates do not parse is left out here, once, and not found out again by every column
+    let entries = entriesOf(items)
+    let placeable = entries.map((entry) => entry.item)
+
+    return {
+        columns: days.map((day, col) => ({
+            date: day.date,
+            number: Number(day.date.slice(8, 10)),
+            col: col + 1,
+            weekend: Boolean(day.weekend),
+            outside: Boolean(day.outside),
+            today: day.date === today,
+            past: today !== null && day.date < today,
+            count: entriesOn(entries, day.date).length,
+            blocks: columnBlocks(placeable, day.date, { slotDuration }),
+        })),
+        allDay: allDayRow(days, placeable, { max }),
+    }
+}
 
 // Whether `id` is the item a move or a resize in progress is lifting: the original stays where it is, drawn faint. A selection or an item
 // waiting for the host lifts nothing.

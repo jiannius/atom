@@ -351,3 +351,28 @@ test.describe('the clock', () => {
         expect(minuteOf('2026-10-09')).toBe(0)
     })
 })
+
+test.describe('an item whose dates do not parse', () => {
+    // the week of Mon 2026-02-23: February 30th sorts inside it as text, which is where a layout that compared strings would draw it
+    const february = Array.from({ length: 7 }, (_, i) => ({ date: addDays('2026-02-23', i), weekend: i > 4, outside: false }))
+    const junk = [timed('no-start', null), timed('text', 'next tuesday'), bar('feb-30', '2026-02-30'), timed('feb-30-timed', '2026-02-30T10:00', '2026-02-30T11:00'), timed('feb-31', '2026-02-31T09:00'), bar('bad-all-day', undefined)]
+    const good = [bar('a', '2026-02-26', '2026-02-27'), timed('b', '2026-02-27T10:00', '2026-02-27T11:00'), timed('c', '2026-02-27T10:30', '2026-02-27T11:30')]
+
+    test('is not a segment, a block or a bar', () => {
+        for (const item of junk) expect(segmentOn(item, '2026-02-27'), String(item.id)).toBeNull()
+
+        for (const date of ['2026-02-27', '2026-02-30']) expect(blocks(junk, date)).toEqual([])
+
+        expect(allDayRow(february, junk)).toEqual({ chips: [], more: [] })
+    })
+
+    test('is left out of the grid, and the others lay out as if it had not been sent', () => {
+        const strip = (grid) => JSON.parse(JSON.stringify(grid))
+
+        expect(strip(timeGrid(february, [junk[0], ...good, junk[1], junk[2], junk[3], junk[4], junk[5]], { today: '2026-02-27' }))).toEqual(strip(timeGrid(february, good, { today: '2026-02-27' })))
+    })
+
+    test('an end that is not a date is no end: a timed item is one slot long', () => {
+        expect(block(blocks([timed('a', '2026-10-09T10:00', 'soon')], '2026-10-09', { slotDuration: 30 }), 'a')).toMatchObject({ startMinute: 600, endMinute: 630 })
+    })
+})

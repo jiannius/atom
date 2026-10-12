@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { dayEntries, isBar, monthLayout, span } from '../../resources/js/alpinejs/calendar/layout.js'
+import { dayEntries, isBar, isPlaceable, monthLayout, span } from '../../resources/js/alpinejs/calendar/layout.js'
 import { addDays } from '../../resources/js/alpinejs/calendar/dates.js'
 
 // The month layout is pure: window days and items in, chip placement out. October 2026 under a
@@ -249,5 +249,55 @@ test.describe('day lists', () => {
         expect(week.days[0].dots).toHaveLength(4)
         expect(week.days[0].extra).toBe(2)
         expect(week.days[1].extra).toBe(0)
+    })
+})
+
+test.describe('an item whose dates do not parse', () => {
+    const junk = [
+        bar('no-start', null),
+        bar('text-start', 'next tuesday'),
+        bar('missing-start', undefined),
+        bar('impossible', '2026-02-30'),
+        bar('number', 1791500000),
+        timed('year-10000', '10000-01-01T09:00'),
+        // these sort inside the window as text, which is what a layout that compared strings would put on a day
+        bar('day-32', '2026-10-32'),
+        timed('day-32-timed', '2026-10-32T09:00', '2026-10-33T10:00'),
+        bar('month-0', '2026-00-10'),
+    ]
+
+    test('is not placeable, and a start that exists is', () => {
+        for (const item of junk) expect(isPlaceable(item), String(item.id)).toBe(false)
+
+        expect(isPlaceable(bar('ok', '2026-10-05'))).toBe(true)
+        expect(isPlaceable(timed('ok', '2026-10-05T09:00'))).toBe(true)
+        expect(isPlaceable(null)).toBe(false)
+    })
+
+    test('is left out of the month, and the others are laid out as if it had not been sent', () => {
+        const good = [bar('a', '2026-10-05', '2026-10-07'), timed('b', '2026-10-06T09:00', '2026-10-06T10:00')]
+        const clean = layout(good)
+        const dirty = layout([junk[0], good[0], junk[1], junk[2], good[1], junk[3], junk[4], junk[5], junk[6], junk[7]])
+
+        expect(dirty.map((week) => week.chips.map((c) => [c.id, c.col, c.span, c.row]))).toEqual(clean.map((week) => week.chips.map((c) => [c.id, c.col, c.span, c.row])))
+        expect(dirty.map((week) => week.days.map((d) => d.count))).toEqual(clean.map((week) => week.days.map((d) => d.count)))
+    })
+
+    test('is left out of a day', () => {
+        expect(dayEntries([...junk, bar('a', '2026-10-05')], '2026-10-05').map((i) => i.id)).toEqual(['a'])
+        expect(dayEntries([...junk, bar('a', '2026-10-05')], '2026-10-32')).toEqual([])
+    })
+
+    test('an end that is not a date is no end: the item is its start day, as on the server', () => {
+        expect(span(bar('a', '2026-10-05', 'soon'))).toEqual({ first: '2026-10-05', last: '2026-10-05' })
+        expect(span(timed('a', '2026-10-05T09:00', 'soon'))).toEqual({ first: '2026-10-05', last: '2026-10-05' })
+
+        const [week] = layout([bar('a', '2026-10-01', 'soon')])
+
+        expect(chip(week, 'a')).toMatchObject({ span: 1 })
+    })
+
+    test('a preview over a bad item does not throw', () => {
+        expect(() => layout(junk, { preview: { kind: 'move', id: 'no-start', start: '2026-10-05', end: null, allDay: true } })).not.toThrow()
     })
 })

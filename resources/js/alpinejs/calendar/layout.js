@@ -1,7 +1,12 @@
-import { addDays, dateOf, diffDays, timeOf } from './dates.js'
+import { addDays, dateOf, diffDays, parseDate, timeOf } from './dates.js'
 
 // Pure layout for <atom:calendar>: no DOM, no Alpine, no clock. It takes the payload's window days
 // and items and answers where every chip sits, so it can be tested in node.
+
+// Whether an item can be put on a calendar: its start is a date that exists. The server only sends such items; a payload built by
+// hand or by a newer server can hold one that is not, and it is skipped, never thrown on, so one bad item cannot blank the calendar.
+// (An end that is not a date is no end: the item is one day, as on the server.)
+export const isPlaceable = (item) => parseDate(dateOf(item?.start ?? '')) !== null
 
 // The first and last local date an item covers. A date end is inclusive; a timed end is exclusive,
 // so an item that ends at midnight does not reach into that day. An item with no end is one day.
@@ -9,7 +14,7 @@ export const span = (item) => {
     let first = dateOf(item.start)
     let last = first
 
-    if (item.end) {
+    if (item.end && parseDate(dateOf(item.end))) {
         last = dateOf(item.end)
 
         if (!item.allDay && timeOf(item.end) === '00:00') {
@@ -30,17 +35,25 @@ export const isBar = (item) => {
 
 const byStart = (a, b) => (a.item.start < b.item.start ? -1 : a.item.start > b.item.start ? 1 : a.index - b.index)
 
-// Every item on one date, bars (all-day and multi-day) first, then timed items by start, ties in the
-// order the host gave them. This is the day popover's list.
-export const dayEntries = (items, date) => items
-    .map((item, index) => ({ item, index, ...span(item) }))
-    .filter((entry) => entry.first <= date && entry.last >= date)
-    .sort((a, b) => {
-        let bar = Number(isBar(b.item)) - Number(isBar(a.item))
+// The items that can be placed, each with its dates and its place in the host's order: { item, index, first, last, bar }.
+export const entriesOf = (items) => items
+    .map((item, index) => {
+        if (!isPlaceable(item)) return null
 
-        return bar || byStart(a, b)
+        let { first, last } = span(item)
+
+        return { item, index, first, last, bar: Boolean(item.allDay) || last > first }
     })
+    .filter(Boolean)
+
+// The items of `entries` (see entriesOf) on one date, bars (all-day and multi-day) first, then timed items by start, ties in the order the host gave them.
+export const entriesOn = (entries, date) => entries
+    .filter((entry) => entry.first <= date && entry.last >= date)
+    .sort((a, b) => (Number(b.bar) - Number(a.bar)) || byStart(a, b))
     .map((entry) => entry.item)
+
+// Every item on one date, bars (all-day and multi-day) first, then timed items by start, ties in the order the host gave them. This is the day popover's list.
+export const dayEntries = (items, date) => entriesOn(entriesOf(items), date)
 
 // Give each bar the lowest lane that is free across its whole run, longer and earlier first, so they stack the
 // way they read. A bar is { entry, startCol, endCol }; the lane is written on it as `lane`. Shared by the month
@@ -79,7 +92,7 @@ export const packBars = (bars) => {
 // today, past, selected, count, dots, extra }, where `dots` are up to four of the day's items for the narrow
 // layout. A chip is its item plus { key, kind: 'bar' | 'dot', col, span, row, before, after }.
 export const monthLayout = (days, items, { max = 3, today = null, preview = null } = {}) => {
-    let entries = items.map((item, index) => ({ item, index, ...span(item), bar: isBar(item) }))
+    let entries = entriesOf(items)
     let weeks = []
 
     // What a gesture in progress covers: the dates of `preview` ({ kind: 'select' | 'pending' | 'move' | 'resize', start, end, id? }).
@@ -211,7 +224,7 @@ export const monthLayout = (days, items, { max = 3, today = null, preview = null
             selection,
             ghost,
             days: week.map((day, col) => {
-                let list = dayEntries(items, day.date)
+                let list = entriesOn(entries, day.date)
 
                 return {
                     date: day.date,

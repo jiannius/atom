@@ -80,3 +80,25 @@ test('reads the time of a moment, and none from a date', () => {
     expect(timeOf('2026-10-09T09:30')).toBe('09:30')
     expect(timeOf('2026-10-09')).toBeNull()
 })
+
+test('reads a year of 0 to 99 as itself, not as 19xx', () => {
+    // Date.UTC(50, 0, 1) is 1950: the date must come back as the year it was given
+    expect(parseDate('0050-01-01')).toMatchObject({ y: 50, m: 1, d: 1 })
+    expect(parseDate('0000-02-29')).toMatchObject({ y: 0, m: 2, d: 29 })
+    expect(parseDate('0001-02-29')).toBeNull()
+    expect(addDays('0050-02-28', 1)).toBe('0050-03-01')
+    expect(addDays('0004-02-28', 1)).toBe('0004-02-29')
+    expect(diffDays('0001-01-01', '0001-01-03')).toBe(2)
+    expect(addMonths('0004-01-31', 1)).toBe('0004-02-29')
+    expect(addMonths('0050-01-31', 1)).toBe('0050-02-28')
+    expect(isoWeekday('0001-01-01')).toBe(1)
+})
+
+test('does not throw on a date it cannot read', () => {
+    expect(addDays('nope', 1)).toBeNull()
+    expect(addDays(null, 1)).toBeNull()
+    expect(diffDays('nope', '2026-10-09')).toBeNaN()
+    expect(diffDays('2026-10-09', undefined)).toBeNaN()
+    expect(addMonths('nope', 1)).toBeNull()
+    expect(() => isoWeekday('nope')).not.toThrow()
+})

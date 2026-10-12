@@ -10,6 +10,15 @@ const DAY = 86400000
 
 const pad = (n, length = 2) => String(n).padStart(length, '0')
 
+// UTC midnight of a date (`month` counted from 0). Not Date.UTC(): that reads a year of 0 to 99 as 1900 to 1999.
+const utc = (year, month, day) => {
+    let date = new Date(0)
+
+    date.setUTCFullYear(year, month, day)
+
+    return date.getTime()
+}
+
 export const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
 // A `Y-m-d` (or longer) string as numbers, or null when it is not a real date.
@@ -19,7 +28,7 @@ export const parseDate = (value) => {
     if (!match) return null
 
     let [y, m, d] = [Number(match[1]), Number(match[2]), Number(match[3])]
-    let time = Date.UTC(y, m - 1, d)
+    let time = utc(y, m - 1, d)
     let date = new Date(time)
 
     if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null
@@ -45,22 +54,32 @@ export const dateOf = (moment) => String(moment).slice(0, 10)
 // The wall-clock time of a moment as `HH:mm`, or null for a bare date.
 export const timeOf = (moment) => String(moment).length > 10 ? String(moment).slice(11, 16) : null
 
-export const addDays = (date, days) => toDate(parseDate(date).time + days * DAY)
+// null when the date is not one: nothing here throws on a date it cannot read
+export const addDays = (date, days) => {
+    let from = parseDate(date)
 
-export const diffDays = (from, to) => Math.round((parseDate(to).time - parseDate(from).time) / DAY)
+    return from ? toDate(from.time + days * DAY) : null
+}
+
+// NaN when either date is not one
+export const diffDays = (from, to) => Math.round(((parseDate(to)?.time ?? NaN) - (parseDate(from)?.time ?? NaN)) / DAY)
 
 // 1 (Monday) to 7 (Sunday)
-export const isoWeekday = (date) => new Date(parseDate(date).time).getUTCDay() || 7
+export const isoWeekday = (date) => new Date(parseDate(date)?.time ?? NaN).getUTCDay() || 7
 
 export const monthOf = (date) => String(date).slice(0, 7)
 
 // Move by whole months, keeping the day of the month or the last day of a shorter one.
 export const addMonths = (date, months) => {
-    let { y, m, d } = parseDate(date)
+    let from = parseDate(date)
+
+    if (!from) return null
+
+    let { y, m, d } = from
     let index = y * 12 + (m - 1) + months
     let year = Math.floor(index / 12)
     let month = ((index % 12) + 12) % 12
-    let last = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+    let last = new Date(utc(year, month + 1, 0)).getUTCDate()
 
     return pad(year, 4) + '-' + pad(month + 1) + '-' + pad(Math.min(d, last))
 }
