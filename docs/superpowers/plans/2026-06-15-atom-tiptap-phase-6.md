@@ -115,15 +115,15 @@ The controller performs these (irreversible: merge to main, tag, push). Run from
 
 - [ ] **Step 1: Final verification in the worktree**
 ```bash
-cd /Users/tj/Projects/jiannius/atom/.claude/worktrees/tiptap-rebuild
+cd <worktree>
 npm run build          # clean
 vendor/bin/pest        # ALL green
 git status --short | grep -v '^?? vendor' | grep -v '^?? node_modules'   # only intended, or clean
 ```
 
-- [ ] **Step 2: Squash-merge into main** (per CLAUDE.md squash-by-default). The primary checkout is at `/Users/tj/Projects/jiannius/atom` on `main`.
+- [ ] **Step 2: Squash-merge into main** (per CLAUDE.md squash-by-default). The primary checkout is at `<atom>` on `main`.
 ```bash
-MAIN=/Users/tj/Projects/jiannius/atom
+MAIN=<atom>
 git -C "$MAIN" status --short      # confirm clean
 git -C "$MAIN" merge --squash worktree-tiptap-rebuild
 git -C "$MAIN" commit -m "feat(tiptap): <atom:tiptap> — Tiptap v3 rich text editor (replaces <atom:editor>)
@@ -140,7 +140,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 - [ ] **Step 3: Tag + push**
 ```bash
-MAIN=/Users/tj/Projects/jiannius/atom
+MAIN=<atom>
 git -C "$MAIN" tag v3.6.0
 git -C "$MAIN" push origin main
 git -C "$MAIN" push origin v3.6.0

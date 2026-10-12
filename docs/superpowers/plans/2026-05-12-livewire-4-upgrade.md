@@ -19,11 +19,11 @@
 ## Task 1: Update `composer.json`
 
 **Files:**
-- Modify: `/Users/tj/Projects/jiannius/atom/composer.json`
+- Modify: `composer.json`
 
 - [ ] **Step 1: Read current `composer.json`**
 
-Run: `cat /Users/tj/Projects/jiannius/atom/composer.json`
+Run: `cat composer.json`
 
 Expected current `require` block:
 ```json
@@ -38,7 +38,7 @@ Expected current `require` block:
 
 - [ ] **Step 2: Replace the `require` block**
 
-Edit `/Users/tj/Projects/jiannius/atom/composer.json`. Replace the `require` block with:
+Edit `composer.json`. Replace the `require` block with:
 
 ```json
 "require": {
@@ -56,14 +56,14 @@ Changes:
 
 - [ ] **Step 3: Validate JSON**
 
-Run: `cd /Users/tj/Projects/jiannius/atom && composer validate --no-check-lock`
+Run: `cd <atom> && composer validate --no-check-lock`
 
 Expected: `./composer.json is valid` (lockfile warnings expected — Task 6 regenerates it).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/tj/Projects/jiannius/atom
+cd <atom>
 git add composer.json
 git commit -m "$(cat <<'EOF'
 chore: bump livewire to ^4.0 and drop volt
@@ -85,13 +85,13 @@ EOF
 ## Task 2: Drop Volt wiring from `AtomServiceProvider`
 
 **Files:**
-- Modify: `/Users/tj/Projects/jiannius/atom/src/AtomServiceProvider.php`
+- Modify: `src/AtomServiceProvider.php`
 
 The current service provider imports `Livewire\Volt\Volt`, calls `$this->mountVoltComponents()` from `boot()`, and defines `mountVoltComponents()` which mounts an empty directory. All three pieces must go.
 
 - [ ] **Step 1: Remove the `Livewire\Volt\Volt` import**
 
-In `/Users/tj/Projects/jiannius/atom/src/AtomServiceProvider.php`, delete line 12:
+In `src/AtomServiceProvider.php`, delete line 12:
 
 ```php
 use Livewire\Volt\Volt;
@@ -127,20 +127,20 @@ Delete the entire method (including its PHPDoc), which is currently:
 
 - [ ] **Step 4: Syntax-check the file**
 
-Run: `php -l /Users/tj/Projects/jiannius/atom/src/AtomServiceProvider.php`
+Run: `php -l src/AtomServiceProvider.php`
 
 Expected: `No syntax errors detected in ...`
 
 - [ ] **Step 5: Confirm no other references to Volt remain in `src/`**
 
-Run: `grep -rn "Volt" /Users/tj/Projects/jiannius/atom/src 2>/dev/null`
+Run: `grep -rn "Volt" src 2>/dev/null`
 
 Expected: zero results. If anything matches, stop and report.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /Users/tj/Projects/jiannius/atom
+cd <atom>
 git add src/AtomServiceProvider.php
 git commit -m "$(cat <<'EOF'
 chore: drop Volt mount from service provider
@@ -163,11 +163,11 @@ EOF
 **Why:** Livewire 4 prefixes all internal URLs with a hash derived from APP_KEY. The temporary-file preview URL changes from `/livewire/preview-file/...` to `/livewire-{hash}/preview-file/...`. The regex in `AsEditorContent::set()` no longer matches new uploads under L4. The fix matches anything between `/livewire-` and the next slash, which is safe regardless of the exact hash character set Livewire uses.
 
 **Files:**
-- Modify: `/Users/tj/Projects/jiannius/atom/src/Casts/AsEditorContent.php`
+- Modify: `src/Casts/AsEditorContent.php`
 
 - [ ] **Step 1: Read the current regex and surrounding comment**
 
-Run: `sed -n '34,46p' /Users/tj/Projects/jiannius/atom/src/Casts/AsEditorContent.php`
+Run: `sed -n '34,46p' src/Casts/AsEditorContent.php`
 
 Expected lines 36–40:
 ```php
@@ -210,7 +210,7 @@ with (note the inserted `-[^\/]+` between `livewire` and the next slash):
 
 - [ ] **Step 4: Syntax-check the file**
 
-Run: `php -l /Users/tj/Projects/jiannius/atom/src/Casts/AsEditorContent.php`
+Run: `php -l src/Casts/AsEditorContent.php`
 
 Expected: `No syntax errors detected in ...`
 
@@ -241,7 +241,7 @@ If the array is empty, the regex did not capture — re-check Step 3 for transcr
 - [ ] **Step 6: Commit**
 
 ```bash
-cd /Users/tj/Projects/jiannius/atom
+cd <atom>
 git add src/Casts/AsEditorContent.php
 git commit -m "$(cat <<'EOF'
 fix: match Livewire 4 preview-file URL prefix in editor cast
@@ -263,7 +263,7 @@ EOF
 ## Task 4: Refresh Boost guideline doc for L4 single-file components
 
 **Files:**
-- Modify: `/Users/tj/Projects/jiannius/atom/resources/boost/guidelines/core.blade.php`
+- Modify: `resources/boost/guidelines/core.blade.php`
 
 Five surgical edits. The line numbers below are approximate but each `old_string` is unique in the file, so the edits will land correctly regardless of small line shifts.
 
@@ -329,14 +329,14 @@ with:
 
 - [ ] **Step 6: Confirm no Volt references remain**
 
-Run: `grep -n -i "volt" /Users/tj/Projects/jiannius/atom/resources/boost/guidelines/core.blade.php`
+Run: `grep -n -i "volt" resources/boost/guidelines/core.blade.php`
 
 Expected: zero results. If anything matches, that's a missed edit — locate and fix before committing.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd /Users/tj/Projects/jiannius/atom
+cd <atom>
 git add resources/boost/guidelines/core.blade.php
 git commit -m "$(cat <<'EOF'
 docs: refresh boost guideline for L4 single-file components
@@ -354,7 +354,7 @@ EOF
 ## Task 5: Update `CLAUDE.md` for L4
 
 **Files:**
-- Modify: `/Users/tj/Projects/jiannius/atom/CLAUDE.md`
+- Modify: `CLAUDE.md`
 
 Two surgical edits — both reference Livewire 3 / Volt behaviour that no longer applies.
 
@@ -386,14 +386,14 @@ with:
 
 - [ ] **Step 3: Confirm no stale references remain**
 
-Run: `grep -n -i "volt\|/livewire/preview-file" /Users/tj/Projects/jiannius/atom/CLAUDE.md`
+Run: `grep -n -i "volt\|/livewire/preview-file" CLAUDE.md`
 
 Expected: zero results. If anything matches, that's a missed edit.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/tj/Projects/jiannius/atom
+cd <atom>
 git add CLAUDE.md
 git commit -m "$(cat <<'EOF'
 docs: update CLAUDE.md for Livewire 4
@@ -410,7 +410,7 @@ EOF
 ## Task 6: Regenerate `composer.lock` against Livewire 4
 
 **Files:**
-- Modify: `/Users/tj/Projects/jiannius/atom/composer.lock`
+- Modify: `composer.lock`
 
 - [ ] **Step 1: Confirm local PHP version**
 
@@ -421,7 +421,7 @@ Expected: `PHP 8.3.x` or higher. (The `config.platform.php: 8.3.0` pin in compos
 - [ ] **Step 2: Run `composer update`**
 
 ```bash
-cd /Users/tj/Projects/jiannius/atom
+cd <atom>
 composer update --no-interaction --no-progress
 ```
 
@@ -437,7 +437,7 @@ If composer reports a resolution conflict, capture the full output, stop, and re
 
 Run:
 ```bash
-cd /Users/tj/Projects/jiannius/atom
+cd <atom>
 composer show livewire/livewire laravel/framework orchestra/testbench 2>/dev/null | grep -E "^(name|versions)"
 ```
 
@@ -448,7 +448,7 @@ Expected:
 
 Confirm Volt is gone:
 ```bash
-cd /Users/tj/Projects/jiannius/atom
+cd <atom>
 grep '"name": "livewire/volt"' composer.lock
 ```
 Expected: zero lines.
@@ -456,7 +456,7 @@ Expected: zero lines.
 - [ ] **Step 4: Commit**
 
 ```bash
-cd /Users/tj/Projects/jiannius/atom
+cd <atom>
 git add composer.lock
 git commit -m "$(cat <<'EOF'
 chore: regenerate composer.lock against Livewire 4
@@ -509,12 +509,12 @@ Expected: `laravel/framework v13.x.x` and `orchestra/testbench v11.x.x` installe
 
 ```bash
 cd /tmp/atom-l4-verify
-composer config repositories.atom path /Users/tj/Projects/jiannius/atom
+composer config repositories.atom path <atom>
 composer require jiannius/atom:@dev --no-interaction
 composer show jiannius/atom | head -10
 ```
 
-Expected: install succeeds; `composer show` reports the package version starting with `dev-` (the branch name) and the path pointing to `/Users/tj/Projects/jiannius/atom`. `livewire/livewire` should resolve to `v4.x`.
+Expected: install succeeds; `composer show` reports the package version starting with `dev-` (the branch name) and the path pointing to `<atom>`. `livewire/livewire` should resolve to `v4.x`.
 
 If install fails with a Volt-related error (e.g. resolver still trying to pull `livewire/volt`), the lockfile from Task 6 was not regenerated cleanly — stop and re-check.
 

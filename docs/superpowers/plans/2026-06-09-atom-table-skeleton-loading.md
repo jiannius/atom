@@ -11,7 +11,7 @@
 **Spec:** `docs/superpowers/specs/2026-06-09-atom-table-skeleton-loading-design.md`
 
 ## Execution notes
-- Work in this worktree: `/Users/tj/Projects/jiannius/atom/.claude/worktrees/table-skeleton`. Run `composer install` first (gets the Pest harness).
+- Work in this worktree: `<worktree>`. Run `composer install` first (gets the Pest harness).
 - `renderBlade(string, array)` helper exists in `tests/Pest.php` (unwinds slot output buffers) — use it for Blade render assertions.
 
 ---
@@ -26,7 +26,7 @@
 
 Run:
 ```bash
-cd /Users/tj/Projects/jiannius/atom/.claude/worktrees/table-skeleton
+cd <worktree>
 grep -rn "refresh" vendor/livewire/livewire/js/features/supportLoadingStates 2>/dev/null | head
 grep -rn "\$refresh\|'refresh'\|\"refresh\"\|callTarget\|targets" vendor/livewire/livewire/js/features/supportLoadingStates/index.js 2>/dev/null | head -30
 ```
