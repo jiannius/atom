@@ -391,7 +391,10 @@ it('documents the WithUrlFilters rules in the skill and the README', function ()
     expect($skill)->toContain('dropped silently')
         ->and($skill)->toContain('refused with a 403')
         ->and($skill)->toContain('named-scope keys and plain columns')
-        ->and($skill)->toContain('does **not** replace `filter(Arr::only(...))`');
+        ->and($skill)->toContain('does **not** replace `filter(Arr::only(...))`')
+        ->and($skill)->toContain('valid UTF-8')
+        ->and($skill)->toContain('sees the raw, unsanitised URL values')
+        ->and($readme)->toContain('Your own `mount()` runs before this clean-up');
 });
 
 // the always-on guideline does not grow for this: it points at the skill, which loads when a listing is edited

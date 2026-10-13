@@ -731,7 +731,8 @@ URL). Two optional methods: `urlFiltersProperty()` (default `'filters'`) and
 `urlFiltersPrefix()` (default `''`, for a page with two listings: `'claims_'` gives
 `?claims_status=`). A key must be a plain identifier (letters, digits, underscore: it becomes
 a query key, so no `.`, no `col:operator`) or the component throws at mount. Filter on an
-operator through a named scope instead.
+operator through a named scope instead. A key (with its prefix) that another query-string entry already
+uses (`page`, `tab`, your own `queryString`, a `#[Url]` property, pagination) also throws at mount.
 
 ### The declaration is an allow-list
 
@@ -747,13 +748,20 @@ arrives, and the two paths fail differently on purpose:
   its default, and the listing opens unfiltered. Livewire writes URL values with `data_set()`,
   which fires no `updating*` hook, so this is the only gate they pass. A stale bookmark or a
   crafted link should open the listing, not break it.
+  **Your own `mount()` runs before this clean-up**, so it sees the raw URL values: do not
+  read `$this->filters` there to decide anything. Validate in `isUrlFilterValid()` instead (a
+  throw from it counts as a refusal, so `Carbon::parse($value)` is fine in it).
 - **From the browser: refused with a 403**, on every update (`updatingWithUrlFilters`), like
   the signed `raw:` sort. A `$wire.set()` of a key nobody declared is a deliberate request for
   something you never offered. Livewire fires the hook once per dotted path, so `filters` (the
   whole array: every key and value is checked), `filters.status` (one key) and
   `filters.status.0` or deeper (never allowed: an array is only ever replaced whole) are all
   covered. An excepted key is refused from the browser too, and survives a wholesale
-  `$wire.set('filters', {...})`.
+  `$wire.set('filters', {...})`.  A replacement that leaves a declared key out gets that key's default.
+- **On both paths** a string must be valid UTF-8 (Livewire cannot serialise the snapshot with
+  an invalid one) and at most `urlFilterMaxLength()` bytes (default 1000), and a list at most
+  `urlFilterMaxItems()` items (default 200: a `whereIn()` with thousands of placeholders fails
+  on some databases). Override either method to change the cap.
 
 This is why the property must **not** be `#[Locked]` (the table controls bind
 `wire:model="filters.*"`, and Livewire refuses every client update to a locked property): the

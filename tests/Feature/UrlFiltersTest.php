@@ -2,13 +2,17 @@
 
 use Jiannius\Atom\Tests\Fixtures\Item;
 use Jiannius\Atom\Tests\Fixtures\TableFixture;
+use Jiannius\Atom\Tests\Fixtures\UrlFiltersCapsFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersMountDefaultFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersItemFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersStrayFixture;
+use Jiannius\Atom\Tests\Fixtures\UrlFiltersThrowingFixture;
 use Jiannius\Atom\Traits\AtomComponent;
 use Jiannius\Atom\Traits\WithUrlFilters;
+use Livewire\Attributes\Url;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * Issue #86 — the opt-in WithUrlFilters trait.
@@ -156,6 +160,136 @@ describe('updates from the browser', function () {
     });
 });
 
+describe('strings and lists the page cannot carry', function () {
+    it('falls back to the default for invalid UTF-8 from the URL, and still renders', function (array $query, string $key, mixed $default) {
+        // Livewire cannot JSON-encode the snapshot with such a string in it: a 500
+        $test = urlFiltersMounted($query);
+
+        $test->assertOk();
+        expect($test->get('filters.'.$key))->toBe($default);
+    })->with([
+        'a scalar' => [['search' => "\xFF\xFE"], 'search', ''],
+        'a list item' => [['status' => ['fresh', "\xFF"]], 'status', []],
+        'a truncated multibyte character' => [['search' => "caf\xC3"], 'search', ''],
+    ]);
+
+    it('refuses invalid UTF-8 from the browser', function (string $path, mixed $value) {
+        $instance = urlFiltersMounted([])->instance();
+
+        // the wire carries JSON, which cannot hold invalid UTF-8, so the hook is called as Livewire would
+        expect(fn () => $instance->updatingWithUrlFilters($path, $value))->toThrow(HttpException::class);
+    })->with([
+        'a scalar' => ['filters.search', "\xFF\xFE"],
+        'a list item' => ['filters.status', ['fresh', "\xFF"]],
+        'inside the whole array' => ['filters', ['search' => "\xFF"]],
+    ]);
+
+    it('accepts multibyte text that is valid UTF-8', function () {
+        urlFiltersMounted(['search' => '日本語', 'status' => ['é']])->assertOk()->set('filters.search', '日本語')->assertOk();
+        expect(urlFiltersMounted(['search' => '日本語'])->get('filters.search'))->toBe('日本語');
+    });
+
+    it('falls back to the default for a string over the length cap, and a list over the count cap, from the URL', function () {
+        expect(urlFiltersMounted(['search' => str_repeat('a', 1001)])->get('filters.search'))->toBe('');
+        expect(urlFiltersMounted(['search' => str_repeat('a', 1000)])->get('filters.search'))->toBe(str_repeat('a', 1000));
+        expect(urlFiltersMounted(['status' => array_map('strval', range(1, 201))])->get('filters.status'))->toBe([]);
+        expect(urlFiltersMounted(['status' => array_map('strval', range(1, 200))])->get('filters.status'))->toHaveCount(200);
+        expect(urlFiltersMounted(['status' => ['fresh', str_repeat('a', 1001)]])->get('filters.status'))->toBe([]);
+    });
+
+    it('refuses a string over the length cap, and a list over the count cap, from the browser', function (string $path, mixed $value) {
+        urlFiltersMounted([])->set($path, $value)->assertForbidden();
+    })->with([
+        'a long string' => ['filters.search', str_repeat('a', 1001)],
+        'a long list item' => ['filters.status', ['fresh', str_repeat('a', 1001)]],
+        'a long list' => ['filters.status', array_map('strval', range(1, 201))],
+        'a long string inside the whole array' => ['filters', ['search' => str_repeat('a', 1001)]],
+        'a long list inside the whole array' => ['filters', ['status' => array_map('strval', range(1, 201))]],
+    ]);
+
+    it('lets a host set its own caps', function () {
+        urlFiltersMounted([], UrlFiltersCapsFixture::class)->set('filters.search', 'abcde')->set('filters.status', ['a', 'b', 'c'])->assertOk();
+        urlFiltersMounted([], UrlFiltersCapsFixture::class)->set('filters.search', 'abcdef')->assertForbidden();
+        urlFiltersMounted([], UrlFiltersCapsFixture::class)->set('filters.status', ['a', 'b', 'c', 'd'])->assertForbidden();
+        expect(urlFiltersMounted(['search' => 'abcdef'], UrlFiltersCapsFixture::class)->get('filters.search'))->toBe('');
+    });
+});
+
+describe('a host check that throws', function () {
+    it('is a refusal from the URL, not a 500', function () {
+        $test = urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class);
+
+        $test->assertOk();
+        expect($test->get('filters.search'))->toBe('');
+    });
+
+    it('is a 403 from the browser, not a 500', function () {
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'boom')->assertForbidden();
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters', ['search' => 'boom'])->assertForbidden();
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'fine')->assertOk();
+    });
+});
+
+describe('a whole replacement', function () {
+    it('gives a declared key the replacement left out its default', function () {
+        $test = urlFiltersMounted(['search' => 'ap', 'status' => ['fresh']])->set('filters', [])->assertOk();
+
+        expect($test->get('filters'))->toBe(['search' => '', 'status' => [], 'region' => 'MY', 'tenant' => 7]);
+
+        $test->set('filters', ['status' => ['dried']])->assertOk();
+
+        expect($test->get('filters'))->toBe(['search' => '', 'status' => ['dried'], 'region' => 'MY', 'tenant' => 7]);
+    });
+});
+
+describe('a key something else already writes to the URL', function () {
+    /** The entries a component with this declaration would hand Livewire. */
+    function urlFiltersEntries(object $component): array
+    {
+        return (fn () => $this->queryStringWithUrlFilters())->call($component);
+    }
+
+    it('is refused at mount: page, tab, a prefixed collision, the host queryString, a #[Url] property', function (object $component) {
+        expect(fn () => urlFiltersEntries($component))->toThrow(LogicException::class, 'already used');
+    })->with([
+        'page' => fn () => new class extends UrlFiltersFixture {
+            protected function urlFilters(): array { return ['page' => '']; }
+        },
+        'tab' => fn () => new class extends UrlFiltersFixture {
+            protected function urlFilters(): array { return ['tab' => '']; }
+        },
+        'a prefix that makes `page`' => fn () => new class extends UrlFiltersFixture {
+            protected function urlFilters(): array { return ['ge' => '']; }
+
+            protected function urlFiltersPrefix(): string { return 'pa'; }
+        },
+        'the host queryString alias' => fn () => new class extends UrlFiltersFixture {
+            protected function queryString(): array { return ['other' => ['as' => 'status']]; }
+        },
+        'the host queryString key' => fn () => new class extends UrlFiltersFixture {
+            protected function queryString(): array { return ['search' => ['except' => '']]; }
+        },
+        'a #[Url] property' => fn () => new class extends UrlFiltersFixture {
+            #[Url(as: 'region')]
+            public string $other = '';
+        },
+        'a #[Url] property under its own name' => fn () => new class extends UrlFiltersFixture {
+            #[Url]
+            public string $status = '';
+        },
+    ]);
+
+    it('lets a prefix keep two listings apart, and the fixture as declared', function () {
+        expect(array_column(urlFiltersEntries(new UrlFiltersFixture), 'as'))->toBe(['search', 'status', 'region']);
+
+        $prefixed = new class extends UrlFiltersFixture {
+            protected function urlFiltersPrefix(): string { return 'claims_'; }
+        };
+
+        expect(array_column(urlFiltersEntries($prefixed), 'as'))->toBe(['claims_search', 'claims_status', 'claims_region']);
+    });
+});
+
 describe('the reach of filter() behind the allow-list', function () {
     beforeEach(function () {
         Item::factory()->create(['name' => 'apple', 'status' => 'draft', 'amount' => 5]);
@@ -211,7 +345,7 @@ describe('the names the trait occupies', function () {
         expect($public)->toBe(['mountWithUrlFilters', 'updatedWithUrlFilters', 'updatingWithUrlFilters']);
 
         // a host component sees one namespace: these are what it must not shadow by accident
-        foreach (['urlFilters', 'urlFiltersExcept', 'urlFiltersProperty', 'urlFiltersPrefix', 'isUrlFilterValid'] as $hook) {
+        foreach (['urlFilters', 'urlFiltersExcept', 'urlFiltersProperty', 'urlFiltersPrefix', 'isUrlFilterValid', 'urlFilterMaxLength', 'urlFilterMaxItems'] as $hook) {
             expect($reflection->getMethod($hook)->isProtected())->toBeTrue("{$hook}() must be protected");
         }
     });

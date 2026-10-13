@@ -3,7 +3,10 @@
 namespace Jiannius\Atom\Traits;
 
 use Illuminate\Support\Arr;
+use Livewire\Features\SupportQueryString\BaseUrl;
 use LogicException;
+use ReflectionAttribute;
+use ReflectionProperty;
 
 /**
  * Keep a listing's filters in the URL (`?status=APPROVED&search=foo`), so a record
@@ -83,6 +86,24 @@ trait WithUrlFilters
     }
 
     /**
+     * The longest string a filter value may be, in bytes. A URL can carry far more
+     * than any filter needs, and the value is bound into a query.
+     */
+    protected function urlFilterMaxLength(): int
+    {
+        return 1000;
+    }
+
+    /**
+     * The most items a list filter may hold: a `whereIn()` with thousands of
+     * placeholders is an error on some databases.
+     */
+    protected function urlFilterMaxItems(): int
+    {
+        return 200;
+    }
+
+    /**
      * One query-string entry per declared key, in Livewire's `queryString{Trait}`
      * convention so it merges with the host's own (`tab`, pagination). `history`
      * is false (replace, do not push a history entry per keystroke) and `except`
@@ -93,8 +114,13 @@ trait WithUrlFilters
     protected function queryStringWithUrlFilters(): array
     {
         $entries = [];
+        $taken = $this->urlFilterTakenQueryKeys();
 
         foreach ($this->urlFilterDefinitions() as $key => $default) {
+            if (in_array($this->urlFiltersPrefix().$key, $taken, true)) {
+                throw new LogicException(static::class.': the query key ['.$this->urlFiltersPrefix().$key.'] is already used (pagination, `tab` or another query-string entry): give the filter another key or a urlFiltersPrefix().');
+            }
+
             $entries[$this->urlFiltersProperty().'.'.$key] = [
                 'as' => $this->urlFiltersPrefix().$key,
                 'history' => false,
@@ -186,20 +212,30 @@ trait WithUrlFilters
 
         $path = substr((string) $name, strlen($property) + 1);
 
+        // The dot test is defence in depth: a declared key never holds a dot, so the
+        // undeclared-key check refuses every deeper path on its own today, and no
+        // test can reach this clause alone. It stays so that a future key that may
+        // hold a dot cannot quietly open `filters.x.y`.
         if (str_contains($path, '.') || ! $this->isUrlFilterAcceptable($path, $value)) {
             abort(403, 'Invalid filters.');
         }
     }
 
     /**
-     * Put the internal state back after the browser replaced the whole array.
+     * After the browser replaced the whole array: put the internal state back, and
+     * a declared key the replacement left out gets its default (`set('filters', [])`
+     * must not leave a listing without a `search` or `status` key).
      */
     public function updatedWithUrlFilters($name, $value): void
     {
         $property = $this->urlFiltersProperty();
 
-        if ($name === $property && $this->urlFiltersStash !== null) {
-            $this->{$property} = [...(is_array($this->{$property}) ? $this->{$property} : []), ...$this->urlFiltersStash];
+        if ($name === $property) {
+            $this->{$property} = [
+                ...$this->urlFilterDefinitions(),
+                ...(is_array($this->{$property}) ? $this->{$property} : []),
+                ...($this->urlFiltersStash ?? []),
+            ];
         }
 
         $this->urlFiltersStash = null;
@@ -264,7 +300,21 @@ trait WithUrlFilters
 
         return array_key_exists($key, $declared)
             && $this->urlFilterShapeMatches($declared[$key], $value)
-            && $this->isUrlFilterValid($key, $value);
+            && $this->urlFilterHostAccepts($key, $value);
+    }
+
+    /**
+     * The host's own check, which a crafted link can make throw (a date that does not
+     * parse): a throw is a refusal, never a 500.
+     */
+    protected function urlFilterHostAccepts(string $key, mixed $value): bool
+    {
+        try {
+            return $this->isUrlFilterValid($key, $value);
+        }
+        catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
@@ -287,16 +337,75 @@ trait WithUrlFilters
 
     /**
      * Scalar (or null) for a scalar default; a list of scalars for a list default.
-     * Anything keyed, nested or an object is the wrong shape for both.
+     * Anything keyed, nested or an object is the wrong shape for both. A string must
+     * be valid UTF-8 (Livewire cannot serialise the snapshot otherwise: a 500) and
+     * within urlFilterMaxLength(); a list within urlFilterMaxItems().
      */
     protected function urlFilterShapeMatches(mixed $default, mixed $value): bool
     {
         if (is_array($default)) {
             return is_array($value)
                 && array_is_list($value)
-                && collect($value)->every(fn ($item) => is_scalar($item));
+                && count($value) <= $this->urlFilterMaxItems()
+                && collect($value)->every(fn ($item) => $this->urlFilterScalarMatches($item));
+        }
+
+        return $this->urlFilterScalarMatches($value);
+    }
+
+    /**
+     * Null, or a scalar that, when it is a string, is valid UTF-8 and not too long.
+     */
+    protected function urlFilterScalarMatches(mixed $value): bool
+    {
+        if (is_string($value)) {
+            return strlen($value) <= $this->urlFilterMaxLength() && preg_match('//u', $value) === 1;
         }
 
         return $value === null || is_scalar($value);
+    }
+
+    /**
+     * Every query key something else on the component already writes to: `page` and
+     * `tab`, the host's own `queryString`, other traits' (pagination), and `#[Url]`
+     * properties. A filter that took one would fight it over the URL.
+     *
+     * @return list<string>
+     */
+    protected function urlFilterTakenQueryKeys(): array
+    {
+        $entries = [];
+
+        if (method_exists($this, 'queryString')) {
+            $entries[] = $this->queryString();
+        }
+        else if (property_exists($this, 'queryString')) {
+            $entries[] = $this->queryString;
+        }
+
+        foreach (class_uses_recursive(static::class) as $trait) {
+            $member = 'queryString'.class_basename($trait);
+
+            if ($trait !== __TRAIT__ && method_exists($this, $member)) {
+                $entries[] = $this->{$member}();
+            }
+        }
+
+        $taken = ['page', 'tab'];
+
+        foreach ($entries as $entry) {
+            foreach ((array) $entry as $key => $value) {
+                $key = is_string($key) ? $key : $value;
+                $taken[] = (string) (is_array($value) ? ($value['as'] ?? $key) : $key);
+            }
+        }
+
+        foreach ((new \ReflectionObject($this))->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+            foreach ($property->getAttributes(BaseUrl::class, ReflectionAttribute::IS_INSTANCEOF) as $attribute) {
+                $taken[] = (string) ($attribute->newInstance()->as ?? $property->getName());
+            }
+        }
+
+        return $taken;
     }
 }

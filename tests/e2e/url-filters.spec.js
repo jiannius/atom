@@ -111,9 +111,20 @@ test('a planted link opens the listing clean: unknown keys, bad shapes and the t
   expect(await names(page)).toEqual(['Apple', 'Apricot', 'Cherry'])   // never the other tenant's Secret
 })
 
-test('the browser cannot set a key nobody declared, or the tenant', async ({ page }) => {
-  await page.goto('/atom/e2e/url-filters')
+test('the browser cannot set a key nobody declared, or the tenant: the server state is unchanged', async ({ page }) => {
+  await page.goto('/atom/e2e/url-filters?search=ap')
   await page.waitForLoadState('networkidle')
+
+  // Livewire keeps no state on the server: it is the snapshot, and `canonical` is the last one the server
+  // confirmed (a refused update never reaches it, while `$wire` shows what the browser asked for). A call
+  // would replay the refused updates and be refused again, so the confirmed state is read directly.
+  const server = async () => ({
+    filters: await page.evaluate(() => Livewire.all().find(c => c.name === 'atom-e2e-url-filters').canonical.filters),
+    rows: await names(page),
+  })
+  const before = await server()
+
+  expect(before).toEqual({ filters: { search: 'ap', status: [], region: 'MY', tenant: 7 }, rows: ['Apple', 'Apricot'] })
 
   const refused = await page.evaluate(async () => {
     const wire = Livewire.all().find(c => c.name === 'atom-e2e-url-filters').$wire
@@ -122,6 +133,7 @@ test('the browser cannot set a key nobody declared, or the tenant', async ({ pag
       () => wire.$set('filters.evil', 'x'),
       () => wire.$set('filters', { tenant: 9 }),
       () => wire.$set('filters', { search: ['a'] }),
+      () => wire.$set('filters.status', 'fresh'),
     ]
     const results = []
 
@@ -132,5 +144,8 @@ test('the browser cannot set a key nobody declared, or the tenant', async ({ pag
     return results
   })
 
-  expect(refused).toEqual(['refused', 'refused', 'refused', 'refused'])
+  expect(refused).toEqual(['refused', 'refused', 'refused', 'refused', 'refused'])
+
+  // the tenant is still 7, nothing was added, and the other tenant's row is still not listed
+  expect(await server()).toEqual(before)
 })
