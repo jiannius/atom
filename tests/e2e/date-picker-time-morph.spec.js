@@ -142,6 +142,26 @@ test('a wire:model.live round trip from picking a day keeps the calendar and the
   expect(styleAfter).toBeTruthy()
 })
 
+// Issue #56: the fix above kept the calendar, but the dropdown root's `data-open` (which the compiled
+// opacity rule reads) was still stripped by the same round trip, leaving the panel invisible, positioned
+// and clickable. The rig compiles no Tailwind, so stand in for the two rules; toBeVisible() counts
+// opacity:0 as visible, so read the computed opacity.
+test('a wire:model.live round trip from picking a day leaves the panel opaque, not opacity 0', async ({ page }) => {
+  await page.addStyleTag({ content: `
+    :where([data-atom-dropdown]) [data-atom-menu] { opacity: 0; }
+    :where([data-atom-dropdown][data-open]) [data-atom-menu] { opacity: 1; }
+  ` })
+
+  await open(page)
+  expect(await popover(page).evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
+
+  await pickADayWithRealMouse(page)
+
+  expect(await popover(page).evaluate((el) => el.matches(':popover-open'))).toBe(true)
+  expect(await popover(page).evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
+  await expect(probe(page).locator('[data-atom-dropdown]')).toHaveAttribute('data-open', /.*/)
+})
+
 test('a real click at the time field pre-update position still reaches it, not the browser\'s native click-outside-close', async ({ page }) => {
   await open(page)
 

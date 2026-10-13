@@ -14,6 +14,14 @@ describe('tooltip', function () {
             ->toContain('popover="manual"');
     });
 
+    it('keeps the content node through a Livewire morph (issue #56)', function () {
+        // tooltip.js writes an id on the content and floating-ui an inline style. Livewire keys a node by its
+        // id, so a fixed key stops the morph replacing the open popover; `.self` keeps the style and id.
+        expect(renderBlade('<atom:tooltip content="Save"><button>Hover</button></atom:tooltip>'))
+            ->toContain('wire:ignore.self')
+            ->toContain('wire:key="atom-tooltip-content"');
+    });
+
     it('maps position and align to a placement', function () {
         expect(renderBlade('<atom:tooltip content="x" position="bottom" align="end"><button>b</button></atom:tooltip>'))
             ->toContain("placement: 'bottom-end'");

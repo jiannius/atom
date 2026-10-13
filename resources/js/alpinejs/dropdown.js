@@ -1,3 +1,5 @@
+import onMorphed from '../helpers/morphed'
+
 export default (config) => {
     return {
         cleanup: null,
@@ -27,12 +29,7 @@ export default (config) => {
         },
 
         init() {
-            // Respect a popup role the trigger already declares (e.g. a select
-            // sets aria-haspopup=listbox); only default to menu otherwise.
-            if (!this.trigger?.hasAttribute('aria-haspopup')) {
-                this.trigger?.setAttribute('aria-haspopup', 'menu')
-            }
-            this.trigger?.setAttribute('aria-expanded', 'false')
+            this.syncState()
 
             // Everything is bound on $root rather than on the trigger / popover
             // nodes themselves: a Livewire morph replaces those nodes whenever
@@ -101,6 +98,34 @@ export default (config) => {
             // removal of an open popover doesn't reliably fire `toggle`, so the
             // close handler above wouldn't run cleanup otherwise).
             document.addEventListener('livewire:navigating', () => this.hide(), { signal })
+
+            // A Livewire morph strips what the server did not render: `data-open` on the
+            // root (the panel turns opacity-0 while the popover is still in the top layer,
+            // positioned and clickable) and the aria on the trigger. The popover stays
+            // open, so write them again from it. Not `wire:ignore.self` on the root: that
+            // would also freeze a server-driven class or attribute on it. Dropped by
+            // destroy(); kept on the element like the listeners, so a re-run init() drops
+            // the previous registration.
+            this.$root._atomDropdownStopMorph?.()
+            this.$root._atomDropdownStopMorph = onMorphed((el) => {
+                if (!el || el.contains(this.$root)) this.syncState()
+            })
+        },
+
+        /**
+         * Write the state JS owns on the root and the trigger from whether the popover is open.
+         */
+        syncState() {
+            let open = !!this.popover?.matches(':popover-open')
+
+            this.$root.toggleAttribute('data-open', open)
+
+            // Respect a popup role the trigger already declares (e.g. a select
+            // sets aria-haspopup=listbox); only default to menu otherwise.
+            if (!this.trigger?.hasAttribute('aria-haspopup')) {
+                this.trigger?.setAttribute('aria-haspopup', 'menu')
+            }
+            this.trigger?.setAttribute('aria-expanded', open ? 'true' : 'false')
         },
 
         destroy() {
@@ -108,6 +133,7 @@ export default (config) => {
             // positioning loop and every listener bound in init().
             this.hide()
             this.cleanup?.()
+            this.$root._atomDropdownStopMorph?.()
             this.$root._atomDropdownListeners?.abort()
         },
 

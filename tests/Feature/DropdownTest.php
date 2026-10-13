@@ -103,4 +103,19 @@ describe('menu.item', function () {
     it('renders a badge', function () {
         expect(renderBlade('<atom:menu.item badge="3">Team</atom:menu.item>'))->toContain('3');
     });
+
+    it('keeps a popover menu\'s own attributes through a Livewire morph, but not an inline one\'s', function () {
+        // floating-ui writes an inline style on the open popover; a morph strips it and the menu jumps to the
+        // page corner (issue #56). An inline menu has no such state and keeps taking server updates.
+        expect(renderBlade('<atom:menu popover>x</atom:menu>'))->toContain('wire:ignore.self');
+        expect(renderBlade('<atom:menu>x</atom:menu>'))->not->toContain('wire:ignore');
+    });
+
+    it('does not freeze the dropdown root against a morph', function () {
+        // Its open state is written back from the popover after a morph instead (dropdown.js), so a
+        // server-driven class on the root keeps updating. wire:ignore.self here would stop that.
+        expect(renderBlade('<atom:dropdown><button>Open</button><atom:menu popover>x</atom:menu></atom:dropdown>'))
+            ->toContain('data-atom-dropdown')
+            ->not->toMatch('/<div[^>]*x-data="dropdown[^>]*wire:ignore/s');
+    });
 });

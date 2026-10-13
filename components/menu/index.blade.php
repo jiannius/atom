@@ -12,6 +12,8 @@ $classes = Arr::toCssClasses([
 ]);
 @endphp
 
-<div {{ $attributes->class($classes)->merge(['role' => 'menu']) }} data-atom-menu {{ $popover ? 'popover' : '' }}>
+{{-- A popover menu is positioned by floating-ui with an inline style, which a morph would strip while the menu is open
+     (it would jump to the corner of the page). `.self` keeps the node's own attributes and still morphs what is inside it. --}}
+<div {{ $attributes->class($classes)->merge(['role' => 'menu']) }} data-atom-menu {{ $popover ? 'popover wire:ignore.self' : '' }}>
     {{ $slot }}
 </div>

@@ -1,6 +1,9 @@
+import onMorphed from '../helpers/morphed'
+
 export default (config) => {
     return {
         cleanup: null,
+        stopMorphLink: null,
         hideTimer: null,
         placement: config.placement,
         interactive: config.interactive,
@@ -13,12 +16,24 @@ export default (config) => {
             return this.$root.querySelector('[data-atom-tooltip-content]')
         },
 
-        init () {
-            // Link the trigger to its content so assistive tech announces it.
+        /**
+         * Link the trigger to its content so assistive tech announces it.
+         */
+        link () {
             if (this.popover && this.trigger) {
                 if (!this.popover.id) this.popover.id = this.$id('atom-tooltip')
                 this.trigger.setAttribute('aria-describedby', this.popover.id)
             }
+        },
+
+        init () {
+            this.link()
+
+            // The link lives on the trigger, a node of the host's, which a morph strips
+            // of any attribute the server did not render. Write it again afterwards.
+            this.stopMorphLink = onMorphed((el) => {
+                if (!el || el.contains(this.$root)) this.link()
+            })
 
             // Show on hover and on keyboard focus (WCAG 1.4.13).
             this.$root.addEventListener('mouseenter', () => this.show())
@@ -48,6 +63,7 @@ export default (config) => {
         },
 
         destroy () {
+            this.stopMorphLink?.()
             // Alpine teardown (incl. morph removal): force-close, stop the
             // positioning loop, and drop the document listeners so nothing
             // lingers in the top layer.
