@@ -704,7 +704,7 @@ describe('calendar accessibility markup', function () {
     it('says a column holds the blocks that are in it, and the live title is written from a text that moves only with the title', function () {
         $html = calendarRender();
 
-        expect(domQuery($html, '//*[@data-atom-calendar-column]')[0]->getAttribute('x-bind:aria-label'))->toBe('dayLabel(column, column.blocks.length)')
+        expect(domQuery($html, '//*[@data-atom-calendar-column]')[0]->getAttribute('x-bind:aria-label'))->toBe('column.label')
             ->and(domQuery($html, '//*[@role="status"]')[0]->getAttribute('x-text'))->toBe('liveTitle');
     });
 
@@ -742,7 +742,9 @@ describe('calendar accessibility markup', function () {
     it('keys a day\'s and a "+N more"\'s aria-expanded off what opened the list', function () {
         $html = calendarRender();
 
-        expect(domQuery($html, '//*[@data-atom-calendar-day]')[0]->getAttribute('x-bind:aria-expanded'))->toContain("popoverSource === 'day'")
+        // a day's own is worked out with the layout (the day's count is in it), and written by an effect: Alpine never drops an attribute it was bound to null
+        expect(file_get_contents(__DIR__.'/../../resources/js/alpinejs/calendar.js'))->toContain("popoverDate === day.date && popoverSource === 'day'")
+            ->and(domQuery($html, '//*[@data-atom-calendar-day]')[0]->getAttribute('x-effect'))->toContain('day.expanded')
             ->and(domQuery($html, '//*[@data-atom-calendar-more]')[0]->getAttribute('x-bind:aria-expanded'))->toContain("popoverSource === 'more'")
             ->and(domQuery($html, '//*[@data-atom-calendar-more]')[1]->getAttribute('x-bind:aria-expanded'))->toContain("popoverSource === 'more'");
     });
@@ -755,7 +757,7 @@ describe('calendar accessibility markup', function () {
         expect($kinds)->toHaveCount(3);
 
         foreach ($kinds as [, $kind, $markup]) {
-            expect($markup)->toContain('x-bind:aria-label="itemLabel(chip)"', $kind)
+            expect($markup)->toContain('x-bind:aria-label="chip.label"', $kind)
                 // a `title` beside a name is read out as well: a tooltip is put on by tooltip(), and only when the title shown is cut
                 ->not->toContain('x-bind:title=');
         }

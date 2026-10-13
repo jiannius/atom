@@ -1072,3 +1072,191 @@ test.describe('a week that starts on a Sunday', () => {
         await expect(cell(page, '2026-10-17', 'grid')).toBeFocused()
     })
 })
+
+// A payload that changes what a day, a chip or a "+N more" says (#92). Alpine drops the second run of an effect inside one flush, so a binding that
+// read the payload (labels, config) beside its x-for scope could run with the clone's old scope, and was not run again with the new one. Each of the
+// strings is laid out with the layout now, and the bindings read the scope alone. The oracle: every bound label, text and day state inside the body
+// is what Alpine works out for it from the scope it has now, and what the engine's own methods say of that scope. Driven through a real Livewire
+// round trip on the fixture (frozen at 2026-10-09 10:30; `reschedule`, `toggleCrowd` and `toggleLone` are its actions).
+test.describe('a payload that changes a name or a count leaves nothing in the grid saying what it said before', () => {
+    async function call (page, method, ...args) {
+        const root = page.locator('[data-atom-calendar]').first()
+        const before = await root.getAttribute('data-atom-calendar-payload')
+
+        await page.evaluate(([method, args]) => {
+            const id = document.querySelector('[data-atom-calendar]').closest('[wire\\:id]').getAttribute('wire:id')
+
+            return window.Livewire.find(id).call(method, ...args)
+        }, [method, args])
+
+        await expect.poll(() => root.getAttribute('data-atom-calendar-payload')).not.toBe(before)
+        // past Alpine's flush and the morph
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    }
+
+    // what the page's own payload looks like with `edit` applied to it, handed to the calendar as a render would
+    const swap = (page, edit) => page.evaluate((edit) => {
+        const root = document.querySelector('[data-atom-calendar]')
+        const payload = JSON.parse(root.getAttribute('data-atom-calendar-payload'))
+
+        new Function('payload', edit)(payload)
+        root.setAttribute('data-atom-calendar-payload', JSON.stringify(payload))
+
+        return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    }, edit)
+
+    // every element of the body whose label, text or day state is not what its binding, or the method it stands for, gives for its scope now
+    const stale = (page) => page.evaluate(() => {
+        const body = document.querySelector('[data-atom-calendar-body]')
+        const evaluate = (el, expression) => window.Alpine.evaluate(el, expression)
+        const methods = {
+            'x-bind:aria-label': { 'chip.label': 'itemLabel(chip)', 'day.label': 'dayLabel(day)', 'column.label': 'dayLabel(column, column.blocks.length)' },
+            'x-text': { 'chip.time': 'timeLabel(chip)', 'chip.range': 'timeRange(chip)', "'· ' + chip.time": "'· ' + timeLabel(chip)", 'more.label': 'moreLabel(more.count)' },
+        }
+        const out = []
+
+        for (const el of body.querySelectorAll('[x-bind\\:aria-label], [x-text], [data-atom-calendar-day]')) {
+            if (el.closest('template')) continue
+
+            const check = (what, shown, now) => {
+                if ((shown ?? null) !== (now ?? null)) out.push({ what, shown, now })
+            }
+
+            if (el.hasAttribute('x-bind:aria-label')) {
+                const expression = el.getAttribute('x-bind:aria-label')
+
+                check('aria-label ' + expression, el.getAttribute('aria-label'), evaluate(el, expression))
+
+                const twin = methods['x-bind:aria-label'][expression]
+
+                if (twin) check('aria-label ' + twin, el.getAttribute('aria-label'), evaluate(el, twin))
+            }
+
+            if (el.hasAttribute('x-text')) {
+                const expression = el.getAttribute('x-text')
+
+                check('text ' + expression, el.textContent, String(evaluate(el, expression) ?? ''))
+
+                const twin = methods['x-text'][expression]
+
+                if (twin) check('text ' + twin, el.textContent, String(evaluate(el, twin)))
+            }
+
+            if (el.matches('[data-atom-calendar-day]')) {
+                // what a day says of the list, from the day's own count and the list as it stands
+                const engine = window.Alpine.$data(el)
+                const count = evaluate(el, 'day.count')
+                const expanded = count > 0 ? String(engine.popoverDate === el.dataset.date && engine.popoverSource === 'day') : null
+
+                check('aria-expanded of the day', el.getAttribute('aria-expanded'), expanded)
+                check('cursor-pointer', el.classList.contains('cursor-pointer'), count > 0 && !engine.config.selectable)
+            }
+        }
+
+        return out
+    })
+
+    test('month: an item moved within its week is named for its new day, and the day it moved to counts it', async ({ page }) => {
+        await open(page)
+        expect(await stale(page)).toEqual([])
+
+        // Design review, Wed 14 Oct 10:00 -> Thu 15 Oct 10:00: the same week row, so the chip's element is reused
+        await call(page, 'reschedule', 6, '2026-10-15T10:00', '2026-10-15T11:00')
+
+        await expect(page.locator('[data-atom-calendar-item="6"]')).toHaveCount(1)
+        await expect(page.locator('[data-atom-calendar-item="6"]')).toHaveAttribute('aria-label', /Thursday/)
+        await expect(cell(page, '2026-10-15')).toHaveAttribute('aria-label', /1 item/)
+        expect(await stale(page)).toEqual([])
+    })
+
+    test('month: a "+N more" says the count it has now', async ({ page }) => {
+        await open(page)
+        await call(page, 'toggleCrowd')
+
+        const more = page.locator('[data-atom-calendar-more]').filter({ visible: true })
+        const before = await more.allTextContents()
+
+        expect(before.length).toBeGreaterThan(0)
+
+        // Dentist, Wed 14 Oct -> Sat 17 Oct, the same week: the crowded day gets one more
+        await call(page, 'reschedule', 5, '2026-10-17T08:00', '2026-10-17T09:00')
+
+        expect(await more.allTextContents()).not.toEqual(before)
+        expect(await stale(page)).toEqual([])
+    })
+
+    test('week: a block moved to another time of its day says its new time and name', async ({ page }) => {
+        await open(page, '/atom/e2e/calendar?view=week&date=2026-10-14')
+        expect(await stale(page)).toEqual([])
+
+        // Design review 10:00-11:00 -> 14:00-15:00, the same day: the block's element is reused
+        await call(page, 'reschedule', 6, '2026-10-14T14:00', '2026-10-14T15:00')
+
+        const block = page.locator('[data-atom-calendar-block] [data-atom-calendar-item="6"]')
+
+        await expect(block.locator('[data-atom-calendar-item-time]').last()).toHaveText(/2:00 PM/)
+        await expect(block).toHaveAttribute('aria-label', /2:00 PM/)
+        expect(await stale(page)).toEqual([])
+    })
+
+    test('week: a column says how many blocks it holds after one is moved into it', async ({ page }) => {
+        await open(page, '/atom/e2e/calendar?view=week&date=2026-10-14')
+
+        const column = page.locator('[data-atom-calendar-column][data-date="2026-10-15"]')
+        const before = await column.getAttribute('aria-label')
+
+        // Design review, Wed 14 Oct -> Thu 15 Oct, the same week: both columns are reused
+        await call(page, 'reschedule', 6, '2026-10-15T10:00', '2026-10-15T11:00')
+
+        expect(await column.getAttribute('aria-label')).not.toBe(before)
+        expect(await column.getAttribute('aria-label')).toMatch(/1 item/)
+        expect(await stale(page)).toEqual([])
+    })
+
+    test('the day list: a row that is renamed while the list is open says its new name', async ({ page }) => {
+        await open(page)
+        await cell(page, '2026-10-14').focus()
+        await page.keyboard.press('Enter')
+
+        const row = page.locator('[data-atom-calendar-popover] [data-atom-calendar-item="7"]')
+
+        await expect(row).toHaveCount(1)
+        await swap(page, "payload.items.find((item) => item.id === 7).title = 'Lunch renamed'")
+
+        await expect(row).toHaveAttribute('aria-label', /Lunch renamed/)
+        expect(await stale(page)).toEqual([])
+    })
+
+    test('a day whose open list is emptied by a payload is no longer expanded, nor a click target', async ({ page }) => {
+        await open(page)
+        await call(page, 'toggleLone')
+
+        const day = cell(page, '2026-10-16')
+
+        await day.click()
+        await expect(day).toHaveAttribute('aria-expanded', 'true')
+        await expect(day).toHaveClass(/cursor-pointer/)
+
+        await call(page, 'toggleLone')
+
+        await expect(day).not.toHaveAttribute('aria-expanded', /.*/)
+        await expect(day).not.toHaveClass(/cursor-pointer/)
+        expect(await stale(page)).toEqual([])
+    })
+
+    test('a day is expanded while its list is open and not after it closes, with no payload to say so', async ({ page }) => {
+        await open(page)
+
+        const day = cell(page, '2026-10-14')
+
+        await expect(day).toHaveAttribute('aria-expanded', 'false')
+        await day.focus()
+        await page.keyboard.press('Enter')
+        await expect(day).toHaveAttribute('aria-expanded', 'true')
+        expect(await stale(page)).toEqual([])
+
+        await page.keyboard.press('Escape')
+        await expect(day).toHaveAttribute('aria-expanded', 'false')
+        expect(await stale(page)).toEqual([])
+    })
+})

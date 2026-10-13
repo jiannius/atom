@@ -225,7 +225,20 @@ export default () => ({
         let max = this.config.max ?? null
         let slotDuration = this.config.slotDuration ?? 30
 
-        return memoise(this, 'grid', [items, items.length, days, today, max, slotDuration], () => timeGrid(days, items, { today, max, slotDuration }))
+        let { labels, config } = this
+
+        return memoise(this, 'grid', [items, items.length, days, today, max, slotDuration, labels, config], () => {
+            let grid = timeGrid(days, items, { today, max, slotDuration })
+
+            grid.columns.forEach((column) => {
+                column.label = this.dayLabel(column, column.blocks.length)
+                column.blocks.forEach((chip) => this.nameChip(chip))
+            })
+            grid.allDay.chips.forEach((chip) => this.nameChip(chip))
+            grid.allDay.more.forEach((more) => { more.label = this.moreLabel(more.count) })
+
+            return grid
+        })
     },
 
     // What a gesture in progress draws in each column of the time grid, by date. Apart from `grid` on purpose: the blocks are laid out
@@ -269,7 +282,25 @@ export default () => ({
         let { items, todayDate: today, previewKey } = this
         let max = this.config.max ?? null
 
-        return memoise(this, 'weeks', [days, days.length, items, items.length, max, today, previewKey], () => monthLayout(days, items, { max, today, preview: raw(this.preview) }))
+        let { labels, config, popoverDate, popoverSource } = this
+
+        return memoise(this, 'weeks', [days, days.length, items, items.length, max, today, previewKey, labels, config, popoverDate, popoverSource], () => {
+            let weeks = monthLayout(days, items, { max, today, preview: raw(this.preview) })
+
+            weeks.forEach((week) => {
+                week.days.forEach((day) => {
+                    day.label = this.dayLabel(day)
+                    // what a day cell says of the list, worked out here with its count: a binding that reads `popoverDate` beside `day.count` can run, when
+                    // the payload closes the list of a day that has gone empty, before its scope has the new count, and is not run again
+                    day.expanded = day.count > 0 ? String(popoverDate === day.date && popoverSource === 'day') : null
+                    day.clickable = day.count > 0 && !config.selectable
+                })
+                week.chips.forEach((chip) => this.nameChip(chip))
+                week.more.forEach((more) => { more.label = this.moreLabel(more.count) })
+            })
+
+            return weeks
+        })
     },
 
     get popoverEntries () {
@@ -283,7 +314,17 @@ export default () => ({
             after: false,
             // a row of the list is not on a grid to be put somewhere on
             static: true,
-        }))
+        })).map((chip) => this.nameChip(chip))
+    },
+
+    // What a chip says, worked out with the layout so that its bindings read the scope variable alone. A binding that reads `labels` or `config` as well
+    // as its scope can run with the clone's old scope while a payload is read, and Alpine drops the run that the new scope would bring (#92).
+    nameChip (chip) {
+        chip.label = this.itemLabel(chip)
+        chip.time = this.timeLabel(chip)
+        chip.range = this.timeRange(chip)
+
+        return chip
     },
 
     // The one day of the month view the Tab key stops on: the one that has the focus, or was last moved to, while it is in the window;

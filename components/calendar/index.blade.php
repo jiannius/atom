@@ -207,16 +207,16 @@ data-atom-calendar
                                 <div
                                 role="gridcell"
                                 x-bind:data-date="day.date"
-                                x-bind:aria-label="dayLabel(day)"
+                                x-bind:aria-label="day.label"
                                 x-bind:aria-current="day.today ? 'date' : null"
                                 x-bind:aria-haspopup="day.count > 0 ? 'dialog' : null"
-                                x-bind:aria-expanded="day.count > 0 ? String(popoverDate === day.date && popoverSource === 'day') : null"
+                                x-effect="day.expanded === null ? $el.removeAttribute('aria-expanded') : $el.setAttribute('aria-expanded', day.expanded)"
                                 x-bind:aria-controls="day.count > 0 ? uid + '-popover' : null"
                                 x-bind:tabindex="day.date === tabDate ? 0 : -1"
                                 x-bind:class="{
                                     'bg-zinc-50 dark:bg-zinc-900/40': day.outside,
                                     'bg-zinc-50 dark:bg-zinc-900/30': day.weekend && !day.outside,
-                                    'cursor-pointer': day.count > 0 && !config.selectable,
+                                    'cursor-pointer': day.clickable,
                                 }"
                                 x-on:click="dayClick(day, $event)"
                                 x-on:focus="focusDate = day.date"
@@ -256,7 +256,7 @@ data-atom-calendar
                                 aria-haspopup="dialog"
                                 x-bind:aria-expanded="String(popoverDate === more.date && popoverSource === 'more')"
                                 x-bind:aria-controls="uid + '-popover'"
-                                x-text="moreLabel(more.count)"
+                                x-text="more.label"
                                 data-atom-calendar-more
                                 class="h-5 w-full rounded-sm px-1.5 text-left text-xs font-medium text-zinc-600 outline-offset-1 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700/60 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"></button>
                             </template>
@@ -377,7 +377,7 @@ data-atom-calendar
                                     aria-haspopup="dialog"
                                     x-bind:aria-expanded="String(popoverDate === more.date && popoverSource === 'more')"
                                     x-bind:aria-controls="uid + '-popover'"
-                                    x-text="moreLabel(more.count)"
+                                    x-text="more.label"
                                     data-atom-calendar-more
                                     class="h-5 w-full rounded-sm px-1.5 text-left text-xs font-medium text-zinc-600 outline-offset-1 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700/60 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white"></button>
                                 </template>
@@ -429,7 +429,7 @@ data-atom-calendar
                     <template x-for="column in grid.columns" :key="column.date">
                         <div
                         role="group"
-                        x-bind:aria-label="dayLabel(column, column.blocks.length)"
+                        x-bind:aria-label="column.label"
                         x-bind:aria-current="column.today ? 'date' : null"
                         x-bind:data-date="column.date"
                         x-bind:class="column.weekend ? 'bg-zinc-50 dark:bg-zinc-900/30' : ''"

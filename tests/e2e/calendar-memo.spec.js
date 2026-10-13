@@ -252,3 +252,44 @@ test.describe('and laid out again as soon as one of them changes', () => {
         expect(week.grid.columns[1].blocks[0].endMinute - week.grid.columns[1].blocks[0].startMinute).toBe(60)
     })
 })
+
+test.describe('and the strings laid out with them follow what they say it with', () => {
+    test('the labels and the config the names are worked out from', () => {
+        const month = engineWith({ payload: payloadFor(items(), { timeFormat: 'G:i' }) })
+        const chip = () => month.weeks.flatMap((week) => week.chips).find((entry) => entry.id === 'b')
+
+        expect(chip().time).toBe('9:00')
+
+        month.payload = { ...month.payload, config: { ...month.payload.config, timeFormat: 'H:i' } }
+
+        expect(chip().time).toBe('09:00')
+        expect(asked(month)).toEqual(fresh(month))
+
+        const week = engineWith({ view: 'week', payload: payloadFor(items(), { timeFormat: 'G:i' }) })
+        const block = () => week.grid.columns.flatMap((column) => column.blocks).find((entry) => entry.id === 'b')
+
+        expect(block().range).toBe('9:00 – 10:00')
+
+        week.payload = { ...week.payload, config: { ...week.payload.config, timeFormat: 'H:i' } }
+
+        expect(block().range).toBe('09:00 – 10:00')
+        expect(asked(week)).toEqual(fresh(week))
+    })
+
+    test('the list that is open, for the day that says it is expanded', () => {
+        const engine = engineWith()
+        const day = () => engine.weeks.flatMap((week) => week.days).find((entry) => entry.date === '2026-10-06')
+
+        expect(day().expanded).toBe('false')
+
+        engine.popoverDate = '2026-10-06'
+        engine.popoverSource = 'day'
+
+        expect(day().expanded).toBe('true')
+
+        engine.popoverSource = 'more'
+
+        expect(day().expanded).toBe('false')
+        expect(engine.weeks.flatMap((week) => week.days).find((entry) => entry.date === '2026-10-11').expanded).toBeNull()
+    })
+})
