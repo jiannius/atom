@@ -345,3 +345,20 @@ it('names only calendar props the component has, with the defaults it has', func
         }
     }
 });
+
+// `$filters` is a public array a client can replace wholesale, and `filter()` is not an
+// allow-list: the always-on rule tells every host to lock or check it, the skill carries the
+// detail and the `$visible` footgun.
+it('tells hosts that a public $filters passed to filter() is untrusted', function () {
+    $guideline = boostFile('guidelines/core.blade.php');
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+    expect($guideline)->toContain('->filter()')
+        ->and($guideline)->toContain('#[Locked]')
+        ->and($guideline)->toContain('named scope')
+        ->and($skill)->toContain('takes untrusted input')
+        ->and($skill)->toContain('#[Locked]')
+        ->and($skill)->toContain('$visible')
+        ->and($skill)->toContain('$hidden')
+        ->and($skill)->toContain('contains all of');
+});

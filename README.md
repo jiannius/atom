@@ -565,7 +565,7 @@ Once a subset is ticked, a **Select all N** button appears. It sets a `$_table.s
 flag rather than materialising an id list, so it costs the same for 20 rows or 200,000.
 Ticking an individual row or the header exits the mode.
 
-Requires a `tableQuery()` on the component — the full scoped **and** filtered query:
+Requires a `tableQuery()` on the component — the full scoped **and** filtered query (`$this->filters` is client-controlled; see what [`filter()`](#eloquent--query-builder-srcmacrosbuilderphp) does and does not refuse):
 
 ```php
 public function tableQuery()
