@@ -12,7 +12,7 @@ export default (config) => {
 
         back () {
             let idx = this.breadcrumbs.length - 2
-            let url = idx > -1 ? atom.safeUrl(this.breadcrumbs[idx].url) : null
+            let url = idx > -1 ? atom.safeUrl(this.breadcrumbs[idx].href) : null
             if (url) Livewire.navigate(url)
         },
 

@@ -163,3 +163,27 @@ test('getLatestHref still records the resolved href when a trail exists', () => 
 
   expect(trail.trails[0].href).toBe('https://example.test/app?tab=open')
 })
+
+// back() goes to the crumb before the current one. That crumb's `url` is what the page
+// declared, with no query string; `href` is where the visitor actually was. Landing on
+// `url` drops the listing's filters and page number.
+test('back() navigates to the previous crumb href, query string included', () => {
+  const navigated = []
+  globalThis.atom = { safeUrl: (url) => url }
+  globalThis.Livewire = { navigate: (url) => navigated.push(url) }
+  globalThis.window = { location: { href: '' } }
+
+  const trail = breadcrumbs({})
+  const listing = { title: 'Listing', url: 'https://example.test/app/claims', home: true }
+
+  // the visitor filters the listing, then opens a record: getLatestHref() runs on the way out
+  trail.trails = [{ href: listing.url, ...listing }]
+  window.location.href = 'https://example.test/app/claims?status=approved&page=2'
+  trail.getLatestHref({})
+
+  trail.trails.push({ title: 'Claim #5', url: 'https://example.test/app/claims/5', href: 'https://example.test/app/claims/5' })
+
+  trail.back()
+
+  expect(navigated).toEqual(['https://example.test/app/claims?status=approved&page=2'])
+})

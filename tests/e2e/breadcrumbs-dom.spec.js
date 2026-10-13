@@ -40,3 +40,31 @@ test('the page title h1 precedes the Livewire root it labels', async ({ page }) 
   expect(firstChildTag).toBe('H1')
   expect(rootIsDeeper).toBe(1)
 })
+
+// back() must land on the page as the visitor left it, query string included: the
+// trail's `url` is the declared address (no query string), `href` is the full
+// location getLatestHref() captured when the visitor navigated away.
+test('back() returns to the listing with its query string', async ({ page }) => {
+  const errors = []
+  page.on('pageerror', error => errors.push(error.message))
+
+  await page.goto('/atom/e2e/breadcrumbs-back?status=approved&page=2')
+
+  await page.locator('[data-open-record]').click()
+  await expect(page).toHaveURL(/\/atom\/e2e\/breadcrumbs-back\/record$/)
+  await expect(page.locator('[data-atom-breadcrumbs] ol a')).toHaveCount(1)
+
+  await page.evaluate(() => {
+    window.__navigated = []
+    // Livewire.navigate is a getter on a proxy, so a plain assignment is ignored
+    Object.defineProperty(Livewire, 'navigate', { value: (url) => window.__navigated.push(url), configurable: true })
+    window.dispatchEvent(new CustomEvent('navigate-back'))
+  })
+
+  const [target] = await page.evaluate(() => window.__navigated)
+  const url = new URL(target, page.url())
+
+  expect(url.pathname).toBe('/atom/e2e/breadcrumbs-back')
+  expect(url.search).toBe('?status=approved&page=2')
+  expect(errors).toEqual([])
+})
