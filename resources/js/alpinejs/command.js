@@ -1,3 +1,5 @@
+import onMorphed from '../helpers/morphed'
+
 export default (config) => {
     return {
         open: false,
@@ -7,6 +9,21 @@ export default (config) => {
         init () {
             // Re-filter (and re-pick the active item) whenever the query changes.
             this.$watch('text', () => this.filter())
+
+            // The filter lives in the DOM (`hidden` on items and groups, `data-active`, the
+            // active descendant), which a morph strips back to what the server rendered: every
+            // item shows again, and Enter fires whichever one the highlight index now points
+            // at. A poll or an unrelated request landing while the palette is open is enough.
+            // Apply the query again, keeping the highlighted position.
+            // Kept on the element, so a re-run init() drops the registration it made before.
+            this.$root._atomCommandStopMorph?.()
+            this.$root._atomCommandStopMorph = onMorphed((el) => {
+                if (this.open && (!el || el.contains(this.$root))) this.filter(true)
+            })
+        },
+
+        destroy () {
+            this.$root._atomCommandStopMorph?.()
         },
 
         // Bound to the keyboard shortcut in the blade.
@@ -53,9 +70,10 @@ export default (config) => {
         },
 
         // Show/hide items by label match, hide emptied groups, toggle the empty
-        // state, and re-pick the active item. Uses the native `hidden` attribute
-        // (UA display:none) so hiding works without Tailwind loaded.
-        filter () {
+        // state, and re-pick the active item (the first, or with `keepActive` the one
+        // at the same position). Uses the native `hidden` attribute (UA display:none)
+        // so hiding works without Tailwind loaded.
+        filter (keepActive = false) {
             let text = (this.text || '').toLowerCase()
 
             this.items().forEach(el => {
@@ -70,7 +88,10 @@ export default (config) => {
             let empty = this.$root.querySelector('[data-atom-command-empty]')
             if (empty) empty.hidden = this.visibleItems().length > 0
 
-            this.resetActive()
+            if (keepActive) {
+                this.setActive(Math.min(this.activeIndex, this.visibleItems().length - 1))
+            }
+            else this.resetActive()
         },
 
         // Virtual focus: mark the active item without moving DOM focus off the

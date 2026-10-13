@@ -115,6 +115,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                 @if ($ariaLabelledby) aria-labelledby="{{ $ariaLabelledby }}" @endif
                 x-bind:aria-controls="`${$id('atom-select')}-list`"
                 x-on:keydown="typeAhead($event)"
+                x-on:keyup.space.prevent=""
                 data-atom-select-combobox
             @endif
             {{ $attributes->class($classes)->only('class') }}>

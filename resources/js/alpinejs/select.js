@@ -343,6 +343,12 @@ export default (config) => {
         typeAhead (e) {
             if (e.key.length !== 1 || e.metaKey || e.ctrlKey || e.altKey) return
 
+            // Space on a button is a click, and the browser fires it on keyup. This handler
+            // has dealt with the key already (it opens the list, or types a space into the
+            // buffer), and that click would toggle the list closed again. Suppressed here
+            // for the keydown and on keyup in the blade, which Firefox needs.
+            if (e.key === ' ') e.preventDefault()
+
             this.ensureOpen()
             clearTimeout(this.typeaheadTimer)
             this.typeahead += e.key.toLowerCase()

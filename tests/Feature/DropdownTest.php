@@ -103,4 +103,19 @@ describe('menu.item', function () {
     it('renders a badge', function () {
         expect(renderBlade('<atom:menu.item badge="3">Team</atom:menu.item>'))->toContain('3');
     });
+
+    it('does not freeze a popover menu against a morph with a static wire:ignore.self', function () {
+        // An open popover keeps its own attributes through a morph by a morph.updating hook
+        // (helpers/morphed.js), so a closed menu still takes server-driven attributes (issue #56).
+        expect(renderBlade('<atom:menu popover>x</atom:menu>'))->not->toContain('wire:ignore');
+        expect(renderBlade('<atom:menu>x</atom:menu>'))->not->toContain('wire:ignore');
+    });
+
+    it('does not freeze the dropdown root against a morph', function () {
+        // Its open state is written back from the popover after a morph instead (dropdown.js), so a
+        // server-driven class on the root keeps updating. wire:ignore.self here would stop that.
+        expect(renderBlade('<atom:dropdown><button>Open</button><atom:menu popover>x</atom:menu></atom:dropdown>'))
+            ->toContain('data-atom-dropdown')
+            ->not->toMatch('/<div[^>]*x-data="dropdown[^>]*wire:ignore/s');
+    });
 });

@@ -52,6 +52,26 @@
         </atom:dropdown>
     </div>
 
+    {{-- a non-searchable listbox: its trigger handles Space and printable keys itself (type-ahead) --}}
+    <div data-probe="listbox" style="margin-bottom: 24px">
+        <atom:select variant="listbox" label="City" :options="[
+            ['value' => 'ny', 'label' => 'New York'],
+            ['value' => 'nw', 'label' => 'Newark'],
+            ['value' => 'th', 'label' => 'The Hague'],
+        ]" />
+    </div>
+
+    {{-- the whole dropdown sits inside an editable region: its trigger is not a text field --}}
+    <div data-probe="editable" contenteditable="true" style="margin-bottom: 24px">
+        <atom:dropdown>
+            <atom:button>Edit</atom:button>
+
+            <atom:menu popover>
+                <atom:menu.item>Alpha</atom:menu.item>
+            </atom:menu>
+        </atom:dropdown>
+    </div>
+
     <div data-probe="nested-marker">
         <atom:dropdown>
             <atom:button>Outer</atom:button>
