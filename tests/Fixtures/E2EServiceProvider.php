@@ -39,6 +39,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-select-morph', SelectMorphFixture::class);
         Livewire::component('atom-e2e-breadcrumbs', BreadcrumbsFixture::class);
         Livewire::component('atom-e2e-breadcrumbs-untrailed', BreadcrumbsUntrailedFixture::class);
+        Livewire::component('atom-e2e-breadcrumbs-back', BreadcrumbsBackFixture::class);
         Livewire::component('atom-e2e-sticky-selection', StickySelectionFixture::class);
         Livewire::component('atom-e2e-input-morph', InputMorphFixture::class);
         Livewire::component('atom-e2e-table-loading', TableLoadingFixture::class);
@@ -76,6 +77,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/breadcrumbs', fn () => view('atom::e2e.breadcrumbs'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-wrapped', fn () => view('atom::e2e.breadcrumbs-wrapped'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-untrailed', fn () => view('atom::e2e.breadcrumbs-untrailed'));
+        Route::middleware('web')->get('/atom/e2e/breadcrumbs-back', fn () => view('atom::e2e.breadcrumbs-back'));
+        Route::middleware('web')->get('/atom/e2e/breadcrumbs-back/record', fn () => view('atom::e2e.breadcrumbs-back'));
         Route::middleware('web')->get('/atom/e2e/safe-url', fn () => view('atom::e2e.safe-url'));
         Route::middleware('web')->get('/atom/e2e/safe-url-breadcrumbs', fn () => view('atom::e2e.safe-url-breadcrumbs'));
         Route::middleware('web')->get('/atom/e2e/form-error-toast', fn () => view('atom::e2e.form-error-toast'));

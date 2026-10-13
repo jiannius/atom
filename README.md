@@ -150,7 +150,9 @@ class Create extends Component
 ```blade
 {{-- resources/views/livewire/customers/create.blade.php --}}
 <div>
-    <atom:breadcrumbs/>
+    @persist('breadcrumbs')
+        <atom:breadcrumbs/>
+    @endpersist
 
     <atom:form wire:submit="save">
         <atom:input label="Name" wire:model="name" required/>
@@ -488,7 +490,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:menu>` | `popover`. Child: `<atom:menu.item>`. |
 | `<atom:navlist>` | Sidebar nav container. Children: `<atom:navlist.item>`, `<atom:navlist.group>`, `<atom:navlist.badge>`. |
 | `<atom:navlist.group>` | `heading`, `expandable`, `expanded` (default `true`), `hiddenIfEmpty` (default `true`), `persistKey`. See [Remembering collapsed groups](#remembering-collapsed-groups). |
-| `<atom:breadcrumbs>` | `heading` (default `true`). Reads `$_breadcrumbs` populated by your `breadcrumbs()` method. |
+| `<atom:breadcrumbs>` | `heading` (default `true`). Reads `$_breadcrumbs` populated by your `breadcrumbs()` method. Wrap it in `@persist('breadcrumbs')` so the trail survives `wire:navigate`: without it each page starts a fresh trail from its own declared crumbs, so pushed crumbs don't accumulate and a crumb (or Back) returns to the bare URL, without the query string (filters, page) you left it with. |
 | `<atom:calendar>` | Month, week and day calendar with a toolbar. `wire:model` binds the anchor date (`Y-m-d`); with none it is static. Props: `items` (an array, or `fn ($from, $to) => ...` for the visible window), `views`, `view`, `week-start`, `weekend`, `max`, `time-format`, `date-format`, `selectable`, `draggable`, `resizable`, `slot-duration`, `scroll-time`, `now-indicator`, `month`, `name`. Events: `calendar-select`, `calendar-item-move`, `calendar-item-resize`, `calendar-item-click`. See [Calendar](#calendar). |
 | `<atom:separator>` | `align` (`left`, `center`, `right`). Slot becomes the label. |
 | `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`, `vite`. |
