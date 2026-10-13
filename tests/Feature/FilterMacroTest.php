@@ -70,6 +70,7 @@ function seedItemColumns(): void
         ['Field' => 'kind', 'Type' => 'varchar(20)'],
         ['Field' => 'secret_token', 'Type' => 'varchar(64)'],
         ['Field' => 'api_key', 'Type' => 'varchar(64)'],
+        ['Field' => 'Secret_Token', 'Type' => 'varchar(64)'],
     ], now()->addDays(7));
 }
 
@@ -276,6 +277,13 @@ it('honours $visible: a column outside it is refused, in any case', function () 
         ->and(mysqlItems($model)->filter(['amount:>=' => 5])->toSql())->toBe(withWhere('`items`.`amount` >= ?'));
 });
 
+it('refuses a hidden column whose real name is mixed case, whatever the key\'s case', function () {
+    // the column is `Secret_Token` and so is the $hidden entry: the exact key matches the
+    // column, so only folding the key's case before the comparison catches it
+    expect(mysqlItems(FilterTestMixedHiddenItem::class)->filter(['Secret_Token:like' => 'a'])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems(FilterTestMixedHiddenItem::class)->filter(['Secret_Token' => 'a'])->toSql())->toBe(baselineSql());
+});
+
 it('folds the case of a $hidden entry', function () {
     expect(mysqlItems(FilterTestMixedHiddenItem::class)->filter(['secret_token:like' => 'a'])->toSql())->toBe(baselineSql())
         ->and(mysqlItems(FilterTestMixedHiddenItem::class)->filter(['name:like' => 'a'])->toSql())->toBe(withWhere('`items`.`name` like ?'));
@@ -331,6 +339,22 @@ it('treats a list on a plain or JSON column by operator', function () {
         ->and(mysqlItems()->filter(['meta.tags' => ['a']])->toSql())->toBe(withWhere('json_contains(`items`.`meta`, ?, \'$."tags"\')'))
         ->and(mysqlItems()->filter(['meta.tags:!=' => ['a']])->toSql())->toBe(withWhere('not json_contains(`items`.`meta`, ?, \'$."tags"\')'))
         ->and(mysqlItems()->filter(['meta.tags:>=' => ['a']])->toSql())->toBe(baselineSql());
+});
+
+it('takes dates in a list on a plain column', function () {
+    $a = new DateTimeImmutable('2025-01-01 10:00:00');
+    $b = now();
+    $query = mysqlItems()->filter(['amount' => [$a, $b]]);
+    $expected = mysqlItems()->whereIn('items.amount', [$a, $b]);
+
+    expect($query->toSql())->toBe(withWhere('`items`.`amount` in (?, ?)'))
+        ->and($query->toSql())->toBe($expected->toSql())
+        ->and($query->getBindings())->toBe([$a, $b]);
+
+    $not = mysqlItems()->filter(['amount:!=' => [$a, $b]]);
+
+    expect($not->toSql())->toBe(withWhere('`items`.`amount` not in (?, ?)'))
+        ->and($not->getBindings())->toBe([$a, $b]);
 });
 
 it('takes a flat list of scalars on a plain column and an enum column', function () {
