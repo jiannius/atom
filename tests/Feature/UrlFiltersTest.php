@@ -3,6 +3,7 @@
 use Jiannius\Atom\Tests\Fixtures\Item;
 use Jiannius\Atom\Tests\Fixtures\TableFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersFixture;
+use Jiannius\Atom\Tests\Fixtures\UrlFiltersMountDefaultFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersItemFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersStrayFixture;
 use Jiannius\Atom\Traits\AtomComponent;
@@ -70,6 +71,17 @@ describe('seeding from the URL', function () {
 
         $test->assertOk();
         expect(collect($test->instance()->rows)->pluck('name')->all())->not->toContain('Secret');
+    });
+});
+
+describe('a default computed in mount()', function () {
+    it('is read after the URL, so ??= fills it only when the URL chose nothing', function () {
+        expect(urlFiltersMounted([], UrlFiltersMountDefaultFixture::class)->get('filters.search'))->toBe('this-month');
+        expect(urlFiltersMounted(['search' => 'x'], UrlFiltersMountDefaultFixture::class)->get('filters.search'))->toBe('x');
+    });
+
+    it('does not mistake an explicit "All" for no choice', function () {
+        expect(urlFiltersMounted(['search' => ''], UrlFiltersMountDefaultFixture::class)->get('filters.search'))->toBe('');
     });
 });
 
