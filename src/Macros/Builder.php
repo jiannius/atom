@@ -184,10 +184,24 @@ class Builder
                     return $this;
                 }
 
+                // Keys and values are untrusted (a public $filters can be replaced from the
+                // browser). A key that is not a string or int, or a value that is not a scalar,
+                // a Stringable, an enum or an array, cannot mean anything: no-op.
+                if (
+                    (! is_string($key) && ! is_int($key))
+                    || (! is_scalar($value) && ! is_array($value) && ! $value instanceof \BackedEnum && ! $value instanceof \Stringable)
+                ) {
+                    return $this;
+                }
+
+                $key = (string) $key;
                 $table = $this->getModel()->getTable();
 
                 if ($key === 'search' && $this->hasNamedScope('search') && $value) {
-                    $this->search($value);
+                    // a search term is text; an array has no meaning to the scope
+                    if (! is_array($value)) {
+                        $this->search($value);
+                    }
                 }
                 else if ($key !== 'search' && ($scope = (string) str($key)->camel()) && $this->hasNamedScope($scope)) {
                     $this->$scope($value);
@@ -195,16 +209,28 @@ class Builder
                 else {
                     $key = explode(':', $key);
                     $col = head($key);
-                    $operator = count($key) > 1 ? last($key) : null;
+                    $operator = count($key) > 1 ? strtolower(trim(last($key))) : null;
 
-                    // The key is client-controllable (a public $filters can be replaced
-                    // through Livewire), so it must be a plain column reference before it
-                    // gets anywhere near introspection or a query: `col`, `col:operator`,
-                    // or `col.path` for a JSON column. Anything else is a no-op.
+                    // The key is client-controllable, so it must be a plain column reference
+                    // before it gets anywhere near introspection or a query: `col`,
+                    // `col:operator`, or `col.path` for a JSON column. Anything else is a no-op.
                     if (
                         count($key) > 2
                         || ! preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)*$/D', $col)
                     ) {
+                        return $this;
+                    }
+
+                    // only these comparisons may come from a key; the rest of what the
+                    // grammar accepts (regexp, rlike, bitwise, is...) is refused
+                    if ($operator && ! in_array($operator, ['=', '!=', '<>', '<', '<=', '>', '>=', 'like', 'not like'], true)) {
+                        return $this;
+                    }
+
+                    // a hidden column (password, token...) must not be searchable: a
+                    // `like` or `>=` against it would leak the value through the row set
+                    $name = strtolower(head(explode('.', $col)));
+                    if (in_array($name, array_map('strtolower', $this->getModel()->getHidden()), true)) {
                         return $this;
                     }
 
@@ -216,8 +242,8 @@ class Builder
                     }
 
                     if (in_array($coltype, ['date', 'datetime', 'timestamp'])) {
-                        // an array (or any non-scalar) has no meaning against a date column
-                        if (! is_scalar($value) && ! $value instanceof \Stringable) {
+                        // an array or an enum has no meaning against a date column
+                        if (is_array($value) || $value instanceof \BackedEnum) {
                             return $this;
                         }
 
@@ -227,6 +253,8 @@ class Builder
                         $compare = fn ($operator, $value) => $coltype === 'date'
                             ? $this->whereDate($column, $operator, $value)
                             : $this->where($column, $operator, $value);
+
+                        $value = (string) $value;
 
                         if (str($value)->is('* to *') || str($value)->is('* to') || str($value)->is('to *')) {
                             $split = collect(explode('to', $value))
@@ -244,8 +272,14 @@ class Builder
                         }
                     }
                     else if (($cast = data_get($this->getModel()->getCasts(), $col)) && enum_exists($cast)) {
-                        $value = is_string($value) ? collect(explode(',', $value)) : collect($value);
-                        $value = $value->map(fn ($val) => is_enum($val) ? $val->value : trim($val))->filter();
+                        $value = is_string($value) ? explode(',', $value) : \Illuminate\Support\Arr::wrap($value);
+
+                        // every element must be a scalar or an enum; a nested array is no filter
+                        if (collect($value)->contains(fn ($val) => ! is_scalar($val) && ! $val instanceof \BackedEnum)) {
+                            return $this;
+                        }
+
+                        $value = collect($value)->map(fn ($val) => is_enum($val) ? $val->value : trim((string) $val))->filter();
 
                         if ($value->count()) {
                             if (in_array($operator, ['!=', '<>'])) $this->whereNotIn($col, $value->values()->all());
@@ -258,13 +292,25 @@ class Builder
                             ? $table.'.'.((string) str($col)->replace('.', '->'))
                             : "$table.$col";
 
-                        if ($operator === 'like') {
-                            if (str($value)->is('%*', '*%')) $this->where($col, 'like', $value);
-                            else $this->where($col, 'like', "%$value%");
+                        if (in_array($operator, ['like', 'not like'], true)) {
+                            // a pattern is a single string
+                            if (is_array($value) || $value instanceof \BackedEnum) {
+                                return $this;
+                            }
+
+                            $value = (string) $value;
+
+                            if (str($value)->is('%*', '*%')) $this->where($col, $operator, $value);
+                            else $this->where($col, $operator, "%$value%");
                         }
                         else if (is_array($value) && $value) {
-                            if ($coltype === 'json') $this->whereJsonContains($col, $value);
-                            else $this->whereIn($col, $value);
+                            if ($coltype === 'json') {
+                                $this->whereJsonContains($col, $value);
+                            }
+                            // whereIn takes a flat list of scalars
+                            else if (! collect($value)->contains(fn ($val) => ! is_scalar($val))) {
+                                $this->whereIn($col, array_values($value));
+                            }
                         }
                         else if (!is_array($value)) {
                             // The blank() guard above already dropped null / '' / [],
@@ -272,6 +318,13 @@ class Builder
                             // PHP-falsy ('0' / 0 / false — e.g. an is_active toggle
                             // filtered to "inactive"). Re-testing `&& $value` here
                             // wrongly skipped those, contradicting the guard.
+                            if ($value instanceof \BackedEnum) {
+                                $value = $value->value;
+                            }
+                            else if ($value instanceof \Stringable) {
+                                $value = (string) $value;
+                            }
+
                             if ($operator) {
                                 $this->where($col, $operator, $value);
                             }

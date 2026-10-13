@@ -342,7 +342,7 @@ User::query()->tableColumnType('created_at');
 
 `filter()` knows about: named scopes (`search`, `byFoo`), enum casts, JSON columns, date columns, and the `key:operator` syntax (`'price:>=' => 100`).
 
-Keys are treated as untrusted: a key that is not a plain column name (optionally `:operator`, or `column.path` on a JSON column) is skipped, and a date column is filtered through quoted `whereDate()`. Named-scope keys are not allow-listed, so a client that can replace a public `$filters` can still invoke any scope the model defines; keep scopes safe to call with arbitrary input, or lock the property.
+`filter()` reads keys and values as untrusted input, but it is not an allow-list. What it refuses: a key that is not a plain column name (optionally `:operator`, or `column.path` on a JSON column), a column listed in the model's `$hidden`, an operator other than `=`, `!=`, `<>`, `<`, `<=`, `>`, `>=`, `like` and `not like`, and a value shape that makes no sense for the column (it is skipped, never an error). Date columns are filtered through quoted `whereDate()`. What it does not refuse: any other column of the table, and any named scope, which receives the value as sent. A client that can replace a public `$filters` (Livewire allows it) can therefore filter on every visible column and call every scope. When that matters, mark the property `#[Locked]`, or validate the keys against your own list before calling `filter()`, and keep scopes safe to call with arbitrary input.
 
 ### `Request` (`src/Macros/Request.php`)
 
