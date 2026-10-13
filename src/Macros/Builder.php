@@ -186,10 +186,10 @@ class Builder
 
                 // Keys and values are untrusted (a public $filters can be replaced from the
                 // browser). A key that is not a string or int, or a value that is not a scalar,
-                // a Stringable, an enum or an array, cannot mean anything: no-op.
+                // a Stringable, a date, an enum or an array, cannot mean anything: no-op.
                 if (
                     (! is_string($key) && ! is_int($key))
-                    || (! is_scalar($value) && ! is_array($value) && ! $value instanceof \BackedEnum && ! $value instanceof \Stringable)
+                    || (! is_scalar($value) && ! is_array($value) && ! $value instanceof \BackedEnum && ! $value instanceof \DateTimeInterface && ! $value instanceof \Stringable)
                 ) {
                     return $this;
                 }
@@ -228,9 +228,15 @@ class Builder
                     }
 
                     // a hidden column (password, token...) must not be searchable: a
-                    // `like` or `>=` against it would leak the value through the row set
+                    // `like` or `>=` against it would leak the value through the row set.
+                    // A model with $visible set exposes only those, so anything else is out.
                     $name = strtolower(head(explode('.', $col)));
-                    if (in_array($name, array_map('strtolower', $this->getModel()->getHidden()), true)) {
+                    $visible = array_map('strtolower', $this->getModel()->getVisible());
+
+                    if (
+                        in_array($name, array_map('strtolower', $this->getModel()->getHidden()), true)
+                        || ($visible && ! in_array($name, $visible, true))
+                    ) {
                         return $this;
                     }
 
@@ -254,9 +260,12 @@ class Builder
                             ? $this->whereDate($column, $operator, $value)
                             : $this->where($column, $operator, $value);
 
-                        $value = (string) $value;
+                        // a date object stays an object: whereDate() formats it, where() binds it
+                        if (! $value instanceof \DateTimeInterface) {
+                            $value = (string) $value;
+                        }
 
-                        if (str($value)->is('* to *') || str($value)->is('* to') || str($value)->is('to *')) {
+                        if (is_string($value) && (str($value)->is('* to *') || str($value)->is('* to') || str($value)->is('to *'))) {
                             $split = collect(explode('to', $value))
                                 ->map(fn ($val) => str($val)->replace('to', ''))
                                 ->map(fn ($val) => trim($val));
@@ -294,7 +303,7 @@ class Builder
 
                         if (in_array($operator, ['like', 'not like'], true)) {
                             // a pattern is a single string
-                            if (is_array($value) || $value instanceof \BackedEnum) {
+                            if (is_array($value) || $value instanceof \BackedEnum || $value instanceof \DateTimeInterface) {
                                 return $this;
                             }
 
@@ -304,12 +313,22 @@ class Builder
                             else $this->where($col, $operator, "%$value%");
                         }
                         else if (is_array($value) && $value) {
-                            if ($coltype === 'json') {
-                                $this->whereJsonContains($col, $value);
+                            // a list means "one of" (= or no operator) or "none of" (!= / <>);
+                            // an ordering comparison against a list has no meaning
+                            $negate = in_array($operator, ['!=', '<>'], true);
+
+                            if ($operator && ! $negate && $operator !== '=') {
+                                return $this;
                             }
-                            // whereIn takes a flat list of scalars
-                            else if (! collect($value)->contains(fn ($val) => ! is_scalar($val))) {
-                                $this->whereIn($col, array_values($value));
+
+                            if ($coltype === 'json') {
+                                if ($negate) $this->whereJsonDoesntContain($col, $value);
+                                else $this->whereJsonContains($col, $value);
+                            }
+                            // whereIn takes a flat list of scalars (or dates)
+                            else if (! collect($value)->contains(fn ($val) => ! is_scalar($val) && ! $val instanceof \DateTimeInterface)) {
+                                if ($negate) $this->whereNotIn($col, array_values($value));
+                                else $this->whereIn($col, array_values($value));
                             }
                         }
                         else if (!is_array($value)) {
@@ -321,7 +340,7 @@ class Builder
                             if ($value instanceof \BackedEnum) {
                                 $value = $value->value;
                             }
-                            else if ($value instanceof \Stringable) {
+                            else if ($value instanceof \Stringable && ! $value instanceof \DateTimeInterface) {
                                 $value = (string) $value;
                             }
 

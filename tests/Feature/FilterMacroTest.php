@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Database\Eloquent\Builder;
 use Jiannius\Atom\Tests\Fixtures\Item;
 
 enum FilterTestKind: string
@@ -16,6 +17,30 @@ class FilterTestItem extends Item
     protected $hidden = ['secret_token', 'api_key'];
 
     protected $casts = ['kind' => FilterTestKind::class];
+
+    public static mixed $seen = null;
+
+    /** @param Builder $query */
+    public function scopeSeenAt(Builder $query, mixed $value): void
+    {
+        static::$seen = $value;
+    }
+}
+
+/** $visible set: only these columns may be filtered. Mixed case on purpose. */
+class FilterTestVisibleItem extends Item
+{
+    protected $table = 'items';
+
+    protected $visible = ['id', 'name', 'Amount'];
+}
+
+/** A $hidden entry written in mixed case. */
+class FilterTestMixedHiddenItem extends Item
+{
+    protected $table = 'items';
+
+    protected $hidden = ['Secret_Token'];
 }
 
 // NOTE: filter()'s raw-column branch uses `show columns from` (MySQL-only).
@@ -150,6 +175,7 @@ dataset('hostile filter keys', [
     'digit first' => ['1claim_date'],
     'json bracket index' => ['meta.tags[0]'],
     'json hyphen segment' => ['meta.first-name'],
+    'json trailing newline' => ["meta.lang\n"],
     'json quoted segment' => ['meta."x"'],
     'json arrow' => ['meta->x'],
 ]);
@@ -238,6 +264,75 @@ it('does not treat an array value as a pattern or as a flat list when it is neit
         ->and(mysqlItems()->filter(['name' => new stdClass])->toSql())->toBe(baselineSql());
 });
 
+it('honours $visible: a column outside it is refused, in any case', function () {
+    $model = FilterTestVisibleItem::class;
+
+    expect(mysqlItems($model)->filter(['secret_token:like' => 'a'])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems($model)->filter(['secret_token' => 'a'])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems($model)->filter(['meta.lang' => 'en'])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems($model)->filter(['kind' => 'a'])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems($model)->filter(['name:like' => 'a'])->toSql())->toBe(withWhere('`items`.`name` like ?'))
+        ->and(mysqlItems($model)->filter(['id' => 5])->toSql())->toBe(withWhere('`items`.`id` = ?'))
+        ->and(mysqlItems($model)->filter(['amount:>=' => 5])->toSql())->toBe(withWhere('`items`.`amount` >= ?'));
+});
+
+it('folds the case of a $hidden entry', function () {
+    expect(mysqlItems(FilterTestMixedHiddenItem::class)->filter(['secret_token:like' => 'a'])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems(FilterTestMixedHiddenItem::class)->filter(['name:like' => 'a'])->toSql())->toBe(withWhere('`items`.`name` like ?'));
+});
+
+it('passes a date object through the way Laravel binds it', function (callable $make) {
+    $date = $make();
+
+    // a date column: whereDate() formats the object to Y-m-d
+    $query = mysqlItems()->filter(['claim_date' => $date]);
+    $expected = mysqlItems()->whereDate('items.claim_date', '=', $date);
+    expect($query->toSql())->toBe($expected->toSql())->and($query->getBindings())->toBe($expected->getBindings());
+
+    $query = mysqlItems()->filter(['claim_date:>=' => $date]);
+    $expected = mysqlItems()->whereDate('items.claim_date', '>=', $date);
+    expect($query->toSql())->toBe($expected->toSql())->and($query->getBindings())->toBe($expected->getBindings());
+
+    // a datetime column and a plain column: the object itself is the binding
+    foreach (['starts_at' => 'starts_at', 'amount:>=' => 'amount', 'meta.at' => 'meta->at'] as $key => $column) {
+        $operator = str_contains($key, ':') ? '>=' : '=';
+        $query = mysqlItems()->filter([$key => $date]);
+        $expected = mysqlItems()->where("items.$column", $operator, $date);
+
+        expect($query->toSql())->toBe($expected->toSql())
+            ->and($query->getBindings())->toHaveCount(1)
+            ->and($query->getBindings()[0])->toBe($date);
+    }
+
+    // a scope gets the value as sent
+    FilterTestItem::$seen = null;
+    mysqlItems()->filter(['seenAt' => $date])->toSql();
+    expect(FilterTestItem::$seen)->toBe($date);
+
+    // a pattern is text, never a date object
+    expect(mysqlItems()->filter(['name:like' => $date])->toSql())->toBe(baselineSql());
+})->with([
+    'carbon' => [fn () => now()],
+    'immutable' => [fn () => new DateTimeImmutable('2025-01-01 10:00:00')],
+    'mutable' => [fn () => new DateTime('2025-01-01 10:00:00')],
+]);
+
+it('treats a list on a plain or JSON column by operator', function () {
+    expect(mysqlItems()->filter(['name' => ['a', 'b']])->toSql())->toBe(withWhere('`items`.`name` in (?, ?)'))
+        ->and(mysqlItems()->filter(['name:=' => ['a', 'b']])->toSql())->toBe(withWhere('`items`.`name` in (?, ?)'))
+        ->and(mysqlItems()->filter(['name:!=' => ['a', 'b']])->toSql())->toBe(withWhere('`items`.`name` not in (?, ?)'))
+        ->and(mysqlItems()->filter(['name:<>' => ['a', 'b']])->toSql())->toBe(withWhere('`items`.`name` not in (?, ?)'))
+        ->and(mysqlItems()->filter(['amount:>=' => [1, 2]])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems()->filter(['amount:<' => [1, 2]])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems()->filter(['amount:>' => [1, 2]])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems()->filter(['amount:<=' => [1, 2]])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems()->filter(['name:like' => ['a']])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems()->filter(['name:not like' => ['a']])->toSql())->toBe(baselineSql())
+        ->and(mysqlItems()->filter(['meta.tags' => ['a']])->toSql())->toBe(withWhere('json_contains(`items`.`meta`, ?, \'$."tags"\')'))
+        ->and(mysqlItems()->filter(['meta.tags:!=' => ['a']])->toSql())->toBe(withWhere('not json_contains(`items`.`meta`, ?, \'$."tags"\')'))
+        ->and(mysqlItems()->filter(['meta.tags:>=' => ['a']])->toSql())->toBe(baselineSql());
+});
+
 it('takes a flat list of scalars on a plain column and an enum column', function () {
     expect(mysqlItems()->filter(['name' => ['a', 'b']])->toSql())->toBe(withWhere('`items`.`name` in (?, ?)'))
         ->and(mysqlItems()->filter(['kind' => [FilterTestKind::A, 'b']])->getBindings())->toBe(['a', 'b'])
@@ -251,7 +346,7 @@ it('never throws or builds a mismatched query whatever shape the value has', fun
         'true' => true, 'false' => false, 'null' => null, 'empty string' => '', 'empty array' => [],
         'list' => ['a', 'b'], 'mixed list' => ['a', 1, 1.5, true], 'list with null' => ['a', null],
         'nested' => [['a']], 'empty nested' => [[]], 'keyed nested' => ['a' => ['b']], 'keyed' => ['a' => 'b'],
-        'object in list' => [new stdClass], 'object' => new stdClass, 'stringable' => str('x'), 'enum' => FilterTestKind::B,
+        'object in list' => [new stdClass], 'object' => new stdClass, 'carbon' => now(), 'immutable' => new DateTimeImmutable('2025-01-01'), 'dates in list' => [now(), new DateTimeImmutable('2025-01-01')], 'stringable' => str('x'), 'enum' => FilterTestKind::B,
         'range' => '2025-01-01 to 2025-02-01', 'open range' => '2025-01-01 to', 'bare to' => 'to',
         'like pattern' => '%a*', 'long' => str_repeat('a', 5000),
     ];
