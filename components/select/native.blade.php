@@ -58,6 +58,17 @@ $merges = [
 x-data="{
     value: @js($multiple ? [] : null),
     multiple: @js($multiple),
+
+    /**
+     * Open the list for a click on the wrapper's own padding or icon. A click on the select element opens itself, and
+     * Chromium on Windows, Linux and ChromeOS fires a click on it after a pick too, so calling showPicker() for that
+     * click would reopen the list at once. showPicker() throws when the select is disabled or has no user activation.
+     */
+    openPicker (event) {
+        if (event.target.closest('select')) return
+
+        try { this.$root.querySelector('select').showPicker() } catch (e) {}
+    },
 @if ($filterKey)
 
     /** The chip's text: the chosen option's label, not the value behind it. */
@@ -94,7 +105,7 @@ x-on:input="() => {
     }
     else value = $event.target.value
 }"
-x-on:click="$root.querySelector('select').showPicker()"
+x-on:click="openPicker($event)"
 class="group/select w-full relative"
 {{ $attributes->except(['id', 'class', 'disabled', 'required', 'readonly']) }}
 data-atom-select-native>
