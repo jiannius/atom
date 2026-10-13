@@ -52,6 +52,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-select-sibling-sync', SelectSiblingSyncFixture::class);
         Livewire::component('atom-e2e-safe-url-breadcrumbs', SafeUrlBreadcrumbsFixture::class);
         Livewire::component('atom-e2e-form-error-toast', FormErrorToastFixture::class);
+        Livewire::component('atom-e2e-url-filters', UrlFiltersFixture::class);
         Livewire::component('atom-e2e-calendar', CalendarFixture::class);
         Livewire::component('atom-e2e-calendar-look', CalendarLookFixture::class);
 
@@ -79,6 +80,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-untrailed', fn () => view('atom::e2e.breadcrumbs-untrailed'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-back', fn () => view('atom::e2e.breadcrumbs-back'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-back/record', fn () => view('atom::e2e.breadcrumbs-back'));
+        Route::middleware('web')->get('/atom/e2e/url-filters', fn () => view('atom::e2e.url-filters'));
+        Route::middleware('web')->get('/atom/e2e/url-filters/record', fn () => view('atom::e2e.url-filters'));
         Route::middleware('web')->get('/atom/e2e/safe-url', fn () => view('atom::e2e.safe-url'));
         Route::middleware('web')->get('/atom/e2e/safe-url-breadcrumbs', fn () => view('atom::e2e.safe-url-breadcrumbs'));
         Route::middleware('web')->get('/atom/e2e/form-error-toast', fn () => view('atom::e2e.form-error-toast'));
