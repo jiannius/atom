@@ -8,7 +8,8 @@
         <atom:dropdown :class="$menuClass">
             <atom:button>Actions</atom:button>
 
-            <atom:menu popover>
+            {{-- data-state is a server-driven attribute on the menu node itself --}}
+            <atom:menu popover data-state="{{ $menuClass }}">
                 <div data-menu-renders>{{ $renders }}</div>
                 <atom:menu.item wire:click="bump">Bump</atom:menu.item>
             </atom:menu>
@@ -41,6 +42,15 @@
     <div data-probe="tooltip" style="margin: 24px 0">
         <atom:tooltip content="Save the record">
             <atom:button wire:click="bump">Save</atom:button>
+        </atom:tooltip>
+    </div>
+
+ {{-- a second tooltip in the same component, with its content written out so it can carry a
+         server-driven attribute --}}
+    <div data-probe="tooltip2" style="margin: 24px 0">
+        <atom:tooltip>
+            <atom:button wire:click="bump">Delete</atom:button>
+            <atom:tooltip.content data-state="{{ $menuClass }}">Delete the record</atom:tooltip.content>
         </atom:tooltip>
     </div>
 

@@ -12,8 +12,8 @@ $classes = Arr::toCssClasses([
 ]);
 @endphp
 
-{{-- A popover menu is positioned by floating-ui with an inline style, which a morph would strip while the menu is open
-     (it would jump to the corner of the page). `.self` keeps the node's own attributes and still morphs what is inside it. --}}
-<div {{ $attributes->class($classes)->merge(['role' => 'menu']) }} data-atom-menu {{ $popover ? 'popover wire:ignore.self' : '' }}>
+{{-- An open popover menu keeps its own attributes through a morph (floating-ui's inline style); see helpers/morphed.js.
+     Not a static wire:ignore.self: a closed menu must keep taking server-driven attributes. --}}
+<div {{ $attributes->class($classes)->merge(['role' => 'menu']) }} data-atom-menu {{ $popover ? 'popover' : '' }}>
     {{ $slot }}
 </div>

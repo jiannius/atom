@@ -12,10 +12,10 @@ $classes = Arr::toCssClasses([
 ]);
 @endphp
 
-{{-- tooltip.js writes the id, and floating-ui the inline style, on this node. `.self` keeps both through a morph. The
-     key is fixed because Livewire keys a node by its id: with the id JS wrote on one side only, the two would not
-     match and the morph would replace the open popover with a closed copy. --}}
-<div popover="manual" wire:ignore.self wire:key="atom-tooltip-content" {{ $attributes->class($classes) }} data-atom-tooltip-content>
+{{-- tooltip.js writes the id, and floating-ui the inline style, on this node. An open tooltip keeps its own attributes
+     through a morph (helpers/morphed.js). The key is fixed because Livewire keys a node by its id: with the id JS wrote
+     on one side only, the two would not match and the morph would replace the open popover with a closed copy. --}}
+<div popover="manual" wire:key="atom-tooltip-content" {{ $attributes->class($classes) }} data-atom-tooltip-content>
     {{ $slot }}
 
     @if ($kbd)

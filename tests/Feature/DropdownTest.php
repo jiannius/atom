@@ -104,10 +104,10 @@ describe('menu.item', function () {
         expect(renderBlade('<atom:menu.item badge="3">Team</atom:menu.item>'))->toContain('3');
     });
 
-    it('keeps a popover menu\'s own attributes through a Livewire morph, but not an inline one\'s', function () {
-        // floating-ui writes an inline style on the open popover; a morph strips it and the menu jumps to the
-        // page corner (issue #56). An inline menu has no such state and keeps taking server updates.
-        expect(renderBlade('<atom:menu popover>x</atom:menu>'))->toContain('wire:ignore.self');
+    it('does not freeze a popover menu against a morph with a static wire:ignore.self', function () {
+        // An open popover keeps its own attributes through a morph by a morph.updating hook
+        // (helpers/morphed.js), so a closed menu still takes server-driven attributes (issue #56).
+        expect(renderBlade('<atom:menu popover>x</atom:menu>'))->not->toContain('wire:ignore');
         expect(renderBlade('<atom:menu>x</atom:menu>'))->not->toContain('wire:ignore');
     });
 

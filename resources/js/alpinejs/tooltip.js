@@ -3,7 +3,6 @@ import onMorphed from '../helpers/morphed'
 export default (config) => {
     return {
         cleanup: null,
-        stopMorphLink: null,
         hideTimer: null,
         placement: config.placement,
         interactive: config.interactive,
@@ -31,7 +30,9 @@ export default (config) => {
 
             // The link lives on the trigger, a node of the host's, which a morph strips
             // of any attribute the server did not render. Write it again afterwards.
-            this.stopMorphLink = onMorphed((el) => {
+            // Kept on the element, so a re-run init() drops the registration it made before.
+            this.$root._atomTooltipStopMorph?.()
+            this.$root._atomTooltipStopMorph = onMorphed((el) => {
                 if (!el || el.contains(this.$root)) this.link()
             })
 
@@ -63,7 +64,7 @@ export default (config) => {
         },
 
         destroy () {
-            this.stopMorphLink?.()
+            this.$root._atomTooltipStopMorph?.()
             // Alpine teardown (incl. morph removal): force-close, stop the
             // positioning loop, and drop the document listeners so nothing
             // lingers in the top layer.

@@ -85,6 +85,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
             @if ($label) aria-label="{{ t($label) }}" @endif
             x-bind:aria-controls="`${$id('atom-select')}-list`"
             x-on:keydown="typeAhead($event)"
+x-on:keyup.space.prevent=""
             data-atom-select-combobox
         @endif
         {{ $attributes->class($classes)->only('class') }}>

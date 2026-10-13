@@ -5,7 +5,6 @@ export default (config) => {
         open: false,
         text: '',
         activeIndex: -1,
-        stopMorphFilter: null,
 
         init () {
             // Re-filter (and re-pick the active item) whenever the query changes.
@@ -16,13 +15,15 @@ export default (config) => {
             // item shows again, and Enter fires whichever one the highlight index now points
             // at. A poll or an unrelated request landing while the palette is open is enough.
             // Apply the query again, keeping the highlighted position.
-            this.stopMorphFilter = onMorphed((el) => {
+            // Kept on the element, so a re-run init() drops the registration it made before.
+            this.$root._atomCommandStopMorph?.()
+            this.$root._atomCommandStopMorph = onMorphed((el) => {
                 if (this.open && (!el || el.contains(this.$root))) this.filter(true)
             })
         },
 
         destroy () {
-            this.stopMorphFilter?.()
+            this.$root._atomCommandStopMorph?.()
         },
 
         // Bound to the keyboard shortcut in the blade.

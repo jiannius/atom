@@ -66,7 +66,12 @@ export default (config) => {
 
                     this.openBeforePress = null
 
-                    if (wasOpen && !e.target.closest?.('input, textarea, select, [contenteditable]')) this.hide()
+                    // Only a field that is part of the trigger: an editable region the whole dropdown
+                    // sits inside would match from an ancestor and keep every menu open.
+                    let field = e.target.closest?.('input, textarea, select, [contenteditable]')
+                    let inTrigger = !!field && this.trigger.contains(field)
+
+                    if (wasOpen && !inTrigger) this.hide()
                     else this.show()
                 }
                 // Close on a click inside the menu, unless `locked`. Bubble
@@ -120,12 +125,19 @@ export default (config) => {
 
             this.$root.toggleAttribute('data-open', open)
 
+            let trigger = this.trigger
+            let expanded = open ? 'true' : 'false'
+
             // Respect a popup role the trigger already declares (e.g. a select
             // sets aria-haspopup=listbox); only default to menu otherwise.
-            if (!this.trigger?.hasAttribute('aria-haspopup')) {
-                this.trigger?.setAttribute('aria-haspopup', 'menu')
+            if (trigger && !trigger.hasAttribute('aria-haspopup')) {
+                trigger.setAttribute('aria-haspopup', 'menu')
             }
-            this.trigger?.setAttribute('aria-expanded', open ? 'true' : 'false')
+            // Only when it differs: a write that changes nothing still queues a mutation record
+            // for every observer on the page, and this runs after every morph.
+            if (trigger && trigger.getAttribute('aria-expanded') !== expanded) {
+                trigger.setAttribute('aria-expanded', expanded)
+            }
         },
 
         destroy() {

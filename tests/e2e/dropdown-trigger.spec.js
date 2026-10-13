@@ -256,3 +256,18 @@ test('a click that is dragged off the trigger does not leave a stale answer for 
   await page.keyboard.press('Enter')
   await expect(menu).toBeVisible()
 })
+
+test('a dropdown inside an editable region still closes on a second click', async ({ page }) => {
+  // The text-field exemption (a click in an input keeps the menu open) must look at the trigger's own
+  // markup. closest() alone also matched the contenteditable ancestor, so the menu could not be toggled shut.
+  await page.goto('/atom/e2e/dropdown-trigger')
+
+  const button = probe(page, 'editable').getByRole('button', { name: 'Edit' })
+  const menu = probe(page, 'editable').locator('[data-atom-menu]')
+
+  await button.click()
+  await expect(menu).toBeVisible()
+
+  await button.click()
+  await expect(menu).toBeHidden()
+})

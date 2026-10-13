@@ -168,6 +168,115 @@ test('the delayed .live flow: a second field opened before the first one answers
   await expect(triggerOf(page, 'plain')).toContainText('Three')
 })
 
+test('a closed popover menu still takes a server-driven attribute; an open one keeps its position and opacity', async ({ page }) => {
+  const menu = menuOf(page, 'menu')
+  await expect(menu).toHaveAttribute('data-state', 'menu-a')
+
+  // closed: the node is patched in full
+  await page.evaluate(() => window.Livewire.first().call('restyle'))
+  await expect(menu).toHaveAttribute('data-state', 'menu-b')
+
+  // open: its own attributes are left alone, its content is not
+  await triggerOf(page, 'menu').click()
+  await expectStillOpen(page, 'menu')
+  const before = await rect(menu)
+  const styleBefore = await menu.getAttribute('style')
+
+  await renderNow(page)
+
+  await expectStillOpen(page, 'menu')
+  expect(await rect(menu)).toEqual(before)
+  expect(await menu.getAttribute('style')).toBe(styleBefore)
+  await expect(probe(page, 'menu').locator('[data-menu-renders]')).toHaveText('1')
+})
+
+test('a morph does not leave a closed popover menu with a stale inline style', async ({ page }) => {
+  await triggerOf(page, 'menu').click()
+  await triggerOf(page, 'menu').click()
+  expect(await isOpen(menuOf(page, 'menu'))).toBe(false)
+
+  await renderNow(page)
+
+  // and it still opens in the right place afterwards
+  await triggerOf(page, 'menu').click()
+  await expectStillOpen(page, 'menu')
+  const box = await rect(menuOf(page, 'menu'))
+  const trigger = await rect(triggerOf(page, 'menu'))
+  expect(Math.abs(box.x - trigger.x)).toBeLessThan(4)
+  expect(box.y).toBeGreaterThan(trigger.y)
+})
+
+test('two tooltips in one component both survive a morph, anchored and still described', async ({ page }) => {
+  const contentA = probe(page, 'tooltip').locator('[data-atom-tooltip-content]')
+  const contentB = probe(page, 'tooltip2').locator('[data-atom-tooltip-content]')
+  const buttonA = probe(page, 'tooltip').getByRole('button', { name: 'Save' })
+  const buttonB = probe(page, 'tooltip2').getByRole('button', { name: 'Delete' })
+
+  // one is held open by the pointer, the other by keyboard focus
+  await buttonA.hover()
+  await buttonB.focus()
+  expect(await isOpen(contentA)).toBe(true)
+  expect(await isOpen(contentB)).toBe(true)
+
+  const idA = await contentA.getAttribute('id')
+  const idB = await contentB.getAttribute('id')
+  expect(idA).toBeTruthy()
+  expect(idB).toBeTruthy()
+  expect(idA).not.toBe(idB)
+  const before = [await rect(contentA), await rect(contentB)]
+
+  await renderNow(page)
+
+  expect(await isOpen(contentA)).toBe(true)
+  expect(await isOpen(contentB)).toBe(true)
+  expect([await rect(contentA), await rect(contentB)]).toEqual(before)
+  await expect(contentA).toHaveAttribute('id', idA)
+  await expect(contentB).toHaveAttribute('id', idB)
+  await expect(buttonA).toHaveAttribute('aria-describedby', idA)
+  await expect(buttonB).toHaveAttribute('aria-describedby', idB)
+})
+
+test('a closed tooltip content takes a server-driven attribute', async ({ page }) => {
+  const contentB = probe(page, 'tooltip2').locator('[data-atom-tooltip-content]')
+  await expect(contentB).toHaveAttribute('data-state', 'menu-a')
+
+  await page.evaluate(() => window.Livewire.first().call('restyle'))
+
+  await expect(contentB).toHaveAttribute('data-state', 'menu-b')
+})
+
+test('a re-run init() does not stack morph callbacks', async ({ page }) => {
+  // A dropdown, a tooltip and a command palette each register one callback per element, so a morph
+  // runs one sync apiece however often their init() ran. Count the calls with a wrapper on the instance.
+  const counts = await page.evaluate(async () => {
+    const wrap = (el, method) => {
+      const data = window.Alpine.$data(el)
+      for (let i = 0; i < 3; i++) data.init()
+      let calls = 0
+      const original = data[method].bind(data)
+      data[method] = (...args) => { calls++; return original(...args) }
+      return () => calls
+    }
+
+    const dropdown = wrap(document.querySelector('[data-probe="menu"] [data-atom-dropdown]'), 'syncState')
+    const tooltip = wrap(document.querySelector('[data-probe="tooltip"] [data-atom-tooltip]'), 'link')
+
+    const palette = document.querySelector('dialog[data-atom-command]')
+    window.dispatchEvent(new CustomEvent('atom-command-show', { detail: { name: 'morph-palette' } }))
+    const command = wrap(palette, 'filter')
+
+    // opening the palette filters on the next tick; let that settle so only the morph is counted
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    const before = [dropdown(), tooltip(), command()]
+    await window.Livewire.first().call('bump')
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    return [dropdown() - before[0], tooltip() - before[1], command() - before[2]]
+  })
+
+  expect(counts).toEqual([1, 1, 1])
+})
+
 test('a tooltip stays anchored and keeps its aria link through a morph', async ({ page }) => {
   const tooltip = probe(page, 'tooltip').locator('[data-atom-tooltip]')
   const content = probe(page, 'tooltip').locator('[data-atom-tooltip-content]')
