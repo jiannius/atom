@@ -13,7 +13,7 @@
     x-bind:href="link(chip)"
     x-bind:role="link(chip) ? null : 'button'"
     x-bind:tabindex="link(chip) ? null : 0"
-    x-bind:aria-label="itemLabel(chip)"
+    x-bind:aria-label="chip.label"
     x-bind:data-before="chip.before ? '' : null"
     x-bind:data-after="chip.after ? '' : null"
     x-bind:data-lifted="isLifted(chip) ? '' : null"
@@ -42,7 +42,7 @@
     x-bind:href="link(chip)"
     x-bind:role="link(chip) ? null : 'button'"
     x-bind:tabindex="link(chip) ? null : 0"
-    x-bind:aria-label="itemLabel(chip)"
+    x-bind:aria-label="chip.label"
     x-bind:data-lifted="isLifted(chip) ? '' : null"
     x-on:pointerdown="itemPress(chip, $event)"
     x-bind:data-atom-calendar-item="chip.id"
@@ -60,7 +60,7 @@
         x-bind:style="hue(chip)"
         data-atom-calendar-dot
         class="size-2 shrink-0 rounded-full"></span>
-        <span x-text="timeLabel(chip)" class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-400"></span>
+        <span x-text="chip.time" class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-400"></span>
         <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-600 dark:text-zinc-300'" class="inline-flex shrink-0"></span>
         <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" data-atom-calendar-chip-title class="truncate font-medium"></span>
         <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
@@ -77,7 +77,7 @@
     x-bind:tabindex="link(chip) ? null : 0"
     x-bind:data-before="chip.before ? '' : null"
     x-bind:data-after="chip.after ? '' : null"
-    x-bind:aria-label="itemLabel(chip)"
+    x-bind:aria-label="chip.label"
     x-bind:data-compact="chip.compact ? '' : null"
     x-bind:data-lifted="isLifted(chip) ? '' : null"
     x-bind:data-atom-calendar-hex="isHex(chip) && !chip.danger ? '' : null"
@@ -95,10 +95,10 @@
         <span class="flex min-w-0 items-center gap-1">
             <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-600 dark:text-zinc-300'" class="inline-flex shrink-0"></span>
             <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" data-atom-calendar-item-title class="truncate font-semibold"></span>
-            <span x-show="chip.compact" x-text="'· ' + timeLabel(chip)" data-atom-calendar-item-time class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
+            <span x-show="chip.compact" x-text="'· ' + chip.time" data-atom-calendar-item-time class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
             <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
         </span>
-        <span x-show="!chip.compact" x-text="timeRange(chip)" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
+        <span x-show="!chip.compact" x-text="chip.range" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
         <span x-show="canResize(chip)" aria-hidden="true" data-atom-calendar-handle="end"></span>
     </a>
 </template>
