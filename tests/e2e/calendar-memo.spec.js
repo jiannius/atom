@@ -290,6 +290,50 @@ test.describe('and the strings laid out with them follow what they say it with',
         engine.popoverSource = 'more'
 
         expect(day().expanded).toBe('false')
+
+        // each of the two alone: the date of the open list (the source staying as it was), and the source (the date staying)
+        engine.popoverDate = null
+        engine.popoverSource = 'day'
+
+        expect(day().expanded).toBe('false')
+
+        engine.popoverDate = '2026-10-06'
+
+        expect(day().expanded).toBe('true')
+
+        engine.popoverDate = '2026-10-07'
+
+        expect(day().expanded).toBe('false')
+        expect(engine.weeks.flatMap((week) => week.days).find((entry) => entry.date === '2026-10-07').expanded).toBe('true')
         expect(engine.weeks.flatMap((week) => week.days).find((entry) => entry.date === '2026-10-11').expanded).toBeNull()
+    })
+
+    test('the labels alone, with the items, the window and the config the same objects', () => {
+        const crowd = [...[1, 2, 3, 4, 5].map((n) => item('c' + n, '2026-10-06')), item('t1', '2026-10-06T09:00', '2026-10-06T10:00'), item('t2', '2026-10-06T11:00', '2026-10-06T12:00')]
+        const worded = (ui) => ({ ...payloadFor(crowd, { max: 3 }), labels: { ...payloadFor().labels, ui } })
+        const ui = { item: ':count thing', items: ':count things', more: '+:count more' }
+        const dayOf = (engine) => engine.weeks.flatMap((week) => week.days).find((entry) => entry.date === '2026-10-06')
+
+        const month = engineWith({ payload: worded(ui) })
+
+        expect(dayOf(month).label).toMatch(/7 things$/)
+        expect(month.weeks.flatMap((week) => week.more)[0].label).toBe('+4 more')
+
+        month.payload = { ...month.payload, labels: { ...month.payload.labels, ui: { ...ui, items: ':count objects', more: ':count others' } } }
+
+        expect(dayOf(month).label).toMatch(/7 objects$/)
+        expect(month.weeks.flatMap((week) => week.more)[0].label).toBe('4 others')
+        expect(asked(month)).toEqual(fresh(month))
+
+        const week = engineWith({ view: 'week', payload: worded(ui) })
+
+        expect(week.grid.columns.find((column) => column.date === '2026-10-06').label).toMatch(/things$/)
+        expect(week.grid.allDay.more[0].label).toBe('+2 more')
+
+        week.payload = { ...week.payload, labels: { ...week.payload.labels, ui: { ...ui, items: ':count objects', more: ':count others' } } }
+
+        expect(week.grid.allDay.more[0].label).toBe('2 others')
+        expect(week.grid.columns.find((column) => column.date === '2026-10-06').label).toMatch(/2 objects$/)
+        expect(asked(week)).toEqual(fresh(week))
     })
 })

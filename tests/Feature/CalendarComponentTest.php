@@ -743,8 +743,7 @@ describe('calendar accessibility markup', function () {
         $html = calendarRender();
 
         // a day's own is worked out with the layout (the day's count is in it), and written by an effect: Alpine never drops an attribute it was bound to null
-        expect(file_get_contents(__DIR__.'/../../resources/js/alpinejs/calendar.js'))->toContain("popoverDate === day.date && popoverSource === 'day'")
-            ->and(domQuery($html, '//*[@data-atom-calendar-day]')[0]->getAttribute('x-effect'))->toContain('day.expanded')
+        expect(domQuery($html, '//*[@data-atom-calendar-day]')[0]->getAttribute('x-effect'))->toContain('day.expanded')
             ->and(domQuery($html, '//*[@data-atom-calendar-more]')[0]->getAttribute('x-bind:aria-expanded'))->toContain("popoverSource === 'more'")
             ->and(domQuery($html, '//*[@data-atom-calendar-more]')[1]->getAttribute('x-bind:aria-expanded'))->toContain("popoverSource === 'more'");
     });
