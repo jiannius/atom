@@ -344,7 +344,7 @@ User::query()->tableColumnType('created_at');
 
 `filter()` knows about: named scopes (`search`, `byFoo`), enum casts, JSON columns, date columns, and the `key:operator` syntax (`'price:>=' => 100`).
 
-`filter()` reads keys and values as untrusted input, but it is not an allow-list. What it refuses: a key that is not a plain column name (optionally `:operator`, or `column.path` on a JSON column), a column listed in the model's `$hidden` or, when the model sets `$visible`, any column not listed there (`$visible` is a serialisation list, so one that omits `created_at`, `status` or a foreign key silently drops filters on them), an operator other than `=`, `!=`, `<>`, `<`, `<=`, `>`, `>=`, `like` and `not like`, and a value shape that makes no sense for the column (it is skipped, never an error). Date columns are filtered through quoted `whereDate()`. On a plain column a list value means "one of" (`=` or no operator) or "none of" (`!=`, `<>`); a list with `<`, `<=`, `>`, `>=`, `like` is skipped, and so is a date object with `like`. On a JSON column a list means "contains all of" (`=` or no operator) or "does not contain all of" (`!=`, `<>`). It reads the model's `$hidden` and `$visible` properties only: not `makeHidden()` / `makeVisible()` on an instance, and not sensitive columns you did not list. What it does not refuse: any other column of the table, and any named scope, which receives the value as sent (strings, arrays, dates). A client that can replace a public `$filters` (Livewire allows it) can therefore filter on every column the model does not hide, and call every scope. When that matters, pass `filter()` only the keys you allow, e.g. `filter(Arr::only($this->filters, ['search', 'status', 'dates']))`, and keep scopes safe to call with arbitrary input. Don't mark a `$filters` that atom's table controls bind to (`wire:model="filters.search"`) as `#[Locked]`: Livewire then refuses every update from them, so search, filter selects and chips stop working. `#[Locked]` only fits a `$filters` the server sets and no `wire:model` touches.
+`filter()` reads keys and values as untrusted input, but it is not an allow-list. What it refuses: a key that is not a plain column name (optionally `:operator`, or `column.path` on a JSON column), a column listed in the model's `$hidden` or, when the model sets `$visible`, any column not listed there (`$visible` is a serialisation list, so one that omits `created_at`, `status` or a foreign key silently drops filters on them), an operator other than `=`, `!=`, `<>`, `<`, `<=`, `>`, `>=`, `like` and `not like`, and a value shape that makes no sense for the column (it is skipped, never an error). Date columns are filtered through quoted `whereDate()`. On a plain column a list value means "one of" (`=` or no operator) or "none of" (`!=`, `<>`); a list with `<`, `<=`, `>`, `>=`, `like` is skipped, and so is a date object with `like`. On a JSON column a list means "contains all of" (`=` or no operator) or "does not contain all of" (`!=`, `<>`). It reads the model's `$hidden` and `$visible` properties only: not `makeHidden()` / `makeVisible()` on an instance, and not sensitive columns you did not list. What it does not refuse: any other column of the table, and any named scope, which receives the value as sent (strings, arrays, dates). A client that can replace a public `$filters` (Livewire allows it) can therefore filter on every column the model does not hide, and call every scope. When that matters, either use [`WithUrlFilters`](#filters-in-the-url--withurlfilters), whose declared keys are such an allow-list enforced on every update, or pass `filter()` only the keys you allow, e.g. `filter(Arr::only($this->filters, ['search', 'status', 'dates']))`, and keep scopes safe to call with arbitrary input. Don't mark a `$filters` that atom's table controls bind to (`wire:model="filters.search"`) as `#[Locked]`: Livewire then refuses every update from them, so search, filter selects and chips stop working. `#[Locked]` only fits a `$filters` the server sets and no `wire:model` touches.
 
 ### `Request` (`src/Macros/Request.php`)
 
@@ -670,6 +670,132 @@ the event. A hand-rolled control opts in the same way:
 ```blade
 <input x-on:input="$dispatch('table-filter:changed')" />
 ```
+
+---
+
+## Filters in the URL — `WithUrlFilters`
+
+A user filters a listing, opens a record, comes back through the breadcrumb and finds every
+filter gone: the filters only ever lived in Livewire state. `?page=` and `?tab=` already
+survive the trip because they are in the URL, and the breadcrumb already saves the listing's
+full URL. `WithUrlFilters` puts the filters there too (`?search=ap&status[0]=fresh&region=SG`).
+
+It is **opt-in**: a component that does not `use` it declares no query string and is
+unchanged. It is not automatic because nested components (pickers, footprints, report
+panels) often carry a `$filters` of their own and would fight over `?status=`.
+
+```php
+use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithUrlFilters;
+
+class Claims extends Component
+{
+    use AtomComponent, WithUrlFilters;
+
+    public array $filters = ['search' => '', 'status' => [], 'region' => 'MY', 'tenant_id' => null];
+
+    // what may be filtered, and its default. Static: it is read before mount()
+    protected function urlFilters(): array
+    {
+        return ['search' => '', 'status' => [], 'region' => 'MY'];
+    }
+
+    // internal state that stays in $filters: not in the URL, and the browser may not set it
+    protected function urlFiltersExcept(): array
+    {
+        return ['tenant_id'];
+    }
+
+    // optional: app-specific checks (a date that parses, a status that exists)
+    protected function isUrlFilterValid(string $key, mixed $value): bool
+    {
+        return $key !== 'region' || in_array($value, ['MY', 'SG', ''], true);
+    }
+
+    public function mount(): void
+    {
+        $this->filters['tenant_id'] = auth()->user()->tenant_id;
+    }
+
+    public function tableQuery()
+    {
+        return Claim::query()->filter($this->filters);
+    }
+}
+```
+
+Each declared key becomes one flat query key through Livewire's dotted `queryString` entries
+(`filters.status` as `status`), with `history: false` (replace, so typing does not stack
+history entries) and the default as `except` (a filter that returns to its default leaves the
+URL). Two optional methods: `urlFiltersProperty()` (default `'filters'`) and
+`urlFiltersPrefix()` (default `''`, for a page with two listings: `'claims_'` gives
+`?claims_status=`). A key must be a plain identifier (letters, digits, underscore: it becomes
+a query key, so no `.`, no `col:operator`) or the component throws at mount. Filter on an
+operator through a named scope instead.
+
+### The declaration is an allow-list
+
+The browser controls the URL and, with Livewire, a public `$filters`; atom's own `filter()`
+macro refuses unsafe *shapes* but still filters any visible column and calls any named scope
+(see [`filter()`](#eloquent--query-builder-srcmacrosbuilderphp)). A link planted in front of
+another user would otherwise reach all of it. So the declaration is enforced where a value
+arrives, and the two paths fail differently on purpose:
+
+- **From the URL: dropped silently**, at mount (after your own `mount()`). A key that is not
+  declared or excepted is removed, a value of the wrong shape (a scalar where a list is
+  expected, a keyed array, a nested array) or one `isUrlFilterValid()` refuses falls back to
+  its default, and the listing opens unfiltered. Livewire writes URL values with `data_set()`,
+  which fires no `updating*` hook, so this is the only gate they pass. A stale bookmark or a
+  crafted link should open the listing, not break it.
+- **From the browser: refused with a 403**, on every update (`updatingWithUrlFilters`), like
+  the signed `raw:` sort. A `$wire.set()` of a key nobody declared is a deliberate request for
+  something you never offered. Livewire fires the hook once per dotted path, so `filters` (the
+  whole array: every key and value is checked), `filters.status` (one key) and
+  `filters.status.0` or deeper (never allowed: an array is only ever replaced whole) are all
+  covered. An excepted key is refused from the browser too, and survives a wholesale
+  `$wire.set('filters', {...})`.
+
+This is why the property must **not** be `#[Locked]` (the table controls bind
+`wire:model="filters.*"`, and Livewire refuses every client update to a locked property): the
+trait is the gate instead. It covers named-scope keys and plain column keys alike, because
+neither can reach `filter()` unless declared. It does **not** replace
+`filter(Arr::only($this->filters, [...]))` for a component that does not use the trait, nor
+the values you declare: a declared `status` scope still receives whatever shape-valid value
+arrives, so keep scopes safe for arbitrary input.
+
+### Defaults and "All"
+
+- **A multi-select default must be `[]`.** Livewire merges a list from the URL into the
+  default by index, so a non-empty default could not be cleared (`urlFilters()` throws on one).
+- **"All" is `''`, not `null`, when the default is not null.** `null` is not written to the
+  URL, so a reload would bring the default back; `''` is written (`?region=`) and a reload
+  keeps it. A filter whose default is `null` or `''` needs no such care.
+- **Declare a static default once, in `urlFilters()`**; the trait fills it into `$filters`. If
+  a default is computed in `mount()` (this month's range), declare `null` and fill it with
+  `??=`, not `blank()` / `empty()`: the URL is read *before* your `mount()`, and `blank()`
+  would take a user's explicit "All" (`''`) for "no choice" and bring the default back. A
+  computed default differs from the declared one, so it is written to the URL on load.
+  Keep a `public array $filters` default in step with `urlFilters()`: a key present in the
+  property is never overwritten by the fill.
+
+### Breadcrumbs, and what comes back
+
+The crumb and Back return to the URL the breadcrumb saved when the user left, which carries
+the filters (and `?page=`). That only works when the trail outlives `wire:navigate`: wrap
+`<atom:breadcrumbs />` in `@persist('breadcrumbs')`, or each page starts a fresh trail from
+its own declared crumbs and the saved URL is lost (without it a crumb returns to the bare URL).
+The browser's Back button needs nothing: Livewire's `history: false` replaces the entry, so
+the filtered URL is the one in history.
+
+Livewire's JS writes a list as `status[0]=a&status[1]=b`; a hand-written `status[]=a` link is
+read correctly by PHP but rewritten by the browser on load. Generate links with the indexed form.
+
+Sort is not persisted. If it ever is, the URL value must be re-checked on mount with
+`TableSort::isUnsafeFromClient()`: `updatingAtomComponent()` only guards a browser update, and
+a URL value is not one. The seam is documented on `mountWithUrlFilters()`.
+
+`tests/Feature/UrlFiltersTest.php` and `tests/e2e/url-filters.spec.js` (fixture
+`tests/Fixtures/UrlFiltersFixture.php`) pin all of the above.
 
 ---
 

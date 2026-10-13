@@ -363,3 +363,39 @@ it('tells hosts that a public $filters passed to filter() is untrusted', functio
         ->and($skill)->toContain('$hidden')
         ->and($skill)->toContain('contains all of');
 });
+
+// WithUrlFilters keeps listing filters in the URL, and its docs carry the rules a host gets wrong
+// silently: a list default that is not [], an "All" that is not '', a default filled with blank(),
+// a breadcrumb that is not @persist-ed, and an allow-list mistaken for a replacement for filter(Arr::only()).
+// The detail lives in the skill (the always-on guideline is at its word budget) and the README.
+it('documents the WithUrlFilters rules in the skill and the README', function () {
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+    $readme = file_get_contents(__DIR__.'/../../README.md');
+
+    foreach ([$skill, $readme] as $doc) {
+        expect($doc)->toContain('WithUrlFilters')
+            ->and($doc)->toContain('urlFilters()')
+            ->and($doc)->toContain('urlFiltersExcept')
+            ->and($doc)->toContain('isUrlFilterValid')
+            ->and($doc)->toContain('`[]`')
+            ->and($doc)->toContain("`''`")
+            ->and($doc)->toContain('??=')
+            ->and($doc)->toContain('blank()')
+            ->and($doc)->toContain("@persist('breadcrumbs')")
+            ->and($doc)->toContain('Arr::only(')
+            ->and($doc)->toContain('403')
+            ->and($doc)->toContain('#[Locked]');
+    }
+
+    // the skill is what an agent in a host app reads: it must say both halves of the gate
+    expect($skill)->toContain('dropped silently')
+        ->and($skill)->toContain('refused with a 403')
+        ->and($skill)->toContain('named-scope keys and plain columns')
+        ->and($skill)->toContain('does **not** replace `filter(Arr::only(...))`');
+});
+
+// the always-on guideline does not grow for this: it points at the skill, which loads when a listing is edited
+it('names WithUrlFilters in the always-on guideline but keeps its detail in the skill', function () {
+    expect(boostFile('guidelines/core.blade.php'))->toContain('`WithUrlFilters`')
+        ->and(boostFile('guidelines/core.blade.php'))->not->toContain('urlFiltersExcept');
+});
