@@ -176,3 +176,83 @@ test('the docs demo with a link trigger closes on an item click', async ({ page 
   await page.waitForTimeout(300)
   await expect(menu).toBeHidden()
 })
+
+// Issue #79. The menu is popover=auto, so the browser closes it on pointerdown (light dismiss)
+// before the click handler runs; show() on that click then reopened what the press had closed.
+// Real mouse and keyboard input throughout: a synthetic .click() has no pointerdown.
+for (const name of ['button', 'link']) {
+  test(`a second click on the ${name} trigger closes the menu and it stays closed`, async ({ page }) => {
+    await page.goto('/atom/e2e/dropdown-trigger')
+
+    const root = probe(page, name).locator('[data-atom-dropdown]')
+    const trigger = name === 'button' ? probe(page, name).getByRole('button', { name: 'Pick' }) : probe(page, name).getByText('Select')
+    const menu = root.locator('[data-atom-menu]')
+
+    await expect(menu).toBeHidden()
+
+    // The first click still opens it.
+    await trigger.click()
+    await expect(menu).toBeVisible()
+    await expect(root).toHaveAttribute('data-open', '')
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+    // The second closes it, and it must not come back a beat later.
+    await trigger.click()
+    await expect(menu).toBeHidden()
+    await page.waitForTimeout(300)
+    await expect(menu).toBeHidden()
+    await expect(root).not.toHaveAttribute('data-open')
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    // And it opens again on the third.
+    await trigger.click()
+    await expect(menu).toBeVisible()
+  })
+}
+
+test('Enter on the focused trigger toggles the menu', async ({ page }) => {
+  await page.goto('/atom/e2e/dropdown-trigger')
+
+  const root = probe(page, 'button').locator('[data-atom-dropdown]')
+  const trigger = probe(page, 'button').getByRole('button', { name: 'Pick' })
+  const menu = root.locator('[data-atom-menu]')
+
+  await trigger.focus()
+  await page.keyboard.press('Enter')
+  await expect(menu).toBeVisible()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+  // Focus is still on the trigger, so this is the same control pressed again.
+  await expect(trigger).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(menu).toBeHidden()
+  await page.waitForTimeout(300)
+  await expect(menu).toBeHidden()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+  await page.keyboard.press('Enter')
+  await expect(menu).toBeVisible()
+})
+
+test('a click that is dragged off the trigger does not leave a stale answer for the keyboard', async ({ page }) => {
+  // pointerdown on the open trigger records "was open", the pointer leaves before the click, so no
+  // click fires. The next keyboard activation must read the live state, not that stale record.
+  await page.goto('/atom/e2e/dropdown-trigger')
+
+  const trigger = probe(page, 'button').getByRole('button', { name: 'Pick' })
+  const menu = probe(page, 'button').locator('[data-atom-menu]')
+
+  await trigger.click()
+  await expect(menu).toBeVisible()
+
+  const box = await trigger.boundingBox()
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width + 200, box.y + box.height + 200)
+  await page.mouse.up()
+  await expect(menu).toBeHidden()
+
+  await trigger.focus()
+  await page.keyboard.press('Enter')
+  await expect(menu).toBeVisible()
+})

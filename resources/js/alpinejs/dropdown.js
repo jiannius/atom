@@ -1,6 +1,7 @@
 export default (config) => {
     return {
         cleanup: null,
+        openBeforePress: null,
         locked: config.locked,
         placement: config.placement,
 
@@ -45,8 +46,32 @@ export default (config) => {
             this.$root._atomDropdownListeners?.abort()
             let { signal } = this.$root._atomDropdownListeners = new AbortController()
 
+            // A popover=auto closes itself on pointerdown (light dismiss), before
+            // the click lands, so by then the menu always reads as closed and a
+            // second click on the trigger would reopen what it just closed. Ask
+            // in the capture phase, ahead of the native dismiss.
+            this.$root.addEventListener('pointerdown', (e) => {
+                this.openBeforePress = this.trigger?.contains(e.target)
+                    ? !!this.popover?.matches(':popover-open')
+                    : null
+            }, { capture: true, signal })
+
             this.$root.addEventListener('click', (e) => {
-                if (this.trigger?.contains(e.target)) this.show()
+                if (this.trigger?.contains(e.target)) {
+                    // A mouse or touch click has a pointerdown (detail > 0) and
+                    // the answer recorded there. A keyboard click (Enter, Space)
+                    // or a programmatic one has neither, so the live state is
+                    // still true. A text field as the trigger keeps its menu
+                    // open: a click there places the caret, not toggles.
+                    let wasOpen = e.detail > 0 && this.openBeforePress !== null
+                        ? this.openBeforePress
+                        : !!this.popover?.matches(':popover-open')
+
+                    this.openBeforePress = null
+
+                    if (wasOpen && !e.target.closest?.('input, textarea, select, [contenteditable]')) this.hide()
+                    else this.show()
+                }
                 // Close on a click inside the menu, unless `locked`. Bubble
                 // phase, so `x-on:click.stop` on a child of the popover still
                 // keeps the menu open (form controls rely on that).
