@@ -195,13 +195,38 @@ class Builder
                 else {
                     $key = explode(':', $key);
                     $col = head($key);
-                    $coltype = $this->tableColumnType(head(explode('.', $col)));
                     $operator = count($key) > 1 ? last($key) : null;
 
+                    // The key is client-controllable (a public $filters can be replaced
+                    // through Livewire), so it must be a plain column reference before it
+                    // gets anywhere near introspection or a query: `col`, `col:operator`,
+                    // or `col.path` for a JSON column. Anything else is a no-op.
+                    if (
+                        count($key) > 2
+                        || ! preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)*$/D', $col)
+                    ) {
+                        return $this;
+                    }
+
+                    $coltype = $this->tableColumnType(head(explode('.', $col)));
+
+                    // a sub-path only means something on a JSON column
+                    if (str_contains($col, '.') && $coltype !== 'json') {
+                        return $this;
+                    }
+
                     if (in_array($coltype, ['date', 'datetime', 'timestamp'])) {
-                        $col = $coltype === 'date'
-                            ? DB::raw("date($table.$col)")
-                            : "$table.$col";
+                        // an array (or any non-scalar) has no meaning against a date column
+                        if (! is_scalar($value) && ! $value instanceof \Stringable) {
+                            return $this;
+                        }
+
+                        $column = "$table.$col";
+
+                        // whereDate() wraps the column as an identifier; never interpolate it
+                        $compare = fn ($operator, $value) => $coltype === 'date'
+                            ? $this->whereDate($column, $operator, $value)
+                            : $this->where($column, $operator, $value);
 
                         if (str($value)->is('* to *') || str($value)->is('* to') || str($value)->is('to *')) {
                             $split = collect(explode('to', $value))
@@ -211,16 +236,11 @@ class Builder
                             $from = $split->first();
                             $to = $split->count() > 1 ? $split->last() : null;
 
-                            if ($from) $this->where($col, '>=', $from);
-                            if ($to) $this->where($col, '<=', $to);
+                            if ($from) $compare('>=', $from);
+                            if ($to) $compare('<=', $to);
                         }
                         else if ($value) {
-                            if ($operator) {
-                                $this->where($col, $operator, $value);
-                            }
-                            else {
-                                $this->where($col, $value);
-                            }
+                            $compare($operator ?: '=', $value);
                         }
                     }
                     else if (($cast = data_get($this->getModel()->getCasts(), $col)) && enum_exists($cast)) {

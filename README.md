@@ -342,6 +342,8 @@ User::query()->tableColumnType('created_at');
 
 `filter()` knows about: named scopes (`search`, `byFoo`), enum casts, JSON columns, date columns, and the `key:operator` syntax (`'price:>=' => 100`).
 
+Keys are treated as untrusted: a key that is not a plain column name (optionally `:operator`, or `column.path` on a JSON column) is skipped, and a date column is filtered through quoted `whereDate()`. Named-scope keys are not allow-listed, so a client that can replace a public `$filters` can still invoke any scope the model defines; keep scopes safe to call with arbitrary input, or lock the property.
+
 ### `Request` (`src/Macros/Request.php`)
 
 ```php
