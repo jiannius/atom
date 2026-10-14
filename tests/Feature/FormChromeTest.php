@@ -296,3 +296,90 @@ describe('form.modal', function () {
         expect($html)->toContain('Remove');
     });
 });
+
+/**
+ * The form.modal sticky bar and its direct child elements, by parsing the render.
+ *
+ * @return array<int, DOMElement>
+ */
+function formModalBarChildren(string $html): array
+{
+    $document = new DOMDocument;
+    $previous = libxml_use_internal_errors(true);
+    $document->loadHTML('<?xml encoding="utf-8"?><body>'.$html.'</body>');
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+
+    $bar = (new DOMXPath($document))->query('//*[@data-atom-form-actions]')->item(0);
+
+    return elementChildren($bar);
+}
+
+/**
+ * @return array<int, DOMElement>
+ */
+function elementChildren(DOMNode $node): array
+{
+    return array_values(array_filter(
+        iterator_to_array($node->childNodes),
+        fn ($child) => $child instanceof DOMElement,
+    ));
+}
+
+describe('form.modal actions slot', function () {
+    beforeEach(fn () => view()->share('errors', new ViewErrorBag));
+
+    it('leaves the bar as Save plus a bare delete when only delete is given', function () {
+        $children = formModalBarChildren(renderBlade(<<<'BLADE'
+            <atom:form.modal name="c">
+                <span>field</span>
+                <x-slot:delete><button id="del">Remove</button></x-slot:delete>
+            </atom:form.modal>
+        BLADE));
+
+        expect($children)->toHaveCount(2)
+            ->and($children[0]->getAttribute('type'))->toBe('submit')
+            ->and($children[1]->getAttribute('id'))->toBe('del');
+    });
+
+    it('renders only Save when neither slot is given', function () {
+        $children = formModalBarChildren(renderBlade('<atom:form.modal name="c"><span>field</span></atom:form.modal>'));
+
+        expect($children)->toHaveCount(1)
+            ->and($children[0]->getAttribute('type'))->toBe('submit');
+    });
+
+    it('groups an actions slot on the right of the bar', function () {
+        $children = formModalBarChildren(renderBlade(<<<'BLADE'
+            <atom:form.modal name="c">
+                <span>field</span>
+                <x-slot:actions><span id="total">Total</span></x-slot:actions>
+            </atom:form.modal>
+        BLADE));
+
+        expect($children)->toHaveCount(2)
+            ->and($children[0]->getAttribute('type'))->toBe('submit')
+            ->and($children[1]->hasAttribute('data-atom-form-modal-actions'))->toBeTrue()
+            ->and(elementChildren($children[1]))->toHaveCount(1)
+            ->and(elementChildren($children[1])[0]->getAttribute('id'))->toBe('total');
+    });
+
+    it('puts actions before delete in one right-hand group when both are given', function () {
+        $children = formModalBarChildren(renderBlade(<<<'BLADE'
+            <atom:form.modal name="c">
+                <span>field</span>
+                <x-slot:actions><span id="total">Total</span></x-slot:actions>
+                <x-slot:delete><button id="del">Remove</button></x-slot:delete>
+            </atom:form.modal>
+        BLADE));
+
+        $group = elementChildren($children[1]);
+
+        expect($children)->toHaveCount(2)
+            ->and($children[0]->getAttribute('type'))->toBe('submit')
+            ->and($children[1]->hasAttribute('data-atom-form-modal-actions'))->toBeTrue()
+            ->and($group)->toHaveCount(2)
+            ->and($group[0]->getAttribute('id'))->toBe('total')
+            ->and($group[1]->getAttribute('id'))->toBe('del');
+    });
+});
