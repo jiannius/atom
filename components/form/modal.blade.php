@@ -24,7 +24,7 @@ $width = match ((string) $cols) {
         <atom:form.actions sticky>
             <atom:button type="submit">{{ t($submit) }}</atom:button>
             @isset($actions)
-                <div class="flex items-center gap-3" data-atom-form-modal-actions>
+                <div class="flex min-w-0 flex-wrap items-center justify-end gap-3" data-atom-form-modal-actions>
                     {{ $actions }}
                     @isset($delete)
                         {{ $delete }}

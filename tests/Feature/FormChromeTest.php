@@ -382,4 +382,59 @@ describe('form.modal actions slot', function () {
             ->and($group[0]->getAttribute('id'))->toBe('total')
             ->and($group[1]->getAttribute('id'))->toBe('del');
     });
+
+    it('lets the right-hand group shrink and wrap instead of overflowing a narrow modal', function () {
+        $children = formModalBarChildren(renderBlade(<<<'BLADE'
+            <atom:form.modal name="c">
+                <span>field</span>
+                <x-slot:actions><span>Total</span></x-slot:actions>
+                <x-slot:delete><button>Remove</button></x-slot:delete>
+            </atom:form.modal>
+        BLADE));
+
+        $classes = explode(' ', $children[1]->getAttribute('class'));
+
+        expect($classes)->toContain('min-w-0', 'flex-wrap', 'justify-end', 'gap-3');
+    });
+
+    it('renders an empty group for an empty actions slot, as isset does for delete', function () {
+        $children = formModalBarChildren(renderBlade(<<<'BLADE'
+            <atom:form.modal name="c">
+                <span>field</span>
+                <x-slot:actions></x-slot:actions>
+            </atom:form.modal>
+        BLADE));
+
+        expect($children)->toHaveCount(2)
+            ->and($children[1]->hasAttribute('data-atom-form-modal-actions'))->toBeTrue()
+            ->and(elementChildren($children[1]))->toBeEmpty();
+    });
+
+    it('renders no extra element for an empty delete slot alone', function () {
+        $children = formModalBarChildren(renderBlade(<<<'BLADE'
+            <atom:form.modal name="c">
+                <span>field</span>
+                <x-slot:delete></x-slot:delete>
+            </atom:form.modal>
+        BLADE));
+
+        expect($children)->toHaveCount(1)
+            ->and($children[0]->getAttribute('type'))->toBe('submit');
+    });
+
+    it('keeps actions when delete is empty', function () {
+        $children = formModalBarChildren(renderBlade(<<<'BLADE'
+            <atom:form.modal name="c">
+                <span>field</span>
+                <x-slot:actions><span id="total">Total</span></x-slot:actions>
+                <x-slot:delete></x-slot:delete>
+            </atom:form.modal>
+        BLADE));
+
+        $group = elementChildren($children[1]);
+
+        expect($children)->toHaveCount(2)
+            ->and($group)->toHaveCount(1)
+            ->and($group[0]->getAttribute('id'))->toBe('total');
+    });
 });
