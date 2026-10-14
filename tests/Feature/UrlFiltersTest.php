@@ -11,7 +11,9 @@ use Jiannius\Atom\Tests\Fixtures\UrlFiltersThrowingFixture;
 use Jiannius\Atom\Traits\AtomComponent;
 use Jiannius\Atom\Traits\WithUrlFilters;
 use Livewire\Attributes\Url;
+use Livewire\Component;
 use Livewire\Livewire;
+use Livewire\WithPagination;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
@@ -255,7 +257,17 @@ describe('a key something else already writes to the URL', function () {
         'page' => fn () => new class extends UrlFiltersFixture {
             protected function urlFilters(): array { return ['page' => '']; }
         },
-        'tab' => fn () => new class extends UrlFiltersFixture {
+        'a host `tab` that is a #[Url] property' => fn () => new class extends UrlFiltersFixture {
+            #[Url]
+            public string $tab = 'info';
+
+            protected function urlFilters(): array { return ['tab' => '']; }
+        },
+        'a host `tab` that is a queryString entry' => fn () => new class extends UrlFiltersFixture {
+            public string $tab = 'info';
+
+            protected function queryString(): array { return ['tab' => ['except' => 'info']]; }
+
             protected function urlFilters(): array { return ['tab' => '']; }
         },
         'a prefix that makes `page`' => fn () => new class extends UrlFiltersFixture {
@@ -278,6 +290,39 @@ describe('a key something else already writes to the URL', function () {
             public string $status = '';
         },
     ]);
+
+    it('reserves `page` only for a component that uses WithPagination, and `tab` by what really writes it', function () {
+        $plain = new class extends Component {
+            use WithUrlFilters;
+
+            public array $filters = ['page' => '', 'tab' => ''];
+
+            protected function urlFilters(): array { return ['page' => '', 'tab' => '']; }
+        };
+
+        // no pagination, no host `tab` entry: nothing else writes either key
+        expect(array_column(urlFiltersEntries($plain), 'as'))->toBe(['page', 'tab']);
+
+        // the same declaration beside a #[Url] `tab` is refused, as is `page` once pagination is in
+        $paginated = new class extends Component {
+            use WithPagination, WithUrlFilters;
+
+            public array $filters = ['page' => ''];
+
+            protected function urlFilters(): array { return ['page' => '']; }
+        };
+
+        expect(fn () => urlFiltersEntries($paginated))->toThrow(LogicException::class, 'already used');
+
+        // a plain `tab` property with no query-string entry writes nothing to the URL
+        $quietTab = new class extends UrlFiltersFixture {
+            public string $tab = 'info';
+
+            protected function urlFilters(): array { return ['tab' => '']; }
+        };
+
+        expect(array_column(urlFiltersEntries($quietTab), 'as'))->toBe(['tab']);
+    });
 
     it('lets a prefix keep two listings apart, and the fixture as declared', function () {
         expect(array_column(urlFiltersEntries(new UrlFiltersFixture), 'as'))->toBe(['search', 'status', 'region']);

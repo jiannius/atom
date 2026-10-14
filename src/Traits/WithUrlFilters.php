@@ -4,6 +4,7 @@ namespace Jiannius\Atom\Traits;
 
 use Illuminate\Support\Arr;
 use Livewire\Features\SupportQueryString\BaseUrl;
+use Livewire\WithPagination;
 use LogicException;
 use ReflectionAttribute;
 use ReflectionProperty;
@@ -25,6 +26,10 @@ use ReflectionProperty;
  * for what arrives from the URL and updatingWithUrlFilters() for what arrives over
  * the wire. It does not replace `filter(Arr::only(...))` for a component that does
  * not use the trait.
+ *
+ * A filter's query key (with its prefix) must not be one something else writes to the
+ * URL: `page` on a component that uses WithPagination, the host's own `queryString`,
+ * other traits' entries and `#[Url]` properties are refused at mount.
  */
 trait WithUrlFilters
 {
@@ -35,6 +40,14 @@ trait WithUrlFilters
      * @var array<string, mixed>|null
      */
     protected ?array $urlFiltersStash = null;
+
+    /**
+     * The host-check failures already reported in this process ("component::exception"),
+     * so a crafted URL cannot flood the log while a host bug still shows up once.
+     *
+     * @var array<string, true>
+     */
+    protected static array $urlFilterReported = [];
 
     /**
      * The filters that live in the URL, as [key => default]. A key is a plain
@@ -118,7 +131,7 @@ trait WithUrlFilters
 
         foreach ($this->urlFilterDefinitions() as $key => $default) {
             if (in_array($this->urlFiltersPrefix().$key, $taken, true)) {
-                throw new LogicException(static::class.': the query key ['.$this->urlFiltersPrefix().$key.'] is already used (pagination, `tab` or another query-string entry): give the filter another key or a urlFiltersPrefix().');
+                throw new LogicException(static::class.': the query key ['.$this->urlFiltersPrefix().$key.'] is already used (pagination or another query-string entry): give the filter another key or a urlFiltersPrefix().');
             }
 
             $entries[$this->urlFiltersProperty().'.'.$key] = [
@@ -366,9 +379,12 @@ trait WithUrlFilters
     }
 
     /**
-     * Every query key something else on the component already writes to: `page` and
-     * `tab`, the host's own `queryString`, other traits' (pagination), and `#[Url]`
-     * properties. A filter that took one would fight it over the URL.
+     * Every query key something else on the component already writes to: `page` when
+     * the component uses WithPagination (Livewire registers it lazily, so it is not in
+     * any query-string entry yet), the host's own `queryString`, other traits' entries,
+     * and `#[Url]` properties (a `tab` or any other key is one of these, so it is
+     * found there, not reserved by name). A filter that took one would fight it over
+     * the URL.
      *
      * @return list<string>
      */
@@ -383,7 +399,9 @@ trait WithUrlFilters
             $entries[] = $this->queryString;
         }
 
-        foreach (class_uses_recursive(static::class) as $trait) {
+        $traits = class_uses_recursive(static::class);
+
+        foreach ($traits as $trait) {
             $member = 'queryString'.class_basename($trait);
 
             if ($trait !== __TRAIT__ && method_exists($this, $member)) {
@@ -391,7 +409,7 @@ trait WithUrlFilters
             }
         }
 
-        $taken = ['page', 'tab'];
+        $taken = in_array(WithPagination::class, $traits, true) ? ['page'] : [];
 
         foreach ($entries as $entry) {
             foreach ((array) $entry as $key => $value) {
