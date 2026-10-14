@@ -347,16 +347,42 @@ trait WithUrlFilters
 
     /**
      * The host's own check, which a crafted link can make throw (a date that does not
-     * parse): a throw is a refusal, never a 500.
+     * parse): a throw is a refusal, never a 500. It is also reported, once per
+     * exception class per component per process, so a host bug (a TypeError) shows up
+     * in the logs while a crafted URL cannot flood them.
      */
     protected function urlFilterHostAccepts(string $key, mixed $value): bool
     {
         try {
             return $this->isUrlFilterValid($key, $value);
         }
-        catch (\Throwable) {
+        catch (\Throwable $e) {
+            $this->reportUrlFilterFailure($e);
+
             return false;
         }
+    }
+
+    /**
+     * Report a failure of isUrlFilterValid() the first time its class is seen on this
+     * component. The seen-set is capped at 100 and emptied when full, like the
+     * editor's refusal log, so it cannot grow without bound.
+     */
+    protected function reportUrlFilterFailure(\Throwable $e): void
+    {
+        $seen = static::class.'::'.$e::class;
+
+        if (isset(static::$urlFilterReported[$seen])) {
+            return;
+        }
+
+        if (count(static::$urlFilterReported) >= 100) {
+            static::$urlFilterReported = [];
+        }
+
+        static::$urlFilterReported[$seen] = true;
+
+        report($e);
     }
 
     /**

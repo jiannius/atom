@@ -15,6 +15,8 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\Livewire;
 use Livewire\WithPagination;
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Support\Facades\Exceptions;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
@@ -230,6 +232,68 @@ describe('a host check that throws', function () {
         urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'boom')->assertForbidden();
         urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters', ['search' => 'boom'])->assertForbidden();
         urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'fine')->assertOk();
+    });
+});
+
+describe('a host check that throws, in the logs', function () {
+    /** The classes reported since Exceptions::fake(), HttpExceptions (the 403s) left out. */
+    function urlFiltersReported(): array
+    {
+        return collect(app(ExceptionHandler::class)->reported())
+            ->reject(fn ($e) => $e instanceof HttpException)
+            ->map(fn ($e) => $e::class)
+            ->values()
+            ->all();
+    }
+
+    beforeEach(function () {
+        Exceptions::fake();
+
+        // the seen-set is per process: start each test from empty
+        (fn () => static::$urlFilterReported = [])->bindTo(null, UrlFiltersFixture::class)();
+    });
+
+    it('is reported once per exception class, however often a crafted link repeats it, and is still refused', function () {
+        foreach (range(1, 5) as $ignored) {
+            $test = urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class);
+
+            $test->assertOk();
+            expect($test->get('filters.search'))->toBe('');
+        }
+
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'boom')->assertForbidden();
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters', ['search' => 'boom'])->assertForbidden();
+
+        // the 403s are HttpExceptions, which the real handler never reports
+        expect(urlFiltersReported())->toBe([InvalidArgumentException::class]);
+    });
+
+    it('reports a different exception class as its own failure', function () {
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        urlFiltersMounted(['search' => 'type'], UrlFiltersThrowingFixture::class)->assertOk();
+        urlFiltersMounted(['search' => 'type'], UrlFiltersThrowingFixture::class)->assertOk();
+
+        expect(urlFiltersReported())->toBe([InvalidArgumentException::class, TypeError::class]);
+    });
+
+    it('reports nothing for a value the host simply refuses, or accepts', function () {
+        urlFiltersMounted(['region' => 'XX', 'search' => 'fine'], UrlFiltersThrowingFixture::class)->assertOk();
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'fine')->assertOk();
+
+        expect(urlFiltersReported())->toBe([]);
+    });
+
+    it('keeps its seen-set bounded', function () {
+        $component = new UrlFiltersThrowingFixture;
+
+        foreach (range(1, 250) as $i) {
+            eval("class UrlFiltersBoundedException{$i} extends Exception {}");
+
+            (fn () => $this->reportUrlFilterFailure(new ("UrlFiltersBoundedException{$i}")))->call($component);
+        }
+
+        expect(count((fn () => static::$urlFilterReported)->bindTo(null, UrlFiltersFixture::class)()))->toBeLessThanOrEqual(100);
+        expect(urlFiltersReported())->toHaveCount(250);
     });
 });
 
