@@ -733,7 +733,14 @@ URL). Two optional methods: `urlFiltersProperty()` (default `'filters'`) and
 `?claims_status=`). A key must be a plain identifier (letters, digits, underscore: it becomes
 a query key, so no `.`, no `col:operator`) or the component throws at mount. Filter on an
 operator through a named scope instead. A key (with its prefix) that another query-string entry already
-uses (`page`, `tab`, your own `queryString`, a `#[Url]` property, pagination) also throws at mount.
+uses also throws at mount: `page` on a component that uses `WithPagination` (every `AtomComponent`
+does), your own `queryString`, a `#[Url]` property (a host `tab` is one of these; a filter named `tab`
+or `page` is fine on a component with neither). A **custom paginator page name**
+(`->paginate(10, pageName: 'p')`) cannot be seen at mount, because Livewire registers it only when the
+paginator is built; the trait checks at the end of every request instead and throws the same
+`LogicException` if a filter key (with its prefix) equals a page name. Without it the two fight
+over one query key: `?search=ap` is read as page "ap" while it also filters, and `nextPage()` is a
+`TypeError`. Give the filter another key or a `urlFiltersPrefix()`, or the paginator another `pageName`.
 
 ### The declaration is an allow-list
 
@@ -751,7 +758,9 @@ arrives, and the two paths fail differently on purpose:
   crafted link should open the listing, not break it.
   **Your own `mount()` runs before this clean-up**, so it sees the raw URL values: do not
   read `$this->filters` there to decide anything. Validate in `isUrlFilterValid()` instead (a
-  throw from it counts as a refusal, so `Carbon::parse($value)` is fine in it).
+  throw from it counts as a refusal, so `Carbon::parse($value)` is fine in it). A throw is also
+  `report()`ed, once per exception class per component per process, so a bug in your check (a
+  `TypeError`) shows up in the logs while a crafted link cannot flood them.
 - **From the browser: refused with a 403**, on every update (`updatingWithUrlFilters`), like
   the signed `raw:` sort. A `$wire.set()` of a key nobody declared is a deliberate request for
   something you never offered. Livewire fires the hook once per dotted path, so `filters` (the
