@@ -29,7 +29,10 @@ use ReflectionProperty;
  *
  * A filter's query key (with its prefix) must not be one something else writes to the
  * URL: `page` on a component that uses WithPagination, the host's own `queryString`,
- * other traits' entries and `#[Url]` properties are refused at mount.
+ * other traits' entries and `#[Url]` properties are refused at mount. A custom
+ * paginator page name (`->paginate(10, pageName: 'p')`) cannot be seen at mount,
+ * because Livewire registers it lazily while rendering, so dehydrateWithUrlFilters()
+ * refuses it on the request that builds the paginator.
  */
 trait WithUrlFilters
 {
@@ -252,6 +255,32 @@ trait WithUrlFilters
         }
 
         $this->urlFiltersStash = null;
+    }
+
+    /**
+     * Refuse a filter whose query key is also a paginator's page name. Livewire
+     * registers a page name in `$paginators` lazily, when the paginator is built
+     * (`->paginate(10, pageName: 'p')`, during render or an action), so the mount
+     * check cannot see it. By the end of every request it is there, so the check
+     * is made here: a loud LogicException, like the mount one, rather than two
+     * entries fighting over one query key (a filter value read as a page number, a
+     * `TypeError` on `nextPage()`, the last writer winning the URL).
+     */
+    public function dehydrateWithUrlFilters(): void
+    {
+        $paginators = property_exists($this, 'paginators') && is_array($this->paginators) ? array_keys($this->paginators) : [];
+
+        if ($paginators === []) {
+            return;
+        }
+
+        $prefix = $this->urlFiltersPrefix();
+
+        foreach ($this->urlFilterDefinitions() as $key => $default) {
+            if (in_array($prefix.$key, array_map('strval', $paginators), true)) {
+                throw new LogicException(static::class.': the filter query key ['.$prefix.$key.'] is also a paginator page name: give the filter another key or a urlFiltersPrefix(), or the paginator another pageName.');
+            }
+        }
     }
 
     /**

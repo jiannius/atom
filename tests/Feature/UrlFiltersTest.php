@@ -5,6 +5,7 @@ use Jiannius\Atom\Tests\Fixtures\TableFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersCapsFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersMountDefaultFixture;
+use Jiannius\Atom\Tests\Fixtures\UrlFiltersPaginatedFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersItemFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersStrayFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersThrowingFixture;
@@ -335,6 +336,58 @@ describe('a key something else already writes to the URL', function () {
     });
 });
 
+describe('a paginator page name that is also a filter key', function () {
+    /** Whether the callback throws a LogicException, which a view render may wrap in a ViewException. */
+    function urlFiltersThrowsLogic(callable $callback, string $message): bool
+    {
+        try {
+            $callback();
+        }
+        catch (Throwable $e) {
+            for (; $e; $e = $e->getPrevious()) {
+                if ($e instanceof LogicException && str_contains($e->getMessage(), $message)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    afterEach(fn () => UrlFiltersPaginatedFixture::$pageName = 'search');
+
+    it('is refused where Livewire registers it (the render that builds the paginator), not only at mount', function () {
+        // Livewire adds a page name to $paginators when the paginator is built, after mount
+        // and after the query-string check; unrefused, `?search=ap` is read as page "ap"
+        // while also filtering the listing, and nextPage('search') is a TypeError
+        expect(urlFiltersThrowsLogic(fn () => urlFiltersMounted([], UrlFiltersPaginatedFixture::class), 'paginator page name'))->toBeTrue();
+        expect(urlFiltersThrowsLogic(fn () => urlFiltersMounted(['search' => 'ap'], UrlFiltersPaginatedFixture::class), 'paginator page name'))->toBeTrue();
+    });
+
+    it('is refused when a later request registers the paginator, and by its prefixed key', function () {
+        UrlFiltersPaginatedFixture::$pageName = 'claims_page';
+        $test = urlFiltersMounted([], UrlFiltersPaginatedFixture::class)->assertOk();
+
+        expect(urlFiltersThrowsLogic(fn () => $test->call('gotoPage', 2, 'status'), 'paginator page name'))->toBeTrue();
+
+        $prefixed = new class extends UrlFiltersPaginatedFixture {
+            protected function urlFiltersPrefix(): string { return 'claims_'; }
+        };
+
+        UrlFiltersPaginatedFixture::$pageName = 'claims_search';
+        expect(urlFiltersThrowsLogic(fn () => Livewire::test($prefixed::class), 'claims_search'))->toBeTrue();
+    });
+
+    it('lets a page name that is not a filter key through, so a listing can paginate', function (string $pageName) {
+        UrlFiltersPaginatedFixture::$pageName = $pageName;
+
+        $test = urlFiltersMounted(['search' => 'ap'], UrlFiltersPaginatedFixture::class)->assertOk();
+
+        expect($test->get('filters.search'))->toBe('ap');
+        expect(array_keys($test->get('paginators')))->toBe([$pageName]);
+    })->with(['claimsPage', 'p', 'tenant']);   // `tenant` is internal state, never a query key
+});
+
 describe('the reach of filter() behind the allow-list', function () {
     beforeEach(function () {
         Item::factory()->create(['name' => 'apple', 'status' => 'draft', 'amount' => 5]);
@@ -382,12 +435,12 @@ describe('a component that does not use the trait', function () {
 });
 
 describe('the names the trait occupies', function () {
-    it('exposes only its three lifecycle hooks; every declaration hook is protected', function () {
+    it('exposes only its four lifecycle hooks; every declaration hook is protected', function () {
         $reflection = new ReflectionClass(WithUrlFilters::class);
 
         $public = collect($reflection->getMethods(ReflectionMethod::IS_PUBLIC))->map->getName()->sort()->values()->all();
 
-        expect($public)->toBe(['mountWithUrlFilters', 'updatedWithUrlFilters', 'updatingWithUrlFilters']);
+        expect($public)->toBe(['dehydrateWithUrlFilters', 'mountWithUrlFilters', 'updatedWithUrlFilters', 'updatingWithUrlFilters']);
 
         // a host component sees one namespace: these are what it must not shadow by accident
         foreach (['urlFilters', 'urlFiltersExcept', 'urlFiltersProperty', 'urlFiltersPrefix', 'isUrlFilterValid', 'urlFilterMaxLength', 'urlFilterMaxItems'] as $hook) {
