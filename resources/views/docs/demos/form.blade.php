@@ -20,5 +20,5 @@ view="atom::docs.demos.form.actions"/>
 
 <atom:docs.example
 title="Modal form"
-description="atom:form.modal composes modal + form + footer. Fields go in the default slot (laid out by cols=auto, default). Width derives from cols (1-col→xl, auto/2→2xl, 3→4xl) and is overridable via class. The footer auto-includes a Save submit; add a right-aligned delete via the delete slot."
+description="atom:form.modal composes modal + form + footer. Fields go in the default slot (laid out by cols=auto, default). Width derives from cols (1-col→xl, auto/2→2xl, 3→4xl) and is overridable via class. The footer auto-includes a Save submit; the right side takes two optional slots: actions (anything that should stay visible while the form scrolls, such as a running total) and delete, which sits at the far edge after actions."
 view="atom::docs.demos.form.modal"/>

@@ -7,6 +7,10 @@
         <atom:input type="email" label="Email"/>
         <atom:input label="Phone"/>
 
+        <x-slot:actions>
+            <span class="text-sm font-medium">Total: RM 120.00</span>
+        </x-slot:actions>
+
         <x-slot:delete>
             <atom:button type="delete" variant="ghost" color="danger" x-on:click.prevent>Delete</atom:button>
         </x-slot:delete>

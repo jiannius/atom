@@ -484,6 +484,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | Tag | Notable props |
 | --- | ------------- |
 | `<atom:form>` | `inset`. Wraps form, handles auto loading state on submit. |
+| `<atom:form.modal>` | `name`, `cols` (`auto`, `1`, `2`, `3`), `submit` (Save label), `dismissible`, `escapable`, `closeable`. Modal + form + sticky bar: Save on the left, and on the right the optional named slots `actions` (anything that should stay visible while the form scrolls, e.g. a running total) and `delete`, in that order. With only `delete`, or neither, the markup is unchanged. |
 | `<atom:table>` | `empty`, `paginate`, `maxRows` (array of row options), `skeleton`, `trashed`, `selectAll`, `stickySelection`. Slots: `columns`, `rows`, `header`, `checked` (bulk-action bar), `footer`. Children: `<atom:table.column>`, `<atom:table.row>`, `<atom:table.cell>`, `<atom:table.checkbox>`, `<atom:table.search>`, `<atom:table.filters>`, `<atom:table.trashed>`, `<atom:table.actions>`, `<atom:table.pagination>`. Driven by `$_table` state on the Livewire component. See [Table selection](#table-selection). |
 | `<atom:tabs>` | `tabs` (array), `size` (`sm`), `variant` (`button`, `border`). Child: `<atom:tabs.item>`. |
 | `<atom:list>` | `heading`, `scrollable` (default `true`). Child: `<atom:list.item>`. |
