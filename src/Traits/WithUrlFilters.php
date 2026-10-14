@@ -3,6 +3,9 @@
 namespace Jiannius\Atom\Traits;
 
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Livewire\Features\SupportPagination\WithoutUrlPagination;
 use Livewire\Features\SupportQueryString\BaseUrl;
 use Livewire\WithPagination;
 use LogicException;
@@ -32,7 +35,9 @@ use ReflectionProperty;
  * other traits' entries and `#[Url]` properties are refused at mount. A custom
  * paginator page name (`->paginate(10, pageName: 'p')`) cannot be seen at mount,
  * because Livewire registers it lazily while rendering, so dehydrateWithUrlFilters()
- * refuses it on the request that builds the paginator.
+ * refuses it at the end of the initial render, the only request whose `$paginators`
+ * only the host can have filled. Neither is checked on a component that uses
+ * WithoutUrlPagination, whose paginators write nothing to the URL.
  */
 trait WithUrlFilters
 {
@@ -45,8 +50,15 @@ trait WithUrlFilters
     protected ?array $urlFiltersStash = null;
 
     /**
-     * The host-check failures already reported in this process ("component::exception"),
-     * so a crafted URL cannot flood the log while a host bug still shows up once.
+     * Whether this instance was mounted, which only the initial render does. Not
+     * persisted: every Livewire update request hydrates a fresh instance, so it is
+     * false there. Unlike the `X-Livewire` header it cannot be left off by a client.
+     */
+    protected bool $urlFiltersMounted = false;
+
+    /**
+     * The host-check failures already logged by this process ("component|key|exception"),
+     * the fallback when the cache cannot be used to dedupe across processes.
      *
      * @var array<string, true>
      */
@@ -166,6 +178,8 @@ trait WithUrlFilters
      */
     public function mountWithUrlFilters(): void
     {
+        $this->urlFiltersMounted = true;
+
         $property = $this->urlFiltersProperty();
         $declared = $this->urlFilterDefinitions();
         $internal = $this->urlFilterInternalKeys();
@@ -260,14 +274,26 @@ trait WithUrlFilters
     /**
      * Refuse a filter whose query key is also a paginator's page name. Livewire
      * registers a page name in `$paginators` lazily, when the paginator is built
-     * (`->paginate(10, pageName: 'p')`, during render or an action), so the mount
-     * check cannot see it. By the end of every request it is there, so the check
-     * is made here: a loud LogicException, like the mount one, rather than two
-     * entries fighting over one query key (a filter value read as a page number, a
-     * `TypeError` on `nextPage()`, the last writer winning the URL).
+     * (`->paginate(10, pageName: 'p')`, during render), so the mount check cannot see
+     * it. At the end of the initial render it is there, so the check is made here: a
+     * loud LogicException, like the mount one, rather than two entries fighting over
+     * one query key (a filter value read as a page number, a `TypeError` on
+     * `nextPage()`, the last writer winning the URL).
+     *
+     * Initial render only. `$paginators` is a public property, so on an update request
+     * a client can put any name in it (`$wire.set('paginators.search', 3)`,
+     * `$wire.gotoPage(2, 'region')`) and this would be a 500, reported on every
+     * request, for something that was harmless before. A name a host registers only on
+     * a later request is therefore not caught. A component that uses
+     * WithoutUrlPagination writes no paginator to the URL, so it has nothing to
+     * collide with.
      */
     public function dehydrateWithUrlFilters(): void
     {
+        if (! $this->urlFiltersMounted || in_array(WithoutUrlPagination::class, class_uses_recursive(static::class), true)) {
+            return;
+        }
+
         $paginators = property_exists($this, 'paginators') && is_array($this->paginators) ? array_keys($this->paginators) : [];
 
         if ($paginators === []) {
@@ -347,9 +373,9 @@ trait WithUrlFilters
 
     /**
      * The host's own check, which a crafted link can make throw (a date that does not
-     * parse): a throw is a refusal, never a 500. It is also reported, once per
-     * exception class per component per process, so a host bug (a TypeError) shows up
-     * in the logs while a crafted URL cannot flood them.
+     * parse): a throw is a refusal, never a 500. It is also logged (never its message
+     * or the value, both of which a crafted link controls), once an hour per component,
+     * key and exception class, so a host bug (a TypeError) shows up in the logs.
      */
     protected function urlFilterHostAccepts(string $key, mixed $value): bool
     {
@@ -357,32 +383,47 @@ trait WithUrlFilters
             return $this->isUrlFilterValid($key, $value);
         }
         catch (\Throwable $e) {
-            $this->reportUrlFilterFailure($e);
+            $this->reportUrlFilterFailure($key, $e);
 
             return false;
         }
     }
 
     /**
-     * Report a failure of isUrlFilterValid() the first time its class is seen on this
-     * component. The seen-set is capped at 100 and emptied when full, like the
-     * editor's refusal log, so it cannot grow without bound.
+     * Log a failure of isUrlFilterValid() with where it happened, not what it said:
+     * the component, the key, the exception class and its file and line. The message
+     * is left out because it usually quotes the value (Carbon's does), which is up to
+     * 1000 bytes the visitor chose. Once an hour per component, key and class across
+     * processes through the cache; if the cache throws, once per process from a seen-set
+     * capped at 100 and emptied when full, like the editor's refusal log.
      */
-    protected function reportUrlFilterFailure(\Throwable $e): void
+    protected function reportUrlFilterFailure(string $key, \Throwable $e): void
     {
-        $seen = static::class.'::'.$e::class;
+        $id = static::class.'|'.$key.'|'.$e::class;
 
-        if (isset(static::$urlFilterReported[$seen])) {
+        try {
+            $first = Cache::add('atom:url-filter-failure:'.md5($id), 1, 3600);
+        }
+        catch (\Throwable) {
+            $first = ! isset(static::$urlFilterReported[$id]);
+
+            if (count(static::$urlFilterReported) >= 100) {
+                static::$urlFilterReported = [];
+            }
+
+            static::$urlFilterReported[$id] = true;
+        }
+
+        if (! $first) {
             return;
         }
 
-        if (count(static::$urlFilterReported) >= 100) {
-            static::$urlFilterReported = [];
-        }
-
-        static::$urlFilterReported[$seen] = true;
-
-        report($e);
+        Log::warning('isUrlFilterValid() threw and its value was refused.', [
+            'component' => static::class,
+            'key' => $key,
+            'exception' => $e::class,
+            'at' => $e->getFile().':'.$e->getLine(),
+        ]);
     }
 
     /**
@@ -435,8 +476,8 @@ trait WithUrlFilters
 
     /**
      * Every query key something else on the component already writes to: `page` when
-     * the component uses WithPagination (Livewire registers it lazily, so it is not in
-     * any query-string entry yet), the host's own `queryString`, other traits' entries,
+     * the component uses WithPagination and not WithoutUrlPagination (Livewire registers
+     * it lazily, so it is not in any query-string entry yet), the host's own `queryString`, other traits' entries,
      * and `#[Url]` properties (a `tab` or any other key is one of these, so it is
      * found there, not reserved by name). A filter that took one would fight it over
      * the URL.
@@ -464,7 +505,7 @@ trait WithUrlFilters
             }
         }
 
-        $taken = in_array(WithPagination::class, $traits, true) ? ['page'] : [];
+        $taken = in_array(WithPagination::class, $traits, true) && ! in_array(WithoutUrlPagination::class, $traits, true) ? ['page'] : [];
 
         foreach ($entries as $entry) {
             foreach ((array) $entry as $key => $value) {

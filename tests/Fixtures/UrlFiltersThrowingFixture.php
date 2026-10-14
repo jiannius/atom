@@ -13,8 +13,9 @@ class UrlFiltersThrowingFixture extends UrlFiltersFixture
      */
     protected function isUrlFilterValid(string $key, mixed $value): bool
     {
-        if ($key === 'search' && $value === 'boom') {
-            throw new \InvalidArgumentException('could not parse');
+        if (is_string($value) && str_starts_with($value, 'boom')) {
+            // quotes the value, as Carbon's own message does
+            throw new \InvalidArgumentException('could not parse '.$value);
         }
 
         if ($key === 'search' && $value === 'type') {

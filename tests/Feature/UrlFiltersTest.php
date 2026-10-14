@@ -1,12 +1,17 @@
 <?php
 
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Log;
 use Jiannius\Atom\Tests\Fixtures\Item;
 use Jiannius\Atom\Tests\Fixtures\TableFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersCapsFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersFixture;
+use Jiannius\Atom\Tests\Fixtures\UrlFiltersItemFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersMountDefaultFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersPaginatedFixture;
-use Jiannius\Atom\Tests\Fixtures\UrlFiltersItemFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersStrayFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersThrowingFixture;
 use Jiannius\Atom\Traits\AtomComponent;
@@ -14,9 +19,8 @@ use Jiannius\Atom\Traits\WithUrlFilters;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\Livewire;
+use Livewire\WithoutUrlPagination;
 use Livewire\WithPagination;
-use Illuminate\Contracts\Debug\ExceptionHandler;
-use Illuminate\Support\Facades\Exceptions;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
@@ -246,54 +250,134 @@ describe('a host check that throws, in the logs', function () {
             ->all();
     }
 
+    /** What a throwing check logged, as [message, context] pairs. */
+    function urlFiltersLogged(object $test): array
+    {
+        return collect($test->logged)
+            ->filter(fn ($event) => str_contains($event->message, 'isUrlFilterValid()'))
+            ->map(fn ($event) => [$event->message, $event->context])
+            ->values()
+            ->all();
+    }
+
     beforeEach(function () {
         Exceptions::fake();
 
-        // the seen-set is per process: start each test from empty
+        // the testbench default is the database store, which has no table here
+        config(['cache.default' => 'array']);
+        Cache::forgetDriver();
+        Cache::flush();
+
+        // the fallback seen-set is per process: start each test from empty
         (fn () => static::$urlFilterReported = [])->bindTo(null, UrlFiltersFixture::class)();
+
+        $this->logged = [];
+        Log::listen(function (MessageLogged $event) {
+            $this->logged[] = $event;
+        });
     });
 
-    it('is reported once per exception class, however often a crafted link repeats it, and is still refused', function () {
+    it('is logged once, however often a crafted link repeats it, and is still refused', function () {
         foreach (range(1, 5) as $ignored) {
-            $test = urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class);
+            $test = urlFiltersMounted(['search' => 'boom-SECRET-VALUE'], UrlFiltersThrowingFixture::class);
 
             $test->assertOk();
             expect($test->get('filters.search'))->toBe('');
         }
 
-        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'boom')->assertForbidden();
-        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters', ['search' => 'boom'])->assertForbidden();
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'boom-SECRET-VALUE')->assertForbidden();
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters', ['search' => 'boom-SECRET-VALUE'])->assertForbidden();
 
-        // the 403s are HttpExceptions, which the real handler never reports
-        expect(urlFiltersReported())->toBe([InvalidArgumentException::class]);
+        $logged = urlFiltersLogged($this);
+
+        expect($logged)->toHaveCount(1);
+        expect($logged[0][1])->toMatchArray([
+            'component' => UrlFiltersThrowingFixture::class,
+            'key' => 'search',
+            'exception' => InvalidArgumentException::class,
+        ]);
+        expect($logged[0][1]['at'])->toContain('UrlFiltersThrowingFixture.php:');
     });
 
-    it('reports a different exception class as its own failure', function () {
-        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
-        urlFiltersMounted(['search' => 'type'], UrlFiltersThrowingFixture::class)->assertOk();
-        urlFiltersMounted(['search' => 'type'], UrlFiltersThrowingFixture::class)->assertOk();
+    it('never puts the exception message or the value in the log, or in a report', function () {
+        urlFiltersMounted(['search' => 'boom-SECRET-VALUE'], UrlFiltersThrowingFixture::class)->assertOk();
 
-        expect(urlFiltersReported())->toBe([InvalidArgumentException::class, TypeError::class]);
-    });
+        $logged = urlFiltersLogged($this);
 
-    it('reports nothing for a value the host simply refuses, or accepts', function () {
-        urlFiltersMounted(['region' => 'XX', 'search' => 'fine'], UrlFiltersThrowingFixture::class)->assertOk();
-        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'fine')->assertOk();
-
+        expect($logged)->toHaveCount(1);
+        expect(json_encode($logged))->not->toContain('SECRET-VALUE')->not->toContain('could not parse');
         expect(urlFiltersReported())->toBe([]);
     });
 
-    it('keeps its seen-set bounded', function () {
+    it('dedupes per component, per key and per exception class', function () {
+        $other = new class extends UrlFiltersThrowingFixture {};
+
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        expect(urlFiltersLogged($this))->toHaveCount(1);
+
+        // another component with the same bug is its own entry
+        urlFiltersMounted(['search' => 'boom'], $other::class)->assertOk();
+        expect(urlFiltersLogged($this))->toHaveCount(2);
+
+        // so is another key, and another exception class
+        urlFiltersMounted(['region' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        urlFiltersMounted(['search' => 'type'], UrlFiltersThrowingFixture::class)->assertOk();
+        urlFiltersMounted(['search' => 'type'], UrlFiltersThrowingFixture::class)->assertOk();
+
+        expect(collect(urlFiltersLogged($this))->map(fn ($entry) => $entry[1]['key'].' '.class_basename($entry[1]['exception']))->all())
+            ->toBe(['search InvalidArgumentException', 'search InvalidArgumentException', 'region InvalidArgumentException', 'search TypeError']);
+    });
+
+    it('dedupes across processes through the cache, once an hour', function () {
+        $key = 'atom:url-filter-failure:'.md5(UrlFiltersThrowingFixture::class.'|search|'.InvalidArgumentException::class);
+
+        expect(Cache::has($key))->toBeFalse();
+
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+
+        expect(Cache::has($key))->toBeTrue();
+
+        // another worker has an empty static, but shares the cache: nothing more is logged
+        (fn () => static::$urlFilterReported = [])->bindTo(null, UrlFiltersFixture::class)();
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+
+        expect(urlFiltersLogged($this))->toHaveCount(1);
+
+        $this->travel(61)->minutes();
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+
+        expect(urlFiltersLogged($this))->toHaveCount(2);
+    });
+
+    it('logs nothing for a value the host simply refuses, or accepts', function () {
+        urlFiltersMounted(['region' => 'XX', 'search' => 'fine'], UrlFiltersThrowingFixture::class)->assertOk();
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'fine')->assertOk();
+
+        expect(urlFiltersLogged($this))->toBe([]);
+        expect(urlFiltersReported())->toBe([]);
+    });
+
+    it('falls back to a bounded per-process set when the cache throws, and still refuses', function () {
+        Cache::shouldReceive('add')->andThrow(new RuntimeException('cache down'));
+
+        $test = urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class);
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+
+        $test->assertOk();
+        expect($test->get('filters.search'))->toBe('');
+        expect(urlFiltersLogged($this))->toHaveCount(1);
+
         $component = new UrlFiltersThrowingFixture;
 
         foreach (range(1, 250) as $i) {
             eval("class UrlFiltersBoundedException{$i} extends Exception {}");
 
-            (fn () => $this->reportUrlFilterFailure(new ("UrlFiltersBoundedException{$i}")))->call($component);
+            (fn () => $this->reportUrlFilterFailure('search', new ("UrlFiltersBoundedException{$i}")))->call($component);
         }
 
         expect(count((fn () => static::$urlFilterReported)->bindTo(null, UrlFiltersFixture::class)()))->toBeLessThanOrEqual(100);
-        expect(urlFiltersReported())->toHaveCount(250);
+        expect(urlFiltersLogged($this))->toHaveCount(251);
     });
 });
 
@@ -428,18 +512,53 @@ describe('a paginator page name that is also a filter key', function () {
         expect(urlFiltersThrowsLogic(fn () => urlFiltersMounted(['search' => 'ap'], UrlFiltersPaginatedFixture::class), 'paginator page name'))->toBeTrue();
     });
 
-    it('is refused when a later request registers the paginator, and by its prefixed key', function () {
-        UrlFiltersPaginatedFixture::$pageName = 'claims_page';
-        $test = urlFiltersMounted([], UrlFiltersPaginatedFixture::class)->assertOk();
-
-        expect(urlFiltersThrowsLogic(fn () => $test->call('gotoPage', 2, 'status'), 'paginator page name'))->toBeTrue();
-
+    it('is refused by its prefixed key too', function () {
         $prefixed = new class extends UrlFiltersPaginatedFixture {
             protected function urlFiltersPrefix(): string { return 'claims_'; }
         };
 
         UrlFiltersPaginatedFixture::$pageName = 'claims_search';
         expect(urlFiltersThrowsLogic(fn () => Livewire::test($prefixed::class), 'claims_search'))->toBeTrue();
+    });
+
+    it('is not checked on an update request: a client writes $paginators, so it would be a 500', function (string $method, array $arguments) {
+        // `search`, `status` and `region` are filter keys; before the check existed all of these were harmless
+        Exceptions::fake();
+
+        urlFiltersMounted([], UrlFiltersFixture::class)->assertOk()->{$method}(...$arguments)->assertOk();
+
+        expect(collect(app(ExceptionHandler::class)->reported())->reject(fn ($e) => $e instanceof HttpException)->all())->toBe([]);
+    })->with([
+        'set one page name' => ['set', ['paginators.search', 3]],
+        'set the whole array' => ['set', ['paginators', ['status' => 1]]],
+        'gotoPage on a filter key' => ['call', ['gotoPage', 2, 'region']],
+    ]);
+
+    it('does not catch a host paginator registered only on a later request', function () {
+        UrlFiltersPaginatedFixture::$pageName = 'claims_page';
+
+        urlFiltersMounted([], UrlFiltersPaginatedFixture::class)->assertOk()->call('gotoPage', 2, 'status')->assertOk();
+    });
+
+    it('is not checked, and `page` is not reserved, on a component that uses WithoutUrlPagination', function () {
+        // its paginators write nothing to the URL, so a filter cannot fight one
+        $quiet = new class extends UrlFiltersPaginatedFixture {
+            use WithoutUrlPagination;
+
+            protected function urlFilters(): array { return ['search' => '', 'page' => '']; }
+        };
+
+        expect(array_column(urlFiltersEntries($quiet), 'as'))->toBe(['search', 'page']);
+
+        UrlFiltersPaginatedFixture::$pageName = 'search';
+        Livewire::test($quiet::class)->assertOk();
+
+        // and the same component without it is refused on both counts
+        $loud = new class extends UrlFiltersPaginatedFixture {
+            protected function urlFilters(): array { return ['search' => '', 'page' => '']; }
+        };
+
+        expect(fn () => urlFiltersEntries($loud))->toThrow(LogicException::class, 'already used');
     });
 
     it('lets a page name that is not a filter key through, so a listing can paginate', function (string $pageName) {
