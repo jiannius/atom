@@ -3,7 +3,10 @@
 namespace Jiannius\Atom\Traits;
 
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Livewire\Features\SupportQueryString\BaseUrl;
+use Livewire\WithPagination;
 use LogicException;
 use ReflectionAttribute;
 use ReflectionProperty;
@@ -25,6 +28,14 @@ use ReflectionProperty;
  * for what arrives from the URL and updatingWithUrlFilters() for what arrives over
  * the wire. It does not replace `filter(Arr::only(...))` for a component that does
  * not use the trait.
+ *
+ * A filter's query key (with its prefix) must not be one something else writes to the
+ * URL: `page` on a component that uses WithPagination, the host's own `queryString`,
+ * other traits' entries and `#[Url]` properties are refused at mount. A custom
+ * paginator page name (`->paginate(10, pageName: 'p')`) cannot be seen at mount,
+ * because Livewire registers it lazily while rendering, so dehydrateWithUrlFilters()
+ * refuses it at the end of the initial render, the only request whose `$paginators`
+ * only the host can have filled.
  */
 trait WithUrlFilters
 {
@@ -35,6 +46,21 @@ trait WithUrlFilters
      * @var array<string, mixed>|null
      */
     protected ?array $urlFiltersStash = null;
+
+    /**
+     * Whether this instance was mounted, which only the initial render does. Not
+     * persisted: every Livewire update request hydrates a fresh instance, so it is
+     * false there. Unlike the `X-Livewire` header it cannot be left off by a client.
+     */
+    protected bool $urlFiltersMounted = false;
+
+    /**
+     * The host-check failures already logged by this process ("component|key|exception"),
+     * the fallback when the cache cannot be used to dedupe across processes.
+     *
+     * @var array<string, true>
+     */
+    protected static array $urlFilterReported = [];
 
     /**
      * The filters that live in the URL, as [key => default]. A key is a plain
@@ -118,7 +144,7 @@ trait WithUrlFilters
 
         foreach ($this->urlFilterDefinitions() as $key => $default) {
             if (in_array($this->urlFiltersPrefix().$key, $taken, true)) {
-                throw new LogicException(static::class.': the query key ['.$this->urlFiltersPrefix().$key.'] is already used (pagination, `tab` or another query-string entry): give the filter another key or a urlFiltersPrefix().');
+                throw new LogicException(static::class.': the query key ['.$this->urlFiltersPrefix().$key.'] is already used (pagination or another query-string entry): give the filter another key or a urlFiltersPrefix().');
             }
 
             $entries[$this->urlFiltersProperty().'.'.$key] = [
@@ -150,6 +176,8 @@ trait WithUrlFilters
      */
     public function mountWithUrlFilters(): void
     {
+        $this->urlFiltersMounted = true;
+
         $property = $this->urlFiltersProperty();
         $declared = $this->urlFilterDefinitions();
         $internal = $this->urlFilterInternalKeys();
@@ -242,6 +270,44 @@ trait WithUrlFilters
     }
 
     /**
+     * Refuse a filter whose query key is also a paginator's page name. Livewire
+     * registers a page name in `$paginators` lazily, when the paginator is built
+     * (`->paginate(10, pageName: 'p')`, during render), so the mount check cannot see
+     * it. At the end of the initial render it is there, so the check is made here: a
+     * loud LogicException, like the mount one, rather than two entries fighting over
+     * one query key (a filter value read as a page number, a `TypeError` on
+     * `nextPage()`, the last writer winning the URL).
+     *
+     * Initial render only. `$paginators` is a public property, so on an update request
+     * a client can put any name in it (`$wire.set('paginators.search', 3)`,
+     * `$wire.gotoPage(2, 'region')`) and this would be a 500, reported on every
+     * request, for something that was harmless before. A name a host registers only on
+     * a later request is therefore not caught. A component that uses
+     * WithoutUrlPagination is checked too: it writes no paginator to the URL, but
+     * Livewire still reads the page from the query (`?search=ap` becomes page "ap").
+     */
+    public function dehydrateWithUrlFilters(): void
+    {
+        if (! $this->urlFiltersMounted) {
+            return;
+        }
+
+        $paginators = property_exists($this, 'paginators') && is_array($this->paginators) ? array_keys($this->paginators) : [];
+
+        if ($paginators === []) {
+            return;
+        }
+
+        $prefix = $this->urlFiltersPrefix();
+
+        foreach ($this->urlFilterDefinitions() as $key => $default) {
+            if (in_array($prefix.$key, array_map('strval', $paginators), true)) {
+                throw new LogicException(static::class.': the filter query key ['.$prefix.$key.'] is also a paginator page name: give the filter another key or a urlFiltersPrefix(), or the paginator another pageName.');
+            }
+        }
+    }
+
+    /**
      * The declared [key => default], with a key that cannot be a query key refused
      * loudly: it is a typo in the host, not input.
      *
@@ -305,16 +371,65 @@ trait WithUrlFilters
 
     /**
      * The host's own check, which a crafted link can make throw (a date that does not
-     * parse): a throw is a refusal, never a 500.
+     * parse): a throw is a refusal, never a 500. It is also logged (never its message
+     * or the value, both of which a crafted link controls), once an hour per component,
+     * key and exception class, so a host bug (a TypeError) shows up in the logs.
      */
     protected function urlFilterHostAccepts(string $key, mixed $value): bool
     {
         try {
             return $this->isUrlFilterValid($key, $value);
         }
-        catch (\Throwable) {
+        catch (\Throwable $e) {
+            $this->reportUrlFilterFailure($key, $e);
+
             return false;
         }
+    }
+
+    /**
+     * Log a failure of isUrlFilterValid() with where it happened, not what it said:
+     * the component, the key, the exception class and its file and line. The message
+     * is left out because it usually quotes the value (Carbon's does), which is up to
+     * 1000 bytes the visitor chose. Once an hour per component, key and class across
+     * processes through the cache; if the cache throws, or cannot remember (the null
+     * store: add() is false and has() is false too), once per process from a seen-set
+     * capped at 100 and emptied when full, like the editor's refusal log.
+     */
+    protected function reportUrlFilterFailure(string $key, \Throwable $e): void
+    {
+        $id = static::class.'|'.$key.'|'.$e::class;
+
+        $cacheKey = 'atom:url-filter-failure:'.md5($id);
+
+        try {
+            $first = Cache::add($cacheKey, 1, 3600);
+            $remembers = $first || Cache::has($cacheKey);
+        }
+        catch (\Throwable) {
+            $first = $remembers = false;
+        }
+
+        if (! $remembers) {
+            $first = ! isset(static::$urlFilterReported[$id]);
+
+            if (count(static::$urlFilterReported) >= 100) {
+                static::$urlFilterReported = [];
+            }
+
+            static::$urlFilterReported[$id] = true;
+        }
+
+        if (! $first) {
+            return;
+        }
+
+        Log::warning('isUrlFilterValid() threw and its value was refused.', [
+            'component' => static::class,
+            'key' => $key,
+            'exception' => $e::class,
+            'at' => $e->getFile().':'.$e->getLine(),
+        ]);
     }
 
     /**
@@ -366,9 +481,13 @@ trait WithUrlFilters
     }
 
     /**
-     * Every query key something else on the component already writes to: `page` and
-     * `tab`, the host's own `queryString`, other traits' (pagination), and `#[Url]`
-     * properties. A filter that took one would fight it over the URL.
+     * Every query key something else on the component already writes to: `page` when
+     * the component uses WithPagination, WithoutUrlPagination or not (Livewire registers
+     * it lazily, so it is not in any query-string entry yet, and still reads it from the
+     * query), the host's own `queryString`, other traits' entries,
+     * and `#[Url]` properties (a `tab` or any other key is one of these, so it is
+     * found there, not reserved by name). A filter that took one would fight it over
+     * the URL.
      *
      * @return list<string>
      */
@@ -383,7 +502,9 @@ trait WithUrlFilters
             $entries[] = $this->queryString;
         }
 
-        foreach (class_uses_recursive(static::class) as $trait) {
+        $traits = class_uses_recursive(static::class);
+
+        foreach ($traits as $trait) {
             $member = 'queryString'.class_basename($trait);
 
             if ($trait !== __TRAIT__ && method_exists($this, $member)) {
@@ -391,7 +512,7 @@ trait WithUrlFilters
             }
         }
 
-        $taken = ['page', 'tab'];
+        $taken = in_array(WithPagination::class, $traits, true) ? ['page'] : [];
 
         foreach ($entries as $entry) {
             foreach ((array) $entry as $key => $value) {

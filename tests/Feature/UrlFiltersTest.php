@@ -1,17 +1,26 @@
 <?php
 
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Log;
 use Jiannius\Atom\Tests\Fixtures\Item;
 use Jiannius\Atom\Tests\Fixtures\TableFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersCapsFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersFixture;
-use Jiannius\Atom\Tests\Fixtures\UrlFiltersMountDefaultFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersItemFixture;
+use Jiannius\Atom\Tests\Fixtures\UrlFiltersMountDefaultFixture;
+use Jiannius\Atom\Tests\Fixtures\UrlFiltersPaginatedFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersStrayFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersThrowingFixture;
 use Jiannius\Atom\Traits\AtomComponent;
 use Jiannius\Atom\Traits\WithUrlFilters;
 use Livewire\Attributes\Url;
+use Livewire\Component;
 use Livewire\Livewire;
+use Livewire\WithoutUrlPagination;
+use Livewire\WithPagination;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
@@ -230,6 +239,177 @@ describe('a host check that throws', function () {
     });
 });
 
+describe('a host check that throws, in the logs', function () {
+    /** The classes reported since Exceptions::fake(), HttpExceptions (the 403s) left out. */
+    function urlFiltersReported(): array
+    {
+        return collect(app(ExceptionHandler::class)->reported())
+            ->reject(fn ($e) => $e instanceof HttpException)
+            ->map(fn ($e) => $e::class)
+            ->values()
+            ->all();
+    }
+
+    /** What a throwing check logged, as [message, context] pairs. */
+    function urlFiltersLogged(object $test): array
+    {
+        return collect($test->logged)
+            ->filter(fn ($event) => str_contains($event->message, 'isUrlFilterValid()'))
+            ->map(fn ($event) => [$event->message, $event->context])
+            ->values()
+            ->all();
+    }
+
+    beforeEach(function () {
+        Exceptions::fake();
+
+        // the testbench default is the database store, which has no table here
+        config(['cache.default' => 'array']);
+        Cache::forgetDriver();
+        Cache::flush();
+
+        // the fallback seen-set is per process: start each test from empty
+        (fn () => static::$urlFilterReported = [])->bindTo(null, UrlFiltersFixture::class)();
+
+        $this->logged = [];
+        Log::listen(function (MessageLogged $event) {
+            $this->logged[] = $event;
+        });
+    });
+
+    it('is logged once, however often a crafted link repeats it, and is still refused', function () {
+        foreach (range(1, 5) as $ignored) {
+            $test = urlFiltersMounted(['search' => 'boom-SECRET-VALUE'], UrlFiltersThrowingFixture::class);
+
+            $test->assertOk();
+            expect($test->get('filters.search'))->toBe('');
+        }
+
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'boom-SECRET-VALUE')->assertForbidden();
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters', ['search' => 'boom-SECRET-VALUE'])->assertForbidden();
+
+        $logged = urlFiltersLogged($this);
+
+        expect($logged)->toHaveCount(1);
+        expect($logged[0][1])->toMatchArray([
+            'component' => UrlFiltersThrowingFixture::class,
+            'key' => 'search',
+            'exception' => InvalidArgumentException::class,
+        ]);
+        expect($logged[0][1]['at'])->toContain('UrlFiltersThrowingFixture.php:');
+    });
+
+    it('never puts the exception message or the value in the log, or in a report', function () {
+        urlFiltersMounted(['search' => 'boom-SECRET-VALUE'], UrlFiltersThrowingFixture::class)->assertOk();
+
+        $logged = urlFiltersLogged($this);
+
+        expect($logged)->toHaveCount(1);
+        expect(json_encode($logged))->not->toContain('SECRET-VALUE')->not->toContain('could not parse');
+        expect(urlFiltersReported())->toBe([]);
+    });
+
+    it('dedupes per component, per key and per exception class', function () {
+        $other = new class extends UrlFiltersThrowingFixture {};
+
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        expect(urlFiltersLogged($this))->toHaveCount(1);
+
+        // another component with the same bug is its own entry
+        urlFiltersMounted(['search' => 'boom'], $other::class)->assertOk();
+        expect(urlFiltersLogged($this))->toHaveCount(2);
+
+        // so is another key, and another exception class
+        urlFiltersMounted(['region' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        urlFiltersMounted(['search' => 'type'], UrlFiltersThrowingFixture::class)->assertOk();
+        urlFiltersMounted(['search' => 'type'], UrlFiltersThrowingFixture::class)->assertOk();
+
+        expect(collect(urlFiltersLogged($this))->map(fn ($entry) => $entry[1]['key'].' '.class_basename($entry[1]['exception']))->all())
+            ->toBe(['search InvalidArgumentException', 'search InvalidArgumentException', 'region InvalidArgumentException', 'search TypeError']);
+    });
+
+    it('dedupes across processes through the cache, once an hour', function () {
+        $key = 'atom:url-filter-failure:'.md5(UrlFiltersThrowingFixture::class.'|search|'.InvalidArgumentException::class);
+
+        expect(Cache::has($key))->toBeFalse();
+
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+
+        expect(Cache::has($key))->toBeTrue();
+
+        // another worker has an empty static, but shares the cache: nothing more is logged
+        (fn () => static::$urlFilterReported = [])->bindTo(null, UrlFiltersFixture::class)();
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+
+        expect(urlFiltersLogged($this))->toHaveCount(1);
+
+    });
+
+    it('logs again after an hour, and not before', function () {
+        $start = now();
+
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        expect(urlFiltersLogged($this))->toHaveCount(1);
+
+        $this->travelTo($start->copy()->addMinutes(59));
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        expect(urlFiltersLogged($this))->toHaveCount(1);
+
+        $this->travelTo($start->copy()->addMinutes(61));
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        expect(urlFiltersLogged($this))->toHaveCount(2);
+    });
+
+    it('falls back to the per-process set on a store that cannot remember (null), and logs once', function () {
+        config(['cache.default' => 'null', 'cache.stores.null' => ['driver' => 'null']]);
+        Cache::forgetDriver();
+
+        // the null store: add() is false and has() is false
+        expect(Cache::add('probe', 1, 60))->toBeFalse();
+        expect(Cache::has('probe'))->toBeFalse();
+
+        foreach (range(1, 3) as $ignored) {
+            $test = urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class);
+
+            $test->assertOk();
+            expect($test->get('filters.search'))->toBe('');
+        }
+
+        expect(urlFiltersLogged($this))->toHaveCount(1);
+    });
+
+    it('logs nothing for a value the host simply refuses, or accepts', function () {
+        urlFiltersMounted(['region' => 'XX', 'search' => 'fine'], UrlFiltersThrowingFixture::class)->assertOk();
+        urlFiltersMounted([], UrlFiltersThrowingFixture::class)->set('filters.search', 'fine')->assertOk();
+
+        expect(urlFiltersLogged($this))->toBe([]);
+        expect(urlFiltersReported())->toBe([]);
+    });
+
+    it('falls back to a bounded per-process set when the cache throws, and still refuses', function () {
+        Cache::shouldReceive('add')->andThrow(new RuntimeException('cache down'));
+
+        $test = urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class);
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+
+        $test->assertOk();
+        expect($test->get('filters.search'))->toBe('');
+        expect(urlFiltersLogged($this))->toHaveCount(1);
+
+        $component = new UrlFiltersThrowingFixture;
+
+        foreach (range(1, 250) as $i) {
+            eval("class UrlFiltersBoundedException{$i} extends Exception {}");
+
+            (fn () => $this->reportUrlFilterFailure('search', new ("UrlFiltersBoundedException{$i}")))->call($component);
+        }
+
+        expect(count((fn () => static::$urlFilterReported)->bindTo(null, UrlFiltersFixture::class)()))->toBeLessThanOrEqual(100);
+        expect(urlFiltersLogged($this))->toHaveCount(251);
+    });
+});
+
 describe('a whole replacement', function () {
     it('gives a declared key the replacement left out its default', function () {
         $test = urlFiltersMounted(['search' => 'ap', 'status' => ['fresh']])->set('filters', [])->assertOk();
@@ -255,7 +435,17 @@ describe('a key something else already writes to the URL', function () {
         'page' => fn () => new class extends UrlFiltersFixture {
             protected function urlFilters(): array { return ['page' => '']; }
         },
-        'tab' => fn () => new class extends UrlFiltersFixture {
+        'a host `tab` that is a #[Url] property' => fn () => new class extends UrlFiltersFixture {
+            #[Url]
+            public string $tab = 'info';
+
+            protected function urlFilters(): array { return ['tab' => '']; }
+        },
+        'a host `tab` that is a queryString entry' => fn () => new class extends UrlFiltersFixture {
+            public string $tab = 'info';
+
+            protected function queryString(): array { return ['tab' => ['except' => 'info']]; }
+
             protected function urlFilters(): array { return ['tab' => '']; }
         },
         'a prefix that makes `page`' => fn () => new class extends UrlFiltersFixture {
@@ -279,6 +469,39 @@ describe('a key something else already writes to the URL', function () {
         },
     ]);
 
+    it('reserves `page` only for a component that uses WithPagination, and `tab` by what really writes it', function () {
+        $plain = new class extends Component {
+            use WithUrlFilters;
+
+            public array $filters = ['page' => '', 'tab' => ''];
+
+            protected function urlFilters(): array { return ['page' => '', 'tab' => '']; }
+        };
+
+        // no pagination, no host `tab` entry: nothing else writes either key
+        expect(array_column(urlFiltersEntries($plain), 'as'))->toBe(['page', 'tab']);
+
+        // the same declaration beside a #[Url] `tab` is refused, as is `page` once pagination is in
+        $paginated = new class extends Component {
+            use WithPagination, WithUrlFilters;
+
+            public array $filters = ['page' => ''];
+
+            protected function urlFilters(): array { return ['page' => '']; }
+        };
+
+        expect(fn () => urlFiltersEntries($paginated))->toThrow(LogicException::class, 'already used');
+
+        // a plain `tab` property with no query-string entry writes nothing to the URL
+        $quietTab = new class extends UrlFiltersFixture {
+            public string $tab = 'info';
+
+            protected function urlFilters(): array { return ['tab' => '']; }
+        };
+
+        expect(array_column(urlFiltersEntries($quietTab), 'as'))->toBe(['tab']);
+    });
+
     it('lets a prefix keep two listings apart, and the fixture as declared', function () {
         expect(array_column(urlFiltersEntries(new UrlFiltersFixture), 'as'))->toBe(['search', 'status', 'region']);
 
@@ -288,6 +511,94 @@ describe('a key something else already writes to the URL', function () {
 
         expect(array_column(urlFiltersEntries($prefixed), 'as'))->toBe(['claims_search', 'claims_status', 'claims_region']);
     });
+});
+
+describe('a paginator page name that is also a filter key', function () {
+    /** Whether the callback throws a LogicException, which a view render may wrap in a ViewException. */
+    function urlFiltersThrowsLogic(callable $callback, string $message): bool
+    {
+        try {
+            $callback();
+        }
+        catch (Throwable $e) {
+            for (; $e; $e = $e->getPrevious()) {
+                if ($e instanceof LogicException && str_contains($e->getMessage(), $message)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    afterEach(fn () => UrlFiltersPaginatedFixture::$pageName = 'search');
+
+    it('is refused where Livewire registers it (the render that builds the paginator), not only at mount', function () {
+        // Livewire adds a page name to $paginators when the paginator is built, after mount
+        // and after the query-string check; unrefused, `?search=ap` is read as page "ap"
+        // while also filtering the listing, and nextPage('search') is a TypeError
+        expect(urlFiltersThrowsLogic(fn () => urlFiltersMounted([], UrlFiltersPaginatedFixture::class), 'paginator page name'))->toBeTrue();
+        expect(urlFiltersThrowsLogic(fn () => urlFiltersMounted(['search' => 'ap'], UrlFiltersPaginatedFixture::class), 'paginator page name'))->toBeTrue();
+    });
+
+    it('is refused by its prefixed key too', function () {
+        $prefixed = new class extends UrlFiltersPaginatedFixture {
+            protected function urlFiltersPrefix(): string { return 'claims_'; }
+        };
+
+        UrlFiltersPaginatedFixture::$pageName = 'claims_search';
+        expect(urlFiltersThrowsLogic(fn () => Livewire::test($prefixed::class), 'claims_search'))->toBeTrue();
+    });
+
+    it('is not checked on an update request: a client writes $paginators, so it would be a 500', function (string $method, array $arguments) {
+        // `search`, `status` and `region` are filter keys; before the check existed all of these were harmless
+        Exceptions::fake();
+
+        urlFiltersMounted([], UrlFiltersFixture::class)->assertOk()->{$method}(...$arguments)->assertOk();
+
+        expect(collect(app(ExceptionHandler::class)->reported())->reject(fn ($e) => $e instanceof HttpException)->all())->toBe([]);
+    })->with([
+        'set one page name' => ['set', ['paginators.search', 3]],
+        'set the whole array' => ['set', ['paginators', ['status' => 1]]],
+        'gotoPage on a filter key' => ['call', ['gotoPage', 2, 'region']],
+    ]);
+
+    it('does not catch a host paginator registered only on a later request', function () {
+        UrlFiltersPaginatedFixture::$pageName = 'claims_page';
+
+        urlFiltersMounted([], UrlFiltersPaginatedFixture::class)->assertOk()->call('gotoPage', 2, 'status')->assertOk();
+    });
+
+    it('still reserves `page` and still detects the collision on a component that uses WithoutUrlPagination', function () {
+        // it only skips the URL write: Livewire still reads the page from the query, so
+        // `?search=ap` makes $paginators `{"search":"ap"}` and nextPage('search') a TypeError
+        $quiet = new class extends UrlFiltersPaginatedFixture {
+            use WithoutUrlPagination;
+
+            protected function urlFilters(): array { return ['search' => '', 'page' => '']; }
+        };
+
+        expect(fn () => urlFiltersEntries($quiet))->toThrow(LogicException::class, 'already used');
+
+        $detects = new class extends UrlFiltersPaginatedFixture {
+            use WithoutUrlPagination;
+        };
+
+        UrlFiltersPaginatedFixture::$pageName = 'search';
+        expect(urlFiltersThrowsLogic(fn () => urlFiltersMounted(['search' => 'ap'], $detects::class), 'paginator page name'))->toBeTrue();
+
+        UrlFiltersPaginatedFixture::$pageName = 'claimsPage';
+        urlFiltersMounted([], $detects::class)->assertOk();
+    });
+
+    it('lets a page name that is not a filter key through, so a listing can paginate', function (string $pageName) {
+        UrlFiltersPaginatedFixture::$pageName = $pageName;
+
+        $test = urlFiltersMounted(['search' => 'ap'], UrlFiltersPaginatedFixture::class)->assertOk();
+
+        expect($test->get('filters.search'))->toBe('ap');
+        expect(array_keys($test->get('paginators')))->toBe([$pageName]);
+    })->with(['claimsPage', 'p', 'tenant']);   // `tenant` is internal state, never a query key
 });
 
 describe('the reach of filter() behind the allow-list', function () {
@@ -337,12 +648,12 @@ describe('a component that does not use the trait', function () {
 });
 
 describe('the names the trait occupies', function () {
-    it('exposes only its three lifecycle hooks; every declaration hook is protected', function () {
+    it('exposes only its four lifecycle hooks; every declaration hook is protected', function () {
         $reflection = new ReflectionClass(WithUrlFilters::class);
 
         $public = collect($reflection->getMethods(ReflectionMethod::IS_PUBLIC))->map->getName()->sort()->values()->all();
 
-        expect($public)->toBe(['mountWithUrlFilters', 'updatedWithUrlFilters', 'updatingWithUrlFilters']);
+        expect($public)->toBe(['dehydrateWithUrlFilters', 'mountWithUrlFilters', 'updatedWithUrlFilters', 'updatingWithUrlFilters']);
 
         // a host component sees one namespace: these are what it must not shadow by accident
         foreach (['urlFilters', 'urlFiltersExcept', 'urlFiltersProperty', 'urlFiltersPrefix', 'isUrlFilterValid', 'urlFilterMaxLength', 'urlFilterMaxItems'] as $hook) {
