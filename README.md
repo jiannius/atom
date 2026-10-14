@@ -734,7 +734,7 @@ URL). Two optional methods: `urlFiltersProperty()` (default `'filters'`) and
 a query key, so no `.`, no `col:operator`) or the component throws at mount. Filter on an
 operator through a named scope instead. A key (with its prefix) that another query-string entry already
 uses also throws at mount: `page` on a component that uses `WithPagination` (every `AtomComponent`
-does) and not `WithoutUrlPagination`, your own `queryString`, a `#[Url]` property (a host `tab` is
+does), your own `queryString`, a `#[Url]` property (a host `tab` is
 one of these; a filter named `tab` or `page` is fine on a component with neither). A **custom
 paginator page name** (`->paginate(10, pageName: 'p')`) cannot be seen at mount, because Livewire
 registers it only when the paginator is built; the trait checks at the end of the **initial render**
@@ -743,8 +743,9 @@ it the two fight over one query key: `?search=ap` is read as page "ap" while it 
 `nextPage()` is a `TypeError`. Give the filter another key or a `urlFiltersPrefix()`, or the
 paginator another `pageName`. The check does **not** run on a Livewire update request (`$paginators`
 is a public property, so a client can write any name into it and it would be a 500), so a page name
-your component registers only on a later request is not caught; nor does it run on a component that
-uses `WithoutUrlPagination`, whose paginators write nothing to the URL.
+your component registers only on a later request is not caught. `WithoutUrlPagination` does not
+change either rule: it only stops Livewire writing the page to the URL, it still reads it from the
+query (`?search=ap` makes the page "ap"), so such a component reserves `page` and is checked too.
 
 ### The declaration is an allow-list
 
