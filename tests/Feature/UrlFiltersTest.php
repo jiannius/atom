@@ -344,10 +344,39 @@ describe('a host check that throws, in the logs', function () {
 
         expect(urlFiltersLogged($this))->toHaveCount(1);
 
-        $this->travel(61)->minutes();
-        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+    });
 
+    it('logs again after an hour, and not before', function () {
+        $start = now();
+
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        expect(urlFiltersLogged($this))->toHaveCount(1);
+
+        $this->travelTo($start->copy()->addMinutes(59));
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
+        expect(urlFiltersLogged($this))->toHaveCount(1);
+
+        $this->travelTo($start->copy()->addMinutes(61));
+        urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class)->assertOk();
         expect(urlFiltersLogged($this))->toHaveCount(2);
+    });
+
+    it('falls back to the per-process set on a store that cannot remember (null), and logs once', function () {
+        config(['cache.default' => 'null', 'cache.stores.null' => ['driver' => 'null']]);
+        Cache::forgetDriver();
+
+        // the null store: add() is false and has() is false
+        expect(Cache::add('probe', 1, 60))->toBeFalse();
+        expect(Cache::has('probe'))->toBeFalse();
+
+        foreach (range(1, 3) as $ignored) {
+            $test = urlFiltersMounted(['search' => 'boom'], UrlFiltersThrowingFixture::class);
+
+            $test->assertOk();
+            expect($test->get('filters.search'))->toBe('');
+        }
+
+        expect(urlFiltersLogged($this))->toHaveCount(1);
     });
 
     it('logs nothing for a value the host simply refuses, or accepts', function () {
@@ -540,25 +569,26 @@ describe('a paginator page name that is also a filter key', function () {
         urlFiltersMounted([], UrlFiltersPaginatedFixture::class)->assertOk()->call('gotoPage', 2, 'status')->assertOk();
     });
 
-    it('is not checked, and `page` is not reserved, on a component that uses WithoutUrlPagination', function () {
-        // its paginators write nothing to the URL, so a filter cannot fight one
+    it('still reserves `page` and still detects the collision on a component that uses WithoutUrlPagination', function () {
+        // it only skips the URL write: Livewire still reads the page from the query, so
+        // `?search=ap` makes $paginators `{"search":"ap"}` and nextPage('search') a TypeError
         $quiet = new class extends UrlFiltersPaginatedFixture {
             use WithoutUrlPagination;
 
             protected function urlFilters(): array { return ['search' => '', 'page' => '']; }
         };
 
-        expect(array_column(urlFiltersEntries($quiet), 'as'))->toBe(['search', 'page']);
+        expect(fn () => urlFiltersEntries($quiet))->toThrow(LogicException::class, 'already used');
 
-        UrlFiltersPaginatedFixture::$pageName = 'search';
-        Livewire::test($quiet::class)->assertOk();
-
-        // and the same component without it is refused on both counts
-        $loud = new class extends UrlFiltersPaginatedFixture {
-            protected function urlFilters(): array { return ['search' => '', 'page' => '']; }
+        $detects = new class extends UrlFiltersPaginatedFixture {
+            use WithoutUrlPagination;
         };
 
-        expect(fn () => urlFiltersEntries($loud))->toThrow(LogicException::class, 'already used');
+        UrlFiltersPaginatedFixture::$pageName = 'search';
+        expect(urlFiltersThrowsLogic(fn () => urlFiltersMounted(['search' => 'ap'], $detects::class), 'paginator page name'))->toBeTrue();
+
+        UrlFiltersPaginatedFixture::$pageName = 'claimsPage';
+        urlFiltersMounted([], $detects::class)->assertOk();
     });
 
     it('lets a page name that is not a filter key through, so a listing can paginate', function (string $pageName) {

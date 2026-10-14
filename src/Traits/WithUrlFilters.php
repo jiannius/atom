@@ -5,7 +5,6 @@ namespace Jiannius\Atom\Traits;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Livewire\Features\SupportPagination\WithoutUrlPagination;
 use Livewire\Features\SupportQueryString\BaseUrl;
 use Livewire\WithPagination;
 use LogicException;
@@ -36,8 +35,7 @@ use ReflectionProperty;
  * paginator page name (`->paginate(10, pageName: 'p')`) cannot be seen at mount,
  * because Livewire registers it lazily while rendering, so dehydrateWithUrlFilters()
  * refuses it at the end of the initial render, the only request whose `$paginators`
- * only the host can have filled. Neither is checked on a component that uses
- * WithoutUrlPagination, whose paginators write nothing to the URL.
+ * only the host can have filled.
  */
 trait WithUrlFilters
 {
@@ -285,12 +283,12 @@ trait WithUrlFilters
      * `$wire.gotoPage(2, 'region')`) and this would be a 500, reported on every
      * request, for something that was harmless before. A name a host registers only on
      * a later request is therefore not caught. A component that uses
-     * WithoutUrlPagination writes no paginator to the URL, so it has nothing to
-     * collide with.
+     * WithoutUrlPagination is checked too: it writes no paginator to the URL, but
+     * Livewire still reads the page from the query (`?search=ap` becomes page "ap").
      */
     public function dehydrateWithUrlFilters(): void
     {
-        if (! $this->urlFiltersMounted || in_array(WithoutUrlPagination::class, class_uses_recursive(static::class), true)) {
+        if (! $this->urlFiltersMounted) {
             return;
         }
 
@@ -394,17 +392,25 @@ trait WithUrlFilters
      * the component, the key, the exception class and its file and line. The message
      * is left out because it usually quotes the value (Carbon's does), which is up to
      * 1000 bytes the visitor chose. Once an hour per component, key and class across
-     * processes through the cache; if the cache throws, once per process from a seen-set
+     * processes through the cache; if the cache throws, or cannot remember (the null
+     * store: add() is false and has() is false too), once per process from a seen-set
      * capped at 100 and emptied when full, like the editor's refusal log.
      */
     protected function reportUrlFilterFailure(string $key, \Throwable $e): void
     {
         $id = static::class.'|'.$key.'|'.$e::class;
 
+        $cacheKey = 'atom:url-filter-failure:'.md5($id);
+
         try {
-            $first = Cache::add('atom:url-filter-failure:'.md5($id), 1, 3600);
+            $first = Cache::add($cacheKey, 1, 3600);
+            $remembers = $first || Cache::has($cacheKey);
         }
         catch (\Throwable) {
+            $first = $remembers = false;
+        }
+
+        if (! $remembers) {
             $first = ! isset(static::$urlFilterReported[$id]);
 
             if (count(static::$urlFilterReported) >= 100) {
@@ -476,8 +482,9 @@ trait WithUrlFilters
 
     /**
      * Every query key something else on the component already writes to: `page` when
-     * the component uses WithPagination and not WithoutUrlPagination (Livewire registers
-     * it lazily, so it is not in any query-string entry yet), the host's own `queryString`, other traits' entries,
+     * the component uses WithPagination, WithoutUrlPagination or not (Livewire registers
+     * it lazily, so it is not in any query-string entry yet, and still reads it from the
+     * query), the host's own `queryString`, other traits' entries,
      * and `#[Url]` properties (a `tab` or any other key is one of these, so it is
      * found there, not reserved by name). A filter that took one would fight it over
      * the URL.
@@ -505,7 +512,7 @@ trait WithUrlFilters
             }
         }
 
-        $taken = in_array(WithPagination::class, $traits, true) && ! in_array(WithoutUrlPagination::class, $traits, true) ? ['page'] : [];
+        $taken = in_array(WithPagination::class, $traits, true) ? ['page'] : [];
 
         foreach ($entries as $entry) {
             foreach ((array) $entry as $key => $value) {
