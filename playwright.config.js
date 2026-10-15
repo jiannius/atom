@@ -3,6 +3,9 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './tests/e2e',
   use: { baseURL: 'http://127.0.0.1:8000' },
+  // The served app is PHP's one-request-at-a-time server: on CI two workers queue behind each other and a drag
+  // or a page load can run out of time. One worker there, and one retry for what still flakes.
+  ...(process.env.CI ? { workers: 1, retries: 1 } : {}),
   // Chromium runs everything. WebKit runs only the calendar's keyboard and accessibility spec and the look spec's word-boundary
   // tests (where a title breaks is the engine's own: Safari broke what Chromium did not), not the rest of the look spec: its contrast
   // sweep and its container-rule test fail there for reasons of the harness, with or without a change to the calendar.
