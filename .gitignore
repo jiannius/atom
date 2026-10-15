@@ -21,3 +21,6 @@ playwright-report/
 /playwright/.cache/
 .claude/
 .playwright-mcp/
+# consumer Tailwind fixture: compiled output, and the copy of input.css build.mjs makes per version
+/tests/consumer/build/
+/tests/consumer/*/input.css

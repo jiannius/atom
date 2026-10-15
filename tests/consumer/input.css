@@ -1,0 +1,13 @@
+/*
+ * What a consuming app's Tailwind build looks like around atom: Tailwind's own entry, plus a scan of
+ * atom's blade files. build.mjs copies this file into each Tailwind version's directory before it
+ * compiles, because Tailwind resolves `@import "tailwindcss"` from the directory of the file it reads,
+ * so the `@source` paths below are relative to tests/consumer/<version>/, not to this file.
+ */
+@import "tailwindcss" source(none);
+
+/* V4-1b: `@import "../../../resources/css/atom.tailwind.css";` goes here once that file exists. */
+
+@source "../../../components";
+@source "../../../resources/views";
+@source "../../../tests/Fixtures";
