@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`jiannius/atom` is a Laravel package (composer name `jiannius/atom`, PSR-4 namespace `Jiannius\Atom\`) that ships a Tailwind + Alpine + Livewire UI component library. It is consumed by other Laravel apps via `composer require`; this repo is the library itself, not a host app. There is no `.env`, no app boot, no test suite wired up — Orchestra Testbench is in dev deps but unused.
+`jiannius/atom` is a Laravel package (composer name `jiannius/atom`, PSR-4 namespace `Jiannius\Atom\`) that ships a Tailwind + Alpine + Livewire UI component library. It is consumed by other Laravel apps via `composer require`; this repo is the library itself, not a host app. There is no `.env` and no host app; tests boot the package through Orchestra Testbench (see Tests and CI).
 
 ## Common commands
 
@@ -14,9 +14,21 @@ npm run build
 
 # PHP deps
 composer install
+
+# Tests (see "Tests and CI" below)
+vendor/bin/pest                    # Pest + Testbench
+npm run test:e2e                   # Playwright against `vendor/bin/testbench serve` (:8000)
+node tests/consumer/build.mjs      # compile the consumer Tailwind fixture (after `npm ci` in tests/consumer/floor and /latest)
 ```
 
-There are no lint, test, or dev-server scripts defined. `vite.config.js` uses `laravel-vite-plugin`, but the package has no host Laravel app to serve from — `npm run build` produces a static `dist/` that is committed and served at runtime via the package's own `/atom/{file}` route.
+There are no lint or dev-server scripts defined. `vite.config.js` uses `laravel-vite-plugin`, but the package has no host Laravel app to serve from — `npm run build` produces a static `dist/` that is committed and served at runtime via the package's own `/atom/{file}` route.
+
+### Tests and CI
+
+- **Pest** (`tests/Feature`, `tests/Unit`) runs on Orchestra Testbench; `composer.lock` is not tracked, so dependencies resolve fresh. **Playwright** (`tests/e2e`) drives the testbench-served app: `/atom/docs` and the fixtures under `/atom/e2e/*` (`tests/Fixtures/E2EServiceProvider.php`).
+- **CI** (`.github/workflows/ci.yml`, on push to `main` and on pull requests): Pest on PHP 8.3 and 8.4; Playwright on Chromium only; the consumer Tailwind compile at both versions; and a `dist/` freshness check (`npm run build`, then the committed `dist/` must not change). Run `npm run build` and commit `dist/` whenever JS or CSS sources change.
+- **Consumer Tailwind fixture** (`tests/consumer/`): the e2e rig has no Tailwind, so utility classes are absent from every other page. `floor/` (the hosts' minimum, 4.0.7) and `latest/` (a hand-bumped pin of the newest 4.x) each have their own `package.json` and lockfile; `node tests/consumer/build.mjs [floor|latest]` compiles `input.css` (a scan of `components/`, `resources/views/` and `tests/Fixtures/`) into the git-ignored `tests/consumer/build/<name>.css`. A page opts in through `<atom:html :styles>`: `/atom/e2e/consumer-tailwind?tw=floor` (or `latest`), served by `/atom/e2e/consumer-css/{name}`. `tests/e2e/consumer-tailwind.spec.js` proves it.
+- Run Pest before Playwright (testbench's server leaves an `.env` behind); never pipe Playwright into `tail`/`head`, the server child keeps the pipe open.
 
 The package's own artisan command (available in any consuming app):
 
@@ -171,7 +183,7 @@ The Vite config builds `resources/css/atom.css`, `resources/css/editor.css`, `re
 
 ## Development guidelines
 
-Curated from the jiannius package skeleton (`skeleton-package`) — the subset that applies to atom. The skeleton's Pest/Testbench, Models & data, and Pint guidelines are intentionally omitted: atom has no test suite or Pint config (Orchestra Testbench is a dev dep but unused) and ships no models. Front-end changes still require `npm run build` + committing `dist/` (see Front-end above).
+Curated from the jiannius package skeleton (`skeleton-package`) — the subset that applies to atom. The skeleton's Pest/Testbench, Models & data, and Pint guidelines are intentionally omitted: atom has no Pint config (its Pest and Playwright suites are described under "Tests and CI") and ships no models. Front-end changes still require `npm run build` + committing `dist/` (see Front-end above).
 
 ### Conventions
 
