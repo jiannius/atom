@@ -32,6 +32,16 @@ class PurgeMatcherProbe extends PurgeEditorImages
     }
 
     /**
+     * The patterns the matcher runs, so a test can check it forced exactly those to fail.
+     *
+     * @return array{split: string, escapes: string}
+     */
+    public function patterns(): array
+    {
+        return ['split' => self::TOKEN_SPLIT, 'escapes' => self::JSON_ESCAPES];
+    }
+
+    /**
      * @return array<string, array<int, string>>
      */
     public function tokenNeedlesLeft(): array
@@ -505,8 +515,13 @@ describe('atom:purge-editor-images token matcher against the substring definitio
             ini_set('pcre.backtrack_limit', '1');
             $long = str_repeat('word ', 200).'<img src="fallback.jpg">';
 
-            // the split really fails here, or this test proves nothing
-            expect(preg_split('/[^a-z]+/', $long, -1, PREG_SPLIT_NO_EMPTY))->toBeFalse();
+            // the matcher's own split must really fail here, or this test proves nothing. PCRE reads
+            // pcre.jit and the backtrack limit when it compiles a pattern, so on a JIT build one
+            // that an earlier test already ran (cached, JIT-compiled) ignores both and succeeds
+            if (preg_split($probe->patterns()['split'], $long, -1, PREG_SPLIT_NO_EMPTY) !== false) {
+                $this->markTestSkipped('PCRE cannot be made to fail this split here: the pattern is already compiled with JIT.');
+            }
+
             expect($probe->find($long, null))->toBe(['fallback.jpg']);
         }
         finally {
@@ -527,7 +542,11 @@ describe('atom:purge-editor-images token matcher against the substring definitio
             // holds a backslash, so the variant is tried, and PCRE gives up on it
             $long = str_repeat('word ', 200).'\\u002f<img src="fallback.jpg">';
 
-            expect(preg_replace('/\\\\(?:u[0-9a-fA-F]{4}|[nrtbf])/', '/', $long))->toBeNull();
+            // as above: skip when PCRE cannot be made to give up on the matcher's own pattern
+            if (preg_replace($probe->patterns()['escapes'], '/', $long) !== null) {
+                $this->markTestSkipped('PCRE cannot be made to fail this replace here: the pattern is already compiled with JIT.');
+            }
+
             expect($probe->find($long, null))->toBe(['fallback.jpg']);
         }
         finally {
