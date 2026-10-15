@@ -3,6 +3,8 @@ node_modules/
 /public/storage
 /storage/*.key
 /vendor
+# a library: CI and consumers resolve dependencies fresh
+/composer.lock
 .env
 .env.backup
 .phpunit.result.cache
