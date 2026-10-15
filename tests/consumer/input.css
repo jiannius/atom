@@ -3,6 +3,10 @@
  * atom's blade files. build.mjs copies this file into each Tailwind version's directory before it
  * compiles, because Tailwind resolves `@import "tailwindcss"` from the directory of the file it reads,
  * so the `@source` paths below are relative to tests/consumer/<version>/, not to this file.
+ *
+ * "floor" is the hosts' minimum Tailwind and "latest" is a pin that is bumped by hand, not the newest
+ * release at the time CI runs: raise it in tests/consumer/latest/package.json (and its lockfile) when a
+ * newer 4.x ships.
  */
 @import "tailwindcss" source(none);
 

@@ -1,5 +1,6 @@
 // Compiles input.css with a consumer's Tailwind, once per version directory (floor = the hosts' minimum,
-// latest = the newest 4.x), into build/<name>.css. Usage: node tests/consumer/build.mjs [floor|latest]
+// latest = the newest 4.x when someone last bumped it: a hand-edited pin in latest/package.json, not a
+// moving target), into build/<name>.css. Usage: node tests/consumer/build.mjs [floor|latest]
 // Each directory needs its own `npm ci` first.
 import { copyFileSync, mkdirSync, existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
