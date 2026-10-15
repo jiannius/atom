@@ -88,6 +88,17 @@ class Content
     protected const MAX_PRE_COST = 500000000;
 
     /**
+     * The deepest a document may nest (a `doc` is level 1). libxml2 stops
+     * building a tree at 256 levels, and one level more or less than that
+     * (2.9 against 2.14 and later) decides whether tiptap-php's serialiser
+     * overruns json_encode()'s depth of 512 and raises a warning, a report()
+     * on every call. Real content nests a handful of levels (a list inside a
+     * list inside a table cell), so what is past this is refused, on every
+     * libxml, with room to spare below both limits.
+     */
+    protected const MAX_DEPTH = 200;
+
+    /**
      * Refusals already logged in this process, so a value that is rendered
      * many times in a request logs once.
      *
@@ -287,7 +298,8 @@ class Content
     /**
      * Whether sanitize() would refuse this input: over the byte or tag limit, a
      * whitespace run or `<pre>` the parser can't survive, tiptap-php's reserved
-     * placeholder, an invalid document, or output over the byte or tag limit.
+     * placeholder, an invalid document, one nested past MAX_DEPTH, or output over
+     * the byte or tag limit.
      * The limits on the input are checked first, without parsing; only input
      * that gets past them is converted, to measure the output, so call it
      * after sanitize() has returned '' (the answer is the same either way).
@@ -370,7 +382,16 @@ class Content
 
         $document = $editor->getDocument();
 
-        if (static::dedupeMarks($document)) {
+        if (($depth = static::depth($document)) > static::MAX_DEPTH) {
+            return ['', 'depth: nested '.$depth.' levels, over '.static::MAX_DEPTH, $text];
+        }
+
+        // libxml 2.14 and later leave loose top-level text as it is, and 2.9 wraps it in an implied
+        // paragraph, so only HTML needs it done (a JSON document is the editor's own, as stored)
+        $changed = is_string($content) && static::wrapLooseInline($document);
+        $changed = static::dedupeMarks($document) || $changed;
+
+        if ($changed) {
             $editor->setContent($document);
         }
 
@@ -418,7 +439,10 @@ class Content
      * Reduce a value to the string to parse: a Stringable is cast, an array is
      * accepted only as a document (a `type` key) and encoded, invalid UTF-8 is
      * scrubbed (the parser's minifier returns null on it, which is a
-     * TypeError). Null when there is nothing to parse.
+     * TypeError) and NUL bytes are dropped (libxml 2.9 reads one as a space and
+     * 2.14 and later skip it; dropping it first makes them agree, and it is
+     * done before any check, so a NUL cannot split a token one of them looks
+     * for). Null when there is nothing to parse.
      */
     protected static function input(mixed $value): ?string
     {
@@ -434,7 +458,7 @@ class Content
             return null;
         }
 
-        $value = trim(mb_scrub($value, 'UTF-8'));
+        $value = trim(str_replace("\0", '', mb_scrub($value, 'UTF-8')));
 
         return $value === '' ? null : $value;
     }
@@ -456,6 +480,7 @@ class Content
      *   never does;
      * - a `<pre>` block, or a count of `<pre>` tags, that Minify's regexes fail
      *   on or take quadratic time on (see normalisePre());
+     * - processing instructions are removed (see stripInstructions());
      * - whitespace runs are collapsed rather than refused (see
      *   collapseWhitespace()).
      *
@@ -481,6 +506,8 @@ class Content
 
             return $problem === null ? [$decoded, null] : [null, $problem];
         }
+
+        $text = static::stripInstructions($text);
 
         $problem = match (true) {
             static::carriesPlaceholder($text) => 'placeholder: the input carries tiptap-php\'s reserved token',
@@ -840,6 +867,95 @@ class Content
         $earlier['attrs'] = $attributes;
 
         return $earlier;
+    }
+
+    /**
+     * Remove processing instructions (`<?xml ...>`, `<?php ...>`) from HTML,
+     * each up to the first `>` or the end of the input, which is where both
+     * parsers end one. libxml 2.9 reads `<?name ...>` as a processing
+     * instruction node, and when `name` is one the schema parses (`<?span>`,
+     * `<?td>`, `<?a>`, `<?img>`) tiptap-php calls an element method on it and
+     * fails (a report() on every call, for input anyone can send); `<?p>` even
+     * prints a nested paragraph. libxml 2.14 and later read the same text as a
+     * bogus comment and drop it, as does this. This runs first, before every
+     * check, because removing one can join what was around it (`MINI<?x>FYHTML`
+     * carries the reserved token); the one way left for it to make a new `<?`
+     * (`<<?x>?y>`) is escaped to text, so no `<?` reaches either parser.
+     */
+    protected static function stripInstructions(string $html): string
+    {
+        if (! str_contains($html, '<?')) {
+            return $html;
+        }
+
+        $stripped = preg_replace('/<\?[^>]*+>?/', '', $html) ?? $html;
+
+        return str_replace('<?', '&lt;?', $stripped);
+    }
+
+    /**
+     * How many levels a parsed document nests, counting the `doc` as one.
+     *
+     * @param  array<mixed>  $node
+     */
+    protected static function depth(array $node): int
+    {
+        $deepest = 0;
+
+        foreach ($node['content'] ?? [] as $child) {
+            if (is_array($child)) {
+                $deepest = max($deepest, static::depth($child));
+            }
+        }
+
+        return $deepest + 1;
+    }
+
+    /**
+     * Put loose top-level text in a paragraph, as libxml 2.9 does by itself and
+     * 2.14 and later do not (`42` is `<p>42</p>` on one and a bare text node
+     * on the other, and `a<p>b</p>c` is `<p>a</p><p>b</p>c` against three
+     * loose parts). A run of text, hard breaks and mentions, and the images
+     * that follow its first one, becomes one paragraph: a leading image stays
+     * bare, which is what 2.9 does with it. A run of whitespace between blocks
+     * is dropped, as both do. Returns whether anything changed.
+     *
+     * @param  array<mixed>  $document
+     */
+    protected static function wrapLooseInline(array &$document): bool
+    {
+        if (! isset($document['content']) || ! is_array($document['content'])) {
+            return false;
+        }
+
+        $content = [];
+        $run = [];
+        $changed = false;
+
+        $flush = function () use (&$content, &$run, &$changed) {
+            if ($run !== []) {
+                $content[] = ['type' => 'paragraph', 'content' => $run];
+                $run = [];
+                $changed = true;
+            }
+        };
+
+        foreach ($document['content'] as $node) {
+            $type = is_array($node) ? ($node['type'] ?? null) : null;
+
+            if (in_array($type, ['text', 'hardBreak', 'mention'], true) || ($type === 'image' && $run !== [])) {
+                $run[] = $node;
+            } else {
+                $flush();
+                $content[] = $node;
+            }
+        }
+
+        $flush();
+
+        $document['content'] = $content;
+
+        return $changed;
     }
 
     /**

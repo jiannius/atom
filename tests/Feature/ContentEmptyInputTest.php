@@ -66,7 +66,7 @@ describe('Content: input that parses to nothing is an empty message', function (
     it('still treats a string that decodes as JSON but is not a document as text', function () {
         $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
 
-        expect(Content::sanitize('42'))->toBe('42');
+        expect(Content::sanitize('42'))->toBe('<p>42</p>');
     });
 });
 
@@ -87,7 +87,7 @@ describe('Content: the same mark twice on one node is not a failure', function (
 
         Log::shouldNotHaveReceived('warning');
     })->with([
-        'nested code' => ['<code><code>c</code></code>', '<code>c</code>'],
+        'nested code' => ['<code><code>c</code></code>', '<p><code>c</code></p>'],
         'nested bold' => ['<p><strong><strong>x</strong></strong></p>', '<p><strong>x</strong></p>'],
         'a document with two bold marks' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x","marks":[{"type":"bold"},{"type":"bold"}]}]}]}', '<p><strong>x</strong></p>'],
         'a document with two code marks and an italic' => ['{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"x","marks":[{"type":"code"},{"type":"code"},{"type":"italic"}]}]}]}', '<p><code><em>x</em></code></p>'],
@@ -173,7 +173,7 @@ describe('Content: the marks that really threw', function () {
         expect(Content::sanitize($html))->toBe($expected)
             ->and(Content::render($html))->toBe($expected);
     })->with([
-        'code, text, code' => ['<code>><code>c', '<code>&gt;</code><code>c</code>'],
+        'code, text, code' => ['<code>><code>c', '<p><code>&gt;</code><code>c</code></p>'],
         'strong around em around strong' => ['<p><strong>a<em><strong>c</strong></em></strong></p>', '<p><strong>a</strong><strong><em>c</em></strong></p>'],
     ]);
 });
