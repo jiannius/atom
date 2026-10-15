@@ -127,9 +127,11 @@ function fuzzRawNumbers(string|false $json): string
  * under other limits), and collect what breaks.
  *
  * @param  iterable<string, array<string, mixed>>  $documents  label => document
- * @return array{0: int, 1: array<string, array<int, string>>, 2: array<string, string>} [count, bad tags by label, reports by label]
+ * @param  ?callable  $transform  applied to each document's JSON before it is converted
+ * @param  bool  $expectText  the transformed input is not a JSON document, so it must come back as the text of one
+ * @return array{0: int, 1: array<string, array<int, string>>, 2: array<string, string>, 3: array<string, string>} [count, bad tags by label, reports by label, outputs that are not text by label]
  */
-function fuzzRun(iterable $documents, bool $renderToo = true): array
+function fuzzRun(iterable $documents, bool $renderToo = true, ?callable $transform = null, bool $expectText = false): array
 {
     $reports = [];
     $current = '';
@@ -142,20 +144,27 @@ function fuzzRun(iterable $documents, bool $renderToo = true): array
 
     $count = 0;
     $bad = [];
+    $notText = [];
 
     foreach ($documents as $label => $document) {
         $current = $label;
         $json = fuzzRawNumbers(json_encode($document));
+        $json = $transform ? $transform($json) : $json;
         $count++;
 
         foreach ($renderToo ? [Content::sanitize($json), Content::render($json)] : [Content::sanitize($json)] as $html) {
             if (($tags = fuzzBadTags($html)) !== []) {
                 $bad[$label] = $tags;
             }
+
+            // the document, read as the text it is: a paragraph that starts with its first characters
+            if ($expectText && $html !== '' && ! str_starts_with($html, '<p>{&quot;type&quot;:')) {
+                $notText[$label] = substr($html, 0, 120);
+            }
         }
     }
 
-    return [$count, $bad, $reports];
+    return [$count, $bad, $reports, $notText];
 }
 
 /**
@@ -179,7 +188,75 @@ function fuzzEveryAttribute(): Generator
     }
 }
 
+/**
+ * Each change inspect() makes to a string AFTER it has decided the string is not a JSON
+ * document: an instruction replaced, a whitespace run collapsed. Whichever made a string
+ * that was not JSON into one that is must not hand it to tiptap-php as JSON, which would
+ * skip every check a document gets (the repair of attributes, the limits).
+ *
+ * @return array<string, callable(string): string>
+ */
+function fuzzTextTransforms(): array
+{
+    $run = fn (string $space) => fn (string $json) => preg_replace('/"type":"doc",/', '"type":"doc",'.str_repeat($space, 40), $json, 1);
+
+    return [
+        'instruction before' => fn (string $json) => '<?x>'.$json,
+        'instruction after' => fn (string $json) => $json.'<?x>',
+        'instruction between tokens' => fn (string $json) => preg_replace('/"type":"doc",/', '"type":"doc",<?x>', $json, 1),
+        'instruction inside a token' => fn (string $json) => preg_replace('/"type":"doc"/', '"type":<?x>"doc"', $json, 1),
+        'a php instruction before' => fn (string $json) => '<?php echo 1 ?>'.$json,
+        'run of no-break spaces' => $run("\u{00A0}"),
+        'run of ideographic spaces' => $run("\u{3000}"),
+        'run of em spaces' => $run("\u{2003}"),
+        'run of next-line characters' => $run("\u{0085}"),
+        'run of line separators' => $run("\u{2028}"),
+        'run of mixed spaces' => $run("\u{00A0}\u{3000} "),
+    ];
+}
+
 describe('Content: attribute fuzz, JSON documents', function () {
+    /**
+     * Every 8th fixture, in every transform (the whole set in one is 3.5 s and this is
+     * eleven of them): what comes back is the text of the input, never the document.
+     */
+    it('reads input that stopped being JSON only after a step of its own as text, never as a document', function () {
+        $subset = (function () {
+            $i = 0;
+
+            foreach (fuzzEveryAttribute() as $label => $document) {
+                if ($i++ % 8 === 0) {
+                    yield $label => $document;
+                }
+            }
+        });
+
+        foreach (fuzzTextTransforms() as $name => $transform) {
+            [$count, $bad, $reports, $notText] = fuzzRun($subset(), renderToo: false, transform: $transform, expectText: true);
+
+            expect($count)->toBeGreaterThan(2500);
+            expect($reports)->toBe([], $name);
+            expect($bad)->toBe([], $name);
+            expect($notText)->toBe([], $name);
+        }
+    });
+
+    it('still reads a document with a NUL byte between its tokens as a document, with every check', function () {
+        [$count, $bad, $reports] = fuzzRun((function () {
+            $i = 0;
+
+            foreach (fuzzEveryAttribute() as $label => $document) {
+                if ($i++ % 8 === 0) {
+                    yield $label => $document;
+                }
+            }
+        })(), renderToo: false, transform: fn (string $json) => preg_replace('/"type":"doc",/', "\"type\":\"doc\",\0", $json, 1));
+
+        expect($count)->toBeGreaterThan(2500);
+        expect($reports)->toBe([]);
+        expect($bad)->toBe([]);
+    });
+
     it('never reports, and never prints a tag the schema does not have, for any value of any attribute', function () {
         [$count, $bad, $reports] = fuzzRun(fuzzEveryAttribute(), renderToo: false);
 

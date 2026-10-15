@@ -480,7 +480,7 @@ class Content
      *   never does;
      * - a `<pre>` block, or a count of `<pre>` tags, that Minify's regexes fail
      *   on or take quadratic time on (see normalisePre());
-     * - processing instructions are removed (see stripInstructions());
+     * - processing instructions are replaced by a space (see stripInstructions());
      * - whitespace runs are collapsed rather than refused (see
      *   collapseWhitespace()).
      *
@@ -507,7 +507,7 @@ class Content
             return $problem === null ? [$decoded, null] : [null, $problem];
         }
 
-        $text = static::stripInstructions($text);
+        $text = trim(static::stripInstructions($text));
 
         $problem = match (true) {
             static::carriesPlaceholder($text) => 'placeholder: the input carries tiptap-php\'s reserved token',
@@ -529,8 +529,12 @@ class Content
             return [null, $problem];
         }
 
-        // the parser takes any string that decodes as JSON for JSON: an empty comment makes it HTML
-        return [$isJson ? '<!---->'.$collapsed : $collapsed, null];
+        // tiptap-php takes any string that decodes as JSON for a JSON document, and reads that
+        // without any of the checks above. Whether the input was JSON was decided on the raw text,
+        // and the steps since (stripping an instruction, collapsing a whitespace run) can turn text
+        // that was not JSON into text that is. An empty comment in front makes it HTML, whatever
+        // came before: no string that starts with `<` is JSON.
+        return ['<!---->'.$collapsed, null];
     }
 
     /**
@@ -877,10 +881,11 @@ class Content
      * `<?td>`, `<?a>`, `<?img>`) tiptap-php calls an element method on it and
      * fails (a report() on every call, for input anyone can send); `<?p>` even
      * prints a nested paragraph. libxml 2.14 and later read the same text as a
-     * bogus comment and drop it, as does this. This runs first, before every
-     * check, because removing one can join what was around it (`MINI<?x>FYHTML`
-     * carries the reserved token); the one way left for it to make a new `<?`
-     * (`<<?x>?y>`) is escaped to text, so no `<?` reaches either parser.
+     * bogus comment and drop it, as does this. Each one is replaced by a
+     * space, not by nothing: removing it would join what was around it into
+     * something new (`MINI<?x>FYHTML` carrying the reserved token, `<<?x>img ..>`
+     * becoming a tag), and a space cannot. So no `<?` is left for either parser
+     * and nothing around one can fuse. It runs before every check on the text.
      */
     protected static function stripInstructions(string $html): string
     {
@@ -888,9 +893,8 @@ class Content
             return $html;
         }
 
-        $stripped = preg_replace('/<\?[^>]*+>?/', '', $html) ?? $html;
-
-        return str_replace('<?', '&lt;?', $stripped);
+        // if PCRE gives up, every `<?` is escaped to text instead
+        return preg_replace('/<\?[^>]*+>?/', ' ', $html) ?? str_replace('<?', '&lt;?', $html);
     }
 
     /**

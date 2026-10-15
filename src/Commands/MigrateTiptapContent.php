@@ -50,7 +50,8 @@ class MigrateTiptapContent extends Command
                         continue;
                     }
 
-                    $json = $editor->setContent($html)->getJSON();
+                    // an empty comment first: tiptap-php reads any string that decodes as JSON as a document, unchecked
+                    $json = $editor->setContent('<!---->'.$html)->getJSON();
                     if (! $this->option('dry')) {
                         $row->{$column} = $json;           // AsTiptapContent::set stores it
                     }

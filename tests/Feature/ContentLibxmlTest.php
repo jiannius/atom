@@ -31,29 +31,21 @@ describe('Content: a processing instruction is dropped, not parsed', function ()
         'a' => ['<p>x<?a></p>', '<p>x</p>'],
         'img' => ['<p>x<?img></p>', '<p>x</p>'],
         'p, which printed a nested paragraph' => ['<p>x<?p></p>', '<p>x</p>'],
-        'one with data, named like a tag the parser knows (the text after its > stays)' => ['<p>x<?a href="https://x.test/" target="_blank">y</p>', '<p>xy</p>'],
-        'one in the middle of a word' => ['<p>x<?xml version="1.0"?>y</p>', '<p>xy</p>'],
+        'one with data, named like a tag the parser knows (the text after its > stays)' => ['<p>x<?a href="https://x.test/" target="_blank">y</p>', '<p>x y</p>'],
+        'one in the middle of a word, which it separates' => ['<p>x<?xml version="1.0"?>y</p>', '<p>x y</p>'],
         'one after the last element' => ['<p>x</p><?php echo 1 ?>', '<p>x</p>'],
         'one cut off by the end of the input' => ['<p>x</p><?span', '<p>x</p>'],
         'the xml declaration of a pasted document' => ['<?xml version="1.0" encoding="UTF-8"?><p>x</p>', '<p>x</p>'],
     ]);
 
-    it('leaves no <? for either parser, even when removing one joins the text around it', function () {
+    it('cannot join what is around it into a tag or into the reserved placeholder', function () {
         $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
 
-        // removing `<?x>` leaves `<` beside `?y>`, which is a new `<?`
-        $out = withWarningsThrown(fn () => Content::sanitize('<p><<?x>?y></p>'));
+        // removing `<?x>` outright would leave `<` beside `?y>`, or `<` beside `img src=...>`, or MINI beside FYHTML
+        $out = withWarningsThrown(fn () => Content::sanitize('<p><<?x>?y></p><p><<?x>img src=x onerror=1></p><p>MINI<?x>FYHTML0</p>'));
 
-        expect($out)->not->toContain('<?')->toContain('?y');
-    });
-
-    it('cannot be used to build the reserved placeholder or a tag around the check for it', function () {
-        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
-        $html = '<p>MINI<?x>FYHTML0</p>';
-
-        expect(Content::carriesPlaceholder('MINI<?x>FYHTML'))->toBeFalse();
-        expect(Content::sanitize($html))->toBe('')
-            ->and(Content::sanitizeRefuses($html))->toBeTrue();
+        expect($out)->not->toContain('<?')->not->toContain('<img')->toContain('?y')->toContain('MINI FYHTML0');
+        expect(Content::sanitizeRefuses('<p>MINI<?x>FYHTML0</p>'))->toBeFalse();
     });
 
     it('still prints a < ? that is escaped text', function () {
@@ -115,6 +107,61 @@ describe('Content: loose top-level text is a paragraph', function () {
         'text and a hard break' => ['a<br>b'],
         'an old image row' => ['<img><https://a.test/x.png">>'],
     ]);
+});
+
+/**
+ * tiptap-php takes any string that decodes as JSON for a JSON document and reads it
+ * with none of the checks a document gets here (attributes repaired, limits, shape),
+ * and a document with a zero in its attributes prints other attributes as raw tags. So
+ * a string that was not JSON when inspect() looked at it must never reach tiptap-php as
+ * JSON, however the steps after that (an instruction replaced, a whitespace run
+ * collapsed) changed it. It is read as the HTML it is: text.
+ */
+describe('Content: input that was not JSON is never read as a JSON document', function () {
+    $document = '{"type":"doc","content":[{"type":"image","attrs":{"src":"https://x.test/a.png","alt":0.0,"title":"img src=x onerror=alert(1) x"}}]}';
+
+    dataset('not a document', [
+        'an instruction before it' => ['<?x>'.$document],
+        'an instruction after it' => [$document.'<?x>'],
+        'an instruction between its tokens' => [str_replace('"type":"doc",', '"type":"doc",<?x>', $document)],
+        'an instruction inside one of its tokens' => [str_replace('"type":"doc"', '"type":<?x>"doc"', $document)],
+        'a run of no-break spaces between its tokens' => [str_replace('"type":"doc",', '"type":"doc",'.str_repeat("\u{00A0}", 40), $document)],
+        'a run of ideographic spaces' => [str_replace('"type":"doc",', '"type":"doc",'.str_repeat("\u{3000}", 40), $document)],
+        'a run of spaces and no-break spaces' => [str_replace('"type":"doc",', '"type":"doc",'.str_repeat(" \u{00A0}", 40), $document)],
+    ]);
+
+    it('comes back as text: no image, no tag but a paragraph, no report', function (string $input) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        Log::spy();
+
+        foreach ([Content::sanitize($input), Content::render($input)] as $out) {
+            expect($out)->toStartWith('<p>{&quot;type&quot;:')
+                ->and($out)->not->toContain('<img')
+                ->and(domQuery($out, '//body//*[not(self::p)]'))->toBe([]);
+        }
+    })->with('not a document');
+
+    it('is the same document that the plain string is, when nothing changes it', function () use ($document) {
+        expect(Content::sanitize($document))->toStartWith('<img src="https://x.test/a.png"')
+            ->and(Content::sanitize($document))->toContain('alt="0"');
+    });
+
+    it('reads a document with a bare type and no content as text, with no report', function (string $input) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+
+        expect(Content::sanitize($input))->toBe('<p>{&quot;type&quot;:&quot;doc&quot;}</p>')
+            ->and(Content::render($input))->toBe('<p>{&quot;type&quot;:&quot;doc&quot;}</p>');
+    })->with([
+        'an instruction after it' => ['{"type":"doc"}<?x>'],
+        'an instruction before it' => ['<?x>{"type":"doc"}'],
+    ]);
+
+    it('still takes a real document, spaces around it and between its tokens included, with every check', function () use ($document) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        $spaced = "  \n".str_replace('"type":"doc",', "\"type\":\"doc\",\n  ", $document)."\n";
+
+        expect(Content::sanitize($spaced))->toBe(Content::sanitize($document));
+    });
 });
 
 describe('Content: NUL', function () {
