@@ -16,6 +16,7 @@ jobs:
   pest:
     name: Pest (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -46,6 +47,7 @@ jobs:
   consumer:
     name: Consumer Tailwind (${{ matrix.tw }})
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -65,8 +67,10 @@ jobs:
 
       - run: node tests/consumer/build.mjs ${{ matrix.tw }}
 
-      - name: The build holds utilities from atom's blades
-        run: grep -q '\.flex' tests/consumer/build/${{ matrix.tw }}.css
+      # A class that is written only in components/button/index.blade.php (no view, no src file): it is in the
+      # build only if the scan of atom's components/ worked. A utility from the e2e view would prove nothing.
+      - name: The build holds a utility only components/ declares
+        run: grep -qF 'group-\[\.is-loading\]\/button\:flex' tests/consumer/build/${{ matrix.tw }}.css
 
       - uses: actions/upload-artifact@v4
         with:
@@ -78,6 +82,7 @@ jobs:
     name: Playwright (Chromium)
     needs: consumer
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -126,6 +131,7 @@ jobs:
   dist:
     name: dist/ is up to date
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
