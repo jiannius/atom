@@ -581,6 +581,30 @@ describe('Content: the <pre> placeholder bomb', function () {
         expect($seconds)->toBeLessThan(0.5);
     });
 
+    /**
+     * The minifier's line trim deletes a run of whitespace that holds two newlines, so a token
+     * written with one inside (`%MINI`, a blank line, `FYHTML<hash>0%`) is not the reserved token
+     * when it is checked and is when the minifier is done: a forged placeholder expands once per
+     * token, and 1,478 of them in 131 KB was a memory fatal. The run is collapsed to a space first.
+     */
+    it('cannot be forged with a blank line inside the token', function (string $gap) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        $token = '%MINI'.$gap.'FYHTML'.md5((string) $_SERVER['REQUEST_TIME']).'0%';
+        $pre = '<pre>'.str_repeat('a', 60000).'</pre>';
+        $html = $pre.str_repeat($token.' ', (int) ((131000 - strlen($pre)) / (strlen($token) + 1)));
+
+        [$clean, $seconds, $mb] = measured(fn () => Content::sanitize($html));
+
+        expect($clean)->not->toContain('MINIFYHTML');
+        expect($mb)->toBeLessThan(20.0);
+        expect($seconds)->toBeLessThan(0.5);
+    })->with([
+        'two newlines' => ["\n\n"],
+        'two CRLF' => ["\r\n\r\n"],
+        'spaces around two newlines' => [" \n \n "],
+        'a no-break space and two newlines' => ["\u{00A0}\n\n"],
+    ]);
+
     it('is refused by the tiptap-migrate command guard', function () {
         expect(Content::carriesPlaceholder(placeholderBomb()))->toBeTrue();
         expect(Content::carriesPlaceholder('<pre>a</pre><p>b</p>'))->toBeFalse();

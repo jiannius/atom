@@ -367,32 +367,10 @@ class Content
             return ['', null, ''];
         }
 
-        [$content, $refusal] = static::inspect($text, $maxBytes, $maxTags);
+        [$editor, $refusal] = static::parse($text, $maxBytes, $maxTags);
 
-        if ($content === null) {
+        if ($editor === null) {
             return ['', $refusal, $text];
-        }
-
-        // a document with no <body> has no content, and tiptap-php's parser throws on it
-        if (is_string($content) && ! static::hasBody($content)) {
-            return ['', null, $text];
-        }
-
-        $editor = (new Editor(['extensions' => static::extensions()]))->setContent($content);
-
-        $document = $editor->getDocument();
-
-        if (($depth = static::depth($document)) > static::MAX_DEPTH) {
-            return ['', 'depth: nested '.$depth.' levels, over '.static::MAX_DEPTH, $text];
-        }
-
-        // libxml 2.14 and later leave loose top-level text as it is, and 2.9 wraps it in an implied
-        // paragraph, so only HTML needs it done (a JSON document is the editor's own, as stored)
-        $changed = is_string($content) && static::wrapLooseInline($document);
-        $changed = static::dedupeMarks($document) || $changed;
-
-        if ($changed) {
-            $editor->setContent($document);
         }
 
         $html = $editor->getHTML();
@@ -406,6 +384,73 @@ class Content
         }
 
         return [$html, null, $text];
+    }
+
+    /**
+     * Check the text and load it into an editor, ready to print as HTML or JSON:
+     * the one path both attempt() and toJson() take, so what is checked and
+     * normalised (limits, instructions, whitespace, depth, loose text, repeated
+     * marks) cannot differ between them. [null, null] when there is nothing to
+     * print, [null, reason] when it is refused. A failure the parser cannot
+     * handle is thrown.
+     *
+     * @return array{0: Editor|null, 1: string|null} [editor, refusal]
+     */
+    protected static function parse(string $text, int $maxBytes, int $maxTags): array
+    {
+        [$content, $refusal] = static::inspect($text, $maxBytes, $maxTags);
+
+        if ($content === null) {
+            return [null, $refusal];
+        }
+
+        // a document with no <body> has no content, and tiptap-php's parser throws on it
+        if (is_string($content) && ! static::hasBody($content)) {
+            return [null, null];
+        }
+
+        $editor = (new Editor(['extensions' => static::extensions()]))->setContent($content);
+
+        $document = $editor->getDocument();
+
+        if (($depth = static::depth($document)) > static::MAX_DEPTH) {
+            return [null, 'depth: nested '.$depth.' levels, over '.static::MAX_DEPTH];
+        }
+
+        // libxml 2.14 and later leave loose top-level text as it is, and 2.9 wraps it in an implied
+        // paragraph, so only HTML needs it done (a JSON document is the editor's own, as stored)
+        $changed = is_string($content) && static::wrapLooseInline($document);
+        $changed = static::dedupeMarks($document) || $changed;
+
+        if ($changed) {
+            $editor->setContent($document);
+        }
+
+        return [$editor, null];
+    }
+
+    /**
+     * Tiptap JSON for a legacy HTML value, for atom:tiptap-migrate: parsed through
+     * the same checks and normalisation as render(), under its limits. Null when
+     * there is nothing to convert or the value is refused (over the limits, too
+     * deeply nested, carrying the reserved placeholder). A failure the parser
+     * cannot handle is thrown, for the caller to skip the row.
+     */
+    public static function toJson(mixed $html): ?string
+    {
+        $text = static::input($html);
+
+        if ($text === null) {
+            return null;
+        }
+
+        [$editor] = static::parse(
+            $text,
+            (int) config('atom.editor.render_max_bytes', static::RENDER_MAX_BYTES),
+            (int) config('atom.editor.render_max_tags', static::RENDER_MAX_TAGS),
+        );
+
+        return $editor?->getJSON();
     }
 
     /**
@@ -963,18 +1008,28 @@ class Content
     }
 
     /**
-     * Collapse every run of whitespace longer than MAX_WHITESPACE_RUN, outside
-     * a `<pre>` block, to a single space, in one linear pass. PHP compiles the
-     * minifier's `\s` with Unicode properties (the `u` flag), so a no-break or
-     * other Unicode space counts as part of a run. The `<pre>` alternative is
-     * the minifier's own pattern, so the blocks it will set aside are the ones
-     * left alone. Null when the regex fails.
+     * Collapse, outside a `<pre>` block, every run of whitespace that is longer
+     * than MAX_WHITESPACE_RUN or holds two or more newlines to a single space,
+     * in one linear pass. PHP compiles the minifier's `\s` with Unicode
+     * properties (the `u` flag), so a no-break or other Unicode space counts as
+     * part of a run. The `<pre>` alternative is the minifier's own pattern, so
+     * the blocks it will set aside are the ones left alone (a blank line inside
+     * a code block is kept). Null when the regex fails.
+     *
+     * The second condition is what keeps the minifier from joining text that
+     * was checked here: its line trim (`^\s+|\s+$` per line) deletes a run with
+     * two or more newlines outright, so `<` and `?span>` on either side of a
+     * blank line, or `MINI` and `FYHTML`, become one token AFTER every check on
+     * this text has passed. The run is a space instead, so it still separates.
+     * Of the minifier's other steps, the swap of `<pre>` blocks puts them back
+     * in place and the trim of space before a block tag deletes only what is
+     * followed by a tag, so nothing else can join two pieces of text.
      */
     protected static function collapseWhitespace(string $html): ?string
     {
         return preg_replace_callback(
             '/(<pre\b[^>]*+>.*?<\/pre>)|[\s\x{0085}\x{00A0}\x{1680}\x{180E}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}]++/isu',
-            fn (array $match) => isset($match[1]) || strlen($match[0]) <= static::MAX_WHITESPACE_RUN ? $match[0] : ' ',
+            fn (array $match) => isset($match[1]) || (strlen($match[0]) <= static::MAX_WHITESPACE_RUN && substr_count($match[0], "\n") < 2) ? $match[0] : ' ',
             $html,
         );
     }

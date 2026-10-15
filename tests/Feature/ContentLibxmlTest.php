@@ -38,14 +38,61 @@ describe('Content: a processing instruction is dropped, not parsed', function ()
         'the xml declaration of a pasted document' => ['<?xml version="1.0" encoding="UTF-8"?><p>x</p>', '<p>x</p>'],
     ]);
 
+    /**
+     * libxml 2.9.13 (Ubuntu 22.04) drops the text after a stray `<` (`<p>a < b</p>` prints `<p>a </p>`), 2.9.14
+     * and later keep it, so what is printed for these is not pinned: no report, no `<?`, no tag but a paragraph,
+     * and neither the reserved placeholder nor a tag fused out of the pieces.
+     */
     it('cannot join what is around it into a tag or into the reserved placeholder', function () {
         $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
 
-        // removing `<?x>` outright would leave `<` beside `?y>`, or `<` beside `img src=...>`, or MINI beside FYHTML
-        $out = withWarningsThrown(fn () => Content::sanitize('<p><<?x>?y></p><p><<?x>img src=x onerror=1></p><p>MINI<?x>FYHTML0</p>'));
+        foreach (['<p><<?x>?y></p>', '<p><<?x>img src=x onerror=1></p>', '<p>MINI<?x>FYHTML0</p>'] as $html) {
+            $out = withWarningsThrown(fn () => Content::sanitize($html));
 
-        expect($out)->not->toContain('<?')->not->toContain('<img')->toContain('?y')->toContain('MINI FYHTML0');
+            expect($out)->not->toContain('<?')->not->toContain('<img')
+                ->and(domQuery($out, '//body//*[not(self::p)]'))->toBe([]);
+        }
+
+        // no fusion into the reserved token: the text around it is kept, not refused
         expect(Content::sanitizeRefuses('<p>MINI<?x>FYHTML0</p>'))->toBeFalse();
+        expect(Content::sanitize('<p>MINI<?x>FYHTML0</p>'))->toBe('<p>MINI FYHTML0</p>');
+    });
+
+    /**
+     * Nothing the minifier does after the checks may join two pieces of text: its line trim deletes a
+     * run of whitespace with two newlines, which put `<` and `?span>` back together as an instruction
+     * (libxml 2.9) or `<` and `script>` as a tag (every libxml), after both had been checked apart.
+     */
+    it('cannot be put back together by the minifier across a blank line', function (string $html) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        Log::spy();
+
+        withWarningsThrown(function () use ($html) {
+            foreach ([Content::sanitize($html), Content::render($html)] as $out) {
+                expect($out)->not->toContain('<?')
+                    ->and(domQuery($out, '//body//*[not(self::p)]'))->toBe([]);
+            }
+        });
+
+        Log::shouldNotHaveReceived('warning');
+    })->with([
+        'span, two newlines' => ["<p>a<\n\n?span>b</p>"],
+        'td' => ["<p>a<\n\n?td>b</p>"],
+        'a' => ["<p>a<\n\n?a>b</p>"],
+        'img' => ["<p>a<\n\n?img>b</p>"],
+        'p, which nested a paragraph' => ["<p>a<\n\n?p>b</p>"],
+        'two CRLF' => ["<p>a<\r\n\r\n?span>b</p>"],
+        'spaces around the newlines' => ["<p>a< \n \n ?span>b</p>"],
+        'a no-break space and two newlines' => ["<p>a<\u{00A0}\n\n?span>b</p>"],
+        'a script tag, which had no body once joined' => ["<\n\nscript>x"],
+        'a td tag as the whole input' => ["<\n\n?td>"],
+        'a tag name split by a blank line' => ["<p>a<\n\nscript>alert(1)</script>b</p>"],
+    ]);
+
+    it('keeps a blank line inside a code block', function () {
+        $html = "<pre><code>a\n\n\nb</code></pre>";
+
+        expect(Content::sanitize($html))->toBe($html);
     });
 
     it('still prints a < ? that is escaped text', function () {

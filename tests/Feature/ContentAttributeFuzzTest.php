@@ -212,6 +212,29 @@ function fuzzTextTransforms(): array
         'run of next-line characters' => $run("\u{0085}"),
         'run of line separators' => $run("\u{2028}"),
         'run of mixed spaces' => $run("\u{00A0}\u{3000} "),
+        // the minifier deletes a run with two newlines, and these are not JSON whitespace
+        'blank lines of no-break spaces' => $run("\u{00A0}\n\n"),
+        'blank lines of CRLF and ideographic spaces' => $run("\u{3000}\r\n\r\n"),
+    ];
+}
+
+/**
+ * Transforms that put a blank line (two newlines, which the minifier deletes) into a tag, an
+ * instruction or the reserved token. What comes back is not pinned, since libxml reads a stray
+ * `<` differently by version; it must be schema-only, with no report.
+ *
+ * @return array<string, callable(string): string>
+ */
+function fuzzJoinTransforms(): array
+{
+    return [
+        'a blank line inside an instruction' => fn (string $json) => "<\n\n?x>".$json,
+        'CRLF inside an instruction' => fn (string $json) => "<\r\n\r\n?x>".$json,
+        'a no-break space and a blank line inside an instruction' => fn (string $json) => "<\u{00A0}\n\n?span>".$json,
+        'a blank line after a <' => fn (string $json) => "<\n\n".$json,
+        'a blank line inside a tag' => fn (string $json) => "<\n\nscript>".$json,
+        'a blank line inside the reserved token' => fn (string $json) => "MINI\n\nFYHTML".$json,
+        'a blank line inside a tag name, in the middle' => fn (string $json) => preg_replace('/"type":"doc",/', "\"type\":\"doc\",<\n\n?td>", $json, 1),
     ];
 }
 
@@ -238,6 +261,26 @@ describe('Content: attribute fuzz, JSON documents', function () {
             expect($reports)->toBe([], $name);
             expect($bad)->toBe([], $name);
             expect($notText)->toBe([], $name);
+        }
+    });
+
+    it('is schema-only, with no report, when a blank line splits a tag, an instruction or the reserved token', function () {
+        $subset = (function () {
+            $i = 0;
+
+            foreach (fuzzEveryAttribute() as $label => $document) {
+                if ($i++ % 8 === 0) {
+                    yield $label => $document;
+                }
+            }
+        });
+
+        foreach (fuzzJoinTransforms() as $name => $transform) {
+            [$count, $bad, $reports] = fuzzRun($subset(), renderToo: false, transform: $transform);
+
+            expect($count)->toBeGreaterThan(2500);
+            expect($reports)->toBe([], $name);
+            expect($bad)->toBe([], $name);
         }
     });
 

@@ -5,7 +5,6 @@ namespace Jiannius\Atom\Commands;
 use Illuminate\Console\Command;
 use Jiannius\Atom\Casts\AsTiptapContent;
 use Jiannius\Atom\Tiptap\Content;
-use Tiptap\Editor;
 
 class MigrateTiptapContent extends Command
 {
@@ -17,7 +16,6 @@ class MigrateTiptapContent extends Command
      */
     public function handle(): void
     {
-        $editor = new Editor(['extensions' => Content::extensions()]);
         $count = 0;
 
         foreach ($this->models() as $class) {
@@ -50,8 +48,23 @@ class MigrateTiptapContent extends Command
                         continue;
                     }
 
-                    // an empty comment first: tiptap-php reads any string that decodes as JSON as a document, unchecked
-                    $json = $editor->setContent('<!---->'.$html)->getJSON();
+                    // the same checks and normalisation as Content::render(); a row the parser
+                    // cannot take is skipped and reported, never allowed to stop the run, and
+                    // nothing is written for it
+                    try {
+                        $json = $this->convert($html);
+                    } catch (\Throwable $e) {
+                        $this->warn('Skipped a '.$model::class.' '.$column.' value (row '.$row->getKey().'): the HTML parser failed on it ('.class_basename($e).').');
+
+                        continue;
+                    }
+
+                    if ($json === null) {
+                        $this->warn('Skipped a '.$model::class.' '.$column.' value (row '.$row->getKey().'): it has nothing to convert, or is over the size or nesting limits.');
+
+                        continue;
+                    }
+
                     if (! $this->option('dry')) {
                         $row->{$column} = $json;           // AsTiptapContent::set stores it
                     }
@@ -66,6 +79,14 @@ class MigrateTiptapContent extends Command
         }
 
         $this->info(($this->option('dry') ? '[dry] ' : '').'Migrated '.$count.' column value(s) to Tiptap JSON.');
+    }
+
+    /**
+     * Tiptap JSON for one legacy value, or null when there is nothing to convert or it is refused.
+     */
+    protected function convert(string $html): ?string
+    {
+        return Content::toJson($html);
     }
 
     /**
