@@ -24,7 +24,9 @@ for (const tw of ['floor', 'latest']) {
     await expect.poll(() => display(page, 'utility')).toBe('flex')
     expect(await display(page, 'hidden')).toBe('none')
 
-    // the component's own utilities come from the scan of atom's blades
-    expect(await display(page, 'button')).toMatch(/flex/)
+    // `flex` and `hidden` above are written in the e2e view itself, so they say nothing about the scan of
+    // components/. This class is written only in components/button/index.blade.php (no view, no src file),
+    // so the build holds it only if that scan worked.
+    expect((await css.text()).includes('group-\\[\\.is-loading\\]\\/button\\:flex'), 'the build has no utility that only components/ declares').toBe(true)
   })
 }
