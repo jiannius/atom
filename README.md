@@ -36,6 +36,21 @@ The service provider (`Jiannius\Atom\AtomServiceProvider`) auto-registers via La
 
 No publishing step is required to get started.
 
+### Tailwind integration
+
+Import atom's tokens once, after Tailwind itself, and set your brand colour as the accent:
+
+```css
+@import 'tailwindcss';
+@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';
+
+@theme {
+    --color-accent: #4c55c9;
+}
+```
+
+The file scans atom's own markup for utilities (no `@source` lines of your own), maps the type scale, weights, warm neutral ramp (`zinc` and `gray`), role and tone colours (light and dark), radius, density and the focus ring, and derives `accent-foreground`, `accent-hover`, `accent-soft` and `accent-ink` from the accent. Set one of those yourself only if you must. Dark follows the `.dark` class that `<atom:html dark>` adds.
+
 ### Page boilerplate
 
 Use `<atom:html>` once at the top of any full-page Blade view. It writes the `<html>`, `<head>`, meta tags, Tailwind base, atom's bundled CSS/JS, and your host app's Vite entry.
@@ -44,7 +59,6 @@ Use `<atom:html>` once at the top of any full-page Blade view. It writes the `<h
 <atom:html
     title="My Awesome App"
     description="Hello world"
-    :fonts="'inter'"
     :vite="['resources/css/app.css', 'resources/js/app.js']"
     :gtm="config('services.gtm.id')"
     dark>
@@ -65,7 +79,8 @@ Useful `<atom:html>` props (all optional):
 | `hreflang`    | Array of locale alternates.                                         |
 | `jsonld`      | Raw JSON-LD payload.                                                |
 | `gtm` / `ga` / `fbp` | Tracking IDs for GTM, GA, Facebook Pixel.                   |
-| `fonts`       | Google Font family to preload (default `inter`).                    |
+| `fonts`       | `geist` (default): Geist and Geist Mono, served by atom and preloaded. Any other value is a Bunny Fonts family (`inter`, `open-sans`) loaded from the CDN and put first in `--font-sans`; `false` loads none. |
+| `density`     | `comfortable` (default) or `compact`. Printed as `data-atom-density` on `<body>`; `layouts.sidebar` defaults to `compact`, `layouts.auth` to `comfortable`. |
 | `dark`        | Opts the page into dark mode (off by default, on every layout too). Adds `class="dark"` to `<html>` and emits the `window.darkmode()` bootstrap, which then follows the stored preference or, with none, the visitor's `prefers-color-scheme`. Required for `<atom:darkmode-toggle>` to work. |
 | `styles`      | Additional stylesheet URLs.                                         |
 | `scripts`     | Additional script URLs.                                             |
