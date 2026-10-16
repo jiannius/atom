@@ -238,6 +238,10 @@ describe('contrast', function () {
             ->and(tokenContrast($threshold, $dark))->toBeGreaterThanOrEqual(4.5);
     });
 
+    it('falls back to a black accent for an app that has not chosen one', function () {
+        expect(tokenCss())->toContain('--color-accent: #1c1b18;');
+    });
+
     it('derives the accent foreground, hover, soft and ink from --color-accent, all of them host-overridable', function () {
         $css = tokenCss();
 

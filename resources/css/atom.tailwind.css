@@ -73,8 +73,8 @@
     --color-gray-900: #1c1b19;
     --color-gray-950: #151412;
 
-    /* The accent: a host sets --color-accent; the rest follow from it unless the host overrides one. */
-    --color-accent: #4c55c9;
+    /* The accent: a host sets --color-accent; the rest follow from it unless the host overrides one. Black is the fallback for an app that has not chosen one. */
+    --color-accent: #1c1b18;
     /* white or near-black, whichever reaches 4.5:1 on the accent (relative luminance against --atom-on-accent-threshold) */
     --color-accent-foreground: color(from var(--color-accent) srgb-linear
         calc(clamp(var(--atom-on-accent-dark), (var(--atom-on-accent-threshold) - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1))

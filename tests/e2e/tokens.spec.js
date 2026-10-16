@@ -259,6 +259,13 @@ for (const tw of ['floor', 'latest']) {
       })
     }
 
+    test('with no accent chosen the fallback is black, with a white foreground', async ({ page }) => {
+      await open(page, { tw })
+
+      expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(28, 27, 24)')
+      expect(await contrastBetween(page, await colorOf(page, 'accent-button', 'color'), 'rgb(255, 255, 255)')).toBeCloseTo(1, 1)
+    })
+
     test('the accent is the host colour, and the host can override any derived token', async ({ page }) => {
       await open(page, { tw })
       await page.evaluate(() => document.documentElement.style.setProperty('--color-accent', '#e8632b'))
