@@ -49,7 +49,7 @@ Import atom's tokens once, after Tailwind itself, and set your brand colour as t
 }
 ```
 
-The file scans atom's own markup for utilities (no `@source` lines of your own), maps the type scale, weights, warm neutral ramp (`zinc` and `gray`), role and tone colours (light and dark), radius, density and the focus ring, and derives `accent-foreground`, `accent-hover`, `accent-soft` and `accent-ink` from the accent. Set one of those yourself only if you must. Dark follows the `.dark` class that `<atom:html dark>` adds.
+The file scans atom's own markup for utilities (no `@source` lines of your own), maps the type scale, weights, warm neutral ramp (`zinc` and `gray`), role and tone colours (light and dark), radius, density and the focus ring, and derives `accent-foreground`, `accent-hover`, `accent-soft` and `accent-ink` from the accent. Set one of those yourself only if you must. Overriding `--color-accent-ink` in `@theme` changes the `accent-ink` utilities only: `accent-content` and the focus ring read atom's own accent-ink role directly, so they keep following the accent. That is deliberate, so a nested `.dark` island still gets its own values; to recolour them too, set `--atom-accent-ink` and `--atom-focus` on the element that should carry them. Dark follows the `.dark` class that `<atom:html dark>` adds.
 
 ### Page boilerplate
 
@@ -79,7 +79,7 @@ Useful `<atom:html>` props (all optional):
 | `hreflang`    | Array of locale alternates.                                         |
 | `jsonld`      | Raw JSON-LD payload.                                                |
 | `gtm` / `ga` / `fbp` | Tracking IDs for GTM, GA, Facebook Pixel.                   |
-| `fonts`       | `geist` (default): Geist and Geist Mono, served by atom; Geist is preloaded, Geist Mono loads when something uses it. Any other value is a Bunny Fonts family (`inter`, `open-sans`: letters, digits and hyphens only; anything else loads nothing) loaded from the CDN and put first in `--font-sans`. `false` loads no font, and `--font-sans` and `--font-mono` become the system stacks. |
+| `fonts`       | `geist` (default, also what `true` or `null` mean): Geist and Geist Mono, served by atom; Geist is preloaded, Geist Mono loads when something uses it. Any other value is a Bunny Fonts family (`inter`, `open-sans`: letters, digits and hyphens only; anything else loads nothing) loaded from the CDN and put first in `--font-sans`. `false` loads no font, and `--font-sans` and `--font-mono` become the system stacks. |
 | `density`     | `comfortable` (default) or `compact`, in any case; anything else is `comfortable`. Printed as `data-atom-density` on `<body>`; `layouts.sidebar` defaults to `compact`, `layouts.auth` to `comfortable`. |
 | `dark`        | Opts the page into dark mode (off by default, on every layout too). Adds `class="dark"` to `<html>` and emits the `window.darkmode()` bootstrap, which then follows the stored preference or, with none, the visitor's `prefers-color-scheme`. Required for `<atom:darkmode-toggle>` to work. |
 | `styles`      | Additional stylesheet URLs.                                         |

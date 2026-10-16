@@ -69,6 +69,26 @@ describe('self-hosted fonts', function () {
             ->toMatch('/<style>:root \{ --font-sans: ui-sans-serif, system-ui,[^}]*; --font-mono: ui-monospace,[^}]*\}<\/style>/');
     });
 
+    it('treats fonts of null or true like the default: self-hosted Geist with the preload, no CDN, no stack', function (string $expression) {
+        config(['page.fonts' => null]);
+
+        $html = renderBlade('<atom:html :vite="false" :fonts="'.$expression.'">Hello</atom:html>');
+
+        expect($html)
+            ->toContain('rel="preload" href="'.app('atom')->asset()->version('Geist-Variable.woff2').'" as="font" type="font/woff2" crossorigin')
+            ->not->toContain('bunny.net')
+            ->not->toContain('--font-sans')
+            ->and(substr_count($html, 'rel="preload"'))->toBe(1);
+    })->with(['null' => ['null'], 'true' => ['true']]);
+
+    it('still loads nothing for fonts=false, even with a null config', function () {
+        config(['page.fonts' => null]);
+
+        expect(renderBlade('<atom:html :vite="false" :fonts="false">Hello</atom:html>'))
+            ->not->toContain('rel="preload"')
+            ->toContain('--font-sans: ui-sans-serif');
+    });
+
     it('does not let a font name break out of the style block', function () {
         $html = renderBlade('<atom:html :vite="false" fonts="x}</style><script>alert(1)</script>">Hello</atom:html>');
 

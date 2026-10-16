@@ -29,6 +29,8 @@ $gtm ??= config('page.gtm');
 $ga ??= config('page.ga');
 $fbp ??= config('page.fbp');
 $fonts ??= config('page.fonts');
+// `null` and `true` mean "the default", not "no font": the CSS puts Geist first either way, so it has to be preloaded. Only `false` is the system stack.
+$fonts = $fonts === null || $fonts === true ? 'geist' : $fonts;
 // One validated family decides the CDN link, the inline stack and the self-hosted path alike; `\z`, not `$`, so a trailing newline is refused.
 $family = is_string($fonts) && preg_match('/^[a-z0-9-]+\z/i', $fonts) ? $fonts : null;
 $selfHosted = $family && strtolower($family) === 'geist';
