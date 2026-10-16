@@ -2,6 +2,7 @@
     'noindex' => true,
     'title' => '',
     'dark' => false,
+    'density' => 'compact',
     'editor' => false,
     'scripts' => [],
     'styles' => [],
@@ -18,6 +19,7 @@ $name = $user?->name;
 :noindex="$noindex"
 :title="$title"
 :dark="$dark"
+:density="$density"
 :styles="$styles"
 :scripts="$scripts"
 :vite="$vite"

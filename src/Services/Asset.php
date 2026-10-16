@@ -35,6 +35,7 @@ class Asset
             $type = match ($ext) {
                 'css' => 'text/css',
                 'js' => 'text/javascript',
+                'woff2' => 'font/woff2',
                 default => 'text/plain',
             };
 
