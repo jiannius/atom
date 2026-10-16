@@ -538,8 +538,14 @@ test.describe('with Tailwind: a narrow block gives the room of its time to its t
 
                 for (const title of [...narrow, ...wide]) before[title] = await titleOf(page, title).evaluate(drawn)
 
-                for (const title of narrow) expect(after[title], `${title}: ${after[title]} characters, they were ${before[title]}`).toBeGreaterThan(before[title])
-                for (const title of wide) expect(after[title], title).toBe(before[title])
+                // whether a title fitted is its font's to say: a listed narrow title has to have been cut, and then every title that was cut
+                // shows more of itself, and every one that fitted is as it was
+                for (const title of narrow) expect(before[title], `${title} was cut before`).toBeLessThan(title.length)
+
+                for (const title of [...narrow, ...wide]) {
+                    if (before[title] < title.length) expect(after[title], `${title}: ${after[title]} characters, they were ${before[title]}`).toBeGreaterThan(before[title])
+                    else expect(after[title], title).toBe(before[title])
+                }
             })
         }
     }

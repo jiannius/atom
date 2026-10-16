@@ -10,8 +10,9 @@
  */
 @import "tailwindcss" source(none);
 
-/* V4-1b: `@import "../../../resources/css/atom.tailwind.css";` goes here once that file exists. */
+/* atom's own integration: its @source lines scan components/, resources/views/{docs,mail} and src/Actions, as they do in a host. */
+@import "../../../resources/css/atom.tailwind.css";
 
-@source "../../../components";
-@source "../../../resources/views";
+/* the e2e fixtures are not part of what a host scans (atom.tailwind.css leaves resources/views/e2e out), so the rig adds them */
+@source "../../../resources/views/e2e";
 @source "../../../tests/Fixtures";

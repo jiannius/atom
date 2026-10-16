@@ -149,6 +149,9 @@ test.describe('a month day', () => {
     })
 
     test('a drag across the end of the month, onto the days of the next one that the grid shows, is a range there too', async ({ page }) => {
+        // the last week of the grid can be below the viewport
+        await cell(page, '2026-11-03').scrollIntoViewIfNeeded()
+
         await drag(page, await inDay(page, '2026-10-30'), await inDay(page, '2026-11-03'))
 
         expect(await selects(page)).toEqual([{ start: '2026-10-30', end: '2026-11-03', allDay: true }])

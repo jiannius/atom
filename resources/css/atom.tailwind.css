@@ -1,0 +1,335 @@
+/*
+ * atom's Tailwind integration, and the only one: a host imports it once, after Tailwind itself.
+ *
+ *     @import 'tailwindcss';
+ *     @import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';
+ *
+ *     @theme {
+ *         --color-accent: #4c55c9;
+ *     }
+ *
+ * The accent is the brand colour; everything else about it is derived.
+ *
+ * It scans atom's own markup for utilities, and holds the design tokens: type scale, weights, neutral
+ * palette, role and tone colours (light and dark), the accent derivation, radius, density and focus.
+ * Components restyle against these in later releases; this file only defines them.
+ *
+ * The values a design review changes are single tokens, each marked "one-line change" below.
+ */
+
+@source "../../components/**/*.blade.php";
+@source "../views/{docs,mail}/**/*.blade.php";
+@source "../views/*.blade.php";
+@source "../../src/Actions/*.php";
+
+/* `dark` follows the .dark class <atom:html dark> puts on <html>, not the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------------------------------------
+   Theme. `static` so every token is emitted even when no utility uses it: a host (or atom's own CSS)
+   can read var(--color-canvas) directly.
+   ------------------------------------------------------------------------------------------------ */
+@theme static {
+    --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --default-font-feature-settings: "ss01";
+
+    /* Line heights of the type scale. The three smallest sizes follow the density (see below). */
+    --text-xs--line-height: 1.4;
+    --text-sm--line-height: 1.5;
+    --text-base--line-height: 1.5;
+    --text-lg: 1rem;
+    --text-lg--line-height: 1.4;
+    --text-xl: 1.125rem;
+    --text-xl--line-height: 1.35;
+    --text-2xl: 1.375rem;
+    --text-2xl--line-height: 1.2;
+    --text-2xl--letter-spacing: -0.02em;
+
+    /* Weights: one-line change. Printable documents use 500 and 600. */
+    --font-weight-medium: 510;
+    --font-weight-semibold: 590;
+
+    /* Warm, low-chroma neutral ramp. Host markup written against zinc or gray turns warm without a codemod. */
+    --color-zinc-50: #fbfaf8;
+    --color-zinc-100: #f3f1ed;
+    --color-zinc-200: #e7e4de;
+    --color-zinc-300: #d3cfc6;
+    --color-zinc-400: #a6a297;
+    --color-zinc-500: #6f6b62;
+    --color-zinc-600: #5f5b53;
+    --color-zinc-700: #46433d;
+    --color-zinc-800: #2a2926;
+    --color-zinc-900: #1c1b19;
+    --color-zinc-950: #151412;
+    --color-gray-50: #fbfaf8;
+    --color-gray-100: #f3f1ed;
+    --color-gray-200: #e7e4de;
+    --color-gray-300: #d3cfc6;
+    --color-gray-400: #a6a297;
+    --color-gray-500: #6f6b62;
+    --color-gray-600: #5f5b53;
+    --color-gray-700: #46433d;
+    --color-gray-800: #2a2926;
+    --color-gray-900: #1c1b19;
+    --color-gray-950: #151412;
+
+    /* The accent: a host sets --color-accent; the rest follow from it unless the host overrides one. Black is the fallback for an app that has not chosen one. */
+    --color-accent: #1c1b18;
+    /* The derived accent colours are read from --atom-accent-* roles (base layer below), where the relative-colour
+       maths and its fallback for older browsers live. A host that sets one of these in its own @theme replaces the
+       role reference with its value, so the fallback never touches an override. */
+    --color-accent-foreground: var(--atom-accent-foreground);
+    --color-accent-hover: var(--atom-accent-hover);
+
+    /* Radius */
+    --radius-control: 7px;
+    --radius-nav: 6px;
+    --radius-panel: 10px;
+    --radius-modal: 12px;
+    --radius-pill: 999px;
+}
+
+/* Tokens that change with the theme or the density are read where they are used, so a nested
+   [data-atom-density] or .dark subtree is honoured. That includes the accent's soft tone and its ink: both follow the
+   theme, so they sit here and resolve against the closest .dark. A host overrides one in its own (plain) @theme. */
+@theme static inline {
+    --text-xs: var(--atom-text-xs);
+    --text-sm: var(--atom-text-sm);
+    --text-base: var(--atom-text-base);
+
+    --color-canvas: var(--atom-canvas);
+    --color-surface: var(--atom-surface);
+    --color-surface-sunken: var(--atom-surface-sunken);
+    --color-surface-raised: var(--atom-surface-raised);
+    --color-border: var(--atom-border);
+    --color-border-strong: var(--atom-border-strong);
+    --color-fg: var(--atom-fg);
+    --color-fg-muted: var(--atom-fg-muted);
+    --color-fg-subtle: var(--atom-fg-subtle);
+    --color-focus: var(--atom-focus);
+
+    /* the accent as a tint behind accent text, and as text on the canvas */
+    --color-accent-soft: color-mix(in oklab, var(--color-accent) 12%, var(--atom-surface));
+    --color-accent-ink: var(--atom-accent-ink);
+    --color-accent-content: var(--atom-accent-ink);
+
+    --color-neutral-bg: var(--atom-neutral-bg);
+    --color-neutral-fg: var(--atom-neutral-fg);
+    --color-info-bg: var(--atom-info-bg);
+    --color-info-fg: var(--atom-info-fg);
+    --color-success-bg: var(--atom-success-bg);
+    --color-success-fg: var(--atom-success-fg);
+    --color-warning-bg: var(--atom-warning-bg);
+    --color-warning-fg: var(--atom-warning-fg);
+    --color-danger-bg: var(--atom-danger-bg);
+    --color-danger-fg: var(--atom-danger-fg);
+
+    /* Aliases for host markup written before the role tokens. `muted` flips with the theme; `muted-foreground` is
+       deprecated and equal to it, so `text-muted dark:text-muted-foreground` stays correct; `primary` is the fg ramp. */
+    --color-muted: var(--atom-fg-muted);
+    --color-muted-foreground: var(--atom-fg-muted);
+    --color-primary: var(--atom-fg);
+    --color-primary-foreground: var(--atom-canvas);
+
+    --shadow-pop: var(--atom-shadow-pop);
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Role tokens, light and dark. Every --atom-* role below is defined in both blocks; Pest checks it.
+   ------------------------------------------------------------------------------------------------ */
+@layer base {
+    :root {
+        --atom-canvas: #fbfaf8;
+        --atom-surface: #ffffff;
+        --atom-surface-sunken: #f3f1ed;
+        --atom-surface-raised: #ffffff;
+        --atom-border: rgba(45, 32, 8, 0.1);
+        --atom-border-strong: rgba(45, 32, 8, 0.17);
+        --atom-fg: #1b1a17;
+        --atom-fg-muted: #5f5b53;
+        --atom-fg-subtle: #6f6b62;
+        --atom-focus: var(--atom-accent-ink);
+
+        --atom-neutral-bg: #eeece7;
+        --atom-neutral-fg: #57534b;
+        --atom-info-bg: #e4ebfa;
+        --atom-info-fg: #1f4fa0;
+        --atom-success-bg: #e2f2e6;
+        --atom-success-fg: #17663a;
+        --atom-warning-bg: #fbefd2;
+        --atom-warning-fg: #7a5200;
+        --atom-danger-bg: #fbe3e0;
+        --atom-danger-fg: #a3261c;
+
+        --atom-shadow-pop: 0 8px 28px rgba(30, 20, 0, 0.1), 0 1px 3px rgba(30, 20, 0, 0.08);
+
+        /* accent-ink is the accent with its lightness held inside [min, max]. Defined in both themes (not once on
+           :root) so a nested .dark subtree computes its own from the accent it inherits. */
+        --atom-ink-min: 0;
+        --atom-ink-max: 0.48;
+        --atom-accent-ink: oklch(from var(--color-accent) clamp(var(--atom-ink-min), l, var(--atom-ink-max)) c h);
+
+        color-scheme: light;
+    }
+
+    .dark {
+        --atom-canvas: #151412;
+        --atom-surface: #1c1b19;
+        --atom-surface-sunken: #111110;
+        --atom-surface-raised: #242321;
+        --atom-border: rgba(255, 245, 225, 0.085);
+        --atom-border-strong: rgba(255, 245, 225, 0.15);
+        --atom-fg: #ecebe7;
+        --atom-fg-muted: #a6a297;
+        --atom-fg-subtle: #928e84;
+        --atom-focus: var(--atom-accent-ink);
+
+        --atom-neutral-bg: #2a2926;
+        --atom-neutral-fg: #b8b3a8;
+        --atom-info-bg: #1c2a42;
+        --atom-info-fg: #92b5f5;
+        --atom-success-bg: #1c3224;
+        --atom-success-fg: #7fd69a;
+        --atom-warning-bg: #392e16;
+        --atom-warning-fg: #f0c463;
+        --atom-danger-bg: #3c1f1c;
+        --atom-danger-fg: #f39389;
+
+        --atom-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
+
+        --atom-ink-min: 0.78;
+        --atom-ink-max: 1;
+        --atom-accent-ink: oklch(from var(--color-accent) clamp(var(--atom-ink-min), l, var(--atom-ink-max)) c h);
+
+        color-scheme: dark;
+    }
+
+    /* Accent foreground: near-black when the accent's relative luminance is above the threshold, else white.
+       White reaches 4.5:1 below it and near-black above it, so no accent falls between. */
+    :root {
+        --atom-on-accent-threshold: 0.1825;
+        --atom-on-accent-dark: 0.0015;
+
+        --atom-accent-foreground: color(from var(--color-accent) srgb-linear
+            calc(clamp(var(--atom-on-accent-dark), (var(--atom-on-accent-threshold) - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1))
+            calc(clamp(var(--atom-on-accent-dark), (var(--atom-on-accent-threshold) - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1))
+            calc(clamp(var(--atom-on-accent-dark), (var(--atom-on-accent-threshold) - (0.2126 * r + 0.7152 * g + 0.0722 * b)) * 100000, 1)));
+        /* a step away from the foreground, so the foreground never loses contrast on hover (darker under white, lighter under near-black) */
+        --atom-accent-hover: color-mix(in oklab, var(--color-accent), color(from var(--color-accent-foreground) srgb-linear calc(1 - r) calc(1 - g) calc(1 - b)) 10%);
+    }
+
+    /* A browser without CSS relative colour (Chrome and Edge before 119, Safari before 16.4, Firefox before 128)
+       drops every property that reads a colour above, which would leave an accent label unreadable and the focus
+       ring gone. Plain colours stand in: white on the accent, the accent itself for hover and ink, and a blue ring
+       that holds against a light and a dark canvas. Only the roles are redefined, so a host's own @theme value for
+       a token still wins. */
+    @supports not (color: oklch(from red l c h)) {
+        :root,
+        .dark {
+            --atom-accent-ink: var(--color-accent);
+            --atom-focus: #3b82f6;
+        }
+
+        :root {
+            --atom-accent-foreground: #fff;
+            --atom-accent-hover: var(--color-accent);
+        }
+    }
+
+    /* ----------------------------------------------------------------------------------------------
+       Density. A bare <atom:html> and layouts.auth are comfortable; layouts.sidebar is compact. Set
+       data-atom-density on any element to change a subtree. The three smallest type sizes live here.
+       ---------------------------------------------------------------------------------------------- */
+    :root,
+    [data-atom-density="comfortable"] {
+        --atom-text-xs: 0.8125rem;
+        --atom-text-sm: 0.875rem;
+        --atom-text-base: 0.9375rem;
+        --atom-control-h: 32px;
+        --atom-row-min-h: 44px;
+        --atom-row-pad-y: 9px;
+        --atom-row-pad-x: 12px;
+        --atom-row-leading: 1.35;
+    }
+
+    [data-atom-density="compact"] {
+        /* text floor 12px, body 13px, reading 14px: one-line changes */
+        --atom-text-xs: 0.75rem;
+        --atom-text-sm: 0.8125rem;
+        --atom-text-base: 0.875rem;
+        /* control height: one-line change */
+        --atom-control-h: 28px;
+        --atom-row-min-h: 40px;
+        --atom-row-pad-y: 9px;
+        --atom-row-pad-x: 12px;
+        --atom-row-leading: 1.35;
+    }
+
+    /* A coarse pointer raises controls, rows and hit areas whatever the density. */
+    @media (pointer: coarse) {
+        :root,
+        [data-atom-density] {
+            --atom-control-h: 40px;
+            --atom-row-min-h: 48px;
+        }
+    }
+
+    :root {
+        --atom-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* ----------------------------------------------------------------------------------------------
+       Base. Layered, so a host's own rule wins.
+       ---------------------------------------------------------------------------------------------- */
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--atom-border);
+    }
+
+    body {
+        background-color: var(--atom-canvas);
+        color: var(--atom-fg);
+        font-size: var(--atom-text-sm);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--atom-focus);
+        outline-offset: 1px;
+    }
+}
+
+/* ------------------------------------------------------------------------------------------------
+   Utilities that read the density tokens.
+   ------------------------------------------------------------------------------------------------ */
+@utility h-control {
+    height: var(--atom-control-h);
+}
+
+@utility min-h-row {
+    min-height: var(--atom-row-min-h);
+}
+
+@utility px-row {
+    padding-inline: var(--atom-row-pad-x);
+}
+
+@utility py-row {
+    padding-block: var(--atom-row-pad-y);
+}
+
+@utility leading-row {
+    line-height: var(--atom-row-leading);
+}
+
+/* An identifier (an invoice number, a reference): Geist Mono at 12px. */
+@utility font-id {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: -0.01em;
+}

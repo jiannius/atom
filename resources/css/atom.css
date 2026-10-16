@@ -34,8 +34,22 @@
     display: none;
 }
 
-html {
-    font-size: 14px;
+/* Geist and Geist Mono (SIL OFL, see resources/fonts/OFL.txt): self-hosted variable fonts, served by the
+   /atom/{file} route next to this stylesheet. <atom:html> preloads them. */
+@font-face {
+    font-family: "Geist";
+    src: url("../fonts/Geist-Variable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Geist Mono";
+    src: url("../fonts/GeistMono-Variable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
 }
 
 html:has([data-atom-modal][data-open]),

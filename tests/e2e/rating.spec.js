@@ -30,8 +30,8 @@ test('hover previews the fill and a click commits the value', async ({ page }) =
   await page.mouse.move(box.x - 40, y)
   await expect.poll(() => pct(wrapper)).toBe('60%')
 
-  // click ~80% across → commits 4 stars
-  await page.mouse.click(box.x + box.width * 0.8, y)
+  // click the middle of the 4th star (70% across; 80% is the boundary of 4 and 5, where rounding decides) → commits 4 stars
+  await page.mouse.click(box.x + box.width * 0.7, y)
   await expect(track).toHaveAttribute('aria-valuenow', '4')
   await expect.poll(() => pct(wrapper)).toBe('80%')
 })

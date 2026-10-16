@@ -18,4 +18,12 @@ export default defineConfig({
   build: {
     outDir: 'dist',
   },
+  experimental: {
+    // A font named in a stylesheet is served from /atom/ next to it, so its url is relative to the stylesheet
+    renderBuiltUrl(filename, { hostType }) {
+      if (hostType === 'css') {
+        return { relative: true }
+      }
+    },
+  },
 });
