@@ -24,7 +24,7 @@ export async function openLook (page, { view = 'month', query = '', theme = 'lig
             const style = document.createElement('style')
 
             style.setAttribute('type', 'text/tailwindcss')
-            style.textContent = '@custom-variant dark (&:where(.dark, .dark *));'
+            style.textContent = '@custom-variant dark (&:where(.dark, .dark *)); @theme { --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif; }'
             document.head.append(style)
         })
         await page.addScriptTag({ url: TAILWIND })
@@ -43,6 +43,7 @@ export async function openLook (page, { view = 'month', query = '', theme = 'lig
 
     if (theme === 'dark') await page.evaluate(() => document.documentElement.classList.add('dark'))
 
+    await page.evaluate(() => document.fonts.ready)
     await page.waitForTimeout(200)
 
     return true
