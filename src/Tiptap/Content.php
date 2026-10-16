@@ -88,6 +88,17 @@ class Content
     protected const MAX_PRE_COST = 500000000;
 
     /**
+     * The deepest a document may nest (a `doc` is level 1). libxml2 stops
+     * building a tree at 256 levels, and one level more or less than that
+     * (2.9 against 2.14 and later) decides whether tiptap-php's serialiser
+     * overruns json_encode()'s depth of 512 and raises a warning, a report()
+     * on every call. Real content nests a handful of levels (a list inside a
+     * list inside a table cell), so what is past this is refused, on every
+     * libxml, with room to spare below both limits.
+     */
+    protected const MAX_DEPTH = 200;
+
+    /**
      * Refusals already logged in this process, so a value that is rendered
      * many times in a request logs once.
      *
@@ -287,7 +298,8 @@ class Content
     /**
      * Whether sanitize() would refuse this input: over the byte or tag limit, a
      * whitespace run or `<pre>` the parser can't survive, tiptap-php's reserved
-     * placeholder, an invalid document, or output over the byte or tag limit.
+     * placeholder, an invalid document, one nested past MAX_DEPTH, or output over
+     * the byte or tag limit.
      * The limits on the input are checked first, without parsing; only input
      * that gets past them is converted, to measure the output, so call it
      * after sanitize() has returned '' (the answer is the same either way).
@@ -355,23 +367,10 @@ class Content
             return ['', null, ''];
         }
 
-        [$content, $refusal] = static::inspect($text, $maxBytes, $maxTags);
+        [$editor, $refusal] = static::parse($text, $maxBytes, $maxTags);
 
-        if ($content === null) {
+        if ($editor === null) {
             return ['', $refusal, $text];
-        }
-
-        // a document with no <body> has no content, and tiptap-php's parser throws on it
-        if (is_string($content) && ! static::hasBody($content)) {
-            return ['', null, $text];
-        }
-
-        $editor = (new Editor(['extensions' => static::extensions()]))->setContent($content);
-
-        $document = $editor->getDocument();
-
-        if (static::dedupeMarks($document)) {
-            $editor->setContent($document);
         }
 
         $html = $editor->getHTML();
@@ -385,6 +384,73 @@ class Content
         }
 
         return [$html, null, $text];
+    }
+
+    /**
+     * Check the text and load it into an editor, ready to print as HTML or JSON:
+     * the one path both attempt() and toJson() take, so what is checked and
+     * normalised (limits, instructions, whitespace, depth, loose text, repeated
+     * marks) cannot differ between them. [null, null] when there is nothing to
+     * print, [null, reason] when it is refused. A failure the parser cannot
+     * handle is thrown.
+     *
+     * @return array{0: Editor|null, 1: string|null} [editor, refusal]
+     */
+    protected static function parse(string $text, int $maxBytes, int $maxTags): array
+    {
+        [$content, $refusal] = static::inspect($text, $maxBytes, $maxTags);
+
+        if ($content === null) {
+            return [null, $refusal];
+        }
+
+        // a document with no <body> has no content, and tiptap-php's parser throws on it
+        if (is_string($content) && ! static::hasBody($content)) {
+            return [null, null];
+        }
+
+        $editor = (new Editor(['extensions' => static::extensions()]))->setContent($content);
+
+        $document = $editor->getDocument();
+
+        if (($depth = static::depth($document)) > static::MAX_DEPTH) {
+            return [null, 'depth: nested '.$depth.' levels, over '.static::MAX_DEPTH];
+        }
+
+        // libxml 2.14 and later leave loose top-level text as it is, and 2.9 wraps it in an implied
+        // paragraph, so only HTML needs it done (a JSON document is the editor's own, as stored)
+        $changed = is_string($content) && static::wrapLooseInline($document);
+        $changed = static::dedupeMarks($document) || $changed;
+
+        if ($changed) {
+            $editor->setContent($document);
+        }
+
+        return [$editor, null];
+    }
+
+    /**
+     * Tiptap JSON for a legacy HTML value, for atom:tiptap-migrate: parsed through
+     * the same checks and normalisation as render(), under its limits. Null when
+     * there is nothing to convert or the value is refused (over the limits, too
+     * deeply nested, carrying the reserved placeholder). A failure the parser
+     * cannot handle is thrown, for the caller to skip the row.
+     */
+    public static function toJson(mixed $html): ?string
+    {
+        $text = static::input($html);
+
+        if ($text === null) {
+            return null;
+        }
+
+        [$editor] = static::parse(
+            $text,
+            (int) config('atom.editor.render_max_bytes', static::RENDER_MAX_BYTES),
+            (int) config('atom.editor.render_max_tags', static::RENDER_MAX_TAGS),
+        );
+
+        return $editor?->getJSON();
     }
 
     /**
@@ -418,7 +484,10 @@ class Content
      * Reduce a value to the string to parse: a Stringable is cast, an array is
      * accepted only as a document (a `type` key) and encoded, invalid UTF-8 is
      * scrubbed (the parser's minifier returns null on it, which is a
-     * TypeError). Null when there is nothing to parse.
+     * TypeError) and NUL bytes are dropped (libxml 2.9 reads one as a space and
+     * 2.14 and later skip it; dropping it first makes them agree, and it is
+     * done before any check, so a NUL cannot split a token one of them looks
+     * for). Null when there is nothing to parse.
      */
     protected static function input(mixed $value): ?string
     {
@@ -434,7 +503,7 @@ class Content
             return null;
         }
 
-        $value = trim(mb_scrub($value, 'UTF-8'));
+        $value = trim(str_replace("\0", '', mb_scrub($value, 'UTF-8')));
 
         return $value === '' ? null : $value;
     }
@@ -456,6 +525,7 @@ class Content
      *   never does;
      * - a `<pre>` block, or a count of `<pre>` tags, that Minify's regexes fail
      *   on or take quadratic time on (see normalisePre());
+     * - processing instructions are replaced by a space (see stripInstructions());
      * - whitespace runs are collapsed rather than refused (see
      *   collapseWhitespace()).
      *
@@ -482,6 +552,8 @@ class Content
             return $problem === null ? [$decoded, null] : [null, $problem];
         }
 
+        $text = trim(static::stripInstructions($text));
+
         $problem = match (true) {
             static::carriesPlaceholder($text) => 'placeholder: the input carries tiptap-php\'s reserved token',
             ($tags = substr_count($text, '<')) > $maxTags => "tags: {$tags} over {$maxTags}",
@@ -502,8 +574,12 @@ class Content
             return [null, $problem];
         }
 
-        // the parser takes any string that decodes as JSON for JSON: an empty comment makes it HTML
-        return [$isJson ? '<!---->'.$collapsed : $collapsed, null];
+        // tiptap-php takes any string that decodes as JSON for a JSON document, and reads that
+        // without any of the checks above. Whether the input was JSON was decided on the raw text,
+        // and the steps since (stripping an instruction, collapsing a whitespace run) can turn text
+        // that was not JSON into text that is. An empty comment in front makes it HTML, whatever
+        // came before: no string that starts with `<` is JSON.
+        return ['<!---->'.$collapsed, null];
     }
 
     /**
@@ -843,18 +919,117 @@ class Content
     }
 
     /**
-     * Collapse every run of whitespace longer than MAX_WHITESPACE_RUN, outside
-     * a `<pre>` block, to a single space, in one linear pass. PHP compiles the
-     * minifier's `\s` with Unicode properties (the `u` flag), so a no-break or
-     * other Unicode space counts as part of a run. The `<pre>` alternative is
-     * the minifier's own pattern, so the blocks it will set aside are the ones
-     * left alone. Null when the regex fails.
+     * Remove processing instructions (`<?xml ...>`, `<?php ...>`) from HTML,
+     * each up to the first `>` or the end of the input, which is where both
+     * parsers end one. libxml 2.9 reads `<?name ...>` as a processing
+     * instruction node, and when `name` is one the schema parses (`<?span>`,
+     * `<?td>`, `<?a>`, `<?img>`) tiptap-php calls an element method on it and
+     * fails (a report() on every call, for input anyone can send); `<?p>` even
+     * prints a nested paragraph. libxml 2.14 and later read the same text as a
+     * bogus comment and drop it, as does this. Each one is replaced by a
+     * space, not by nothing: removing it would join what was around it into
+     * something new (`MINI<?x>FYHTML` carrying the reserved token, `<<?x>img ..>`
+     * becoming a tag), and a space cannot. So no `<?` is left for either parser
+     * and nothing around one can fuse. It runs before every check on the text.
+     */
+    protected static function stripInstructions(string $html): string
+    {
+        if (! str_contains($html, '<?')) {
+            return $html;
+        }
+
+        // if PCRE gives up, every `<?` is escaped to text instead
+        return preg_replace('/<\?[^>]*+>?/', ' ', $html) ?? str_replace('<?', '&lt;?', $html);
+    }
+
+    /**
+     * How many levels a parsed document nests, counting the `doc` as one.
+     *
+     * @param  array<mixed>  $node
+     */
+    protected static function depth(array $node): int
+    {
+        $deepest = 0;
+
+        foreach ($node['content'] ?? [] as $child) {
+            if (is_array($child)) {
+                $deepest = max($deepest, static::depth($child));
+            }
+        }
+
+        return $deepest + 1;
+    }
+
+    /**
+     * Put loose top-level text in a paragraph, as libxml 2.9 does by itself and
+     * 2.14 and later do not (`42` is `<p>42</p>` on one and a bare text node
+     * on the other, and `a<p>b</p>c` is `<p>a</p><p>b</p>c` against three
+     * loose parts). A run of text, hard breaks and mentions, and the images
+     * that follow its first one, becomes one paragraph: a leading image stays
+     * bare, which is what 2.9 does with it. A run of whitespace between blocks
+     * is dropped, as both do. Returns whether anything changed.
+     *
+     * @param  array<mixed>  $document
+     */
+    protected static function wrapLooseInline(array &$document): bool
+    {
+        if (! isset($document['content']) || ! is_array($document['content'])) {
+            return false;
+        }
+
+        $content = [];
+        $run = [];
+        $changed = false;
+
+        $flush = function () use (&$content, &$run, &$changed) {
+            if ($run !== []) {
+                $content[] = ['type' => 'paragraph', 'content' => $run];
+                $run = [];
+                $changed = true;
+            }
+        };
+
+        foreach ($document['content'] as $node) {
+            $type = is_array($node) ? ($node['type'] ?? null) : null;
+
+            if (in_array($type, ['text', 'hardBreak', 'mention'], true) || ($type === 'image' && $run !== [])) {
+                $run[] = $node;
+            } else {
+                $flush();
+                $content[] = $node;
+            }
+        }
+
+        $flush();
+
+        $document['content'] = $content;
+
+        return $changed;
+    }
+
+    /**
+     * Collapse, outside a `<pre>` block, every run of whitespace that is longer
+     * than MAX_WHITESPACE_RUN or holds two or more newlines to a single space,
+     * in one linear pass. PHP compiles the minifier's `\s` with Unicode
+     * properties (the `u` flag), so a no-break or other Unicode space counts as
+     * part of a run. The `<pre>` alternative is the minifier's own pattern, so
+     * the blocks it will set aside are the ones left alone (a blank line inside
+     * a code block is kept). Null when the regex fails.
+     *
+     * The second condition is what keeps the minifier from joining text that
+     * was checked here: its line trim (`^\s+|\s+$` per line) deletes a run with
+     * two or more newlines outright, so `<` and `?span>` on either side of a
+     * blank line, or `MINI` and `FYHTML`, become one token AFTER every check on
+     * this text has passed. The run is a space instead, so it still separates.
+     * Of the minifier's other steps, the swap of `<pre>` blocks puts them back
+     * in place and the trim of space before a block tag deletes only what is
+     * followed by a tag, so nothing else can join two pieces of text.
      */
     protected static function collapseWhitespace(string $html): ?string
     {
         return preg_replace_callback(
             '/(<pre\b[^>]*+>.*?<\/pre>)|[\s\x{0085}\x{00A0}\x{1680}\x{180E}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}]++/isu',
-            fn (array $match) => isset($match[1]) || strlen($match[0]) <= static::MAX_WHITESPACE_RUN ? $match[0] : ' ',
+            fn (array $match) => isset($match[1]) || (strlen($match[0]) <= static::MAX_WHITESPACE_RUN && substr_count($match[0], "\n") < 2) ? $match[0] : ' ',
             $html,
         );
     }

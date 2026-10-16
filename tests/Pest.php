@@ -26,6 +26,28 @@ function withLivewireContext(object $component, callable $callback): mixed
 }
 
 /**
+ * Run a callback with every PHP warning and notice thrown as an ErrorException, as a
+ * Laravel host does. Without it a vendor warning (tiptap-php's serialiser raising one on a
+ * document it cannot encode) is swallowed by the test runner and a test can pass over it.
+ */
+function withWarningsThrown(callable $callback): mixed
+{
+    set_error_handler(function (int $level, string $message, string $file, int $line) {
+        if (! (error_reporting() & $level)) {
+            return false;
+        }
+
+        throw new ErrorException($message, 0, $level, $file, $line);
+    });
+
+    try {
+        return $callback();
+    } finally {
+        restore_error_handler();
+    }
+}
+
+/**
  * Render a Blade string and unwind any output buffers left open by Blade's
  * slot-capture mechanism (Blade::render of a component with a named <x-slot>
  * leaves a dangling ob level, which PHPUnit flags as a "risky" test).

@@ -344,11 +344,11 @@ describe('Content::sanitize: input that is not HTML', function () {
 
         expect(Content::sanitize($input))->toBe($expected);
     })->with([
-        'a number' => ['42', '42'],
-        'true' => ['true', 'true'],
-        'null' => ['null', 'null'],
-        'a list' => ['[1,2,3]', '[1,2,3]'],
-        'an object with no type' => ['{"foo":"bar"}', '{&quot;foo&quot;:&quot;bar&quot;}'],
+        'a number' => ['42', '<p>42</p>'],
+        'true' => ['true', '<p>true</p>'],
+        'null' => ['null', '<p>null</p>'],
+        'a list' => ['[1,2,3]', '<p>[1,2,3]</p>'],
+        'an object with no type' => ['{"foo":"bar"}', '<p>{&quot;foo&quot;:&quot;bar&quot;}</p>'],
     ]);
 
     it('casts a Stringable to a string', function () {
@@ -580,6 +580,30 @@ describe('Content: the <pre> placeholder bomb', function () {
         expect($mb)->toBeLessThan(5.0);
         expect($seconds)->toBeLessThan(0.5);
     });
+
+    /**
+     * The minifier's line trim deletes a run of whitespace that holds two newlines, so a token
+     * written with one inside (`%MINI`, a blank line, `FYHTML<hash>0%`) is not the reserved token
+     * when it is checked and is when the minifier is done: a forged placeholder expands once per
+     * token, and 1,478 of them in 131 KB was a memory fatal. The run is collapsed to a space first.
+     */
+    it('cannot be forged with a blank line inside the token', function (string $gap) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+        $token = '%MINI'.$gap.'FYHTML'.md5((string) $_SERVER['REQUEST_TIME']).'0%';
+        $pre = '<pre>'.str_repeat('a', 60000).'</pre>';
+        $html = $pre.str_repeat($token.' ', (int) ((131000 - strlen($pre)) / (strlen($token) + 1)));
+
+        [$clean, $seconds, $mb] = measured(fn () => Content::sanitize($html));
+
+        expect($clean)->not->toContain('MINIFYHTML');
+        expect($mb)->toBeLessThan(20.0);
+        expect($seconds)->toBeLessThan(0.5);
+    })->with([
+        'two newlines' => ["\n\n"],
+        'two CRLF' => ["\r\n\r\n"],
+        'spaces around two newlines' => [" \n \n "],
+        'a no-break space and two newlines' => ["\u{00A0}\n\n"],
+    ]);
 
     it('is refused by the tiptap-migrate command guard', function () {
         expect(Content::carriesPlaceholder(placeholderBomb()))->toBeTrue();
@@ -940,12 +964,18 @@ describe('Content: <pre> input the minifier is quadratic or fatal on', function 
         'many pre tags with no end' => [str_repeat('<pre a', 4000), 'pre'],
     ]);
 
+    /**
+     * Nested `<pre>` tags nest in the tree, and the tree is refused past Content::MAX_DEPTH, so a
+     * shape that costs the minifier seconds is not thousands of tags: it is 150 of them over a
+     * long run of text (150 x ~250 KB is ~37 million, past MAX_UNCLOSED_PRE_COST, and ~0.7 s
+     * once the cost guard is taken out).
+     */
     it('closes many unclosed pre tags instead of refusing them, and renders quickly', function () {
         $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
         Log::spy();
-        $html = uniqueHtml('<p>before</p>'.str_repeat('<pre>a', 2000).str_repeat('b', 50000));
+        $html = uniqueHtml('<p>before</p>'.str_repeat('<pre>a', 150).str_repeat('b', 250000));
 
-        [$out, $seconds] = measured(fn () => Content::render($html));
+        [$out, $seconds] = withWarningsThrown(fn () => measured(fn () => Content::render($html)));
 
         expect($out)->toContain('before')->toContain('<pre>');
         expect($seconds)->toBeLessThan(0.3);
@@ -954,15 +984,16 @@ describe('Content: <pre> input the minifier is quadratic or fatal on', function 
 
     /**
      * Minify needs the literal `</pre>` to close a block, so anything else is an unclosed
-     * `<pre>` to it. Sized so an unguarded run costs a few seconds (about 2.5 s here; the
-     * reviewer's 131 KB shape took 10 s).
+     * `<pre>` to it. Sized so an unguarded run costs most of a second: 150 blocks of 1.6 KB is
+     * ~36 million, past MAX_UNCLOSED_PRE_COST, and under the depth limit the nesting is held to.
      */
-    it('treats a block whose end is not exactly </pre> as unclosed, and renders quickly', function (string $html) {
+    it('treats a block whose end is not exactly </pre> as unclosed, and renders quickly', function (string $close) {
         $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
         Log::spy();
+        $html = str_repeat('<pre>'.str_repeat('x', 1600).$close, 150);
 
-        [$out, $seconds] = measured(fn () => Content::render(uniqueHtml($html)));
-        [$clean, $cleanSeconds] = measured(fn () => Content::sanitize($html, 300000, 100000));
+        [$out, $seconds] = withWarningsThrown(fn () => measured(fn () => Content::render(uniqueHtml($html))));
+        [$clean, $cleanSeconds] = withWarningsThrown(fn () => measured(fn () => Content::sanitize($html, 300000, 100000)));
 
         expect($out)->toContain('<pre>')->toContain('x');
         expect($clean)->toContain('x');
@@ -970,10 +1001,10 @@ describe('Content: <pre> input the minifier is quadratic or fatal on', function 
         expect($cleanSeconds)->toBeLessThan(0.3);
         Log::shouldNotHaveReceived('warning');
     })->with([
-        'a closing tag with no >' => [str_repeat('<pre>x</pre ', 4000)],
-        'a closing tag that is another element' => [str_repeat('<pre>x</prex>', 4000)],
-        'a closing tag with a space before the >' => [str_repeat('<pre>x</pre >', 4000)],
-        'a closing tag cut off by the next tag' => [str_repeat('<pre>x</pre<p>', 4000)],
+        'a closing tag with no >' => ['</pre '],
+        'a closing tag that is another element' => ['</prex>'],
+        'a closing tag with a space before the >' => ['</pre >'],
+        'a closing tag cut off by the next tag' => ['</pre<p>'],
     ]);
 
     it('still takes </PRE> in any case as the end of a block', function () {

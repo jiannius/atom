@@ -235,6 +235,81 @@ PHP);
     });
 });
 
+describe('atom:tiptap-migrate: a row the parser cannot take', function () {
+    beforeEach(function () {
+        $dir = app_path('Models');
+        @mkdir($dir, 0777, true);
+        $this->modelFile = $dir.'/HardeningMigrateItem.php';
+
+        file_put_contents($this->modelFile, <<<'PHP'
+<?php
+namespace App\Models;
+
+class HardeningMigrateItem extends \Illuminate\Database\Eloquent\Model
+{
+    protected $table = 'hardening_migrate_items';
+    protected $guarded = [];
+    protected $casts = ['body' => \Jiannius\Atom\Casts\AsTiptapContent::class];
+}
+PHP);
+        require_once $this->modelFile;
+
+        Schema::create('hardening_migrate_items', function ($table) {
+            $table->id();
+            $table->text('body')->nullable();
+            $table->timestamps();
+        });
+    });
+
+    afterEach(function () {
+        Schema::dropIfExists('hardening_migrate_items');
+        @unlink($this->modelFile);
+    });
+
+    it('is skipped and named, and the run goes on and ends successfully', function () {
+        // one row nothing can be converted from, one that is only a blank line inside a tag, one fine
+        $rows = ['<script>alert(1)</script>', "<\n\nscript>x", '<p>fine</p>'];
+
+        foreach ($rows as $body) {
+            DB::table('hardening_migrate_items')->insert(['body' => $body]);
+        }
+
+        $this->artisan('atom:tiptap-migrate')->expectsOutputToContain('nothing to convert')->assertSuccessful();
+
+        $stored = DB::table('hardening_migrate_items')->orderBy('id')->pluck('body');
+
+        expect($stored[0])->toBe($rows[0]);
+        expect(json_decode($stored[1], true)['type'])->toBe('doc');
+        expect($stored[1])->not->toContain('script>x</');
+        expect(json_decode($stored[2], true)['type'])->toBe('doc');
+    });
+
+    it('is skipped when the parser throws, and nothing is written for it', function () {
+        $command = new class extends \Jiannius\Atom\Commands\MigrateTiptapContent
+        {
+            protected function convert(string $html): ?string
+            {
+                if (str_contains($html, 'boom')) {
+                    throw new \TypeError('the parser failed');
+                }
+
+                return parent::convert($html);
+            }
+        };
+        Artisan::registerCommand($command);
+
+        DB::table('hardening_migrate_items')->insert(['body' => '<p>boom</p>']);
+        DB::table('hardening_migrate_items')->insert(['body' => '<p>fine</p>']);
+
+        $this->artisan('atom:tiptap-migrate')->expectsOutputToContain('the HTML parser failed on it (TypeError)')->assertSuccessful();
+
+        $stored = DB::table('hardening_migrate_items')->orderBy('id')->pluck('body');
+
+        expect($stored[0])->toBe('<p>boom</p>');
+        expect(json_decode($stored[1], true)['type'])->toBe('doc');
+    });
+});
+
 describe('E-S3 YouTube embed URLs', function () {
     it('renders no iframe for a hostile src', function (mixed $src) {
         $html = hardeningDoc([['type' => 'youtube', 'attrs' => ['src' => $src]]]);
