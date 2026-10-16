@@ -662,7 +662,7 @@ test.describe('the focus of an item that is moved', () => {
     test('and in the time grid', async ({ page }) => {
         await open(page, 'view=week&date=2026-10-12')
         await chipOf(page, 'block', 'Design review').focus()
-        await scrollGrid(page, 400)
+        await scrollGrid(page, 8 * await hourPx(page))
 
         const from = await near(chipOf(page, 'block', 'Design review'))
         const to = await at(page, '2026-10-15', 14.1)
@@ -1121,7 +1121,7 @@ test.describe('the time grid', () => {
         // Design review, 10:00 to 11:00 on the 14th: held in its 10:00 slot, put down in the 14:00 slot of the 15th, and it starts 4 hours later, a day on
         const block = chipOf(page, 'block', 'Design review')
 
-        await scrollGrid(page, 400)
+        await scrollGrid(page, 8 * await hourPx(page))
 
         const from = await near(block)
         const to = await at(page, '2026-10-15', 14.1)
@@ -1143,7 +1143,7 @@ test.describe('the time grid', () => {
 
     test('it snaps to the slot: a point a little before the next slot is still in this one', async ({ page }) => {
         // 13:55 is in the 13:30 slot, so the block that was held in its 10:00 slot is moved by 3 hours and a half
-        await scrollGrid(page, 400)
+        await scrollGrid(page, 8 * await hourPx(page))
 
         const from = await near(chipOf(page, 'block', 'Design review'))
         const to = await at(page, '2026-10-14', 13 + 55 / 60)
@@ -1156,7 +1156,7 @@ test.describe('the time grid', () => {
 
     test('the ghost is drawn at the slot while the pointer is down, at the length of the item, and the original is lifted', async ({ page }) => {
         const block = chipOf(page, 'block', 'Design review')
-        await scrollGrid(page, 400)
+        await scrollGrid(page, 8 * await hourPx(page))
 
         const from = await near(block)
         const to = await at(page, '2026-10-14', 13.2)
@@ -1179,7 +1179,7 @@ test.describe('the time grid', () => {
 
     test('a block with no end moves with no end', async ({ page }) => {
         // Call the bank: 15:00, no end
-        await scrollGrid(page, 400)
+        await scrollGrid(page, 8 * await hourPx(page))
 
         const from = await middle(chipOf(page, 'block', 'Call the bank'))
         const to = await at(page, '2026-10-14', 16.1)
@@ -1206,7 +1206,7 @@ test.describe('the time grid', () => {
     test('the bottom edge of a block is pulled to another slot: the end changes, the start stays', async ({ page }) => {
         const handle = handleOf(page, 'block', 'Design review')
 
-        await scrollGrid(page, 400)
+        await scrollGrid(page, 8 * await hourPx(page))
 
         const box = await handle.boundingBox()
         const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
@@ -1242,7 +1242,7 @@ test.describe('the time grid', () => {
     })
 
     test('a block with no end has one when it is pulled, from where it was drawn to end', async ({ page }) => {
-        await scrollGrid(page, 400)
+        await scrollGrid(page, 8 * await hourPx(page))
 
         const box = await handleOf(page, 'block', 'Call the bank').boundingBox()
         const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
@@ -1438,7 +1438,7 @@ test.describe('the time grid scrolls under a pointer at its edge', () => {
     })
 
     test('and up at the top edge, under the header that stays on top', async ({ page }) => {
-        await scrollGrid(page, 500)
+        await scrollGrid(page, 11.5 * await hourPx(page))
 
         const grid = await probe(page).locator('[data-atom-calendar-grid]').boundingBox()
         const header = await probe(page).locator('[data-atom-calendar-grid-top]').boundingBox()
@@ -1506,6 +1506,9 @@ test.describe('the time grid scrolls under a pointer at its edge', () => {
 
     test('a grid that does not scroll has nothing to scroll', async ({ page }) => {
         await page.evaluate(() => document.documentElement.style.setProperty('--atom-calendar-grid-height', '4000px'))
+
+        // the block is below the viewport once the grid is 4000px tall
+        await chipOf(page, 'block', 'Design review').scrollIntoViewIfNeeded()
 
         const from = await middle(chipOf(page, 'block', 'Design review'))
 
@@ -1622,7 +1625,7 @@ test.describe('a touch', () => {
 
     test('a block of the time grid is picked up by a long press too', async ({ page }) => {
         await open(page, 'view=week&date=2026-10-12')
-        await scrollGrid(page, 400)
+        await scrollGrid(page, 8 * await hourPx(page))
 
         const from = await near(chipOf(page, 'block', 'Design review'))
         const to = await at(page, '2026-10-14', 14.1)

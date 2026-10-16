@@ -10,6 +10,9 @@ import { test, expect } from '@playwright/test'
 
 const probe = (page, name = 'calendar') => page.locator(`[data-probe="${name}"]`)
 const days = (page, name) => probe(page, name).locator('[data-atom-calendar-day]')
+// a point low in the empty part of a cell, clear of the day number and the chips, whatever the root font size
+const lowInCell = async (locator) => ({ x: 20, y: (await locator.boundingBox()).height - 6 })
+
 const day = (page, date, name) => probe(page, name).locator(`[data-atom-calendar-day][data-date="${date}"]`)
 const chip = (page, title, name) => probe(page, name).locator('[data-atom-calendar-chip]', { hasText: title })
 const popover = (page, name) => probe(page, name).locator('[data-atom-calendar-popover]')
@@ -221,7 +224,7 @@ test.describe('bound to a Livewire property', () => {
         await day(page, '2026-10-16').click()
         await expect(popover(page)).toBeHidden()
 
-        await day(page, '2026-10-09').click({ position: { x: 20, y: 90 } })
+        await day(page, '2026-10-09').click({ position: await lowInCell(day(page, '2026-10-09')) })
         await expect(popover(page)).toBeVisible()
         await expect(popover(page).locator('[data-atom-calendar-chip]')).toHaveCount(3)
         await expect(popover(page).locator('[data-atom-calendar-chip]').first()).toContainText('Launch week')
@@ -633,7 +636,7 @@ test.describe('a Livewire re-render', () => {
     })
 
     test('keeps an open day list open while the payload around it changes', async ({ page }) => {
-        await day(page, '2026-10-09').click({ position: { x: 20, y: 90 } })
+        await day(page, '2026-10-09').click({ position: await lowInCell(day(page, '2026-10-09')) })
         await expect(popover(page).locator('[data-atom-calendar-chip]')).toHaveCount(3)
 
         // the day list is for 9 October, which a re-render does not move. Called from the page, not clicked:

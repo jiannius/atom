@@ -20,12 +20,24 @@ test('the checkbox column stays checkbox-sized under auto layout', async ({ page
 
   const th = await width(page, '#box-checkbox th:first-child')
   const td = await width(page, '#box-checkbox tbody td:first-child')
+  const name = await width(page, '#box-checkbox th:nth-child(2)')
 
-  // w-10 (40px) is a floor the checkbox (20px + the cell's own padding) already
-  // exceeds, so the column is the checkbox plus padding and nothing more: it must
-  // not stretch to share the 624px box with the text columns.
-  expect(th).toBeLessThanOrEqual(50)
-  expect(th).toBeGreaterThanOrEqual(40)
+  // horizontal padding (left + right) of an element, and its width, from computed styles: no pixel values pinned
+  const sizes = (selector) => page.locator(selector).evaluate(el => {
+    const style = getComputedStyle(el)
+
+    return { width: el.getBoundingClientRect().width, padding: parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) }
+  })
+  const checkbox = await sizes('#box-checkbox th:first-child [data-atom-table-checkbox]')
+  const thCell = await sizes('#box-checkbox th:first-child')
+  const thWrapper = await sizes('#box-checkbox th:first-child > div')
+  const tdCell = await sizes('#box-checkbox tbody td:first-child')
+
+  // the column is the checkbox plus the padding around it and nothing more (w-10 is a floor the sum
+  // already exceeds): it must not stretch to share the 624px box with the text columns.
+  expect(Math.abs(th - (checkbox.width + thCell.padding + thWrapper.padding))).toBeLessThanOrEqual(1)
+  expect(Math.abs(td - (checkbox.width + tdCell.padding))).toBeLessThanOrEqual(1)
+  expect(th).toBeLessThan(name / 2)
   // header and body cells of one column are the same width by definition
   expect(Math.abs(th - td)).toBeLessThan(1)
 })
