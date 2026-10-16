@@ -2,7 +2,8 @@
 
 /*
  * Geist and Geist Mono are self-hosted: the build puts the variable woff2 files in dist/assets, the /atom/{file}
- * route serves them as font/woff2, and <atom:html> preloads them. Any other `fonts` value keeps the CDN path.
+ * route serves them as font/woff2, and <atom:html> preloads Geist (the mono face loads on demand). Any other `fonts`
+ * value keeps the CDN path; `false` loads nothing and puts the system stack in its place.
  */
 describe('self-hosted fonts', function () {
     it('serves both variable fonts as font/woff2 with a long-lived cache header', function (string $name) {
@@ -33,12 +34,15 @@ describe('self-hosted fonts', function () {
             ->toMatch('/url\(\.\/GeistMono-Variable-[\w-]+\.woff2\)/');
     });
 
-    it('preloads both fonts and loads nothing from a CDN by default', function () {
+    it('preloads Geist sans only, and loads nothing from a CDN by default', function () {
         $html = renderBlade('<atom:html :vite="false">Hello</atom:html>');
 
         expect($html)
             ->toContain('rel="preload" href="'.app('atom')->asset()->version('Geist-Variable.woff2').'" as="font" type="font/woff2" crossorigin')
-            ->toContain('rel="preload" href="'.app('atom')->asset()->version('GeistMono-Variable.woff2').'" as="font" type="font/woff2" crossorigin')
+            ->not->toContain('GeistMono')
+            ->and(substr_count($html, 'rel="preload"'))->toBe(1);
+
+        expect($html)
             ->not->toContain('bunny.net')
             ->not->toContain('--font-sans');
     });
@@ -55,16 +59,41 @@ describe('self-hosted fonts', function () {
             ->toContain('--font-sans: "Open Sans", ui-sans-serif');
     });
 
-    it('loads no font at all for fonts=false', function () {
-        expect(renderBlade('<atom:html :vite="false" :fonts="false">Hello</atom:html>'))
+    it('loads no font at all for fonts=false, and swaps both stacks for the system fonts so no Geist face is requested', function () {
+        $html = renderBlade('<atom:html :vite="false" :fonts="false">Hello</atom:html>');
+
+        expect($html)
             ->not->toContain('bunny.net')
             ->not->toContain('rel="preload"')
-            ->not->toContain('--font-sans');
+            ->not->toContain('Geist')
+            ->toMatch('/<style>:root \{ --font-sans: ui-sans-serif, system-ui,[^}]*; --font-mono: ui-monospace,[^}]*\}<\/style>/');
     });
 
     it('does not let a font name break out of the style block', function () {
         $html = renderBlade('<atom:html :vite="false" fonts="x}</style><script>alert(1)</script>">Hello</atom:html>');
 
         expect($html)->not->toContain('--font-sans')->not->toContain('<script>alert(1)');
+    });
+
+    it('treats a name that is not a plain family as no family: no CDN link, no stack, no preload', function (string $name) {
+        $html = renderBlade('<atom:html :vite="false" :fonts="$name">Hello</atom:html>', ['name' => $name]);
+
+        expect($html)
+            ->not->toContain('bunny.net')
+            ->not->toContain('--font-sans')
+            ->not->toContain('rel="preload"');
+    })->with([
+        'a space' => ['open sans'],
+        'a query-string payload' => ['inter&display=x'],
+        'a trailing newline' => ["inter\n"],
+        'a leading newline' => ["\ninter"],
+        'a slash' => ['inter/../x'],
+        'an empty string' => [''],
+    ]);
+
+    it('still takes a plain family, in any case', function () {
+        expect(renderBlade('<atom:html :vite="false" fonts="Open-Sans">Hello</atom:html>'))
+            ->toContain('https://fonts.bunny.net/css?family=Open-Sans:400')
+            ->toContain('--font-sans: "Open Sans", ui-sans-serif');
     });
 });

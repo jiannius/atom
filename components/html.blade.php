@@ -29,8 +29,10 @@ $gtm ??= config('page.gtm');
 $ga ??= config('page.ga');
 $fbp ??= config('page.fbp');
 $fonts ??= config('page.fonts');
-$selfHosted = strtolower((string) $fonts) === 'geist';
-$density = in_array($density, ['compact', 'comfortable'], true) ? $density : 'comfortable';
+// One validated family decides the CDN link, the inline stack and the self-hosted path alike; `\z`, not `$`, so a trailing newline is refused.
+$family = is_string($fonts) && preg_match('/^[a-z0-9-]+\z/i', $fonts) ? $fonts : null;
+$selfHosted = $family && strtolower($family) === 'geist';
+$density = in_array(strtolower((string) $density), ['compact', 'comfortable'], true) ? strtolower((string) $density) : 'comfortable';
 @endphp
 
 <!DOCTYPE html>
@@ -125,14 +127,16 @@ fbq('track', 'PageView');
 
 @if ($selfHosted)
 <link rel="preload" href="{{ app('atom')->asset()->version('Geist-Variable.woff2') }}" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="{{ app('atom')->asset()->version('GeistMono-Variable.woff2') }}" as="font" type="font/woff2" crossorigin>
 @endif
 
 <link rel="stylesheet" href="{{ app('atom')->asset()->version('atom.css') }}">
 
-@if ($fonts && !$selfHosted && preg_match('/^[a-z0-9-]+$/i', $fonts))
-{{-- Geist is the default stack in atom.tailwind.css; another family has to take its place --}}
-<style>:root { --font-sans: "{{ str($fonts)->replace('-', ' ')->title() }}", ui-sans-serif, system-ui, sans-serif; }</style>
+@if ($fonts === false)
+{{-- Geist is the default stack in atom.tailwind.css; with no font asked for, the system's takes its place and no face is downloaded --}}
+<style>:root { --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace; }</style>
+@elseif ($family && !$selfHosted)
+{{-- another family has to take Geist's place --}}
+<style>:root { --font-sans: "{{ str($family)->replace('-', ' ')->title() }}", ui-sans-serif, system-ui, sans-serif; }</style>
 @endif
 
 @if ($vite)
@@ -190,9 +194,9 @@ fbq('track', 'PageView');
     {{ $slot }}    
 </body>
 
-@if ($fonts && !$selfHosted)
+@if ($family && !$selfHosted)
 <link rel="preconnect" href="https://fonts.bunny.net">
-<link href="https://fonts.bunny.net/css?family={{ $fonts }}:400,500,600,700,800,900" rel="stylesheet" />
+<link href="https://fonts.bunny.net/css?family={{ $family }}:400,500,600,700,800,900" rel="stylesheet" />
 @endif
 
 <script type="module" src="{{ app('atom')->asset()->version('atom.js') }}" data-navigate-once></script>

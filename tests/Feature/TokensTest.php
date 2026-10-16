@@ -5,11 +5,23 @@
  * the derived accent colours, the density profiles) is measured by tests/e2e/tokens.spec.js and density.spec.js.
  */
 
-/** The CSS file's source, comments stripped. */
+const TOKEN_FALLBACK = '~@supports not \(color: oklch\(from red l c h\)\)\s*(\{(?:[^{}]|(?1))*\})~';
+
+/** The CSS file's source, comments stripped, and without the old-browser fallback block (see tokenFallback()). */
 function tokenCss(string $file = 'atom.tailwind.css'): string
 {
     // a comment, but never the `/**/` inside a quoted @source glob
-    return preg_replace_callback('~("[^"]*")|/\*.*?\*/~s', fn (array $m) => $m[1] ?? '', file_get_contents(__DIR__.'/../../resources/css/'.$file));
+    $css = preg_replace_callback('~("[^"]*")|/\*.*?\*/~s', fn (array $m) => $m[1] ?? '', file_get_contents(__DIR__.'/../../resources/css/'.$file));
+
+    return preg_replace(TOKEN_FALLBACK, '', $css);
+}
+
+/** The inside of the `@supports not (relative colour)` block, or null when the file has none. */
+function tokenFallback(): ?string
+{
+    $css = preg_replace_callback('~("[^"]*")|/\*.*?\*/~s', fn (array $m) => $m[1] ?? '', file_get_contents(__DIR__.'/../../resources/css/atom.tailwind.css'));
+
+    return preg_match(TOKEN_FALLBACK, $css, $m) ? substr($m[1], 1, -1) : null;
 }
 
 /**
@@ -124,7 +136,7 @@ describe('role tokens', function () {
         }
 
         // the dark block is the theme-dependent part of the light one: the same keys, not a subset, not a superset
-        $themed = array_filter(array_keys($light), fn ($key) => in_array($key, array_map(fn ($r) => '--atom-'.$r, TOKEN_ROLES), true) || str_starts_with($key, '--atom-ink-'));
+        $themed = array_filter(array_keys($light), fn ($key) => in_array($key, array_map(fn ($r) => '--atom-'.$r, TOKEN_ROLES), true) || str_starts_with($key, '--atom-ink-') || $key === '--atom-accent-ink');
         sort($themed);
         $darkKeys = array_keys($dark);
         sort($darkKeys);
@@ -158,6 +170,11 @@ describe('role tokens', function () {
         expect($maps)->not->toBeEmpty();
 
         foreach ($maps as [, $color, $role]) {
+            // the accent roles are checked on their own (derived accent colours)
+            if (str_starts_with($role, '--atom-accent-')) {
+                continue;
+            }
+
             expect(array_key_exists($role, $light))->toBeTrue($color.' reads a role the light theme lacks');
             expect(array_key_exists($role, $dark))->toBeTrue($color.' reads a role the dark theme lacks');
         }
@@ -244,13 +261,80 @@ describe('contrast', function () {
 
     it('derives the accent foreground, hover, soft and ink from --color-accent, all of them host-overridable', function () {
         $css = tokenCss();
+        $root = tokenBlock($css, ':root');
+        $dark = tokenBlock($css, '.dark');
 
-        foreach (['accent-foreground', 'accent-hover', 'accent-soft', 'accent-ink'] as $name) {
-            expect($css)->toMatch('/--color-'.$name.':[^;]*var\(--color-accent\)/s');
+        // foreground and hover are roles on :root, read through the @theme tokens a host replaces
+        foreach (['foreground', 'hover'] as $name) {
+            expect($css)->toContain('--color-accent-'.$name.': var(--atom-accent-'.$name.');');
+            expect($root['--atom-accent-'.$name])->toContain('var(--color-accent');
         }
 
-        // they sit in a plain @theme block, not an inline one, so a host's own @theme value replaces them
+        // the soft tone and the ink follow the theme, so they are inline and resolve where used
+        expect($css)->toMatch('/@theme static inline \{[^@]*--color-accent-soft:\s*color-mix\([^;]*var\(--color-accent\)[^;]*var\(--atom-surface\)/s');
+        expect($css)->toMatch('/@theme static inline \{[^@]*--color-accent-ink:\s*var\(--atom-accent-ink\);/s');
+        expect($css)->toMatch('/@theme static inline \{[^@]*--color-accent-content:\s*var\(--atom-accent-ink\);/s');
+
+        // and the ink is computed in both themes, from the ink limits of its own
+        foreach ([$root, $dark] as $block) {
+            expect($block['--atom-accent-ink'])->toContain('var(--color-accent)')->toContain('var(--atom-ink-min)')->toContain('var(--atom-ink-max)');
+        }
+
+        // none of the four sits in the plain @theme static block as a value that is already resolved
         expect($css)->toMatch('/@theme static \{[^@]*--color-accent-foreground:/s');
+    });
+
+    it('has a fallback for a browser without CSS relative colour that defines every role using one', function () {
+        $fallback = tokenFallback();
+
+        expect($fallback)->not->toBeNull('the @supports not (color: oklch(from red l c h)) block is gone');
+
+        // every custom property whose value is a relative colour in the main rules
+        preg_match_all('/(--[\w-]+)\s*:\s*[^;]*\b(?:oklch|color)\(\s*from\b[^;]*;/s', tokenCss(), $relative);
+        $relative = array_values(array_unique($relative[1]));
+
+        // a token that only reads one through a role is covered by that role
+        expect($relative)->toEqualCanonicalizing(['--atom-accent-ink', '--atom-accent-foreground', '--atom-accent-hover']);
+
+        // `:root, .dark` carries the two roles that follow the theme; `:root` the two that do not
+        $dark = tokenBlock($fallback, ':root, .dark');
+        $light = $dark + tokenBlock($fallback, ':root');
+
+        foreach ($relative as $name) {
+            expect($light)->toHaveKey($name);
+            expect($light[$name])->not->toContain('from', $name.' still uses relative colour in the fallback');
+        }
+
+        // the ink is redefined in .dark too, the focus ring in both, and none of them is a relative colour
+        expect($dark)->toHaveKeys(['--atom-accent-ink', '--atom-focus'])
+            ->and($light)->toHaveKey('--atom-focus')
+            ->and($light['--atom-accent-foreground'])->toBe('#fff')
+            ->and($light['--atom-accent-hover'])->toBe('var(--color-accent)')
+            ->and($light['--atom-accent-ink'])->toBe('var(--color-accent)');
+
+        // the ring has to be seen on both canvases whatever the accent is
+        $ring = $light['--atom-focus'];
+        $main = tokenBlock(tokenCss(), ':root');
+        $mainDark = tokenBlock(tokenCss(), '.dark');
+
+        expect($ring)->toMatch('/^#[0-9a-f]{6}$/i');
+        expect(tokenContrast(tokenLuminance($ring), tokenLuminance(tokenHex($main, 'canvas'))))->toBeGreaterThanOrEqual(3.0);
+        expect(tokenContrast(tokenLuminance($ring), tokenLuminance(tokenHex($mainDark, 'canvas'))))->toBeGreaterThanOrEqual(3.0);
+
+        // it redefines roles only: a host's @theme value replaces the --color-* token and is never touched by it
+        preg_match_all('/(?<![\w(-])(--[\w-]+)\s*:/', $fallback, $declared);
+        expect($declared[1])->not->toBeEmpty()->and(array_filter($declared[1], fn ($n) => ! str_starts_with($n, '--atom-')))->toBeEmpty();
+    });
+
+    it('puts the fallback after the roles it replaces, in the same layer', function () {
+        $css = preg_replace_callback('~("[^"]*")|/\*.*?\*/~s', fn (array $m) => $m[1] ?? '', file_get_contents(__DIR__.'/../../resources/css/atom.tailwind.css'));
+        $at = strpos($css, '@supports not (color: oklch(from red l c h))');
+
+        expect($at)->not->toBeFalse()
+            ->and($at)->toBeGreaterThan(strrpos($css, '--atom-accent-ink: oklch(from'))
+            ->and($at)->toBeGreaterThan(strpos($css, '--atom-accent-foreground: color(from'))
+            ->and($at)->toBeGreaterThan(strpos($css, '--atom-accent-hover: color-mix'))
+            ->and(strrpos(substr($css, 0, $at), '@layer base'))->toBeGreaterThan(strrpos(substr($css, 0, $at), '@theme'));
     });
 });
 
@@ -312,6 +396,15 @@ describe('density', function () {
         expect(renderBlade('<atom:layouts.sidebar :vite="false" density="comfortable">x</atom:layouts.sidebar>'))->toMatch('/<body[^>]*data-atom-density="comfortable"/');
         expect(renderBlade('<atom:html :vite="false" :fonts="false" density="huge">x</atom:html>'))->toMatch('/<body[^>]*data-atom-density="comfortable"/');
     });
+
+    it('reads the density without regard to case', function (string $given, string $expected) {
+        expect(renderBlade('<atom:html :vite="false" :fonts="false" :density="$given">x</atom:html>', ['given' => $given]))->toMatch('/<body[^>]*data-atom-density="'.$expected.'"/');
+    })->with([
+        'Compact' => ['Compact', 'compact'],
+        'COMPACT' => ['COMPACT', 'compact'],
+        'Comfortable' => ['Comfortable', 'comfortable'],
+        'unknown' => ['Huge', 'comfortable'],
+    ]);
 });
 
 describe('type, radius and the integration file', function () {
@@ -341,23 +434,54 @@ describe('type, radius and the integration file', function () {
             ->toContain('--radius-pill: 999px;');
     });
 
-    it('scans atom for utilities, follows the .dark class, and focuses with a 2px accent-ink outline', function () {
+    it('scans atom for utilities, follows the .dark class, and focuses with a 2px accent-ink outline (and a plain ring for old browsers)', function () {
         $css = tokenCss();
 
         expect($css)
             ->toContain('@source "../../components/**/*.blade.php";')
-            ->toContain('@source "../views/**/*.blade.php";')
+            ->toContain('@source "../views/{docs,mail}/**/*.blade.php";')
+            ->toContain('@source "../views/*.blade.php";')
             ->toContain('@source "../../src/Actions/*.php";')
             ->toContain('@custom-variant dark (&:where(.dark, .dark *));')
             ->toMatch('/:focus-visible\s*\{\s*outline:\s*2px solid var\(--atom-focus\);\s*outline-offset:\s*1px;/')
-            ->toMatch('/--atom-focus:\s*var\(--color-accent-ink\)/');
+            ->toMatch('/--atom-focus:\s*var\(--atom-accent-ink\)/');
+    });
+
+    it('scans the views atom renders and leaves the e2e fixtures out of a host\'s Tailwind build', function () {
+        preg_match_all('/@source "([^"]+)"/', tokenCss(), $m);
+
+        // Tailwind 4.0.7 has no `@source not`, so the glob is narrowed to the view directories that are used
+        $dirs = [];
+
+        foreach ($m[1] as $path) {
+            foreach (glob(__DIR__.'/../../resources/css/'.preg_replace('~/(\*\*/)?\*\.(blade\.)?php$~', '', $path), GLOB_BRACE | GLOB_ONLYDIR) as $dir) {
+                $dirs[] = realpath($dir);
+            }
+        }
+
+        $e2e = realpath(__DIR__.'/../../resources/views/e2e');
+
+        expect($e2e)->not->toBeFalse()->and($dirs)->not->toContain($e2e);
+
+        foreach ($dirs as $dir) {
+            expect(str_starts_with($dir.'/', $e2e.'/'))->toBeFalse($dir.' reaches the e2e fixtures');
+        }
+
+        // every other directory under resources/views is still scanned
+        foreach (glob(__DIR__.'/../../resources/views/*', GLOB_ONLYDIR) as $dir) {
+            if (realpath($dir) !== $e2e) {
+                expect($dirs)->toContain(realpath($dir));
+            }
+        }
+
+        expect(tokenCss())->not->toContain('@source not');
     });
 
     it('points every @source at a directory that exists', function () {
         preg_match_all('/@source "([^"]+)"/', tokenCss(), $m);
 
         foreach ($m[1] as $path) {
-            expect(glob(__DIR__.'/../../resources/css/'.dirname($path)))->not->toBeEmpty($path);
+            expect(glob(__DIR__.'/../../resources/css/'.dirname($path), GLOB_BRACE))->not->toBeEmpty($path);
         }
     });
 

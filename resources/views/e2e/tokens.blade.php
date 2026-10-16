@@ -1,5 +1,5 @@
 @php
-// ?tw=floor|latest opts in to the consumer build (tests/consumer/build.mjs); ?density=compact|comfortable; ?dark=1 turns the
+// ?tw=floor|latest opts in to the consumer build (tests/consumer/build.mjs); ?density=compact|comfortable; ?fonts=0 passes fonts=false; ?dark=1 turns the
 // dark class on; ?accent=%23rrggbb sets --color-accent the way a host does in its @theme.
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : null;
 $density = in_array(request()->query('density'), ['compact', 'comfortable'], true) ? request()->query('density') : 'compact';
@@ -20,7 +20,7 @@ $roles = [
 ];
 @endphp
 
-<atom:html title="E2E: Tokens" :vite="[]" :dark="request()->query('dark') === '1'" :density="$density" :styles="$tw ? ['/atom/e2e/consumer-css/'.$tw] : []">
+<atom:html title="E2E: Tokens" :vite="[]" :dark="request()->query('dark') === '1'" :density="$density" :fonts="request()->query('fonts') === '0' ? false : 'geist'" :styles="$tw ? ['/atom/e2e/consumer-css/'.$tw] : []">
 @if ($accent)
 <style>:root { --color-accent: {{ $accent }}; }</style>
 @endif
@@ -105,6 +105,13 @@ $roles = [
 
     <section class="flex gap-2">
         <button type="button" class="h-control rounded-control border border-border-strong bg-surface px-3 text-sm" data-testid="focus-target">Focus me</button>
+    </section>
+
+    {{-- a dark island inside the page, whatever the page's own theme --}}
+    <section class="dark rounded-panel bg-canvas p-3 text-fg" data-testid="island">
+        <span class="bg-accent-soft text-accent-ink inline-flex h-[22px] items-center rounded-pill px-2 text-xs font-medium" data-testid="island-tone">Accent</span>
+        <span class="text-sm font-medium text-accent-ink" data-testid="island-ink">Accent text</span>
+        <button type="button" class="h-control rounded-control border border-border-strong bg-surface px-3 text-sm" data-testid="island-focus">Focus me</button>
     </section>
 </div>
 

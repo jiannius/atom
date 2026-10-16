@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 
 // The design tokens (resources/css/atom.tailwind.css), measured as a browser computes them. The e2e rig has no
 // Tailwind, so the page opts in to the consumer build (tests/consumer/build.mjs: `node tests/consumer/build.mjs`
@@ -41,6 +42,22 @@ const contrastBetween = (page, a, b) => page.evaluate(([a, b]) => {
   const [x, y] = [lum(rgb(a)), lum(rgb(b))]
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 }, [a, b])
+
+// Chromium has relative colour and cannot be told to drop it, so the old-browser path is forced the only way left: the rules
+// inside the file's `@supports not (color: oklch(from red l c h))` block are injected as the layer-base rules they are, after
+// the consumer build. A browser that lacks the feature applies exactly these (and drops the relative colours above them).
+function fallbackRules() {
+  const css = readFileSync(new URL('../../resources/css/atom.tailwind.css', import.meta.url), 'utf8')
+  const start = css.indexOf('@supports not (color: oklch(from red l c h))')
+  expect(start, 'the fallback block is gone').toBeGreaterThan(-1)
+
+  let depth = 0
+  for (let i = css.indexOf('{', start); i < css.length; i++) {
+    if (css[i] === '{') depth++
+    if (css[i] === '}' && --depth === 0) return css.slice(css.indexOf('{', start) + 1, i)
+  }
+  throw new Error('the fallback block is not closed')
+}
 
 const colorOf = (page, testid, prop) => page.getByTestId(testid).evaluate((el, prop) => getComputedStyle(el)[prop], prop)
 
@@ -274,6 +291,98 @@ for (const tw of ['floor', 'latest']) {
 
       await page.evaluate(() => document.documentElement.style.setProperty('--color-accent-foreground', 'rgb(255, 0, 255)'))
       expect(await colorOf(page, 'accent-button', 'color')).toBe('rgb(255, 0, 255)')
+    })
+
+    for (const dark of [false, true]) {
+      test(`without relative colour the label, the ink and the focus ring stay readable, in ${dark ? 'dark' : 'light'}`, async ({ page }) => {
+        await open(page, { tw, dark })
+        await page.evaluate(() => document.documentElement.style.setProperty('--color-accent', '#f5c518'))
+
+        // before: a yellow accent gets the near-black label
+        expect(await colorOf(page, 'accent-button', 'color')).not.toBe('rgb(255, 255, 255)')
+
+        await page.addStyleTag({ content: `@layer base {${fallbackRules()}}` })
+
+        expect(await colorOf(page, 'accent-button', 'color')).toBe('rgb(255, 255, 255)')
+        expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(245, 197, 24)')
+        // hover is the accent itself, ink is the accent itself
+        expect(await colorOf(page, 'accent-hover', 'backgroundColor')).toBe('rgb(245, 197, 24)')
+        expect(await colorOf(page, 'accent-ink', 'color')).toBe('rgb(245, 197, 24)')
+
+        // the ring is drawn, in a colour that shows on this theme's canvas
+        await page.getByTestId('focus-target').focus()
+        await page.keyboard.press('Shift+Tab')
+        await page.keyboard.press('Tab')
+
+        const ring = await style(page, 'focus-target', 'outline-width', 'outline-style', 'outline-color')
+        expect(ring['outline-style']).toBe('solid')
+        expect(ring['outline-width']).toBe('2px')
+        expect(ring['outline-color']).toBe('rgb(59, 130, 246)')
+        const canvas = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+        expect(await contrastBetween(page, ring['outline-color'], canvas)).toBeGreaterThanOrEqual(3)
+      })
+    }
+
+    test('a host can still override a derived accent colour after the fallback has been applied', async ({ page }) => {
+      await open(page, { tw })
+      await page.addStyleTag({ content: `@layer base {${fallbackRules()}}` })
+      await page.evaluate(() => document.documentElement.style.setProperty('--color-accent-foreground', 'rgb(255, 0, 255)'))
+
+      expect(await colorOf(page, 'accent-button', 'color')).toBe('rgb(255, 0, 255)')
+    })
+
+    test('a dark island inside a light page gets the dark accent tone and ink, and a light page does not leak into it', async ({ page }) => {
+      await open(page, { tw })
+      await page.evaluate(() => document.documentElement.style.setProperty('--color-accent', '#4c55c9'))
+
+      const read = () => page.evaluate(() => {
+        const c = (id, prop) => getComputedStyle(document.querySelector(`[data-testid="${id}"]`))[prop]
+        return {
+          pageInk: c('accent-ink', 'color'),
+          islandInk: c('island-ink', 'color'),
+          pageSoft: c('tone-accent', 'backgroundColor'),
+          islandSoft: c('island-tone', 'backgroundColor'),
+          islandBg: c('island', 'backgroundColor'),
+          islandSurface: c('island-focus', 'backgroundColor'),
+        }
+      })
+
+      const got = await read()
+
+      expect(got.islandBg).toBe('rgb(21, 20, 18)')
+      expect(got.islandSurface).toBe('rgb(28, 27, 25)')
+      // the ink and the tint are the dark theme's, not the :root (light) values the page itself uses
+      expect(got.islandInk).not.toBe(got.pageInk)
+      expect(got.islandSoft).not.toBe(got.pageSoft)
+      expect(await contrastBetween(page, got.islandInk, got.islandBg), 'ink on the island canvas').toBeGreaterThanOrEqual(4.5)
+      expect(await contrastBetween(page, await colorOf(page, 'island-tone', 'color'), got.islandSoft), 'tone pair in the island').toBeGreaterThanOrEqual(4.5)
+      // the tint is mixed with the island's surface (a dark one), so it is dark: the light page's tint is not
+      expect(await contrastBetween(page, got.islandSoft, 'rgb(0, 0, 0)')).toBeLessThan(await contrastBetween(page, got.pageSoft, 'rgb(0, 0, 0)'))
+
+      // and the focus ring inside the island is the island's ink
+      await page.getByTestId('island-focus').focus()
+      await page.keyboard.press('Shift+Tab')
+      await page.keyboard.press('Tab')
+      expect(await colorOf(page, 'island-focus', 'outlineColor')).toBe(got.islandInk)
+    })
+
+    test('fonts=false downloads no Geist face and draws with the system stacks', async ({ page }) => {
+      const requested = []
+      page.on('request', (request) => request.url().endsWith('.woff2') && requested.push(request.url()))
+
+      await page.goto(`/atom/e2e/tokens?tw=${tw}&fonts=0`)
+      await page.evaluate(() => document.fonts.ready)
+
+      const stacks = await page.evaluate(() => ({
+        sans: getComputedStyle(document.querySelector('[data-testid="sans"]')).fontFamily,
+        mono: getComputedStyle(document.querySelector('[data-testid="id"]')).fontFamily,
+        faces: [...document.fonts].filter((f) => f.status === 'loaded' || f.status === 'loading').length,
+      }))
+
+      expect(stacks.sans).not.toContain('Geist')
+      expect(stacks.mono).not.toContain('Geist')
+      expect(stacks.faces).toBe(0)
+      expect(requested).toEqual([])
     })
 
     test('the page keeps reading the same without the opt-in (negative control: no tokens)', async ({ page }) => {

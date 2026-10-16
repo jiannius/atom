@@ -79,8 +79,8 @@ Useful `<atom:html>` props (all optional):
 | `hreflang`    | Array of locale alternates.                                         |
 | `jsonld`      | Raw JSON-LD payload.                                                |
 | `gtm` / `ga` / `fbp` | Tracking IDs for GTM, GA, Facebook Pixel.                   |
-| `fonts`       | `geist` (default): Geist and Geist Mono, served by atom and preloaded. Any other value is a Bunny Fonts family (`inter`, `open-sans`) loaded from the CDN and put first in `--font-sans`; `false` loads none. |
-| `density`     | `comfortable` (default) or `compact`. Printed as `data-atom-density` on `<body>`; `layouts.sidebar` defaults to `compact`, `layouts.auth` to `comfortable`. |
+| `fonts`       | `geist` (default): Geist and Geist Mono, served by atom; Geist is preloaded, Geist Mono loads when something uses it. Any other value is a Bunny Fonts family (`inter`, `open-sans`: letters, digits and hyphens only; anything else loads nothing) loaded from the CDN and put first in `--font-sans`. `false` loads no font, and `--font-sans` and `--font-mono` become the system stacks. |
+| `density`     | `comfortable` (default) or `compact`, in any case; anything else is `comfortable`. Printed as `data-atom-density` on `<body>`; `layouts.sidebar` defaults to `compact`, `layouts.auth` to `comfortable`. |
 | `dark`        | Opts the page into dark mode (off by default, on every layout too). Adds `class="dark"` to `<html>` and emits the `window.darkmode()` bootstrap, which then follows the stored preference or, with none, the visitor's `prefers-color-scheme`. Required for `<atom:darkmode-toggle>` to work. |
 | `styles`      | Additional stylesheet URLs.                                         |
 | `scripts`     | Additional script URLs.                                             |
