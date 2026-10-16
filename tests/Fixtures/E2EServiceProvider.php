@@ -82,6 +82,16 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-back/record', fn () => view('atom::e2e.breadcrumbs-back'));
         Route::middleware('web')->get('/atom/e2e/url-filters', fn () => view('atom::e2e.url-filters'));
         Route::middleware('web')->get('/atom/e2e/url-filters/record', fn () => view('atom::e2e.url-filters'));
+        Route::middleware('web')->get('/atom/e2e/consumer-tailwind', fn () => view('atom::e2e.consumer-tailwind'));
+        // The stylesheet tests/consumer/build.mjs compiled with a consumer's Tailwind (floor or latest), for a page
+        // that opts in through <atom:html :styles>. 404 when it has not been built, so a missing build is loud.
+        Route::get('/atom/e2e/consumer-css/{name}', function (string $name) {
+            $file = dirname(__DIR__).'/consumer/build/'.$name.'.css';
+
+            abort_unless(in_array($name, ['floor', 'latest'], true) && is_file($file), 404);
+
+            return response()->file($file, ['Content-Type' => 'text/css']);
+        });
         Route::middleware('web')->get('/atom/e2e/safe-url', fn () => view('atom::e2e.safe-url'));
         Route::middleware('web')->get('/atom/e2e/safe-url-breadcrumbs', fn () => view('atom::e2e.safe-url-breadcrumbs'));
         Route::middleware('web')->get('/atom/e2e/form-error-toast', fn () => view('atom::e2e.form-error-toast'));

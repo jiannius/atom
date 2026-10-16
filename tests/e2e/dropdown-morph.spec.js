@@ -19,6 +19,9 @@ const CONSUMER_CSS = `
   :where([data-atom-dropdown][data-open]) [data-atom-menu] { opacity: 1; }
   /* no utilities in the rig, so an icon has no size and a listbox grows thousands of pixels tall */
   svg { width: 16px; height: 16px; }
+  /* the listbox's own width limits: without them it stretches to the page and floating-ui's shift moves it a frame after open */
+  .max-w-xl { max-width: 36rem; }
+  .min-w-sm { min-width: 24rem; }
 `
 
 const probe = (page, name) => page.locator(`[data-probe="${name}"]`)

@@ -109,6 +109,22 @@ test('the week demo opens in the week view, with the overlapping items side by s
 test('the gestures demo logs what a click, a move, a resize and a selection say', async ({ page }) => {
     await open(page)
 
+    // The rig ships no Tailwind, so a block's chip (`flex h-full w-full flex-col`) is an inline link and its 6px resize handle sits at the
+    // bottom of one line of text: where that is depends on the font's metrics, so a press 10px into the block could land on the handle
+    // (a resize, not a move) on one OS and not another. Tailwind's own definitions of the utilities the chip leans on, as calendar.blade.php
+    // has them; they name no calendar element, the markup's class list decides.
+    await page.addStyleTag({
+        content: `
+            *, ::before, ::after { box-sizing: border-box }
+            .flex { display: flex }
+            .flex-col { flex-direction: column }
+            .h-full { height: 100% }
+            .w-full { width: 100% }
+            .min-w-0 { min-width: 0 }
+            .overflow-hidden { overflow: hidden }
+        `,
+    })
+
     const gestures = demo(page, 3)
     const log = page.locator('[data-calendar-log]')
 
@@ -124,6 +140,10 @@ test('the gestures demo logs what a click, a move, a resize and a selection say'
     const block = gestures.locator('[data-atom-calendar-block]', { hasText: 'Design review' })
     const from = await block.boundingBox()
     const next = await gestures.locator('[data-atom-calendar-column]').nth(1).boundingBox()
+
+    // the press lands on the block's body, not on its resize handle: a change of font or layout fails here, not as a missing "move" below
+    const insideHandle = await page.evaluate(([x, y]) => Boolean(document.elementFromPoint(x, y)?.closest('[data-atom-calendar-handle]')), [from.x + from.width / 2, from.y + 10])
+    expect(insideHandle, 'the press point is inside a resize handle').toBe(false)
 
     await page.mouse.move(from.x + from.width / 2, from.y + 10)
     await page.mouse.down()

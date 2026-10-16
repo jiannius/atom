@@ -3,6 +3,8 @@ node_modules/
 /public/storage
 /storage/*.key
 /vendor
+# a library: CI and consumers resolve dependencies fresh
+/composer.lock
 .env
 .env.backup
 .phpunit.result.cache
@@ -21,3 +23,6 @@ playwright-report/
 /playwright/.cache/
 .claude/
 .playwright-mcp/
+# consumer Tailwind fixture: compiled output, and the copy of input.css build.mjs makes per version
+/tests/consumer/build/
+/tests/consumer/*/input.css

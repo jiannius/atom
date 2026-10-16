@@ -1,0 +1,7 @@
+{
+  "name": "atom-consumer-floor",
+  "private": true,
+  "devDependencies": {
+    "@tailwindcss/cli": "4.0.7"
+  }
+}

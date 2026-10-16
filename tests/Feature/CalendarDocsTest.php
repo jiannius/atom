@@ -180,7 +180,7 @@ describe('the calendar section of the README', function () {
         // every method the tag calls is declared by the README's class, with the parameters the fixture's has
         preg_match_all('/\$wire\.(\w+)\(([^)]*)\)/', $blade[1], $calls);
 
-        expect(array_unique($calls[1]))->toEqualCanonicalizing(['create', 'reschedule', 'edit']);
+        expect(array_values(array_unique($calls[1])))->toEqualCanonicalizing(['create', 'reschedule', 'edit']);
 
         foreach (array_unique($calls[1]) as $method) {
             expect(preg_match('/public function '.$method.'\(([^)]*)\): (void|bool)/', $php[1], $declared))->toBe(1, 'the README class has no public '.$method.'()');
