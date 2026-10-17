@@ -83,6 +83,24 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/url-filters', fn () => view('atom::e2e.url-filters'));
         Route::middleware('web')->get('/atom/e2e/url-filters/record', fn () => view('atom::e2e.url-filters'));
         Route::middleware('web')->get('/atom/e2e/consumer-tailwind', fn () => view('atom::e2e.consumer-tailwind'));
+        // The two shell pattern pages (resources/views/docs/patterns), on the consumer's Tailwind: ?tw=floor|latest, ?dark=1.
+        foreach (['sidebar' => 'app-shell-sidebar', 'header' => 'app-shell-header'] as $shell => $pattern) {
+            Route::middleware('web')->get('/atom/e2e/shell-'.$shell, function (Request $request) use ($pattern) {
+                Auth::setUser(new class(['id' => 1, 'name' => 'Alex Doe', 'email' => 'alex@example.com', 'avatar' => null]) extends GenericUser {
+                    public function initials(): string
+                    {
+                        return 'AD';
+                    }
+                });
+
+                $tw = in_array($request->query('tw'), ['floor', 'latest'], true) ? $request->query('tw') : null;
+
+                return view('atom::docs.patterns.'.$pattern, [
+                    'styles' => $tw ? ['/atom/e2e/consumer-css/'.$tw] : [],
+                    'dark' => $request->query('dark') === '1',
+                ]);
+            });
+        }
         Route::middleware('web')->get('/atom/e2e/tokens', fn () => view('atom::e2e.tokens'));
         // The stylesheet tests/consumer/build.mjs compiled with a consumer's Tailwind (floor or latest), for a page
         // that opts in through <atom:html :styles>. 404 when it has not been built, so a missing build is loud.

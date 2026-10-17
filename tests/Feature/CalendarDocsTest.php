@@ -23,9 +23,11 @@ afterEach(function () {
 function calendarDocsPage(): string
 {
     // the layout links to the docs index and to each component
-    if (! Route::has('atom.docs.show')) {
+    if (! Route::has('atom.docs.pattern')) {
         Route::get('/atom/docs', fn () => '')->name('atom.docs');
         Route::get('/atom/docs/{component}', fn () => '')->name('atom.docs.show');
+        Route::get('/atom/docs/patterns/{pattern}', fn () => '')->name('atom.docs.pattern');
+        app('router')->getRoutes()->refreshNameLookups();
     }
 
     return view('atom::docs.show', ['entry' => app(Docs::class)->component('calendar')])->render();

@@ -21,4 +21,19 @@
             </div>
         </div>
     @endforeach
+
+    <div class="mt-10">
+        <atom:heading>Patterns</atom:heading>
+        <atom:caption class="mt-1">Whole screens built from atom's components. The Blade file is the example: copy it.</atom:caption>
+
+        <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            @foreach (\Jiannius\Atom\Services\Docs::PATTERNS as $name => $label)
+                <a
+                href="{{ route('atom.docs.pattern', $name) }}"
+                class="rounded-lg border border-zinc-200 px-4 py-3 font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                    {{ $label }}
+                </a>
+            @endforeach
+        </div>
+    </div>
 </atom:docs.layout>

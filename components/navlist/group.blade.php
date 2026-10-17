@@ -94,6 +94,9 @@ data-atom-navlist-group>
 
             <span class="text-xs font-medium leading-none">{{ t($heading) }}</span>
         </button>
+
+        {{-- the disclosure is a sidebar control; layouts.header shows this label in its place (atom.css) --}}
+        <div class="px-2 pb-1 pt-2 text-xs font-medium text-fg-subtle" data-atom-navlist-group-label data-for-header>{{ t($heading) }}</div>
     @else
         <div class="px-2 pb-1 pt-2 text-xs font-medium text-fg-subtle" data-atom-navlist-group-label>{{ t($heading) }}</div>
     @endif

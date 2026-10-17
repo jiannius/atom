@@ -31,6 +31,16 @@
                         @endforeach
                     </atom:navlist.group>
                 @endforeach
+
+                <atom:navlist.group heading="Patterns">
+                    @foreach (\Jiannius\Atom\Services\Docs::PATTERNS as $name => $label)
+                        <atom:navlist.item
+                        :href="route('atom.docs.pattern', $name)"
+                        :x-show="'!q || '.js(strtolower($label)).'.includes(q.toLowerCase())'">
+                            {{ $label }}
+                        </atom:navlist.item>
+                    @endforeach
+                </atom:navlist.group>
             </atom:navlist>
         </div>
     </x-slot:nav>

@@ -17,6 +17,14 @@ class Docs
     const GALLERIES = ['icon', 'logo'];
 
     /**
+     * Pattern pages: whole screens built from atom's components, under resources/views/docs/patterns/. Name => title.
+     */
+    const PATTERNS = [
+        'app-shell-sidebar' => 'App shell (sidebar)',
+        'app-shell-header' => 'App shell (top nav)',
+    ];
+
+    /**
      * All top-level components, sorted by name
      */
     public function components() : Collection
