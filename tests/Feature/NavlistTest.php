@@ -159,6 +159,47 @@ describe('navlist.group in the header shell', function () {
         expect(domQuery($other, '//*[@data-atom-navlist-group-items]')[0]->getAttribute('id'))->not->toBe($panel->getAttribute('id'));
     });
 
+    // Two groups with the same heading (and no persist-key) share a seed, and an id that two panels share points two
+    // triggers at one panel. The seed is numbered per render, never randomised: an id is a morph key.
+    it('gives two groups with the same heading different ids, the same on every render', function () {
+        $page = '<atom:navlist>'
+            .'<atom:navlist.group heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>'
+            .'<atom:navlist.group heading="Reports"><atom:navlist.item href="/b">B</atom:navlist.item></atom:navlist.group>'
+            .'<atom:navlist.group heading="Reports"><atom:navlist.item href="/c">C</atom:navlist.item></atom:navlist.group>'
+            .'</atom:navlist>';
+
+        $ids = function (string $html): array {
+            $triggers = domQuery($html, '//button[@data-atom-navlist-group-trigger]');
+            $panels = domQuery($html, '//*[@data-atom-navlist-group-items]');
+
+            // each trigger controls the panel beside it
+            foreach ($triggers as $i => $trigger) {
+                expect($panels[$i]->getAttribute('id'))->toBe($trigger->getAttribute('aria-controls'));
+            }
+
+            return array_map(fn ($panel) => $panel->getAttribute('id'), $panels);
+        };
+
+        $first = $ids(Blade::render($page));
+
+        expect($first)->toHaveCount(3)
+            ->and(array_unique($first))->toHaveCount(3)
+            ->and($first[0])->not->toBe('')
+            // the same page renders to the same ids again, and again
+            ->and($ids(Blade::render($page)))->toBe($first)
+            ->and($ids(Blade::render($page)))->toBe($first);
+    });
+
+    it('keeps the id of a single group what it was, and keeps persist-key groups apart', function () {
+        $id = fn (string $template) => domQuery(Blade::render($template), '//*[@data-atom-navlist-group-items]')[0]->getAttribute('id');
+
+        $single = '<atom:navlist.group heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>';
+
+        expect($id($single))->toBe('atom-navlist-group-'.substr(md5('|Reports'), 0, 8))
+            ->and($id('<atom:navlist.group expandable heading="Reports" persist-key="x"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>'))
+            ->not->toBe($id($single));
+    });
+
     it('prints the items once', function () {
         $html = Blade::render('<atom:navlist.group heading="Reports"><atom:navlist.item href="/only-once">A</atom:navlist.item></atom:navlist.group>');
 

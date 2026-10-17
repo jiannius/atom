@@ -206,6 +206,13 @@ html:has([data-atom-header-bar]) {
     scroll-padding-top: var(--atom-shell-bar-h);
 }
 
+/* A dialog or a popover is not under the page's bar: a slide-over (a <dialog>, in the top layer) scrolls inside its own box,
+   so a toolbar that sticks to `var(--atom-shell-bar-h)` there would sit that far below the top of the box. */
+dialog,
+[popover] {
+    --atom-shell-bar-h: 0px;
+}
+
 /* the sidebar's bar is not drawn from lg up when it has nothing to hold (its menu button and account are for small
    screens): no crumbs, no actions, no dark toggle. layouts.sidebar marks it; the row and the variable go with it. */
 @media (min-width: 64rem) {
@@ -273,6 +280,46 @@ html:has([data-atom-header-bar]) {
     border-bottom: 1px solid var(--atom-border);
 }
 
+/* the search slot is the panel's second row, full width; from lg it is a popover (lg to xl) or inline (xl) */
+[data-atom-header-nav] [data-atom-shell-search] {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--atom-border);
+}
+
+[data-atom-header-nav] [data-atom-shell-search] > * {
+    width: 100%;
+}
+
+[data-atom-shell-search-button] {
+    display: none;
+}
+
+/* "More" holds copies of the items that did not fit the bar (headerShell); the bar alone shows it */
+[data-atom-header-more] {
+    display: none;
+}
+
+[data-atom-header-more-section] {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 0.25rem;
+    border-top: 1px solid var(--atom-border);
+}
+
+[data-atom-header-more-section]:first-child {
+    margin-top: 0;
+    border-top: 0;
+}
+
+[data-atom-header-more-label] {
+    padding: 0.5rem 0.5rem 0.25rem;
+    font-size: var(--atom-text-xs);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--atom-fg-subtle);
+}
+
 [data-atom-header-nav] {
     display: none;
     position: absolute;
@@ -318,7 +365,7 @@ html:has([data-atom-header-bar]) {
     [data-atom-header-nav] [data-atom-shell-context] {
         align-self: center;
         flex: none;
-        margin: 0 1.25rem 0 0;
+        margin: 0;
         padding: 0;
         border: 0;
     }
@@ -327,6 +374,33 @@ html:has([data-atom-header-bar]) {
         flex-direction: row;
         align-items: stretch;
         gap: 2px;
+    }
+
+    /* Priority-plus. The nav slot's navlist takes the room the bar has left, never more: until headerShell has
+       measured it (data-atom-fit) it clips rather than spilling over the actions; once it has, whatever does not fit
+       is hidden (data-atom-overflow) and "More" lists it, so nothing needs clipping and a dropdown panel can hang out.
+       While measuring, the navlist's width stops depending on its items, which is what lets it be read as room. */
+    [data-atom-header-nav] [data-atom-navlist]:not([data-atom-navfoot] *) {
+        flex: 0 1 auto;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    [data-atom-header-nav][data-atom-fit] [data-atom-navlist]:not([data-atom-navfoot] *) {
+        overflow: visible;
+    }
+
+    [data-atom-header-nav][data-atom-measuring] [data-atom-navlist]:not([data-atom-navfoot] *) {
+        flex: 1 1 0;
+    }
+
+    /* doubled: it has to outrank the bar item's own `display` below, whatever the order */
+    [data-atom-header-nav] [data-atom-overflow][data-atom-overflow] {
+        display: none;
+    }
+
+    [data-atom-header-nav] {
+        gap: 0.5rem;
     }
 
     [data-atom-header-nav] [data-atom-navlist-section] {
@@ -344,6 +418,7 @@ html:has([data-atom-header-bar]) {
     [data-atom-header-nav] [data-atom-navlist-group-trigger] {
         position: relative;
         display: inline-flex;
+        flex: none;
         align-items: center;
         width: auto;
         height: 100%;
@@ -399,8 +474,13 @@ html:has([data-atom-header-bar]) {
     [data-atom-header-nav] [data-atom-navlist-group] {
         position: relative;
         display: flex;
+        flex: none;
         align-items: stretch;
         margin: 0;
+    }
+
+    [data-atom-header-nav] [data-atom-header-more]:not([data-visible]) {
+        display: none;
     }
 
     [data-atom-header-nav] [data-atom-navlist-group-label],
@@ -428,6 +508,14 @@ html:has([data-atom-header-bar]) {
 
     [data-atom-header-nav] [data-atom-navlist-group][data-menu-open] > [data-atom-navlist-group-items] {
         display: flex;
+    }
+
+    /* "More" sits at the end of the nav, so its panel hangs leftwards from the trigger's end edge */
+    [data-atom-header-nav] [data-atom-header-more] > [data-atom-navlist-group-items] {
+        inset-inline-start: auto;
+        inset-inline-end: 0;
+        max-height: calc(100dvh - 5rem);
+        overflow-y: auto;
     }
 
     /* inside the panel an item is a row again */
@@ -465,6 +553,53 @@ html:has([data-atom-header-bar]) {
         color: var(--atom-fg-subtle);
         font-size: var(--atom-text-xs);
         font-weight: inherit;
+    }
+}
+
+/* The search slot. From lg it leaves the panel's rows: a popover under the bar that the search button opens (lg to
+   xl, where the field does not fit beside the nav), inline at the end of the nav from xl. */
+@media (min-width: 64rem) {
+    [data-atom-header-nav] [data-atom-shell-search] {
+        display: none;
+        order: 1;
+        flex: none;
+        align-self: center;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    [data-atom-header-nav] [data-atom-shell-search] > * {
+        width: auto;
+    }
+}
+
+@media (min-width: 64rem) and (max-width: 79.999rem) {
+    [data-atom-shell-search-button] {
+        display: inline-flex;
+    }
+
+    [data-atom-header-nav] [data-atom-shell-search][data-open] {
+        display: block;
+        position: absolute;
+        top: calc(100% + 0.25rem);
+        inset-inline-end: 1.5rem;
+        z-index: 30;
+        padding: 0.5rem;
+        background: var(--atom-surface-raised);
+        border: 1px solid var(--atom-border-strong);
+        border-radius: var(--radius-panel, 10px);
+        box-shadow: var(--atom-shadow-pop);
+    }
+
+    [data-atom-header-nav] [data-atom-shell-search][data-open] > * {
+        width: 16rem;
+    }
+}
+
+@media (min-width: 80rem) {
+    [data-atom-header-nav] [data-atom-shell-search] {
+        display: block;
     }
 }
 

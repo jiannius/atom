@@ -309,10 +309,66 @@ for (const tw of ['floor', 'latest']) {
   })
 }
 
+// What takes room in the bar, left to right: the logo, the context switcher, each bar item, group trigger and "More" that
+// is shown, the search field when it is inline (not the popover) and the actions. Each box must start where the one before
+// it ends or later. The items can spill out of a box that is too narrow for them, which is how "Settings" once drew over the
+// search field at 1024px, so items are measured, not just the nav's own box.
+async function barBoxes (page) {
+  return page.evaluate(() => {
+    const rect = (name, el) => { const r = el.getBoundingClientRect(); return { name, x: r.x, right: r.right, width: r.width } }
+    const shown = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 }
+    const bar = document.querySelector('[data-atom-header-bar]')
+    const boxes = [rect('logo', bar.querySelector('a'))]
+
+    const context = bar.querySelector('[data-atom-shell-context]')
+    if (context && shown(context)) boxes.push(rect('context', context))
+
+    const items = bar.querySelectorAll('[data-atom-header-nav] a[data-atom-navlist-item], [data-atom-header-nav] [data-atom-navlist-group-trigger]')
+    items.forEach((el) => {
+      if (el.closest('[data-atom-navlist-group-items]') || !shown(el)) return
+      boxes.push(rect((el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 24), el))
+    })
+
+    const search = bar.querySelector('[data-atom-shell-search]')
+    if (search && shown(search) && getComputedStyle(search).position !== 'absolute') boxes.push(rect('search', search))
+
+    boxes.push(rect('actions', bar.querySelector('[data-atom-shell-actions]')))
+
+    return boxes.sort((a, b) => a.x - b.x)
+  })
+}
+
+function expectNoOverlap (boxes, width) {
+  for (let i = 1; i < boxes.length; i++) {
+    expect(boxes[i].x, `${boxes[i].name} starts after ${boxes[i - 1].name} ends`).toBeGreaterThanOrEqual(boxes[i - 1].right - 0.5)
+  }
+  expect(boxes[boxes.length - 1].right, 'the bar stays inside the viewport').toBeLessThanOrEqual(width)
+}
+
+// Every leaf link is reachable: shown in the bar, in a group dropdown whose trigger is in the bar, or in "More".
+async function reachability (page, names) {
+  return page.evaluate((names) => names.map((name) => {
+    const shown = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 }
+    const originals = [...document.querySelectorAll('[data-atom-header-nav] a[data-atom-navlist-item]:not([data-atom-more-copy])')].filter((a) => a.textContent.includes(name))
+    const copies = [...document.querySelectorAll('[data-atom-more-copy]')].filter((a) => a.textContent.includes(name))
+
+    return {
+      name,
+      inBar: originals.some((a) => !a.closest('[data-atom-navlist-group-items]') && shown(a)),
+      inGroup: originals.some((a) => { const g = a.closest('[data-atom-navlist-group]'); return !!g && shown(g) }),
+      inMore: copies.length === 1,
+    }
+  }), names)
+}
+
+const underlined = (page) => page.evaluate(() => [...document.querySelectorAll('[data-atom-header-nav] a[data-atom-navlist-item]:not([data-atom-more-copy]), [data-atom-header-nav] [data-atom-navlist-group-trigger]')]
+  .filter((el) => el.getBoundingClientRect().width > 0 && !el.closest('[data-atom-navlist-group-items]'))
+  .filter((el) => { const s = getComputedStyle(el, '::after'); return s.content !== 'none' && s.height === '2px' })
+  .map((el) => (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 24)))
+
 // The bar/menu switch is at 1024px (lg): the logo, the context switcher, six items, an action and the account do not fit
-// side by side before that. At every width either the menu button is shown, or nothing in the bar overlaps: the nav's own
-// box AND each of its items end before the actions begin (the items can spill out of a box that is too narrow for them,
-// which is how "Settings" once drew over the search field at 1024px).
+// side by side before that. At every width either the menu button is shown, or nothing in the bar overlaps. From lg
+// the nav is priority-plus: what does not fit moves into "More", so the bar never overflows and no item is lost.
 for (const tw of ['floor', 'latest']) {
   test.describe(`header shell widths, ${tw} consumer build`, () => {
     for (const width of [768, 1024, 1100, 1280]) {
@@ -327,35 +383,37 @@ for (const tw of ['floor', 'latest']) {
         expect(menuMode).toBe(width < 1024)
         if (menuMode) {
           await expect(link(page, 'Dashboard')).toBeHidden()
+          await expect(page.locator('[data-atom-header-more]')).toBeHidden()
           return
         }
 
-        const left = (await box(page.locator('[data-atom-shell-actions]'))).x
+        const actions = (await box(page.locator('[data-atom-shell-actions]'))).x
         const nav = await box(page.locator('[data-atom-header-nav]'))
-        expect(nav.x + nav.width, 'the nav box').toBeLessThanOrEqual(left)
+        expect(nav.x + nav.width, 'the nav box').toBeLessThanOrEqual(actions)
 
-        const items = await page.locator('[data-atom-header-nav] a[data-atom-navlist-item], [data-atom-header-nav] [data-atom-navlist-group-trigger]').evaluateAll((els) => els
-          .filter((el) => el.getBoundingClientRect().width > 0)
-          .map((el) => { const r = el.getBoundingClientRect(); return { x: r.x, right: r.right } }))
-        expect(items.length).toBeGreaterThanOrEqual(6)
-        for (const item of items) {
-          expect(item.right, 'a nav item').toBeLessThanOrEqual(left)
-        }
+        expectNoOverlap(await barBoxes(page), width)
 
         // the context switcher ends before the first item, the logo before the switcher
         const context = await box(page.locator('[data-atom-shell-context]'))
-        expect(context.x + context.width).toBeLessThanOrEqual(Math.min(...items.map((i) => i.x)))
         const brand = await box(page.locator('[data-atom-header-bar] a').first())
         expect(brand.x + brand.width).toBeLessThanOrEqual(context.x)
 
-        // the search field is a wide-screen extra: it shows from 1280px, and is out of the way below it
+        // the short labels all fit in the bar at 1280px: no "More"
+        if (width === 1280) await expect(page.locator('[data-atom-header-more]')).toBeHidden()
+
+        const reach = await reachability(page, ['Dashboard', 'Invoices', 'Customers', 'Sales', 'Expenses', 'Team', 'Billing', 'Help'])
+        for (const r of reach) expect(r.inBar || r.inGroup || r.inMore, `${r.name} is reachable`).toBe(true)
+
+        // the search field is a wide-screen extra: inline from 1280px; below it a button opens it
         if (width < 1280) {
           await expect(page.locator('[data-atom-shell-search]')).toBeHidden()
+          await expect(page.locator('[data-atom-shell-search-button]')).toBeVisible()
         }
         else {
           await expect(page.locator('[data-atom-shell-search]')).toBeVisible()
+          await expect(page.locator('[data-atom-shell-search-button]')).toBeHidden()
           const search = await box(page.locator('[data-atom-shell-search]'))
-          expect(search.x).toBeGreaterThanOrEqual(nav.x + nav.width)
+          expect(search.x + search.width).toBeLessThanOrEqual(actions)
         }
       })
     }
@@ -381,6 +439,259 @@ for (const tw of ['floor', 'latest']) {
       await expect(context).toBeVisible()
       expect((await box(context)).y).toBeLessThan(52)
       await expect(page.locator('[data-atom-shell-context-divider]')).toBeVisible()
+    })
+  })
+
+  // The worst case: long labels, a count on every item, two groups, a context switcher (a dropdown), a search field and a
+  // long action. At 1024px nothing near all of it fits; at 1600px the 1248px column still holds only a few.
+  test.describe(`header shell with long labels, ${tw} consumer build`, () => {
+    const leaves = ['Purchase orders', 'Work orders', 'Sales invoices', 'Delivery orders', 'Stock transfers', 'Trial balance', 'Aged debtors', 'Users and roles', 'Company settings']
+
+    for (const width of [1024, 1100, 1280, 1600]) {
+      test(`nothing overlaps and every item is reachable at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 800 })
+        await open(page, 'header-wide', { tw })
+
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+        expectNoOverlap(await barBoxes(page), width)
+
+        // the bar cannot hold nine long items, so "More" is shown, and it is the last thing in the nav
+        await expect(page.locator('[data-atom-header-more]')).toBeVisible()
+        const nav = await box(page.locator('[data-atom-header-nav]'))
+        const actions = await box(page.locator('[data-atom-shell-actions]'))
+        expect(nav.x + nav.width).toBeLessThanOrEqual(actions.x)
+
+        const reach = await reachability(page, leaves)
+        for (const r of reach) expect(r.inBar || r.inGroup || r.inMore, `${r.name} is reachable`).toBe(true)
+        // an item is in the bar or in "More", never both
+        for (const r of reach.filter((r) => r.inBar)) expect(r.inMore, `${r.name} is not listed twice`).toBe(false)
+
+        // "More" lists, in order, exactly the moved units, and the panel is on screen
+        const trigger = page.locator('[data-atom-header-more] > [data-atom-navlist-group-trigger]')
+        await trigger.click()
+        await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+        const panel = await box(page.locator('[data-atom-header-more] > [data-atom-navlist-group-items]'))
+        expect(panel.x).toBeGreaterThanOrEqual(0)
+        expect(panel.x + panel.width).toBeLessThanOrEqual(width)
+        expect(panel.y).toBeGreaterThanOrEqual(52)
+
+        const listed = await page.locator('[data-atom-more-copy]').evaluateAll((els) => els.map((el) => el.textContent.replace(/\s+/g, ' ').trim()))
+        const inMore = reach.filter((r) => r.inMore).map((r) => r.name)
+        expect(listed.length).toBe(inMore.length)
+        const order = inMore.map((name) => leaves.indexOf(name))
+        expect(order).toEqual([...order].sort((a, b) => a - b))
+        for (const el of await page.locator('[data-atom-more-copy]').all()) await expect(el).toBeVisible()
+
+        // every id on the page is unique: a copy carries none
+        const ids = await page.evaluate(() => [...document.querySelectorAll('[id]')].map((el) => el.id))
+        expect(new Set(ids).size).toBe(ids.length)
+      })
+    }
+
+    test('a unit that moves into "More" gives "More" the current underline, and a group is a labelled section', async ({ page }) => {
+      await page.setViewportSize({ width: 1024, height: 800 })
+      // a group's item is current: the whole group has moved into "More"
+      await open(page, 'header-wide', { tw, query: '&page=aged-debtors' })
+
+      expect(await underlined(page)).toEqual(['More'])
+
+      await page.locator('[data-atom-header-more] > [data-atom-navlist-group-trigger]').click()
+      const section = page.locator('[data-atom-header-more-section]', { hasText: 'Financial reports' })
+      await expect(section.locator('[data-atom-header-more-label]')).toHaveText('Financial reports')
+      await expect(section.locator('[data-atom-more-copy]')).toHaveCount(2)
+      await expect(section.locator('[aria-current="page"]')).toHaveText(/Aged debtors/)
+
+      // a plain item that moved: the same
+      await page.goto(`/atom/e2e/shell-header-wide?tw=${tw}&page=stock-transfers`)
+      await page.waitForFunction(() => window.Alpine !== undefined)
+      await expect.poll(() => underlined(page)).toEqual(['More'])
+
+      // an item still in the bar keeps its own underline, and "More" has none
+      await page.goto(`/atom/e2e/shell-header-wide?tw=${tw}&page=purchase-orders`)
+      await page.waitForFunction(() => window.Alpine !== undefined)
+      await expect.poll(() => underlined(page)).toEqual(['Purchase orders 12'])
+    })
+
+    test('the bar fits again when it grows: items come back from "More" in order', async ({ page }) => {
+      await page.setViewportSize({ width: 1024, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      const count = () => page.locator('[data-atom-more-copy]').count()
+      const narrow = await count()
+      expect(narrow).toBeGreaterThan(0)
+
+      // wider, and below xl where the search field is still a button: more room, so an item comes back
+      await page.setViewportSize({ width: 1200, height: 800 })
+      await expect.poll(count).toBeLessThan(narrow)
+
+      await page.setViewportSize({ width: 1024, height: 800 })
+      await expect.poll(count).toBe(narrow)
+    })
+
+    test('a copy in "More" is a working link, and Arrow Down opens the panel on its first item', async ({ page }) => {
+      await page.setViewportSize({ width: 1024, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      const trigger = page.locator('[data-atom-header-more] > [data-atom-navlist-group-trigger]')
+      await trigger.focus()
+      await page.keyboard.press('ArrowDown')
+      await expect(page.locator('[data-atom-header-more] [data-atom-more-copy]').first()).toBeFocused()
+
+      await page.keyboard.press('Escape')
+      await expect(trigger).toBeFocused()
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+      await trigger.click()
+      await page.locator('[data-atom-header-more] [data-atom-more-copy]', { hasText: 'Delivery orders' }).click()
+      await page.waitForURL(/page=delivery-orders/)
+    })
+  })
+
+  // The search slot is printed once and shown three ways: a row of the menu panel below lg, a popover a button opens from
+  // lg to xl, inline from xl.
+  test.describe(`header shell search, ${tw} consumer build`, () => {
+    const field = (page) => page.locator('[data-atom-shell-search]')
+
+    test('below lg it is a full-width row at the top of the menu panel, under the context switcher', async ({ page }) => {
+      await page.setViewportSize({ width: 768, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      await expect(field(page)).toBeHidden()
+      await expect(page.locator('[data-atom-shell-search-button]')).toBeHidden()
+
+      await page.locator('[data-atom-header-menu-button]').click()
+      await expect(field(page)).toBeVisible()
+
+      const panel = await box(page.locator('[data-atom-header-nav]'))
+      const row = await box(field(page))
+      const input = await box(field(page).getByRole('textbox', { name: 'Search' }))
+      const context = await box(page.locator('[data-atom-shell-context]'))
+      const first = await box(link(page, 'Purchase orders').first())
+
+      expect(row.x).toBeGreaterThanOrEqual(panel.x)
+      expect(row.x + row.width).toBeLessThanOrEqual(panel.x + panel.width)
+      // full width: the field fills the panel's padding box, not the host's w-44
+      expect(input.width).toBeGreaterThan(panel.width - 40)
+      expect(context.y + context.height).toBeLessThanOrEqual(row.y)
+      expect(row.y + row.height).toBeLessThanOrEqual(first.y)
+      expect(await page.locator('[data-atom-shell-search]').count()).toBe(1)
+      expect(await page.getByRole('textbox', { name: 'Search' }).count()).toBe(1)
+    })
+
+    test('from lg to xl a search button opens it in a popover: Enter or Space opens, Escape closes and returns focus', async ({ page }) => {
+      await page.setViewportSize({ width: 1100, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      const button = page.locator('[data-atom-shell-search-button]')
+      await expect(button).toBeVisible()
+      await expect(button).toHaveAccessibleName('Search')
+      await expect(button).toHaveAttribute('aria-expanded', 'false')
+      await expect(field(page)).toBeHidden()
+      expect(await page.locator('[data-atom-shell-search]').count()).toBe(1)
+
+      for (const key of ['Enter', 'Space']) {
+        await button.focus()
+        await page.keyboard.press(key)
+
+        await expect(field(page)).toBeVisible()
+        await expect(button).toHaveAttribute('aria-expanded', 'true')
+        // focus goes to the first input in the slot
+        await expect(field(page).getByRole('textbox', { name: 'Search' })).toBeFocused()
+
+        // a layer under the bar, on screen, over the page rather than pushing it
+        const popover = await box(field(page))
+        expect(popover.y).toBeGreaterThanOrEqual(52)
+        expect(popover.x).toBeGreaterThanOrEqual(0)
+        expect(popover.x + popover.width).toBeLessThanOrEqual(1100)
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1100)
+
+        await page.keyboard.press('Escape')
+        await expect(field(page)).toBeHidden()
+        await expect(button).toBeFocused()
+        await expect(button).toHaveAttribute('aria-expanded', 'false')
+      }
+
+      // a click outside closes it too
+      await button.click()
+      await expect(field(page)).toBeVisible()
+      await page.mouse.click(300, 500)
+      await expect(field(page)).toBeHidden()
+    })
+
+    test('from xl it is inline in the bar and there is no button', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      await expect(field(page)).toBeVisible()
+      await expect(page.locator('[data-atom-shell-search-button]')).toBeHidden()
+      expect((await box(field(page))).y).toBeLessThan(52)
+      expect(await page.locator('[data-atom-shell-search]').count()).toBe(1)
+    })
+  })
+
+  // Escape closes the innermost thing that is open and nothing else.
+  test.describe(`header shell Escape, ${tw} consumer build`, () => {
+    test('a dropdown inside the menu panel closes on Escape without closing the panel', async ({ page }) => {
+      await page.setViewportSize({ width: 768, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      const menuButton = page.locator('[data-atom-header-menu-button]')
+      const panel = page.locator('[data-atom-header-nav]')
+      await menuButton.click()
+      await expect(panel).toBeVisible()
+
+      // the context switcher is a dropdown
+      await page.locator('[data-atom-shell-context]').getByRole('button', { name: /Acme Manufacturing/ }).click()
+      const item = page.getByRole('menuitem', { name: 'Acme Trading' })
+      await expect(item).toBeVisible()
+
+      await page.keyboard.press('Escape')
+      await expect(item).toBeHidden()
+      await expect(panel).toBeVisible()
+      await expect(menuButton).toHaveAttribute('aria-expanded', 'true')
+
+      // the next one closes the panel
+      await page.keyboard.press('Escape')
+      await expect(panel).toBeHidden()
+      await expect(menuButton).toBeFocused()
+    })
+
+    test('the account menu closes on Escape without closing an open menu panel', async ({ page }) => {
+      await page.setViewportSize({ width: 768, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      const menuButton = page.locator('[data-atom-header-menu-button]')
+      await menuButton.click()
+      await page.getByRole('button', { name: 'Account' }).click()
+      const item = page.getByRole('menuitem', { name: 'Sign out' })
+      await expect(item).toBeVisible()
+
+      await page.keyboard.press('Escape')
+      await expect(item).toBeHidden()
+      await expect(page.locator('[data-atom-header-nav]')).toBeVisible()
+      await expect(menuButton).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    test('the search popover and "More" each close on their own Escape and nothing else does', async ({ page }) => {
+      await page.setViewportSize({ width: 1100, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      const searchButton = page.locator('[data-atom-shell-search-button]')
+      const trigger = page.locator('[data-atom-header-more] > [data-atom-navlist-group-trigger]')
+      const items = page.locator('[data-atom-header-more] > [data-atom-navlist-group-items]')
+
+      await searchButton.click()
+      await expect(page.locator('[data-atom-shell-search]')).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(page.locator('[data-atom-shell-search]')).toBeHidden()
+      await expect(searchButton).toBeFocused()
+
+      await trigger.click()
+      await expect(items).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(items).toBeHidden()
+      await expect(trigger).toBeFocused()
+
     })
   })
 
@@ -413,6 +724,40 @@ for (const tw of ['floor', 'latest']) {
         // below the bar, not under it, and still on screen
         expect(tools.y).toBeGreaterThanOrEqual(barHeight)
         expect(tools.y + tools.height).toBeLessThanOrEqual(800)
+      })
+    }
+
+    // A slide-over is a <dialog> in the top layer: it scrolls inside its own box and the shell's bar is not above it, so the
+    // bar's height must not leak into it (--atom-shell-bar-h is reset on dialogs and popovers).
+    for (const [shell, barHeight] of [['sidebar', 48], ['header', 52]]) {
+      test(`${shell} shell: a tiptap in a slide-over keeps its toolbar at the top of the slide-over's scroll box`, async ({ page }) => {
+        await page.goto(`/atom/e2e/shell-editor?tw=${tw}&shell=${shell}&slide=1`)
+        await page.waitForFunction(() => window.Alpine !== undefined)
+        await expect(page.getByRole('toolbar', { name: 'Formatting' }).first()).toBeVisible({ timeout: 15000 })
+
+        // the page itself is under the bar, the dialog is not
+        expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--atom-shell-bar-h').trim())).not.toBe('0px')
+
+        await page.evaluate(() => window.dispatchEvent(new CustomEvent('atom-modal-show', { detail: { name: 'editor-slide', variant: 'slide' } })))
+        const dialog = page.locator('dialog[data-atom-modal-slide]')
+        await expect(dialog).toBeVisible()
+        const toolbar = dialog.getByRole('toolbar', { name: 'Formatting' })
+        await expect(toolbar).toBeVisible({ timeout: 15000 })
+
+        expect(await dialog.evaluate((el) => getComputedStyle(el).getPropertyValue('--atom-shell-bar-h').trim())).toBe('0px')
+
+        // scroll the slide-over's own box, from script: it is the scroll container
+        const scrolled = await dialog.evaluate((el) => { el.scrollTop = 700; return el.scrollTop })
+        expect(scrolled, 'the slide-over scrolls').toBeGreaterThan(600)
+
+        // the sticky wrapper (the toolbar's parent) sits at the slide-over's own padding edge: a sticky box keeps that much
+        // room inside the scroller. With the page's bar height leaking in it would sit barHeight lower.
+        const padding = await dialog.evaluate((el) => parseFloat(getComputedStyle(el).paddingTop))
+        const dialogBox = await box(dialog)
+        const wrapper = await box(toolbar.locator('..'))
+        const gap = wrapper.y - dialogBox.y - padding
+        expect(gap, 'stuck at the slide-over padding edge, not pushed down').toBeGreaterThanOrEqual(0)
+        expect(gap, `not ${barHeight}px lower`).toBeLessThan(1)
       })
     }
 

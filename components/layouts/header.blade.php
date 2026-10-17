@@ -35,10 +35,11 @@ $name = $user?->name;
     {{-- The bar: 52px, sticky, hairline below. atom.css lets it span the page's rows (a sticky grid item can only
          travel inside its own grid area). Not `relative`: below lg the nav panel is positioned against this element. --}}
     <header
-    x-data="{ menu: false }"
-    x-on:keydown.escape="if (menu) { menu = false; $refs.menuButton.focus() }"
-    x-on:click.outside="menu = false"
-    x-on:livewire:navigate.window="menu = false"
+    x-data="headerShell"
+    x-on:keydown.escape.capture="escape($event)"
+    x-on:click.outside="closeAll()"
+    x-on:focusout="if (search && $event.relatedTarget && !$refs.search.contains($event.relatedTarget) && $event.relatedTarget !== $refs.searchButton) search = false"
+    x-on:livewire:navigate.window="closeAll()"
     class="[grid-area:header] z-20 h-13 border-b border-border bg-surface/92 backdrop-blur-md"
     data-atom-header
     data-atom-header-bar>
@@ -66,17 +67,47 @@ $name = $user?->name;
                 </a>
             @endisset
 
-            {{-- The nav slot: the bar's items from lg up, a panel under the bar below it. The context slot lives in
-                 the same element, so it is one copy of the host's markup: beside the logo in the bar, at the top of
-                 the panel in menu mode, where a workspace switcher stays reachable. --}}
-            <div id="atom-header-nav" x-bind:data-open="menu ? '' : null" data-atom-nav-shell="header" data-atom-header-nav>
+            {{-- The nav slot: the bar's items from lg up, a panel under the bar below it. The context and search slots
+                 live in the same element, so each is one copy of the host's markup: in the bar, beside the logo and
+                 at its end (from lg to xl the search is a popover the search button opens), and the first two rows of
+                 the panel in menu mode, where a workspace switcher and the search stay reachable. The priority-plus
+                 "More" dropdown follows the nav slot (headerShell). --}}
+            <div id="atom-header-nav" x-ref="nav" x-bind:data-open="menu ? '' : null" data-atom-nav-shell="header" data-atom-header-nav>
                 @isset ($context)
-                    <span class="-ms-2 me-3 text-lg font-light text-border-strong" aria-hidden="true" data-atom-shell-context-divider>/</span>
+                    <span class="-ms-2 text-lg font-light text-border-strong" aria-hidden="true" data-atom-shell-context-divider>/</span>
                     <div data-atom-shell-context>{{ $context }}</div>
+                @endisset
+
+                @isset ($search)
+                    <div id="atom-header-search" x-ref="search" x-bind:data-open="search ? '' : null" data-atom-shell-search>{{ $search }}</div>
                 @endisset
 
                 @isset ($nav)
                     {{ $nav }}
+
+                    {{-- "More": copies of the nav items that do not fit the bar, written by headerShell. It is the group
+                         dropdown's markup, so atom.css draws it the same way, and it is not shown until something moved. --}}
+                    <div
+                    x-ref="more"
+                    x-bind:data-menu-open="more ? '' : null"
+                    x-on:focusout="if (more && $event.relatedTarget && !$el.contains($event.relatedTarget)) more = false"
+                    data-atom-navlist-group
+                    data-atom-header-more>
+                        <button
+                        type="button"
+                        x-ref="moreButton"
+                        x-on:click="more = !more"
+                        x-on:keydown.arrow-down.prevent="openMore()"
+                        x-bind:aria-expanded="more ? 'true' : 'false'"
+                        aria-controls="atom-header-more-items"
+                        class="items-center gap-1 text-sm font-medium text-fg-muted hover:text-fg"
+                        data-atom-navlist-group-trigger>
+                            {{ t('More') }}
+                            <atom:icon.down class="size-3.5 text-fg-subtle" />
+                        </button>
+
+                        <div x-ref="moreItems" id="atom-header-more-items" x-on:click="more = false" wire:ignore class="flex flex-col gap-px" data-atom-navlist-group-items></div>
+                    </div>
                 @endisset
 
                 @isset ($navfoot)
@@ -85,8 +116,20 @@ $name = $user?->name;
             </div>
 
             <div class="ms-auto flex shrink-0 items-center gap-2" data-atom-shell-actions>
+                {{-- From lg to xl the field does not fit the bar: this button opens it in a popover. Below lg the field is the
+                     menu panel's second row, from xl it is inline (atom.css decides which is shown). --}}
                 @isset ($search)
-                    <div class="max-xl:hidden" data-atom-shell-search>{{ $search }}</div>
+                    <button
+                    type="button"
+                    x-ref="searchButton"
+                    x-on:click="toggleSearch()"
+                    x-bind:aria-expanded="search ? 'true' : 'false'"
+                    aria-controls="atom-header-search"
+                    aria-label="{{ t('Search') }}"
+                    class="h-control aspect-square shrink-0 items-center justify-center rounded-control text-fg-muted hover:bg-fg/5 hover:text-fg"
+                    data-atom-shell-search-button>
+                        <atom:icon.search class="size-4"/>
+                    </button>
                 @endisset
 
                 @isset ($actions)

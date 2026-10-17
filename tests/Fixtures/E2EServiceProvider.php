@@ -84,7 +84,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/url-filters/record', fn () => view('atom::e2e.url-filters'));
         Route::middleware('web')->get('/atom/e2e/consumer-tailwind', fn () => view('atom::e2e.consumer-tailwind'));
         // The two shell pattern pages (resources/views/docs/patterns), on the consumer's Tailwind: ?tw=floor|latest, ?dark=1.
-        foreach (['sidebar' => 'app-shell-sidebar', 'header' => 'app-shell-header'] as $shell => $pattern) {
+        // header-wide is the worst case for the bar: long labels, a count on each, a context switcher and a search field.
+        foreach (['sidebar' => 'docs.patterns.app-shell-sidebar', 'header' => 'docs.patterns.app-shell-header', 'header-wide' => 'e2e.shell-header-wide'] as $shell => $pattern) {
             Route::middleware('web')->get('/atom/e2e/shell-'.$shell, function (Request $request) use ($pattern) {
                 Auth::setUser(new class(['id' => 1, 'name' => 'Alex Doe', 'email' => 'alex@example.com', 'avatar' => null]) extends GenericUser {
                     public function initials(): string
@@ -95,7 +96,7 @@ class E2EServiceProvider extends ServiceProvider
 
                 $tw = in_array($request->query('tw'), ['floor', 'latest'], true) ? $request->query('tw') : null;
 
-                return view('atom::docs.patterns.'.$pattern, [
+                return view('atom::'.$pattern, [
                     'styles' => $tw ? ['/atom/e2e/consumer-css/'.$tw] : [],
                     'dark' => $request->query('dark') === '1',
                 ]);

@@ -1,3 +1,33 @@
+@php
+// ?shell=header|sidebar puts the same table under an app shell, on the consumer's Tailwind (?tw=floor|latest), where the
+// shell's sticky bar sets --atom-shell-bar-h and the loading spinner has to stay below it.
+$shell = in_array(request()->query('shell'), ['header', 'sidebar'], true) ? request()->query('shell') : null;
+$tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
+@endphp
+
+@if ($shell)
+    <x-dynamic-component :component="'atom::layouts.'.$shell" title="E2E: Table Loading (shell)" :vite="[]" :styles="['/atom/e2e/consumer-css/'.$tw]">
+        <x-slot:nav>
+            <atom:navlist>
+                <atom:navlist.item href="?page=dashboard" icon="dashboard">Dashboard</atom:navlist.item>
+            </atom:navlist>
+        </x-slot>
+
+        <x-slot:crumbs>
+            <span>Table</span>
+        </x-slot>
+
+        <div style="height: 1200px"></div>
+
+        <div class="p-4">
+            <livewire:atom-e2e-table-loading />
+        </div>
+
+        <div style="height: 1200px"></div>
+
+        @livewireScripts
+    </x-dynamic-component>
+@else
 <atom:html title="E2E: Table Loading" :vite="[]" :dark="false" class="min-h-screen bg-white">
 {{-- Hosts tests/Fixtures/TableLoadingFixture.php so the E2E can watch the loading
      overlay during a real Livewire round-trip on a table that runs past the fold. --}}
@@ -68,3 +98,4 @@
 
 @livewireScripts
 </atom:html>
+@endif

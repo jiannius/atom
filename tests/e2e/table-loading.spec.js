@@ -191,3 +191,56 @@ test.describe('table loading overlay', () => {
     }
   })
 })
+
+// Under an app shell the page's sticky bar sits over the top of the screen, so the spinner (which sticks to the top of
+// the visible slice of a long table) has to stick below it: the bar's height is --atom-shell-bar-h, set on <html>.
+// Consumer Tailwind build (`node tests/consumer/build.mjs` first), because the spinner's offset is a utility.
+test.describe('table loading overlay under an app shell', () => {
+  for (const [shell, barHeight] of [['header', 52], ['sidebar', 48]]) {
+    test(`${shell} shell: the spinner stays below the bar wherever the fold falls`, async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 762 })
+      expect((await page.request.get('/atom/e2e/consumer-css/latest')).status(), 'run `node tests/consumer/build.mjs` first').toBe(200)
+      await page.goto(`/atom/e2e/table-loading?shell=${shell}&tw=latest`)
+      await page.waitForLoadState('networkidle')
+      await holdRequests(page, 1500)
+
+      // guard against a vacuous pass: the bar is there and the variable carries its height
+      expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--atom-shell-bar-h').trim())).toBe(`${barHeight / 16}rem`)
+
+      await page.evaluate(() => document.querySelector('[data-atom-table-columns] th [x-data]').click())
+      await expect(overlay(page)).toBeVisible()
+
+      const bar = shell === 'header' ? '[data-atom-header-bar]' : '[data-atom-header]'
+      const box = await page.evaluate(() => {
+        const veil = document.querySelector('[data-atom-table-loading]').getBoundingClientRect()
+        return { docHeight: document.documentElement.scrollHeight, veilTop: veil.top + window.scrollY, veilBottom: veil.bottom + window.scrollY }
+      })
+      const offsets = [box.veilTop - 762 + 150, box.veilBottom - 150, 1400, 2600].filter(y => y > 0 && y < box.docHeight - 762)
+      expect(offsets.length).toBeGreaterThanOrEqual(4)
+
+      // one round-trip to the page: a request that finishes leaves a hidden element measuring 0 x 0
+      const measured = await page.evaluate(([ys, barSelector]) => {
+        const veil = document.querySelector('[data-atom-table-loading]')
+        const icon = veil.querySelector('svg')
+        const header = document.querySelector(barSelector)
+
+        return ys.map(y => {
+          window.scrollTo(0, y)
+          const v = veil.getBoundingClientRect()
+          const i = icon.getBoundingClientRect()
+          const b = header.getBoundingClientRect()
+          return { y, veilHeight: v.height, iconTop: i.top, iconBottom: i.bottom, barBottom: b.bottom, barTop: b.top }
+        })
+      }, [offsets, bar])
+
+      for (const m of measured) {
+        expect(m.veilHeight, `veil on screen at scrollY ${m.y}`).toBeGreaterThan(762)
+        expect(m.barTop, `the bar is stuck to the top at scrollY ${m.y}`).toBe(0)
+        expect(m.barBottom).toBe(barHeight)
+        // KEY ASSERTION: not under the bar
+        expect(m.iconTop, `spinner top at scrollY ${m.y}`).toBeGreaterThanOrEqual(m.barBottom)
+        expect(m.iconBottom, `spinner bottom at scrollY ${m.y}`).toBeLessThanOrEqual(762)
+      }
+    })
+  }
+})

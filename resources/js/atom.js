@@ -24,6 +24,7 @@ import otp from './alpinejs/otp'
 import slider from './alpinejs/slider'
 import rating from './alpinejs/rating'
 import breadcrumbs from './alpinejs/breadcrumbs'
+import headerShell from './alpinejs/header-shell'
 import calendar from './alpinejs/calendar'
 import chartBar from './alpinejs/chart/bar'
 import chartArea from './alpinejs/chart/area'
@@ -48,6 +49,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('slider', slider)
     Alpine.data('rating', rating)
     Alpine.data('breadcrumbs', breadcrumbs)
+    Alpine.data('headerShell', headerShell)
     Alpine.data('datePicker', datePicker)
     Alpine.data('timePicker', timePicker)
     Alpine.data('dateRange', dateRange)

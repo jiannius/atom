@@ -13,7 +13,7 @@ $rows = [
 $colors = ['Paid' => 'green', 'Overdue' => 'red', 'Sent' => 'blue', 'Draft' => null];
 @endphp
 
-<div class="flex flex-col gap-5 px-7 pb-24 pt-6 max-md:px-4" data-testid="pattern-page">
+<div class="flex flex-col gap-5 px-7 pb-24 pt-6 max-lg:px-4" data-testid="pattern-page">
     <div>
         <div class="text-2xl font-semibold" data-testid="pattern-title">{{ $title }}</div>
         <div class="mt-1.5 flex flex-wrap gap-x-4 text-fg-muted">

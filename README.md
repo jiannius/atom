@@ -511,7 +511,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:separator>` | `align` (`left`, `center`, `right`). Slot becomes the label. |
 | `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`, `vite`. |
 | `<atom:layouts.sidebar>` | App layout: a 228px sidebar, a 48px sticky top bar and an unpadded `<main>`. Props: `title`, `noindex`, `dark`, `density`, `editor`, `scripts`, `styles`, `vite`. Slots: `brand`, `context`, `search`, `nav`, `navfoot`, `crumbs`, `actions`, `dropdown`, `profile`, `footer`. Pass `dark` to get the darkmode bootstrap and the top bar's switcher. |
-| `<atom:layouts.header>` | The top-nav twin, for an app with about six or fewer sections: a 52px sticky bar over a centred 1248px, unpadded `<main>`. **The same props and slots as `layouts.sidebar`, and the same `nav` markup**, so a host can choose the shell per user. Below `lg` (1024px) the nav becomes a menu button and a panel under the bar, with the `context` slot on top of it; the `search` slot is hidden below `xl` (1280px). |
+| `<atom:layouts.header>` | The top-nav twin, for an app with about six or fewer sections: a 52px sticky bar over a centred 1248px, unpadded `<main>`. **The same props and slots as `layouts.sidebar`, and the same `nav` markup**, so a host can choose the shell per user. Below `lg` (1024px) the nav becomes a menu button and a panel under the bar, with the `context` and `search` slots as its first two rows. From `lg` up the nav is priority-plus: items that do not fit move, in order, into a trailing "More" dropdown (a group becomes a labelled section in it). |
 
 #### Choosing a shell
 
@@ -531,9 +531,9 @@ The slots are the same, but a few land differently, because the two shells are l
 
 | Slot | `layouts.sidebar` | `layouts.header` |
 | --- | --- | --- |
-| `brand`, `nav`, `navfoot` | Top and middle of the side surface; `navfoot` under the nav. | The bar's left, and the bar's items; `navfoot` at the bar's right end, or at the foot of the menu panel. |
+| `brand`, `nav`, `navfoot` | Top and middle of the side surface; `navfoot` under the nav. | The bar's left, and the bar's items (the ones that do not fit go into "More"); `navfoot` at the bar's right end, or at the foot of the menu panel. |
 | `context` | Under the brand. | Beside the logo from `lg` up; the top of the menu panel below it. |
-| `search` | Under the context slot, always shown. | In the bar from `xl` (1280px) up, hidden below. |
+| `search` | Under the context slot, always shown. | Printed once, shown three ways: a full-width row in the menu panel (below `lg`); from `lg` to `xl` (1280px) a search icon button in the bar opens it in a popover (Enter or Space opens, focus goes to the first input, Escape closes and returns focus to the button); inline in the bar from `xl` up. |
 | `crumbs` | In the 48px top bar. | **Under** the bar, in the centred column (the bar itself has no room). |
 | `actions`, the dark toggle | In the top bar, on the right. | In the bar, on the right. |
 | `dropdown` | The menu behind the avatar: at the foot of the sidebar from `lg` up, in the top bar below it. | The menu behind the avatar in the bar. |

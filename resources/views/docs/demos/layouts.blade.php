@@ -24,9 +24,11 @@
     </p>
 
     <p>
-        Below 1024px the top nav becomes a menu (with the <code>context</code> slot at the top of its panel), and its
-        <code>search</code> slot shows from 1280px. <code>crumbs</code> sit in the sidebar's top bar but under the top
-        nav's bar. A <code>profile</code> with no <code>dropdown</code> is plain content, not a button.
+        Below 1024px the top nav becomes a menu (the <code>context</code> and <code>search</code> slots are the first
+        two rows of its panel). From 1024px the <code>search</code> slot is an icon button that opens a popover, and from
+        1280px it is inline; nav items that do not fit the bar move into a trailing "More" dropdown.
+        <code>crumbs</code> sit in the sidebar's top bar but under the top nav's bar. A <code>profile</code> with no
+        <code>dropdown</code> is plain content, not a button.
     </p>
 
     <p>See both shells in use, with one shared nav partial:</p>

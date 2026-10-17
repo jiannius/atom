@@ -368,6 +368,77 @@ x</atom:layouts.header>');
     });
 });
 
+// The header's search slot is printed once and shown three ways (a row of the menu panel, a popover a button opens, inline
+// from xl: tests/e2e/shells.spec.js), and the nav that does not fit the bar moves into "More" (resources/js/alpinejs/header-shell.js).
+describe('layouts.header search and "More"', function () {
+    $render = fn (string $slots = '') => renderBlade('<atom:layouts.header :vite="false">'."\n".$slots."\nx</atom:layouts.header>");
+    $search = "<x-slot:search>\n<input type=\"search\" aria-label=\"Find\">\n</x-slot>";
+    $nav = "<x-slot:nav>\n<atom:navlist><atom:navlist.item href=\"/a\">A</atom:navlist.item></atom:navlist>\n</x-slot>";
+
+    it('prints the search slot once, in the nav panel, under the context and above the items', function () use ($render, $search, $nav) {
+        $html = $render("<x-slot:context>\n<button type=\"button\">CTX</button>\n</x-slot>\n".$search."\n".$nav);
+
+        expect(substr_count($html, 'aria-label="Find"'))->toBe(1)
+            ->and(domQuery($html, '//*[@data-atom-header-nav]//*[@data-atom-shell-search]//input[@aria-label="Find"]'))->toHaveCount(1);
+
+        $order = fn (string $needle) => strpos($html, $needle);
+        expect($order('data-atom-shell-context>'))->toBeLessThan($order('data-atom-shell-search'))
+            ->and($order('data-atom-shell-search'))->toBeLessThan($order('href="/a"'));
+    });
+
+    it('gives the search button an accessible name and points it at the field', function () use ($render, $search) {
+        $html = $render($search);
+        $button = domQuery($html, '//button[@data-atom-shell-search-button]')[0];
+        $field = domQuery($html, '//*[@data-atom-shell-search]')[0];
+
+        expect($button->getAttribute('aria-label'))->toBe('Search')
+            ->and($button->getAttribute('aria-controls'))->toBe($field->getAttribute('id'))
+            ->and($field->getAttribute('id'))->not->toBe('')
+            ->and($button->hasAttribute('x-bind:aria-expanded'))->toBeTrue()
+            // the old class hid the field from xl down for good; atom.css decides now
+            ->and($field->getAttribute('class'))->not->toContain('max-xl:hidden');
+    });
+
+    it('draws no search button and no search field without a search slot', function () use ($render, $nav) {
+        $html = $render($nav);
+
+        expect(domQuery($html, '//*[@data-atom-shell-search-button]'))->toHaveCount(0)
+            ->and(domQuery($html, '//*[@data-atom-shell-search]'))->toHaveCount(0);
+    });
+
+    it('closes everything on Escape from the capture phase, so an inner dropdown\'s Escape never also closes the panel', function () use ($render) {
+        $header = domQuery($render(), '//header[@data-atom-header-bar]')[0];
+
+        expect($header->getAttribute('x-data'))->toBe('headerShell')
+            ->and($header->hasAttribute('x-on:keydown.escape.capture'))->toBeTrue()
+            ->and($header->getAttribute('x-on:keydown.escape.capture'))->toBe('escape($event)');
+    });
+
+    it('prints "More" once after the nav, empty, as the group dropdown\'s markup, with unique ids', function () use ($render, $search, $nav) {
+        $html = $render($search."\n".$nav);
+        $more = domQuery($html, '//*[@data-atom-header-more]');
+
+        expect($more)->toHaveCount(1)
+            ->and($more[0]->hasAttribute('data-atom-navlist-group'))->toBeTrue()
+            ->and($more[0]->hasAttribute('data-visible'))->toBeFalse()
+            ->and(domQuery($html, '//*[@data-atom-header-more]//*[@data-atom-more-copy]'))->toHaveCount(0);
+
+        $trigger = domQuery($html, '//*[@data-atom-header-more]/button')[0];
+        $panel = domQuery($html, '//*[@data-atom-header-more]/*[@data-atom-navlist-group-items]')[0];
+
+        expect(trim($trigger->textContent))->toBe('More')
+            ->and($trigger->getAttribute('aria-controls'))->toBe($panel->getAttribute('id'))
+            ->and($panel->hasAttribute('wire:ignore'))->toBeTrue();
+
+        $ids = array_map(fn ($el) => $el->getAttribute('id'), domQuery($html, '//*[@id]'));
+        expect(array_unique($ids))->toHaveCount(count($ids));
+    });
+
+    it('has no "More" when there is no nav slot', function () use ($render) {
+        expect(domQuery($render(), '//*[@data-atom-header-more]'))->toHaveCount(0);
+    });
+});
+
 describe('the shells\' slots', function () {
     it('puts the header shell\'s context slot in the nav panel, once, so a menu-mode user can reach it', function () {
         $html = renderBlade("<atom:layouts.header :vite=\"false\">\n<x-slot:context>\n<button type=\"button\">SWITCH-WORKSPACE</button>\n</x-slot>\nx</atom:layouts.header>");

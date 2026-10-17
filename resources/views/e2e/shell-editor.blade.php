@@ -22,5 +22,13 @@ $layout = request()->query('shell') === 'header' ? 'atom::layouts.header' : 'ato
         <atom:tiptap label="Article body" class="min-h-[2400px]"/>
     </div>
 
+    {{-- ?slide=1: the same kind of editor in a slide-over (a <dialog> in the top layer). The shell's bar is not above it, so
+         its toolbar has to stick to the top of the slide-over's own scroll box. --}}
+    @if (request()->has('slide'))
+        <atom:modal name="editor-slide" class="w-[40rem]">
+            <atom:tiptap label="Slide-over body" class="min-h-[2400px]"/>
+        </atom:modal>
+    @endif
+
     @livewireScripts
 </x-dynamic-component>

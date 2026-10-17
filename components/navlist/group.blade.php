@@ -6,6 +6,11 @@
     'persistKey' => null,
 ])
 
+{{-- The header shell's dropdown trigger points at its panel (aria-controls). The id is derived, never random: it is a
+     morph key where it falls back to one, and a random one would make every render replace the control. Two groups
+     with the same heading and no persist-key share a seed, so the seed is numbered by how many groups this render
+     has already printed with it. The view factory's "rendered once" ledger is the counter: it is emptied when a
+     top-level render ends, so the same page gets the same ids on every render. --}}
 @php
 // Namespaced so a caller's "sidebar" can't collide with the app's own entries.
 $storageKey = $persistKey ? 'atom:navlist-group:'.$persistKey : null;
@@ -19,9 +24,16 @@ $storageKey = $persistKey ? 'atom:navlist-group:'.$persistKey : null;
 // rather than waiting on Alpine to reveal it.
 $cloak = $expandable && ($persistKey || $expanded !== true);
 
-// The header shell's dropdown trigger points at its panel. Derived, never random: the id is a morph key where it
-// falls back to one, and a random one would make every render replace the control.
-$itemsId = 'atom-navlist-group-'.substr(md5($persistKey.'|'.$heading), 0, 8);
+$itemsSeed = 'atom-navlist-group-'.substr(md5($persistKey.'|'.$heading), 0, 8);
+$occurrence = 0;
+
+while ($__env->hasRenderedOnce($itemsSeed.'-'.$occurrence)) {
+    $occurrence++;
+}
+
+$__env->markAsRenderedOnce($itemsSeed.'-'.$occurrence);
+
+$itemsId = $occurrence ? $itemsSeed.'-'.$occurrence : $itemsSeed;
 @endphp
 
 @if ($hiddenIfEmpty && $slot->isEmpty())
