@@ -80,7 +80,7 @@ Useful `<atom:html>` props (all optional):
 | `jsonld`      | Raw JSON-LD payload.                                                |
 | `gtm` / `ga` / `fbp` | Tracking IDs for GTM, GA, Facebook Pixel.                   |
 | `fonts`       | `geist` (default, also what `true` or `null` mean): Geist and Geist Mono, served by atom; Geist is preloaded, Geist Mono loads when something uses it. Any other value is a Bunny Fonts family (`inter`, `open-sans`: letters, digits and hyphens only; anything else loads nothing) loaded from the CDN and put first in `--font-sans`. `false` loads no font, and `--font-sans` and `--font-mono` become the system stacks. |
-| `density`     | `comfortable` (default) or `compact`, in any case; anything else is `comfortable`. Printed as `data-atom-density` on `<body>`; `layouts.sidebar` defaults to `compact`, `layouts.auth` to `comfortable`. |
+| `density`     | `comfortable` (default) or `compact`, in any case; anything else is `comfortable`. Printed as `data-atom-density` on `<body>`; `layouts.sidebar` and `layouts.header` default to `compact`, `layouts.auth` to `comfortable`. |
 | `dark`        | Opts the page into dark mode (off by default, on every layout too). Adds `class="dark"` to `<html>` and emits the `window.darkmode()` bootstrap, which then follows the stored preference or, with none, the visitor's `prefers-color-scheme`. Required for `<atom:darkmode-toggle>` to work. |
 | `styles`      | Additional stylesheet URLs.                                         |
 | `scripts`     | Additional script URLs.                                             |
@@ -461,7 +461,7 @@ An `href` is only followed if it is `http`, `https`, `mailto`, `tel`, `sms` or s
 
 `<atom:heading>` renders a `<div>` unless you pass `level`, because most headings in an app UI are card titles, stat labels and table captions — visual, not structural. `size` and `level` are deliberately independent: size is how big it looks, level is where it sits in the document outline.
 
-`<atom:layouts.sidebar>` supplies the page's `<h1>` itself, from its `title` prop — visually hidden, since the visible title comes from `<atom:breadcrumbs>`, which is a `nav` landmark and emits no heading element. So you do **not** need an `<h1>` in the page body; start at `level="2"`.
+`<atom:layouts.sidebar>` (and `<atom:layouts.header>`) supplies the page's `<h1>` itself, from its `title` prop — visually hidden, since the visible title comes from `<atom:breadcrumbs>`, which is a `nav` landmark and emits no heading element. So you do **not** need an `<h1>` in the page body; start at `level="2"`.
 
 Pass `level` where a section genuinely nests, and leave it off elsewhere:
 
@@ -504,13 +504,30 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:tabs>` | `tabs` (array), `size` (`sm`), `variant` (`button`, `border`). Child: `<atom:tabs.item>`. |
 | `<atom:list>` | `heading`, `scrollable` (default `true`). Child: `<atom:list.item>`. |
 | `<atom:menu>` | `popover`. Child: `<atom:menu.item>`. |
-| `<atom:navlist>` | Sidebar nav container. Children: `<atom:navlist.item>`, `<atom:navlist.group>`, `<atom:navlist.badge>`. |
+| `<atom:navlist>` | Nav container, drawn as a column in `layouts.sidebar` and as bar items in `layouts.header` (a group becomes a dropdown there). Children: `<atom:navlist.item>`, `<atom:navlist.group>`, `<atom:navlist.badge>`. Items carry `aria-current="page"` when current. |
 | `<atom:navlist.group>` | `heading`, `expandable`, `expanded` (default `true`), `hiddenIfEmpty` (default `true`), `persistKey`. See [Remembering collapsed groups](#remembering-collapsed-groups). |
 | `<atom:breadcrumbs>` | `heading` (default `true`). Reads `$_breadcrumbs` populated by your `breadcrumbs()` method. Wrap it in `@persist('breadcrumbs')` so the trail survives `wire:navigate`: without it each page starts a fresh trail from its own declared crumbs, so pushed crumbs don't accumulate and a crumb (or Back) returns to the bare URL, without the query string (filters, page) you left it with. |
 | `<atom:calendar>` | Month, week and day calendar with a toolbar. `wire:model` binds the anchor date (`Y-m-d`); with none it is static. Props: `items` (an array, or `fn ($from, $to) => ...` for the visible window), `views`, `view`, `week-start`, `weekend`, `max`, `time-format`, `date-format`, `selectable`, `draggable`, `resizable`, `slot-duration`, `scroll-time`, `now-indicator`, `month`, `name`. Events: `calendar-select`, `calendar-item-move`, `calendar-item-resize`, `calendar-item-click`. See [Calendar](#calendar). |
 | `<atom:separator>` | `align` (`left`, `center`, `right`). Slot becomes the label. |
 | `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`, `vite`. |
-| `<atom:layouts.sidebar>` | App layout with sidebar + top bar. Props: `title`, `noindex`, `dark`, `editor`, `styles`, `scripts`, `vite`. Pass `dark` to get the darkmode bootstrap and the header's switcher. |
+| `<atom:layouts.sidebar>` | App layout: a 228px sidebar, a 48px sticky top bar and an unpadded `<main>`. Props: `title`, `noindex`, `dark`, `density`, `editor`, `scripts`, `styles`, `vite`. Slots: `brand`, `context`, `search`, `nav`, `navfoot`, `crumbs`, `actions`, `dropdown`, `profile`, `footer`. Pass `dark` to get the darkmode bootstrap and the top bar's switcher. |
+| `<atom:layouts.header>` | The top-nav twin, for an app with about six or fewer sections: a 52px sticky bar over a centred 1248px, unpadded `<main>`. **The same props and slots as `layouts.sidebar`, and the same `nav` markup**, so a host can choose the shell per user. Below `md` the nav becomes a menu; the `search` slot is hidden there. |
+
+#### Choosing a shell
+
+`layouts.sidebar` suits an app with many modules; `layouts.header` an app with about six or fewer sections, or a role that can open only one or two. Both take the same props and slots, and your `nav` slot is the same `<atom:navlist>` markup in each: the sidebar draws it as a column, the top nav as bar items, and a `navlist.group` as a dropdown. Atom does not pick for you (it renders the nav before it knows where it goes), so choose in your own app layout, per user:
+
+```blade
+<x-dynamic-component :component="$user->modules()->count() <= 2 ? 'atom::layouts.header' : 'atom::layouts.sidebar'" :title="$title">
+    <x-slot:nav>
+        @include('partials.nav')
+    </x-slot>
+
+    {{ $slot }}
+</x-dynamic-component>
+```
+
+`<main>` is unpadded in both: padding belongs to the page. See both shells as live pages, with one shared nav partial, under **Patterns** in `/atom/docs` (source: `resources/views/docs/patterns/`).
 
 #### Remembering collapsed groups
 

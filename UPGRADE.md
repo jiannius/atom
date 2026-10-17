@@ -15,3 +15,11 @@ Each change that breaks a host is listed once, under the release that made it. T
 **Accent fallback.** If your app does not set `--color-accent`, the accent is near-black (`#1c1b18`), which is barely visible as a fill in dark mode. A dark-mode app should set its own accent.
 
 **Font.** Geist is the default. Pass `fonts="inter"` to `<atom:html>` to keep the old font, or `:fonts="false"` to load none and use the system fonts.
+
+## Shells
+
+`layouts.header` is new: use it for apps with about 6 or fewer top-level sections. It takes the same slots and props as `layouts.sidebar`, including the same `nav` markup, so an app can choose the shell per user (for example, the top nav for a role that sees only one or two modules). `<main>` is still unpadded; padding now comes from `<atom:page>`.
+
+**What changes in the shells you already use.** `layouts.sidebar` is restyled: a 228px side surface, 28px nav rows with 16px icons, and a 48px sticky top bar that is now shown at every width (it holds the new `crumbs` and `actions` slots, and the dark toggle when `dark` is set, which used to show on small screens only; remove a toggle you put in `navfoot` yourself). Both shells also take new slots, `context` (a workspace switcher) and `search`. Navigation items now carry `aria-current="page"`, and a `navlist.group` heading is 12px and no longer uppercase. `layouts.auth` is restyled with the comfortable density and a plain canvas (the dark gradient is gone).
+
+**Choosing the shell is yours.** Atom does not switch on an item count: it renders the nav before it knows where the nav goes. Decide in your own app layout, for example `<x-dynamic-component :component="$user->modules()->count() <= 2 ? 'atom::layouts.header' : 'atom::layouts.sidebar'">`. The choice is per page load; a role does not change mid-session, so `wire:navigate` never crosses shells.
