@@ -79,7 +79,7 @@ Useful `<atom:html>` props (all optional):
 | `hreflang`    | Array of locale alternates.                                         |
 | `jsonld`      | Raw JSON-LD payload.                                                |
 | `gtm` / `ga` / `fbp` | Tracking IDs for GTM, GA, Facebook Pixel.                   |
-| `fonts`       | `geist` (default, also what `true` or `null` mean): Geist and Geist Mono, served by atom; Geist is preloaded, Geist Mono loads when something uses it. Any other value is a Bunny Fonts family (`inter`, `open-sans`: letters, digits and hyphens only; anything else loads nothing) loaded from the CDN and put first in `--font-sans`. `false` loads no font, and `--font-sans` and `--font-mono` become the system stacks. |
+| `fonts`       | `geist` (default, also what `true` or `null` mean): Geist and Geist Mono, served by atom and both preloaded. Any other value is a Bunny Fonts family (`inter`, `open-sans`: letters, digits and hyphens only; anything else loads nothing) loaded from the CDN and put first in `--font-sans`. `false` loads no font, and `--font-sans` and `--font-mono` become the system stacks. |
 | `density`     | `comfortable` (default) or `compact`, in any case; anything else is `comfortable`. Printed as `data-atom-density` on `<body>`; `layouts.sidebar` and `layouts.header` default to `compact`, `layouts.auth` to `comfortable`. |
 | `dark`        | Opts the page into dark mode (off by default, on every layout too). Adds `class="dark"` to `<html>` and emits the `window.darkmode()` bootstrap, which then follows the stored preference or, with none, the visitor's `prefers-color-scheme`. Required for `<atom:darkmode-toggle>` to work. |
 | `styles`      | Additional stylesheet URLs.                                         |
@@ -511,7 +511,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:separator>` | `align` (`left`, `center`, `right`). Slot becomes the label. |
 | `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`, `vite`. |
 | `<atom:layouts.sidebar>` | App layout: a 228px sidebar, a 48px sticky top bar and an unpadded `<main>`. Props: `title`, `noindex`, `dark`, `density`, `editor`, `scripts`, `styles`, `vite`. Slots: `brand`, `context`, `search`, `nav`, `navfoot`, `crumbs`, `actions`, `dropdown`, `profile`, `footer`. Pass `dark` to get the darkmode bootstrap and the top bar's switcher. |
-| `<atom:layouts.header>` | The top-nav twin, for an app with about six or fewer sections: a 52px sticky bar over a centred 1248px, unpadded `<main>`. **The same props and slots as `layouts.sidebar`, and the same `nav` markup**, so a host can choose the shell per user. Below `md` the nav becomes a menu; the `search` slot is hidden there. |
+| `<atom:layouts.header>` | The top-nav twin, for an app with about six or fewer sections: a 52px sticky bar over a centred 1248px, unpadded `<main>`. **The same props and slots as `layouts.sidebar`, and the same `nav` markup**, so a host can choose the shell per user. Below `lg` (1024px) the nav becomes a menu button and a panel under the bar, with the `context` slot on top of it; the `search` slot is hidden below `xl` (1280px). |
 
 #### Choosing a shell
 
@@ -526,6 +526,21 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
     {{ $slot }}
 </x-dynamic-component>
 ```
+
+The slots are the same, but a few land differently, because the two shells are laid out differently:
+
+| Slot | `layouts.sidebar` | `layouts.header` |
+| --- | --- | --- |
+| `brand`, `nav`, `navfoot` | Top and middle of the side surface; `navfoot` under the nav. | The bar's left, and the bar's items; `navfoot` at the bar's right end, or at the foot of the menu panel. |
+| `context` | Under the brand. | Beside the logo from `lg` up; the top of the menu panel below it. |
+| `search` | Under the context slot, always shown. | In the bar from `xl` (1280px) up, hidden below. |
+| `crumbs` | In the 48px top bar. | **Under** the bar, in the centred column (the bar itself has no room). |
+| `actions`, the dark toggle | In the top bar, on the right. | In the bar, on the right. |
+| `dropdown` | The menu behind the avatar: at the foot of the sidebar from `lg` up, in the top bar below it. | The menu behind the avatar in the bar. |
+| `profile` | The **trigger's** content (name and email beside the avatar) at the foot of the sidebar; the menu's header in the top bar below `lg`. | The menu's **header**, inside the dropdown. |
+| `profile` without `dropdown` | Plain content at the foot of the sidebar. | Plain content in the bar. |
+
+The sidebar's top bar is not drawn from `lg` up when `crumbs`, `actions` and `dark` are all empty (below `lg` it still holds the menu button and the account).
 
 `<main>` is unpadded in both: padding belongs to the page. See both shells as live pages, with one shared nav partial, under **Patterns** in `/atom/docs` (source: `resources/views/docs/patterns/`).
 

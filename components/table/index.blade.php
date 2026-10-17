@@ -194,8 +194,8 @@ data-atom-table>
                  containing block, so where the table only partly overlaps the screen
                  the strut cannot reach the visible part — which is why the spinner
                  carries `top`/`bottom` of its own. It is small enough to move. --}}
-            <div class="sticky top-0 h-dvh max-h-full flex items-center">
-                <atom:icon.loading class="sticky top-4 bottom-4 size-6 text-zinc-500" />
+            <div class="sticky top-[var(--atom-shell-bar-h,0px)] h-[calc(100dvh-var(--atom-shell-bar-h,0px))] max-h-full flex items-center">
+                <atom:icon.loading class="sticky top-[calc(var(--atom-shell-bar-h,0px)+1rem)] bottom-4 size-6 text-zinc-500" />
             </div>
         </div>
     </div>

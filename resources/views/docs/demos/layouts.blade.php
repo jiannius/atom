@@ -23,6 +23,12 @@
         <code>profile</code>, <code>footer</code>. <code>&lt;main&gt;</code> is unpadded: padding comes from the page.
     </p>
 
+    <p>
+        Below 1024px the top nav becomes a menu (with the <code>context</code> slot at the top of its panel), and its
+        <code>search</code> slot shows from 1280px. <code>crumbs</code> sit in the sidebar's top bar but under the top
+        nav's bar. A <code>profile</code> with no <code>dropdown</code> is plain content, not a button.
+    </p>
+
     <p>See both shells in use, with one shared nav partial:</p>
 
     <ul class="list-disc ps-5">

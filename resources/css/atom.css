@@ -193,15 +193,46 @@ button {
     top: 0;
 }
 
+/* The height of the shell's sticky bar, for what else on the page sticks to the top (an editor's toolbar, a table's
+   loading spinner) and for scrolling to an anchor or a focused field: `scroll-padding-top` keeps either from
+   landing under the bar. Not set outside a shell, where `var(--atom-shell-bar-h, 0px)` is 0. */
+html:has([data-atom-sidebar] + [data-atom-header]) {
+    --atom-shell-bar-h: 3rem;
+    scroll-padding-top: var(--atom-shell-bar-h);
+}
+
+html:has([data-atom-header-bar]) {
+    --atom-shell-bar-h: 3.25rem;
+    scroll-padding-top: var(--atom-shell-bar-h);
+}
+
+/* the sidebar's bar is not drawn from lg up when it has nothing to hold (its menu button and account are for small
+   screens): no crumbs, no actions, no dark toggle. layouts.sidebar marks it; the row and the variable go with it. */
+@media (min-width: 64rem) {
+    [data-atom-sidebar] + [data-atom-header][data-atom-header-empty] {
+        display: none;
+    }
+
+    *:has(>[data-atom-sidebar]+[data-atom-header][data-atom-header-empty]) {
+        grid-template-rows: 0 1fr auto;
+    }
+
+    html:has([data-atom-sidebar] + [data-atom-header][data-atom-header-empty]) {
+        --atom-shell-bar-h: 0px;
+    }
+}
+
 /** Navigation shells. One <atom:navlist> markup serves layouts.sidebar and layouts.header: the sidebar is the
     look the components are written in; this block restyles the same elements as top-bar items inside
     [data-atom-nav-shell="header"] (the wrapper layouts.header puts around the nav slot).
 
-    Below 48rem the wrapper is a panel under the bar that the menu button opens, and its items are plain rows, with
-    each group shown open under its label. From 48rem it is the bar: items stretch the bar's height, the current one
-    is underlined, counts are pills, and a group is a dropdown (its trigger shown, its label and disclosure hidden,
-    its items a panel that [data-menu-open] opens). Structural, so it holds wherever Tailwind is not compiled; the
-    colours read atom's role tokens. **/
+    Below 64rem the wrapper is a panel under the bar that the menu button opens, and its items are plain rows, with
+    each group shown open under its label and the context slot on top. From 64rem it is the bar: the context slot sits
+    beside the logo, items stretch the bar's height, the current one is underlined, counts are pills, and a group is a
+    dropdown (its trigger shown, its label and disclosure hidden, its items a panel that [data-menu-open] opens). The
+    switch is at 64rem, not 48rem, because the logo, context, six items, an action and the account do not fit side
+    by side before that. Structural, so it holds wherever Tailwind is not compiled; the colours read atom's role
+    tokens. **/
 [data-atom-navlist] {
     gap: 1px;
 }
@@ -231,6 +262,17 @@ button {
     display: inline-flex;
 }
 
+/* the context slot is the first thing in the menu panel, set off from the items; beside the logo in the bar */
+[data-atom-header-nav] [data-atom-shell-context-divider] {
+    display: none;
+}
+
+[data-atom-header-nav] [data-atom-shell-context] {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--atom-border);
+}
+
 [data-atom-header-nav] {
     display: none;
     position: absolute;
@@ -248,7 +290,7 @@ button {
     display: block;
 }
 
-@media (min-width: 48rem) {
+@media (min-width: 64rem) {
     [data-atom-header-menu-button] {
         display: none;
     }
@@ -265,6 +307,20 @@ button {
         background: none;
         border: 0;
         box-shadow: none;
+    }
+
+    [data-atom-header-nav] [data-atom-shell-context-divider] {
+        display: block;
+        align-self: center;
+        flex: none;
+    }
+
+    [data-atom-header-nav] [data-atom-shell-context] {
+        align-self: center;
+        flex: none;
+        margin: 0 1.25rem 0 0;
+        padding: 0;
+        border: 0;
     }
 
     [data-atom-header-nav] [data-atom-navlist] {
@@ -412,8 +468,8 @@ button {
     }
 }
 
-/* the group trigger exists only in the bar (48rem and up, header shell) */
-@media (min-width: 48rem) {
+/* the group trigger exists only in the bar (64rem and up, header shell) */
+@media (min-width: 64rem) {
     [data-atom-header-nav] [data-atom-navlist-group-trigger] {
         display: inline-flex;
     }

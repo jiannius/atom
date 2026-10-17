@@ -2,7 +2,7 @@
 
 /*
  * Geist and Geist Mono are self-hosted: the build puts the variable woff2 files in dist/assets, the /atom/{file}
- * route serves them as font/woff2, and <atom:html> preloads Geist (the mono face loads on demand). Any other `fonts`
+ * route serves them as font/woff2, and <atom:html> preloads both. Any other `fonts`
  * value keeps the CDN path; `false` loads nothing and puts the system stack in its place.
  */
 describe('self-hosted fonts', function () {
@@ -34,13 +34,13 @@ describe('self-hosted fonts', function () {
             ->toMatch('/url\(\.\/GeistMono-Variable-[\w-]+\.woff2\)/');
     });
 
-    it('preloads Geist sans only, and loads nothing from a CDN by default', function () {
+    it('preloads Geist and Geist Mono, and loads nothing from a CDN by default', function () {
         $html = renderBlade('<atom:html :vite="false">Hello</atom:html>');
 
         expect($html)
             ->toContain('rel="preload" href="'.app('atom')->asset()->version('Geist-Variable.woff2').'" as="font" type="font/woff2" crossorigin')
-            ->not->toContain('GeistMono')
-            ->and(substr_count($html, 'rel="preload"'))->toBe(1);
+            ->toContain('rel="preload" href="'.app('atom')->asset()->version('GeistMono-Variable.woff2').'" as="font" type="font/woff2" crossorigin')
+            ->and(substr_count($html, 'rel="preload"'))->toBe(2);
 
         expect($html)
             ->not->toContain('bunny.net')
@@ -78,7 +78,7 @@ describe('self-hosted fonts', function () {
             ->toContain('rel="preload" href="'.app('atom')->asset()->version('Geist-Variable.woff2').'" as="font" type="font/woff2" crossorigin')
             ->not->toContain('bunny.net')
             ->not->toContain('--font-sans')
-            ->and(substr_count($html, 'rel="preload"'))->toBe(1);
+            ->and(substr_count($html, 'rel="preload"'))->toBe(2);
     })->with(['null' => ['null'], 'true' => ['true']]);
 
     it('still loads nothing for fonts=false, even with a null config', function () {

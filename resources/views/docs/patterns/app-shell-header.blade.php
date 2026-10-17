@@ -15,18 +15,11 @@ $styles = $styles ?? [];
     </x-slot>
 
     <x-slot:context>
-        <button type="button" class="flex h-control items-center gap-2 rounded-control px-2 text-sm font-medium hover:bg-fg/5">
-            <span class="flex size-[18px] items-center justify-center rounded-full bg-info-bg text-[10px] font-semibold text-info-fg">A</span>
-            Acme Studio
-            <atom:icon.dropdown class="size-3.5 text-fg-subtle"/>
-        </button>
+        <atom:button size="sm" variant="ghost" icon-suffix="dropdown">Acme Studio</atom:button>
     </x-slot>
 
     <x-slot:search>
-        <div class="flex h-control w-44 items-center gap-2 rounded-control border border-border-strong bg-surface px-2 text-fg-subtle">
-            <atom:icon.search class="size-4"/>
-            <span>Search</span>
-        </div>
+        <atom:input icon="search" placeholder="Search" aria-label="Search" class="w-44"/>
     </x-slot>
 
     <x-slot:nav>
@@ -37,6 +30,10 @@ $styles = $styles ?? [];
         <atom:navlist>
             <atom:navlist.item href="?page=help" icon="life-buoy">Help</atom:navlist.item>
         </atom:navlist>
+    </x-slot>
+
+    <x-slot:crumbs>
+        @include('atom::docs.patterns.crumbs')
     </x-slot>
 
     <x-slot:actions>

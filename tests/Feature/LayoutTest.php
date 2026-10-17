@@ -368,6 +368,43 @@ x</atom:layouts.header>');
     });
 });
 
+describe('the shells\' slots', function () {
+    it('puts the header shell\'s context slot in the nav panel, once, so a menu-mode user can reach it', function () {
+        $html = renderBlade("<atom:layouts.header :vite=\"false\">\n<x-slot:context>\n<button type=\"button\">SWITCH-WORKSPACE</button>\n</x-slot>\nx</atom:layouts.header>");
+        $panel = domQuery($html, '//*[@data-atom-header-nav]')[0];
+
+        expect(domQuery($html, '//*[@id="'.$panel->getAttribute('id').'"]//*[@data-atom-shell-context][contains(., "SWITCH-WORKSPACE")]'))->toHaveCount(1)
+            ->and(substr_count($html, 'SWITCH-WORKSPACE'))->toBe(1);
+    });
+
+    it('draws a profile with no dropdown as plain content, never a dead account button', function (string $layout) {
+        $html = renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:profile>\n<span>PROFILE-ONLY</span>\n</x-slot>\nx</atom:".$layout.'>');
+
+        expect(domQuery($html, '//*[@data-atom-shell-profile][contains(., "PROFILE-ONLY")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//button[@aria-label="Account"]'))->toHaveCount(0)
+            ->and(domQuery($html, '//*[@data-atom-shell-profile]//button'))->toHaveCount(0)
+            ->and(substr_count($html, 'PROFILE-ONLY'))->toBe(1);
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('keeps the account button where there is a menu behind it', function (string $layout) {
+        $html = renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>');
+
+        expect(domQuery($html, '//button[@aria-label="Account"]'))->not->toBeEmpty();
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('marks the sidebar\'s top bar empty (not drawn from lg up) only with no crumbs, actions or dark toggle', function () {
+        $has = fn (string $attrs, string $slots = '') => str_contains(
+            renderBlade('<atom:layouts.sidebar :vite="false" '.$attrs.">\n".$slots."\nx</atom:layouts.sidebar>"),
+            'data-atom-header-empty',
+        );
+
+        expect($has(''))->toBeTrue()
+            ->and($has('dark'))->toBeFalse()
+            ->and($has('', "<x-slot:crumbs>\nC\n</x-slot>"))->toBeFalse()
+            ->and($has('', "<x-slot:actions>\nA\n</x-slot>"))->toBeFalse();
+    });
+});
+
 describe('one nav slot in both shells', function () {
     // plain items, a count, a group, a group with a heading only, and an @can-hidden item
     $nav = <<<'BLADE'

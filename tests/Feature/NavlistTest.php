@@ -137,8 +137,26 @@ describe('navlist.group in the header shell', function () {
             ->toContain('data-atom-navlist-group-label')
             ->toContain('data-atom-navlist-group-trigger')
             ->toContain('data-atom-navlist-group-items')
-            ->toContain('aria-haspopup="true"')
             ->toContain('x-bind:aria-expanded="menu');
+    });
+
+    // A disclosure, not a menu: it keeps aria-expanded, points at its panel, and does not claim a popup menu role.
+    it('is a disclosure: aria-expanded and aria-controls with a derived id, no aria-haspopup', function () {
+        $render = fn () => Blade::render('<atom:navlist.group heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        $html = $render();
+        $trigger = domQuery($html, '//button[@data-atom-navlist-group-trigger]')[0];
+        $panel = domQuery($html, '//*[@data-atom-navlist-group-items]')[0];
+
+        expect($trigger->hasAttribute('aria-haspopup'))->toBeFalse()
+            ->and($trigger->hasAttribute('x-bind:aria-expanded'))->toBeTrue()
+            ->and($trigger->getAttribute('aria-controls'))->not->toBe('')
+            ->and($panel->getAttribute('id'))->toBe($trigger->getAttribute('aria-controls'))
+            ->and($render())->toBe($html);
+
+        $other = Blade::render('<atom:navlist.group heading="Settings"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect(domQuery($other, '//*[@data-atom-navlist-group-items]')[0]->getAttribute('id'))->not->toBe($panel->getAttribute('id'));
     });
 
     it('prints the items once', function () {

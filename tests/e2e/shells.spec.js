@@ -309,6 +309,220 @@ for (const tw of ['floor', 'latest']) {
   })
 }
 
+// The bar/menu switch is at 1024px (lg): the logo, the context switcher, six items, an action and the account do not fit
+// side by side before that. At every width either the menu button is shown, or nothing in the bar overlaps: the nav's own
+// box AND each of its items end before the actions begin (the items can spill out of a box that is too narrow for them,
+// which is how "Settings" once drew over the search field at 1024px).
+for (const tw of ['floor', 'latest']) {
+  test.describe(`header shell widths, ${tw} consumer build`, () => {
+    for (const width of [768, 1024, 1100, 1280]) {
+      test(`nothing in the bar overlaps at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 800 })
+        await open(page, 'header', { tw })
+
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+
+        const menuMode = await page.locator('[data-atom-header-menu-button]').isVisible()
+        // 1024px and up is the bar; below it the menu
+        expect(menuMode).toBe(width < 1024)
+        if (menuMode) {
+          await expect(link(page, 'Dashboard')).toBeHidden()
+          return
+        }
+
+        const left = (await box(page.locator('[data-atom-shell-actions]'))).x
+        const nav = await box(page.locator('[data-atom-header-nav]'))
+        expect(nav.x + nav.width, 'the nav box').toBeLessThanOrEqual(left)
+
+        const items = await page.locator('[data-atom-header-nav] a[data-atom-navlist-item], [data-atom-header-nav] [data-atom-navlist-group-trigger]').evaluateAll((els) => els
+          .filter((el) => el.getBoundingClientRect().width > 0)
+          .map((el) => { const r = el.getBoundingClientRect(); return { x: r.x, right: r.right } }))
+        expect(items.length).toBeGreaterThanOrEqual(6)
+        for (const item of items) {
+          expect(item.right, 'a nav item').toBeLessThanOrEqual(left)
+        }
+
+        // the context switcher ends before the first item, the logo before the switcher
+        const context = await box(page.locator('[data-atom-shell-context]'))
+        expect(context.x + context.width).toBeLessThanOrEqual(Math.min(...items.map((i) => i.x)))
+        const brand = await box(page.locator('[data-atom-header-bar] a').first())
+        expect(brand.x + brand.width).toBeLessThanOrEqual(context.x)
+
+        // the search field is a wide-screen extra: it shows from 1280px, and is out of the way below it
+        if (width < 1280) {
+          await expect(page.locator('[data-atom-shell-search]')).toBeHidden()
+        }
+        else {
+          await expect(page.locator('[data-atom-shell-search]')).toBeVisible()
+          const search = await box(page.locator('[data-atom-shell-search]'))
+          expect(search.x).toBeGreaterThanOrEqual(nav.x + nav.width)
+        }
+      })
+    }
+
+    test('the context switcher is in the menu panel on a small screen, ahead of the items', async ({ page }) => {
+      await page.setViewportSize({ width: 768, height: 800 })
+      await open(page, 'header', { tw })
+
+      const context = page.locator('[data-atom-shell-context]')
+      await expect(context).toBeHidden()
+
+      await page.locator('[data-atom-header-menu-button]').click()
+      await expect(context).toBeVisible()
+      await expect(context.getByRole('button', { name: /Acme Studio/ })).toBeVisible()
+      // it is inside the panel, above the first item, and printed once
+      expect(await page.locator('[data-atom-header-nav] [data-atom-shell-context]').count()).toBe(1)
+      expect(await page.locator('[data-atom-shell-context]').count()).toBe(1)
+      expect((await box(context)).y + (await box(context)).height).toBeLessThanOrEqual((await box(link(page, 'Dashboard'))).y)
+      await expect(page.locator('[data-atom-shell-context-divider]')).toBeHidden()
+
+      // and in the bar, beside the logo, on a wide one
+      await page.setViewportSize({ width: 1280, height: 800 })
+      await expect(context).toBeVisible()
+      expect((await box(context)).y).toBeLessThan(52)
+      await expect(page.locator('[data-atom-shell-context-divider]')).toBeVisible()
+    })
+  })
+
+  // The shells' bar is sticky, so what else sticks to the top of the page (an editor's toolbar) has to stick below it, and
+  // scrolling to an anchor or a focused field must not land under it.
+  test.describe(`sticky bar and sticky page elements, ${tw} consumer build`, () => {
+    test.use({ viewport: { width: 1280, height: 800 } })
+
+    for (const [shell, barHeight] of [['sidebar', 48], ['header', 52]]) {
+      test(`${shell} shell: a tall editor's toolbar stays visible below the bar mid-scroll`, async ({ page }) => {
+        await page.goto(`/atom/e2e/shell-editor?tw=${tw}&shell=${shell}`)
+        await page.waitForFunction(() => window.Alpine !== undefined)
+        const toolbar = page.getByRole('toolbar', { name: 'Formatting' })
+        await expect(toolbar).toBeVisible({ timeout: 15000 })
+
+        const html = await page.evaluate(() => {
+          const s = getComputedStyle(document.documentElement)
+          return { bar: s.getPropertyValue('--atom-shell-bar-h').trim(), padding: s.scrollPaddingTop }
+        })
+        expect(html.padding).toBe(`${barHeight}px`)
+
+        await page.mouse.move(700, 500)
+        await page.mouse.wheel(0, 700)
+        await page.waitForFunction(() => window.scrollY > 600)
+
+        const bar = await box(page.locator(shell === 'sidebar' ? '[data-atom-header]' : '[data-atom-header-bar]'))
+        const tools = await box(toolbar)
+        expect(bar.y).toBe(0)
+        expect(bar.height).toBe(barHeight)
+        // below the bar, not under it, and still on screen
+        expect(tools.y).toBeGreaterThanOrEqual(barHeight)
+        expect(tools.y + tools.height).toBeLessThanOrEqual(800)
+      })
+    }
+
+    test('with nothing to hold, the sidebar draws no top bar from lg up, and the page sticks to the top', async ({ page }) => {
+      await page.goto(`/atom/e2e/shell-editor?tw=${tw}&bare=1`)
+      await page.waitForFunction(() => window.Alpine !== undefined)
+      const toolbar = page.getByRole('toolbar', { name: 'Formatting' })
+      await expect(toolbar).toBeVisible({ timeout: 15000 })
+
+      await expect(page.locator('[data-atom-header]')).toBeHidden()
+      expect(await page.evaluate(() => getComputedStyle(document.documentElement).scrollPaddingTop)).toBe('0px')
+      // the main column starts at the top of the page
+      expect((await box(page.locator('[data-atom-main]'))).y).toBe(0)
+
+      await page.mouse.move(700, 500)
+      await page.mouse.wheel(0, 700)
+      await page.waitForFunction(() => window.scrollY > 600)
+      expect((await box(toolbar)).y).toBeLessThan(12)
+
+      // below lg the bar is back: it holds the menu button
+      await page.setViewportSize({ width: 390, height: 800 })
+      await expect(page.locator('[data-atom-header]')).toBeVisible()
+      await expect(page.locator('[data-atom-sidebar-toggle]')).toBeVisible()
+    })
+  })
+}
+
+// Dark mode: the page opts in (?dark=1) and the browser asks for it (colorScheme), as a host's visitor would. Computed
+// colours and contrast, never pixels.
+const contrast = (page, fg, bg) => page.evaluate(([fg, bg]) => {
+  const cv = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
+  const rgb = (value) => {
+    cv.clearRect(0, 0, 1, 1)
+    cv.fillStyle = '#000'
+    cv.fillStyle = value
+    cv.fillRect(0, 0, 1, 1)
+    return [...cv.getImageData(0, 0, 1, 1).data].slice(0, 3)
+  }
+  const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4 }
+  const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+  const [x, y] = [lum(rgb(fg)), lum(rgb(bg))]
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
+}, [fg, bg])
+
+const style = (locator, prop) => locator.evaluate((el, prop) => getComputedStyle(el)[prop], prop)
+const luminance = (page, color) => contrast(page, color, '#000')
+
+test.describe('dark mode in the shells', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, colorScheme: 'dark' })
+
+  test('the sidebar shell: dark surfaces, and its nav text reads on them', async ({ page }) => {
+    await open(page, 'sidebar', { tw: 'latest', query: '&dark=1' })
+    expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true)
+
+    const canvas = await style(page.locator('body'), 'backgroundColor')
+    const side = await style(page.locator('[data-atom-sidebar]'), 'backgroundColor')
+    // dark: close to black against black, far from white
+    expect(await luminance(page, canvas)).toBeLessThan(3)
+    expect(await luminance(page, side)).toBeLessThan(3)
+
+    for (const name of ['Customers', 'Invoices']) {
+      expect(await contrast(page, await style(link(page, name), 'color'), side), `${name} on the side surface`).toBeGreaterThanOrEqual(4.5)
+    }
+    const label = page.locator('[data-atom-navlist-group-label]', { hasText: 'Reports' })
+    expect(await contrast(page, await style(label, 'color'), side), 'a group label').toBeGreaterThanOrEqual(4.5)
+    const count = page.locator('[data-atom-navlist-count]').first()
+    expect(await contrast(page, await style(count, 'color'), side), 'a count').toBeGreaterThanOrEqual(4.5)
+
+    // the top bar's crumbs read on the page canvas
+    const crumb = page.locator('[data-atom-shell-crumbs] .font-medium')
+    expect(await contrast(page, await style(crumb, 'color'), canvas)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  test('the header shell: dark bar, items, current item, count pills and dropdown panel read on it', async ({ page }) => {
+    await open(page, 'header', { tw: 'latest', query: '&dark=1' })
+    expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true)
+
+    const canvas = await style(page.locator('body'), 'backgroundColor')
+    expect(await luminance(page, canvas)).toBeLessThan(3)
+
+    // the bar is the surface colour, a touch see-through over the canvas: items are measured against the canvas it lets through
+    for (const name of ['Customers', 'Invoices']) {
+      expect(await contrast(page, await style(link(page, name), 'color'), canvas), `${name} on the bar`).toBeGreaterThanOrEqual(4.5)
+    }
+
+    const pill = page.locator('[data-atom-navlist-count]').first()
+    expect(await contrast(page, await style(pill, 'color'), await style(pill, 'backgroundColor')), 'a count pill').toBeGreaterThanOrEqual(4.5)
+
+    const trigger = page.locator('[data-atom-navlist-group-trigger]', { hasText: 'Reports' })
+    await trigger.click()
+    const panel = page.locator('[data-atom-navlist-group-items]').first()
+    const raised = await style(panel, 'backgroundColor')
+    expect(await luminance(page, raised)).toBeLessThan(3)
+    expect(await contrast(page, await style(link(page, 'Sales'), 'color'), raised), 'an item in the dropdown').toBeGreaterThanOrEqual(4.5)
+  })
+
+  test('the header shell menu panel on a small screen is dark too', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await open(page, 'header', { tw: 'latest', query: '&dark=1' })
+
+    await page.locator('[data-atom-header-menu-button]').click()
+    const panel = page.locator('[data-atom-header-nav]')
+    const bg = await style(panel, 'backgroundColor')
+    expect(await luminance(page, bg)).toBeLessThan(3)
+    expect(await contrast(page, await style(link(page, 'Customers'), 'color'), bg)).toBeGreaterThanOrEqual(4.5)
+    expect(await contrast(page, await style(page.locator('[data-atom-navlist-group-label]', { hasText: 'Reports' }), 'color'), bg)).toBeGreaterThanOrEqual(4.5)
+    expect(await contrast(page, await style(page.locator('[data-atom-shell-context] button'), 'color'), bg)).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
 test.describe('one nav in both shells', () => {
   test.use({ viewport: { width: 1280, height: 800 } })
 

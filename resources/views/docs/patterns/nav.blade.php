@@ -3,6 +3,7 @@
      each user sees (wrap an item in @can as usual) and which shell holds it. --}}
 @php
 $page = request()->query('page', 'invoices');
+$page = is_string($page) ? $page : 'invoices';
 @endphp
 
 <atom:navlist>

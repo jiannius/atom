@@ -2,6 +2,7 @@
      <atom:page> does this from v4.0-alpha.1). --}}
 @php
 $page = request()->query('page', 'invoices');
+$page = is_string($page) ? $page : 'invoices';
 $title = str($page)->headline();
 $rows = [
     ['INV-0412', 'Customer A', 'Paid', '1,280.00'],
@@ -9,12 +10,7 @@ $rows = [
     ['INV-0410', 'Customer C', 'Sent', '2,115.50'],
     ['INV-0409', 'Customer D', 'Draft', '320.00'],
 ];
-$tones = [
-    'Paid' => 'bg-success-bg text-success-fg',
-    'Overdue' => 'bg-danger-bg text-danger-fg',
-    'Sent' => 'bg-info-bg text-info-fg',
-    'Draft' => 'bg-neutral-bg text-neutral-fg',
-];
+$colors = ['Paid' => 'green', 'Overdue' => 'red', 'Sent' => 'blue', 'Draft' => null];
 @endphp
 
 <div class="flex flex-col gap-5 px-7 pb-24 pt-6 max-md:px-4" data-testid="pattern-page">
@@ -26,27 +22,25 @@ $tones = [
         </div>
     </div>
 
-    <div class="overflow-x-auto rounded-panel border border-border bg-surface">
-        <table class="w-full min-w-[520px] border-collapse tabular-nums">
-            <thead>
-                <tr class="text-start text-xs text-fg-subtle">
-                    <th class="border-b border-border px-row py-2 text-start font-medium">Number</th>
-                    <th class="border-b border-border px-row py-2 text-start font-medium">Customer</th>
-                    <th class="border-b border-border px-row py-2 text-start font-medium">Status</th>
-                    <th class="border-b border-border px-row py-2 text-end font-medium">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($rows as [$number, $customer, $status, $amount])
-                    <tr class="[&:not(:last-child)>td]:border-b [&>td]:border-border">
-                        <td class="min-h-row px-row py-row leading-row"><span class="font-id">{{ $number }}</span></td>
-                        <td class="px-row py-row leading-row font-medium">{{ $customer }}</td>
-                        <td class="px-row py-row"><span class="inline-flex h-[22px] items-center rounded-pill px-2 text-xs font-medium {{ $tones[$status] }}">{{ $status }}</span></td>
-                        <td class="px-row py-row text-end leading-row">{{ $amount }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
+    {{-- A table with no Livewire component behind it: static rows, no sorting or pagination. In a real page the rows come
+         from a component (see the table docs). --}}
+    <atom:table :empty="false">
+        <x-slot:columns>
+            <atom:table.column>Number</atom:table.column>
+            <atom:table.column>Customer</atom:table.column>
+            <atom:table.column>Status</atom:table.column>
+            <atom:table.column align="right">Amount</atom:table.column>
+        </x-slot:columns>
 
+        <x-slot:rows>
+            @foreach ($rows as [$number, $customer, $status, $amount])
+                <atom:table.row>
+                    <atom:table.cell><span class="font-id">{{ $number }}</span></atom:table.cell>
+                    <atom:table.cell class="font-medium">{{ $customer }}</atom:table.cell>
+                    <atom:table.cell><atom:badge size="xs" :color="$colors[$status]">{{ $status }}</atom:badge></atom:table.cell>
+                    <atom:table.cell align="right" class="tabular-nums">{{ $amount }}</atom:table.cell>
+                </atom:table.row>
+            @endforeach
+        </x-slot:rows>
+    </atom:table>
 </div>

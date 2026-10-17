@@ -20,15 +20,15 @@
     .absolute { position: absolute; }
     .sticky { position: sticky; }
     .inset-0 { inset: 0px; }
-    .top-0 { top: 0px; }
-    .top-4 { top: 1rem; }
+    .top-\[var\(--atom-shell-bar-h\,0px\)\] { top: var(--atom-shell-bar-h,0px); }
+    .top-\[calc\(var\(--atom-shell-bar-h\,0px\)\+1rem\)\] { top: calc(var(--atom-shell-bar-h,0px) + 1rem); }
     .bottom-4 { bottom: 1rem; }
     .inline-flex { display: inline-flex; }
     .shrink-0 { flex-shrink: 0; }
     .\*\:w-full > * { width: 100%; }
     .\*\:h-full > * { height: 100%; }
     .z-10 { z-index: 10; }
-    .h-dvh { height: 100dvh; }
+    .h-\[calc\(100dvh-var\(--atom-shell-bar-h\,0px\)\)\] { height: calc(100dvh - var(--atom-shell-bar-h,0px)); }
     .max-h-full { max-height: 100%; }
     .flex { display: flex; }
     .items-center { align-items: center; }

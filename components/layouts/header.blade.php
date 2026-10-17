@@ -33,7 +33,7 @@ $name = $user?->name;
 :editor="$editor"
 :attributes="$attributes->class('min-h-screen bg-canvas')">
     {{-- The bar: 52px, sticky, hairline below. atom.css lets it span the page's rows (a sticky grid item can only
-         travel inside its own grid area). Not `relative`: below md the nav panel is positioned against this element. --}}
+         travel inside its own grid area). Not `relative`: below lg the nav panel is positioned against this element. --}}
     <header
     x-data="{ menu: false }"
     x-on:keydown.escape="if (menu) { menu = false; $refs.menuButton.focus() }"
@@ -42,7 +42,7 @@ $name = $user?->name;
     class="[grid-area:header] z-20 h-13 border-b border-border bg-surface/92 backdrop-blur-md"
     data-atom-header
     data-atom-header-bar>
-        <div class="mx-auto flex h-full w-full max-w-[1248px] items-center gap-5 ps-[max(1.5rem,env(safe-area-inset-left,0px))] pe-[max(1.5rem,env(safe-area-inset-right,0px))] max-md:gap-2.5 max-md:ps-[max(1rem,env(safe-area-inset-left,0px))] max-md:pe-[max(1rem,env(safe-area-inset-right,0px))]">
+        <div class="mx-auto flex h-full w-full max-w-[1248px] items-center gap-5 ps-[max(1.5rem,env(safe-area-inset-left,0px))] pe-[max(1.5rem,env(safe-area-inset-right,0px))] max-lg:gap-2.5 max-lg:ps-[max(1rem,env(safe-area-inset-left,0px))] max-lg:pe-[max(1rem,env(safe-area-inset-right,0px))]">
             <button
             type="button"
             x-ref="menuButton"
@@ -66,25 +66,27 @@ $name = $user?->name;
                 </a>
             @endisset
 
-            @isset ($context)
-                <span class="-mx-2 text-lg font-light text-border-strong max-md:hidden" aria-hidden="true">/</span>
-                <div class="shrink-0 max-md:hidden" data-atom-shell-context>{{ $context }}</div>
-            @endisset
-
-            {{-- the nav slot: the bar's items from md up, a panel under the bar below it --}}
+            {{-- The nav slot: the bar's items from lg up, a panel under the bar below it. The context slot lives in
+                 the same element, so it is one copy of the host's markup: beside the logo in the bar, at the top of
+                 the panel in menu mode, where a workspace switcher stays reachable. --}}
             <div id="atom-header-nav" x-bind:data-open="menu ? '' : null" data-atom-nav-shell="header" data-atom-header-nav>
+                @isset ($context)
+                    <span class="-ms-2 me-3 text-lg font-light text-border-strong" aria-hidden="true" data-atom-shell-context-divider>/</span>
+                    <div data-atom-shell-context>{{ $context }}</div>
+                @endisset
+
                 @isset ($nav)
                     {{ $nav }}
                 @endisset
 
                 @isset ($navfoot)
-                    <div class="mt-2 border-t border-border pt-2 md:mt-0 md:border-0 md:pt-0" data-atom-navfoot>{{ $navfoot }}</div>
+                    <div class="mt-2 border-t border-border pt-2 lg:mt-0 lg:border-0 lg:pt-0" data-atom-navfoot>{{ $navfoot }}</div>
                 @endisset
             </div>
 
             <div class="ms-auto flex shrink-0 items-center gap-2" data-atom-shell-actions>
                 @isset ($search)
-                    <div class="max-md:hidden" data-atom-shell-search>{{ $search }}</div>
+                    <div class="max-xl:hidden" data-atom-shell-search>{{ $search }}</div>
                 @endisset
 
                 @isset ($actions)
@@ -98,7 +100,8 @@ $name = $user?->name;
                     <atom:darkmode-toggle/>
                 @endif
 
-                @if (isset($dropdown) || isset($profile))
+                {{-- The avatar is a button only when there is a menu behind it. A `profile` with no `dropdown` is plain content. --}}
+                @isset ($dropdown)
                     <atom:dropdown position="bottom" align="end">
                         <button type="button" class="flex size-7 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg" aria-label="{{ t('Account') }}">
                             @if ($avatar)
@@ -108,44 +111,44 @@ $name = $user?->name;
                             @endif
                         </button>
 
-                        @isset ($dropdown)
-                            <atom:menu class="w-[220px]" popover>
-                                @isset ($profile)
-                                    {{ $profile }}
-                                @else
-                                    <div class="flex items-center gap-2 truncate p-1.5">
-                                        <div class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg">
-                                            @if ($avatar)
-                                                <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
-                                            @else
-                                                {{ $user?->initials() }}
-                                            @endif
-                                        </div>
+                        <atom:menu class="w-[220px]" popover>
+                            @isset ($profile)
+                                {{ $profile }}
+                            @else
+                                <div class="flex items-center gap-2 truncate p-1.5">
+                                    <div class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg">
+                                        @if ($avatar)
+                                            <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
+                                        @else
+                                            {{ $user?->initials() }}
+                                        @endif
+                                    </div>
 
-                                        <div class="min-w-0 text-start leading-tight">
-                                            <div class="truncate text-sm font-medium">
-                                                {{ $user?->name }}
-                                            </div>
-                                            <div class="truncate text-xs text-fg-subtle">
-                                                {{ $user?->email }}
-                                            </div>
+                                    <div class="min-w-0 text-start leading-tight">
+                                        <div class="truncate text-sm font-medium">
+                                            {{ $user?->name }}
+                                        </div>
+                                        <div class="truncate text-xs text-fg-subtle">
+                                            {{ $user?->email }}
                                         </div>
                                     </div>
-                                @endisset
+                                </div>
+                            @endisset
 
-                                <atom:separator class="my-2"/>
+                            <atom:separator class="my-2"/>
 
-                                {{ $dropdown }}
-                            </atom:menu>
-                        @endisset
+                            {{ $dropdown }}
+                        </atom:menu>
                     </atom:dropdown>
-                @endif
+                @elseif (isset($profile))
+                    <div class="min-w-0" data-atom-shell-profile>{{ $profile }}</div>
+                @endisset
             </div>
         </div>
     </header>
 
     @isset ($crumbs)
-        <div class="[grid-area:crumbs] mx-auto flex w-full max-w-[1248px] min-w-0 items-center ps-[max(1.5rem,env(safe-area-inset-left,0px))] pe-[max(1.5rem,env(safe-area-inset-right,0px))] pt-4 max-md:ps-[max(1rem,env(safe-area-inset-left,0px))] max-md:pe-[max(1rem,env(safe-area-inset-right,0px))]" data-atom-header-crumbs data-atom-shell-crumbs>
+        <div class="[grid-area:crumbs] mx-auto flex w-full max-w-[1248px] min-w-0 items-center ps-[max(1.5rem,env(safe-area-inset-left,0px))] pe-[max(1.5rem,env(safe-area-inset-right,0px))] pt-4 max-lg:ps-[max(1rem,env(safe-area-inset-left,0px))] max-lg:pe-[max(1rem,env(safe-area-inset-right,0px))]" data-atom-header-crumbs data-atom-shell-crumbs>
             {{ $crumbs }}
         </div>
     @endisset

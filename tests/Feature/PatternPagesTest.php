@@ -33,6 +33,21 @@ describe('pattern pages', function () {
         expect($navOf('app-shell-header'))->toBe($navOf('app-shell-sidebar'));
     });
 
+    it('demos the same slots in both shells, built from atom components', function (string $name) {
+        $html = view('atom::docs.patterns.'.$name)->render();
+
+        expect(domQuery($html, '//*[@data-atom-shell-crumbs][contains(., "Invoices")]'))->not->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-shell-context]//button'))->not->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-shell-search]//input'))->not->toBeEmpty()
+            ->and(domQuery($html, '//main//*[@data-atom-table]//*[@data-atom-badge]'))->toHaveCount(4);
+    })->with(['app-shell-sidebar', 'app-shell-header']);
+
+    it('does not choke on a page query that is an array', function (string $name) {
+        request()->query->set('page', ['x']);
+
+        expect(fn () => view('atom::docs.patterns.'.$name)->render())->not->toThrow(Throwable::class);
+    })->with(['app-shell-sidebar', 'app-shell-header']);
+
     it('marks the current page from the query string, in both shells', function (string $name) {
         request()->query->set('page', 'customers');
 

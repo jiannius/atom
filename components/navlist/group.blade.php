@@ -18,6 +18,10 @@ $storageKey = $persistKey ? 'atom:navlist-group:'.$persistKey : null;
 // A group that simply starts open needs no correction, so it is left to render at once
 // rather than waiting on Alpine to reveal it.
 $cloak = $expandable && ($persistKey || $expanded !== true);
+
+// The header shell's dropdown trigger points at its panel. Derived, never random: the id is a morph key where it
+// falls back to one, and a random one would make every render replace the control.
+$itemsId = 'atom-navlist-group-'.substr(md5($persistKey.'|'.$heading), 0, 8);
 @endphp
 
 @if ($hiddenIfEmpty && $slot->isEmpty())
@@ -108,7 +112,7 @@ data-atom-navlist-group>
     x-on:click="menu = !menu"
     x-on:keydown.arrow-down.prevent="focusFirst()"
     x-bind:aria-expanded="menu ? 'true' : 'false'"
-    aria-haspopup="true"
+    aria-controls="{{ $itemsId }}"
     class="items-center gap-1 text-sm font-medium text-fg-muted hover:text-fg"
     data-atom-navlist-group-trigger>
         {{ t($heading) }}
@@ -117,6 +121,7 @@ data-atom-navlist-group>
 
     <div
     x-ref="items"
+    id="{{ $itemsId }}"
     x-show="header || open"
     @if ($cloak) x-cloak @endif
     x-on:click="menu = false"

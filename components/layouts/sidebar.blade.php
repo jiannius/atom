@@ -9,10 +9,16 @@
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
 ])
 
+{{-- From lg up the top bar holds only crumbs, actions and the dark toggle (the menu button and the account are for
+     small screens), so with all three empty it is not drawn there ($barEmpty, data-atom-header-empty in atom.css). --}}
 @php
 $user = auth()->user();
 $avatar = $user?->avatar;
 $name = $user?->name;
+
+$barEmpty = ! $dark
+    && ! (isset($crumbs) && filled(trim((string) $crumbs)))
+    && ! (isset($actions) && filled(trim((string) $actions)));
 @endphp
 
 {{-- layouts.header takes the same props and slots (brand, context, search, nav, navfoot, crumbs, actions, dropdown,
@@ -93,8 +99,9 @@ $name = $user?->name;
             <div class="flex flex-col pt-2.5" data-atom-nav-shell="sidebar" data-atom-navfoot>{{ $navfoot }}</div>
         @endisset
 
-        {{-- Desktop User Menu --}}
-        @if (isset($dropdown) || isset($profile))
+        {{-- User menu (large screens; small screens have it in the top bar). The row is a button only when there is a
+             menu behind it: a `profile` with no `dropdown` is plain content. --}}
+        @isset ($dropdown)
             <atom:dropdown class="mt-2.5 hidden lg:block">
                 <button type="button" class="flex min-h-9 w-full items-center gap-2 rounded-nav px-2 py-1 hover:bg-fg/5">
                     @isset ($profile)
@@ -123,18 +130,18 @@ $name = $user?->name;
                     <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                 </button>
 
-                @isset ($dropdown)
-                    <atom:menu class="w-[220px]" popover>
-                        {{ $dropdown }}
-                    </atom:menu>
-                @endisset
+                <atom:menu class="w-[220px]" popover>
+                    {{ $dropdown }}
+                </atom:menu>
             </atom:dropdown>
-        @endif
+        @elseif (isset($profile))
+            <div class="mt-2.5 flex min-h-9 items-center gap-2 px-2 py-1" data-atom-shell-profile>{{ $profile }}</div>
+        @endisset
     </div>
 
     {{-- The top bar: 48px, sticky, crumbs on the left and actions on the right. atom.css lets it span the page's
          rows (a sticky grid item can only travel inside its own grid area), and the first row is its height. --}}
-    <header class="[grid-area:header] z-10 h-12 border-b border-border bg-canvas/88 backdrop-blur-md" data-atom-header>
+    <header class="[grid-area:header] z-10 h-12 border-b border-border bg-canvas/88 backdrop-blur-md" @if ($barEmpty) data-atom-header-empty @endif data-atom-header>
         <div class="flex h-full items-center gap-3 px-4 lg:px-7">
             {{-- toggle sidebar in small screen, only work in small screen --}}
             <button
@@ -165,8 +172,8 @@ $name = $user?->name;
                     <atom:darkmode-toggle/>
                 @endif
 
-                <!-- Mobile User Menu -->
-                @if (isset($dropdown) || isset($profile))
+                {{-- Account menu (small screens; large screens have it at the foot of the sidebar) --}}
+                @isset ($dropdown)
                     <atom:dropdown class="lg:hidden">
                         <button type="button" class="flex items-center gap-1 rounded-full p-0.5 hover:bg-fg/5" aria-label="{{ t('Account') }}">
                             <div class="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg">
@@ -180,38 +187,36 @@ $name = $user?->name;
                             <atom:icon.dropdown class="size-3.5 text-fg-subtle"/>
                         </button>
 
-                        @isset ($dropdown)
-                            <atom:menu class="w-[220px]" popover>
-                                @isset ($profile)
-                                    {{ $profile }}
-                                @else
-                                    <div class="flex items-center gap-2 truncate p-1.5">
-                                        <div class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg">
-                                            @if ($avatar)
-                                                <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
-                                            @else
-                                                {{ $user?->initials() }}
-                                            @endif
-                                        </div>
+                        <atom:menu class="w-[220px]" popover>
+                            @isset ($profile)
+                                {{ $profile }}
+                            @else
+                                <div class="flex items-center gap-2 truncate p-1.5">
+                                    <div class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg">
+                                        @if ($avatar)
+                                            <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
+                                        @else
+                                            {{ $user?->initials() }}
+                                        @endif
+                                    </div>
 
-                                        <div class="min-w-0 text-start leading-tight">
-                                            <div class="truncate text-sm font-medium">
-                                                {{ $user?->name }}
-                                            </div>
-                                            <div class="truncate text-xs text-fg-subtle">
-                                                {{ $user?->email }}
-                                            </div>
+                                    <div class="min-w-0 text-start leading-tight">
+                                        <div class="truncate text-sm font-medium">
+                                            {{ $user?->name }}
+                                        </div>
+                                        <div class="truncate text-xs text-fg-subtle">
+                                            {{ $user?->email }}
                                         </div>
                                     </div>
-                                @endisset
+                                </div>
+                            @endisset
 
-                                <atom:separator class="my-2"/>
+                            <atom:separator class="my-2"/>
 
-                                {{ $dropdown }}
-                            </atom:menu>
-                        @endisset
+                            {{ $dropdown }}
+                        </atom:menu>
                     </atom:dropdown>
-                @endif
+                @endisset
             </div>
         </div>
     </header>

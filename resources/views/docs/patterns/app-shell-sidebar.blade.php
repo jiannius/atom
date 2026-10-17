@@ -15,18 +15,11 @@ $styles = $styles ?? [];
     </x-slot>
 
     <x-slot:context>
-        <button type="button" class="flex h-control w-full items-center gap-2 rounded-control px-2 text-sm font-medium hover:bg-fg/5">
-            <span class="flex size-[18px] items-center justify-center rounded-full bg-info-bg text-[10px] font-semibold text-info-fg">A</span>
-            <span class="truncate">Acme Studio</span>
-            <atom:icon.dropdown class="ms-auto size-3.5 text-fg-subtle"/>
-        </button>
+        <atom:button block size="sm" variant="ghost" icon-suffix="dropdown" class="justify-between!">Acme Studio</atom:button>
     </x-slot>
 
     <x-slot:search>
-        <div class="flex h-control w-full items-center gap-2 rounded-control border border-border-strong bg-surface px-2 text-fg-subtle">
-            <atom:icon.search class="size-4"/>
-            <span>Search</span>
-        </div>
+        <atom:input icon="search" placeholder="Search" aria-label="Search"/>
     </x-slot>
 
     <x-slot:nav>
@@ -40,11 +33,7 @@ $styles = $styles ?? [];
     </x-slot>
 
     <x-slot:crumbs>
-        <div class="flex items-center gap-1.5 text-fg-subtle">
-            <span>Sales</span>
-            <atom:icon.right class="size-3.5"/>
-            <span class="font-medium text-fg">{{ str(request()->query('page', 'invoices'))->headline() }}</span>
-        </div>
+        @include('atom::docs.patterns.crumbs')
     </x-slot>
 
     <x-slot:actions>

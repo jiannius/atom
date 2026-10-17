@@ -129,6 +129,7 @@ fbq('track', 'PageView');
 
 @if ($selfHosted)
 <link rel="preload" href="{{ app('atom')->asset()->version('Geist-Variable.woff2') }}" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{{ app('atom')->asset()->version('GeistMono-Variable.woff2') }}" as="font" type="font/woff2" crossorigin>
 @endif
 
 <link rel="stylesheet" href="{{ app('atom')->asset()->version('atom.css') }}">
