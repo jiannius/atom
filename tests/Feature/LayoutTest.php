@@ -180,7 +180,7 @@ describe('layouts.sidebar', function () {
             <atom:layouts.sidebar :vite="false">
                 <x-slot:dropdown>
                     <atom:menu.item>Logout</atom:menu.item>
-                </x-slot:dropdown>
+                </x-slot>
                 Body
             </atom:layouts.sidebar>
         BLADE);
@@ -243,7 +243,7 @@ describe('dark mode is opt-in', function () {
             ->not->toContain('prefers-color-scheme')
             // the server-rendered opt-in class is gone too
             ->not->toContain('class="dark"');
-    })->with(['layouts.sidebar', 'layouts.auth']);
+    })->with(['layouts.sidebar', 'layouts.header', 'layouts.auth']);
 
     it('emits the bootstrap when a layout opts in', function (string $layout) {
         $html = renderBlade('<atom:'.$layout.' :vite="false" dark>Body</atom:'.$layout.'>');
@@ -251,7 +251,7 @@ describe('dark mode is opt-in', function () {
         expect($html)
             ->toContain('window.darkmode')
             ->toContain('prefers-color-scheme');
-    })->with(['layouts.sidebar', 'layouts.auth']);
+    })->with(['layouts.sidebar', 'layouts.header', 'layouts.auth']);
 
     // now rendered rather than read from source: layouts.auth forwards `vite`,
     // so it no longer drags in atom's default entries and a missing manifest.
@@ -261,7 +261,7 @@ describe('dark mode is opt-in', function () {
 
         expect(str_contains($viaLayout, 'window.darkmode'))
             ->toBe(str_contains($direct, 'window.darkmode'));
-    })->with(['layouts.sidebar', 'layouts.auth']);
+    })->with(['layouts.sidebar', 'layouts.header', 'layouts.auth']);
 });
 
 // layouts.auth declared no `vite` prop and forwarded none, so the <atom:html>
@@ -272,11 +272,152 @@ describe('layout vite entries', function () {
         $html = renderBlade('<atom:'.$layout.' :vite="false">Body</atom:'.$layout.'>');
 
         expect($html)->not->toContain('resources/js/app.js');
-    })->with(['layouts.sidebar', 'layouts.auth']);
+    })->with(['layouts.sidebar', 'layouts.header', 'layouts.auth']);
 
     it('defaults to the same entries as <atom:html>', function (string $component) {
         $source = file_get_contents(__DIR__.'/../../components/'.$component.'.blade.php');
 
         expect($source)->toContain("'vite' => ['resources/css/app.css', 'resources/js/app.js']");
-    })->with(['html', 'layouts/sidebar', 'layouts/auth']);
+    })->with(['html', 'layouts/sidebar', 'layouts/header', 'layouts/auth']);
+});
+
+// V4-2a: one nav, two shells. layouts.header is the top-nav twin of layouts.sidebar: same props, same slots, and the
+// same `nav` markup, which the shell (not the nav) turns into a column or a bar.
+describe('layouts.header', function () {
+    it('renders the bar, the main column and the outline root', function () {
+        $html = renderBlade('<atom:layouts.header :vite="false" title="Sites">Main content</atom:layouts.header>');
+
+        expect($html)
+            ->toContain('data-atom-header-bar')
+            ->toContain('data-atom-main')
+            ->toContain('data-atom-header-nav')
+            ->toContain('data-atom-nav-shell="header"')
+            ->toContain('Main content')
+            ->toContain('>Sites</h1>')
+            ->toMatch('/<body[^>]*data-atom-density="compact"/');
+
+        expect(substr_count($html, '<h1'))->toBe(1);
+    });
+
+    it('leaves <main> unpadded', function (string $layout) {
+        $main = domQuery(renderBlade('<atom:'.$layout.' :vite="false">Body</atom:'.$layout.'>'), '//main[@data-atom-main]')[0];
+
+        expect(domClasses($main))->not->toContain('p-4', 'p-6', 'px-6', 'py-6', 'p-8');
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('declares the same props as layouts.sidebar, so a host can swap one for the other', function () {
+        $props = function (string $layout): string {
+            $source = file_get_contents(__DIR__.'/../../components/layouts/'.$layout.'.blade.php');
+            preg_match('/@props\(\[.*?\]\)/s', $source, $match);
+
+            return $match[0];
+        };
+
+        expect($props('header'))->toBe($props('sidebar'));
+    });
+
+    it('accepts the same slots as layouts.sidebar', function (string $layout) {
+        $html = renderBlade(<<<BLADE
+            <atom:{$layout} :vite="false" dark>
+                <x-slot:brand><span>BRAND-SLOT</span></x-slot>
+                <x-slot:context><span>CONTEXT-SLOT</span></x-slot>
+                <x-slot:search><span>SEARCH-SLOT</span></x-slot>
+                <x-slot:nav><atom:navlist><atom:navlist.item href="/a">NAV-SLOT</atom:navlist.item></atom:navlist></x-slot>
+                <x-slot:navfoot><atom:navlist><atom:navlist.item href="/z">NAVFOOT-SLOT</atom:navlist.item></atom:navlist></x-slot>
+                <x-slot:crumbs><span>CRUMBS-SLOT</span></x-slot>
+                <x-slot:actions><span>ACTIONS-SLOT</span></x-slot>
+                <x-slot:dropdown><atom:menu.item>DROPDOWN-SLOT</atom:menu.item></x-slot>
+                <x-slot:footer>FOOTER-SLOT</x-slot>
+                BODY-SLOT
+            </atom:{$layout}>
+        BLADE);
+
+        expect($html)->toContain(
+            'BRAND-SLOT', 'CONTEXT-SLOT', 'SEARCH-SLOT', 'NAV-SLOT', 'NAVFOOT-SLOT',
+            'CRUMBS-SLOT', 'ACTIONS-SLOT', 'DROPDOWN-SLOT', 'FOOTER-SLOT', 'BODY-SLOT',
+        );
+
+        // each lands where it belongs, not in the default slot
+        expect(domQuery($html, '//*[@data-atom-nav-shell]//a[contains(., "NAV-SLOT")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-navfoot]//a[contains(., "NAVFOOT-SLOT")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-crumbs][contains(., "CRUMBS-SLOT")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-actions][contains(., "ACTIONS-SLOT")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-context][contains(., "CONTEXT-SLOT")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-search][contains(., "SEARCH-SLOT")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//main[contains(., "BODY-SLOT")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//main[contains(., "NAV-SLOT") or contains(., "BRAND-SLOT")]'))->toHaveCount(0);
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('prints the nav slot once, so its links are not duplicated for the mobile menu', function () {
+        $html = renderBlade('<atom:layouts.header :vite="false">
+<x-slot:nav>
+<atom:navlist><atom:navlist.item href="/only-once">Once</atom:navlist.item></atom:navlist>
+</x-slot>
+x</atom:layouts.header>');
+
+        expect(substr_count($html, 'href="/only-once"'))->toBe(1);
+    });
+
+    it('wires the menu button to the nav panel', function () {
+        $html = renderBlade('<atom:layouts.header :vite="false">x</atom:layouts.header>');
+        $button = domQuery($html, '//button[@data-atom-header-menu-button]')[0];
+        $panel = domQuery($html, '//*[@data-atom-header-nav]')[0];
+
+        expect($button->getAttribute('aria-controls'))->toBe($panel->getAttribute('id'))
+            ->and($panel->getAttribute('id'))->not->toBe('');
+    });
+});
+
+describe('one nav slot in both shells', function () {
+    // plain items, a count, a group, a group with a heading only, and an @can-hidden item
+    $nav = <<<'BLADE'
+        <atom:navlist>
+            <atom:navlist.item href="/dashboard" icon="dashboard" count="3">Dashboard</atom:navlist.item>
+            <atom:navlist.item href="/sites" :current="true">Sites</atom:navlist.item>
+            <atom:navlist.group heading="Reports" expandable>
+                <atom:navlist.item href="/reports/sales">Sales</atom:navlist.item>
+            </atom:navlist.group>
+            <atom:navlist.group heading="Account">
+                <atom:navlist.item href="/settings">Settings</atom:navlist.item>
+            </atom:navlist.group>
+            @can('see-secret')
+                <atom:navlist.item href="/secret">Secret</atom:navlist.item>
+            @endcan
+            <atom:navlist.item href="javascript:alert(1)">Unsafe</atom:navlist.item>
+        </atom:navlist>
+    BLADE;
+
+    it('renders the same items in each shell', function (string $layout) use ($nav) {
+        $html = renderBlade('<atom:'.$layout.' :vite="false">'."\n<x-slot:nav>\n".$nav."\n</x-slot>\nx".'</atom:'.$layout.'>');
+
+        expect($html)
+            ->toContain('href="/dashboard"', 'href="/sites"', 'href="/reports/sales"', 'href="/settings"')
+            ->not->toContain('/secret');
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('passes every nav href through safe_url() in each shell', function (string $layout) use ($nav) {
+        $html = renderBlade('<atom:'.$layout.' :vite="false">'."\n<x-slot:nav>\n".$nav."\n</x-slot>\nx".'</atom:'.$layout.'>');
+
+        expect($html)->not->toContain('javascript:');
+        foreach (domQuery($html, '//a[@data-atom-navlist-item]') as $link) {
+            expect($link->getAttribute('href'))->not->toStartWith('javascript');
+        }
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('marks the current item in each shell', function (string $layout) use ($nav) {
+        $html = renderBlade('<atom:'.$layout.' :vite="false">'."\n<x-slot:nav>\n".$nav."\n</x-slot>\nx".'</atom:'.$layout.'>');
+        $current = domQuery($html, '//*[@data-atom-navlist-item][@aria-current="page"]');
+
+        expect($current)->toHaveCount(1)
+            ->and($current[0]->getAttribute('href'))->toBe('/sites')
+            ->and($current[0]->hasAttribute('data-current'))->toBeTrue();
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('wraps the nav in the shell it sits in', function () use ($nav) {
+        foreach (['sidebar', 'header'] as $shell) {
+            $html = renderBlade('<atom:layouts.'.$shell.' :vite="false">'."\n<x-slot:nav>\n".$nav."\n</x-slot>\nx".'</atom:layouts.'.$shell.'>');
+
+            expect(domQuery($html, '//*[@data-atom-nav-shell="'.$shell.'"]//a[@href="/sites"]'))->toHaveCount(1);
+        }
+    });
 });

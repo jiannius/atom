@@ -128,10 +128,49 @@ button {
 }
 
 *:has(>[data-atom-sidebar]+[data-atom-header]) {
+    grid-template-rows: 3rem 1fr auto;
     grid-template-areas:
         "sidebar header  header"
         "sidebar main    aside"
         "sidebar footer  aside";
+}
+
+/* A sticky grid item can only travel inside its own grid area, so a bar that sits in a 3rem row would never leave it.
+   The bar spans every row instead (and keeps its own height), which lets it stay in view while the page scrolls. */
+[data-atom-sidebar] + [data-atom-header] {
+    grid-row: 1 / -1;
+    grid-column: 2 / 4;
+    align-self: start;
+    position: sticky;
+    top: 0;
+}
+
+/* layouts.header: one column, the bar (52px, sticky for the same reason) over a centred main. */
+*:has(>[data-atom-header-bar]) {
+    grid-template-rows: 3.25rem 1fr auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "header"
+        "main"
+        "footer";
+}
+
+/* a crumbs slot adds a row under the bar */
+*:has(>[data-atom-header-bar]):has(>[data-atom-header-crumbs]) {
+    grid-template-rows: 3.25rem auto 1fr auto;
+    grid-template-areas:
+        "header"
+        "crumbs"
+        "main"
+        "footer";
+}
+
+[data-atom-header-bar] {
+    grid-row: 1 / -1;
+    grid-column: 1;
+    align-self: start;
+    position: sticky;
+    top: 0;
 }
 
 /** Navigation shells. One <atom:navlist> markup serves layouts.sidebar and layouts.header: the sidebar is the

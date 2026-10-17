@@ -15,6 +15,8 @@ $avatar = $user?->avatar;
 $name = $user?->name;
 @endphp
 
+{{-- layouts.header takes the same props and slots (brand, context, search, nav, navfoot, crumbs, actions, dropdown,
+     profile, footer), so an app can choose the shell per user. A test compares the two @props blocks. --}}
 <atom:html
 :noindex="$noindex"
 :title="$title"
@@ -24,15 +26,15 @@ $name = $user?->name;
 :scripts="$scripts"
 :vite="$vite"
 :editor="$editor"
-:attributes="$attributes->class('min-h-screen bg-white dark:bg-zinc-900')">
+:attributes="$attributes->class('min-h-screen bg-canvas')">
     {{-- stashed sidebar backdrop --}}
     <div
     x-data
     x-on:click="document.body.removeAttribute('data-show-stashed-sidebar')"
-    class="z-10 fixed inset-0 bg-black/10 hidden [[data-show-stashed-sidebar]_&]:block lg:[[data-show-stashed-sidebar]_&]:hidden"></div>
+    class="z-10 fixed inset-0 bg-black/20 hidden [[data-show-stashed-sidebar]_&]:block lg:[[data-show-stashed-sidebar]_&]:hidden"></div>
 
     {{-- sidebar --}}
-    <div 
+    <div
     x-data="{
         isHidden: false,
         screenLg: window.innerWidth >= 1024
@@ -51,11 +53,11 @@ $name = $user?->name;
     }"
     x-bind:class="isHidden ? '' : 'lg:translate-x-0!'"
     @class([
-        '[grid-area:sidebar] z-1 flex flex-col gap-4 [:where(&)]:w-2xs p-4',
+        '[grid-area:sidebar] z-1 flex flex-col [:where(&)]:w-[228px] px-2.5 py-3',
         'max-h-dvh overflow-y-auto overscroll-contain transition-transform',
-        'border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900',
+        'border-e border-border bg-surface-sunken',
         'max-lg:data-mobile-cloak:hidden',
-        '[[data-show-stashed-sidebar]_&]:translate-x-0!',
+        '[[data-show-stashed-sidebar]_&]:translate-x-0! [[data-show-stashed-sidebar]_&]:shadow-pop',
         'z-20! data-stashed:start-0! data-stashed:fixed! data-stashed:top-0! data-stashed:min-h-dvh! data-stashed:max-h-dvh!',
     ])
     data-mobile-cloak
@@ -63,52 +65,62 @@ $name = $user?->name;
         @isset ($brand)
             {{ $brand }}
         @else
-            <a href="/app" class="me-5 flex items-center space-x-2 rtl:space-x-reverse" wire:navigate>
-                <div class="flex aspect-square size-8 items-center justify-center rounded-md bg-accent-content text-accent-foreground">
-                    <atom:logo class="size-5 fill-current text-white dark:text-black" />
+            <a href="/app" class="flex items-center gap-[9px] px-2 pb-3 pt-1.5" wire:navigate>
+                <div class="flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground">
+                    <atom:logo class="size-4 fill-current" />
                 </div>
-                <div class="ms-1 grid flex-1 text-start">
-                    <span class="mb-0.5 truncate leading-tight text-lg font-medium">
-                        {{ config('app.name') }}
-                    </span>
-                </div>
+                <span class="truncate text-sm font-semibold leading-tight">
+                    {{ config('app.name') }}
+                </span>
             </a>
         @endisset
 
-        {{ $nav ?? '' }}
+        @isset ($context)
+            <div class="pb-2" data-atom-shell-context>{{ $context }}</div>
+        @endisset
+
+        @isset ($search)
+            <div class="pb-2.5" data-atom-shell-search>{{ $search }}</div>
+        @endisset
+
+        @isset ($nav)
+            <div class="flex flex-col" data-atom-nav-shell="sidebar">{{ $nav }}</div>
+        @endisset
 
         <div class="flex-1"></div>
 
-        {{ $navfoot ?? '' }}
+        @isset ($navfoot)
+            <div class="flex flex-col pt-2.5" data-atom-nav-shell="sidebar" data-atom-navfoot>{{ $navfoot }}</div>
+        @endisset
 
         {{-- Desktop User Menu --}}
         @if (isset($dropdown) || isset($profile))
-            <atom:dropdown class="hidden lg:block">
-                <button type="button" class="w-full rounded-lg flex items-center gap-2 p-1 hover:bg-zinc-800/5 dark:hover:bg-white/10">
+            <atom:dropdown class="mt-2.5 hidden lg:block">
+                <button type="button" class="flex min-h-9 w-full items-center gap-2 rounded-nav px-2 py-1 hover:bg-fg/5">
                     @isset ($profile)
                         {{ $profile }}
                     @else
-                        <div class="grow flex items-center truncate">
-                            <div class="shrink-0 size-10 text-lg bg-zinc-200 dark:bg-zinc-700 rounded-lg flex items-center justify-center">
+                        <div class="flex min-w-0 grow items-center gap-2">
+                            <div class="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg">
                                 @if ($avatar)
-                                    <img src="{{ $avatar }}" alt="{{ $name }}" class="w-full h-full object-cover">
+                                    <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
                                 @else
                                     {{ $user?->initials() }}
                                 @endif
                             </div>
 
-                            <div class="mx-2 text-zinc-500 text-left dark:text-white truncate">
-                                <div class="font-medium truncate">
+                            <div class="min-w-0 text-start leading-tight">
+                                <div class="truncate text-sm font-medium">
                                     {{ $user?->name }}
                                 </div>
-                                <div class="text-sm text-zinc-500 truncate dark:text-white/50">
+                                <div class="truncate text-xs text-fg-subtle">
                                     {{ $user?->email }}
                                 </div>
                             </div>
                         </div>
                     @endisset
 
-                    <atom:icon.dropdown/>
+                    <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                 </button>
 
                 @isset ($dropdown)
@@ -120,78 +132,91 @@ $name = $user?->name;
         @endif
     </div>
 
-    <header class="[grid-area:header] z-10 px-6 lg:px-8" data-atom-header>
-        <div class="min-h-14 lg:hidden flex items-center">
+    {{-- The top bar: 48px, sticky, crumbs on the left and actions on the right. atom.css lets it span the page's
+         rows (a sticky grid item can only travel inside its own grid area), and the first row is its height. --}}
+    <header class="[grid-area:header] z-10 h-12 border-b border-border bg-canvas/88 backdrop-blur-md" data-atom-header>
+        <div class="flex h-full items-center gap-3 px-4 lg:px-7">
             {{-- toggle sidebar in small screen, only work in small screen --}}
             <button
             type="button"
             x-data
             x-on:click="document.body.hasAttribute('data-show-stashed-sidebar') ? document.body.removeAttribute('data-show-stashed-sidebar') : document.body.setAttribute('data-show-stashed-sidebar', '')"
-            class="shrink-0 flex items-center justify-center rounded-lg size-10 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+            class="flex h-control aspect-square shrink-0 items-center justify-center rounded-control text-fg-muted hover:bg-fg/5 hover:text-fg lg:hidden"
             aria-label="{{ t('Show sidebar') }}"
             data-atom-sidebar-toggle>
-                <atom:icon.menu class="size-5"/>
+                <atom:icon.menu class="size-4"/>
             </button>
 
-            <div class="grow"></div>
+            <div class="flex min-w-0 grow items-center" data-atom-shell-crumbs>
+                @isset ($crumbs)
+                    {{ $crumbs }}
+                @endisset
+            </div>
 
-            {{-- <atom:html> only emits the darkmode bootstrap when $dark, so
-                 window.darkmode() doesn't exist on a light-only app and the
-                 switcher's menu items throw when clicked. --}}
-            @if ($dark)
-                <atom:darkmode-toggle/>
-            @endif
+            <div class="flex shrink-0 items-center gap-1.5" data-atom-shell-actions>
+                @isset ($actions)
+                    {{ $actions }}
+                @endisset
 
-            <!-- Mobile User Menu -->
-            @if (isset($dropdown) || isset($profile))
-                <atom:dropdown>
-                    <button type="button" class="w-full rounded-lg flex items-center gap-2 p-0.5 hover:bg-zinc-100 dark:hover:bg-zinc-700">
-                        <div class="shrink-0 size-10 bg-zinc-200 dark:bg-zinc-700 rounded-lg flex items-center justify-center">
-                            @if ($avatar)
-                                <img src="{{ $avatar }}" alt="{{ $name }}" class="w-full h-full object-cover">
-                            @else
-                                {{ $user?->initials() }}
-                            @endif
-                        </div>
+                {{-- <atom:html> only emits the darkmode bootstrap when $dark, so
+                     window.darkmode() doesn't exist on a light-only app and the
+                     switcher's menu items throw when clicked. --}}
+                @if ($dark)
+                    <atom:darkmode-toggle/>
+                @endif
 
-                        <atom:icon.dropdown/>
-                    </button>
+                <!-- Mobile User Menu -->
+                @if (isset($dropdown) || isset($profile))
+                    <atom:dropdown class="lg:hidden">
+                        <button type="button" class="flex items-center gap-1 rounded-full p-0.5 hover:bg-fg/5" aria-label="{{ t('Account') }}">
+                            <div class="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg">
+                                @if ($avatar)
+                                    <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
+                                @else
+                                    {{ $user?->initials() }}
+                                @endif
+                            </div>
 
-                    @isset ($dropdown)
-                        <atom:menu class="w-[220px]" popover>
-                            @isset ($profile)
-                                {{ $profile }}
-                            @else
-                                <div class="flex items-center truncate">
-                                    <div class="shrink-0 size-10 text-lg bg-zinc-200 dark:bg-zinc-700 rounded-lg flex items-center justify-center">
-                                        @if ($avatar)
-                                            <img src="{{ $avatar }}" alt="{{ $name }}" class="w-full h-full object-cover">
-                                        @else
-                                            {{ $user?->initials() }}
-                                        @endif
-                                    </div>
+                            <atom:icon.dropdown class="size-3.5 text-fg-subtle"/>
+                        </button>
 
-                                    <div class="mx-2 text-zinc-500 text-left dark:text-white truncate">
-                                        <div class="font-medium truncate">
-                                            {{ $user?->name }}
+                        @isset ($dropdown)
+                            <atom:menu class="w-[220px]" popover>
+                                @isset ($profile)
+                                    {{ $profile }}
+                                @else
+                                    <div class="flex items-center gap-2 truncate p-1.5">
+                                        <div class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg">
+                                            @if ($avatar)
+                                                <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
+                                            @else
+                                                {{ $user?->initials() }}
+                                            @endif
                                         </div>
-                                        <div class="text-sm text-zinc-500 truncate dark:text-white/50">
-                                            {{ $user?->email }}
+
+                                        <div class="min-w-0 text-start leading-tight">
+                                            <div class="truncate text-sm font-medium">
+                                                {{ $user?->name }}
+                                            </div>
+                                            <div class="truncate text-xs text-fg-subtle">
+                                                {{ $user?->email }}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            @endisset
+                                @endisset
 
-                            <atom:separator class="my-2"/>
+                                <atom:separator class="my-2"/>
 
-                            {{ $dropdown }}
-                        </atom:menu>
-                    @endisset
-                </atom:dropdown>
-            @endif
+                                {{ $dropdown }}
+                            </atom:menu>
+                        @endisset
+                    </atom:dropdown>
+                @endif
+            </div>
         </div>
     </header>
 
+    {{-- <main> is unpadded on purpose: padding comes from <atom:page>, so a host's own section partials don't pad twice. --}}
     <main class="[grid-area:main]" data-atom-main>
         {{-- The document's outline root. There is no natural <h1> in this
              layout: the visible page title comes from <atom:breadcrumbs>, which
@@ -212,7 +237,7 @@ $name = $user?->name;
     </main>
 
     @isset ($footer)
-        <footer class="[grid-area:footer] z-10 p-4 border-zinc-200 lg:border-t dark:lg:border-zinc-700">
+        <footer class="[grid-area:footer] z-10 border-t border-border p-4">
             {{ $footer ?? '' }}
         </footer>
     @endisset

@@ -1,10 +1,10 @@
 <atom:dropdown :attributes="$attributes">
     <button
     type="button"
-    class="shrink-0 flex items-center justify-center rounded-lg size-10 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+    class="flex h-control aspect-square shrink-0 items-center justify-center rounded-control text-fg-muted hover:bg-fg/5 hover:text-fg"
     aria-label="{{ t('Toggle dark mode') }}"
     data-atom-darkmode-toggle>
-        <atom:icon.darkmode-toggle class="size-5"/>
+        <atom:icon.darkmode-toggle class="size-4"/>
     </button>
 
     <atom:menu popover>

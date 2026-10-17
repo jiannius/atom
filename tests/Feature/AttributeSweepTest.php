@@ -523,8 +523,9 @@ describe('B4: the previously left-out items', function () {
             ->and($body->getAttribute('id'))->toBe('shell')
             ->and($body->getAttribute('data-x'))->toBe('1');
     })->with([
-        'auth' => ['layouts.auth', 'min-h-screen bg-white antialiased'],
-        'sidebar' => ['layouts.sidebar', 'min-h-screen bg-white'],
+        'auth' => ['layouts.auth', 'min-h-screen bg-canvas antialiased'],
+        'sidebar' => ['layouts.sidebar', 'min-h-screen bg-canvas'],
+        'header' => ['layouts.header', 'min-h-screen bg-canvas'],
     ]);
 
     it('keeps the layout body classes with no caller class', function (string $layout, array $expected) {
@@ -533,8 +534,9 @@ describe('B4: the previously left-out items', function () {
         expect(domClasses($body)[0])->toBe($expected[0])
             ->and(domClasses($body))->toContain(...$expected);
     })->with([
-        'auth' => ['layouts.auth', ['min-h-screen', 'bg-white', 'antialiased']],
-        'sidebar' => ['layouts.sidebar', ['min-h-screen', 'bg-white']],
+        'auth' => ['layouts.auth', ['min-h-screen', 'bg-canvas', 'antialiased']],
+        'sidebar' => ['layouts.sidebar', ['min-h-screen', 'bg-canvas']],
+        'header' => ['layouts.header', ['min-h-screen', 'bg-canvas']],
     ]);
 
     it('prints the bag on the lightbox dialog without losing its Alpine hooks', function () {
