@@ -4,6 +4,11 @@
 $styles = $styles ?? [];
 $page = request()->query('page', 'purchase-orders');
 $page = is_string($page) ? $page : 'purchase-orders';
+
+// Switches for the specs: ?hide=<page>,<page> hides those units, ?lw=1 puts a Livewire counter in the actions slot,
+// ?refs=1 gives one item aria-describedby / aria-controls / a label that point at ids.
+$hide = explode(',', (string) request()->query('hide', ''));
+$hidden = fn (string $key) => in_array($key, $hide, true) ? 'display: none' : null;
 @endphp
 
 <atom:layouts.header title="Wide nav" :vite="[]" :styles="$styles" :dark="$dark ?? false">
@@ -33,18 +38,18 @@ $page = is_string($page) ? $page : 'purchase-orders';
 
     <x-slot:nav>
         <atom:navlist>
-            <atom:navlist.item href="?page=purchase-orders" count="12" :current="$page === 'purchase-orders'">Purchase orders</atom:navlist.item>
-            <atom:navlist.item href="?page=work-orders" count="8" :current="$page === 'work-orders'">Work orders</atom:navlist.item>
-            <atom:navlist.item href="?page=sales-invoices" count="31" :current="$page === 'sales-invoices'">Sales invoices</atom:navlist.item>
-            <atom:navlist.item href="?page=delivery-orders" count="4" :current="$page === 'delivery-orders'">Delivery orders</atom:navlist.item>
-            <atom:navlist.item href="?page=stock-transfers" count="2" :current="$page === 'stock-transfers'">Stock transfers</atom:navlist.item>
+            <atom:navlist.item href="?page=purchase-orders" :style="$hidden('purchase-orders')" count="12" :current="$page === 'purchase-orders'">Purchase orders</atom:navlist.item>
+            <atom:navlist.item href="?page=work-orders" :style="$hidden('work-orders')" count="8" :current="$page === 'work-orders'">Work orders</atom:navlist.item>
+            <atom:navlist.item href="?page=sales-invoices" :style="$hidden('sales-invoices')" count="31" :current="$page === 'sales-invoices'">Sales invoices</atom:navlist.item>
+            <atom:navlist.item href="?page=delivery-orders" :style="$hidden('delivery-orders')" count="4" :current="$page === 'delivery-orders'">Delivery orders</atom:navlist.item>
+            <atom:navlist.item href="?page=stock-transfers" count="2" :style="$hidden('stock-transfers')" :current="$page === 'stock-transfers'" :aria-describedby="request()->query('refs') ? 'shell-hint' : null" :aria-controls="request()->query('refs') ? 'shell-hint' : null">Stock transfers @if (request()->query('refs'))<label for="shell-hint" aria-labelledby="shell-hint" data-testid="shell-ref-label">hint</label>@endif</atom:navlist.item>
 
-            <atom:navlist.group heading="Financial reports">
+            <atom:navlist.group heading="Financial reports" :style="$hidden('financial-reports')">
                 <atom:navlist.item href="?page=trial-balance" count="1" :current="$page === 'trial-balance'">Trial balance</atom:navlist.item>
                 <atom:navlist.item href="?page=aged-debtors" count="5" :current="$page === 'aged-debtors'">Aged debtors</atom:navlist.item>
             </atom:navlist.group>
 
-            <atom:navlist.group heading="Administration" expandable persist-key="wide.admin">
+            <atom:navlist.group heading="Administration" expandable persist-key="wide.admin" :style="$hidden('administration')">
                 <atom:navlist.item href="?page=users-and-roles" count="9" :current="$page === 'users-and-roles'">Users and roles</atom:navlist.item>
                 <atom:navlist.item href="?page=company-settings" :current="$page === 'company-settings'">Company settings</atom:navlist.item>
             </atom:navlist.group>
@@ -52,6 +57,10 @@ $page = is_string($page) ? $page : 'purchase-orders';
     </x-slot>
 
     <x-slot:actions>
+        @if (request()->query('lw'))
+            <livewire:atom-e2e-shell-actions />
+        @endif
+
         <atom:button size="sm" variant="primary" icon="add">New purchase order</atom:button>
     </x-slot>
 
@@ -63,6 +72,8 @@ $page = is_string($page) ? $page : 'purchase-orders';
     <div class="px-7 pb-24 pt-6 max-lg:px-4" data-testid="pattern-page">
         <div class="text-2xl font-semibold" data-testid="pattern-title">{{ $page }}</div>
     </div>
+
+    <span id="shell-hint" class="sr-only">hint</span>
 
     {{-- no Livewire component on this page, so Livewire's own Alpine has to be loaded for atom.js --}}
     @livewireScripts

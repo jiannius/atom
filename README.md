@@ -511,7 +511,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:separator>` | `align` (`left`, `center`, `right`). Slot becomes the label. |
 | `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`, `vite`. |
 | `<atom:layouts.sidebar>` | App layout: a 228px sidebar, a 48px sticky top bar and an unpadded `<main>`. Props: `title`, `noindex`, `dark`, `density`, `editor`, `scripts`, `styles`, `vite`. Slots: `brand`, `context`, `search`, `nav`, `navfoot`, `crumbs`, `actions`, `dropdown`, `profile`, `footer`. Pass `dark` to get the darkmode bootstrap and the top bar's switcher. |
-| `<atom:layouts.header>` | The top-nav twin, for an app with about six or fewer sections: a 52px sticky bar over a centred 1248px, unpadded `<main>`. **The same props and slots as `layouts.sidebar`, and the same `nav` markup**, so a host can choose the shell per user. Below `lg` (1024px) the nav becomes a menu button and a panel under the bar, with the `context` and `search` slots as its first two rows. From `lg` up the nav is priority-plus: items that do not fit move, in order, into a trailing "More" dropdown (a group becomes a labelled section in it). |
+| `<atom:layouts.header>` | The top-nav twin, for an app with about six or fewer sections: a 52px sticky bar over a centred 1248px, unpadded `<main>`. **The same props and slots as `layouts.sidebar`, and the same `nav` markup**, so a host can choose the shell per user. Below `lg` (1024px) the nav becomes a menu button and a panel under the bar, with the `context` and `search` slots as its first two rows. From `lg` up the nav is priority-plus: items that do not fit move, in order, into a trailing "More" dropdown (a group becomes a labelled section in it). **Priority-plus applies to the first `<atom:navlist>` in the `nav` slot only**, so put the whole nav in one navlist (use `navfoot` for a second block that stays in the bar). |
 
 #### Choosing a shell
 
@@ -569,6 +569,13 @@ Three things worth knowing:
   group forgets itself the moment the user navigates.
 - **Two groups sharing a key sync.** Not guarded, because that's usually what you want when the
   same nav renders in more than one layout.
+- **Groups that share a heading across a layout and a Livewire component need distinct
+  `persist-key`s.** In `layouts.header` a group's dropdown trigger points at its panel with an
+  `aria-controls` id derived from the heading and the key, and a group with the same heading and
+  key as an earlier one in the same render gets a numbered id. The numbering is per top-level
+  render: a layout and a Livewire component are rendered separately, so two such groups can each
+  be "first" (the same id twice) or be numbered differently from one render to the next. Give
+  each its own `persist-key` and the ids never depend on order.
 
 Storage access is wrapped both ways: hardened browsers and Safari private mode throw on
 `localStorage`, and an uncaught throw would take the Alpine component down and stop the group

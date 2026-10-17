@@ -910,3 +910,232 @@ test.describe('touch', () => {
     expect((await box(link(page, 'Customers'))).height).toBe(40)
   })
 })
+
+// Round 3: the header's priority-plus and its open state, under the cases a review found. The wide page takes switches in its
+// query string (resources/views/e2e/shell-header-wide.blade.php): hide=<page>,<page> hides units, lw=1 puts a Livewire counter
+// in the actions slot, refs=1 gives one item references to ids.
+for (const tw of ['floor', 'latest']) {
+  test.describe(`header shell fit, ${tw} consumer build`, () => {
+    const moreTrigger = (page) => page.locator('[data-atom-header-more] > [data-atom-navlist-group-trigger]')
+    const moreText = (page) => page.locator('#atom-header-more-items').evaluate((el) => el.textContent.replace(/\s+/g, ' '))
+
+    // a unit that is not shown has a zero box: it once counted as the last edge (so nothing overflowed) and could be copied
+    for (const [hide, labels] of [
+      ['administration', ['Administration', 'Users and roles', 'Company settings']],
+      ['stock-transfers,delivery-orders', ['Stock transfers', 'Delivery orders']],
+      ['sales-invoices,administration', ['Sales invoices', 'Administration', 'Users and roles', 'Company settings']],
+    ]) {
+      test(`a hidden unit takes no room and is never copied into "More" (hidden: ${hide})`, async ({ page }) => {
+        await page.setViewportSize({ width: 1024, height: 800 })
+        await open(page, 'header-wide', { tw, query: `&hide=${hide}` })
+
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1024)
+        expectNoOverlap(await barBoxes(page), 1024)
+
+        // what is left is still too much for the bar, so "More" exists and holds only shown units
+        await expect(page.locator('[data-atom-header-more]')).toBeVisible()
+        const text = await moreText(page)
+        for (const label of labels) expect(text, `${label} is not copied`).not.toContain(label)
+        expect(await page.locator('[data-atom-more-copy]').count()).toBeGreaterThan(0)
+      })
+    }
+
+    test('the rightmost edge decides whether the units fit, not the last unit in the document', async ({ page }) => {
+      await page.setViewportSize({ width: 1024, height: 800 })
+      await open(page, 'header-wide', { tw, query: '&hide=work-orders,sales-invoices,delivery-orders,stock-transfers,financial-reports,administration' })
+
+      // one unit left: it fits, so there is no "More"
+      await expect(page.locator('[data-atom-header-more]')).toBeHidden()
+
+      // a second unit that is last in the document but drawn first (flex order), and the first one drawn last and too wide
+      await page.evaluate(() => {
+        const first = document.querySelector('[data-atom-header-nav] [data-atom-navlist] > [data-atom-navlist-item]')
+        const second = document.querySelector('[data-atom-header-nav] [data-atom-navlist] > [data-atom-navlist-group]')
+
+        second.style.display = ''
+        second.style.order = '-1'
+        first.style.order = '1'
+        first.style.flex = 'none'
+        first.style.width = '5000px'
+        window.Alpine.$data(document.querySelector('[data-atom-header]')).fit()
+      })
+
+      await expect(page.locator('[data-atom-header-more]')).toBeVisible()
+    })
+
+    test('fit() after the header is destroyed does nothing', async ({ page }) => {
+      const errors = []
+      page.on('pageerror', (e) => errors.push(e.message))
+      await open(page, 'header-wide', { tw })
+
+      const thrown = await page.evaluate(async () => {
+        const header = document.querySelector('[data-atom-header]')
+        const data = window.Alpine.$data(header)
+
+        window.Alpine.destroyTree(header)
+        header.remove()
+
+        try {
+          data.fit()
+          await document.fonts.ready.then(() => data.fit())
+          document.fonts.dispatchEvent(new Event('loadingdone'))
+          await new Promise((resolve) => setTimeout(resolve, 100))
+          return null
+        }
+        catch (e) {
+          return e.message
+        }
+      })
+
+      expect(thrown).toBeNull()
+      expect(errors).toEqual([])
+    })
+
+    test('a morph elsewhere in the header leaves the open "More" and the focused copy alone', async ({ page }) => {
+      await page.setViewportSize({ width: 1024, height: 800 })
+      await open(page, 'header-wide', { tw, query: '&lw=1' })
+
+      await moreTrigger(page).click()
+      const copy = page.locator('[data-atom-header-more] [data-atom-more-copy]').first()
+      await expect(copy).toBeVisible()
+      await copy.focus()
+      await copy.evaluate((el) => { el.__probe = 'same copy' })
+
+      // a Livewire morph of the counter in the actions slot: the header refits
+      await page.evaluate(() => window.Livewire.first().bump())
+      await expect(page.getByTestId('shell-count')).toHaveText('1')
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+
+      expect(await page.evaluate(() => document.activeElement?.__probe)).toBe('same copy')
+      await expect(moreTrigger(page)).toHaveAttribute('aria-expanded', 'true')
+      await expect(page.locator('[data-atom-header-more] > [data-atom-navlist-group-items]')).toBeVisible()
+    })
+
+    test('"More" that was open when everything came to fit is closed when it is needed again', async ({ page }) => {
+      await page.setViewportSize({ width: 1024, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      await moreTrigger(page).click()
+      await expect(moreTrigger(page)).toHaveAttribute('aria-expanded', 'true')
+
+      // room for everything: hide all units but one, and measure again
+      const units = '[data-atom-header-nav] [data-atom-navlist] > [data-atom-navlist-item]:not(:first-child), [data-atom-header-nav] [data-atom-navlist] > [data-atom-navlist-group]'
+      await page.evaluate((units) => {
+        document.querySelectorAll(units).forEach((el) => { el.dataset.hiddenByTest = ''; el.style.display = 'none' })
+        window.Alpine.$data(document.querySelector('[data-atom-header]')).fit()
+      }, units)
+      await expect(page.locator('[data-atom-header-more]')).toBeHidden()
+
+      // the units are back: "More" is needed again, and it comes back closed
+      await page.evaluate(() => {
+        document.querySelectorAll('[data-hidden-by-test]').forEach((el) => { el.style.display = '' })
+        window.Alpine.$data(document.querySelector('[data-atom-header]')).fit()
+      })
+      await expect(page.locator('[data-atom-header-more]')).toBeVisible()
+      await expect(moreTrigger(page)).toHaveAttribute('aria-expanded', 'false')
+      await expect(page.locator('[data-atom-header-more] > [data-atom-navlist-group-items]')).toBeHidden()
+    })
+
+    test('a menu left open below lg is closed when the width comes back to it', async ({ page }) => {
+      await page.setViewportSize({ width: 768, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      const button = page.locator('[data-atom-header-menu-button]')
+      await button.click()
+      await expect(page.locator('[data-atom-header-nav]')).toBeVisible()
+
+      await page.setViewportSize({ width: 1100, height: 800 })
+      await expect(button).toBeHidden()
+      await page.setViewportSize({ width: 768, height: 800 })
+      await expect(button).toBeVisible()
+
+      await expect(page.locator('[data-atom-header-nav]')).toBeHidden()
+      await expect(button).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    test('a search popover left open at lg to xl does not take the first Escape of the menu below lg', async ({ page }) => {
+      await page.setViewportSize({ width: 1100, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      await page.locator('[data-atom-shell-search-button]').click()
+      await expect(page.locator('[data-atom-shell-search]')).toBeVisible()
+
+      await page.setViewportSize({ width: 768, height: 800 })
+      const button = page.locator('[data-atom-header-menu-button]')
+      await button.click()
+      await expect(page.locator('[data-atom-header-nav]')).toBeVisible()
+
+      await page.keyboard.press('Escape')
+      await expect(page.locator('[data-atom-header-nav]')).toBeHidden()
+      await expect(button).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    test('a search popover left open comes back closed after the width went through xl', async ({ page }) => {
+      await page.setViewportSize({ width: 1100, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      const button = page.locator('[data-atom-shell-search-button]')
+      await button.click()
+      await expect(button).toHaveAttribute('aria-expanded', 'true')
+
+      await page.setViewportSize({ width: 1300, height: 800 })
+      await expect(page.locator('[data-atom-shell-search]')).toBeVisible()
+      await page.setViewportSize({ width: 1100, height: 800 })
+
+      await expect(button).toBeVisible()
+      await expect(button).toHaveAttribute('aria-expanded', 'false')
+      await expect(page.locator('[data-atom-shell-search]')).toBeHidden()
+    })
+
+    test('opening "More" closes the search popover and the other way round, with no focus moving', async ({ page }) => {
+      await page.setViewportSize({ width: 1100, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      const search = page.locator('[data-atom-shell-search-button]')
+      const more = moreTrigger(page)
+
+      // dispatched clicks do not focus the button, which is how Safari and Firefox click one
+      await more.dispatchEvent('click')
+      await expect(more).toHaveAttribute('aria-expanded', 'true')
+      await search.dispatchEvent('click')
+      await expect(search).toHaveAttribute('aria-expanded', 'true')
+      await expect(more).toHaveAttribute('aria-expanded', 'false')
+
+      await more.dispatchEvent('click')
+      await expect(more).toHaveAttribute('aria-expanded', 'true')
+      await expect(search).toHaveAttribute('aria-expanded', 'false')
+      await expect(page.locator('[data-atom-shell-search]')).toBeHidden()
+    })
+
+    test('a copy in "More" keeps no reference to an id that is not in the copy', async ({ page }) => {
+      await page.setViewportSize({ width: 1024, height: 800 })
+      await open(page, 'header-wide', { tw, query: '&refs=1' })
+
+      const original = page.locator('a[data-atom-navlist-item]:not([data-atom-more-copy])', { hasText: 'Stock transfers' })
+      await expect(original).toHaveAttribute('aria-describedby', 'shell-hint')
+      await expect(original).toHaveAttribute('aria-controls', 'shell-hint')
+
+      const copy = page.locator('[data-atom-more-copy]', { hasText: 'Stock transfers' })
+      await expect(copy).toHaveCount(1)
+      const left = await copy.evaluate((el) => [el, ...el.querySelectorAll('*')].flatMap((node) => ['aria-describedby', 'aria-labelledby', 'aria-controls', 'for', 'id'].filter((name) => node.hasAttribute(name)).map((name) => `${node.tagName}[${name}]`)))
+      expect(left).toEqual([])
+    })
+
+    test('a context slot that grows takes room from the units, and they are fitted again', async ({ page }) => {
+      await page.setViewportSize({ width: 1100, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      const copies = () => page.locator('[data-atom-more-copy]').count()
+      const before = await copies()
+
+      await page.locator('[data-atom-shell-context] button[aria-haspopup]').first().evaluate((el) => {
+        const spacer = document.createElement('span')
+        spacer.style.cssText = 'display: inline-block; flex: none; width: 300px'
+        el.append(spacer)
+      })
+
+      await expect.poll(copies).toBeGreaterThan(before)
+      expectNoOverlap(await barBoxes(page), 1100)
+    })
+  })
+}

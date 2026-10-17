@@ -434,6 +434,12 @@ describe('layouts.header search and "More"', function () {
         expect(array_unique($ids))->toHaveCount(count($ids));
     });
 
+    it('opens "More" through toggleMore(), which closes the search popover first', function () use ($render, $search, $nav) {
+        $trigger = domQuery($render($search."\n".$nav), '//*[@data-atom-header-more]/button')[0];
+
+        expect($trigger->getAttribute('x-on:click'))->toBe('toggleMore()');
+    });
+
     it('has no "More" when there is no nav slot', function () use ($render) {
         expect(domQuery($render(), '//*[@data-atom-header-more]'))->toHaveCount(0);
     });
@@ -527,5 +533,26 @@ describe('one nav slot in both shells', function () {
 
             expect(domQuery($html, '//*[@data-atom-nav-shell="'.$shell.'"]//a[@href="/sites"]'))->toHaveCount(1);
         }
+    });
+});
+
+// Documented limits of the header's nav (README layouts and navlist sections, Boost skill, the group's own comment).
+describe('header nav limits are written down', function () {
+    it('says priority-plus measures the first navlist in the nav slot only', function () {
+        $readme = file_get_contents(dirname(__DIR__, 2).'/README.md');
+        $skill = file_get_contents(dirname(__DIR__, 2).'/resources/boost/skills/atom-components/SKILL.blade.php');
+
+        expect($readme)->toContain('Priority-plus applies to the first `<atom:navlist>` in the `nav` slot only')
+            ->and($skill)->toContain('measures the first `<atom:navlist>` in the `nav` slot only');
+    });
+
+    it('says groups sharing a heading across a layout and a Livewire component need distinct persist-keys', function () {
+        $readme = file_get_contents(dirname(__DIR__, 2).'/README.md');
+        $group = file_get_contents(dirname(__DIR__, 2).'/components/navlist/group.blade.php');
+
+        expect($readme)->toContain('Groups that share a heading across a layout and a Livewire component need distinct')
+            ->and($readme)->toContain('`persist-key`s.**')
+            ->and($group)->toContain('share a heading across a layout and a Livewire')
+            ->and($group)->toContain('need distinct `persist-key`s');
     });
 });

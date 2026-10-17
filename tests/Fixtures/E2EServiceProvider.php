@@ -53,6 +53,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-safe-url-breadcrumbs', SafeUrlBreadcrumbsFixture::class);
         Livewire::component('atom-e2e-form-error-toast', FormErrorToastFixture::class);
         Livewire::component('atom-e2e-url-filters', UrlFiltersFixture::class);
+        Livewire::component('atom-e2e-shell-actions', ShellActionsFixture::class);
         Livewire::component('atom-e2e-calendar', CalendarFixture::class);
         Livewire::component('atom-e2e-calendar-look', CalendarLookFixture::class);
 

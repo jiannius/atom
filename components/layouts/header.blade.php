@@ -96,7 +96,7 @@ $name = $user?->name;
                         <button
                         type="button"
                         x-ref="moreButton"
-                        x-on:click="more = !more"
+                        x-on:click="toggleMore()"
                         x-on:keydown.arrow-down.prevent="openMore()"
                         x-bind:aria-expanded="more ? 'true' : 'false'"
                         aria-controls="atom-header-more-items"

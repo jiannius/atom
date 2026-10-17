@@ -10,7 +10,12 @@
      morph key where it falls back to one, and a random one would make every render replace the control. Two groups
      with the same heading and no persist-key share a seed, so the seed is numbered by how many groups this render
      has already printed with it. The view factory's "rendered once" ledger is the counter: it is emptied when a
-     top-level render ends, so the same page gets the same ids on every render. --}}
+     top-level render ends, so the same page gets the same ids on every render.
+
+     Known limit: that ledger is per top-level render. A layout and a Livewire component (or two Livewire
+     components) are rendered separately, so groups that share a heading across them can each be "first" and print the
+     same id, or be numbered differently on a later render. Groups that share a heading across a layout and a Livewire
+     component need distinct `persist-key`s: the key is part of the seed, and nothing then depends on order. --}}
 @php
 // Namespaced so a caller's "sidebar" can't collide with the app's own entries.
 $storageKey = $persistKey ? 'atom:navlist-group:'.$persistKey : null;

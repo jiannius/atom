@@ -15,6 +15,8 @@ import onMorphed from '../helpers/morphed'
 // wrote). The "More" trigger gets the current underline from CSS (:has([data-current])) because a copy of the
 // current item is inside it.
 const LG = '(min-width: 64rem)'
+const XL = '(min-width: 80rem)'
+const REFERENCES = ['aria-describedby', 'aria-labelledby', 'aria-controls', 'for']
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 const FIELD = 'input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable=""], [contenteditable="true"]'
 
@@ -22,18 +24,40 @@ export default () => ({
     menu: false,
     search: false,
     more: false,
-    stopMorph: null,
     observer: null,
+    destroyed: false,
+    signature: '',
 
     init () {
+        this.destroyed = false
         this.fit()
 
         this.observer?.disconnect()
         this.observer = new ResizeObserver(() => this.fit())
-        this.observer.observe(this.$refs.nav)
+        this.watch()
 
         // item widths change when the web font lands
-        document.fonts?.ready?.then(() => this.fit())
+        let refit = () => this.fit()
+
+        document.fonts?.ready?.then(refit)
+        document.fonts?.addEventListener?.('loadingdone', refit)
+
+        // crossing lg changes what the panel, "More" and the search field are, and crossing xl what the search field is:
+        // whatever was open belongs to the layout that is gone, and would still be open when the width comes back
+        let lg = window.matchMedia(LG)
+        let xl = window.matchMedia(XL)
+        let leaveLg = () => this.closeAll()
+        let leaveXl = () => { this.search = false }
+
+        lg.addEventListener('change', leaveLg)
+        xl.addEventListener('change', leaveXl)
+
+        this.$el._atomHeaderStopListening?.()
+        this.$el._atomHeaderStopListening = () => {
+            document.fonts?.removeEventListener?.('loadingdone', refit)
+            lg.removeEventListener('change', leaveLg)
+            xl.removeEventListener('change', leaveXl)
+        }
 
         // a morph strips every attribute the server did not render: data-open on the panel and the search field,
         // data-menu-open on "More", the overflow marks. Write them again from the state, then measure again.
@@ -41,14 +65,33 @@ export default () => ({
         this.$el._atomHeaderStopMorph = onMorphed((el) => {
             if (!el || el.contains(this.$el) || this.$el.contains(el)) {
                 this.sync()
+                this.watch()
                 this.fit()
             }
         })
     },
 
     destroy () {
+        this.destroyed = true
         this.observer?.disconnect()
         this.$el._atomHeaderStopMorph?.()
+        this.$el._atomHeaderStopListening?.()
+    },
+
+    /**
+     * Watch what decides how much room the nav units have: the nav, the bar that holds it, and the context and search
+     * slots inside it (a slot that grows takes room from the units without changing the nav's own box).
+     */
+    watch () {
+        let nav = this.$refs.nav
+
+        if (!this.observer || !nav) return
+
+        this.observer.disconnect()
+
+        for (let el of [nav, nav.parentElement, nav.querySelector('[data-atom-shell-context]'), this.$refs.search]) {
+            if (el) this.observer.observe(el)
+        }
     },
 
     /**
@@ -61,6 +104,12 @@ export default () => ({
     },
 
     toggleSearch () {
+        // one layer at a time, and not by waiting for a focusout: Safari and Firefox do not focus a button on click
+        if (!this.search) {
+            this.more = false
+            this.menu = false
+        }
+
         this.search = !this.search
 
         if (!this.search) return
@@ -73,7 +122,14 @@ export default () => ({
         })
     },
 
+    toggleMore () {
+        if (!this.more) this.search = false
+
+        this.more = !this.more
+    },
+
     openMore () {
+        this.search = false
         this.more = true
         this.$nextTick(() => this.$refs.moreItems.querySelector(FOCUSABLE)?.focus())
     },
@@ -133,6 +189,8 @@ export default () => ({
      * Move what does not fit into "More".
      */
     fit () {
+        if (this.destroyed || !this.$el?.isConnected) return
+
         let nav = this.$refs.nav
         let wrap = this.$refs.more
         let list = [...nav.querySelectorAll('[data-atom-navlist]')].find((el) => !el.closest('[data-atom-navfoot], [data-atom-header-more]'))
@@ -147,7 +205,7 @@ export default () => ({
         // below lg the nav is a panel of rows: everything shows, nothing is moved
         if (!window.matchMedia(LG).matches) {
             nav.removeAttribute('data-atom-fit')
-            this.$refs.moreItems.replaceChildren()
+            this.clear()
             return
         }
 
@@ -158,12 +216,16 @@ export default () => ({
         let extent = (el, base) => rtl ? base.right - el.getBoundingClientRect().left : el.getBoundingClientRect().right - base.left
         let room = () => list.getBoundingClientRect().width
 
+        // a unit that is not shown (display: none, or inside something that is not) has no box: it takes no room, and
+        // is never moved, so it is left out of the measuring and out of "More"
+        units = units.filter((el) => el.getClientRects().length > 0)
+
         let base = list.getBoundingClientRect()
         let edges = units.map((el) => extent(el, base))
-        let fits = edges.length === 0 || edges[edges.length - 1] <= room() + 0.01
+        let fits = edges.length === 0 || Math.max(...edges) <= room() + 0.01
 
         if (fits) {
-            this.$refs.moreItems.replaceChildren()
+            this.clear()
             nav.removeAttribute('data-atom-measuring')
             return
         }
@@ -181,7 +243,18 @@ export default () => ({
     },
 
     /**
-     * Rebuild the "More" panel from copies of the moved units. A group becomes a labelled section.
+     * Nothing is moved: "More" is not shown, so it is not open either.
+     */
+    clear () {
+        this.more = false
+        this.signature = ''
+        this.$refs.moreItems.replaceChildren()
+    },
+
+    /**
+     * Rebuild the "More" panel from copies of the moved units. A group becomes a labelled section. The panel is left
+     * alone when the copies would be the same as the ones in it: a morph elsewhere in the header refits, and replacing
+     * the copies would drop the focus off the one the user is on.
      */
     fill (moved) {
         let panel = this.$refs.moreItems
@@ -203,6 +276,11 @@ export default () => ({
             else nodes.push(this.copy(el))
         }
 
+        let signature = nodes.map((node) => node.outerHTML).join('')
+
+        if (signature === this.signature && panel.childElementCount === nodes.length) return
+
+        this.signature = signature
         panel.replaceChildren(...nodes)
     },
 
@@ -212,6 +290,11 @@ export default () => ({
         clone.removeAttribute('data-atom-overflow')
         clone.setAttribute('data-atom-more-copy', '')
         ;[clone, ...clone.querySelectorAll('[id]')].forEach((node) => node.removeAttribute('id'))
+
+        // the copy carries no id, so nothing inside it can be the target of one of these
+        ;[clone, ...clone.querySelectorAll(REFERENCES.map((name) => `[${name}]`).join(','))].forEach((node) => {
+            REFERENCES.forEach((name) => node.removeAttribute(name))
+        })
 
         return clone
     },
