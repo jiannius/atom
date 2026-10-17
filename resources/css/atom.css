@@ -145,6 +145,26 @@ button {
     top: 0;
 }
 
+/* The utilities on the layouts place these too ([grid-area:main] and so on), but a page without a Tailwind build has
+   none of them, and an unplaced item is auto-placed around the bar that now has explicit lines. */
+[data-atom-sidebar] {
+    grid-area: sidebar;
+}
+
+[data-atom-sidebar] ~ [data-atom-main],
+[data-atom-header-bar] ~ [data-atom-main] {
+    grid-area: main;
+}
+
+[data-atom-sidebar] ~ footer,
+[data-atom-header-bar] ~ footer {
+    grid-area: footer;
+}
+
+[data-atom-header-crumbs] {
+    grid-area: crumbs;
+}
+
 /* layouts.header: one column, the bar (52px, sticky for the same reason) over a centred main. */
 *:has(>[data-atom-header-bar]) {
     grid-template-rows: 3.25rem 1fr auto;
