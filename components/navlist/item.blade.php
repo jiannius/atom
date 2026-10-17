@@ -14,12 +14,10 @@
 @php
 $href = safe_url($href);
 
-// Button should be a square if it has no text contents...
 $square ??= $slot->isEmpty();
 
 $el = $as ??= $href ? 'a' : 'button';
 
-// check href is current request url
 $isCurrent = function () use ($href, $current) {
     if (is_bool($current)) return $current;
 
@@ -29,44 +27,45 @@ $isCurrent = function () use ($href, $current) {
 
     if (!$hrefToCheck) return false;
 
-    // Support current route detection during Livewire update requests as well...
     return app('livewire')?->isLivewireRequest()
         ? str()->is($hrefToCheck, app('livewire')->originalPath())
         : request()->is($hrefToCheck);
 };
 
+$active = $isCurrent();
+
 $classes = Arr::toCssClasses([
-    'relative flex items-center gap-3 rounded-lg',
+    'relative flex h-control w-full items-center gap-[9px] rounded-nav px-2 text-start text-sm font-medium',
     'px-2.5!' => $square,
-    'py-2 px-3 text-start w-full border border-transparent',
-    'text-zinc-500 dark:text-white/80',
-    'hover:bg-zinc-100 dark:hover:bg-zinc-800',
-    'hover:text-zinc-800 dark:hover:text-white',
-    'data-current:bg-zinc-100 data-current:text-zinc-800 data-current:border-zinc-200 data-current:px-3',
-    'dark:data-current:bg-zinc-700 dark:data-current:text-white dark:data-current:border-transparent',
+    'text-fg-muted hover:bg-fg/5 hover:text-fg',
+    '[&[data-current]]:bg-surface [&[data-current]]:text-fg [&[data-current]]:shadow-[0_0_0_1px_var(--atom-border)]',
 ]);
 @endphp
 
+{{-- The look is the sidebar's: a 28px row, 16px icon, a hairline ring when current. atom.css restyles this same
+     markup as a top-bar item inside layouts.header, keyed on [data-atom-nav-shell="header"], so one nav slot
+     serves both shells. --}}
 <{{ $el }} {{ $attributes->class($classes)->merge([
     'type' => $el === 'button' ? 'button' : false,
     'href' => $el === 'button' ? false : $href,
-    'data-current' => $isCurrent(),
+    'data-current' => $active,
+    'aria-current' => $active ? 'page' : false,
     'data-atom-navlist-item' => true,
 ]) }}>
     @if ($icon)
-        <div class="relative flex shrink-0 items-center">
-            <x-dynamic-component :component="'atom::icon.'.$icon" class="block size-5"/>
+        <div class="relative flex shrink-0 items-center" data-atom-navlist-icon>
+            <x-dynamic-component :component="'atom::icon.'.$icon" class="block size-4"/>
 
             @if ($iconDot)
                 <div class="absolute top-[-2px] end-[-2px]">
-                    <div class="size-[6px] rounded-full bg-zinc-500 dark:bg-zinc-400"></div>
+                    <div class="size-[6px] rounded-full bg-fg-subtle"></div>
                 </div>
             @endif
         </div>
     @endif
 
     @if ($slot->isNotEmpty())
-        <div class="flex-1 font-medium leading-none whitespace-nowrap [[data-nav-footer]_&]:hidden [[data-nav-sidebar]_[data-nav-footer]_&]:block" data-content>
+        <div class="flex-1 truncate whitespace-nowrap leading-none" data-content>
             {{ $slot }}
         </div>
     @endif
@@ -76,9 +75,9 @@ $classes = Arr::toCssClasses([
     @endif
 
     @if ($badge)
-        <atom:navlist.badge :attributes="$badge->attributes" class="-mr-1.5">{{ $badge }}</atom:navlist.badge>
+        <atom:navlist.badge :attributes="$badge->attributes" class="-me-1">{{ $badge }}</atom:navlist.badge>
     @elseif ($count)
-        <div class="text-xs text-right text-muted dark:text-muted-foreground">
+        <div class="ms-auto text-xs tabular-nums text-fg-subtle" data-atom-navlist-count>
             {{ $count }}
         </div>
     @endif

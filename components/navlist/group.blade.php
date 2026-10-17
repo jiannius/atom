@@ -17,19 +17,27 @@ $storageKey = $persistKey ? 'atom:navlist-group:'.$persistKey : null;
 // 655ms on a held script, and it is only invisible locally because Alpine wins the race.
 // A group that simply starts open needs no correction, so it is left to render at once
 // rather than waiting on Alpine to reveal it.
-$cloak = $persistKey || $expanded !== true;
+$cloak = $expandable && ($persistKey || $expanded !== true);
 @endphp
 
 @if ($hiddenIfEmpty && $slot->isEmpty())
 
-@elseif ($expandable && $heading)
+@elseif ($heading)
 
+{{-- One markup for both shells. In the sidebar the group is a label (or, expandable, a disclosure) over its items; in
+     layouts.header atom.css turns the same element into a dropdown: the label is hidden, the trigger button appears,
+     and the items become a panel under it that `menu` opens. A group is rendered before the layout that holds it, so
+     it can't ask which shell it is in; init() reads it from the [data-atom-nav-shell] the layout wraps the nav in. --}}
 <div
 x-data="{
-    key: @js($storageKey),
-    open: @js($expanded === true),
+    key: @js($expandable ? $storageKey : null),
+    open: @js(!$expandable || $expanded === true),
+    menu: false,
+    header: false,
 
     init () {
+        this.header = !!this.$el.closest('[data-atom-nav-shell=header]')
+
         if (!this.key) return
 
         // a stored value always wins over `expanded`, which is only the initial
@@ -61,40 +69,62 @@ x-data="{
         }
         catch (e) {}
     },
+
+    // the header's dropdown: Arrow Down opens it and lands on the first item
+    focusFirst () {
+        this.menu = true
+        this.$nextTick(() => this.$refs.items.querySelector('a, button')?.focus())
+    },
 }"
-{{ $attributes->class('group/disclosure') }}
+x-bind:data-menu-open="header && menu ? '' : null"
+x-on:click.outside="menu = false"
+x-on:keydown.escape="if (menu) { menu = false; $refs.trigger.focus() }"
+x-on:focusout="if (menu && !$el.contains($event.relatedTarget)) menu = false"
+{{ $attributes->class(['group/disclosure mt-3.5 first:mt-0']) }}
 data-atom-navlist-group>
-    <button
-    type="button"
-    x-on:click="open = !open"
-    x-bind:aria-expanded="open ? 'true' : 'false'"
-    class="group/disclosure-button mb-[2px] flex h-10 w-full items-center rounded-lg text-zinc-500 hover:bg-zinc-800/5 hover:text-zinc-800 lg:h-8 dark:text-white/80 dark:hover:bg-white/[7%] dark:hover:text-white">
-        <div class="ps-3 pe-4">
+    @if ($expandable)
+        <button
+        type="button"
+        x-on:click="open = !open"
+        x-bind:aria-expanded="open ? 'true' : 'false'"
+        class="group/disclosure-button flex h-control w-full items-center gap-1.5 rounded-nav px-2 text-fg-subtle hover:bg-fg/5 hover:text-fg"
+        data-atom-navlist-group-toggle>
             <atom:icon.down x-show="open" class="size-3!" />
             <atom:icon.right x-show="!open" class="size-3!" />
-        </div>
 
-        <span class="text-sm font-medium leading-none">{{ t($heading) }}</span>
+            <span class="text-xs font-medium leading-none">{{ t($heading) }}</span>
+        </button>
+    @else
+        <div class="px-2 pb-1 pt-2 text-xs font-medium text-fg-subtle" data-atom-navlist-group-label>{{ t($heading) }}</div>
+    @endif
+
+    {{-- hidden until layouts.header asks for it (atom.css) --}}
+    <button
+    type="button"
+    x-ref="trigger"
+    x-on:click="menu = !menu"
+    x-on:keydown.arrow-down.prevent="focusFirst()"
+    x-bind:aria-expanded="menu ? 'true' : 'false'"
+    aria-haspopup="true"
+    class="items-center gap-1 text-sm font-medium text-fg-muted hover:text-fg"
+    data-atom-navlist-group-trigger>
+        {{ t($heading) }}
+        <atom:icon.down class="size-3.5 text-fg-subtle" />
     </button>
 
-    <div x-show="open" @if ($cloak) x-cloak @endif class="relative space-y-[2px] ps-7">
-        <div class="absolute inset-y-[3px] start-0 ms-4 w-px bg-zinc-200 dark:bg-white/30"></div>
+    <div
+    x-ref="items"
+    x-show="header || open"
+    @if ($cloak) x-cloak @endif
+    x-on:click="menu = false"
+    @class(['flex flex-col gap-px', 'ps-3' => $expandable])
+    data-atom-navlist-group-items>
         {{ $slot }}
     </div>
 </div>
 
-@elseif ($heading)
-    <div class="mt-5 first:mt-0">
-        <div class="px-3 pb-1.5">
-            <div class="text-xs font-semibold uppercase tracking-wider text-muted dark:text-muted-foreground">{{ t($heading) }}</div>
-        </div>
-
-        <div {{ $attributes->class(['flex flex-col']) }}>
-            {{ $slot }}
-        </div>
-    </div>
 @else
-    <div {{ $attributes }}>
+    <div {{ $attributes }} data-atom-navlist-section>
         {{ $slot }}
     </div>
 @endif

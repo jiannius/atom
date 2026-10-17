@@ -35,13 +35,12 @@ describe('navlist', function () {
         expect($html)->toContain('Navigation')->toContain('A');
     });
 
-    it('gives the plain group heading a dark-mode colour', function () {
-        // Regression: the heading was a bare `text-muted`, which a consumer maps to
-        // zinc-500 — 3.67:1 on a zinc-900 sidebar. The expandable branch of this same
-        // component already handled dark; only the plain-heading branch was missed.
+    // The heading reads a role token, which flips with the theme by itself, so it needs no dark: pair. The old
+    // bare `text-muted` was zinc-500 on a zinc-900 sidebar, 3.67:1.
+    it('colours the plain group heading with a role token that follows the theme', function () {
         $html = Blade::render('<atom:navlist.group heading="Navigation"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
 
-        expect($html)->toContain('text-muted dark:text-muted-foreground');
+        expect($html)->toContain('text-xs font-medium text-fg-subtle')->not->toContain('uppercase');
     });
 
     it('renders an expandable group with Alpine, not a ui-disclosure web component', function () {
@@ -125,5 +124,68 @@ describe('navlist.group flash guard', function () {
         $html = Blade::render('<atom:navlist.group expandable heading="S"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
 
         expect($html)->not->toContain('x-cloak');
+    });
+});
+
+// One group markup for both shells: a label (or disclosure) over its items in the sidebar, a dropdown in layouts.header.
+describe('navlist.group in the header shell', function () {
+    it('carries a dropdown trigger and a panel alongside the sidebar label', function () {
+        $html = Blade::render('<atom:navlist.group heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect($html)
+            ->toContain('data-atom-navlist-group')
+            ->toContain('data-atom-navlist-group-label')
+            ->toContain('data-atom-navlist-group-trigger')
+            ->toContain('data-atom-navlist-group-items')
+            ->toContain('aria-haspopup="true"')
+            ->toContain('x-bind:aria-expanded="menu');
+    });
+
+    it('prints the items once', function () {
+        $html = Blade::render('<atom:navlist.group heading="Reports"><atom:navlist.item href="/only-once">A</atom:navlist.item></atom:navlist.group>');
+
+        expect(substr_count($html, 'href="/only-once"'))->toBe(1);
+    });
+
+    it('reads the shell from the wrapper the layout puts around the nav', function () {
+        $html = Blade::render('<atom:navlist.group heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect($html)->toContain('[data-atom-nav-shell=header]');
+    });
+
+    it('only cloaks a group that has an expandable state to settle', function () {
+        $html = Blade::render('<atom:navlist.group heading="Reports" :expanded="false" persist-key="k"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect($html)->not->toContain('x-cloak');
+    });
+
+    it('keeps the expandable disclosure as the first button, and the trigger second', function () {
+        $html = Blade::render('<atom:navlist.group expandable heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+        $buttons = domQuery($html, '//button');
+
+        expect($buttons[0]->hasAttribute('data-atom-navlist-group-toggle'))->toBeTrue()
+            ->and($buttons[1]->hasAttribute('data-atom-navlist-group-trigger'))->toBeTrue();
+    });
+
+    it('leaves a group with no heading as a plain section', function () {
+        $html = Blade::render('<atom:navlist.group><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect($html)->toContain('data-atom-navlist-section')->not->toContain('data-atom-navlist-group-trigger');
+    });
+});
+
+describe('navlist.item', function () {
+    it('marks the current item for assistive tech as well as for styling', function () {
+        $current = Blade::render('<atom:navlist.item href="/a" :current="true">A</atom:navlist.item>');
+        $other = Blade::render('<atom:navlist.item href="/a" :current="false">A</atom:navlist.item>');
+
+        expect(domQuery($current, '//a[@aria-current="page"][@data-current]'))->toHaveCount(1);
+        expect(domQuery($other, '//a[@aria-current or @data-current]'))->toHaveCount(0);
+    });
+
+    it('is a 28px row at the compact density and draws its icon at 16px', function () {
+        $html = Blade::render('<atom:navlist.item href="/a" icon="dashboard">A</atom:navlist.item>');
+
+        expect($html)->toContain('h-control')->toContain('size-4')->toContain('rounded-nav');
     });
 });
