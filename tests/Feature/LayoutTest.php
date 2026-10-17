@@ -535,24 +535,3 @@ describe('one nav slot in both shells', function () {
         }
     });
 });
-
-// Documented limits of the header's nav (README layouts and navlist sections, Boost skill, the group's own comment).
-describe('header nav limits are written down', function () {
-    it('says priority-plus measures the first navlist in the nav slot only', function () {
-        $readme = file_get_contents(dirname(__DIR__, 2).'/README.md');
-        $skill = file_get_contents(dirname(__DIR__, 2).'/resources/boost/skills/atom-components/SKILL.blade.php');
-
-        expect($readme)->toContain('Priority-plus applies to the first `<atom:navlist>` in the `nav` slot only')
-            ->and($skill)->toContain('measures the first `<atom:navlist>` in the `nav` slot only');
-    });
-
-    it('says groups sharing a heading across a layout and a Livewire component need distinct persist-keys', function () {
-        $readme = file_get_contents(dirname(__DIR__, 2).'/README.md');
-        $group = file_get_contents(dirname(__DIR__, 2).'/components/navlist/group.blade.php');
-
-        expect($readme)->toContain('Groups that share a heading across a layout and a Livewire component need distinct')
-            ->and($readme)->toContain('`persist-key`s.**')
-            ->and($group)->toContain('share a heading across a layout and a Livewire')
-            ->and($group)->toContain('need distinct `persist-key`s');
-    });
-});

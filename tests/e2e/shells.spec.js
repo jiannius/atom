@@ -374,6 +374,7 @@ for (const tw of ['floor', 'latest']) {
     for (const width of [768, 1024, 1100, 1280]) {
       test(`nothing in the bar overlaps at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 })
+        await page.emulateMedia({ colorScheme: mode })
         await open(page, 'header', { tw })
 
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
@@ -450,6 +451,7 @@ for (const tw of ['floor', 'latest']) {
     for (const width of [1024, 1100, 1280, 1600]) {
       test(`nothing overlaps and every item is reachable at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 })
+        await page.emulateMedia({ colorScheme: mode })
         await open(page, 'header-wide', { tw })
 
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
@@ -1121,6 +1123,55 @@ for (const tw of ['floor', 'latest']) {
       expect(left).toEqual([])
     })
 
+    // Round 4: a unit hidden at fit time and shown later by a class or style toggle (Alpine x-show) has no morph and no
+    // resize of anything else to wake the bar, so the units are observed themselves
+    test('a unit shown by a style change alone is fitted again', async ({ page }) => {
+      await page.setViewportSize({ width: 1024, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      const unit = '[data-atom-header-nav] [data-atom-navlist] > [data-atom-navlist-group]:last-child'
+
+      await page.evaluate((unit) => {
+        document.querySelector(unit).style.display = 'none'
+        window.Alpine.$data(document.querySelector('[data-atom-header]')).fit()
+      }, unit)
+      await expect(page.locator(unit)).toBeHidden()
+
+      // no fit() call: the style change is all there is
+      await page.evaluate((unit) => { document.querySelector(unit).style.display = '' }, unit)
+
+      await expect.poll(() => moreText(page)).toContain('Administration')
+      await expect(page.locator('[data-atom-header-more]')).toBeVisible()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1024)
+      expectNoOverlap(await barBoxes(page), 1024)
+    })
+
+    test('observing the units starts no loop: no warning over a sweep of widths, and no fit when idle', async ({ page }) => {
+      const messages = []
+      page.on('console', (m) => messages.push(m.text()))
+      page.on('pageerror', (e) => messages.push(e.message))
+      await page.setViewportSize({ width: 1024, height: 800 })
+      await open(page, 'header-wide', { tw })
+
+      for (let width = 1600; width >= 1024; width -= 64) {
+        await page.setViewportSize({ width, height: 800 })
+        await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+      }
+
+      await page.evaluate(() => {
+        const data = window.Alpine.$data(document.querySelector('[data-atom-header]'))
+        const fit = data.fit
+
+        window.__fitCount = 0
+        data.fit = function () { window.__fitCount++; return fit.call(this) }
+      })
+      await page.waitForTimeout(500)
+
+      expect(await page.evaluate(() => window.__fitCount)).toBe(0)
+      expect(messages.filter((m) => /ResizeObserver|loop/i.test(m))).toEqual([])
+      expect(messages.filter((m) => /warn|error/i.test(m))).toEqual([])
+    })
+
     test('a context slot that grows takes room from the units, and they are fitted again', async ({ page }) => {
       await page.setViewportSize({ width: 1100, height: 800 })
       await open(page, 'header-wide', { tw })
@@ -1138,4 +1189,50 @@ for (const tw of ['floor', 'latest']) {
       expectNoOverlap(await barBoxes(page), 1100)
     })
   })
+}
+
+// The screenshots a human compares with the approved sample by eye. Written only when asked: SHOTS=<directory>.
+if (process.env.SHOTS) {
+  const shot = (page, name) => page.screenshot({ path: `${process.env.SHOTS}/${name}.png`, fullPage: false })
+  const settle = (page) => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+
+  for (const mode of ['light', 'dark']) {
+    const isDark = mode === 'dark'
+    const widths = isDark ? [1280] : [390, 768, 1100, 1280]
+
+    for (const width of widths) {
+      test(`screenshot: header, ${mode}, ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 800 })
+        await page.emulateMedia({ colorScheme: mode })
+        await open(page, 'header', { query: isDark ? '&dark=1' : '' })
+
+        if (width === 768) await page.locator('[data-atom-header-menu-button]').click()
+        if (width === 1100) await page.locator('[data-atom-shell-search-button]').click()
+
+        await settle(page)
+        await shot(page, `header-${mode}-${width}${width === 768 ? '-menu' : ''}${width === 1100 ? '-search' : ''}`)
+      })
+    }
+
+    test(`screenshot: header with long labels and "More" open, ${mode}, 1280px`, async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 })
+      await page.emulateMedia({ colorScheme: mode })
+      await open(page, 'header-wide', { query: isDark ? '&dark=1' : '' })
+
+      await page.locator('[data-atom-header-more] > [data-atom-navlist-group-trigger]').click()
+      await settle(page)
+      await shot(page, `header-wide-more-${mode}-1280`)
+    })
+
+    for (const width of isDark ? [1280] : [390, 1280]) {
+      test(`screenshot: sidebar, ${mode}, ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 800 })
+        await page.emulateMedia({ colorScheme: mode })
+        await open(page, 'sidebar', { query: isDark ? '&dark=1' : '' })
+
+        await settle(page)
+        await shot(page, `sidebar-${mode}-${width}`)
+      })
+    }
+  }
 }

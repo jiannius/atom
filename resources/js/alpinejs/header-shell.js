@@ -80,7 +80,8 @@ export default () => ({
 
     /**
      * Watch what decides how much room the nav units have: the nav, the bar that holds it, and the context and search
-     * slots inside it (a slot that grows takes room from the units without changing the nav's own box).
+     * slots inside it (a slot that grows takes room from the units without changing the nav's own box), and each unit
+     * (one shown by a class or style toggle goes from no box to a box, which changes nothing else in the bar).
      */
     watch () {
         let nav = this.$refs.nav
@@ -89,9 +90,38 @@ export default () => ({
 
         this.observer.disconnect()
 
-        for (let el of [nav, nav.parentElement, nav.querySelector('[data-atom-shell-context]'), this.$refs.search]) {
+        let units = this.unitsOf(nav)
+
+        // DOM nodes on the root, not on the Alpine data: a node list kept there is read back through a proxy
+        this.$el._atomHeaderWatched = units
+
+        for (let el of [nav, nav.parentElement, nav.querySelector('[data-atom-shell-context]'), this.$refs.search, ...units]) {
             if (el) this.observer.observe(el)
         }
+    },
+
+    /**
+     * Observe the units again when the list of them is not the one being watched (a morph or a script added or
+     * removed one). Observing starts one callback of its own, so it is not done when nothing changed.
+     */
+    rewatch () {
+        let nav = this.$refs.nav
+
+        if (this.destroyed || !this.observer || !nav) return
+
+        let watched = this.$el._atomHeaderWatched ?? []
+        let units = this.unitsOf(nav)
+
+        if (units.length !== watched.length || units.some((el, i) => el !== watched[i])) this.watch()
+    },
+
+    /**
+     * The top-level units of the first navlist in the nav slot, the one that is fitted.
+     */
+    unitsOf (nav) {
+        let list = [...nav.querySelectorAll('[data-atom-navlist]')].find((el) => !el.closest('[data-atom-navfoot], [data-atom-header-more]'))
+
+        return list ? this.units(list) : []
     },
 
     /**
@@ -186,9 +216,17 @@ export default () => ({
     },
 
     /**
-     * Move what does not fit into "More".
+     * Move what does not fit into "More", then watch the units that are there now.
      */
     fit () {
+        this.place()
+        this.rewatch()
+    },
+
+    /**
+     * The measuring and the moving.
+     */
+    place () {
         if (this.destroyed || !this.$el?.isConnected) return
 
         let nav = this.$refs.nav
