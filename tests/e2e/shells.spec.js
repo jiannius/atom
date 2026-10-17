@@ -374,7 +374,6 @@ for (const tw of ['floor', 'latest']) {
     for (const width of [768, 1024, 1100, 1280]) {
       test(`nothing in the bar overlaps at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 })
-        await page.emulateMedia({ colorScheme: mode })
         await open(page, 'header', { tw })
 
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
@@ -451,7 +450,6 @@ for (const tw of ['floor', 'latest']) {
     for (const width of [1024, 1100, 1280, 1600]) {
       test(`nothing overlaps and every item is reachable at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 })
-        await page.emulateMedia({ colorScheme: mode })
         await open(page, 'header-wide', { tw })
 
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
