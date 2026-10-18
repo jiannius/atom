@@ -22,8 +22,9 @@
         @endforeach
 
         <x-slot:composer>
-            <form wire:submit="send" class="flex gap-2">
-                <atom:input wire:model="draft" aria-label="Message" data-testid="draft" />
+            {{-- an atom:input is a block of its own width: wrap it in a growing box so it fills the row and the button ends it --}}
+            <form wire:submit="send" class="flex items-start gap-2">
+                <div class="min-w-0 grow"><atom:input wire:model="draft" aria-label="Message" data-testid="draft" /></div>
                 <atom:button type="submit" size="sm">Send</atom:button>
             </form>
         </x-slot:composer>

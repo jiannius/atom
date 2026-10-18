@@ -12,7 +12,8 @@
      - The rail is panels: `rounded-panel border bg-surface p-4`, each headed by a 12px muted title. From 1080px it sits beside the
        document; below that it stacks under it.
      - The history is <atom:timeline>: a dot per event in the tone of what happened (danger for a reminder about money owed, success
-       for a payment, accent for a send, neutral for a creation), the time under it, and a detail where there is one. --}}
+       for a payment, accent for a send, neutral for a creation), the time under it, and a detail where there is one. Items
+       rendered in a @foreach (or an @if that changes) carry a `wire:key`, as here: their folded state is Alpine's. --}}
 @php
 $styles = $styles ?? [];
 $shell = ($shell ?? 'sidebar') === 'header' ? 'header' : 'sidebar';
@@ -193,15 +194,15 @@ $money = fn (float $amount) => number_format($amount, 2);
                     <h3 class="m-0 text-xs font-medium text-fg-subtle">Activity</h3>
                     <atom:timeline label="Invoice history">
                         @if ($status === 'overdue')
-                            <atom:timeline.item title="Reminder emailed" body="to accounts@customer-a.example" time="14 Nov" tone="danger">
+                            <atom:timeline.item wire:key="history-reminder" title="Reminder emailed" body="to accounts@customer-a.example" time="14 Nov" tone="danger">
                                 <x-slot:detail>Opened twice, last on 15 Nov.</x-slot:detail>
                             </atom:timeline.item>
-                            <atom:timeline.item title="Payment received" body="RM 2,000.00 by bank transfer" time="14 Oct" tone="success"/>
+                            <atom:timeline.item wire:key="history-payment" title="Payment received" body="RM 2,000.00 by bank transfer" time="14 Oct" tone="success"/>
                         @endif
                         @if ($status !== 'draft')
-                            <atom:timeline.item title="Emailed" body="to accounts@customer-a.example" time="2 Oct" tone="accent"/>
+                            <atom:timeline.item wire:key="history-emailed" title="Emailed" body="to accounts@customer-a.example" time="2 Oct" tone="accent"/>
                         @endif
-                        <atom:timeline.item title="Created" body="from quote Q-0231" actor="Ana" time="2 Oct"/>
+                        <atom:timeline.item wire:key="history-created" title="Created" body="from quote Q-0231" actor="Ana" time="2 Oct"/>
                     </atom:timeline>
                 </section>
             </aside>

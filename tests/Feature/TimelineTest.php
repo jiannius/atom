@@ -82,8 +82,25 @@ describe('event', function () {
         $html = renderBlade('<atom:timeline><atom:timeline.item title="x" :time="$t" /></atom:timeline>', ['t' => new DateTimeImmutable('2026-07-14 14:10:00', new DateTimeZone('UTC'))]);
         $time = domQuery($html, '//time')[0];
 
+        // a UTC instant is shown in the viewer's zone (Kuala Lumpur unless the user or TIMEZONE says otherwise), the machine value keeps its offset
         expect($time->getAttribute('datetime'))->toBe('2026-07-14T14:10:00+00:00')
-            ->and($time->textContent)->toBe('14 Jul 2026, 2:10 pm');
+            ->and($time->textContent)->toBe('14 Jul 2026, 10:10 pm');
+    });
+
+    it('shows an instant in the signed-in user\'s timezone', function () {
+        \Illuminate\Support\Facades\Auth::setUser(new \Illuminate\Auth\GenericUser(['id' => 1, 'timezone' => 'America/Los_Angeles']));
+
+        $html = renderBlade('<atom:timeline><atom:timeline.item title="x" :time="$t" /></atom:timeline>', ['t' => new DateTimeImmutable('2026-07-14 14:10:00', new DateTimeZone('UTC'))]);
+        $time = domQuery($html, '//time')[0];
+
+        expect($time->textContent)->toBe('14 Jul 2026, 7:10 am')
+            ->and($time->getAttribute('datetime'))->toBe('2026-07-14T14:10:00+00:00');
+    });
+
+    it('does not move an instant that is already in the viewer\'s zone', function () {
+        $html = renderBlade('<atom:timeline><atom:timeline.item title="x" :time="$t" /></atom:timeline>', ['t' => new DateTimeImmutable('2026-07-14 22:10:00', new DateTimeZone('Asia/Kuala_Lumpur'))]);
+
+        expect(domQuery($html, '//time')[0]->textContent)->toBe('14 Jul 2026, 10:10 pm');
     });
 
     it('prints a time string as it is, in no time element', function () {
@@ -118,6 +135,36 @@ describe('step', function () {
 
         expect(domClasses(domQuery($html, '//ol')[0]))->toContain('[counter-reset:atom-step]')
             ->and(domClasses(domQuery($html, '//*[@data-atom-timeline-marker]')[0]))->toContain('[counter-increment:atom-step]');
+    });
+
+    it('says which steps are current and pending to a screen reader, as it does done and failed', function () {
+        $html = renderBlade('<atom:timeline kind="step"><atom:timeline.item title="A" state="current" /><atom:timeline.item title="B" state="pending" /></atom:timeline>');
+
+        expect(domQuery($html, '//li[1]//*[@data-atom-timeline-marker]//*[contains(@class, "sr-only")]')[0]->textContent)->toBe('Current')
+            ->and(domQuery($html, '//li[2]//*[@data-atom-timeline-marker]//*[contains(@class, "sr-only")]')[0]->textContent)->toBe('Pending')
+            // the number itself stays hidden from a screen reader
+            ->and(domQuery($html, '//li[1]//*[@data-atom-timeline-marker]//*[@aria-hidden="true"]'))->toHaveCount(1);
+    });
+
+    it('puts the time and the chevron in one group at the far end of every foldable step, whether or not it has a time', function () {
+        $html = renderBlade('<atom:timeline kind="step">
+            <atom:timeline.item title="A" state="done" time="2s">x</atom:timeline.item>
+            <atom:timeline.item title="B" state="pending">y</atom:timeline.item>
+        </atom:timeline>');
+
+        foreach ([1, 2] as $i) {
+            $end = domQuery($html, '//li['.$i.']//button//*[@data-atom-timeline-end]');
+
+            expect($end)->toHaveCount(1)
+                ->and(domClasses($end[0]))->toContain('ms-auto')
+                ->and(domQuery($html, '//li['.$i.']//button//*[@data-atom-timeline-end]//*[@data-atom-timeline-chevron]'))->toHaveCount(1);
+        }
+
+        expect(domQuery($html, '//li[2]//*[@data-atom-timeline-time]'))->toBeEmpty();
+    });
+
+    it('draws no end group for a step with neither a time nor a fold', function () {
+        expect(domQuery(renderBlade('<atom:timeline kind="step"><atom:timeline.item title="A" /></atom:timeline>'), '//*[@data-atom-timeline-end]'))->toBeEmpty();
     });
 
     it('pulses the status of the current step only, in the state tone', function () {

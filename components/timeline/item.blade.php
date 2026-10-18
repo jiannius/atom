@@ -17,12 +17,12 @@
      event:   `title` (what happened, bold), `body` (a line after it) or the slot, `actor` and `time` (muted, under it), `tone`
               (the dot: neutral, info, success, warning, danger or accent) and an optional `status` label (a status pill in the
               same tone). A `detail` slot is folded away behind "Show details".
-     step:    `title`, `time` (a duration or a date, at the end), `state` (done, current, pending or failed), `status` (a label
+     step:    `title`, `time` (a duration or a date, at the end, before the chevron that is down when closed and up when open), `state` (done, current, pending or failed), `status` (a label
               beside the title, in the state's tone; `current` pulses it), and the slot as the body, which folds away when the
               timeline is collapsible. `open` sets the starting state: a current or failed step starts open, others closed.
      message: `speaker`, `time`, `side` (`start` for the other person, `end` for you) and `body` or the slot.
      Every string prints as text: the host's own markup goes in a slot, and then the host owns escaping it. A `time` may be a
-     DateTimeInterface (printed in a <time> element) or a string. Titles, actors and bodies are data, so they are not translated. --}}
+     DateTimeInterface (printed in a <time> element, in the viewer's timezone) or a string. Titles, actors and bodies are data, so they are not translated. --}}
 @php
 $kind = in_array($kind, ['event', 'step', 'message'], true) ? $kind : 'event';
 $tone = in_array($tone, ['neutral', 'info', 'success', 'warning', 'danger', 'accent'], true) ? $tone : 'neutral';
@@ -31,7 +31,8 @@ $side = $side === 'end' ? 'end' : 'start';
 
 $text = fn ($value) => is_scalar($value) || $value instanceof \Stringable ? trim((string) $value) : '';
 
-$timeText = $time instanceof \DateTimeInterface ? $time->format('j M Y, g:i a') : $text($time);
+// an instant is shown in the viewer's zone (the one the rest of atom reads, Carbon::getLocalTimezone()), not the server's; the machine value keeps its own offset
+$timeText = $time instanceof \DateTimeInterface ? \Jiannius\Atom\Services\Carbon::instance($time)->local()->format('j M Y, g:i a') : $text($time);
 $timeAttr = $time instanceof \DateTimeInterface ? $time->format(DATE_ATOM) : null;
 
 $hasSlot = $slot->isNotEmpty();
@@ -102,6 +103,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
                 <span class="sr-only">{{ t('Failed') }}</span>
             @else
                 <span aria-hidden="true" class="before:content-[counter(atom-step)]"></span>
+                <span class="sr-only">{{ $state === 'current' ? t('Current') : t('Pending') }}</span>
             @endif
         </span>
 
@@ -117,12 +119,17 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
                         <atom:status :tone="$stateTone" :running="$state === 'current'" :label="$text($status)" />
                     @endif
 
-                    @if ($timeText !== '')
-                        <span class="ms-auto shrink-0 text-xs tabular-nums text-fg-subtle" data-atom-timeline-time>{{ $timeText }}</span>
-                    @endif
+                    {{-- the time and the chevron are one group at the far end, so the chevron is in the same column on every step --}}
+                    @if ($timeText !== '' || $foldable)
+                        <span class="ms-auto flex shrink-0 items-center gap-2" data-atom-timeline-end>
+                            @if ($timeText !== '')
+                                <span class="text-xs tabular-nums text-fg-subtle" data-atom-timeline-time>{{ $timeText }}</span>
+                            @endif
 
-                    @if ($foldable)
-                        <atom:icon.down class="size-4 shrink-0 text-fg-subtle transition-transform" x-bind:class="open && 'rotate-180'" />
+                            @if ($foldable)
+                                <atom:icon.down class="size-4 shrink-0 text-fg-subtle transition-transform" x-bind:class="open && 'rotate-180'" data-atom-timeline-chevron />
+                            @endif
+                        </span>
                     @endif
             @if ($foldable)
                 </button>
@@ -189,6 +196,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
                 <button type="button" class="mt-1 inline-flex items-center gap-1 text-xs font-medium text-fg-muted hover:text-fg" x-on:click="open = !open" x-bind:aria-expanded="open ? 'true' : 'false'" aria-expanded="false" data-atom-timeline-toggle>
                     <span x-show="!open">{{ t('Show details') }}</span>
                     <span x-show="open" x-cloak>{{ t('Hide details') }}</span>
+                    <atom:icon.down class="size-3.5 shrink-0 transition-transform" x-bind:class="open && 'rotate-180'" />
                 </button>
 
                 <div class="mt-1.5 rounded-control border bg-surface-sunken px-3 py-2 text-sm text-fg-muted" x-show="open" x-cloak data-atom-timeline-detail>
