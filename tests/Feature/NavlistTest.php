@@ -35,13 +35,12 @@ describe('navlist', function () {
         expect($html)->toContain('Navigation')->toContain('A');
     });
 
-    it('gives the plain group heading a dark-mode colour', function () {
-        // Regression: the heading was a bare `text-muted`, which a consumer maps to
-        // zinc-500 — 3.67:1 on a zinc-900 sidebar. The expandable branch of this same
-        // component already handled dark; only the plain-heading branch was missed.
+    // The heading reads a role token, which flips with the theme by itself, so it needs no dark: pair. The old
+    // bare `text-muted` was zinc-500 on a zinc-900 sidebar, 3.67:1.
+    it('colours the plain group heading with a role token that follows the theme', function () {
         $html = Blade::render('<atom:navlist.group heading="Navigation"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
 
-        expect($html)->toContain('text-muted dark:text-muted-foreground');
+        expect($html)->toContain('text-xs font-medium text-fg-subtle')->not->toContain('uppercase');
     });
 
     it('renders an expandable group with Alpine, not a ui-disclosure web component', function () {
@@ -125,5 +124,127 @@ describe('navlist.group flash guard', function () {
         $html = Blade::render('<atom:navlist.group expandable heading="S"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
 
         expect($html)->not->toContain('x-cloak');
+    });
+});
+
+// One group markup for both shells: a label (or disclosure) over its items in the sidebar, a dropdown in layouts.header.
+describe('navlist.group in the header shell', function () {
+    it('carries a dropdown trigger and a panel alongside the sidebar label', function () {
+        $html = Blade::render('<atom:navlist.group heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect($html)
+            ->toContain('data-atom-navlist-group')
+            ->toContain('data-atom-navlist-group-label')
+            ->toContain('data-atom-navlist-group-trigger')
+            ->toContain('data-atom-navlist-group-items')
+            ->toContain('x-bind:aria-expanded="menu');
+    });
+
+    // A disclosure, not a menu: it keeps aria-expanded, points at its panel, and does not claim a popup menu role.
+    it('is a disclosure: aria-expanded and aria-controls with a derived id, no aria-haspopup', function () {
+        $render = fn () => Blade::render('<atom:navlist.group heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        $html = $render();
+        $trigger = domQuery($html, '//button[@data-atom-navlist-group-trigger]')[0];
+        $panel = domQuery($html, '//*[@data-atom-navlist-group-items]')[0];
+
+        expect($trigger->hasAttribute('aria-haspopup'))->toBeFalse()
+            ->and($trigger->hasAttribute('x-bind:aria-expanded'))->toBeTrue()
+            ->and($trigger->getAttribute('aria-controls'))->not->toBe('')
+            ->and($panel->getAttribute('id'))->toBe($trigger->getAttribute('aria-controls'))
+            ->and($render())->toBe($html);
+
+        $other = Blade::render('<atom:navlist.group heading="Settings"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect(domQuery($other, '//*[@data-atom-navlist-group-items]')[0]->getAttribute('id'))->not->toBe($panel->getAttribute('id'));
+    });
+
+    // Two groups with the same heading (and no persist-key) share a seed, and an id that two panels share points two
+    // triggers at one panel. The seed is numbered per render, never randomised: an id is a morph key.
+    it('gives two groups with the same heading different ids, the same on every render', function () {
+        $page = '<atom:navlist>'
+            .'<atom:navlist.group heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>'
+            .'<atom:navlist.group heading="Reports"><atom:navlist.item href="/b">B</atom:navlist.item></atom:navlist.group>'
+            .'<atom:navlist.group heading="Reports"><atom:navlist.item href="/c">C</atom:navlist.item></atom:navlist.group>'
+            .'</atom:navlist>';
+
+        $ids = function (string $html): array {
+            $triggers = domQuery($html, '//button[@data-atom-navlist-group-trigger]');
+            $panels = domQuery($html, '//*[@data-atom-navlist-group-items]');
+
+            // each trigger controls the panel beside it
+            foreach ($triggers as $i => $trigger) {
+                expect($panels[$i]->getAttribute('id'))->toBe($trigger->getAttribute('aria-controls'));
+            }
+
+            return array_map(fn ($panel) => $panel->getAttribute('id'), $panels);
+        };
+
+        $first = $ids(Blade::render($page));
+
+        expect($first)->toHaveCount(3)
+            ->and(array_unique($first))->toHaveCount(3)
+            ->and($first[0])->not->toBe('')
+            // the same page renders to the same ids again, and again
+            ->and($ids(Blade::render($page)))->toBe($first)
+            ->and($ids(Blade::render($page)))->toBe($first);
+    });
+
+    it('keeps the id of a single group what it was, and keeps persist-key groups apart', function () {
+        $id = fn (string $template) => domQuery(Blade::render($template), '//*[@data-atom-navlist-group-items]')[0]->getAttribute('id');
+
+        $single = '<atom:navlist.group heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>';
+
+        expect($id($single))->toBe('atom-navlist-group-'.substr(md5('|Reports'), 0, 8))
+            ->and($id('<atom:navlist.group expandable heading="Reports" persist-key="x"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>'))
+            ->not->toBe($id($single));
+    });
+
+    it('prints the items once', function () {
+        $html = Blade::render('<atom:navlist.group heading="Reports"><atom:navlist.item href="/only-once">A</atom:navlist.item></atom:navlist.group>');
+
+        expect(substr_count($html, 'href="/only-once"'))->toBe(1);
+    });
+
+    it('reads the shell from the wrapper the layout puts around the nav', function () {
+        $html = Blade::render('<atom:navlist.group heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect($html)->toContain('[data-atom-nav-shell=header]');
+    });
+
+    it('only cloaks a group that has an expandable state to settle', function () {
+        $html = Blade::render('<atom:navlist.group heading="Reports" :expanded="false" persist-key="k"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect($html)->not->toContain('x-cloak');
+    });
+
+    it('keeps the expandable disclosure as the first button, and the trigger second', function () {
+        $html = Blade::render('<atom:navlist.group expandable heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+        $buttons = domQuery($html, '//button');
+
+        expect($buttons[0]->hasAttribute('data-atom-navlist-group-toggle'))->toBeTrue()
+            ->and($buttons[1]->hasAttribute('data-atom-navlist-group-trigger'))->toBeTrue();
+    });
+
+    it('leaves a group with no heading as a plain section', function () {
+        $html = Blade::render('<atom:navlist.group><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>');
+
+        expect($html)->toContain('data-atom-navlist-section')->not->toContain('data-atom-navlist-group-trigger');
+    });
+});
+
+describe('navlist.item', function () {
+    it('marks the current item for assistive tech as well as for styling', function () {
+        $current = Blade::render('<atom:navlist.item href="/a" :current="true">A</atom:navlist.item>');
+        $other = Blade::render('<atom:navlist.item href="/a" :current="false">A</atom:navlist.item>');
+
+        expect(domQuery($current, '//a[@aria-current="page"][@data-current]'))->toHaveCount(1);
+        expect(domQuery($other, '//a[@aria-current or @data-current]'))->toHaveCount(0);
+    });
+
+    it('is a 28px row at the compact density and draws its icon at 16px', function () {
+        $html = Blade::render('<atom:navlist.item href="/a" icon="dashboard">A</atom:navlist.item>');
+
+        expect($html)->toContain('h-control')->toContain('size-4')->toContain('rounded-nav');
     });
 });

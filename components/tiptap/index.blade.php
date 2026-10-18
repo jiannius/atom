@@ -74,7 +74,7 @@ $menus = $hasToolbarSlot ? ['link', 'table', 'image', 'youtube'] : $buttons;
             'border-0 bg-transparent' => $transparent,
         ])>
             @if (!$readonly && ($hasToolbarSlot || count($buttons)))
-                <div class="sticky top-0 z-1 p-1">
+                <div class="sticky top-[var(--atom-shell-bar-h,0px)] z-1 p-1">
                     <div role="toolbar" aria-label="{{ t('Formatting') }}" class="flex gap-1 items-center flex-wrap p-1 bg-white rounded-md dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
                         @if ($hasToolbarSlot)
                             {{ $toolbar }}

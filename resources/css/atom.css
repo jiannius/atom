@@ -128,10 +128,486 @@ button {
 }
 
 *:has(>[data-atom-sidebar]+[data-atom-header]) {
+    grid-template-rows: 3rem 1fr auto;
     grid-template-areas:
         "sidebar header  header"
         "sidebar main    aside"
         "sidebar footer  aside";
+}
+
+/* A sticky grid item can only travel inside its own grid area, so a bar that sits in a 3rem row would never leave it.
+   The bar spans every row instead (and keeps its own height), which lets it stay in view while the page scrolls. */
+[data-atom-sidebar] + [data-atom-header] {
+    grid-row: 1 / -1;
+    grid-column: 2 / 4;
+    align-self: start;
+    position: sticky;
+    top: 0;
+}
+
+/* The utilities on the layouts place these too ([grid-area:main] and so on), but a page without a Tailwind build has
+   none of them, and an unplaced item is auto-placed around the bar that now has explicit lines. */
+[data-atom-sidebar] {
+    grid-area: sidebar;
+}
+
+[data-atom-sidebar] ~ [data-atom-main],
+[data-atom-header-bar] ~ [data-atom-main] {
+    grid-area: main;
+}
+
+[data-atom-sidebar] ~ footer,
+[data-atom-header-bar] ~ footer {
+    grid-area: footer;
+}
+
+[data-atom-header-crumbs] {
+    grid-area: crumbs;
+}
+
+/* layouts.header: one column, the bar (52px, sticky for the same reason) over a centred main. */
+*:has(>[data-atom-header-bar]) {
+    grid-template-rows: 3.25rem 1fr auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "header"
+        "main"
+        "footer";
+}
+
+/* a crumbs slot adds a row under the bar */
+*:has(>[data-atom-header-bar]):has(>[data-atom-header-crumbs]) {
+    grid-template-rows: 3.25rem auto 1fr auto;
+    grid-template-areas:
+        "header"
+        "crumbs"
+        "main"
+        "footer";
+}
+
+[data-atom-header-bar] {
+    grid-row: 1 / -1;
+    grid-column: 1;
+    align-self: start;
+    position: sticky;
+    top: 0;
+}
+
+/* The height of the shell's sticky bar, for what else on the page sticks to the top (an editor's toolbar, a table's
+   loading spinner) and for scrolling to an anchor or a focused field: `scroll-padding-top` keeps either from
+   landing under the bar. Not set outside a shell, where `var(--atom-shell-bar-h, 0px)` is 0. */
+html:has([data-atom-sidebar] + [data-atom-header]) {
+    --atom-shell-bar-h: 3rem;
+    scroll-padding-top: var(--atom-shell-bar-h);
+}
+
+html:has([data-atom-header-bar]) {
+    --atom-shell-bar-h: 3.25rem;
+    scroll-padding-top: var(--atom-shell-bar-h);
+}
+
+/* A dialog or a popover is not under the page's bar: a slide-over (a <dialog>, in the top layer) scrolls inside its own box,
+   so a toolbar that sticks to `var(--atom-shell-bar-h)` there would sit that far below the top of the box. */
+dialog,
+[popover] {
+    --atom-shell-bar-h: 0px;
+}
+
+/* the sidebar's bar is not drawn from lg up when it has nothing to hold (its menu button and account are for small
+   screens): no crumbs, no actions, no dark toggle. layouts.sidebar marks it; the row and the variable go with it. */
+@media (min-width: 64rem) {
+    [data-atom-sidebar] + [data-atom-header][data-atom-header-empty] {
+        display: none;
+    }
+
+    *:has(>[data-atom-sidebar]+[data-atom-header][data-atom-header-empty]) {
+        grid-template-rows: 0 1fr auto;
+    }
+
+    html:has([data-atom-sidebar] + [data-atom-header][data-atom-header-empty]) {
+        --atom-shell-bar-h: 0px;
+    }
+}
+
+/** Navigation shells. One <atom:navlist> markup serves layouts.sidebar and layouts.header: the sidebar is the
+    look the components are written in; this block restyles the same elements as top-bar items inside
+    [data-atom-nav-shell="header"] (the wrapper layouts.header puts around the nav slot).
+
+    Below 64rem the wrapper is a panel under the bar that the menu button opens, and its items are plain rows, with
+    each group shown open under its label and the context slot on top. From 64rem it is the bar: the context slot sits
+    beside the logo, items stretch the bar's height, the current one is underlined, counts are pills, and a group is a
+    dropdown (its trigger shown, its label and disclosure hidden, its items a panel that [data-menu-open] opens). The
+    switch is at 64rem, not 48rem, because the logo, context, six items, an action and the account do not fit side
+    by side before that. Structural, so it holds wherever Tailwind is not compiled; the colours read atom's role
+    tokens. **/
+[data-atom-navlist] {
+    gap: 1px;
+}
+
+[data-atom-navlist-group-trigger] {
+    display: none;
+}
+
+[data-atom-nav-shell="header"] [data-atom-navlist-group-toggle] {
+    display: none;
+}
+
+/* an expandable group's own label exists for the header's menu panel only */
+[data-atom-navlist-group-label][data-for-header] {
+    display: none;
+}
+
+[data-atom-nav-shell="header"] [data-atom-navlist-group-label][data-for-header] {
+    display: block;
+}
+
+[data-atom-nav-shell="header"] [data-atom-navlist-group-items] {
+    padding-inline-start: 0;
+}
+
+[data-atom-header-menu-button] {
+    display: inline-flex;
+}
+
+/* the context slot is the first thing in the menu panel, set off from the items; beside the logo in the bar */
+[data-atom-header-nav] [data-atom-shell-context-divider] {
+    display: none;
+}
+
+[data-atom-header-nav] [data-atom-shell-context] {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--atom-border);
+}
+
+/* the search slot is the panel's second row, full width; from lg it is a popover (lg to xl) or inline (xl) */
+[data-atom-header-nav] [data-atom-shell-search] {
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--atom-border);
+}
+
+[data-atom-header-nav] [data-atom-shell-search] > * {
+    width: 100%;
+}
+
+[data-atom-shell-search-button] {
+    display: none;
+}
+
+/* "More" holds copies of the items that did not fit the bar (headerShell); the bar alone shows it */
+[data-atom-header-more] {
+    display: none;
+}
+
+[data-atom-header-more-section] {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 0.25rem;
+    border-top: 1px solid var(--atom-border);
+}
+
+[data-atom-header-more-section]:first-child {
+    margin-top: 0;
+    border-top: 0;
+}
+
+[data-atom-header-more-label] {
+    padding: 0.5rem 0.5rem 0.25rem;
+    font-size: var(--atom-text-xs);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--atom-fg-subtle);
+}
+
+[data-atom-header-nav] {
+    display: none;
+    position: absolute;
+    inset-inline: 0;
+    top: calc(100% + 1px);
+    max-height: calc(100dvh - 3.25rem);
+    overflow-y: auto;
+    padding: 0.5rem 1rem 0.75rem;
+    background: var(--atom-surface-raised);
+    border-bottom: 1px solid var(--atom-border);
+    box-shadow: var(--atom-shadow-pop);
+}
+
+[data-atom-header-nav][data-open] {
+    display: block;
+}
+
+@media (min-width: 64rem) {
+    [data-atom-header-menu-button] {
+        display: none;
+    }
+
+    [data-atom-header-nav] {
+        display: flex;
+        position: static;
+        flex: 1 1 auto;
+        min-width: 0;
+        align-self: stretch;
+        max-height: none;
+        overflow: visible;
+        padding: 0;
+        background: none;
+        border: 0;
+        box-shadow: none;
+    }
+
+    [data-atom-header-nav] [data-atom-shell-context-divider] {
+        display: block;
+        align-self: center;
+        flex: none;
+    }
+
+    [data-atom-header-nav] [data-atom-shell-context] {
+        align-self: center;
+        flex: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    [data-atom-header-nav] [data-atom-navlist] {
+        flex-direction: row;
+        align-items: stretch;
+        gap: 2px;
+    }
+
+    /* Priority-plus. The nav slot's navlist takes the room the bar has left, never more: until headerShell has
+       measured it (data-atom-fit) it clips rather than spilling over the actions; once it has, whatever does not fit
+       is hidden (data-atom-overflow) and "More" lists it, so nothing needs clipping and a dropdown panel can hang out.
+       While measuring, the navlist's width stops depending on its items, which is what lets it be read as room. */
+    [data-atom-header-nav] [data-atom-navlist]:not([data-atom-navfoot] *) {
+        flex: 0 1 auto;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    [data-atom-header-nav][data-atom-fit] [data-atom-navlist]:not([data-atom-navfoot] *) {
+        overflow: visible;
+    }
+
+    [data-atom-header-nav][data-atom-measuring] [data-atom-navlist]:not([data-atom-navfoot] *) {
+        flex: 1 1 0;
+    }
+
+    /* doubled: it has to outrank the bar item's own `display` below, whatever the order */
+    [data-atom-header-nav] [data-atom-overflow][data-atom-overflow] {
+        display: none;
+    }
+
+    [data-atom-header-nav] {
+        gap: 0.5rem;
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-section] {
+        display: contents;
+    }
+
+    [data-atom-header-nav] [data-atom-navfoot] {
+        display: flex;
+        align-items: stretch;
+        margin-inline-start: auto;
+    }
+
+    /* the bar's items and group triggers: text, no icon beside a label, an underline for the current one */
+    [data-atom-header-nav] [data-atom-navlist-item],
+    [data-atom-header-nav] [data-atom-navlist-group-trigger] {
+        position: relative;
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        width: auto;
+        height: 100%;
+        padding-inline: 0.625rem;
+        border-radius: 0;
+        background: none;
+        box-shadow: none;
+        color: var(--atom-fg-muted);
+        font-weight: var(--font-weight-medium, 500);
+        white-space: nowrap;
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-item]:hover,
+    [data-atom-header-nav] [data-atom-navlist-group-trigger]:hover,
+    [data-atom-header-nav] [data-atom-navlist-item][data-current],
+    [data-atom-header-nav] [data-atom-navlist-group-trigger][aria-expanded="true"],
+    [data-atom-header-nav] [data-atom-navlist-group]:has([data-atom-navlist-item][data-current]) > [data-atom-navlist-group-trigger] {
+        background: none;
+        color: var(--atom-fg);
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-item][data-current]::after,
+    [data-atom-header-nav] [data-atom-navlist-group]:has([data-atom-navlist-item][data-current]) > [data-atom-navlist-group-trigger]::after {
+        content: "";
+        position: absolute;
+        inset-inline: 0.625rem;
+        bottom: -1px;
+        height: 2px;
+        border-radius: 2px;
+        background: var(--atom-fg);
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-item]:has([data-content]) > [data-atom-navlist-icon] {
+        display: none;
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-item] > [data-content] {
+        flex: none;
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-count] {
+        margin-inline-start: 0;
+        padding-inline: 0.375rem;
+        border-radius: 999px;
+        background: var(--color-accent-soft);
+        color: var(--color-accent-ink);
+        font-size: 0.6875rem;
+        font-weight: var(--font-weight-semibold, 600);
+        line-height: 1.0625rem;
+    }
+
+    /* a group is a dropdown */
+    [data-atom-header-nav] [data-atom-navlist-group] {
+        position: relative;
+        display: flex;
+        flex: none;
+        align-items: stretch;
+        margin: 0;
+    }
+
+    [data-atom-header-nav] [data-atom-header-more]:not([data-visible]) {
+        display: none;
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-group-label],
+    [data-atom-header-nav] [data-atom-navlist-group-label][data-for-header] {
+        display: none;
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-group-trigger] {
+        cursor: pointer;
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-group-items] {
+        display: none;
+        position: absolute;
+        inset-inline-start: 0;
+        top: calc(100% + 0.25rem);
+        z-index: 30;
+        min-width: 13rem;
+        padding: 0.25rem;
+        background: var(--atom-surface-raised);
+        border: 1px solid var(--atom-border-strong);
+        border-radius: var(--radius-panel, 10px);
+        box-shadow: var(--atom-shadow-pop);
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-group][data-menu-open] > [data-atom-navlist-group-items] {
+        display: flex;
+    }
+
+    /* "More" sits at the end of the nav, so its panel hangs leftwards from the trigger's end edge */
+    [data-atom-header-nav] [data-atom-header-more] > [data-atom-navlist-group-items] {
+        inset-inline-start: auto;
+        inset-inline-end: 0;
+        max-height: calc(100dvh - 5rem);
+        overflow-y: auto;
+    }
+
+    /* inside the panel an item is a row again */
+    [data-atom-header-nav] [data-atom-navlist-group-items] [data-atom-navlist-item] {
+        width: 100%;
+        height: var(--atom-control-h);
+        padding-inline: 0.5rem;
+        border-radius: var(--radius-nav, 6px);
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-group-items] [data-atom-navlist-item]:hover {
+        background: color-mix(in oklab, var(--atom-fg) 5%, transparent);
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-group-items] [data-atom-navlist-item][data-current] {
+        background: var(--atom-surface-sunken);
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-group-items] [data-atom-navlist-item][data-current]::after {
+        display: none;
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-group-items] [data-atom-navlist-item]:has([data-content]) > [data-atom-navlist-icon] {
+        display: flex;
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-group-items] [data-atom-navlist-item] > [data-content] {
+        flex: 1 1 0%;
+    }
+
+    [data-atom-header-nav] [data-atom-navlist-group-items] [data-atom-navlist-count] {
+        margin-inline-start: auto;
+        padding: 0;
+        background: none;
+        color: var(--atom-fg-subtle);
+        font-size: var(--atom-text-xs);
+        font-weight: inherit;
+    }
+}
+
+/* The search slot. From lg it leaves the panel's rows: a popover under the bar that the search button opens (lg to
+   xl, where the field does not fit beside the nav), inline at the end of the nav from xl. */
+@media (min-width: 64rem) {
+    [data-atom-header-nav] [data-atom-shell-search] {
+        display: none;
+        order: 1;
+        flex: none;
+        align-self: center;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    [data-atom-header-nav] [data-atom-shell-search] > * {
+        width: auto;
+    }
+}
+
+@media (min-width: 64rem) and (max-width: 79.999rem) {
+    [data-atom-shell-search-button] {
+        display: inline-flex;
+    }
+
+    [data-atom-header-nav] [data-atom-shell-search][data-open] {
+        display: block;
+        position: absolute;
+        top: calc(100% + 0.25rem);
+        inset-inline-end: 1.5rem;
+        z-index: 30;
+        padding: 0.5rem;
+        background: var(--atom-surface-raised);
+        border: 1px solid var(--atom-border-strong);
+        border-radius: var(--radius-panel, 10px);
+        box-shadow: var(--atom-shadow-pop);
+    }
+
+    [data-atom-header-nav] [data-atom-shell-search][data-open] > * {
+        width: 16rem;
+    }
+}
+
+@media (min-width: 80rem) {
+    [data-atom-header-nav] [data-atom-shell-search] {
+        display: block;
+    }
+}
+
+/* the group trigger exists only in the bar (64rem and up, header shell) */
+@media (min-width: 64rem) {
+    [data-atom-header-nav] [data-atom-navlist-group-trigger] {
+        display: inline-flex;
+    }
 }
 
 /** Pikaday styles **/

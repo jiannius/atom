@@ -79,8 +79,8 @@ Useful `<atom:html>` props (all optional):
 | `hreflang`    | Array of locale alternates.                                         |
 | `jsonld`      | Raw JSON-LD payload.                                                |
 | `gtm` / `ga` / `fbp` | Tracking IDs for GTM, GA, Facebook Pixel.                   |
-| `fonts`       | `geist` (default, also what `true` or `null` mean): Geist and Geist Mono, served by atom; Geist is preloaded, Geist Mono loads when something uses it. Any other value is a Bunny Fonts family (`inter`, `open-sans`: letters, digits and hyphens only; anything else loads nothing) loaded from the CDN and put first in `--font-sans`. `false` loads no font, and `--font-sans` and `--font-mono` become the system stacks. |
-| `density`     | `comfortable` (default) or `compact`, in any case; anything else is `comfortable`. Printed as `data-atom-density` on `<body>`; `layouts.sidebar` defaults to `compact`, `layouts.auth` to `comfortable`. |
+| `fonts`       | `geist` (default, also what `true` or `null` mean): Geist and Geist Mono, served by atom and both preloaded. Any other value is a Bunny Fonts family (`inter`, `open-sans`: letters, digits and hyphens only; anything else loads nothing) loaded from the CDN and put first in `--font-sans`. `false` loads no font, and `--font-sans` and `--font-mono` become the system stacks. |
+| `density`     | `comfortable` (default) or `compact`, in any case; anything else is `comfortable`. Printed as `data-atom-density` on `<body>`; `layouts.sidebar` and `layouts.header` default to `compact`, `layouts.auth` to `comfortable`. |
 | `dark`        | Opts the page into dark mode (off by default, on every layout too). Adds `class="dark"` to `<html>` and emits the `window.darkmode()` bootstrap, which then follows the stored preference or, with none, the visitor's `prefers-color-scheme`. Required for `<atom:darkmode-toggle>` to work. |
 | `styles`      | Additional stylesheet URLs.                                         |
 | `scripts`     | Additional script URLs.                                             |
@@ -461,7 +461,7 @@ An `href` is only followed if it is `http`, `https`, `mailto`, `tel`, `sms` or s
 
 `<atom:heading>` renders a `<div>` unless you pass `level`, because most headings in an app UI are card titles, stat labels and table captions — visual, not structural. `size` and `level` are deliberately independent: size is how big it looks, level is where it sits in the document outline.
 
-`<atom:layouts.sidebar>` supplies the page's `<h1>` itself, from its `title` prop — visually hidden, since the visible title comes from `<atom:breadcrumbs>`, which is a `nav` landmark and emits no heading element. So you do **not** need an `<h1>` in the page body; start at `level="2"`.
+`<atom:layouts.sidebar>` (and `<atom:layouts.header>`) supplies the page's `<h1>` itself, from its `title` prop — visually hidden, since the visible title comes from `<atom:breadcrumbs>`, which is a `nav` landmark and emits no heading element. So you do **not** need an `<h1>` in the page body; start at `level="2"`.
 
 Pass `level` where a section genuinely nests, and leave it off elsewhere:
 
@@ -504,13 +504,45 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:tabs>` | `tabs` (array), `size` (`sm`), `variant` (`button`, `border`). Child: `<atom:tabs.item>`. |
 | `<atom:list>` | `heading`, `scrollable` (default `true`). Child: `<atom:list.item>`. |
 | `<atom:menu>` | `popover`. Child: `<atom:menu.item>`. |
-| `<atom:navlist>` | Sidebar nav container. Children: `<atom:navlist.item>`, `<atom:navlist.group>`, `<atom:navlist.badge>`. |
+| `<atom:navlist>` | Nav container, drawn as a column in `layouts.sidebar` and as bar items in `layouts.header` (a group becomes a dropdown there). Children: `<atom:navlist.item>`, `<atom:navlist.group>`, `<atom:navlist.badge>`. Items carry `aria-current="page"` when current. |
 | `<atom:navlist.group>` | `heading`, `expandable`, `expanded` (default `true`), `hiddenIfEmpty` (default `true`), `persistKey`. See [Remembering collapsed groups](#remembering-collapsed-groups). |
 | `<atom:breadcrumbs>` | `heading` (default `true`). Reads `$_breadcrumbs` populated by your `breadcrumbs()` method. Wrap it in `@persist('breadcrumbs')` so the trail survives `wire:navigate`: without it each page starts a fresh trail from its own declared crumbs, so pushed crumbs don't accumulate and a crumb (or Back) returns to the bare URL, without the query string (filters, page) you left it with. |
 | `<atom:calendar>` | Month, week and day calendar with a toolbar. `wire:model` binds the anchor date (`Y-m-d`); with none it is static. Props: `items` (an array, or `fn ($from, $to) => ...` for the visible window), `views`, `view`, `week-start`, `weekend`, `max`, `time-format`, `date-format`, `selectable`, `draggable`, `resizable`, `slot-duration`, `scroll-time`, `now-indicator`, `month`, `name`. Events: `calendar-select`, `calendar-item-move`, `calendar-item-resize`, `calendar-item-click`. See [Calendar](#calendar). |
 | `<atom:separator>` | `align` (`left`, `center`, `right`). Slot becomes the label. |
 | `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`, `vite`. |
-| `<atom:layouts.sidebar>` | App layout with sidebar + top bar. Props: `title`, `noindex`, `dark`, `editor`, `styles`, `scripts`, `vite`. Pass `dark` to get the darkmode bootstrap and the header's switcher. |
+| `<atom:layouts.sidebar>` | App layout: a 228px sidebar, a 48px sticky top bar and an unpadded `<main>`. Props: `title`, `noindex`, `dark`, `density`, `editor`, `scripts`, `styles`, `vite`. Slots: `brand`, `context`, `search`, `nav`, `navfoot`, `crumbs`, `actions`, `dropdown`, `profile`, `footer`. Pass `dark` to get the darkmode bootstrap and the top bar's switcher. |
+| `<atom:layouts.header>` | The top-nav twin, for an app with about six or fewer sections: a 52px sticky bar over a centred 1248px, unpadded `<main>`. **The same props and slots as `layouts.sidebar`, and the same `nav` markup**, so a host can choose the shell per user. Below `lg` (1024px) the nav becomes a menu button and a panel under the bar, with the `context` and `search` slots as its first two rows. From `lg` up the nav is priority-plus: items that do not fit move, in order, into a trailing "More" dropdown (a group becomes a labelled section in it). **Priority-plus applies to the first `<atom:navlist>` in the `nav` slot only**, so put the whole nav in one navlist (use `navfoot` for a second block that stays in the bar). |
+
+#### Choosing a shell
+
+`layouts.sidebar` suits an app with many modules; `layouts.header` an app with about six or fewer sections, or a role that can open only one or two. Both take the same props and slots, and your `nav` slot is the same `<atom:navlist>` markup in each: the sidebar draws it as a column, the top nav as bar items, and a `navlist.group` as a dropdown. Atom does not pick for you (it renders the nav before it knows where it goes), so choose in your own app layout, per user:
+
+```blade
+<x-dynamic-component :component="$user->modules()->count() <= 2 ? 'atom::layouts.header' : 'atom::layouts.sidebar'" :title="$title">
+    <x-slot:nav>
+        @include('partials.nav')
+    </x-slot>
+
+    {{ $slot }}
+</x-dynamic-component>
+```
+
+The slots are the same, but a few land differently, because the two shells are laid out differently:
+
+| Slot | `layouts.sidebar` | `layouts.header` |
+| --- | --- | --- |
+| `brand`, `nav`, `navfoot` | Top and middle of the side surface; `navfoot` under the nav. | The bar's left, and the bar's items (the ones that do not fit go into "More"); `navfoot` at the bar's right end, or at the foot of the menu panel. |
+| `context` | Under the brand. | Beside the logo from `lg` up; the top of the menu panel below it. |
+| `search` | Under the context slot, always shown. | Printed once, shown three ways: a full-width row in the menu panel (below `lg`); from `lg` to `xl` (1280px) a search icon button in the bar opens it in a popover (Enter or Space opens, focus goes to the first input, Escape closes and returns focus to the button); inline in the bar from `xl` up. |
+| `crumbs` | In the 48px top bar. | **Under** the bar, in the centred column (the bar itself has no room). |
+| `actions`, the dark toggle | In the top bar, on the right. | In the bar, on the right. |
+| `dropdown` | The menu behind the avatar: at the foot of the sidebar from `lg` up, in the top bar below it. | The menu behind the avatar in the bar. |
+| `profile` | The **trigger's** content (name and email beside the avatar) at the foot of the sidebar; the menu's header in the top bar below `lg`. | The menu's **header**, inside the dropdown. |
+| `profile` without `dropdown` | Plain content at the foot of the sidebar. | Plain content in the bar. |
+
+The sidebar's top bar is not drawn from `lg` up when `crumbs`, `actions` and `dark` are all empty (below `lg` it still holds the menu button and the account).
+
+`<main>` is unpadded in both: padding belongs to the page. See both shells as live pages, with one shared nav partial, under **Patterns** in `/atom/docs` (source: `resources/views/docs/patterns/`).
 
 #### Remembering collapsed groups
 
@@ -537,6 +569,13 @@ Three things worth knowing:
   group forgets itself the moment the user navigates.
 - **Two groups sharing a key sync.** Not guarded, because that's usually what you want when the
   same nav renders in more than one layout.
+- **Groups that share a heading across a layout and a Livewire component need distinct
+  `persist-key`s.** In `layouts.header` a group's dropdown trigger points at its panel with an
+  `aria-controls` id derived from the heading and the key, and a group with the same heading and
+  key as an earlier one in the same render gets a numbered id. The numbering is per top-level
+  render: a layout and a Livewire component are rendered separately, so two such groups can each
+  be "first" (the same id twice) or be numbered differently from one render to the next. Give
+  each its own `persist-key` and the ids never depend on order.
 
 Storage access is wrapped both ways: hardened browsers and Safari private mode throw on
 `localStorage`, and an uncaught throw would take the Alpine component down and stop the group

@@ -1,3 +1,33 @@
+@php
+// ?shell=header|sidebar puts the same table under an app shell, on the consumer's Tailwind (?tw=floor|latest), where the
+// shell's sticky bar sets --atom-shell-bar-h and the loading spinner has to stay below it.
+$shell = in_array(request()->query('shell'), ['header', 'sidebar'], true) ? request()->query('shell') : null;
+$tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
+@endphp
+
+@if ($shell)
+    <x-dynamic-component :component="'atom::layouts.'.$shell" title="E2E: Table Loading (shell)" :vite="[]" :styles="['/atom/e2e/consumer-css/'.$tw]">
+        <x-slot:nav>
+            <atom:navlist>
+                <atom:navlist.item href="?page=dashboard" icon="dashboard">Dashboard</atom:navlist.item>
+            </atom:navlist>
+        </x-slot>
+
+        <x-slot:crumbs>
+            <span>Table</span>
+        </x-slot>
+
+        <div style="height: 1200px"></div>
+
+        <div class="p-4">
+            <livewire:atom-e2e-table-loading />
+        </div>
+
+        <div style="height: 1200px"></div>
+
+        @livewireScripts
+    </x-dynamic-component>
+@else
 <atom:html title="E2E: Table Loading" :vite="[]" :dark="false" class="min-h-screen bg-white">
 {{-- Hosts tests/Fixtures/TableLoadingFixture.php so the E2E can watch the loading
      overlay during a real Livewire round-trip on a table that runs past the fold. --}}
@@ -20,15 +50,15 @@
     .absolute { position: absolute; }
     .sticky { position: sticky; }
     .inset-0 { inset: 0px; }
-    .top-0 { top: 0px; }
-    .top-4 { top: 1rem; }
+    .top-\[var\(--atom-shell-bar-h\,0px\)\] { top: var(--atom-shell-bar-h,0px); }
+    .top-\[calc\(var\(--atom-shell-bar-h\,0px\)\+1rem\)\] { top: calc(var(--atom-shell-bar-h,0px) + 1rem); }
     .bottom-4 { bottom: 1rem; }
     .inline-flex { display: inline-flex; }
     .shrink-0 { flex-shrink: 0; }
     .\*\:w-full > * { width: 100%; }
     .\*\:h-full > * { height: 100%; }
     .z-10 { z-index: 10; }
-    .h-dvh { height: 100dvh; }
+    .h-\[calc\(100dvh-var\(--atom-shell-bar-h\,0px\)\)\] { height: calc(100dvh - var(--atom-shell-bar-h,0px)); }
     .max-h-full { max-height: 100%; }
     .flex { display: flex; }
     .items-center { align-items: center; }
@@ -68,3 +98,4 @@
 
 @livewireScripts
 </atom:html>
+@endif

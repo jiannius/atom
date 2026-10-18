@@ -402,3 +402,43 @@ it('names WithUrlFilters in the always-on guideline but keeps its detail in the 
     expect(boostFile('guidelines/core.blade.php'))->toContain('`WithUrlFilters`')
         ->and(boostFile('guidelines/core.blade.php'))->not->toContain('urlFiltersExcept');
 });
+
+// V4-2a: the two app shells and their pattern pages
+describe('app shells in the skill', function () {
+    it('names both shells, the slots they share and the two pattern pages', function () {
+        $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+        expect($skill)->toContain('<atom:layouts.sidebar>')
+            ->and($skill)->toContain('<atom:layouts.header>')
+            ->and($skill)->toContain('x-dynamic-component')
+            ->and($skill)->toContain('### Patterns')
+            ->and($skill)->toContain('vendor/jiannius/atom/resources/views/docs/patterns/app-shell-sidebar.blade.php')
+            ->and($skill)->toContain('app-shell-header.blade.php');
+
+        foreach (['app-shell-sidebar', 'app-shell-header', 'nav'] as $page) {
+            expect(__DIR__.'/../../resources/views/docs/patterns/'.$page.'.blade.php')->toBeFile();
+        }
+    });
+
+    it('only lists slots both layouts render', function () {
+        $skill = boostFile('skills/atom-components/SKILL.blade.php');
+        preg_match('/\*\*App shell:\*\*.*?(?=\n- \*\*Which shell)/s', $skill, $bullet);
+        preg_match_all('/<x-slot:([a-z]+)>/', $bullet[0], $slots);
+
+        expect($slots[1])->not->toBeEmpty();
+
+        foreach (['sidebar', 'header'] as $layout) {
+            $source = file_get_contents(__DIR__.'/../../components/layouts/'.$layout.'.blade.php');
+
+            foreach ($slots[1] as $slot) {
+                expect($source)->toContain('$'.$slot);
+            }
+        }
+    });
+
+    it('only points the always-on guideline at the patterns', function () {
+        $guideline = boostFile('guidelines/core.blade.php');
+
+        expect($guideline)->toContain('<atom:layouts.header>')->and($guideline)->not->toContain('app-shell-sidebar');
+    });
+});

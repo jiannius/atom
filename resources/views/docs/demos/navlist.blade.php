@@ -1,6 +1,6 @@
 <atom:docs.example
 title="Basic"
-description="The sidebar navigation primitive. atom:navlist.group adds an (optional) heading and separates sections; atom:navlist.item takes an icon, a count or badge, and highlights itself when its href matches the current URL (set current to force it). This is the same component the docs sidebar uses."
+description="The sidebar navigation primitive. atom:navlist.group adds an (optional) heading and separates sections; atom:navlist.item takes an icon, a count or badge, and highlights itself when its href matches the current URL (set current to force it). The same markup renders as a column in layouts.sidebar and as bar items in layouts.header, where a group becomes a dropdown, so you write the nav once. This is the same component the docs sidebar uses."
 view="atom::docs.demos.navlist.basic"/>
 
 <atom:docs.example
