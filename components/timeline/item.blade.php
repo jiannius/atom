@@ -22,7 +22,7 @@
               timeline is collapsible. `open` sets the starting state: a current or failed step starts open, others closed.
      message: `speaker`, `time`, `side` (`start` for the other person, `end` for you) and `body` or the slot.
      Every string prints as text: the host's own markup goes in a slot, and then the host owns escaping it. A `time` may be a
-     DateTimeInterface (printed in a <time> element, in the viewer's timezone) or a string. Titles, actors and bodies are data, so they are not translated. --}}
+     DateTimeInterface (printed in a <time> element, in the viewer's timezone) or a string. A calendar date with no time goes in as a `Y-m-d` string: as a DateTimeInterface a midnight-UTC date would show as, say, 8:00 am. Titles, actors and bodies are data, so they are not translated. --}}
 @php
 $kind = in_array($kind, ['event', 'step', 'message'], true) ? $kind : 'event';
 $tone = in_array($tone, ['neutral', 'info', 'success', 'warning', 'danger', 'accent'], true) ? $tone : 'neutral';

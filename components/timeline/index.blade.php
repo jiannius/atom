@@ -10,7 +10,8 @@
      - `step`: a numbered spine for a process (a run, an onboarding): each step is done, current, pending or failed, and
        can fold its body away (`collapsible`, on by default; pass :collapsible="false" for a list that is always open).
      - `message`: a conversation between two speakers, the other one at the start and yours at the end, with an optional
-       composer as the last row: put it in the `composer` slot.
+       composer as the last row: put it in the `composer` slot. An `<atom:input>` (bare or labelled) that is a direct child of the
+     composer's <form> fills the row beside the button.
      The kind lives here, not on each item: a list is one kind. `label` names the list for a screen reader (the default
      is Activity, Steps or Messages). Order is the host's: atom never sorts or fetches. --}}
 @php
@@ -33,7 +34,7 @@ $name = $label ? t($label) : match ($kind) {
     </ol>
 
     @if (isset($composer) && $composer->isNotEmpty())
-        <div {{ $composer->attributes->class('mt-4 border-t pt-4') }} data-atom-timeline-composer>
+        <div {{ $composer->attributes->class('mt-4 border-t pt-4 [&_form>[data-atom-input]]:min-w-0 [&_form>[data-atom-input]]:grow [&_form>[data-atom-input-field]]:min-w-0 [&_form>[data-atom-input-field]]:grow') }} data-atom-timeline-composer>
             {{ $composer }}
         </div>
     @endif

@@ -29,6 +29,18 @@ describe('timeline', function () {
             ->and(domQuery($html, '//*[@data-atom-timeline-composer]/preceding-sibling::ol'))->toHaveCount(1);
     });
 
+    it('lets a bare or labelled input that is a direct child of the composer form fill the row', function () {
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+
+        $html = renderBlade('<atom:timeline kind="message"><x-slot:composer><form><atom:input name="a" /><atom:input name="b" label="Reply" /></form></x-slot:composer></atom:timeline>');
+        $composer = domQuery($html, '//*[@data-atom-timeline-composer]')[0];
+
+        expect(domClasses($composer))->toContain('[&_form>[data-atom-input]]:min-w-0', '[&_form>[data-atom-input]]:grow', '[&_form>[data-atom-input-field]]:min-w-0', '[&_form>[data-atom-input-field]]:grow')
+            // the two roots those selectors name: a bare input's, and a labelled input's field
+            ->and(domQuery($html, '//form/*[@data-atom-input]'))->toHaveCount(1)
+            ->and(domQuery($html, '//form/*[@data-atom-input-field]'))->toHaveCount(1);
+    });
+
     it('has no composer wrapper without one', function () {
         expect(domQuery(renderBlade('<atom:timeline />'), '//*[@data-atom-timeline-composer]'))->toBeEmpty();
     });
@@ -101,6 +113,11 @@ describe('event', function () {
         $html = renderBlade('<atom:timeline><atom:timeline.item title="x" :time="$t" /></atom:timeline>', ['t' => new DateTimeImmutable('2026-07-14 22:10:00', new DateTimeZone('Asia/Kuala_Lumpur'))]);
 
         expect(domQuery($html, '//time')[0]->textContent)->toBe('14 Jul 2026, 10:10 pm');
+    });
+
+    it('says in its docs that a date with no time goes in as a Y-m-d string', function () {
+        expect(file_get_contents(dirname(__DIR__, 2).'/components/timeline/item.blade.php'))->toContain('`Y-m-d` string');
+        expect(file_get_contents(dirname(__DIR__, 2).'/README.md'))->toContain('pass a date with no time as a `Y-m-d` string');
     });
 
     it('prints a time string as it is, in no time element', function () {
