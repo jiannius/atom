@@ -9,9 +9,9 @@ class Docs
     const CATEGORIES = [
         'Form inputs' => ['input', 'textarea', 'select', 'checkbox', 'radio', 'toggle', 'date-picker', 'time-picker', 'uploader', 'editor', 'tiptap'],
         'Buttons & links' => ['button', 'link'],
-        'Display & typography' => ['heading', 'subheading', 'caption', 'label', 'avatar', 'badge', 'card', 'callout', 'skeleton', 'placeholder-bar', 'empty', 'profile', 'icon', 'logo'],
+        'Display & typography' => ['heading', 'subheading', 'caption', 'label', 'avatar', 'badge', 'status', 'stat', 'card', 'callout', 'skeleton', 'placeholder-bar', 'empty', 'profile', 'icon', 'logo'],
         'Feedback & overlays' => ['modal', 'alert', 'toast', 'confirm', 'tooltip', 'dropdown', 'lightbox'],
-        'Layout & navigation' => ['form', 'table', 'tabs', 'list', 'menu', 'navlist', 'breadcrumbs', 'calendar', 'separator', 'layouts'],
+        'Layout & navigation' => ['form', 'table', 'tabs', 'list', 'menu', 'navlist', 'breadcrumbs', 'page', 'calendar', 'separator', 'layouts'],
     ];
 
     const GALLERIES = ['icon', 'logo'];
@@ -22,6 +22,7 @@ class Docs
     const PATTERNS = [
         'app-shell-sidebar' => 'App shell (sidebar)',
         'app-shell-header' => 'App shell (top nav)',
+        'record-page' => 'Record page',
     ];
 
     /**

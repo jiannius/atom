@@ -1,5 +1,4 @@
-{{-- Placeholder page content for the two shell patterns. <main> is unpadded, so the page pads itself (in a real app,
-     <atom:page> does this from v4.0-alpha.1). --}}
+{{-- Placeholder page content for the two shell patterns. <main> is unpadded: <atom:page> pads the page. --}}
 @php
 $page = request()->query('page', 'invoices');
 $page = is_string($page) ? $page : 'invoices';
@@ -13,14 +12,13 @@ $rows = [
 $colors = ['Paid' => 'green', 'Overdue' => 'red', 'Sent' => 'blue', 'Draft' => null];
 @endphp
 
-<div class="flex flex-col gap-5 px-7 pb-24 pt-6 max-lg:px-4" data-testid="pattern-page">
-    <div>
-        <div class="text-2xl font-semibold" data-testid="pattern-title">{{ $title }}</div>
-        <div class="mt-1.5 flex flex-wrap gap-x-4 text-fg-muted">
+<atom:page data-testid="pattern-page">
+    <atom:page.header :title="$title">
+        <x-slot:meta>
             <span><b class="font-medium text-fg">4</b> invoices</span>
             <span><b class="font-medium text-fg">1</b> overdue</span>
-        </div>
-    </div>
+        </x-slot:meta>
+    </atom:page.header>
 
     {{-- A table with no Livewire component behind it: static rows, no sorting or pagination. In a real page the rows come
          from a component (see the table docs). --}}
@@ -43,4 +41,4 @@ $colors = ['Paid' => 'green', 'Overdue' => 'red', 'Sent' => 'blue', 'Draft' => n
             @endforeach
         </x-slot:rows>
     </atom:table>
-</div>
+</atom:page>
