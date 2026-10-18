@@ -176,7 +176,7 @@ describe('message', function () {
         expect(array_map(fn ($i) => $i->getAttribute('data-side'), $items))->toBe(['start', 'end'])
             ->and(domClasses($items[1]))->toContain('items-end')
             ->and(domClasses($items[0]))->not->toContain('items-end')
-            ->and(domClasses(domQuery($html, '//li[1]//*[@data-atom-timeline-bubble]')[0]))->toContain('bg-surface-sunken')
+            ->and(domClasses(domQuery($html, '//li[1]//*[@data-atom-timeline-bubble]')[0]))->toContain('bg-neutral-bg')
             ->and(domClasses(domQuery($html, '//li[2]//*[@data-atom-timeline-bubble]')[0]))->toContain('bg-accent-soft');
     });
 

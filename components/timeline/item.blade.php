@@ -72,7 +72,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
 
         <div @class([
             'max-w-[85%] min-w-0 break-words rounded-panel px-3.5 py-2.5 text-base text-fg',
-            'bg-surface-sunken' => $side === 'start',
+            'bg-neutral-bg' => $side === 'start',
             'bg-accent-soft' => $side === 'end',
         ]) data-atom-timeline-bubble>
             @if ($hasSlot)
@@ -122,7 +122,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
                     @endif
 
                     @if ($foldable)
-                        <atom:icon.dropdown class="size-4 shrink-0 text-fg-subtle transition-transform" x-bind:class="open && 'rotate-180'" />
+                        <atom:icon.down class="size-4 shrink-0 text-fg-subtle transition-transform" x-bind:class="open && 'rotate-180'" />
                     @endif
             @if ($foldable)
                 </button>
@@ -143,7 +143,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
     @if ($hasDetail) x-data="{ open: false }" @endif
     data-atom-timeline-item data-tone="{{ $tone }}">
         <span @class([
-            'relative mt-1 ms-[3.5px] size-[9px] rounded-full ring-[3px] ring-surface',
+            'relative mt-1 ms-[3.5px] size-[9px] rounded-full',
             'bg-fg-subtle' => $tone === 'neutral',
             'bg-info-fg' => $tone === 'info',
             'bg-success-fg' => $tone === 'success',
