@@ -21,6 +21,9 @@ class TableViewsFixture extends Component
     /** @var array<string, mixed> */
     public array $filters = ['view' => 'all', 'search' => ''];
 
+    /** An integer-valued view (a stage), bound like the other: the strip must still mark the chosen item. */
+    public int $stage = 2;
+
     /** @var array<int, array{id: int, number: string, customer: string, amount: float, state: string}> */
     public array $invoices = [
         ['id' => 1, 'number' => 'INV-0401', 'customer' => 'Customer A', 'amount' => 1300.0, 'state' => 'unpaid'],

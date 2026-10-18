@@ -617,10 +617,13 @@ Four pattern pages in `resources/views/docs/patterns/` (also at `/atom/docs/patt
 
 ```blade
 <atom:timeline label="Invoice history">
-    <atom:timeline.item title="Payment received" body="RM 2,000.00 by bank transfer" time="14 Oct" tone="success" />
-    <atom:timeline.item title="Created" body="from quote Q-0231" actor="Ana" time="2 Oct" />
+    @foreach ($this->events as $event)
+        <atom:timeline.item wire:key="event-{{ $event->id }}" :title="$event->title" :body="$event->body" :actor="$event->actor" :time="$event->created_at" :tone="$event->tone" />
+    @endforeach
 </atom:timeline>
 ```
+
+A composer's field fills the row only if you let it: wrap the `<atom:input>` in a `min-w-0 grow` box beside the button (an `atom:input` is a block of its own width). **An item rendered in a `@foreach` needs a `wire:key`** (as any looped element does): a step's open state and an event's folded detail are Alpine's, and without a key a re-render that adds or reorders items hands one item's state to another. A `DateTimeInterface` passed as `time` is shown in the viewer's timezone (`Carbon::getLocalTimezone()`), and its `<time datetime>` keeps the instant's own offset.
 
 #### Choosing a shell
 

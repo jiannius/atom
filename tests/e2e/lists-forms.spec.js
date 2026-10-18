@@ -420,6 +420,37 @@ for (const tw of ['floor', 'latest']) {
       await expect(chip(page, 'all')).toHaveText('5')
     })
 
+    test('switching a view drops a bulk selection: the bar goes and the ticked ids are gone', async ({ page }) => {
+      await views(page)
+
+      const checked = () => page.evaluate(() => window.Livewire.all().find((c) => c.name === 'atom-e2e-table-views').$wire.$get('_table.checkboxes'))
+
+      await page.locator('tbody [data-atom-table-checkbox]').first().click()
+      await expect(page.locator('[data-atom-table-checked]')).toBeVisible()
+      expect(await checked()).toHaveLength(1)
+
+      await view(page, 'overdue').click()
+
+      await expect(page.locator('[data-atom-table-checked]')).toHaveCount(0)
+      await expect(page.locator('[data-atom-table-toolbar]')).toBeVisible()
+      await expect.poll(checked).toEqual([])
+      await expect(page.locator('[data-atom-table] tbody tr')).toHaveCount(2)
+    })
+
+    test('a view bound to an integer property still marks its item, on load and after a click', async ({ page }) => {
+      await views(page)
+
+      const stage = (value) => page.locator(`[data-testid="stages"] [data-value="${value}"]`)
+
+      await expect(stage('2')).toHaveAttribute('aria-pressed', 'true')
+      await expect(stage('1')).toHaveAttribute('aria-pressed', 'false')
+
+      await stage('3').click()
+
+      await expect(stage('3')).toHaveAttribute('aria-pressed', 'true')
+      await expect(stage('2')).toHaveAttribute('aria-pressed', 'false')
+    })
+
     test('ticking a row swaps the toolbar for the bulk bar, and clearing it brings the toolbar back', async ({ page }) => {
       await views(page)
 
@@ -639,6 +670,42 @@ for (const tw of ['floor', 'latest']) {
     })
   })
 
+  test.describe(`the save bar in and out of a page, ${tw} consumer build`, () => {
+    test.use({ viewport: { width: 1000, height: 700 } })
+
+    test('outside an <atom:page> it bleeds nowhere: inside its parent, no sideways scroll, a 1rem padding', async ({ page }) => {
+      await open(page, '/atom/e2e/save-bar-context?mode=bare', { tw })
+
+      const bar = await box(page.locator('[data-atom-save-bar]'))
+      const parent = await box(page.getByTestId('box'))
+      const s = await styles(page.locator('[data-atom-save-bar]'), ['margin-left', 'margin-right', 'padding-left', 'padding-right'])
+
+      expect(s['margin-left']).toBe('0px')
+      expect(s['margin-right']).toBe('0px')
+      expect([s['padding-left'], s['padding-right']]).toEqual(['16px', '16px'])
+      expect(bar.x).toBeGreaterThanOrEqual(parent.x)
+      expect(bar.right).toBeLessThanOrEqual(parent.right)
+      expect(await noSideScroll(page)).toBe(true)
+    })
+
+    test('a page that changes its bottom room through the variable keeps the bar flush with the bottom', async ({ page }) => {
+      for (const [query, room] of [['mode=page', 120], ['mode=page&pb=80', 80]]) {
+        await open(page, `/atom/e2e/save-bar-context?${query}`, { tw })
+
+        expect((await styles(page.getByTestId('page'), ['padding-bottom']))['padding-bottom'], query).toBe(`${room}px`)
+
+        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+
+        const bar = await box(page.locator('[data-atom-save-bar]'))
+        const doc = await page.evaluate(() => document.documentElement.scrollHeight)
+
+        // at the very end the bar's bottom is the page's bottom, whatever room the page gives it
+        expect(Math.abs(bar.bottom - 700), query).toBeLessThan(1.5)
+        expect(doc, query).toBeGreaterThan(1400)
+      }
+    })
+  })
+
   test.describe(`slide-over form, ${tw} consumer build`, () => {
     test.use({ viewport: { width: 1280, height: 700 } })
 
@@ -828,8 +895,8 @@ for (const tw of ['floor', 'latest']) {
       // the number is a CSS counter the list resets and every marker bumps (Chromium reports its generated content unresolved)
       expect((await styles(page.getByTestId('steps').locator('ol'), ['counter-reset']))['counter-reset']).toBe('atom-step 0')
       expect((await styles(markers.nth(1), ['counter-increment']))['counter-increment']).toBe('atom-step 1')
-      expect(await markers.nth(1).locator('span').evaluate((el) => getComputedStyle(el, '::before').content)).toBe('counter(atom-step)')
-      expect(await markers.nth(2).locator('span').evaluate((el) => getComputedStyle(el, '::before').content)).toBe('counter(atom-step)')
+      expect(await markers.nth(1).locator('span[aria-hidden]').evaluate((el) => getComputedStyle(el, '::before').content)).toBe('counter(atom-step)')
+      expect(await markers.nth(2).locator('span[aria-hidden]').evaluate((el) => getComputedStyle(el, '::before').content)).toBe('counter(atom-step)')
       await expect(markers.nth(0).locator('svg')).toHaveCount(1)
       await expect(markers.nth(3).locator('svg')).toHaveCount(1)
 
@@ -870,6 +937,42 @@ for (const tw of ['floor', 'latest']) {
       await expect(body(3)).toBeVisible()
     })
 
+    test('step: every chevron sits in the same column at the far end, whether the step has a time or not, and points down closed and up open', async ({ page }) => {
+      await timelines(page)
+
+      const items = page.getByTestId('steps').locator('li')
+      const chevrons = items.locator('[data-atom-timeline-chevron]')
+      const rights = []
+
+      // measure at rest: a chevron half way through its turn has a wider box
+      await page.evaluate(() => Promise.all([...document.querySelectorAll('[data-atom-timeline-chevron]')].flatMap((el) => el.getAnimations().map((a) => a.finished))))
+
+      for (let i = 0; i < await chevrons.count(); i++) rights.push((await box(chevrons.nth(i))).right)
+
+      expect(await chevrons.count()).toBe(4)
+      expect(Math.max(...rights) - Math.min(...rights)).toBeLessThan(1)
+
+      // the end of the row: the chevron ends where the toggle does
+      const toggle = await box(items.nth(2).locator('[data-atom-timeline-toggle]'))
+      expect(Math.abs(rights[2] - toggle.right)).toBeLessThan(1)
+
+      // closed (Queued) is not turned, open (Build) is turned half a turn
+      const turn = (i) => chevrons.nth(i).evaluate((el) => getComputedStyle(el).rotate !== 'none' ? getComputedStyle(el).rotate : getComputedStyle(el).transform)
+      expect(await turn(0)).toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/)
+      expect(await turn(1)).not.toMatch(/^(none|matrix\(1, 0, 0, 1, 0, 0\))$/)
+    })
+
+    test('step: a screen reader hears the state of every step', async ({ page }) => {
+      await timelines(page)
+
+      const items = page.getByTestId('steps').locator('li')
+      const words = []
+
+      for (let i = 0; i < 4; i++) words.push((await items.nth(i).locator('[data-atom-timeline-marker] .sr-only').textContent()).trim())
+
+      expect(words).toEqual(['Done', 'Current', 'Pending', 'Failed'])
+    })
+
     test('step: the running status pulses only on the current step', async ({ page }) => {
       await timelines(page)
 
@@ -894,9 +997,15 @@ for (const tw of ['floor', 'latest']) {
       expect(Math.abs(box1.right - listBox.right)).toBeLessThan(1)
       expect(box0.width).toBeLessThanOrEqual(listBox.width * 0.85 + 1)
 
-      // the composer is the last row, under the thread
+      // the composer is the last row, under the thread: the field fills the row and the button ends it
       const composer = await box(list.locator('[data-atom-timeline-composer]'))
       expect(composer.y).toBeGreaterThanOrEqual(box1.bottom)
+
+      const field = await box(list.getByTestId('draft'))
+      const send = await box(list.getByRole('button', { name: 'Send' }))
+      expect(field.width).toBeGreaterThan(composer.width * 0.6)
+      expect(Math.abs(send.right - composer.right)).toBeLessThan(1)
+      expect(Math.abs(field.right + 8 - send.x)).toBeLessThan(1.5)
 
       await list.getByTestId('draft').fill('See you then.')
       await list.getByRole('button', { name: 'Send' }).click()

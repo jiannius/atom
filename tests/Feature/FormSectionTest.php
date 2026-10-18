@@ -110,12 +110,12 @@ describe('save bar', function () {
             ->and(domClasses($bar))->not->toContain('-bottom-6');
     });
 
-    it('bleeds to the page gutter and sits inside it, with fallbacks outside a page', function () {
+    it('bleeds to the page gutter and sits inside it; outside a page it bleeds nowhere and keeps a 1rem padding', function () {
         $html = renderBlade('<atom:form.actions bar />');
         $classes = implode(' ', domClasses(domQuery($html, '//*[@data-atom-save-bar]')[0]));
 
-        expect($classes)->toContain('ms-[calc(var(--atom-gutter-s,1rem)*-1)]')
-            ->and($classes)->toContain('me-[calc(var(--atom-gutter-e,1rem)*-1)]')
+        expect($classes)->toContain('ms-[calc(var(--atom-gutter-s,0px)*-1)]')
+            ->and($classes)->toContain('me-[calc(var(--atom-gutter-e,0px)*-1)]')
             ->and($classes)->toContain('ps-[var(--atom-gutter-s,1rem)]')
             ->and($classes)->toContain('pe-[var(--atom-gutter-e,1rem)]')
             ->and($classes)->toContain('env(safe-area-inset-bottom');

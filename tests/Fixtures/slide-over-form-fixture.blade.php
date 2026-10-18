@@ -2,7 +2,7 @@
     <atom:button x-on:click="atom.modal('new-customer').slide()" data-testid="open">New customer</atom:button>
     <span data-testid="saves">{{ $saves }}</span>
 
-    <atom:form.modal name="new-customer" cols="1" submit="Save customer" class="w-[28rem]">
+    <atom:form.modal name="new-customer" cols="1" submit="Save customer">
         <atom:form.section layout="stacked" level="3" heading="Contact" subheading="Who we write to.">
             <atom:input wire:model="name" label="Name" />
             <atom:input label="Email" type="email" />

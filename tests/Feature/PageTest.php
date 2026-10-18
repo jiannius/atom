@@ -6,7 +6,7 @@ describe('page', function () {
     it('is the only padded block: a 1240px column with the gutters and gap of the design', function () {
         $page = domQuery(renderBlade('<atom:page class="mt-2"><p id="c">x</p></atom:page>'), '//*[@data-atom-page]')[0];
 
-        expect(domClasses($page))->toContain('max-w-[1240px]', 'pt-[26px]', 'pb-[120px]', 'gap-[22px]', 'grid', 'mt-2')
+        expect(domClasses($page))->toContain('max-w-[1240px]', 'pt-[26px]', 'pb-(--atom-page-pb)', '[:where(&)]:[--atom-page-pb:120px]', 'gap-[22px]', 'grid', 'mt-2')
             ->and($page->getElementsByTagName('p')->length)->toBe(1);
     });
 

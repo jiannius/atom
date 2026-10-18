@@ -4,6 +4,14 @@
         <span data-testid="bound">{{ $filters['view'] }}</span>
     </div>
 
+    <div class="mb-3 rounded-panel border bg-surface" data-testid="stages">
+        <atom:table.views label="Stages" wire:model.live="stage">
+            <atom:table.views.item value="1" label="One" />
+            <atom:table.views.item value="2" label="Two" />
+            <atom:table.views.item value="3" label="Three" />
+        </atom:table.views>
+    </div>
+
     <div class="min-w-0 overflow-hidden rounded-panel border bg-surface" data-testid="panel">
         <atom:table.views wire:model.live="filters.view" :current="$filters['view']" :counts="fn ($view) => $this->count($view)">
             <atom:table.views.item value="all" label="All" />

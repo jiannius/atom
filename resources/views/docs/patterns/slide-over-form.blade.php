@@ -7,11 +7,13 @@
      - Inside, the heading is `<atom:page.header level="2" size="sm">`, the sections are `<atom:form.section layout="stacked">`
        (the label above its fields: a slide-over is too narrow for the aside layout) and the foot is the pinned save bar. The slide-over
        scrolls, the bar does not.
-     - `<atom:form.modal cols="1">` is exactly this composition: a modal, a form, a one-column grid and the pinned bar, with the
-       `actions` slot (live totals, a count, "Unsaved changes") beside the submit. This page spells it out with a plain modal
-       and form so it runs without a Livewire component. In a real page write
-       `<atom:form.modal name="new-customer" cols="1" class="w-[28rem]">` with the sections inside: the modal's own form calls
-       the component's `submit()` method (there is no `wire:submit` to pass).
+     - `<atom:form.modal cols="1">` is this composition: a modal, a form, a one-column grid and the pinned bar, with the
+       `actions` slot (live totals, a count, "Unsaved changes") beside the submit. Its width comes from `cols` (`cols="1"` is
+       `max-w-xl`, 576px, and a width class of your own does not beat it), so its fields are two across. This page is the 448px
+       slide-over, spelled out with a plain modal and form (which also lets it run without a Livewire component): there the
+       fields are one column. In a real page write `<atom:form.modal name="new-customer" cols="1">` with the sections inside; the
+       modal's own form calls the component's `submit()` method (there is no `wire:submit` to pass). For the 448px width, use
+       the plain composition shown here.
      - The submit is the one primary action of the slide-over; there is no Cancel button, the close button and Escape do that.
 
      Open it as ?open=1 to have the slide-over open on load. --}}

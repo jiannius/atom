@@ -110,6 +110,7 @@ class E2EServiceProvider extends ServiceProvider
             });
         }
         // V4-2c: saved views, the toolbar and the bulk bar; the three timeline kinds; a form.modal slide-over. On the consumer's Tailwind.
+        Route::middleware('web')->get('/atom/e2e/save-bar-context', fn () => view('atom::e2e.save-bar-context'));
         Route::middleware('web')->get('/atom/e2e/table-wide-page', fn () => view('atom::e2e.table-wide-page'));
         Route::middleware('web')->get('/atom/e2e/table-views', fn () => view('atom::e2e.table-views'));
         Route::middleware('web')->get('/atom/e2e/timeline', fn () => view('atom::e2e.timeline'));
