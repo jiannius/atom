@@ -41,9 +41,9 @@ describe('B1: components that never printed the bag', function () {
         $sm = domQuery(renderBlade('<atom:empty size="sm" />'), '//*[@data-atom-empty]')[0];
         $subtle = domQuery(renderBlade('<atom:empty subtle />'), '//*[@data-atom-empty]')[0];
 
-        expect(domClasses($default))->toBe(['flex', 'flex-col', 'items-center', 'justify-center', 'gap-3', 'py-8'])
+        expect(domClasses($default))->toBe(['flex', 'flex-col', 'items-center', 'justify-center', 'gap-3', 'px-4', 'py-10', 'text-center'])
             ->and(domClasses($sm))->toBe(['flex', 'items-center', 'justify-center', 'w-full'])
-            ->and(domClasses($subtle))->toContain('bg-zinc-100', 'rounded-lg', 'p-3');
+            ->and(domClasses($subtle))->toContain('bg-surface-sunken', 'rounded-control', 'p-3');
     });
 
     it('prints the bag on the avatar and keeps the marker avatar.group matches on', function () {
