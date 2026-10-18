@@ -78,7 +78,7 @@ for (const tw of ['floor', 'latest']) {
       await page.waitForURL(/page=customers/)
 
       await expect(page.locator('[data-atom-nav-shell] [aria-current="page"]')).toHaveText(/Customers/)
-      await expect(page.getByTestId('pattern-title')).toHaveText('Customers')
+      await expect(page.locator('[data-atom-page-header-title]')).toHaveText('Customers')
     })
 
     test('a group is a label over its items, and the trigger is not shown', async ({ page }) => {

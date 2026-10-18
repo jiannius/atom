@@ -1411,7 +1411,7 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
    The dash is dropped at the very end, so an icon that somehow had no pathLength is not left dashed. */
 @media (prefers-reduced-motion: no-preference) {
     [data-atom-empty-icon] :is(path, circle, line, polyline, polygon, ellipse, rect) {
-        animation: atom-draw 1s var(--atom-ease, ease-out) 1 both;
+        animation: atom-draw 1s var(--atom-ease, ease-out) 1 backwards;
     }
 }
 
