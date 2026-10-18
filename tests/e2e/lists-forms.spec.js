@@ -306,6 +306,35 @@ for (const tw of ['floor', 'latest']) {
     })
   })
 
+  test.describe(`a wide table in a page at 390px, ${tw} consumer build`, () => {
+    test.use({ viewport: { width: 390, height: 844 } })
+
+    // the first host trial: a table of many columns directly in <atom:page> scrolled the page sideways and cut the status column off
+    // (a parent that sizes its children by content, a grid or a flex row, is what widened the page before the table's root was min-w-0)
+    for (const [name, query] of [['framed', ''], ['frameless in a panel', 'frameless=1'], ['framed in a grid parent', 'parent=grid'], ['framed in a flex parent', 'parent=flex'], ['frameless in a grid parent', 'parent=grid&frameless=1']]) {
+      test(`${name}: the table scrolls inside its own box, the page does not, and the status column is reachable`, async ({ page }) => {
+        await open(page, `/atom/e2e/table-wide-page${query ? `?${query}` : ''}`, { tw })
+
+        expect(await noSideScroll(page)).toBe(true)
+
+        const scroll = page.locator('[data-atom-table-scroll]')
+        const dims = await scroll.evaluate((el) => ({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth }))
+        const pageBox = await box(page.locator('[data-atom-page]'))
+        const table = await box(page.getByTestId('wide-table'))
+
+        expect(dims.scrollWidth).toBeGreaterThan(dims.clientWidth)
+        expect(table.right).toBeLessThanOrEqual(pageBox.right - 16 + 1)
+
+        await scroll.evaluate((el) => { el.scrollLeft = el.scrollWidth })
+
+        const status = await box(page.locator('[data-atom-table] thead th', { hasText: 'Status' }))
+        expect(status.right).toBeLessThanOrEqual(table.right + 1)
+        expect(await noSideScroll(page)).toBe(true)
+        await expect(page.locator('[data-atom-table] tbody tr').first().locator('[data-atom-status]')).toBeInViewport()
+      })
+    }
+  })
+
   test.describe(`saved views, the toolbar and the bulk bar (Livewire), ${tw} consumer build`, () => {
     test.use({ viewport: { width: 1100, height: 800 } })
 
