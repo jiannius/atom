@@ -536,7 +536,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 </atom:page>
 ```
 
-The header's crumbs and the shell's `crumbs` slot are two places for the same thing: use one. A level-1 `page.header` replaces the layout's hidden fallback `<h1>`; in a modal or a slide-over (for a form, never a whole record) pass `level="2" size="sm"`.
+The header's crumbs and the shell's `crumbs` slot are two places for the same thing: use one. The header's `crumbs` are a static list; only `<atom:breadcrumbs />` inside `@persist('breadcrumbs')` remembers where the user came from (and the filters they left a listing with) and draws the component's `breadcrumbs()` method, so a page that uses the header's `crumbs` instead loses that trail. A level-1 `page.header` replaces the layout's hidden fallback `<h1>`; in a modal or a slide-over (for a form, never a whole record) pass `level="2" size="sm"`.
 
 #### Choosing a shell
 
@@ -561,11 +561,13 @@ The slots are the same, but a few land differently, because the two shells are l
 | `search` | Under the context slot, always shown. | Printed once, shown three ways: a full-width row in the menu panel (below `lg`); from `lg` to `xl` (1280px) a search icon button in the bar opens it in a popover (Enter or Space opens, focus goes to the first input, Escape closes and returns focus to the button); inline in the bar from `xl` up. |
 | `crumbs` | In the 48px top bar. | **Under** the bar, in the centred column (the bar itself has no room). |
 | `actions`, the dark toggle | In the top bar, on the right. | In the bar, on the right. |
-| `dropdown` | The menu behind the avatar: at the foot of the sidebar from `lg` up, in the top bar below it. | The menu behind the avatar in the bar. |
-| `profile` | The **trigger's** content (name and email beside the avatar) at the foot of the sidebar; the menu's header in the top bar below `lg`. | The menu's **header**, inside the dropdown. |
+| `dropdown` | The menu behind the avatar: at the foot of the sidebar from `lg` up, in the top bar below it. **Pass menu items only**: atom wraps them in `<atom:menu>` and prints a default profile card (avatar or initials, name, email), so a menu of your own around them double-wraps. | The menu behind the avatar in the bar. Items only, as in the sidebar. |
+| `profile` | The **trigger's** content (name and email beside the avatar) at the foot of the sidebar; the menu's header in the top bar below `lg`. Optional: it replaces the default profile card. | The menu's **header**, inside the dropdown. Optional, as in the sidebar. |
 | `profile` without `dropdown` | Plain content at the foot of the sidebar. | Plain content in the bar. |
 
 The sidebar's top bar is not drawn from `lg` up when `crumbs`, `actions` and `dark` are all empty (below `lg` it still holds the menu button and the account).
+
+The default profile card reads `auth()->user()`: `avatar` (a URL; none, or a model that has no such attribute, gives initials), `name` and `email`. The initials come from the model's `initials()` method if it has one; otherwise they are the first letters of the first two words of `name`, uppercase.
 
 `<main>` is unpadded in both: padding belongs to the page. See both shells as live pages, with one shared nav partial, under **Patterns** in `/atom/docs` (source: `resources/views/docs/patterns/`).
 
