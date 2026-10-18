@@ -127,7 +127,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
                             @endif
 
                             @if ($foldable)
-                                <atom:icon.down class="size-4 shrink-0 text-fg-subtle transition-transform" x-bind:class="open && 'rotate-180'" data-atom-timeline-chevron />
+                                <atom:icon.down class="size-4 shrink-0 text-fg-subtle" x-bind:class="open && 'rotate-180'" data-atom-timeline-chevron />
                             @endif
                         </span>
                     @endif
@@ -196,7 +196,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
                 <button type="button" class="mt-1 inline-flex items-center gap-1 text-xs font-medium text-fg-muted hover:text-fg" x-on:click="open = !open" x-bind:aria-expanded="open ? 'true' : 'false'" aria-expanded="false" data-atom-timeline-toggle>
                     <span x-show="!open">{{ t('Show details') }}</span>
                     <span x-show="open" x-cloak>{{ t('Hide details') }}</span>
-                    <atom:icon.down class="size-3.5 shrink-0 transition-transform" x-bind:class="open && 'rotate-180'" />
+                    <atom:icon.down class="size-3.5 shrink-0" x-bind:class="open && 'rotate-180'" />
                 </button>
 
                 <div class="mt-1.5 rounded-control border bg-surface-sunken px-3 py-2 text-sm text-fg-muted" x-show="open" x-cloak data-atom-timeline-detail>
