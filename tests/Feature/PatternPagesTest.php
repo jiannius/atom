@@ -193,3 +193,37 @@ describe('page component docs', function () {
             ->and(collect($docs->component('stat')['props'])->pluck('name')->all())->toContain('label', 'value', 'prefix', 'delta', 'inverse', 'breakdown', 'href');
     });
 });
+
+// One primary action per screen: the header's. An empty state's next step is a plain button.
+describe('one primary action', function () {
+    $primaries = fn (string $html) => domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]');
+
+    it('keeps the record page to one primary button on every tab and status', function (string $tab, string $status) use ($primaries) {
+        request()->query->set('tab', $tab);
+        request()->query->set('status', $status);
+
+        $found = $primaries(view('atom::docs.patterns.record-page')->render());
+
+        expect($found)->toHaveCount(1)
+            ->and($found[0]->getAttribute('data-testid'))->toBe('record-primary');
+    })->with(function () {
+        foreach (['overview', 'tasks', 'parts', 'activity', 'files'] as $tab) {
+            foreach (['draft', 'in-progress', 'blocked', 'done'] as $status) {
+                yield "$tab, $status" => [$tab, $status];
+            }
+        }
+    });
+
+    it('has no primary button in the empty state demos', function () use ($primaries) {
+        registerDocsRoutes();
+
+        expect($primaries(view('atom::docs.demos.empty')->render()))->toBeEmpty();
+    });
+
+    it('does not teach a primary next step in the Boost skill', function () {
+        $skill = file_get_contents(dirname(__DIR__, 2).'/resources/boost/skills/atom-components/SKILL.blade.php');
+
+        expect($skill)->toContain('warning for waiting, blocked or needs attention, danger for failed or overdue')
+            ->and($skill)->not->toContain('the next step creates the first one, `variant="primary"`');
+    });
+});

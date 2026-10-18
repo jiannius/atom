@@ -2,7 +2,7 @@
     <div class="rounded-panel border">
         <atom:empty kind="first-use" heading="No jobs yet" subheading="Create the first work order to start tracking it.">
             <x-slot:action>
-                <atom:button size="sm" variant="primary" icon="add">New job</atom:button>
+                <atom:button size="sm" icon="add">New job</atom:button>
             </x-slot:action>
         </atom:empty>
     </div>

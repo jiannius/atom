@@ -9,7 +9,8 @@
      - A status is a tone plus a word; `running` only while something is actually in progress.
      - Money is tabular and carries its currency as a small prefix; identifiers are monospace (`font-id`).
      - Crumbs are the header's own `crumbs` prop here (use the shell's `crumbs` slot instead, not both).
-     - A list, a search and a failed load each have their own empty state, each with a next step.
+     - A list, a search and a failed load each have their own empty state, each with a next step. The next step is a plain
+       button: the header's primary stays the one primary on the screen.
 
      Open it with ?status=draft|in-progress|blocked|done to see the primary action follow the status. --}}
 @php
@@ -114,7 +115,7 @@ $tasks = [
             <div class="rounded-panel border bg-surface">
                 <atom:empty kind="first-use" heading="No parts on this job" subheading="Add the first part to track its cost against the quote.">
                     <x-slot:action>
-                        <atom:button size="sm" variant="primary" icon="add">Add part</atom:button>
+                        <atom:button size="sm" icon="add">Add part</atom:button>
                     </x-slot:action>
                 </atom:empty>
             </div>

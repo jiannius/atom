@@ -29,7 +29,7 @@ $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ?
     {{-- the three kinds of empty state, and the small one --}}
     <div class="rounded-panel border bg-surface" data-testid="empty-first-use">
         <atom:empty kind="first-use" heading="No jobs yet" subheading="Create the first work order to start tracking it.">
-            <x-slot:action><atom:button size="sm" variant="primary" icon="add">New job</atom:button></x-slot:action>
+            <x-slot:action><atom:button size="sm" icon="add">New job</atom:button></x-slot:action>
         </atom:empty>
     </div>
 
