@@ -33,7 +33,7 @@ $classes = Arr::toCssClasses([
 ]);
 
 $valueClasses = Arr::toCssClasses([
-    'text-[20px]/[1.3] font-semibold tracking-[-0.015em] tabular-nums break-words',
+    'text-[20px] leading-[1.3] font-semibold tracking-[-0.015em] tabular-nums break-words',
 
     match ($tone) {
         'danger' => 'text-danger-fg',
