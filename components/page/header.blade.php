@@ -10,7 +10,8 @@
      Slots: `status` (an <atom:status>), `meta` (more facts as free markup), `actions` (secondary), `menu` (the contents of
      the overflow menu) and `primary` (THE action for the record's current state: the host passes one, last, on the right).
      `crumbs` is a list of `['label' => ..., 'href' => ...]` (a string is a label with no link); the last one is the
-     current page, printed as the record's own text. `facts` is a list of strings or
+     current page, printed as the record's own text; every other label goes through t(), which splits on a pipe, so a
+     parent crumb holding record data must not contain one. `facts` is a list of strings or
      `['label' => ..., 'value' => ..., 'mono' => true]`. `title`, labels and values print as text. It is pure Blade and CSS, so it also renders in a
      modal or a slide-over (a form, never a whole record): pass `size="sm"` and `level="2"` there. Use the shell's own
      `crumbs` slot OR `crumbs` here, not both. --}}
@@ -58,6 +59,8 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
             </nav>
         @endif
 
+        {{-- with neither a title nor a status there is no row, so the gap under the crumbs is not doubled --}}
+        @if (filled($title) || $has($status ?? null))
         <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
             {{-- no title, no heading: an empty h1 would also hide the layout's fallback one (atom.css) --}}
             @if (filled($title))
@@ -72,6 +75,7 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
                 {{ $status }}
             @endif
         </div>
+        @endif
 
         @if ($items->isNotEmpty() || $has($meta ?? null))
             <div @class([

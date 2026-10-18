@@ -82,6 +82,17 @@ describe('page.header', function () use ($evil) {
             ->and(domQuery($html, '//header[@data-atom-page-header]//*[@data-atom-status]'))->toHaveCount(1);
     })->with([[null], [''], ['  ']]);
 
+    it('draws no title row with neither a title nor a status, so the crumbs gap is not doubled', function () {
+        $none = renderBlade('<atom:page.header :crumbs="[\'A\']" :facts="[\'x\']" />');
+        $status = renderBlade('<atom:page.header><x-slot:status><atom:status label="Draft" /></x-slot:status></atom:page.header>');
+        $title = renderBlade('<atom:page.header title="T" />');
+        $row = '//header/div/div[contains(concat(" ", normalize-space(@class), " "), " gap-y-1.5 ")]';
+
+        expect(domQuery($none, $row))->toBeEmpty()
+            ->and(domQuery($status, $row))->toHaveCount(1)
+            ->and(domQuery($title, $row))->toHaveCount(1);
+    });
+
     it('has no crumb row without crumbs', function () {
         expect(domQuery(renderBlade('<atom:page.header title="T" />'), '//*[@data-atom-page-crumbs]'))->toBeEmpty();
     });

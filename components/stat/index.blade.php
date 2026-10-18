@@ -19,11 +19,12 @@ $el = $href ? 'a' : 'div';
 $tone = in_array($tone, ['danger', 'warning', 'success'], true) ? $tone : null;
 
 $delta = is_scalar($delta) ? trim((string) $delta) : '';
-// only a figure has a direction: `n/a`, `new` or a dash is printed as it is, with no arrow, tint or word
+// only a figure has a direction: a digit must follow the optional sign straight away, so `n/a`, `new`, a dash, `-.5%`
+// and `−RM 200` are printed as they are, with no arrow, tint or word. A zero is flat whatever its sign (`-0%`, `−0.00`).
 $direction = match (true) {
     ! preg_match('/^[+\-−]?\d/u', $delta) => null,
+    (bool) preg_match('/^[+\-−]?0+([.,]0+)?%?$/u', $delta) => 'flat',
     str_starts_with($delta, '-') || str_starts_with($delta, '−') => 'down',
-    (bool) preg_match('/^\+?0+([.,]0+)?%?$/', $delta) => 'flat',
     default => 'up',
 };
 $isGood = $direction && $direction !== 'flat' ? (($direction === 'up') xor (bool) $inverse) : null;

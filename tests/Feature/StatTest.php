@@ -91,6 +91,25 @@ describe('stat', function () {
             ['0%', true, 'text-fg-subtle'],
         ]);
 
+        it('reads a zero as flat whatever its sign', function (string $delta) {
+            $el = domQuery(renderBlade('<atom:stat label="x" value="1" :delta="$delta" />', ['delta' => $delta]), '//*[@data-atom-stat-delta]')[0];
+
+            expect($el->getAttribute('data-direction'))->toBe('flat')
+                ->and(domClasses($el))->toContain('text-fg-subtle');
+        })->with(['0', '-0', '-0%', "\u{2212}0.0", '-0.00%', '+0', '00.0', '0,00']);
+
+        it('still reads a small figure as a direction, and needs a digit straight after the sign', function (string $delta, ?string $direction) {
+            $el = domQuery(renderBlade('<atom:stat label="x" value="1" :delta="$delta" />', ['delta' => $delta]), '//*[@data-atom-stat-delta]')[0];
+
+            expect($el->hasAttribute('data-direction') ? $el->getAttribute('data-direction') : null)->toBe($direction);
+        })->with([
+            ['-0.5%', 'down'],
+            ['-10', 'down'],
+            ['+0.1', 'up'],
+            ['-.5%', null],
+            ["\u{2212}RM 200", null],
+        ]);
+
         it('prints text that is not a figure as it is: no arrow, tint, word or direction', function (string $delta) {
             $html = renderBlade('<atom:stat label="x" value="1" :delta="$delta" />', ['delta' => $delta]);
             $el = domQuery($html, '//*[@data-atom-stat-delta]')[0];
