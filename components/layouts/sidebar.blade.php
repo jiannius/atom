@@ -11,10 +11,24 @@
 
 {{-- From lg up the top bar holds only crumbs, actions and the dark toggle (the menu button and the account are for
      small screens), so with all three empty it is not drawn there ($barEmpty, data-atom-header-empty in atom.css). --}}
+{{-- A host's User model may have no public initials() method (or one that returns no usable string): the initials are then derived from the display name,
+     and an avatar, name or email the model refuses to read (MissingAttributeException only) reads as null. --}}
 @php
 $user = auth()->user();
-$avatar = $user?->avatar;
-$name = $user?->name;
+$read = function (string $attribute) use ($user) {
+    try {
+        return isset($user->{$attribute}) ? $user->{$attribute} : null;
+    } catch (\Illuminate\Database\Eloquent\MissingAttributeException) {
+        return null;
+    }
+};
+$avatar = $read('avatar');
+$name = $read('name');
+$initials = $user && method_exists($user, 'initials') && (new \ReflectionMethod($user, 'initials'))->isPublic() ? $user->initials() : null;
+$initials = is_string($initials) || $initials instanceof \Stringable ? trim((string) $initials) : null;
+$initials = $user && blank($initials)
+    ? str((string) $name)->squish()->initials()->take(2)->upper()->toString()
+    : $initials;
 
 $barEmpty = ! $dark
     && ! (isset($crumbs) && filled(trim((string) $crumbs)))
@@ -112,16 +126,16 @@ $barEmpty = ! $dark
                                 @if ($avatar)
                                     <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
                                 @else
-                                    {{ $user?->initials() }}
+                                    {{ $initials }}
                                 @endif
                             </div>
 
                             <div class="min-w-0 text-start leading-tight">
                                 <div class="truncate text-sm font-medium">
-                                    {{ $user?->name }}
+                                    {{ $name }}
                                 </div>
                                 <div class="truncate text-xs text-fg-subtle">
-                                    {{ $user?->email }}
+                                    {{ $read('email') }}
                                 </div>
                             </div>
                         </div>
@@ -180,7 +194,7 @@ $barEmpty = ! $dark
                                 @if ($avatar)
                                     <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
                                 @else
-                                    {{ $user?->initials() }}
+                                    {{ $initials }}
                                 @endif
                             </div>
 
@@ -196,16 +210,16 @@ $barEmpty = ! $dark
                                         @if ($avatar)
                                             <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
                                         @else
-                                            {{ $user?->initials() }}
+                                            {{ $initials }}
                                         @endif
                                     </div>
 
                                     <div class="min-w-0 text-start leading-tight">
                                         <div class="truncate text-sm font-medium">
-                                            {{ $user?->name }}
+                                            {{ $name }}
                                         </div>
                                         <div class="truncate text-xs text-fg-subtle">
-                                            {{ $user?->email }}
+                                            {{ $read('email') }}
                                         </div>
                                     </div>
                                 </div>

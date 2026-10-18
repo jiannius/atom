@@ -1,11 +1,20 @@
 <?php
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ViewErrorBag;
 
 // The sidebar shell mounts <atom:confirm>, whose reason input reads the shared
 // $errors bag that the session middleware would normally provide.
 beforeEach(fn () => view()->share('errors', new ViewErrorBag));
+
+/** A shell with a `dropdown` slot, rendered for whoever is authenticated. */
+function accountMenuHtml(string $layout): string
+{
+    return renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>');
+}
 
 describe('heading', function () {
     it('renders as a div with the heading hook by default', function () {
@@ -467,6 +476,184 @@ describe('the shells\' slots', function () {
         $html = renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>');
 
         expect(domQuery($html, '//button[@aria-label="Account"]'))->not->toBeEmpty();
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    // A host's User model need not have an initials() method; the shells called it unguarded (BadMethodCallException on every
+    // page with a `dropdown` slot). They now derive the initials from the display name, and still prefer the model's own.
+    it('derives the account initials from the name when the user model has no initials()', function (string $layout, string $name, string $expected) {
+        Auth::setUser(new class(['name' => $name, 'email' => 'user@example.com']) extends \Illuminate\Foundation\Auth\User {
+            protected $guarded = [];
+        });
+
+        $html = renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>');
+
+        expect(trim(domQuery($html, '//button[@aria-label="Account"]')[0]->textContent))->toBe($expected);
+    })->with(['layouts.sidebar', 'layouts.header'])->with([
+        'two words' => ['tan joon long', 'TJ'],
+        'one word' => ['alex', 'A'],
+        'extra spaces' => ['  alex   doe ', 'AD'],
+        'multibyte' => ['éva östen', 'ÉÖ'],
+    ]);
+
+    // preventAccessingMissingAttributes() (part of Model::shouldBeStrict()) makes a saved model throw on an attribute it was
+    // not loaded with, so a User table with no avatar column crashed the shells on the `$user->avatar` read.
+    it('reads a missing avatar as null on a model that refuses missing attributes', function (string $layout) {
+        $user = new class(['name' => 'Alex Doe', 'email' => 'user@example.com']) extends \Illuminate\Foundation\Auth\User {
+            protected $guarded = [];
+        };
+        $user->exists = true;
+        Auth::setUser($user);
+        Model::preventAccessingMissingAttributes();
+
+        try {
+            $html = renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>');
+        } finally {
+            Model::preventAccessingMissingAttributes(false);
+        }
+
+        expect(trim(domQuery($html, '//button[@aria-label="Account"]')[0]->textContent))->toBe('AD');
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('reads a missing name and email as null on a model that refuses missing attributes', function (string $layout) {
+        $user = new class(['id' => 1]) extends \Illuminate\Foundation\Auth\User {
+            protected $guarded = [];
+        };
+        $user->exists = true;
+        Auth::setUser($user);
+        Model::preventAccessingMissingAttributes();
+
+        try {
+            $html = accountMenuHtml($layout);
+        } finally {
+            Model::preventAccessingMissingAttributes(false);
+        }
+
+        expect($html)->toContain('OUT')
+            ->and(domQuery($html, '//button[@aria-label="Account"]'))->not->toBeEmpty();
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    // Only MissingAttributeException is treated as "no value": a failing accessor is the host's bug and must surface.
+    it('does not swallow another exception thrown by an accessor', function (string $layout, string $accessor) {
+        $user = match ($accessor) {
+            'avatar' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function getAvatarAttribute(): never
+                {
+                    throw new \RuntimeException('accessor boom');
+                }
+            },
+            'email' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function getEmailAttribute(): never
+                {
+                    throw new \RuntimeException('accessor boom');
+                }
+            },
+        };
+        Auth::setUser($user);
+
+        $message = null;
+
+        try {
+            accountMenuHtml($layout);
+        } catch (\Throwable $e) {
+            $message = $e->getMessage();
+        }
+
+        expect($message)->toContain('accessor boom');
+    })->with(['layouts.sidebar', 'layouts.header'])->with(['avatar', 'email']);
+
+    it('derives the initials when initials() is not public or does not return a string', function (string $layout, string $kind) {
+        $user = match ($kind) {
+            // an Eloquent Attribute accessor: protected, so calling it from outside would be a BadMethodCallException
+            'protected accessor' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                protected function initials(): Attribute
+                {
+                    return Attribute::get(fn () => 'XQ');
+                }
+            },
+            'public attribute' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function initials(): Attribute
+                {
+                    return Attribute::get(fn () => 'XQ');
+                }
+            },
+            'public blank' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function initials(): string
+                {
+                    return "  \n";
+                }
+            },
+            'public empty' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function initials(): string
+                {
+                    return '';
+                }
+            },
+            'public null' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function initials(): ?string
+                {
+                    return null;
+                }
+            },
+        };
+        Auth::setUser($user);
+
+        expect(trim(domQuery(accountMenuHtml($layout), '//button[@aria-label="Account"]')[0]->textContent))->toBe('AD');
+    })->with(['layouts.sidebar', 'layouts.header'])->with(['protected accessor', 'public attribute', 'public blank', 'public empty', 'public null']);
+
+    it('accepts a Stringable from initials()', function (string $layout) {
+        Auth::setUser(new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+            protected $guarded = [];
+
+            public function initials(): \Stringable
+            {
+                return str('XQ');
+            }
+        });
+
+        expect(trim(domQuery(accountMenuHtml($layout), '//button[@aria-label="Account"]')[0]->textContent))->toBe('XQ');
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    // GenericUser::__get is `$this->attributes[$key]`: a missing key is an ErrorException, not null.
+    it('renders the default profile card for a GenericUser with no name, email or avatar', function (string $layout) {
+        Auth::setUser(new \Illuminate\Auth\GenericUser(['id' => 1]));
+
+        $html = accountMenuHtml($layout);
+
+        expect($html)->toContain('OUT')
+            ->and(domQuery($html, '//button[@aria-label="Account"]'))->not->toBeEmpty();
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('renders the account menu for a guest', function (string $layout) {
+        expect(accountMenuHtml($layout))->toContain('OUT');
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('prefers the user model\'s own initials()', function (string $layout) {
+        Auth::setUser(new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+            protected $guarded = [];
+
+            public function initials(): string
+            {
+                return 'XQ';
+            }
+        });
+
+        $html = renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>');
+
+        expect(domQuery($html, '//button[@aria-label="Account"]')[0]->textContent)->toContain('XQ')->not->toContain('AD');
     })->with(['layouts.sidebar', 'layouts.header']);
 
     it('marks the sidebar\'s top bar empty (not drawn from lg up) only with no crumbs, actions or dark toggle', function () {
