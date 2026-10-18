@@ -11,15 +11,24 @@
 
 {{-- From lg up the top bar holds only crumbs, actions and the dark toggle (the menu button and the account are for
      small screens), so with all three empty it is not drawn there ($barEmpty, data-atom-header-empty in atom.css). --}}
-{{-- A host's User model may have no initials() method: the initials are then derived from the display name,
-     and a missing `avatar` attribute reads as null even where the model refuses to read an attribute it does not have. --}}
+{{-- A host's User model may have no public initials() method (or one that returns no string): the initials are then derived from the display name,
+     and an avatar, name or email the model refuses to read (MissingAttributeException only) reads as null. --}}
 @php
 $user = auth()->user();
-$avatar = rescue(fn () => $user?->avatar, null, false);
-$name = $user?->name;
-$initials = $user
-    ? (method_exists($user, 'initials') ? $user->initials() : str((string) $name)->squish()->initials()->take(2)->upper()->toString())
-    : null;
+$read = function (string $attribute) use ($user) {
+    try {
+        return $user?->{$attribute};
+    } catch (\Illuminate\Database\Eloquent\MissingAttributeException) {
+        return null;
+    }
+};
+$avatar = $read('avatar');
+$name = $read('name');
+$email = $read('email');
+$initials = $user && method_exists($user, 'initials') && (new \ReflectionMethod($user, 'initials'))->isPublic() ? $user->initials() : null;
+$initials = $user && ! is_string($initials) && ! $initials instanceof \Stringable
+    ? str((string) $name)->squish()->initials()->take(2)->upper()->toString()
+    : $initials;
 
 $barEmpty = ! $dark
     && ! (isset($crumbs) && filled(trim((string) $crumbs)))
@@ -123,10 +132,10 @@ $barEmpty = ! $dark
 
                             <div class="min-w-0 text-start leading-tight">
                                 <div class="truncate text-sm font-medium">
-                                    {{ $user?->name }}
+                                    {{ $name }}
                                 </div>
                                 <div class="truncate text-xs text-fg-subtle">
-                                    {{ $user?->email }}
+                                    {{ $email }}
                                 </div>
                             </div>
                         </div>
@@ -207,10 +216,10 @@ $barEmpty = ! $dark
 
                                     <div class="min-w-0 text-start leading-tight">
                                         <div class="truncate text-sm font-medium">
-                                            {{ $user?->name }}
+                                            {{ $name }}
                                         </div>
                                         <div class="truncate text-xs text-fg-subtle">
-                                            {{ $user?->email }}
+                                            {{ $email }}
                                         </div>
                                     </div>
                                 </div>

@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
@@ -8,6 +9,12 @@ use Illuminate\Support\ViewErrorBag;
 // The sidebar shell mounts <atom:confirm>, whose reason input reads the shared
 // $errors bag that the session middleware would normally provide.
 beforeEach(fn () => view()->share('errors', new ViewErrorBag));
+
+/** A shell with a `dropdown` slot, rendered for whoever is authenticated. */
+function accountMenuHtml(string $layout): string
+{
+    return renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>');
+}
 
 describe('heading', function () {
     it('renders as a div with the heading hook by default', function () {
@@ -505,6 +512,107 @@ describe('the shells\' slots', function () {
         }
 
         expect(trim(domQuery($html, '//button[@aria-label="Account"]')[0]->textContent))->toBe('AD');
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('reads a missing name and email as null on a model that refuses missing attributes', function (string $layout) {
+        $user = new class(['id' => 1]) extends \Illuminate\Foundation\Auth\User {
+            protected $guarded = [];
+        };
+        $user->exists = true;
+        Auth::setUser($user);
+        Model::preventAccessingMissingAttributes();
+
+        try {
+            $html = accountMenuHtml($layout);
+        } finally {
+            Model::preventAccessingMissingAttributes(false);
+        }
+
+        expect($html)->toContain('OUT')
+            ->and(domQuery($html, '//button[@aria-label="Account"]'))->not->toBeEmpty();
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    // Only MissingAttributeException is treated as "no value": a failing accessor is the host's bug and must surface.
+    it('does not swallow another exception thrown by an accessor', function (string $layout, string $accessor) {
+        $user = match ($accessor) {
+            'avatar' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function getAvatarAttribute(): never
+                {
+                    throw new \RuntimeException('accessor boom');
+                }
+            },
+            'email' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function getEmailAttribute(): never
+                {
+                    throw new \RuntimeException('accessor boom');
+                }
+            },
+        };
+        Auth::setUser($user);
+
+        $message = null;
+
+        try {
+            accountMenuHtml($layout);
+        } catch (\Throwable $e) {
+            $message = $e->getMessage();
+        }
+
+        expect($message)->toContain('accessor boom');
+    })->with(['layouts.sidebar', 'layouts.header'])->with(['avatar', 'email']);
+
+    it('derives the initials when initials() is not public or does not return a string', function (string $layout, string $kind) {
+        $user = match ($kind) {
+            // an Eloquent Attribute accessor: protected, so calling it from outside would be a BadMethodCallException
+            'protected accessor' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                protected function initials(): Attribute
+                {
+                    return Attribute::get(fn () => 'XQ');
+                }
+            },
+            'public attribute' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function initials(): Attribute
+                {
+                    return Attribute::get(fn () => 'XQ');
+                }
+            },
+            'public null' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function initials(): ?string
+                {
+                    return null;
+                }
+            },
+        };
+        Auth::setUser($user);
+
+        expect(trim(domQuery(accountMenuHtml($layout), '//button[@aria-label="Account"]')[0]->textContent))->toBe('AD');
+    })->with(['layouts.sidebar', 'layouts.header'])->with(['protected accessor', 'public attribute', 'public null']);
+
+    it('accepts a Stringable from initials()', function (string $layout) {
+        Auth::setUser(new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+            protected $guarded = [];
+
+            public function initials(): \Stringable
+            {
+                return str('XQ');
+            }
+        });
+
+        expect(trim(domQuery(accountMenuHtml($layout), '//button[@aria-label="Account"]')[0]->textContent))->toBe('XQ');
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('renders the account menu for a guest', function (string $layout) {
+        expect(accountMenuHtml($layout))->toContain('OUT');
     })->with(['layouts.sidebar', 'layouts.header']);
 
     it('prefers the user model\'s own initials()', function (string $layout) {
