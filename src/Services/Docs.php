@@ -9,7 +9,7 @@ class Docs
     const CATEGORIES = [
         'Form inputs' => ['input', 'textarea', 'select', 'checkbox', 'radio', 'toggle', 'date-picker', 'time-picker', 'uploader', 'editor', 'tiptap'],
         'Buttons & links' => ['button', 'link'],
-        'Display & typography' => ['heading', 'subheading', 'caption', 'label', 'avatar', 'badge', 'status', 'stat', 'card', 'callout', 'skeleton', 'placeholder-bar', 'empty', 'profile', 'icon', 'logo'],
+        'Display & typography' => ['heading', 'subheading', 'caption', 'label', 'avatar', 'badge', 'status', 'stat', 'timeline', 'card', 'callout', 'skeleton', 'placeholder-bar', 'empty', 'profile', 'icon', 'logo'],
         'Feedback & overlays' => ['modal', 'alert', 'toast', 'confirm', 'tooltip', 'dropdown', 'lightbox'],
         'Layout & navigation' => ['form', 'table', 'tabs', 'list', 'menu', 'navlist', 'breadcrumbs', 'page', 'calendar', 'separator', 'layouts'],
     ];
@@ -23,6 +23,10 @@ class Docs
         'app-shell-sidebar' => 'App shell (sidebar)',
         'app-shell-header' => 'App shell (top nav)',
         'record-page' => 'Record page',
+        'list-page' => 'List page',
+        'document-page' => 'Document page',
+        'form-page' => 'Form page',
+        'slide-over-form' => 'Slide-over form',
     ];
 
     /**

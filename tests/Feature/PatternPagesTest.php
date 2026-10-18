@@ -81,6 +81,10 @@ describe('docs navigation', function () {
             ->toContain('App shell (sidebar)')
             ->toContain('App shell (top nav)')
             ->toContain('Record page')
+            ->toContain('List page')
+            ->toContain('Document page')
+            ->toContain('Form page')
+            ->toContain('Slide-over form')
             ->toContain('/atom/docs/patterns/app-shell-header');
     });
 });
@@ -160,18 +164,18 @@ describe('record page pattern', function () {
         expect(domQuery(view('atom::docs.patterns.record-page')->render(), '//*[@data-atom-page-tabs]//*[@aria-current="page"]')[0]->textContent)->toContain('Overview');
     });
 
-    it('uses generic names and data only', function () {
-        $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/docs/patterns/record-page.blade.php');
+    it('uses generic names and data only', function (string $page) {
+        $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/docs/patterns/'.$page.'.blade.php');
 
         // the names a public pattern page must never carry, written in halves so this file passes the repo grep too
-        $private = [['humble', 'bear'], ['smg', 'dms'], ['firm', 'hive'], ['too', 'crm'], ['smg', 'auto'], ['mint', 'comm']];
+        $private = [['humble', 'bear'], ['smg', 'dms'], ['firm', 'hive'], ['too', 'crm'], ['smg', 'auto'], ['mint', 'comm'], ['web', 'rock'], ['api', 'kan'], ['seri ', 'mutiara'], ['harbour ', 'line'], ['jiannius ', 'tech']];
 
         foreach ($private as [$a, $b]) {
             expect(strtolower($source))->not->toContain($a.$b);
         }
 
         expect($source)->not->toContain('/Us'.'ers/')->not->toContain('/pri'.'vate/');
-    });
+    })->with(['record-page', 'list-page', 'document-page', 'form-page', 'slide-over-form']);
 });
 
 describe('page component docs', function () {
@@ -181,13 +185,14 @@ describe('page component docs', function () {
         $html = view('atom::docs.demos.'.$name)->render();
 
         expect($html)->toContain('data-atom-')->and(view()->exists('atom::docs.demos.'.$name))->toBeTrue();
-    })->with(['status', 'stat', 'page', 'empty']);
+    })->with(['status', 'stat', 'page', 'empty', 'timeline']);
 
     it('lists the new components under their categories', function () {
         $docs = new Docs;
 
         expect($docs->category('status'))->toBe('Display & typography')
             ->and($docs->category('stat'))->toBe('Display & typography')
+            ->and($docs->category('timeline'))->toBe('Display & typography')
             ->and($docs->category('page'))->toBe('Layout & navigation')
             ->and($docs->component('page')['props'])->toContain(['name' => 'width', 'default' => null])
             ->and(collect($docs->component('stat')['props'])->pluck('name')->all())->toContain('label', 'value', 'prefix', 'delta', 'inverse', 'breakdown', 'href');
@@ -225,5 +230,244 @@ describe('one primary action', function () {
 
         expect($skill)->toContain('warning for waiting, blocked or needs attention, danger for failed or overdue')
             ->and($skill)->not->toContain('the next step creates the first one, `variant="primary"`');
+    });
+});
+
+
+// V4-2c: the list page, the document page, the form page and the slide-over form: live pages built from atom's own components.
+describe('list page pattern', function () {
+    it('is one panel: the saved views, the toolbar and a frameless table, under a header and a totals strip', function () {
+        $html = view('atom::docs.patterns.list-page')->render();
+        $panel = domQuery($html, '//*[@data-testid="list-panel"]');
+
+        expect($panel)->toHaveCount(1)
+            ->and(domQuery($html, '//main//*[@data-atom-page]/header[@data-atom-page-header]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-page]/*[@data-atom-stat-group]/*[@data-atom-stat]'))->toHaveCount(4)
+            ->and(domQuery($html, '//*[@data-testid="list-panel"]/nav[@data-atom-table-views]/*[@data-atom-table-view]'))->toHaveCount(5)
+            ->and(domQuery($html, '//*[@data-testid="list-panel"]/*[@data-atom-table-toolbar]//*[@data-atom-table-search]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="list-panel"]//*[@data-atom-table][@data-atom-table-frameless]'))->toHaveCount(1);
+    });
+
+    it('draws it in the top-nav shell too', function () {
+        $html = view('atom::docs.patterns.list-page', ['shell' => 'header'])->render();
+
+        expect(domQuery($html, '//*[@data-atom-header-bar]'))->not->toBeEmpty()
+            ->and(domQuery($html, '//main//*[@data-testid="list-panel"]'))->toHaveCount(1);
+    });
+
+    it('takes the counts from the rows and shows the chosen view', function (string $view, int $rows) {
+        request()->query->set('view', $view);
+
+        $html = view('atom::docs.patterns.list-page')->render();
+        $chosen = domQuery($html, '//*[@data-atom-table-view][@aria-pressed="true"]');
+
+        expect($chosen)->toHaveCount(1)
+            ->and($chosen[0]->getAttribute('data-value'))->toBe($view)
+            ->and(trim(domQuery($html, '//*[@data-atom-table-view][@aria-pressed="true"]//*[@data-atom-table-view-count]')[0]->textContent))->toBe((string) $rows)
+            ->and(domQuery($html, '//*[@data-atom-table]//tbody/tr'))->toHaveCount($rows);
+    })->with([['all', 8], ['unpaid', 4], ['overdue', 2], ['paid', 3], ['draft', 1]]);
+
+    it('puts money in a numeric column named once in the header, and identifiers in the mono style', function () {
+        $html = view('atom::docs.patterns.list-page')->render();
+        $header = domQuery($html, '//thead//th[contains(@class, "text-right")]');
+
+        expect($header)->toHaveCount(1)
+            ->and(trim($header[0]->textContent))->toBe('Amount (RM)')
+            ->and(domQuery($html, '//tbody/tr/td[contains(@class, "tabular-nums")]'))->toHaveCount(8)
+            ->and(domQuery($html, '//tbody//span[contains(@class, "font-id")]'))->toHaveCount(8)
+            ->and(domQuery($html, '//tbody//td[contains(., "RM")]'))->toBeEmpty();
+    });
+
+    it('has one primary action, the header\'s, and a status with a word on every row', function () {
+        $html = view('atom::docs.patterns.list-page')->render();
+
+        expect(domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-page-actions]//*[@data-testid="list-primary"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//tbody//*[@data-atom-status]'))->toHaveCount(8);
+    });
+
+    it('does not choke on a view that is an array or unknown', function () {
+        request()->query->set('view', ['x']);
+        expect(domQuery(view('atom::docs.patterns.list-page')->render(), '//*[@data-atom-table-view][@aria-pressed="true"]')[0]->getAttribute('data-value'))->toBe('all');
+
+        request()->query->set('view', 'nope');
+        expect(domQuery(view('atom::docs.patterns.list-page')->render(), '//*[@data-atom-table-view][@aria-pressed="true"]')[0]->getAttribute('data-value'))->toBe('all');
+    });
+});
+
+describe('document page pattern', function () {
+    it('is a header, the document as paper and a rail with the balance, the details and the history', function () {
+        $html = view('atom::docs.patterns.document-page')->render();
+
+        expect(domQuery($html, '//main//*[@data-atom-page]/header[@data-atom-page-header]'))->toHaveCount(1)
+            ->and(domQuery($html, '//article[@data-testid="paper"]//table//tbody/tr'))->toHaveCount(4)
+            ->and(domQuery($html, '//*[@data-testid="balance-box"]//*[@data-atom-progress]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="history"]//*[@data-atom-timeline][@data-kind="event"]/ol/li'))->toHaveCount(4);
+    });
+
+    it('has one primary action and it follows the state', function (string $status, string $action, int $events) {
+        request()->query->set('status', $status);
+
+        $html = view('atom::docs.patterns.document-page')->render();
+
+        expect(domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="document-primary"]')[0]->textContent)->toContain($action)
+            ->and(domQuery($html, '//*[@data-testid="history"]//li'))->toHaveCount($events);
+    })->with([['overdue', 'Record payment', 4], ['draft', 'Send invoice', 1], ['paid', 'Download receipt', 2]]);
+
+    it('adds up: the total is the lines plus the tax, and the balance is the total less what was received', function () {
+        $html = view('atom::docs.patterns.document-page')->render();
+        $amounts = array_map(fn ($td) => (float) str_replace(',', '', trim($td->textContent)), domQuery($html, '//article//tbody/tr/td[4]'));
+        $totals = array_map(fn ($dd) => (float) str_replace(['−', ','], ['-', ''], trim($dd->textContent)), domQuery($html, '//*[@data-testid="totals"]//dd'));
+
+        // subtotal, tax, total, paid, balance
+        expect(array_sum($amounts))->toBe($totals[0])
+            ->and(round($totals[0] + $totals[1], 2))->toBe($totals[2])
+            ->and(round($totals[2] + $totals[3], 2))->toBe($totals[4]);
+    });
+
+    it('keeps the paper its own colours, in a deliberately unthemed document', function () {
+        $paper = domQuery(view('atom::docs.patterns.document-page')->render(), '//article[@data-testid="paper"]')[0];
+
+        expect(domClasses($paper))->toContain('bg-[#fffefc]', 'text-[#1d1c19]');
+    });
+
+    it('does not choke on a status that is an array or unknown', function () {
+        request()->query->set('status', ['x']);
+        expect(domQuery(view('atom::docs.patterns.document-page')->render(), '//*[@data-testid="document-primary"]')[0]->textContent)->toContain('Record payment');
+
+        request()->query->set('status', 'nope');
+        expect(domQuery(view('atom::docs.patterns.document-page')->render(), '//*[@data-testid="document-primary"]')[0]->textContent)->toContain('Record payment');
+    });
+});
+
+describe('form page pattern', function () {
+    it('is a form of four sections and a save bar, in a narrow page', function () {
+        $html = view('atom::docs.patterns.form-page')->render();
+
+        expect(domQuery($html, '//main//*[@data-atom-page]//form[@data-atom-form]'))->toHaveCount(1)
+            ->and(domQuery($html, '//form/*[@data-atom-form-section]'))->toHaveCount(4)
+            ->and(domQuery($html, '//form/*[@data-atom-form-section][@data-layout="aside"]'))->toHaveCount(4)
+            ->and(domQuery($html, '//form/*[@data-atom-save-bar]'))->toHaveCount(1)
+            // the bar is the last thing in the form
+            ->and(domQuery($html, '//form/*[@data-atom-save-bar]/following-sibling::*'))->toBeEmpty()
+            ->and(domClasses(domQuery($html, '//*[@data-testid="form-page"]')[0]))->toContain('max-w-[980px]');
+    });
+
+    it('stacks every section with ?layout=stacked', function () {
+        request()->query->set('layout', 'stacked');
+
+        expect(domQuery(view('atom::docs.patterns.form-page')->render(), '//form/*[@data-atom-form-section][@data-layout="stacked"]'))->toHaveCount(4);
+    });
+
+    it('falls back to aside for any other layout, or an array', function () {
+        request()->query->set('layout', ['stacked']);
+        expect(domQuery(view('atom::docs.patterns.form-page')->render(), '//form/*[@data-atom-form-section][@data-layout="aside"]'))->toHaveCount(4);
+
+        request()->query->set('layout', 'nope');
+        expect(domQuery(view('atom::docs.patterns.form-page')->render(), '//form/*[@data-atom-form-section][@data-layout="aside"]'))->toHaveCount(4);
+    });
+
+    it('has one primary action, the submit in the save bar, and totals at the start of the bar', function () {
+        $html = view('atom::docs.patterns.form-page')->render();
+        $primary = domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]');
+
+        expect($primary)->toHaveCount(1)
+            ->and($primary[0]->getAttribute('type'))->toBe('submit')
+            ->and(domQuery($html, '//*[@data-atom-save-bar]//*[@data-atom-form-actions-buttons]//*[@data-testid="form-primary"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-save-bar]/*[@data-atom-form-actions-start]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="grand-total"]')[0]->textContent)->toContain('RM');
+    });
+
+    it('lists the lines with money in numeric columns', function () {
+        $html = view('atom::docs.patterns.form-page')->render();
+
+        expect(domQuery($html, '//*[@data-atom-table-frameless]//thead//th[contains(@class, "text-right")]'))->toHaveCount(3)
+            ->and(domQuery($html, '//*[@data-atom-table-frameless]//tbody/tr'))->toHaveCount(3);
+    });
+
+    it('draws in the top-nav shell too', function () {
+        expect(domQuery(view('atom::docs.patterns.form-page', ['shell' => 'header'])->render(), '//*[@data-atom-header-bar]'))->not->toBeEmpty();
+    });
+});
+
+describe('slide-over form pattern', function () {
+    it('is a slide-over with stacked sections and the pinned bar, over a list', function () {
+        $html = view('atom::docs.patterns.slide-over-form')->render();
+        $modal = domQuery($html, '//dialog[@data-testid="slide-over"]');
+
+        expect($modal)->toHaveCount(1)
+            ->and(domQuery($html, '//dialog//form/*/*[@data-atom-form-section][@data-layout="stacked"]'))->toHaveCount(3)
+            ->and(domQuery($html, '//dialog//form/*[@data-atom-form-actions]'))->toHaveCount(1)
+            ->and(domClasses(domQuery($html, '//dialog//*[@data-atom-form-actions]')[0]))->toContain('sticky', '-bottom-6')
+            ->and(domQuery($html, '//dialog//*[@data-atom-page-header]//h2'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="slide-over-page"]//*[@data-atom-table]'))->toHaveCount(1);
+    });
+
+    it('opens from the header primary, and on load with ?open=1', function () {
+        $closed = view('atom::docs.patterns.slide-over-form')->render();
+
+        expect(domQuery($closed, '//*[@data-testid="open-slide-over"]')[0]->getAttribute('x-on:click'))->toContain("atom.modal('new-customer').slide()")
+            ->and($closed)->not->toContain("\$nextTick(() => atom.modal('new-customer')");
+
+        request()->query->set('open', '1');
+
+        expect(view('atom::docs.patterns.slide-over-form')->render())->toContain("\$nextTick(() => atom.modal('new-customer').slide())");
+    });
+
+    it('has one primary action on the page and one in the slide-over: the submit', function () {
+        $html = view('atom::docs.patterns.slide-over-form')->render();
+
+        expect(domQuery($html, '//dialog//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//dialog//*[@data-testid="slide-over-submit"]')[0]->getAttribute('type'))->toBe('submit')
+            ->and(domQuery($html, '//*[@data-atom-page-actions]//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]'))->toHaveCount(1);
+    });
+});
+
+describe('new component docs', function () {
+    it('has a demo example for every new table and form part, listed on its component page', function (string $name, string $demo) {
+        $page = file_get_contents(dirname(__DIR__, 2).'/resources/views/docs/demos/'.$name.'.blade.php');
+
+        expect(view()->exists('atom::docs.demos.'.$demo))->toBeTrue()
+            ->and($page)->toContain('view="atom::docs.demos.'.$demo.'"');
+    })->with([
+        ['table', 'table.frameless'],
+        ['table', 'table.numeric'],
+        ['table', 'table.toolbar'],
+        ['table', 'table.views'],
+        ['form', 'form.section'],
+        ['form', 'form.section-stacked'],
+        ['form', 'form.section-footer'],
+        ['form', 'form.save-bar'],
+        ['timeline', 'timeline.event'],
+        ['timeline', 'timeline.step'],
+        ['timeline', 'timeline.message'],
+    ]);
+
+    it('renders each new demo and shows its source', function (string $demo) {
+        registerDocsRoutes();
+
+        $html = view('atom::docs.demos.'.$demo)->render();
+
+        expect($html)->toContain('data-atom-');
+    })->with(['table.frameless', 'table.numeric', 'table.toolbar', 'table.views', 'form.section', 'form.section-stacked', 'form.section-footer', 'form.save-bar', 'timeline.event', 'timeline.step', 'timeline.message']);
+
+    it('lists the props of the new components', function () {
+        $docs = new Docs;
+
+        expect(collect($docs->component('timeline')['props'])->pluck('name')->all())->toContain('kind', 'label', 'collapsible')
+            ->and(collect($docs->component('table')['props'])->pluck('name')->all())->toContain('frameless');
+    });
+});
+
+describe('one primary action, V4-2c', function () {
+    $primaries = fn (string $html) => domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]');
+
+    it('keeps every page pattern to one primary button', function (string $page) use ($primaries) {
+        expect($primaries(view('atom::docs.patterns.'.$page)->render()))->toHaveCount(1);
+    })->with(['list-page', 'document-page', 'form-page', 'record-page']);
+
+    it('keeps the slide-over page to its header primary plus the slide-over\'s submit', function () use ($primaries) {
+        expect($primaries(view('atom::docs.patterns.slide-over-form')->render()))->toHaveCount(2);
     });
 });

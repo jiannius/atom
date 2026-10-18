@@ -55,6 +55,9 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-url-filters', UrlFiltersFixture::class);
         Livewire::component('atom-e2e-shell-actions', ShellActionsFixture::class);
         Livewire::component('atom-e2e-page-header-slide', PageHeaderSlideFixture::class);
+        Livewire::component('atom-e2e-table-views', TableViewsFixture::class);
+        Livewire::component('atom-e2e-timeline', TimelineFixture::class);
+        Livewire::component('atom-e2e-slide-over-form', SlideOverFormFixture::class);
         Livewire::component('atom-e2e-calendar', CalendarFixture::class);
         Livewire::component('atom-e2e-calendar-look', CalendarLookFixture::class);
 
@@ -87,7 +90,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/consumer-tailwind', fn () => view('atom::e2e.consumer-tailwind'));
         // The two shell pattern pages (resources/views/docs/patterns), on the consumer's Tailwind: ?tw=floor|latest, ?dark=1.
         // header-wide is the worst case for the bar: long labels, a count on each, a context switcher and a search field.
-        foreach (['sidebar' => 'docs.patterns.app-shell-sidebar', 'header' => 'docs.patterns.app-shell-header', 'header-wide' => 'e2e.shell-header-wide', 'record' => 'docs.patterns.record-page'] as $shell => $pattern) {
+        foreach (['sidebar' => 'docs.patterns.app-shell-sidebar', 'header' => 'docs.patterns.app-shell-header', 'header-wide' => 'e2e.shell-header-wide', 'record' => 'docs.patterns.record-page', 'list' => 'docs.patterns.list-page', 'document' => 'docs.patterns.document-page', 'form' => 'docs.patterns.form-page', 'slide-over' => 'docs.patterns.slide-over-form'] as $shell => $pattern) {
             Route::middleware('web')->get('/atom/e2e/shell-'.$shell, function (Request $request) use ($pattern) {
                 Auth::setUser(new class(['id' => 1, 'name' => 'Alex Doe', 'email' => 'alex@example.com', 'avatar' => null]) extends GenericUser {
                     public function initials(): string
@@ -106,6 +109,10 @@ class E2EServiceProvider extends ServiceProvider
                 ]);
             });
         }
+        // V4-2c: saved views, the toolbar and the bulk bar; the three timeline kinds; a form.modal slide-over. On the consumer's Tailwind.
+        Route::middleware('web')->get('/atom/e2e/table-views', fn () => view('atom::e2e.table-views'));
+        Route::middleware('web')->get('/atom/e2e/timeline', fn () => view('atom::e2e.timeline'));
+        Route::middleware('web')->get('/atom/e2e/slide-over-form', fn () => view('atom::e2e.slide-over-form'));
         Route::middleware('web')->get('/atom/e2e/page-width', fn () => view('atom::e2e.page-width'));
         Route::middleware('web')->get('/atom/e2e/page-header-slide', fn () => view('atom::e2e.page-header-slide'));
         // status tones, stats and the empty states, on the consumer's Tailwind: ?tw=floor|latest, ?dark=1, ?accent=#rrggbb
