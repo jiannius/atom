@@ -567,7 +567,7 @@ The slots are the same, but a few land differently, because the two shells are l
 
 The sidebar's top bar is not drawn from `lg` up when `crumbs`, `actions` and `dark` are all empty (below `lg` it still holds the menu button and the account).
 
-The default profile card reads `auth()->user()`: `avatar` (a URL; none, or a model that has no such attribute, gives initials), `name` and `email`. The initials come from the model's public `initials()` method if it returns a string; otherwise (no method, a protected `Attribute` accessor, another return type) they are the first letters of the first two words of `name`, uppercase.
+The default profile card reads `auth()->user()`: `avatar` (a URL; none, or a model that has no such attribute, gives initials), `name` and `email`. The initials come from the model's public `initials()` method if it returns a string; otherwise (no method, a protected `Attribute` accessor, another return type, a blank string) they are the first letters of the first two words of `name`, uppercase.
 
 `<main>` is unpadded in both: padding belongs to the page. See both shells as live pages, with one shared nav partial, under **Patterns** in `/atom/docs` (source: `resources/views/docs/patterns/`).
 

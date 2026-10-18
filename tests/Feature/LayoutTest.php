@@ -584,6 +584,22 @@ describe('the shells\' slots', function () {
                     return Attribute::get(fn () => 'XQ');
                 }
             },
+            'public blank' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function initials(): string
+                {
+                    return "  \n";
+                }
+            },
+            'public empty' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
+                protected $guarded = [];
+
+                public function initials(): string
+                {
+                    return '';
+                }
+            },
             'public null' => new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
                 protected $guarded = [];
 
@@ -596,7 +612,7 @@ describe('the shells\' slots', function () {
         Auth::setUser($user);
 
         expect(trim(domQuery(accountMenuHtml($layout), '//button[@aria-label="Account"]')[0]->textContent))->toBe('AD');
-    })->with(['layouts.sidebar', 'layouts.header'])->with(['protected accessor', 'public attribute', 'public null']);
+    })->with(['layouts.sidebar', 'layouts.header'])->with(['protected accessor', 'public attribute', 'public blank', 'public empty', 'public null']);
 
     it('accepts a Stringable from initials()', function (string $layout) {
         Auth::setUser(new class(['name' => 'Alex Doe']) extends \Illuminate\Foundation\Auth\User {
@@ -609,6 +625,16 @@ describe('the shells\' slots', function () {
         });
 
         expect(trim(domQuery(accountMenuHtml($layout), '//button[@aria-label="Account"]')[0]->textContent))->toBe('XQ');
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    // GenericUser::__get is `$this->attributes[$key]`: a missing key is an ErrorException, not null.
+    it('renders the default profile card for a GenericUser with no name, email or avatar', function (string $layout) {
+        Auth::setUser(new \Illuminate\Auth\GenericUser(['id' => 1]));
+
+        $html = accountMenuHtml($layout);
+
+        expect($html)->toContain('OUT')
+            ->and(domQuery($html, '//button[@aria-label="Account"]'))->not->toBeEmpty();
     })->with(['layouts.sidebar', 'layouts.header']);
 
     it('renders the account menu for a guest', function (string $layout) {
