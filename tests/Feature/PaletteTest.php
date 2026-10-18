@@ -343,7 +343,8 @@ describe('palette', function () {
         //    neither half — `border-b hover:border-zinc-300 dark:border-zinc-700` still
         //    rests at currentColor. Same allow-list the muted checks keep.
         $palette = 'zinc|gray|slate|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose';
-        $named = 'white|black|transparent|muted|muted-foreground';
+        // `border` and `border-strong` are the v4 hairline role tokens (`divide-border`): each one is a defined light-mode colour
+        $named = 'white|black|transparent|muted|muted-foreground|border|border-strong';
         $states = ['hover', 'focus', 'focus-visible', 'focus-within', 'active', 'disabled', 'group-hover', 'peer-hover'];
 
         $length = '(?:length:)?[\d.]+(?:px|rem|em|ex|ch|%|vw|vh|vmin|vmax|pt|pc|cm|mm|in)?';

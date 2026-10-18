@@ -30,7 +30,7 @@ it('merges the caller attributes onto the th, not the inner wrapper', function (
         ->toMatch('/<th[^>]*\bhidden lg:table-cell\b/')
         ->toMatch('/<th[^>]*data-column="out-date"/')
         // the component's own layout classes stay on the wrapper
-        ->toMatch('/<div[^>]*\bpy-1\.5 px-3\b/');
+        ->toMatch('/<div[^>]*\bpx-row py-2\b/');
 
     // and the caller's class lands once, not on both elements
     expect(substr_count($html, 'lg:table-cell'))->toBe(1);

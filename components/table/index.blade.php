@@ -6,6 +6,7 @@
     'trashed' => false,
     'selectAll' => false,
     'stickySelection' => false,
+    'frameless' => false,
 ])
 
 @php
@@ -37,6 +38,13 @@ $onFilterChanged = $stickySelection
 // makes the flow impossible. The two bars stack there.
 $showHeader = $stickySelection ? 'true' : '!$wire._table.checkboxes.length';
 
+// `frameless` is for a table that sits inside a panel the page already draws (a list with saved views and a toolbar
+// above it): no outer box of its own, the header and checked bars become hairline strips, and the rows keep their
+// hairlines. The framed table (the default) is the same table in its own panel.
+$frameless = (bool) $frameless;
+
+$stripClasses = $frameless ? 'border-b px-3 py-2.5' : '';
+
 if (!$showSkeleton && !is_bool($empty)) {
     if ($paginate) $empty = !$paginate->total();
     else $empty = isset($rows) && !strip_tags($rows->toHtml());
@@ -44,12 +52,13 @@ if (!$showSkeleton && !is_bool($empty)) {
 @endphp
 
 <div
-{{ $attributes->merge(['x-data' => '{}'])->class('group/table space-y-4') }}
+{{ $attributes->merge(['x-data' => '{}'])->class(['group/table min-w-0 max-w-full', 'space-y-4' => ! $frameless]) }}
 x-on:table-filter:changed.window="{!! $onFilterChanged !!}"
-data-atom-table>
+data-atom-table
+@if ($frameless) data-atom-table-frameless @endif>
     @if (isset($checked) && $checked->isNotEmpty())
         <template x-if="$wire._table.checkboxes.length || $wire._table.select_all" hidden>
-            <div class="min-h-10 flex items-center gap-3" data-atom-table-checked>
+            <div class="{{ Arr::toCssClasses(['min-h-10 flex items-center gap-3', $stripClasses]) }}" data-atom-table-checked>
                 <div class="shrink-0 flex items-center gap-2 text-sm font-medium text-zinc-400">
                     <atom:icon.double-check class="size-5"/>
                     <div>
@@ -101,7 +110,7 @@ data-atom-table>
     @if (isset($header) || $trashed)
         <template x-if="{!! $showHeader !!}" hidden>
             @isset ($header)
-                <div {{ $header->attributes->class(['min-h-10', $header->attributes->get('class', 'flex flex-wrap items-center gap-3')]) }}>
+                <div {{ $header->attributes->class(['min-h-10', $header->attributes->get('class', 'flex flex-wrap items-center gap-3'), $stripClasses]) }}>
                     {{ $header }}
 
                     @if ($trashed)
@@ -109,18 +118,23 @@ data-atom-table>
                     @endif
                 </div>
             @else
-                <div class="min-h-10 flex flex-wrap items-center gap-3">
+                <div class="{{ Arr::toCssClasses(['min-h-10 flex flex-wrap items-center gap-3', $stripClasses]) }}">
                     <div class="ml-auto shrink-0"><atom:table.trashed :variant="is_string($trashed) ? $trashed : 'archived'" /></div>
                 </div>
             @endisset
         </template>
     @endif
     
-    <div class="relative">
-        <div class="overflow-hidden rounded-lg bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 shadow-xs divide-y divide-zinc-200 dark:divide-zinc-700">
-            <div class="relative overflow-x-auto">
+    <div class="relative min-w-0">
+        <div @class([
+            'min-w-0 divide-y divide-border',
+            'overflow-hidden rounded-panel border bg-surface' => ! $frameless,
+        ])>
+            {{-- the scroll box: a wide table scrolls sideways in here, never the page (min-w-0 on every ancestor up to the root,
+                 or a grid or flex parent such as <atom:page> grows to the table's width instead) --}}
+            <div class="relative min-w-0 overflow-x-auto" data-atom-table-scroll>
                 @if ($showSkeleton)
-                    <div class="animate-pulse divide-y divide-zinc-200 dark:divide-zinc-700" data-atom-table-skeleton>
+                    <div class="animate-pulse divide-y divide-border" data-atom-table-skeleton>
                         @for ($i = 0; $i < $skeletonRows; $i++)
                             <div class="py-4 px-4" data-atom-table-skeleton-row>
                                 <atom:placeholder-bar size="{{ [45, 70, 55, 80, 50][$i % 5] }}%x10" />
@@ -130,7 +144,7 @@ data-atom-table>
                 @elseif ($empty)
                     <atom:empty />
                 @else
-                    <table class="min-w-full text-zinc-800 divide-y divide-zinc-200 dark:divide-zinc-700">
+                    <table class="min-w-full text-fg divide-y divide-border">
                         @if (isset($columns) && $columns->isNotEmpty())
                             <thead data-atom-table-columns>
                                 <tr {{ $columns->attributes }}>
@@ -140,7 +154,7 @@ data-atom-table>
                         @endif
 
                         @if (isset($rows) && $rows->isNotEmpty())
-                            <tbody {{ $rows->attributes->class(['divide-y divide-zinc-200 dark:divide-zinc-700']) }} data-atom-table-rows>
+                            <tbody {{ $rows->attributes->class(['divide-y divide-border']) }} data-atom-table-rows>
                                 {{ $rows }}
                             </tbody>
                         @endif
@@ -185,7 +199,7 @@ data-atom-table>
         <div
         wire:loading.flex
         wire:target="gotoPage,nextPage,previousPage,_table.sort.column,_table.sort.direction,_table.max_rows,_table.show_trashed"
-        class="absolute inset-0 z-10 justify-center rounded-lg bg-white/60 dark:bg-zinc-800/60"
+        class="{{ Arr::toCssClasses(['absolute inset-0 z-10 justify-center bg-surface/60', 'rounded-panel' => ! $frameless]) }}"
         data-atom-table-loading>
             {{-- Two stacked constraints, because one is not enough. The strut is a
                  viewport-tall box capped to the table, so centring in it lands the

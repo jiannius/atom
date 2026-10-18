@@ -2,6 +2,7 @@
     'align' => 'left',
     'sort' => null,
     'checkbox' => false,
+    'numeric' => false,
 ])
 
 @php
@@ -13,10 +14,14 @@ $sortValue = $sort && str($sort)->startsWith('raw:')
     ? \Jiannius\Atom\Services\TableSort::sign(str($sort)->after('raw:')->toString())
     : $sort;
 
+// A numeric column (money, quantities) lines its figures up on the right; the header follows. Name the currency in the
+// header ("Amount (RM)"), not in every cell.
+$align = $numeric ? 'right' : $align;
+
+// The header is a quiet 12px label in the cell's own padding, not an uppercase one.
 $classes = Arr::toCssClasses([
-    'py-1.5 px-3 inline-flex items-center gap-2',
-    'uppercase text-sm text-zinc-500 font-medium',
-    'leading-6 tracking-wider',
+    'px-row py-2 inline-flex items-center gap-2',
+    'text-xs font-medium text-fg-subtle',
 
     match ($align) {
         'left' => 'justify-start',
@@ -24,7 +29,7 @@ $classes = Arr::toCssClasses([
         'right' => 'justify-end',
     },
 
-    $sort ? 'cursor-pointer text-zinc-900 dark:text-white underline decoration-dotted underline-offset-5' : '',
+    $sort ? 'cursor-pointer text-fg underline decoration-dotted underline-offset-4' : '',
 ]);
 @endphp
 
@@ -38,7 +43,7 @@ $classes = Arr::toCssClasses([
      the wrapper), and w-10 because under auto layout a width on the inner
      wrapper is only a hint. --}}
 <th {{ $attributes->class([
-    'p-1 bg-zinc-100 dark:bg-transparent border-b border-zinc-200 dark:border-zinc-700 sticky top-0 z-1',
+    'p-0 bg-surface border-b sticky top-0 z-1',
     '[:where(&)]:whitespace-nowrap',
     $checkbox ? 'w-10' : '',
     match ($align) {
@@ -107,7 +112,7 @@ $classes = Arr::toCssClasses([
         </div>
 
         @if ($sort)
-            <div x-show="$wire._table.sort.column" class="shrink-0 flex items-center justify-center text-zinc-500 size-3">
+            <div x-show="$wire._table.sort.column" class="shrink-0 flex items-center justify-center text-fg-subtle size-3">
                 <atom:icon.arrow-down class="size-3" x-show="$wire._table.sort.column === '{{ $sortValue }}' && $wire._table.sort.direction === 'asc'"/>
                 <atom:icon.arrow-up class="size-3" x-show="$wire._table.sort.column === '{{ $sortValue }}' && $wire._table.sort.direction === 'desc'"/>
             </div>
