@@ -452,7 +452,9 @@ An `href` is only followed if it is `http`, `https`, `mailto`, `tel`, `sms` or s
 | `<atom:callout>` | `icon`, `heading`, `content`, `variant` (`info`, `success`, `warning`, `danger`, `error`), `closeable`. |
 | `<atom:skeleton>` | Animated loading block. |
 | `<atom:placeholder-bar>` | `size="100%x20px"`. |
-| `<atom:empty>` | `icon` (default `inbox`), `size`, `subtle`, `heading`, `subheading`. |
+| `<atom:empty>` | `kind` (`first-use`, `no-results` (default), `error`), `icon`, `size` (`sm`), `subtle`, `heading`, `subheading`. Slot `action` holds the next step; a default slot replaces the heading and subheading. The large state draws its icon in once (CSS only; not at `sm` or `subtle`, not under `prefers-reduced-motion`). |
+| `<atom:status>` | `tone` (`neutral` (default), `info`, `success`, `warning`, `danger`, `accent`), `label` (or the slot), `running` (pulses the dot; still under `prefers-reduced-motion`). A dot plus a word: the word is always printed. |
+| `<atom:stat>` | One figure of a totals strip. `label`, `value` (or the slot), `prefix` (a small currency), `delta` (`+12%`, `-3`: up or down from the sign, with an arrow and a hidden word), `inverse` (a fall is the good news), `breakdown`, `tone` (`danger`, `warning`, `success`: tints the value), `href` (a clickable filter, through `safe_url()`). Sized by its content. Group: `<atom:stat.group>`, the outlined strip that wraps two to a row on a phone. |
 | `<atom:profile>` | `name`, `avatar`, `email`, `size`. |
 | `<atom:icon.*>` | 200+ icons. Examples: `<atom:icon.check/>`, `<atom:icon.arrow-left/>`, `<atom:icon.delete/>`. Browse `components/icon/`. |
 | `<atom:logo.*>` | Payment / brand marks: `apple-pay`, `fpx`, `google-pay`, `ipay88`, `master`, `senangpay`, `stripe`, `tng`, `visa`. |
@@ -502,6 +504,9 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:form.modal>` | `name`, `cols` (`auto`, `1`, `2`, `3`), `submit` (Save label), `dismissible`, `escapable`, `closeable`. Modal + form + sticky bar: Save on the left, and on the right the optional named slots `actions` (anything that should stay visible while the form scrolls, e.g. a running total) and `delete`, in that order. With only `delete`, or neither, the markup is unchanged. |
 | `<atom:table>` | `empty`, `paginate`, `maxRows` (array of row options), `skeleton`, `trashed`, `selectAll`, `stickySelection`. Slots: `columns`, `rows`, `header`, `checked` (bulk-action bar), `footer`. Children: `<atom:table.column>`, `<atom:table.row>`, `<atom:table.cell>`, `<atom:table.checkbox>`, `<atom:table.search>`, `<atom:table.filters>`, `<atom:table.trashed>`, `<atom:table.actions>`, `<atom:table.pagination>`. Driven by `$_table` state on the Livewire component. See [Table selection](#table-selection). |
 | `<atom:tabs>` | `tabs` (array), `size` (`sm`), `variant` (`button`, `border`). Child: `<atom:tabs.item>`. |
+| `<atom:page>` | The padded body of a screen (a shell's `<main>` is unpadded): a 1240px column, 26px above, 120px below, a 22px gap between its blocks. `width` (`narrow` is 980px, `full` has no cap). |
+| `<atom:page.header>` | Crumbs, the title (`<h1>`, 22px) with its status beside it, key facts, actions. Props: `title`, `level` (`1`; use `2` in a modal or slide-over), `size` (`sm` for a modal or slide-over), `crumbs` (`[['label' => ..., 'href' => ...], ...]`, the last is the current page), `facts` (strings or `['label' => ..., 'value' => ..., 'mono' => true]`). Slots: `status`, `meta` (more facts), `actions`, `menu` (the overflow menu's items), `primary` (the one action for the record's current status). |
+| `<atom:page.tabs>` | A record's sections as link tabs with counts. `tabs` (`['label' => ..., 'href' => ..., 'count' => ..., 'current' => true]`), `label` (the landmark's name). The current tab carries `aria-current="page"`. |
 | `<atom:list>` | `heading`, `scrollable` (default `true`). Child: `<atom:list.item>`. |
 | `<atom:menu>` | `popover`. Child: `<atom:menu.item>`. |
 | `<atom:navlist>` | Nav container, drawn as a column in `layouts.sidebar` and as bar items in `layouts.header` (a group becomes a dropdown there). Children: `<atom:navlist.item>`, `<atom:navlist.group>`, `<atom:navlist.badge>`. Items carry `aria-current="page"` when current. |
@@ -512,6 +517,26 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:layouts.auth>` | Centered auth layout (login, register, forgot password). Props: `title`, `noindex`, `dark`, `vite`. |
 | `<atom:layouts.sidebar>` | App layout: a 228px sidebar, a 48px sticky top bar and an unpadded `<main>`. Props: `title`, `noindex`, `dark`, `density`, `editor`, `scripts`, `styles`, `vite`. Slots: `brand`, `context`, `search`, `nav`, `navfoot`, `crumbs`, `actions`, `dropdown`, `profile`, `footer`. Pass `dark` to get the darkmode bootstrap and the top bar's switcher. |
 | `<atom:layouts.header>` | The top-nav twin, for an app with about six or fewer sections: a 52px sticky bar over a centred 1248px, unpadded `<main>`. **The same props and slots as `layouts.sidebar`, and the same `nav` markup**, so a host can choose the shell per user. Below `lg` (1024px) the nav becomes a menu button and a panel under the bar, with the `context` and `search` slots as its first two rows. From `lg` up the nav is priority-plus: items that do not fit move, in order, into a trailing "More" dropdown (a group becomes a labelled section in it). **Priority-plus applies to the first `<atom:navlist>` in the `nav` slot only**, so put the whole nav in one navlist (use `navfoot` for a second block that stays in the bar). |
+
+#### Pages
+
+`<atom:page>` pads the page; start it with `<atom:page.header>`, then stats, `<atom:page.tabs>` and the content, as siblings. A record page (header, status, totals strip, record tabs, the three empty states) is built in `resources/views/docs/patterns/record-page.blade.php`, also at `/atom/docs/patterns/record-page` in a local app.
+
+```blade
+<atom:page>
+    <atom:page.header title="Work order WO-1042" :crumbs="[['label' => 'Jobs', 'href' => route('jobs')], ['label' => 'WO-1042']]">
+        <x-slot:status><atom:status tone="info" running label="In progress" /></x-slot:status>
+        <x-slot:primary><atom:button size="sm" variant="primary">Mark as done</atom:button></x-slot:primary>
+    </atom:page.header>
+
+    <atom:stat.group>
+        <atom:stat label="Parts cost" prefix="RM" value="1,280.00" delta="+6%" inverse />
+        <atom:stat label="Open tasks" value="2" href="?tab=tasks" />
+    </atom:stat.group>
+</atom:page>
+```
+
+The header's crumbs and the shell's `crumbs` slot are two places for the same thing: use one. A level-1 `page.header` replaces the layout's hidden fallback `<h1>`; in a modal or a slide-over (for a form, never a whole record) pass `level="2" size="sm"`.
 
 #### Choosing a shell
 

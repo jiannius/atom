@@ -45,7 +45,8 @@ Never write `<x-atom::name>`, `<x-icon />`, or bespoke equivalents when an Atom 
 Views drift when they hand-roll what Atom already has.
 
 - Forms: `<atom:form.grid>`, `<atom:form.modal>` and `<atom:form.actions>`, never bare `grid-cols-2`.
-- Notices, status and empty lists: `<atom:callout>`, `<atom:badge>` and `<atom:empty>`, not hand-built boxes.
+- Notices, status and empty lists: `<atom:callout>`, `<atom:status>` and `<atom:empty>`, not hand-built boxes.
+- Screens: `<atom:page>`, `<atom:page.header>`; rules in the skill's Patterns section.
 - Navigation: `<atom:navlist>`, not hand-rolled links, in `<atom:layouts.sidebar>` or `<atom:layouts.header>`. Sections: `<atom:separator>`, not `<hr>`.
 - Give every border or divider a light-mode colour: `border-t border-zinc-200 dark:border-zinc-700`, since Tailwind v4 defaults to `currentColor`.
 @endverbatim
@@ -54,13 +55,12 @@ Views drift when they hand-roll what Atom already has.
 @verbatim
 ### Going deeper
 
-The rules above are the ones that apply to every view. The **`atom-components`
-skill** carries the rest — the `AtomComponent` trait and the method names it
-occupies, forms and reCAPTCHA, modals, tables (filters, bulk selection, sticky
-selection), navigation, patterns, breadcrumbs, the calendar, toast/alert/confirm, dropdowns, tooltips,
-status primitives, `<atom:select>` option sets, Actions and the `WebAction`
-contract, enums, the editor and the full sanitising rules, safe URLs, share buttons,
-mail, broadcasting, and the project conventions.
+The rules above apply to every view. The **`atom-components` skill** carries the rest: the
+`AtomComponent` trait and the method names it occupies, forms and reCAPTCHA, modals, tables,
+navigation, patterns, breadcrumbs, the calendar,
+toast/alert/confirm, dropdowns, tooltips, status primitives, `<atom:select>` option sets, Actions
+and the `WebAction` contract, enums, the editor and sanitising, safe URLs, share
+buttons, mail, broadcasting, and the project conventions.
 
 Activate it before writing non-trivial Atom markup or any Livewire component.
 The skill loads only if Boost skills are enabled (`boost.json`) and the agent supports
