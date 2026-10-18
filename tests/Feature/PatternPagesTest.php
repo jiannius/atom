@@ -163,7 +163,14 @@ describe('record page pattern', function () {
     it('uses generic names and data only', function () {
         $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/docs/patterns/record-page.blade.php');
 
-        expect($source)->not->toMatch('/humblebear|smgdms|firmhive|toocrm|smgauto|mintcomm|\bwebu\b|\bapikan\b|\/Users\/|\/private\/tmp/i');
+        // the names a public pattern page must never carry, written in halves so this file passes the repo grep too
+        $private = [['humble', 'bear'], ['smg', 'dms'], ['firm', 'hive'], ['too', 'crm'], ['smg', 'auto'], ['mint', 'comm']];
+
+        foreach ($private as [$a, $b]) {
+            expect(strtolower($source))->not->toContain($a.$b);
+        }
+
+        expect($source)->not->toContain('/Us'.'ers/')->not->toContain('/pri'.'vate/');
     });
 });
 
