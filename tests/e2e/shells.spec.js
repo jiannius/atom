@@ -840,18 +840,24 @@ test.describe('dark mode in the shells', () => {
 
     // the bar is the surface colour, a touch see-through over the canvas: items are measured against the canvas it lets through
     for (const name of ['Customers', 'Invoices']) {
-      expect(await contrast(page, await style(link(page, name), 'color'), canvas), `${name} on the bar`).toBeGreaterThanOrEqual(4.5)
+      // the original, not its "More" copy: the bar's own colour is what is measured
+      const item = page.locator('[data-atom-nav-shell] a[data-atom-navlist-item]:not([data-atom-more-copy] *):not([data-atom-more-copy])', { hasText: name })
+      expect(await contrast(page, await style(item, 'color'), canvas), `${name} on the bar`).toBeGreaterThanOrEqual(4.5)
     }
 
     const pill = page.locator('[data-atom-navlist-count]').first()
     expect(await contrast(page, await style(pill, 'color'), await style(pill, 'backgroundColor')), 'a count pill').toBeGreaterThanOrEqual(4.5)
 
-    const trigger = page.locator('[data-atom-navlist-group-trigger]', { hasText: 'Reports' })
-    await trigger.click()
-    const panel = page.locator('[data-atom-navlist-group-items]').first()
+    // Reports is in the bar or, with a wider system font (DejaVu on Linux CI), already moved into "More": open whichever shows
+    const reports = page.locator('[data-atom-navlist-group]:not([data-atom-header-more])', { has: page.locator('[data-atom-navlist-group-trigger]', { hasText: 'Reports' }) }).first()
+    const group = await reports.locator('[data-atom-navlist-group-trigger]').isVisible() ? reports : page.locator('[data-atom-header-more]')
+    await group.locator('[data-atom-navlist-group-trigger]').click()
+    const panel = group.locator('[data-atom-navlist-group-items]')
+    await expect(panel).toBeVisible()
     const raised = await style(panel, 'backgroundColor')
     expect(await luminance(page, raised)).toBeLessThan(3)
-    expect(await contrast(page, await style(link(page, 'Sales'), 'color'), raised), 'an item in the dropdown').toBeGreaterThanOrEqual(4.5)
+    const item = panel.locator('a[data-atom-navlist-item]').filter({ visible: true }).first()
+    expect(await contrast(page, await style(item, 'color'), raised), 'an item in the dropdown').toBeGreaterThanOrEqual(4.5)
   })
 
   test('the header shell menu panel on a small screen is dark too', async ({ page }) => {
