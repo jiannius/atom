@@ -442,3 +442,36 @@ describe('app shells in the skill', function () {
         expect($guideline)->toContain('<atom:layouts.header>')->and($guideline)->not->toContain('app-shell-sidebar');
     });
 });
+
+// The record page milestone: the rules a host's agent follows for a screen live in the skill's Patterns
+// section, with a pointer to each pattern page; the always-on guideline only points there.
+it('points the guideline at the page components and the skill at the record page pattern', function () {
+    $guideline = boostFile('guidelines/core.blade.php');
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+    expect($guideline)->toContain('<atom:page>')
+        ->and($guideline)->toContain('<atom:status>')
+        ->and($guideline)->toContain('Patterns section')
+        ->and($skill)->toContain('docs/patterns/record-page.blade.php')
+        ->and($skill)->toContain('One primary action per record status')
+        ->and($skill)->toContain('Status tones')
+        ->and($skill)->toContain('Empty states, three kinds')
+        ->and($skill)->toContain('`first-use`')
+        ->and($skill)->toContain('`no-results`')
+        ->and($skill)->toContain('`error`')
+        ->and($skill)->toContain('tabular')
+        ->and($skill)->toContain('font-id')
+        ->and($skill)->toContain('`--color-accent`')
+        ->and($skill)->toContain('`text-base` (14px)')
+        ->and($skill)->toContain('<atom:status tone=')
+        ->and($skill)->toContain('<atom:stat.group>');
+
+    // every pattern page the skill names exists
+    preg_match_all('#docs/patterns/([a-z-]+)\.blade\.php#', $skill, $found);
+
+    expect($found[1])->not->toBeEmpty();
+
+    foreach (array_unique($found[1]) as $name) {
+        expect(file_exists(__DIR__.'/../../resources/views/docs/patterns/'.$name.'.blade.php'))->toBeTrue($name);
+    }
+});

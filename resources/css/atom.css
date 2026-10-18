@@ -1367,3 +1367,64 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
         display: flex;
     }
 }
+
+/** Page components (V4-2b): status, stat group, page, empty. The look is utilities in each component's Blade; what
+    is here is what a page with no Tailwind build (the rig) or a host's utility must not be able to undo. */
+
+/* status: the dot of a running one pulses. Under prefers-reduced-motion it stays still: the word says "running". */
+@media (prefers-reduced-motion: no-preference) {
+    [data-atom-status][data-running] > [data-atom-status-dot] {
+        animation: atom-status-pulse 1.4s ease-in-out infinite;
+    }
+}
+
+@keyframes atom-status-pulse {
+    50% {
+        opacity: 0.25;
+    }
+}
+
+/* stat.group: the stats share one outline and one hairline between them (the group's gap shows its own background),
+   so a stat in a group has no chrome of its own. A stat is as wide as its label and value need and grows to fill a row. */
+[data-atom-stat-group] > [data-atom-stat] {
+    flex: 1 1 10.5rem;
+    border: 0;
+    border-radius: 0;
+}
+
+/* page: <atom:page> pads the page; the shell's <main> does not. In the top-nav shell the page's gutter is the bar's
+   (24px), so a page's content lines up with it. */
+@media (min-width: 64rem) {
+    [data-atom-header-bar] ~ [data-atom-main] [data-atom-page] {
+        padding-inline: max(1.5rem, env(safe-area-inset-left, 0px)) max(1.5rem, env(safe-area-inset-right, 0px));
+    }
+}
+
+/* A page that prints its own <h1> (page.header at level 1) replaces the layout's hidden fallback, so a screen reader
+   meets one h1. The fallback stays for a page without one. A page.header inside a modal is level 2 and does not match. */
+[data-atom-main]:has(h1[data-atom-page-header-title]) > [data-atom-page-title] {
+    display: none;
+}
+
+/* empty: the icon's strokes draw in once, about a second. The component gives every shape pathLength="1", so a dash of
+   1 is the whole stroke. Only the large empty state carries the marker (not `sm`), and not under prefers-reduced-motion.
+   The dash is dropped at the very end, so an icon that somehow had no pathLength is not left dashed. */
+@media (prefers-reduced-motion: no-preference) {
+    [data-atom-empty-icon] :is(path, circle, line, polyline, polygon, ellipse, rect) {
+        animation: atom-draw 1s var(--atom-ease, ease-out) 1 backwards;
+    }
+}
+
+@keyframes atom-draw {
+    from {
+        stroke-dasharray: 1;
+        stroke-dashoffset: 1;
+    }
+    99% {
+        stroke-dasharray: 1;
+    }
+    to {
+        stroke-dasharray: none;
+        stroke-dashoffset: 0;
+    }
+}

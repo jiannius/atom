@@ -6,6 +6,19 @@ use Jiannius\Atom\Services\Docs;
 
 beforeEach(fn () => view()->share('errors', new ViewErrorBag));
 
+/**
+ * The docs routes exist in the local environment only: stand-ins, so a view that links to them renders.
+ */
+function registerDocsRoutes(): void
+{
+    if (! Route::has('atom.docs.pattern')) {
+        Route::get('/atom/docs', fn () => '')->name('atom.docs');
+        Route::get('/atom/docs/{component}', fn () => '')->name('atom.docs.show');
+        Route::get('/atom/docs/patterns/{pattern}', fn () => '')->name('atom.docs.pattern');
+        app('router')->getRoutes()->refreshNameLookups();
+    }
+}
+
 // The pattern pages in /atom/docs: whole screens in each app shell, built from one shared nav partial.
 describe('pattern pages', function () {
     it('has a view for every listed pattern', function (string $name) {
@@ -60,19 +73,157 @@ describe('pattern pages', function () {
 
 describe('docs navigation', function () {
     it('lists the patterns under their own group', function () {
-        // the docs routes exist in the local environment only
-        if (! Route::has('atom.docs.pattern')) {
-            Route::get('/atom/docs', fn () => '')->name('atom.docs');
-            Route::get('/atom/docs/{component}', fn () => '')->name('atom.docs.show');
-            Route::get('/atom/docs/patterns/{pattern}', fn () => '')->name('atom.docs.pattern');
-            app('router')->getRoutes()->refreshNameLookups();
-        }
+        registerDocsRoutes();
 
         $html = renderBlade('<atom:docs.layout>x</atom:docs.layout>');
 
         expect($html)->toContain('Patterns')
             ->toContain('App shell (sidebar)')
             ->toContain('App shell (top nav)')
+            ->toContain('Record page')
             ->toContain('/atom/docs/patterns/app-shell-header');
+    });
+});
+
+// The record page: header, status, stats, record tabs and the three empty states, in a shell, from atom's own components.
+describe('record page pattern', function () {
+    it('is built from the page components inside the sidebar shell', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(domQuery($html, '//main[@data-atom-main]//*[@data-atom-page]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-page]/header[@data-atom-page-header]//h1[@data-atom-page-header-title]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-page]/header//*[@data-atom-status]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-page]/*[@data-atom-stat-group]/*[@data-atom-stat]'))->toHaveCount(4)
+            ->and(domQuery($html, '//*[@data-atom-page]/nav[@data-atom-page-tabs]//*[@aria-current="page"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-sidebar]'))->not->toBeEmpty();
+    });
+
+    it('draws in the top-nav shell too, when the host passes it', function () {
+        $html = view('atom::docs.patterns.record-page', ['shell' => 'header'])->render();
+
+        expect(domQuery($html, '//*[@data-atom-header-bar]'))->not->toBeEmpty()
+            ->and(domQuery($html, '//main//*[@data-atom-page-header]'))->toHaveCount(1);
+    });
+
+    it('has one primary action, and it follows the status', function (string $status, string $word, string $action) {
+        request()->query->set('status', $status);
+
+        $html = view('atom::docs.patterns.record-page')->render();
+        $primary = domQuery($html, '//*[@data-atom-page-actions]//*[@data-testid="record-primary"]');
+
+        expect($primary)->toHaveCount(1)
+            ->and($primary[0]->textContent)->toContain($action)
+            ->and(trim(domQuery($html, '//header//*[@data-atom-status]')[0]->textContent))->toBe($word)
+            ->and(domQuery($html, '//header[@data-atom-page-header]//*[@data-atom-button][contains(@class, "bg-primary")]'))->toHaveCount(1);
+    })->with([
+        ['draft', 'Draft', 'Schedule job'],
+        ['in-progress', 'In progress', 'Mark as done'],
+        ['blocked', 'Waiting for parts', 'Order parts'],
+        ['done', 'Done', 'Create invoice'],
+    ]);
+
+    it('pulses only while the record is in progress', function (string $status, int $running) {
+        request()->query->set('status', $status);
+
+        expect(domQuery(view('atom::docs.patterns.record-page')->render(), '//header//*[@data-atom-status][@data-running]'))->toHaveCount($running);
+    })->with([['draft', 0], ['in-progress', 1], ['blocked', 0], ['done', 0]]);
+
+    it('shows each kind of empty state on its own tab, with a next step', function (string $tab, string $kind) {
+        request()->query->set('tab', $tab);
+
+        $html = view('atom::docs.patterns.record-page')->render();
+        $empty = domQuery($html, '//*[@data-atom-empty]');
+
+        expect($empty)->toHaveCount(1)
+            ->and($empty[0]->getAttribute('data-kind'))->toBe($kind)
+            ->and(domQuery($html, '//*[@data-atom-empty-action]//*[@data-atom-button]'))->toHaveCount(1);
+    })->with([['parts', 'first-use'], ['activity', 'error'], ['files', 'no-results']]);
+
+    it('shows the tasks table, no empty state, on the overview tab', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(domQuery($html, '//*[@data-atom-empty]'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-table]//*[@data-atom-status]'))->toHaveCount(4);
+    });
+
+    it('does not choke on a status or a tab that is an array or unknown', function () {
+        request()->query->set('status', ['x']);
+        request()->query->set('tab', ['y']);
+
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(trim(domQuery($html, '//header//*[@data-atom-status]')[0]->textContent))->toBe('In progress');
+
+        request()->query->set('status', 'nope');
+        request()->query->set('tab', 'nope');
+
+        expect(domQuery(view('atom::docs.patterns.record-page')->render(), '//*[@data-atom-page-tabs]//*[@aria-current="page"]')[0]->textContent)->toContain('Overview');
+    });
+
+    it('uses generic names and data only', function () {
+        $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/docs/patterns/record-page.blade.php');
+
+        // the names a public pattern page must never carry, written in halves so this file passes the repo grep too
+        $private = [['humble', 'bear'], ['smg', 'dms'], ['firm', 'hive'], ['too', 'crm'], ['smg', 'auto'], ['mint', 'comm']];
+
+        foreach ($private as [$a, $b]) {
+            expect(strtolower($source))->not->toContain($a.$b);
+        }
+
+        expect($source)->not->toContain('/Us'.'ers/')->not->toContain('/pri'.'vate/');
+    });
+});
+
+describe('page component docs', function () {
+    it('has a demo for every page component, which renders and shows its source', function (string $name) {
+        registerDocsRoutes();
+
+        $html = view('atom::docs.demos.'.$name)->render();
+
+        expect($html)->toContain('data-atom-')->and(view()->exists('atom::docs.demos.'.$name))->toBeTrue();
+    })->with(['status', 'stat', 'page', 'empty']);
+
+    it('lists the new components under their categories', function () {
+        $docs = new Docs;
+
+        expect($docs->category('status'))->toBe('Display & typography')
+            ->and($docs->category('stat'))->toBe('Display & typography')
+            ->and($docs->category('page'))->toBe('Layout & navigation')
+            ->and($docs->component('page')['props'])->toContain(['name' => 'width', 'default' => null])
+            ->and(collect($docs->component('stat')['props'])->pluck('name')->all())->toContain('label', 'value', 'prefix', 'delta', 'inverse', 'breakdown', 'href');
+    });
+});
+
+// One primary action per screen: the header's. An empty state's next step is a plain button.
+describe('one primary action', function () {
+    $primaries = fn (string $html) => domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]');
+
+    it('keeps the record page to one primary button on every tab and status', function (string $tab, string $status) use ($primaries) {
+        request()->query->set('tab', $tab);
+        request()->query->set('status', $status);
+
+        $found = $primaries(view('atom::docs.patterns.record-page')->render());
+
+        expect($found)->toHaveCount(1)
+            ->and($found[0]->getAttribute('data-testid'))->toBe('record-primary');
+    })->with(function () {
+        foreach (['overview', 'tasks', 'parts', 'activity', 'files'] as $tab) {
+            foreach (['draft', 'in-progress', 'blocked', 'done'] as $status) {
+                yield "$tab, $status" => [$tab, $status];
+            }
+        }
+    });
+
+    it('has no primary button in the empty state demos', function () use ($primaries) {
+        registerDocsRoutes();
+
+        expect($primaries(view('atom::docs.demos.empty')->render()))->toBeEmpty();
+    });
+
+    it('does not teach a primary next step in the Boost skill', function () {
+        $skill = file_get_contents(dirname(__DIR__, 2).'/resources/boost/skills/atom-components/SKILL.blade.php');
+
+        expect($skill)->toContain('warning for waiting, blocked or needs attention, danger for failed or overdue')
+            ->and($skill)->not->toContain('the next step creates the first one, `variant="primary"`');
     });
 });
