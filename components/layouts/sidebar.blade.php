@@ -24,7 +24,6 @@ $read = function (string $attribute) use ($user) {
 };
 $avatar = $read('avatar');
 $name = $read('name');
-$email = $read('email');
 $initials = $user && method_exists($user, 'initials') && (new \ReflectionMethod($user, 'initials'))->isPublic() ? $user->initials() : null;
 $initials = $user && ! is_string($initials) && ! $initials instanceof \Stringable
     ? str((string) $name)->squish()->initials()->take(2)->upper()->toString()
@@ -135,7 +134,7 @@ $barEmpty = ! $dark
                                     {{ $name }}
                                 </div>
                                 <div class="truncate text-xs text-fg-subtle">
-                                    {{ $email }}
+                                    {{ $read('email') }}
                                 </div>
                             </div>
                         </div>
@@ -219,7 +218,7 @@ $barEmpty = ! $dark
                                             {{ $name }}
                                         </div>
                                         <div class="truncate text-xs text-fg-subtle">
-                                            {{ $email }}
+                                            {{ $read('email') }}
                                         </div>
                                     </div>
                                 </div>
