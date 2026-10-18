@@ -1,0 +1,113 @@
+@props([
+    'title' => null,
+    'level' => 1,
+    'crumbs' => [],
+    'facts' => [],
+    'size' => null,
+])
+
+{{-- The header of a page or a record: crumbs, the title with its status beside it, a row of key facts, and the actions.
+     Slots: `status` (an <atom:status>), `meta` (more facts as free markup), `actions` (secondary), `menu` (the contents of
+     the overflow menu) and `primary` (THE action for the record's current state: the host passes one, last, on the right).
+     `crumbs` is a list of [label, href]; the last one is the current page. `facts` is a list of strings or
+     [label, value, mono]. `title`, labels and values print as text. It is pure Blade and CSS, so it also renders in a
+     modal or a slide-over (a form, never a whole record): pass `size="sm"` and `level="2"` there. Use the shell's own
+     `crumbs` slot OR `crumbs` here, not both. --}}
+@php
+$level = in_array((int) $level, [1, 2, 3], true) ? (int) $level : 1;
+$el = 'h'.$level;
+$small = $size === 'sm';
+
+$trail = collect($crumbs)->values()->map(fn ($crumb) => [
+    'label' => is_scalar($crumb) ? (string) $crumb : data_get($crumb, 'label'),
+    'href' => is_scalar($crumb) ? null : safe_url(data_get($crumb, 'href')),
+]);
+
+$items = collect($facts)->map(fn ($fact) => is_scalar($fact)
+    ? ['label' => null, 'value' => (string) $fact, 'mono' => false, 'plain' => true]
+    : ['label' => data_get($fact, 'label'), 'value' => data_get($fact, 'value'), 'mono' => (bool) data_get($fact, 'mono'), 'plain' => false]
+)->filter(fn ($fact) => filled($fact['value']))->values();
+
+$has = fn ($s) => isset($s) && $s->isNotEmpty();
+$hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? null);
+@endphp
+
+<header {{ $attributes->class('flex flex-wrap items-end justify-between gap-x-6 gap-y-3.5') }} data-atom-page-header>
+    <div class="min-w-0 max-w-full grow">
+        @if ($trail->isNotEmpty())
+            <nav aria-label="{{ t('Breadcrumb') }}" class="mb-2" data-atom-page-crumbs>
+                <ol class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-fg-subtle">
+                    @foreach ($trail as $crumb)
+                        <li class="flex min-w-0 items-center gap-1.5">
+                            @if ($loop->last)
+                                <span class="truncate font-medium text-fg" aria-current="page">{{ t($crumb['label']) }}</span>
+                            @elseif ($crumb['href'])
+                                <a href="{{ $crumb['href'] }}" class="truncate text-fg-muted hover:text-fg" wire:navigate>{{ t($crumb['label']) }}</a>
+                            @else
+                                <span class="truncate">{{ t($crumb['label']) }}</span>
+                            @endif
+
+                            @unless ($loop->last)
+                                <atom:icon.right class="size-3.5 shrink-0" />
+                            @endunless
+                        </li>
+                    @endforeach
+                </ol>
+            </nav>
+        @endif
+
+        <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            <{{ $el }} @class([
+                'm-0 min-w-0 break-words font-semibold text-balance',
+                'text-lg' => $small,
+                'text-2xl' => ! $small,
+            ]) data-atom-page-header-title>{{ $title }}</{{ $el }}>
+
+            @if ($has($status ?? null))
+                {{ $status }}
+            @endif
+        </div>
+
+        @if ($items->isNotEmpty() || $has($meta ?? null))
+            <div @class([
+                'mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-fg-muted',
+                'text-xs' => $small,
+            ]) data-atom-page-meta>
+                @foreach ($items as $fact)
+                    <span>
+                        @if (filled($fact['label']))
+                            {{ t($fact['label']) }}
+                        @endif
+                        <b class="{{ $fact['plain'] ? 'font-normal' : 'font-medium text-fg' }} {{ $fact['mono'] ? 'font-id' : '' }}">{{ $fact['value'] }}</b>
+                    </span>
+                @endforeach
+
+                @if ($has($meta ?? null))
+                    {{ $meta }}
+                @endif
+            </div>
+        @endif
+    </div>
+
+    @if ($hasActions)
+        <div class="flex flex-wrap items-center gap-1.5" data-atom-page-actions>
+            @if ($has($actions ?? null))
+                {{ $actions }}
+            @endif
+
+            @if ($has($menu ?? null))
+                <atom:dropdown position="bottom" align="end">
+                    <atom:button size="sm" icon="more" :aria-label="t('More actions')" />
+
+                    <atom:menu class="w-[220px]" popover>
+                        {{ $menu }}
+                    </atom:menu>
+                </atom:dropdown>
+            @endif
+
+            @if ($has($primary ?? null))
+                {{ $primary }}
+            @endif
+        </div>
+    @endif
+</header>
