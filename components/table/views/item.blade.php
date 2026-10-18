@@ -16,7 +16,12 @@ $value = is_scalar($value) ? (string) $value : null;
 $href = safe_url($href);
 $element = $href ? 'a' : 'button';
 
-$count ??= $counts instanceof Closure ? $counts($value) : data_get($counts, $value);
+// a plain lookup, not data_get(): a value such as `q3.2026` or `a*` is a key, not a path or a wildcard
+$count ??= match (true) {
+    $counts instanceof Closure => $counts($value),
+    (is_array($counts) || $counts instanceof ArrayAccess) && $value !== null => $counts[$value] ?? null,
+    default => null,
+};
 $count = is_int($count) || is_float($count) ? number_format($count) : (is_scalar($count) ? (string) $count : '');
 
 $isCurrent = $value !== null && $value === $current;
@@ -38,7 +43,7 @@ $classes = Arr::toCssClasses([
 ]) }}
 @if ($value !== null)
     x-on:click="value = {{ js($value) }}"
-    x-bind:aria-pressed="value === {{ js($value) }} ? 'true' : 'false'"
+    x-bind:aria-pressed="String(value) === {{ js($value) }} ? 'true' : 'false'"
 @endif
 @if ($isCurrent) aria-pressed="true" @else aria-pressed="false" @endif
 data-atom-table-view

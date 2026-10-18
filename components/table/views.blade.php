@@ -15,7 +15,10 @@
      The host supplies the counts and atom never runs a count query: `counts` is an array keyed by the item's `value`
      (`['all' => 151, 'unpaid' => 12]`) or a closure that receives the `value` and returns the count
      (`fn ($value) => $this->count($value)`). A closure runs once per item on every render of the page, so keep it
-     cheap (a cached or grouped count); an item's own `count` wins over both. A count prints as text. --}}
+     cheap (a cached or grouped count); an item's own `count` wins over both. A count prints as text.
+
+     A view change is a filter change: it clears the bulk selection (the table listens for `table-filter:changed`). It does not
+     reset the page: do that where you reset it for any filter, in `updatedFilters()` (`$this->resetPage()`). --}}
 @php
 $model = $attributes->wire('model')->value();
 $current = is_scalar($current) ? (string) $current : null;
@@ -23,7 +26,13 @@ $current = is_scalar($current) ? (string) $current : null;
 
 <nav
 {{ $attributes->class('flex list-none gap-0.5 overflow-x-auto overflow-y-hidden border-b px-2.5 pb-px')->merge(['aria-label' => $label ? t($label) : t('Saved views')]) }}
-x-data="{ value: {{ $model ? '$wire.$get('.js($model).')' : js($current) }} }"
+x-data="{
+    value: {{ $model ? '$wire.$get('.js($model).')' : js($current) }},
+    {{-- a view change swaps the rows out from under a bulk selection, so it tells the table, as a filter does --}}
+    init () {
+        this.$watch('value', () => this.$dispatch('table-filter:changed'))
+    },
+}"
 @if ($model) x-modelable="value" @endif
 data-atom-table-views>
     {{ $slot }}

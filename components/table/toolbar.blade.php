@@ -4,12 +4,14 @@
 ])
 
 {{-- The bar above a list's rows, for the table's `header` slot: the search and the filters on the start side, then
-     whatever sits at the end (a count and a total, an export, the archived toggle). Put it in <x-slot:header> so the
+     whatever sits at the end (an export, the archived toggle; not counts or totals, see the header-slot note below). Put it in <x-slot:header> so the
      table swaps it for the bulk-action bar while rows are ticked (the table, not this bar, does that). The default
      slot is the controls: <atom:table.search> (240px wide from sm, full width below), <atom:table.filters> (which
      grows to fill the row and brings its own chips) and any other control. `end` is the trailing group.
-     `trashed` adds the archived or voided toggle to it (`true` or `voided`), for a table that does not pass `trashed`
-     itself: use one or the other, not both.
+     `trashed` adds the archived or voided toggle to it (`true` or `voided`). Use it OR the table's own `trashed` prop, never
+     both: with both the toggle is drawn twice.
+     The header slot is an Alpine template: text the server renders into it is not refreshed by a re-render, so a count or
+     a total belongs below the table.
      In the table's `header` slot the table draws the strip around it (a frameless table's hairline and padding). Placed
      anywhere else, in a panel above a table, pass `strip` to draw its own: `border-b px-3 py-2.5`. --}}
 @php

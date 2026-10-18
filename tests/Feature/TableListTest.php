@@ -116,10 +116,10 @@ describe('cells and headers', function () {
 
 describe('toolbar', function () {
     it('lays the controls out, with the end group on the far side', function () {
-        $html = renderBlade('<atom:table.toolbar><input id="q"><x-slot:end><span id="n">16 shown</span></x-slot:end></atom:table.toolbar>');
+        $html = renderBlade('<atom:table.toolbar><input id="q"><x-slot:end><button id="n" type="button">Export</button></x-slot:end></atom:table.toolbar>');
 
         expect(domQuery($html, '//*[@data-atom-table-toolbar]//*[@data-atom-table-toolbar-start]/input[@id="q"]'))->toHaveCount(1)
-            ->and(domQuery($html, '//*[@data-atom-table-toolbar]//*[@data-atom-table-toolbar-end]/span[@id="n"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-table-toolbar]//*[@data-atom-table-toolbar-end]/button[@id="n"]'))->toHaveCount(1)
             ->and(domClasses(domQuery($html, '//*[@data-atom-table-toolbar-end]')[0]))->toContain('ms-auto');
     });
 
@@ -198,6 +198,38 @@ describe('saved views', function () {
             ->and($count($fromArray, 'paid'))->toBe('9')
             ->and($count($fromClosure, 'all'))->toBe('3')
             ->and($count($fromClosure, 'unpaid'))->toBe('6');
+    });
+
+    it('keeps the count of a value with a dot or a star: a key, not a path or a wildcard', function () {
+        $html = renderBlade('<atom:table.views :counts="$counts">
+            <atom:table.views.item value="q3.2026" label="Q3" />
+            <atom:table.views.item value="a*" label="A" />
+            <atom:table.views.item value="2026" label="Year" />
+        </atom:table.views>', ['counts' => ['q3.2026' => 7, 'a*' => 4, 2026 => 12]]);
+
+        $count = fn (string $value) => trim(domQuery($html, '//*[@data-value="'.$value.'"]//*[@data-atom-table-view-count]')[0]->textContent ?? '');
+
+        expect($count('q3.2026'))->toBe('7')->and($count('a*'))->toBe('4')->and($count('2026'))->toBe('12');
+    });
+
+    it('takes counts from an ArrayAccess, and none from a value that is not a list', function () {
+        $viaObject = renderBlade('<atom:table.views :counts="$counts"><atom:table.views.item value="a" label="A" /></atom:table.views>', ['counts' => new ArrayObject(['a' => 3])]);
+        $viaString = renderBlade('<atom:table.views :counts="$counts"><atom:table.views.item value="a" label="A" /></atom:table.views>', ['counts' => 'nope']);
+
+        expect(domQuery($viaObject, '//*[@data-atom-table-view-count]')[0]->textContent)->toBe('3')
+            ->and(domQuery($viaString, '//*[@data-atom-table-view-count]'))->toBeEmpty();
+    });
+
+    it('compares the chosen value as text, so an integer property still marks its view', function () {
+        $html = renderBlade('<atom:table.views wire:model.live="stage"><atom:table.views.item value="2" label="Two" /></atom:table.views>');
+
+        expect(domQuery($html, '//button')[0]->getAttribute('x-bind:aria-pressed'))->toBe("String(value) === '2' ? 'true' : 'false'");
+    });
+
+    it('tells the table when the view changes, so a bulk selection is dropped', function () {
+        $nav = domQuery(viewsHtml('wire:model.live="filters.view"'), '//nav')[0];
+
+        expect($nav->getAttribute('x-data'))->toContain("\$watch('value', () => this.\$dispatch('table-filter:changed'))");
     });
 
     it('prints no count for a view the host gave none, and a zero for a view with none', function () {
