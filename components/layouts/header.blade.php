@@ -9,10 +9,15 @@
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
 ])
 
+{{-- A host's User model may have no initials() method: the initials are then derived from the display name,
+     and a missing `avatar` attribute reads as null even where the model refuses to read an attribute it does not have. --}}
 @php
 $user = auth()->user();
-$avatar = $user?->avatar;
+$avatar = rescue(fn () => $user?->avatar, null, false);
 $name = $user?->name;
+$initials = $user
+    ? (method_exists($user, 'initials') ? $user->initials() : str((string) $name)->squish()->initials()->take(2)->upper()->toString())
+    : null;
 @endphp
 
 {{-- The top-nav shell, for an app with about six or fewer sections. It takes the same props and slots as
@@ -150,7 +155,7 @@ $name = $user?->name;
                             @if ($avatar)
                                 <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
                             @else
-                                {{ $user?->initials() }}
+                                {{ $initials }}
                             @endif
                         </button>
 
@@ -163,7 +168,7 @@ $name = $user?->name;
                                         @if ($avatar)
                                             <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
                                         @else
-                                            {{ $user?->initials() }}
+                                            {{ $initials }}
                                         @endif
                                     </div>
 
