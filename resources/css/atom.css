@@ -1396,7 +1396,9 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
    (24px), so a page's content lines up with it. */
 @media (min-width: 64rem) {
     [data-atom-header-bar] ~ [data-atom-main] [data-atom-page] {
-        padding-inline: max(1.5rem, env(safe-area-inset-left, 0px)) max(1.5rem, env(safe-area-inset-right, 0px));
+        --atom-gutter-s: max(1.5rem, env(safe-area-inset-left, 0px));
+        --atom-gutter-e: max(1.5rem, env(safe-area-inset-right, 0px));
+        padding-inline: var(--atom-gutter-s) var(--atom-gutter-e);
     }
 }
 
