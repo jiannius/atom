@@ -208,11 +208,14 @@ for (const tw of ['floor', 'latest']) {
         expect(Math.abs(head.x - brand.x)).toBeLessThan(1)
       })
 
-      test('the page is capped at 1240px on a wide screen and `narrow` at 980px', async ({ page }) => {
+      test('the page is capped at 1240px on a wide screen, `narrow` is 980px and `full` has no cap', async ({ page }) => {
         await page.setViewportSize({ width: 2000, height: 900 })
-        await record(page, '', { tw })
 
-        expect((await box(page.locator('[data-atom-page]'))).width).toBe(1240)
+        for (const [query, width] of [['', 1240], ['&width=narrow', 980], ['&width=full', 2000], ['&width=huge', 1240]]) {
+          await open(page, `/atom/e2e/page-width?x=1${query}`, { tw })
+
+          expect((await box(page.getByTestId('page'))).width, query || 'default').toBe(width)
+        }
       })
     })
 
@@ -369,6 +372,58 @@ for (const tw of ['floor', 'latest']) {
         // a row about as tall as the sample's: 10 + 19.5 + 10 + 2
         expect((await box(current)).height).toBeGreaterThanOrEqual(40)
         expect((await box(current)).height).toBeLessThanOrEqual(43)
+      })
+
+      test('the current underline is drawn 2px tall: the scrolling row does not clip it to 1px', async ({ page }) => {
+        await record(page, '', { tw })
+
+        const current = page.locator('[data-atom-page-tabs] [aria-current="page"]')
+        const tab = await box(current)
+        const ul = await page.locator('[data-atom-page-tabs] ul').evaluate((el) => {
+          const r = el.getBoundingClientRect()
+          return { bottom: r.bottom, border: parseFloat(getComputedStyle(el).borderBottomWidth) }
+        })
+
+        // the tab ends inside the row's padding box, which the overflow clip keeps, not on the border it cuts
+        expect(tab.bottom).toBeLessThanOrEqual(ul.bottom - ul.border)
+
+        // and the pixels agree: a column through the tab's bottom edge holds two dark rows, then the light hairline
+        const x = Math.round(tab.x + tab.width / 2)
+        const png = await page.screenshot({ clip: { x, y: Math.floor(tab.bottom) - 6, width: 1, height: 12 } })
+        const dark = await page.evaluate(async (b64) => {
+          const img = new Image()
+          img.src = `data:image/png;base64,${b64}`
+          await img.decode()
+          const cv = document.createElement('canvas')
+          cv.width = img.width
+          cv.height = img.height
+          const ctx = cv.getContext('2d')
+          ctx.drawImage(img, 0, 0)
+          const rows = []
+          for (let y = 0; y < img.height; y++) {
+            const [r, g, b] = ctx.getImageData(0, y, 1, 1).data
+            rows.push(0.299 * r + 0.587 * g + 0.114 * b < 100)
+          }
+          return rows
+        }, png.toString('base64'))
+
+        expect(dark.filter(Boolean).length).toBe(2)
+        // the two dark rows are the lowest of the tab, one row above the hairline's
+        expect(dark.slice(4, 6)).toEqual([true, true])
+      })
+
+      test('a current tab that is not a link keeps its underline and aria-current', async ({ page }) => {
+        await record(page, '', { tw })
+        await page.locator('[data-atom-page-tab][aria-current="page"]').evaluate((el) => {
+          const span = document.createElement('span')
+          span.className = el.className
+          span.setAttribute('aria-current', 'page')
+          span.setAttribute('data-atom-page-tab', '')
+          span.textContent = 'Overview'
+          el.replaceWith(span)
+        })
+
+        await expect(page.locator('[data-atom-page-tabs] span[aria-current="page"]')).toHaveCSS('border-bottom-width', '2px')
       })
 
       test('a click moves the mark, a keyboard Tab reaches each link with a visible ring', async ({ page }) => {
@@ -597,6 +652,38 @@ test.describe('page.header in a slide-over, through a Livewire morph', () => {
     await expect(head.locator('[data-atom-status]')).not.toHaveAttribute('data-running', /.*/)
     expect(await head.locator('[data-atom-status-dot]').evaluate((el) => el.getAnimations().length)).toBe(0)
     await expect(dialog).toBeVisible()
+  })
+
+  test('the overflow menu opens in the slide-over, works, and survives a morph while it is open', async ({ page }) => {
+    await open(page, '/atom/e2e/page-header-slide')
+    await page.waitForFunction(() => window.Livewire !== undefined)
+
+    await page.getByTestId('open-slide').click()
+    const dialog = page.locator('dialog[data-open]')
+    const meta = dialog.locator('[data-atom-page-meta]')
+    const menu = dialog.locator('[data-atom-menu]')
+    const trigger = dialog.getByRole('button', { name: 'More actions' })
+
+    // opens, and an item runs its Livewire action
+    await trigger.click()
+    await expect(menu).toBeVisible()
+    await dialog.getByTestId('menu-bump').click()
+    await expect(meta).toContainText('1')
+    await expect(menu).toBeHidden()
+
+    // open again, then a morph lands while it is open: the menu stays open on the same node
+    await trigger.click()
+    await expect(menu).toBeVisible()
+    await menu.evaluate((el) => { el.__keep = true })
+    await page.evaluate(() => window.Livewire.all()[0].$wire.bump())
+    await expect(meta).toContainText('2')
+
+    await expect(menu).toBeVisible()
+    expect(await menu.evaluate((el) => el.__keep === true && el.matches(':popover-open'))).toBe(true)
+    await expect(dialog).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(menu).toBeHidden()
   })
 
   test('the primary action in the slide-over header still works after a morph', async ({ page }) => {

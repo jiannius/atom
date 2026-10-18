@@ -106,6 +106,7 @@ class E2EServiceProvider extends ServiceProvider
                 ]);
             });
         }
+        Route::middleware('web')->get('/atom/e2e/page-width', fn () => view('atom::e2e.page-width'));
         Route::middleware('web')->get('/atom/e2e/page-header-slide', fn () => view('atom::e2e.page-header-slide'));
         // status tones, stats and the empty states, on the consumer's Tailwind: ?tw=floor|latest, ?dark=1, ?accent=#rrggbb
         Route::middleware('web')->get('/atom/e2e/page-parts', fn () => view('atom::e2e.page-parts'));

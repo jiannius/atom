@@ -8,6 +8,10 @@
                 <atom:status tone="info" :running="$running" :label="$running ? 'In progress' : 'Done'"/>
             </x-slot:status>
 
+            <x-slot:menu>
+                <atom:menu.item wire:click="bump" data-testid="menu-bump">Bump from the menu</atom:menu.item>
+            </x-slot:menu>
+
             <x-slot:primary>
                 <atom:button size="sm" variant="primary" wire:click="bump" data-testid="bump">Bump</atom:button>
             </x-slot:primary>
