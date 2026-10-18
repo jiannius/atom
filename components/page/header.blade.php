@@ -9,8 +9,9 @@
 {{-- The header of a page or a record: crumbs, the title with its status beside it, a row of key facts, and the actions.
      Slots: `status` (an <atom:status>), `meta` (more facts as free markup), `actions` (secondary), `menu` (the contents of
      the overflow menu) and `primary` (THE action for the record's current state: the host passes one, last, on the right).
-     `crumbs` is a list of [label, href]; the last one is the current page. `facts` is a list of strings or
-     [label, value, mono]. `title`, labels and values print as text. It is pure Blade and CSS, so it also renders in a
+     `crumbs` is a list of `['label' => ..., 'href' => ...]` (a string is a label with no link); the last one is the
+     current page, printed as the record's own text. `facts` is a list of strings or
+     `['label' => ..., 'value' => ..., 'mono' => true]`. `title`, labels and values print as text. It is pure Blade and CSS, so it also renders in a
      modal or a slide-over (a form, never a whole record): pass `size="sm"` and `level="2"` there. Use the shell's own
      `crumbs` slot OR `crumbs` here, not both. --}}
 @php
@@ -40,7 +41,8 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
                     @foreach ($trail as $crumb)
                         <li class="flex min-w-0 items-center gap-1.5">
                             @if ($loop->last)
-                                <span class="truncate font-medium text-fg" aria-current="page">{{ t($crumb['label']) }}</span>
+                                {{-- the current crumb is usually the record's own name: data, never a translation key (t() splits on a pipe) --}}
+                                <span class="truncate font-medium text-fg" aria-current="page">{{ $crumb['label'] }}</span>
                             @elseif ($crumb['href'])
                                 <a href="{{ $crumb['href'] }}" class="truncate text-fg-muted hover:text-fg" wire:navigate>{{ t($crumb['label']) }}</a>
                             @else
@@ -57,11 +59,14 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
         @endif
 
         <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-            <{{ $el }} @class([
-                'm-0 min-w-0 break-words font-semibold text-balance',
-                'text-lg' => $small,
-                'text-2xl' => ! $small,
-            ]) data-atom-page-header-title>{{ $title }}</{{ $el }}>
+            {{-- no title, no heading: an empty h1 would also hide the layout's fallback one (atom.css) --}}
+            @if (filled($title))
+                <{{ $el }} @class([
+                    'm-0 min-w-0 break-words font-semibold text-balance',
+                    'text-lg' => $small,
+                    'text-2xl' => ! $small,
+                ]) data-atom-page-header-title>{{ $title }}</{{ $el }}>
+            @endif
 
             @if ($has($status ?? null))
                 {{ $status }}

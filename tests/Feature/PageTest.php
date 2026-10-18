@@ -57,6 +57,31 @@ describe('page.header', function () use ($evil) {
             ->and(domQuery($html, '//nav[@data-atom-page-crumbs]//a[@aria-current]'))->toBeEmpty();
     });
 
+    it('prints the current crumb as the record\'s own text, never through the translator', function () {
+        // t() is trans_choice(), which splits on a pipe: 'Smith | Sons' came out as 'Smith '
+        $html = renderBlade('<atom:page.header title="T" :crumbs="$crumbs" />', ['crumbs' => [
+            ['label' => 'Jobs', 'href' => '/jobs'],
+            ['label' => 'Smith | Sons'],
+        ]]);
+
+        expect(domQuery($html, '//nav[@data-atom-page-crumbs]//*[@aria-current="page"]')[0]->textContent)->toBe('Smith | Sons');
+    });
+
+    it('prints a lone string crumb, a pipe included, whole', function () {
+        $html = renderBlade('<atom:page.header title="T" :crumbs="[\'A | B\']" />');
+
+        expect(domQuery($html, '//nav[@data-atom-page-crumbs]//*[@aria-current="page"]')[0]->textContent)->toBe('A | B');
+    });
+
+    it('prints no heading without a title, so the layout fallback h1 is not hidden', function (mixed $title) {
+        $html = renderBlade('<atom:page.header :title="$title"><x-slot:status><atom:status label="Draft" /></x-slot:status></atom:page.header>', ['title' => $title]);
+
+        expect(domQuery($html, '//*[@data-atom-page-header-title]'))->toBeEmpty()
+            ->and(domQuery($html, '//h1 | //h2'))->toBeEmpty()
+            // the rest of the header still draws
+            ->and(domQuery($html, '//header[@data-atom-page-header]//*[@data-atom-status]'))->toHaveCount(1);
+    })->with([[null], [''], ['  ']]);
+
     it('has no crumb row without crumbs', function () {
         expect(domQuery(renderBlade('<atom:page.header title="T" />'), '//*[@data-atom-page-crumbs]'))->toBeEmpty();
     });
@@ -166,6 +191,27 @@ describe('page.tabs', function () use ($evil) {
         expect(domQuery($html, '//nav//a'))->toHaveCount(2)
             ->and($html)->not->toContain('javascript:')
             ->and(domQuery($html, '//nav//span[@data-atom-page-tab][contains(., "History")]'))->toHaveCount(1);
+    });
+
+    it('marks a current tab aria-current even when it is not a link', function (?string $href) {
+        $html = renderBlade('<atom:page.tabs :tabs="$tabs" />', ['tabs' => [
+            ['label' => 'Here', 'href' => $href, 'current' => true],
+            ['label' => 'There', 'href' => $href],
+        ]]);
+        $current = domQuery($html, '//nav//*[@aria-current="page"]');
+
+        expect(domQuery($html, '//nav//a'))->toBeEmpty()
+            ->and($current)->toHaveCount(1)
+            ->and($current[0]->nodeName)->toBe('span')
+            ->and($current[0]->textContent)->toContain('Here')
+            ->and(domClasses($current[0]))->toContain('border-fg', 'text-fg');
+    })->with([[null], ['javascript:alert(1)']]);
+
+    it('keeps the current underline inside the clip of the scrolling row', function () {
+        $html = renderBlade('<atom:page.tabs :tabs="$tabs" />', ['tabs' => [['label' => 'A', 'href' => '/a', 'current' => true]]]);
+
+        // the tab's -mb-px underline must land in the ul's padding box (pb-px), not on the border the overflow clip cuts
+        expect(domClasses(domQuery($html, '//nav//ul')[0]))->toContain('overflow-x-auto', 'border-b', 'pb-px');
     });
 
     it('prints counts, a zero included, with tabular figures', function () use ($tabs) {

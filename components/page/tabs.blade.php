@@ -4,8 +4,10 @@
 ])
 
 {{-- A record's sections as link tabs, with counts, straight under the page header. Each tab is
-     [label, href, count, current]. The current one carries aria-current="page" (and the underline); a tab whose href
-     safe_url() refuses is drawn as plain text, never a link. A row that does not fit scrolls sideways. --}}
+     `['label' => ..., 'href' => ..., 'count' => ..., 'current' => true]`. The current one carries aria-current="page"
+     (and the underline); a tab with no href, or one safe_url() refuses, is drawn as plain text, never a link, and still
+     carries it when current. A row that does not fit scrolls sideways. The -mt-1.5 pulls the tabs up under the header,
+     so it assumes they sit inside <atom:page> (the 22px gap becomes the sample's 16px); elsewhere pass `class="mt-0"`. --}}
 @php
 $items = collect($tabs)->map(fn ($tab) => [
     'label' => data_get($tab, 'label'),
@@ -16,7 +18,8 @@ $items = collect($tabs)->map(fn ($tab) => [
 @endphp
 
 <nav {{ $attributes->class('-mt-1.5') }} aria-label="{{ $label ? t($label) : t('Sections') }}" data-atom-page-tabs>
-    <ul class="m-0 flex list-none gap-0.5 overflow-x-auto overflow-y-hidden border-b p-0">
+    {{-- pb-px: the current tab's -mb-px underline lands in the ul's padding box, which the overflow clip keeps, not on its border, which it cuts to 1px --}}
+    <ul class="m-0 flex list-none gap-0.5 overflow-x-auto overflow-y-hidden border-b p-0 pb-px">
         @foreach ($items as $tab)
             @php
             $classes = Arr::toCssClasses([
@@ -37,7 +40,7 @@ $items = collect($tabs)->map(fn ($tab) => [
                         @endif
                     </a>
                 @else
-                    <span class="{{ $classes }}" data-atom-page-tab>
+                    <span class="{{ $classes }}" @if ($tab['current']) aria-current="page" @endif data-atom-page-tab>
                         {{ t($tab['label']) }}
                         @if (filled($tab['count']))
                             <span class="text-xs font-normal tabular-nums text-fg-subtle" data-atom-page-tab-count>{{ $tab['count'] }}</span>

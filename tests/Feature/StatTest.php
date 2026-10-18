@@ -91,6 +91,16 @@ describe('stat', function () {
             ['0%', true, 'text-fg-subtle'],
         ]);
 
+        it('prints text that is not a figure as it is: no arrow, tint, word or direction', function (string $delta) {
+            $html = renderBlade('<atom:stat label="x" value="1" :delta="$delta" />', ['delta' => $delta]);
+            $el = domQuery($html, '//*[@data-atom-stat-delta]')[0];
+
+            expect(trim(preg_replace('/\s+/', ' ', $el->textContent)))->toBe($delta)
+                ->and($el->hasAttribute('data-direction'))->toBeFalse()
+                ->and(domQuery($html, '//*[@data-atom-stat-delta]//*[@data-atom-icon] | //*[@data-atom-stat-delta]//*[contains(@class, "sr-only")]'))->toBeEmpty()
+                ->and(domClasses($el))->toContain('text-fg-subtle')->not->toContain('text-success-fg')->not->toContain('text-danger-fg');
+        })->with(['n/a', 'new', '—', 'up from nothing', '%5', '+']);
+
         it('is absent without one', function () {
             expect(domQuery(renderBlade('<atom:stat label="x" value="1" />'), '//*[@data-atom-stat-delta] | //*[@data-atom-stat-sub]'))->toBeEmpty();
         });

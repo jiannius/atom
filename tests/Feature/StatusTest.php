@@ -11,6 +11,16 @@ describe('status', function () {
             ->and(domQuery($html, '//*[@data-atom-status-dot][@aria-hidden="true"]'))->toHaveCount(1);
     })->with(['neutral', 'info', 'success', 'warning', 'danger', 'accent']);
 
+    it('prints the tone\'s own name when it has no label and no slot, so it is never colour only', function (string $tone) {
+        $root = domQuery(renderBlade('<atom:status tone="'.$tone.'" />'), '//*[@data-atom-status]')[0];
+
+        expect(trim($root->textContent))->toBe(ucfirst($tone));
+    })->with(['neutral', 'info', 'success', 'warning', 'danger', 'accent']);
+
+    it('names an unknown tone neutral when it has no label', function () {
+        expect(trim(domQuery(renderBlade('<atom:status tone="pink" />'), '//*[@data-atom-status]')[0]->textContent))->toBe('Neutral');
+    });
+
     it('reads each tone from its role token pair, whole-token', function (string $tone, string $bg, string $fg) {
         $root = domQuery(renderBlade('<atom:status tone="'.$tone.'" label="x" />'), '//*[@data-atom-status]')[0];
 

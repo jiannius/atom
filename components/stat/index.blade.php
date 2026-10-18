@@ -19,8 +19,9 @@ $el = $href ? 'a' : 'div';
 $tone = in_array($tone, ['danger', 'warning', 'success'], true) ? $tone : null;
 
 $delta = is_scalar($delta) ? trim((string) $delta) : '';
+// only a figure has a direction: `n/a`, `new` or a dash is printed as it is, with no arrow, tint or word
 $direction = match (true) {
-    $delta === '' => null,
+    ! preg_match('/^[+\-−]?\d/u', $delta) => null,
     str_starts_with($delta, '-') || str_starts_with($delta, '−') => 'down',
     (bool) preg_match('/^\+?0+([.,]0+)?%?$/', $delta) => 'flat',
     default => 'up',
@@ -65,10 +66,10 @@ $deltaClasses = Arr::toCssClasses([
         @endif
     </span>
 
-    @if ($direction || filled($breakdown))
+    @if ($delta !== '' || filled($breakdown))
         <span class="mt-[3px] flex flex-wrap items-center gap-x-2 text-xs text-fg-subtle" data-atom-stat-sub>
-            @if ($direction)
-                <span class="{{ $deltaClasses }}" data-atom-stat-delta data-direction="{{ $direction }}">
+            @if ($delta !== '')
+                <span class="{{ $deltaClasses }}" data-atom-stat-delta @if ($direction) data-direction="{{ $direction }}" @endif>
                     @if ($direction === 'up')
                         <atom:icon.arrow-up class="size-3"/>
                         <span class="sr-only">{{ t('Up') }}</span>
