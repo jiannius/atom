@@ -43,6 +43,9 @@ function restyledComponents(): array
         'slider',
         'rating',
         'uploader',
+        // V4-3b, the data display
+        'badge',
+        'navlist/badge',
     ];
 }
 

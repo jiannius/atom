@@ -44,7 +44,7 @@ describe('badge', function () {
         expect($html)
             ->toContain('data-atom-badge')
             ->toContain('Active')
-            ->toContain('bg-green-100');
+            ->toContain('bg-success-bg');
     });
 
     it('renders a hex-colour badge as inline styles', function () {
@@ -53,7 +53,7 @@ describe('badge', function () {
         expect($html)
             ->toContain('data-atom-badge')
             ->toContain('Custom')
-            ->toContain('color: #ff0000');
+            ->toContain('color: color-mix(in oklab, #ff0000 ');
     });
 
     it('groups badges with an overflow counter', function () {

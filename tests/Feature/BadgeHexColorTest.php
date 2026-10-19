@@ -91,25 +91,33 @@ describe('badge hex colour', function () {
     it('renders the hex style for a valid hex colour', function (string $color) {
         $badge = badgeHexColorElement('<atom:badge :color="$color" label="Custom" />', compact('color'));
 
-        expect(badgeHexColorProperties($badge))->toBe(['color', 'background-color', 'border-color'])
-            ->and($badge->getAttribute('style'))->toStartWith('color: '.trim($color).';')
-            ->and($badge->getAttribute('style'))->toContain('background-color: rgba(')
-            ->and($badge->getAttribute('style'))->toContain('border-color: rgba(');
+        // a borderless pill: the ink and the tint, both read from the hex, and no border colour
+        expect(badgeHexColorProperties($badge))->toBe(['color', 'background-color'])
+            ->and($badge->getAttribute('style'))->toStartWith('color: color-mix(in oklab, '.Color::opaque($color).' ')
+            ->and($badge->getAttribute('style'))->toContain('background-color: color-mix(in oklab, '.Color::opaque($color).' ')
+            ->and(domClasses($badge))->not->toContain('border');
     })->with('badge hex colors');
 
-    it('shades a 4-digit hex colour as its 3-digit form', function () {
-        $short = badgeHexColorElement('<atom:badge color="#f00" label="x" />');
-        $withAlpha = badgeHexColorElement('<atom:badge color="#f00a" label="x" />');
+    it('writes a short or translucent hex colour as plain #rrggbb, so the ink never loses contrast to an alpha', function () {
+        $plain = badgeHexColorElement('<atom:badge color="#ff0000" label="x" />');
 
-        expect(preg_replace('/^color: [^;]+;/', '', $withAlpha->getAttribute('style')))
-            ->toBe(preg_replace('/^color: [^;]+;/', '', $short->getAttribute('style')));
+        foreach (['#f00', '#f00a', '#FF0000', '#ff0000aa'] as $color) {
+            $badge = badgeHexColorElement('<atom:badge :color="$color" label="x" />', compact('color'));
+
+            expect($badge->getAttribute('style'))->toBe($plain->getAttribute('style'), $color);
+        }
+
+        expect(Color::opaque('#abcd'))->toBe('#aabbcc')
+            ->and(Color::opaque('#AABBCCDD'))->toBe('#aabbcc')
+            ->and(Color::opaque('#abc; position: fixed'))->toBeNull()
+            ->and(Color::opaque('red'))->toBeNull();
     });
 
     it('adds no declaration and falls back to the default style for a value that is not hex', function (string $color) {
         $badge = badgeHexColorElement('<atom:badge :color="$color" label="Custom" />', compact('color'));
 
         expect($badge->hasAttribute('style'))->toBeFalse()
-            ->and(domClasses($badge))->toContain('bg-zinc-100');
+            ->and(domClasses($badge))->toContain('bg-neutral-bg');
     })->with('badge injected colors');
 
     it('keeps a caller style last and still refuses an injected colour beside it', function () {
@@ -129,10 +137,10 @@ describe('badge hex colour', function () {
         $badge = badgeHexColorElement('<atom:badge :status="$status" />', compact('status'));
 
         if ($isHex) {
-            expect(badgeHexColorProperties($badge))->toBe(['color', 'background-color', 'border-color']);
+            expect(badgeHexColorProperties($badge))->toBe(['color', 'background-color']);
         } else {
             expect($badge->hasAttribute('style'))->toBeFalse()
-                ->and(domClasses($badge))->toContain('bg-zinc-100');
+                ->and(domClasses($badge))->toContain('bg-neutral-bg');
         }
     })->with([
         'valid' => [BadgeHexColorStatus::VALID, true],
@@ -146,7 +154,7 @@ describe('badge hex colour', function () {
         $badge = badgeHexColorElement('<atom:badge :status="$status" />', compact('status'));
 
         expect($badge->hasAttribute('style'))->toBe($isHex)
-            ->and(domClasses($badge))->when(! $isHex, fn ($classes) => $classes->toContain('bg-zinc-100'));
+            ->and(domClasses($badge))->when(! $isHex, fn ($classes) => $classes->toContain('bg-neutral-bg'));
     })->with([
         'array hex' => [['color' => '#aabbcc', 'label' => 'x'], true],
         'array injected' => [['color' => '#000;background:url(https://attacker.test/x)', 'label' => 'x'], false],
@@ -155,6 +163,7 @@ describe('badge hex colour', function () {
 
     it('does not shade a value that is not a hex colour', function (string $color) {
         expect(Color::isHex($color))->toBeFalse()
+            ->and(Color::opaque($color))->toBeNull()
             ->and(Color::shade($color, 70, 0.4))->toBeNull();
     })->with('badge injected colors');
 
