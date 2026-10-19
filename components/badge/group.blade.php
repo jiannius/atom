@@ -13,9 +13,29 @@
 
     <div
     x-data="{
-        max: @js($max),
+        {{-- the limit is the group's own data-max, read live: a morph that changes it changes the count. The DOM is not reactive, so
+             a mutation observer bumps `tick` (the getters read it) when data-max or the badges change. --}}
+        tick: 0,
+        observer: null,
+
+        init () {
+            this.observer = new MutationObserver(() => this.tick++)
+            this.observer.observe(this.$root, { attributes: true, attributeFilter: ['data-max'], childList: true })
+        },
+
+        destroy () {
+            this.observer?.disconnect()
+        },
+
+        get max () {
+            this.tick
+
+            return +this.$root.dataset.max
+        },
 
         get badges () {
+            this.tick
+
             return Array.from(this.$root.querySelectorAll(':scope > *'))
                 .filter(child => (!child.hasAttribute('data-atom-badge-overflow')))
         },

@@ -46,8 +46,9 @@ export const HEXES = ['f5c518', 'ff0000', '00ff00', '0000ff', '808080', 'ffffff'
 
 /**
  * Every visible piece of text under `root`, each measured against its own surface: the ones under `min`, as `{ text, ratio }`.
- * It reads the text nodes (an element's own words), skips what is hidden or screen-reader only (an element with no box of its own,
- * such as `display: contents`, counts as drawn when an ancestor has one), and measures the element that owns the node, so an inline child is measured in its own colour. It fails when it finds fewer than `atLeast` of them.
+ * It reads the text nodes (an element's own words), skips what is hidden (the element or an ancestor is `display: none`, or
+ * `visibility: hidden`) or screen-reader only (an element with no box of its own, such as `display: contents`, counts as drawn when
+ * its nearest ancestor with a box is), and measures the element that owns the node, so an inline child is measured in its own colour. It fails when it finds fewer than `atLeast` of them.
  */
 export async function sweepText(page, rootSelector, min = TEXT, atLeast = 3) {
   return page.evaluate(({ rootSelector, min, atLeast, src }) => {
@@ -66,11 +67,12 @@ export async function sweepText(page, rootSelector, min = TEXT, atLeast = 3) {
         if (!text || !el || seen.has(el) || ['SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName)) continue
         seen.add(el)
 
-        // an element with no box of its own (display: contents) is drawn by the nearest ancestor that has one: it is hidden only if none does
+        // an element with no box of its own (display: contents) is drawn by the nearest ancestor that has one: measure it through that
+        // one. Hidden is decided on that box: `checkVisibility` is false for a display: none ancestor too, and for visibility: hidden
         let boxed = el
-        while (boxed && !boxed.getClientRects().length) boxed = boxed.parentElement
+        while (boxed && getComputedStyle(boxed).display === 'contents') boxed = boxed.parentElement
 
-        const hidden = !boxed || boxed === document.documentElement || getComputedStyle(el).visibility === 'hidden' || el.closest('[hidden], [aria-hidden="true"], .sr-only, [popover]:not(:popover-open), template')
+        const hidden = !boxed || !boxed.checkVisibility({ visibilityProperty: true }) || getComputedStyle(el).visibility === 'hidden' || el.closest('[hidden], [aria-hidden="true"], .sr-only, [popover]:not(:popover-open), template')
         if (hidden) continue
 
         const found = measure(el, { what: 'text' })

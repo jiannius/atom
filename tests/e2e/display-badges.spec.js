@@ -189,6 +189,31 @@ for (const tw of ['floor', 'latest']) {
       await expect(group.locator('[data-atom-badge]').nth(2)).toBeHidden()
     })
 
+    test('a group follows a morph that changes its limit: the visible badges and the +N agree', async ({ page }) => {
+      await openDisplay(page, { tw, section: 'badges' })
+
+      const group = page.getByTestId('badge-group')
+      const more = group.locator('[data-atom-badge-overflow] > div')
+
+      // what the server renders when max changes: the group's data-max, and the rule that names the new limit
+      const render = (max) => group.evaluate((el, max) => {
+        el.previousElementSibling.textContent = `[data-atom-badge-group][data-max="${max}"] [data-atom-badge]:nth-child(n+${max + 1}) { display: none }`
+        el.setAttribute('data-max', String(max))
+      }, max)
+
+      await render(1)
+      await expect(group.locator('[data-atom-badge]:visible')).toHaveCount(1)
+      await expect(more).toHaveText('+2')
+
+      await render(3)
+      await expect(group.locator('[data-atom-badge]:visible')).toHaveCount(3)
+      await expect(more).toBeHidden()
+
+      await render(2)
+      await expect(group.locator('[data-atom-badge]:visible')).toHaveCount(2)
+      await expect(more).toHaveText('+1')
+    })
+
     test('the +N of a badge group is muted text at 4.5:1', async ({ page }) => {
       for (const dark of [false, true]) {
         await openDisplay(page, { tw, section: 'badges', dark })
