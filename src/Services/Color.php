@@ -94,6 +94,47 @@ class Color
     }
 
     /**
+     * The tone a colour name stands for, so a badge reads from the role tokens: `neutral`, `info`, `success`, `warning`,
+     * `danger` or `accent`, or `inverse` for `black` (a solid fg fill). A tone name stands for itself; a name that is
+     * unknown, empty or not a string is `neutral`. It never throws, so a status enum's colour can be anything.
+     *
+     * @return 'neutral'|'info'|'success'|'warning'|'danger'|'accent'|'inverse'
+     */
+    public static function tone(mixed $color): string
+    {
+        $name = is_string($color) ? strtolower(trim($color)) : '';
+
+        return match ($name) {
+            'info', 'blue', 'sky', 'cyan', 'indigo' => 'info',
+            'success', 'green', 'emerald', 'teal', 'lime' => 'success',
+            'warning', 'yellow', 'amber', 'orange' => 'warning',
+            'danger', 'error', 'red', 'rose' => 'danger',
+            'accent', 'primary', 'purple', 'violet', 'fuchsia', 'pink' => 'accent',
+            'black', 'inverse' => 'inverse',
+            default => 'neutral',
+        };
+    }
+
+    /**
+     * A hex colour as plain `#rrggbb`: short forms expanded and any alpha dropped (a translucent text colour would lose
+     * the contrast a badge counts on); null for anything that is not a strict hex colour.
+     */
+    public static function opaque(mixed $color): ?string
+    {
+        if (! self::isHex($color)) {
+            return null;
+        }
+
+        $hex = strtolower(substr(trim($color), 1));
+
+        if (strlen($hex) <= 4) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+
+        return '#'.substr($hex, 0, 6);
+    }
+
+    /**
      * Shade a hex color; returns null for anything that is not one.
      */
     public static function shade($color, $percent, $alpha = 1)

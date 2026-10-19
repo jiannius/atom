@@ -5,11 +5,11 @@
 
 <div class="space-y-2" data-atom-list>
     @if ($heading)
-        <div class="text-sm font-medium text-muted dark:text-muted-foreground uppercase">{{ $heading }}</div>
+        <div class="text-xs font-medium text-fg-muted">{{ $heading }}</div>
     @endif
 
     <div {{ $attributes->class([
-        'border-l border-zinc-200 dark:border-zinc-700 px-1 space-y-1 overflow-auto',
+        'border-l border-border px-1 space-y-1 overflow-auto',
         'max-h-96' => $scrollable,
     ]) }}>
         {{ $slot }}

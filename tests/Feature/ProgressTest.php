@@ -25,9 +25,9 @@ describe('progress', function () {
     });
 
     it('applies variant and size classes', function () {
-        expect(renderBlade('<atom:progress :value="40" variant="success" />'))->toContain('bg-green-500');
-        expect(renderBlade('<atom:progress :value="40" variant="danger" />'))->toContain('bg-red-500');
-        expect(renderBlade('<atom:progress :value="40" size="sm" />'))->toContain('h-1.5');
+        expect(renderBlade('<atom:progress :value="40" variant="success" />'))->toContain('bg-success-fg');
+        expect(renderBlade('<atom:progress :value="40" variant="danger" />'))->toContain('bg-danger-fg');
+        expect(renderBlade('<atom:progress :value="40" size="sm" />'))->toContain('h-1');
     });
 
     it('shows the percent label when label is true', function () {

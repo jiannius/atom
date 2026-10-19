@@ -21,7 +21,7 @@ $style = Arr::toCssStyles(array_filter([
 <div
 style="{{ $style }}"
 {{ $attributes->class([
-    'rounded-xl',
-    $attributes->get('class', 'bg-zinc-300'),
+    'rounded-pill',
+    $attributes->get('class', 'bg-border-strong'),
 ])->except(['size', 'style']) }}
 ></div>

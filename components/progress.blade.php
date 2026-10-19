@@ -14,28 +14,28 @@ $showLabel = $label !== false && (! $indeterminate || is_string($label));
 $labelText = is_string($label) ? t($label) : $percent.'%';
 
 $track = Arr::toCssClasses([
-    'relative w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700',
+    'relative w-full overflow-hidden rounded-pill bg-border-strong',
     match ($size) {
-        'sm' => 'h-1.5',
-        default => 'h-2.5',
+        'sm' => 'h-1',
+        default => 'h-1.5',
     },
 ]);
 
 $bar = Arr::toCssClasses([
-    'h-full rounded-full',
+    'h-full rounded-pill',
     match ($variant) {
-        'success' => 'bg-green-500',
-        'warning' => 'bg-yellow-500',
-        'danger', 'error' => 'bg-red-500',
-        'info' => 'bg-sky-500',
-        default => 'bg-zinc-900 dark:bg-white',
+        'success' => 'bg-success-fg',
+        'warning' => 'bg-warning-fg',
+        'danger', 'error' => 'bg-danger-fg',
+        'info' => 'bg-info-fg',
+        default => 'bg-accent-ink',
     },
 ]);
 @endphp
 
 <div {{ $attributes->class(['flex flex-col gap-1.5']) }} data-atom-progress>
     @if ($showLabel)
-        <div class="flex items-center justify-between text-sm text-zinc-600 dark:text-zinc-300">
+        <div class="flex items-center justify-between text-xs text-fg-muted tabular-nums">
             <span>{{ $labelText }}</span>
         </div>
     @endif
@@ -47,7 +47,7 @@ $bar = Arr::toCssClasses([
         aria-valuemax="100"
         @unless ($indeterminate) aria-valuenow="{{ $percent }}" @endunless>
         @if ($indeterminate)
-            <div class="{{ $bar }} absolute inset-y-0 w-2/5" style="animation: atom-progress-indeterminate 1.5s ease-in-out infinite"></div>
+            <div class="{{ $bar }} absolute inset-y-0 w-2/5 motion-reduce:animate-none!" style="animation: atom-progress-indeterminate 1.5s ease-in-out infinite"></div>
         @else
             <div class="{{ $bar }}" style="width: {{ $percent }}%"></div>
         @endif

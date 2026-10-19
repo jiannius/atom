@@ -45,7 +45,7 @@ Never write `<x-atom::name>`, `<x-icon />`, or bespoke equivalents when an Atom 
 Views drift when they hand-roll what Atom already has.
 
 - Forms: `<atom:form.section>`, `<atom:form.grid>`, `<atom:form.modal>` and `<atom:form.actions>`, never bare `grid-cols-2`.
-- Notices, status and empty lists: `<atom:callout>`, `<atom:status>` and `<atom:empty>`, not hand-built boxes.
+- Panels, label/value pairs, tags, notices, status and empty lists: `<atom:card>`, `<atom:dd>`, `<atom:badge>`, `<atom:callout>`, `<atom:status>`, `<atom:empty>`, never hand-built boxes.
 - Screens: `<atom:page>`, `<atom:page.header>`, `<atom:timeline>`; rules in the skill's Patterns section.
 - Navigation: `<atom:navlist>`, not hand-rolled links, in `<atom:layouts.sidebar>` or `<atom:layouts.header>`. Sections: `<atom:separator>`, not `<hr>`.
 - Colour with role tokens (`bg-surface`, `text-fg-muted`, `border-border`), not `zinc-*` or `dark:` pairs. One `variant="primary"` button per view; `type="submit"` and `"delete"` add no icon (`icon=`).
@@ -58,9 +58,9 @@ Views drift when they hand-roll what Atom already has.
 The rules above apply to every view. The **`atom-components` skill** carries the rest: the
 `AtomComponent` trait and the method names it occupies, forms and reCAPTCHA, modals, tables,
 navigation, patterns, breadcrumbs, the calendar,
-toast/alert/confirm, dropdowns, tooltips, status primitives, `<atom:select>` option sets, Actions
+toast/alert/confirm, dropdowns, tooltips, `<atom:select>` option sets, Actions
 and the `WebAction` contract, enums, the editor and sanitising, safe URLs, share
-buttons, mail, broadcasting, and the project conventions.
+buttons, mail, broadcasting, and conventions.
 
 Activate it before writing non-trivial Atom markup or any Livewire component.
 The skill loads only if Boost skills are enabled (`boost.json`) and the agent supports

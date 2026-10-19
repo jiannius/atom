@@ -558,3 +558,42 @@ describe('lists, forms and the timeline in the docs', function () {
         }
     });
 });
+
+// V4-3b, the data display: the always-on guideline names the components that replace hand-built boxes; the skill carries the
+// rules, the colour-name table of the badge, and the pattern pages that show them.
+it('teaches the data-display components and the badge colour names', function () {
+    $guideline = boostFile('guidelines/core.blade.php');
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+    expect($guideline)->toContain('<atom:card>')
+        ->and($guideline)->toContain('<atom:dd>')
+        ->and($guideline)->toContain('<atom:badge>')
+        ->and($skill)->toContain('Data display (restyled in V4-3b)')
+        ->and($skill)->toContain('blue/sky/cyan/indigo info')
+        ->and($skill)->toContain('yellow/amber/orange warning')
+        ->and($skill)->toContain('purple/violet/fuchsia/pink accent')
+        ->and($skill)->toContain('A state is `<atom:status>`, not a badge')
+        ->and($skill)->toContain('<atom:progress')
+        ->and($skill)->toContain('<atom:pagination')
+        ->and($skill)->toContain('record-page.blade.php` (`?status=blocked`)');
+});
+
+// every colour name the skill and the README promise maps to the tone they say
+it('keeps the skill\'s colour-name table the one Color::tone() draws', function () {
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+    foreach ([
+        'info' => ['blue', 'sky', 'cyan', 'indigo'],
+        'success' => ['green', 'emerald', 'teal', 'lime'],
+        'warning' => ['yellow', 'amber', 'orange'],
+        'danger' => ['red', 'rose'],
+        'accent' => ['purple', 'violet', 'fuchsia', 'pink'],
+        'neutral' => ['gray', 'zinc', 'slate', 'stone'],
+    ] as $tone => $names) {
+        expect($skill)->toContain(implode('/', $names).' '.$tone);
+
+        foreach ($names as $name) {
+            expect(\Jiannius\Atom\Services\Color::tone($name))->toBe($tone, $name);
+        }
+    }
+});

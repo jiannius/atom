@@ -23,6 +23,7 @@ if ($max && $avatars->count() > $max) {
 <div {{ $attributes->class([
     'inline-flex items-center flex-wrap',
     '[&_[data-atom-avatar]]:-ml-1.5 [&_[data-atom-avatar]]:first:ml-0',
+    '[&_[data-atom-avatar]]:ring-2 [&_[data-atom-avatar]]:ring-surface',
 ]) }}>
     @foreach ($avatars as $avatar)
         {!! $avatar !!}

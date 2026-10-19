@@ -10,6 +10,7 @@ import { test, expect } from '@playwright/test'
 
 const box = page => page.locator('[data-atom-table-search] input')
 const rows = page => page.locator('[data-atom-table-row]')
+const chips = page => page.locator('[data-atom-table-filter-chip]')
 const names = page => page.locator('[data-name]').allTextContents().then(list => list.map(name => name.trim()))
 const state = page => page.evaluate(() => Livewire.all().find(c => c.name === 'atom-e2e-url-filters').$wire.filters)
 const query = page => Object.fromEntries(new URL(page.url()).searchParams)
@@ -26,9 +27,12 @@ async function filter (page) {
 
   await box(page).fill('a')
   await expect(rows(page)).toHaveCount(2)   // Apple, Apricot: the default region is MY
+  // the search's chip row opens under the bar and moves it: pick from the status control only once the row has settled
+  await expect(chips(page)).toHaveCount(1)
   await pickStatus(page, 'Fresh')
   await expect(rows(page)).toHaveCount(1)
   await expect.poll(() => query(page)).toMatchObject({ search: 'a', 'status[0]': 'fresh' })
+  await expect(chips(page)).toHaveCount(2)   // the search and the status
 }
 
 async function openRecord (page) {

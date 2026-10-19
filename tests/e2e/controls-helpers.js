@@ -32,7 +32,17 @@ export function contrastOf(el, { what = 'text', pseudo = null } = {}) {
   const g = cv.getContext('2d', { willReadFrequently: true })
   const read = () => [...g.getImageData(0, 0, 1, 1).data].slice(0, 3)
   const none = (c) => !c || c === 'transparent' || c === 'rgba(0, 0, 0, 0)'
-  const paint = (c) => { g.fillStyle = '#000'; g.fillStyle = c; g.fillRect(0, 0, 1, 1) }
+  // a colour the canvas cannot parse leaves fillStyle as it was, and would be measured as whatever was there (black): two
+  // different starting points tell an unparsed value from a real one, and it throws
+  const paint = (c) => {
+    g.fillStyle = '#010203'
+    g.fillStyle = c
+    const first = g.fillStyle
+    g.fillStyle = '#fdfcfb'
+    g.fillStyle = c
+    if (first !== g.fillStyle) throw new Error(`contrastOf: the canvas cannot parse the colour "${c}"`)
+    g.fillRect(0, 0, 1, 1)
+  }
 
   const chain = []
   for (let n = el; n; n = n.parentElement) chain.unshift(n)

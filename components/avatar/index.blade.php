@@ -13,37 +13,35 @@ $initial ??= $name ? str($name)->initials()->take(match ($size) {
     default => 2,
 })->toString() : null;
 
+/* A tinted square (or circle) with a hairline: initials on the neutral tone, or the photo. 24, 28, 34, 48 and 64px. */
 $classes = [
-    'flex items-center justify-center',
-    'bg-zinc-200 dark:bg-zinc-700 overflow-hidden shadow-sm',
-    'border border-zinc-300 dark:border-zinc-600',
-    'text-zinc-700 dark:text-zinc-200 font-bold leading-none',
+    'flex shrink-0 items-center justify-center',
+    'bg-neutral-bg overflow-hidden border',
+    'text-neutral-fg font-semibold leading-none',
 
     $square ? 'aspect-square' : '',
 
     $square ? match ($size) {
-        'xl' => 'rounded-xl',
-        'lg' => 'rounded-xl',
-        'sm' => 'rounded-lg',
-        'xs' => 'rounded-md',
-        default => 'rounded-lg',
+        'xl' => 'rounded-panel',
+        'lg' => 'rounded-panel',
+        default => 'rounded-control',
     } : 'rounded-full',
 
     match ($size) {
         'xl' => 'size-16',
         'lg' => 'size-12',
-        'sm' => 'size-8',
-        'xs' => 'size-6.5',
-        default => 'size-10',
+        'sm' => 'size-7',
+        'xs' => 'size-6',
+        default => 'size-[34px]',
     },
 ];
 @endphp
 
 <figure {{ $attributes->class([...$classes, match ($size) {
     'xl' => 'text-xl',
-    'lg' => 'text-lg',
-    'xs' => 'text-xs',
-    default => 'text-base',
+    'lg' => 'text-base',
+    'sm', 'xs' => 'text-xs',
+    default => 'text-sm',
 }]) }} data-atom-avatar>
     <atom:tooltip :content="$name" class="w-full h-full">
         @if ($src)

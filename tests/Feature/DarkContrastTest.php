@@ -16,24 +16,26 @@ describe('dark-mode contrast', function () {
             ->toContain('text-zinc-500 dark:text-zinc-400');
     });
 
-    it('darkens the ground behind every coloured badge instead of lightening it', function () {
-        foreach (['red', 'blue', 'yellow', 'orange', 'green', 'purple', 'gray'] as $color) {
+    it('reads every badge colour from a role token pair, so no colour has a light half and a dark half to keep in step', function () {
+        foreach (['red', 'blue', 'yellow', 'orange', 'green', 'purple', 'gray', 'amber', 'indigo', 'black'] as $color) {
             $html = Blade::render('<atom:badge color="'.$color.'" label="x" />');
 
             expect($html)
-                ->toMatch('/dark:bg-[a-z]+-500\/15/')
-                ->not->toMatch('/dark:bg-[a-z]+-100\/30/');
+                ->toMatch('/\bbg-(?:neutral-bg|info-bg|success-bg|warning-bg|danger-bg|accent-soft|fg)\b/')
+                ->not->toContain('dark:');
         }
     });
 
-    it('gives the stats indicator a dark variant for both directions', function () {
+    it('reads the stats indicator from the success and danger tokens for both directions', function () {
         view()->share('errors', new \Illuminate\Support\ViewErrorBag);
 
         expect(Blade::render('<atom:card variant="stats" heading="Sales" :indicator="5" data="1" />'))
-            ->toContain('text-green-500 dark:text-green-400');
+            ->toContain('text-success-fg')
+            ->not->toContain('dark:text-green');
 
         expect(Blade::render('<atom:card variant="stats" heading="Sales" :indicator="-5" data="1" />'))
-            ->toContain('text-red-500 dark:text-red-400');
+            ->toContain('text-danger-fg')
+            ->not->toContain('dark:text-red');
     });
 
     it('draws the filter trigger border above 3:1 in dark mode', function () {

@@ -98,8 +98,8 @@ describe('card', function () {
 
         expect($html)
             ->toContain('data-atom-card')
-            ->toContain('rounded-lg')
-            ->toContain('p-6')
+            ->toContain('rounded-panel')
+            ->toContain('p-4')
             ->toContain('Body');
     });
 
@@ -112,7 +112,7 @@ describe('card', function () {
     it('renders the subtle surface', function () {
         $html = Blade::render('<atom:card subtle>Body</atom:card>');
 
-        expect($html)->toContain('bg-zinc-100');
+        expect($html)->toContain('bg-surface-sunken');
     });
 
     it('renders a stats variant with a positive indicator', function () {
@@ -122,7 +122,7 @@ describe('card', function () {
             ->toContain('Revenue')
             ->toContain('1,000')
             ->toContain('5%')
-            ->toContain('text-green-500');
+            ->toContain('text-success-fg');
     });
 });
 

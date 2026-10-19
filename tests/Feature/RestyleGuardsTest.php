@@ -43,6 +43,21 @@ function restyledComponents(): array
         'slider',
         'rating',
         'uploader',
+        // V4-3b, the data display
+        'badge',
+        'navlist/badge',
+        'card',
+        'callout',
+        'dd',
+        'list',
+        'avatar',
+        'profile',
+        'progress',
+        'skeleton',
+        'placeholder-bar',
+        'kbd',
+        'pagination',
+        'table',
     ];
 }
 

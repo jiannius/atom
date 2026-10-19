@@ -444,19 +444,21 @@ An `href` is only followed if it is `http`, `https`, `mailto`, `tel`, `sms` or s
 | `<atom:subheading>` | Same as heading, smaller / muted. |
 | `<atom:caption>` | Small muted text. |
 | `<atom:label>` | `icon`, `align`. |
-| `<atom:kbd>` | Keyboard-key caps. `keys` (space/`+`-separated, maps `cmd`→⌘, `shift`→⇧, `alt`→⌥, `ctrl`→⌃, `enter`, `esc`, arrows, …); or a single cap from the slot: `<atom:kbd>Esc</atom:kbd>`. |
-| `<atom:avatar>` | `src`, `name`, `initial`, `square` (default `true`), `size` (`xs`..`xl`). Stack: `<atom:avatar.group>`. |
-| `<atom:badge>` | `status` (enum-aware), `size` (`xs`, `default`, `lg`), `icon`, `color`, `label`. Group: `<atom:badge.group>`. |
-| `<atom:card>` | `inset`, `subtle`, `divided`, `variant` (`stats`, `chart`), `heading`, `data`, `indicator`, `trend`, `color`. |
+| `<atom:kbd>` | Keyboard-key caps, 20px high on the sunken fill with a strong hairline. `keys` (space/`+`-separated, maps `cmd`→⌘, `shift`→⇧, `alt`→⌥, `ctrl`→⌃, `enter`, `esc`, arrows, …); or a single cap from the slot: `<atom:kbd>Esc</atom:kbd>`. |
+| `<atom:avatar>` | `src`, `name`, `initial`, `square` (default `true`), `size` (`xs` 24px, `sm` 28, default 34, `lg` 48, `xl` 64). Initials sit on the neutral tone with a hairline; a stack (`<atom:avatar.group max="3">`) rings each avatar in the surface colour. |
+| `<atom:badge>` | A borderless pill on the tone tokens (4.5:1 or more in both themes). `status` (enum-aware), `size` (`xs` 18px, `default` 22, `lg` 26), `icon`, `color`, `label`. `color` is a tone (`neutral` (default), `info`, `success`, `warning`, `danger`, `accent`), `black` (a solid pill), a colour name that maps to a tone (`blue`/`sky`/`cyan`/`indigo` info; `green`/`emerald`/`teal`/`lime` success; `yellow`/`amber`/`orange` warning; `red`/`rose` danger; `purple`/`violet`/`fuchsia`/`pink` accent; `gray`/`zinc`/`slate`/`stone`/`white` and any unknown name neutral) or a strict hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`: the tint and ink are read from it). A state written as a word with a dot is `<atom:status>`. Group: `<atom:badge.group>`. |
+| `<atom:card>` | A panel: a fill and a hairline at the panel radius, 16px of padding, no shadow. `inset` (no padding), `subtle` (the sunken fill), `divided` (hairlines between child divs), a `cover` slot, `variant` (`stats`, `chart`), `heading`, `data`, `indicator`, `trend`, `color`. |
 | `<atom:chart>` | Standalone ApexCharts chart. `type` (`bar`, `area`, `trend`), `data` (bar/area: `label`/`value`/`tooltip` rows; trend: plain number array), `color` (`red`/`green`/`orange`/`gray` or `#hex`), `max` (`['value'=>, 'label'=>]` goal line), `min`. Default height `h-64` (`h-16` for trend), override with a `h-*` class. |
-| `<atom:callout>` | `icon`, `heading`, `content`, `variant` (`info`, `success`, `warning`, `danger`, `error`), `closeable`. |
-| `<atom:skeleton>` | Animated loading block. |
+| `<atom:callout>` | A tone's tint with a hairline of its ink, a 16px icon and the heading in the ink; the text stays the foreground. `icon`, `heading`, `content`, `variant` (`info`, `success`, `warning`, `danger`, `error`; none is neutral), `closeable`. |
+| `<atom:skeleton>` | Loading block on the strong hairline token; it pulses only for a viewer who has not asked for reduced motion. |
 | `<atom:placeholder-bar>` | `size="100%x20px"`. |
+| `<atom:progress>` | A 6px pill track (4px at `size="sm"`) filled with the accent ink, or a tone's ink. `value` (default 0, read as a percent of `max`) and `max` (default 100), `variant` (`success`, `warning`, `danger`, `info`), `size`, `label` (`true` for the percent, or a string), `indeterminate` (stands still under reduced motion). |
+| `<atom:pagination>` | A standalone pager for a Livewire paginator. `paginator`, `simple` (prev and next only), `summary` (default `true`). Every cell is control-high (28px, 40 on touch) with tabular figures; the current page sits on the neutral fill and carries `aria-current="page"`. The table's own pager is the same recipe. |
 | `<atom:empty>` | `kind` (`first-use`, `no-results` (default), `error`), `icon`, `size` (`sm`), `subtle`, `heading`, `subheading`. Slot `action` holds the next step; a default slot replaces the heading and subheading. The large state draws its icon in once (CSS only; not at `sm` or `subtle`, not under `prefers-reduced-motion`). |
 | `<atom:status>` | `tone` (`neutral` (default), `info`, `success`, `warning`, `danger`, `accent`), `label` (or the slot), `running` (pulses the dot; still under `prefers-reduced-motion`). A dot plus a word: the word is always printed. |
 | `<atom:stat>` | One figure of a totals strip. `label`, `value` (or the slot), `prefix` (a small currency), `delta` (`+12%`, `-3`: up or down from the sign, with an arrow and a hidden word; a zero, signed or not, is flat. A digit must follow the optional sign straight away, so `-.5%`, `−RM 200`, `n/a` and `new` print as plain text with no direction), `inverse` (a fall is the good news), `breakdown`, `tone` (`danger`, `warning`, `success`: tints the value), `href` (a clickable filter, through `safe_url()`). Sized by its content. Group: `<atom:stat.group>`, the outlined strip that wraps two to a row on a phone. |
 | `<atom:timeline>` | A vertical timeline of one `kind`: `event` (a record's activity: a dot in a `tone` on a spine, what happened, who and when, an optional `status` and a folded `detail`), `step` (a numbered spine of `done`, `current`, `pending` and `failed` steps; each step's body folds away unless `:collapsible="false"`) or `message` (two speakers, yours at `side="end"`, with an optional `composer` slot as the last row). Items are `<atom:timeline.item>`: `title`, `body` (or the slot), `actor`, `time` (a string, or a `DateTimeInterface` shown in the viewer's timezone; pass a date with no time as a `Y-m-d` string), `tone`, `status`, `state`, `open`, `speaker`, `side`. Every string prints as text; `label` names the list. |
-| `<atom:profile>` | `name`, `avatar`, `email`, `size`. |
+| `<atom:profile>` | `name`, `avatar`, `email`, `size`. An avatar, the name in the foreground and the email in the muted token. |
 | `<atom:icon.*>` | 200+ icons. Examples: `<atom:icon.check/>`, `<atom:icon.arrow-left/>`, `<atom:icon.delete/>`. Browse `components/icon/`. |
 | `<atom:logo.*>` | Payment / brand marks: `apple-pay`, `fpx`, `google-pay`, `ipay88`, `master`, `senangpay`, `stripe`, `tng`, `visa`. |
 
@@ -510,7 +512,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:page>` | The padded body of a screen (a shell's `<main>` is unpadded): a 1240px column, 26px above, 120px below, a 22px gap between its blocks. `width` (`narrow` is 980px, `full` has no cap). |
 | `<atom:page.header>` | Crumbs, the title (`<h1>`, 22px) with its status beside it, key facts, actions. Props: `title`, `level` (`1`; use `2` in a modal or slide-over), `size` (`sm` for a modal or slide-over), `crumbs` (`[['label' => ..., 'href' => ...], ...]`; the last is the current page and prints as given, every other label goes through `t()`, so a parent crumb that holds record data should not contain a `|`), `facts` (strings or `['label' => ..., 'value' => ..., 'mono' => true]`). Slots: `status`, `meta` (more facts), `actions`, `menu` (the overflow menu's items), `primary` (the one action for the record's current status). |
 | `<atom:page.tabs>` | A record's sections as link tabs with counts. `tabs` (`['label' => ..., 'href' => ..., 'count' => ..., 'current' => true]`), `label` (the landmark's name). The current tab carries `aria-current="page"`. |
-| `<atom:list>` | `heading`, `scrollable` (default `true`). Child: `<atom:list.item>`. |
+| `<atom:list>` | `heading` (a 12px muted label), `scrollable` (default `true`). Child: `<atom:list.item>`. |
 | `<atom:menu>` | `popover`. Child: `<atom:menu.item>`. |
 | `<atom:navlist>` | Nav container, drawn as a column in `layouts.sidebar` and as bar items in `layouts.header` (a group becomes a dropdown there). Children: `<atom:navlist.item>`, `<atom:navlist.group>`, `<atom:navlist.badge>`. Items carry `aria-current="page"` when current. |
 | `<atom:navlist.group>` | `heading`, `expandable`, `expanded` (default `true`), `hiddenIfEmpty` (default `true`), `persistKey`. See [Remembering collapsed groups](#remembering-collapsed-groups). |
@@ -702,7 +704,7 @@ there's no server-side or cross-device state.
 | --- | ------------- |
 | `<atom:copy>` | `value` — copy-to-clipboard button. |
 | `<atom:darkmode-toggle>` | Dark-mode switcher. Needs the page to pass `dark` to `<atom:html>` or its layout — without it `window.darkmode()` is never defined. The sidebar layout renders its own toggle when `dark` is set. |
-| `<atom:dd>` | Definition list. Child: `<atom:dd.group>`. |
+| `<atom:dd>` | A label (muted) and its value (an empty one prints `filler`, `--`). `label`, `block` (stack them), `filler`. Wrap several in `<atom:dd.group cols="1\|2\|3">`. |
 | `<atom:embed>` | `src`, `icon`, `file` — embeds image / video / YouTube / file preview. |
 | `<atom:error>` | Plain error message slot. |
 | `<atom:html>` | Page boilerplate (see [Page boilerplate](#page-boilerplate)). |
