@@ -4,6 +4,6 @@
     </atom:card>
 
     <atom:card subtle>
-        <p>Subtle card with muted chrome.</p>
+        <p>Subtle card on the sunken fill.</p>
     </atom:card>
 </div>
