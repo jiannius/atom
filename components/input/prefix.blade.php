@@ -5,9 +5,8 @@
 
 @php
 $class = Arr::toCssClasses([
-    'h-10 px-3 border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-700 shadow-xs',
-    'text-muted dark:text-muted-foreground flex items-center justify-center outline-offset-1',
-    'group-has-[:focus]:outline-1 group-has-[:focus]:outline-zinc-200 dark:group-has-[:focus]:outline-2 hover:outline-1 hover:outline-zinc-100/50',
+    'h-control px-2.5 border border-border-strong bg-surface-sunken text-sm text-fg-muted flex items-center justify-center',
+    'group-has-[:focus-visible]:border-focus',
 ]);
 @endphp
 
@@ -19,7 +18,7 @@ $class = Arr::toCssClasses([
     '[&_[data-atom-date-picker]_input]:rounded-r-none' => !empty($suffix),
 ]) }}>
     @if ($prefix)
-        <div @class([$class, 'rounded-l-lg border-r-0'])>
+        <div @class([$class, 'rounded-l-control border-r-0'])>
             {{ t($prefix) }}
         </div>
     @endif
@@ -29,7 +28,7 @@ $class = Arr::toCssClasses([
     </div>
 
     @if ($suffix)
-        <div @class([$class, 'rounded-r-lg border-l-0 -ml-px'])>
+        <div @class([$class, 'rounded-r-control border-l-0 -ml-px'])>
             {{ t($suffix) }}
         </div>
     @endif

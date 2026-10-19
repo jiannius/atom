@@ -11,12 +11,11 @@ $length = (int) $length;
 $groups = $groups ? (int) $groups : null;
 
 $box = Arr::toCssClasses([
-    'size-11 text-center text-lg font-medium no-spinner rounded-lg shadow-sm outline-offset-1',
-    'text-zinc-700 dark:text-zinc-200',
-    'bg-white dark:bg-white/10',
-    'focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
-    $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-white/10',
-    'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
+    'size-10 text-center text-lg font-medium no-spinner rounded-control border bg-surface text-fg',
+    'disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-fg-subtle',
+    'focus-visible:border-focus focus-visible:outline-offset-0',
+    $invalid ? 'border-danger-fg' : 'border-border-strong',
+    'group-has-[[data-atom-error]]/field:border-danger-fg',
 ]);
 @endphp
 

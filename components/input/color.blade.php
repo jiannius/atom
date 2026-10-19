@@ -6,13 +6,11 @@
 @php
 $wiremodel = $attributes->wire('model')->value();
 $classes = Arr::toCssClasses([
-    'h-10 w-full py-2 px-10 shadow-xs outline-offset-1 cursor-default',
-    'text-zinc-700 dark:text-zinc-200',
-    'bg-white dark:bg-white/10',
-    'border border-zinc-200 border-b-zinc-300/80 rounded-lg shadow-sm bg-white',
-    'focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
-    $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-white/10',
-    'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
+    'h-control w-full px-8 cursor-default rounded-control border bg-surface text-sm text-fg',
+    'placeholder:text-fg-subtle',
+    'focus-visible:border-focus focus-visible:outline-offset-0',
+    $invalid ? 'border-danger-fg' : 'border-border-strong',
+    'group-has-[[data-atom-error]]/field:border-danger-fg',
 ]);
 @endphp
 
@@ -27,8 +25,8 @@ data-atom-color-input>
             @if ($slot->isNotEmpty())
                 {{ $slot }}
             @else
-                <div class="absolute top-0 left-0 bottom-0 px-3 flex items-center justify-center">
-                    <div x-show="color" x-bind:style="{ backgroundColor: color }" class="size-4 rounded-full"></div>
+                <div class="absolute top-0 left-0 bottom-0 px-2.5 flex items-center justify-center">
+                    <div x-show="color" x-bind:style="{ backgroundColor: color }" class="size-4 rounded-full border border-border-strong"></div>
                 </div>
 
                 <input
@@ -37,8 +35,8 @@ data-atom-color-input>
                 readonly
                 {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['id', 'class', 'placeholder']) }}>
 
-                <div class="absolute top-0 right-0 bottom-0 flex items-center justify-center text-muted dark:text-muted-foreground px-3">
-                    <atom:icon.brush />
+                <div class="absolute top-0 right-0 bottom-0 flex items-center justify-center text-fg-subtle px-2.5">
+                    <atom:icon.brush class="size-4" />
                 </div>
             @endif
         </div>
@@ -48,7 +46,7 @@ data-atom-color-input>
                 @foreach (Arr::collapse(\Jiannius\Atom\Services\Color::all()) as $color)
                     <div
                     x-on:click="color = @js($color)"
-                    class="cursor-pointer size-6 border border-zinc-300 dark:border-zinc-600 rounded hover:ring-1 hover:ring-offset-1 hover:ring-zinc-500"
+                    class="cursor-pointer size-6 border border-border-strong rounded-nav hover:outline-2 hover:outline-offset-1 hover:outline-fg-muted"
                     style="background-color: {{ $color }};">
                     </div>
                 @endforeach

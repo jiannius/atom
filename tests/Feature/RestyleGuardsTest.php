@@ -30,7 +30,13 @@ require_once __DIR__.'/../Support/ClassTokens.php';
 function restyledComponents(): array
 {
     return [
+        // V4-3a, the controls
         'button',
+        'input',
+        'select',
+        'textarea',
+        'date-picker',
+        'time-picker',
     ];
 }
 
@@ -51,7 +57,7 @@ function restyledTokens(): array
 
         foreach ($files as $file) {
             $relative = 'components/'.ltrim(str_replace(realpath(__DIR__.'/../../components'), '', $file->getRealPath()), '/');
-            $out[$relative] = elementTokens($file->getContents());
+            $out[$relative] = elementTokens(file_get_contents($file->getRealPath()));
         }
     }
 
@@ -150,7 +156,7 @@ describe('restyled components', function () {
                 // a width, a style, or a colour: only a colour is checked against the token list
                 $rest = $m[2];
 
-                if (preg_match('/^(?:\d+|\[[\d.]+(?:px|rem|em)?\]|solid|dashed|dotted|double|none|hidden|collapse|separate|spacing.*|reverse)$/', $rest)) {
+                if (preg_match('/^(?:[trblxyse](?:-\d+)?|\d+|\[[\d.]+(?:px|rem|em)?\]|solid|dashed|dotted|double|none|hidden|collapse|separate|spacing.*|reverse)$/', $rest)) {
                     continue;
                 }
 

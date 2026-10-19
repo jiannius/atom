@@ -31,13 +31,13 @@ $labelId = $label ? $attributes->fieldId('atom-time-picker', $name, $label).'-la
     </atom:input.field>
 @else
     @php
+    /* The field recipe (see input/general). Hour, minute and meridiem are three inputs in one box, so the ring belongs to the
+       box and the inputs inside it draw none. */
     $classes = Arr::toCssClasses([
-        'h-10 relative w-full py-2 pl-3 pr-10 no-spinner rounded-lg shadow-sm outline-offset-1 cursor-default',
-        'text-zinc-700 dark:text-zinc-200',
-        'bg-white dark:bg-white/10',
-        'has-[:focus]:outline-1 has-[:focus]:outline-zinc-200 dark:has-[:focus]:outline-2 hover:outline-1 hover:outline-zinc-100/50',
-        $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-white/10',
-        'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
+        'h-control relative flex w-full items-center pl-2.5 pr-8 no-spinner rounded-control border bg-surface text-sm text-fg cursor-default',
+        'has-[:focus-visible]:border-focus has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
+        $invalid ? 'border-danger-fg' : 'border-border-strong',
+        'group-has-[[data-atom-error]]/field:border-danger-fg',
     ]);
     @endphp
 
@@ -64,9 +64,9 @@ $labelId = $label ? $attributes->fieldId('atom-time-picker', $name, $label).'-la
             x-on:keydown.right.stop.prevent="up('hr', $el.value)"
             maxlength="2"
             aria-label="{{ t('Hour') }}"
-            class="appearance-none w-8 text-center no-spinner">
+            class="appearance-none w-6 text-center no-spinner bg-transparent focus-visible:outline-none">
 
-            <span class="font-bold">:</span>
+            <span class="font-medium text-fg-muted">:</span>
 
             <input
             type="text"
@@ -81,7 +81,7 @@ $labelId = $label ? $attributes->fieldId('atom-time-picker', $name, $label).'-la
             x-on:keydown.right.stop.prevent="up('min', $el.value)"
             maxlength="2"
             aria-label="{{ t('Minute') }}"
-            class="appearance-none w-8 text-center no-spinner">
+            class="appearance-none w-6 text-center no-spinner bg-transparent focus-visible:outline-none">
 
             <input
             type="text"
@@ -90,11 +90,11 @@ $labelId = $label ? $attributes->fieldId('atom-time-picker', $name, $label).'-la
             x-on:keydown.up.stop.prevent="up('am')"
             x-on:keydown.down.stop.prevent="down('am')"
             aria-label="{{ t('AM or PM') }}"
-            class="appearance-none w-8 text-center" readonly>
+            class="appearance-none w-8 text-center bg-transparent focus-visible:outline-none" readonly>
         </div>
 
-        <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center pr-3 right-0">
-            <atom:icon.clock />
+        <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pr-2.5 right-0">
+            <atom:icon.clock class="size-4" />
         </div>
     </div>
 @endif

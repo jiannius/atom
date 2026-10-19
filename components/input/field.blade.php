@@ -20,7 +20,7 @@
                     {{ t($label) }}
 
                     @if ($required)
-                        <atom:icon.asterisk class="text-red-500 dark:text-red-300 shrink-0 size-3"/>
+                        <atom:icon.asterisk class="text-danger-fg shrink-0 size-3"/>
                     @endif
                 </div>
 

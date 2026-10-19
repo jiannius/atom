@@ -31,19 +31,19 @@ $filterLabel = $filterKey
     ? t($tableFilterLabel ?: (string) str($filterKey)->afterLast('.')->headline())
     : null;
 
+/* The field recipe (see input/general). The ring belongs to the wrapper (the <select> inside has none of its own). */
 $classes = Arr::toCssClasses([
-    'w-full rounded-lg shadow-xs flex items-center gap-1 flex-wrap',
-    'bg-white dark:bg-white/10 pr-10',
-    'has-focus:outline-1 has-focus:outline-zinc-200 dark:has-focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
-    'has-disabled:bg-zinc-100 has-disabled:opacity-70 has-disabled:text-zinc-400 dark:has-disabled:bg-zinc-800/50 hover:has-disabled:outline-none',
-    '[&_select]:w-full [&_select]:flex-1 [&_select]:appearance-none [&_select]:outline-offset-1',
-    '[&_select]:text-zinc-700 [&_select]:dark:text-zinc-200 [&_select]:text-left',
-    '[&_select]:has-[option.placeholder:checked]:text-zinc-400',
-    '[&_select]:focus:outline-none',
-    $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-white/10',
-    $multiple ? 'min-h-10 py-2' : 'h-10 py-1.5',
-    $icon ? 'pl-10' : 'pl-3',
-    'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
+    'w-full rounded-control border bg-surface text-sm flex items-center gap-1 flex-wrap pr-8',
+    'has-[:focus-visible]:border-focus has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
+    'has-disabled:cursor-not-allowed has-disabled:bg-surface-sunken has-disabled:text-fg-subtle',
+    '[&_select]:w-full [&_select]:flex-1 [&_select]:appearance-none [&_select]:bg-transparent',
+    '[&_select]:text-fg [&_select]:text-left',
+    '[&_select]:has-[option.placeholder:checked]:text-fg-subtle',
+    '[&_select]:focus-visible:outline-none [&_select]:disabled:cursor-not-allowed [&_select]:disabled:text-fg-subtle',
+    $invalid ? 'border-danger-fg' : 'border-border-strong',
+    $multiple ? 'min-h-control py-1' : 'h-control',
+    $icon ? 'pl-8' : 'pl-2.5',
+    'group-has-[[data-atom-error]]/field:border-danger-fg',
     '[[data-atom-input-prefix]+[data-atom-select-native]>&]:rounded-l-none',
     '[[data-atom-input-suffix]+[data-atom-select-native]>&]:rounded-r-none',
 ]);
@@ -110,8 +110,8 @@ class="group/select w-full relative"
 {{ $attributes->except(['id', 'class', 'disabled', 'required', 'readonly']) }}
 data-atom-select-native>
     @if ($icon)
-        <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pl-3 left-0">
-            <x-dynamic-component :component="'atom::icon.'.$icon" class="size-5" />
+        <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pl-2.5 left-0">
+            <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4" />
         </div>
     @endif
 
@@ -136,9 +136,9 @@ data-atom-select-native>
             }"
             class="flex items-center gap-2 flex-wrap">
                 <template x-for="item in selected" hidden>
-                    <div class="shrink-0 max-w-56 flex items-center text-sm border-r border-zinc-300 dark:border-zinc-600 last:border-0">
-                        <div x-text="item.label" class="grow truncate text-zinc-700 dark:text-zinc-200"></div>
-                        <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center cursor-pointer text-muted dark:text-muted-foreground pl-2 pr-3">
+                    <div class="shrink-0 max-w-56 flex items-center text-sm border-r border-border-strong last:border-0">
+                        <div x-text="item.label" class="grow truncate text-fg"></div>
+                        <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center cursor-pointer text-fg-subtle hover:text-fg pl-2 pr-2.5">
                             <atom:icon.minus-circle class="size-4" />
                         </div>
                     </div>
@@ -190,7 +190,7 @@ data-atom-select-native>
         </select>
     </div>
 
-    <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center right-0">
+    <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center right-0 text-fg-subtle">
         @if ($clearable)
             <div
             x-cloak
@@ -201,25 +201,25 @@ data-atom-select-native>
             }"
             x-on:click.stop="value = multiple ? [] : null"
             x-bind:class="!show && 'pointer-events-none'"
-            class="flex items-center justify-center last:mr-2"
+            class="flex items-center justify-center last:mr-2.5"
             data-atom-select-clear>
-                <atom:icon.close x-show="show" class="text-muted dark:text-muted-foreground hover:text-zinc-800 dark:hover:text-white" />
-                <atom:icon.dropdown x-show="!show" />
+                <atom:icon.close x-show="show" class="size-4 hover:text-fg" />
+                <atom:icon.dropdown x-show="!show" class="size-4" />
             </div>
         @elseif (!$disabled)
-            <atom:icon.dropdown class="mr-2" />
+            <atom:icon.dropdown class="mr-2.5 size-4" />
         @endif
 
         @if (!$disabled)
             @if (isset($addButton) && $addButton->isNotEmpty())
-                <div x-on:click.stop class="p-1 cursor-pointer">
+                <div x-on:click.stop class="px-1 cursor-pointer">
                     {{ $addButton }}
                 </div>
             @elseif ($hasAddButton)
                 <atom:tooltip content="Add New">
-                    <div x-on:click.stop="$dispatch('add')" class="p-1 cursor-pointer">
-                        <div class="p-2 h-[2.05rem] bg-zinc-100 dark:bg-zinc-800 rounded-md">
-                            <atom:icon.add />
+                    <div x-on:click.stop="$dispatch('add')" class="px-1 cursor-pointer">
+                        <div class="flex items-center justify-center size-5 bg-surface-sunken text-fg-muted hover:text-fg rounded-nav">
+                            <atom:icon.add class="size-3.5" />
                         </div>
                     </div>
                 </atom:tooltip>

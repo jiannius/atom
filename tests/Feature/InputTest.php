@@ -24,7 +24,7 @@ describe('input', function () {
             ->toContain('Company')
             ->toContain('data-atom-caption')
             ->toContain('Legal name')
-            ->toContain('dark:text-red-300');   // the required-asterisk icon's distinctive class
+            ->toContain('text-danger-fg');   // the required-asterisk icon's distinctive class
     });
 
     it('renders an error message when error is passed', function () {

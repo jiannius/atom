@@ -29,18 +29,17 @@ if ($textareaId) {
     $merges['id'] = $textareaId;
 }
 
+/* The field recipe (see input/general): a strong hairline on the surface, the base :focus-visible ring hugging it. The
+   transparent variant has no border or fill, and tints on focus. Taller than a control by its rows, never shorter. */
 $classes = Arr::toCssClasses([
-    'w-full text-zinc-700 dark:text-zinc-200 outline-offset-1',
-    'py-2 px-3 rounded-lg',
-    'hover:outline-1 hover:outline-zinc-100/50',
-    'disabled:resize-none read-only:resize-none',
+    'w-full py-1.5 px-2.5 rounded-control text-sm text-fg placeholder:text-fg-subtle',
+    'disabled:resize-none disabled:cursor-not-allowed read-only:resize-none',
     'resize-none' => $autoresize,
-    'border border-red-400' => $invalid,
-    'border border-zinc-200 dark:border-white/10' => !$invalid,
-    'border-0 bg-transparent dark:bg-transparent' => $transparent,
-    'focus:outline-none focus:bg-zinc-50 dark:focus:bg-zinc-700/50' => $transparent,
-    'shadow-sm bg-white dark:bg-white/10 focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2' => !$transparent,
-    'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
+    'border border-danger-fg' => $invalid,
+    'border border-border-strong' => !$invalid && !$transparent,
+    'border-0 bg-transparent focus-visible:bg-surface-sunken' => $transparent,
+    'bg-surface focus-visible:border-focus focus-visible:outline-offset-0 disabled:bg-surface-sunken disabled:text-fg-subtle' => !$transparent,
+    'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-danger-fg',
 ]);
 @endphp
 
