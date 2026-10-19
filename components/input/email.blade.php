@@ -11,9 +11,10 @@
 $classes = Arr::toCssClasses([
     'min-h-control w-full py-0.5 no-spinner rounded-control border bg-surface text-sm text-fg',
     'flex items-center gap-1.5 flex-wrap',
-    'has-[:focus-visible]:border-focus has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
+    $invalid ? 'has-[:focus-visible]:border-danger-fg' : 'has-[:focus-visible]:border-focus',
+    'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
     $invalid ? 'border-danger-fg' : 'border-border-strong',
-    'group-has-[[data-atom-error]]/field:border-danger-fg',
+    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
     $icon ? 'pl-8' : 'pl-2.5',
     $clearable ? 'pr-8' : 'pr-2.5',
 ]);

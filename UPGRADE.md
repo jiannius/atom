@@ -88,6 +88,10 @@ Components use atom's tokens; remove overrides that patched the old look. Tag AP
 
 **Slider, rating and uploader.** The slider's fill and thumb are `accent-ink` (they were near-black), its track 4px, with no thumb shadow; the rating's filled stars are `accent-ink` (they were amber `#f59e0b`) at 20px (they were 24px). A host that wants amber stars sets `color` on `[data-atom-rating-fill]`. The dropzone is a dashed hairline at radius 7.
 
+**Calendar day cells are 36px.** A day in the date picker's calendar is 36px square (it was 40px), with 13px numbers (14 in the comfortable density), and the month label is that size at weight 590 (it was 20px). A host that sized the panel around the old cells needs to look at it.
+
+**`button.group` lost `overflow-hidden` and its shadow.** The joined buttons share one hairline and keep the radius only at the group's two ends, so a focused button's ring is no longer cut off (a focused one is raised); the group draws no shadow of its own. A host that relied on the group clipping its contents, or on its shadow, has to supply that.
+
 **New utilities.** `h-control-xs|sm|md|lg` and `min-h-control` follow the control token like `h-control`.
 
 **Breaks a test.** A test or a style that matched `bg-primary`, `bg-white`, `shadow-xs`, `h-10`, `rounded-lg`, `size-4.5` or the focus classes on these components needs updating; the primary button is `bg-accent`.

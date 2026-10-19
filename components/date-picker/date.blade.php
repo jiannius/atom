@@ -11,10 +11,11 @@ $classes = Arr::toCssClasses([
     'h-control w-full pl-2.5 pr-14 no-spinner rounded-control border bg-surface text-sm text-fg cursor-text',
     'placeholder:text-fg-subtle',
     'disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-fg-subtle',
-    'focus-visible:border-focus focus-visible:outline-offset-0',
+    $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
+    'focus-visible:outline-offset-0',
     $disabled ? 'bg-surface-sunken text-fg-subtle cursor-not-allowed' : '',
     $invalid ? 'border-danger-fg' : 'border-border-strong',
-    'group-has-[[data-atom-error]]/field:border-danger-fg',
+    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
 ]);
 @endphp
 

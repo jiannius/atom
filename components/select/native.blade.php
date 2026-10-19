@@ -34,7 +34,8 @@ $filterLabel = $filterKey
 /* The field recipe (see input/general). The ring belongs to the wrapper (the <select> inside has none of its own). */
 $classes = Arr::toCssClasses([
     'w-full rounded-control border bg-surface text-sm flex items-center gap-1 flex-wrap pr-8',
-    'has-[:focus-visible]:border-focus has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
+    $invalid ? 'has-[:focus-visible]:border-danger-fg' : 'has-[:focus-visible]:border-focus',
+    'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
     'has-disabled:cursor-not-allowed has-disabled:bg-surface-sunken has-disabled:text-fg-subtle',
     '[&_select]:w-full [&_select]:flex-1 [&_select]:appearance-none [&_select]:bg-transparent',
     '[&_select]:text-fg [&_select]:text-left',
@@ -43,7 +44,7 @@ $classes = Arr::toCssClasses([
     $invalid ? 'border-danger-fg' : 'border-border-strong',
     $multiple ? 'min-h-control py-1' : 'h-control',
     $icon ? 'pl-8' : 'pl-2.5',
-    'group-has-[[data-atom-error]]/field:border-danger-fg',
+    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
     '[[data-atom-input-prefix]+[data-atom-select-native]>&]:rounded-l-none',
     '[[data-atom-input-suffix]+[data-atom-select-native]>&]:rounded-r-none',
 ]);

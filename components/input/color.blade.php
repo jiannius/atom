@@ -8,9 +8,10 @@ $wiremodel = $attributes->wire('model')->value();
 $classes = Arr::toCssClasses([
     'h-control w-full px-8 cursor-default rounded-control border bg-surface text-sm text-fg',
     'placeholder:text-fg-subtle',
-    'focus-visible:border-focus focus-visible:outline-offset-0',
+    $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
+    'focus-visible:outline-offset-0',
     $invalid ? 'border-danger-fg' : 'border-border-strong',
-    'group-has-[[data-atom-error]]/field:border-danger-fg',
+    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
 ]);
 @endphp
 

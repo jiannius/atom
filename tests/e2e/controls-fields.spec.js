@@ -110,6 +110,65 @@ for (const tw of ['floor', 'latest']) {
       }
     })
 
+    test('an invalid field keeps its danger border when it has the keyboard focus, and the outline carries the focus', async ({ page }) => {
+      await open(page, { tw, section: 'fields', accent: '#4c55c9' })
+
+      const native = '[data-atom-select-native] > div:first-of-type'
+      // [test id, the box that draws the border, what takes the keyboard focus]
+      const invalid = [
+        ['f-input-invalid', 'input', 'input'],
+        ['f-input-error', 'input', 'input'],
+        ['f-textarea-invalid', 'textarea', 'textarea'],
+        ['f-tel-invalid', 'input[type=tel]', 'input[type=tel]'],
+        ['f-color-invalid', 'input', 'input'],
+        ['f-email-invalid', '[data-atom-input-email] [data-atom-dropdown-trigger]', 'input[type=email]'],
+        ['f-date-invalid', 'input', 'input'],
+        ['f-date-range-invalid', 'input', 'input'],
+        ['f-time-invalid', 'div[x-data="timePicker()"]', 'input'],
+        ['f-select-native-invalid', native, 'select'],
+        ['f-select-listbox-invalid', '[data-atom-select-combobox]', '[data-atom-select-combobox]'],
+        ['f-otp-invalid', 'input', 'input'],
+      ]
+
+      const danger = 'rgb(163, 38, 28)'
+
+      for (const [id, boxSelector, focusSelector] of invalid) {
+        const box = page.getByTestId(id).locator(boxSelector).first()
+        expect((await style(box, 'border-top-color'))['border-top-color'], `${id} at rest`).toBe(danger)
+
+        await focusByKeyboard(page, page.getByTestId(id).locator(focusSelector).first())
+
+        const focused = await style(box, 'border-top-color', 'outline-width', 'outline-style')
+        expect(focused['border-top-color'], `${id} focused`).toBe(danger)
+        expect([focused['outline-width'], focused['outline-style']], `${id} outline`).toEqual(['2px', 'solid'])
+        expect((await box.evaluate(contrastOf, { what: 'outline' })).ratio, `${id} outline against the surface`).toBeGreaterThanOrEqual(3)
+      }
+    })
+
+    test('a valid field takes the focus colour on its border when focused', async ({ page }) => {
+      await open(page, { tw, section: 'fields', accent: '#4c55c9' })
+
+      const input = page.getByTestId('f-input-empty').locator('input')
+      const before = (await style(input, 'border-top-color'))['border-top-color']
+      await focusByKeyboard(page, input)
+      const after = await style(input, 'border-top-color', 'outline-color')
+
+      expect(after['border-top-color']).not.toBe(before)
+      expect(after['border-top-color']).toBe(after['outline-color'])
+    })
+
+    test('the calendar arrows are 16px', async ({ page }) => {
+      await open(page, { tw, section: 'fields' })
+
+      await page.getByTestId('f-date').locator('input').click()
+      const sizes = await page.locator('[data-atom-date-picker-calendar]:visible .pika-prev, [data-atom-date-picker-calendar]:visible .pika-next').evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundSize))
+      expect(sizes).toEqual(['16px', '16px'])
+
+      // and the day cells are 36px (they were 40)
+      const day = await style(page.locator('[data-atom-date-picker-calendar]:visible .pika-table td button').first())
+      expect([day.width, day.height]).toEqual([36, 36])
+    })
+
     test('the listbox option rows are 28px, 13px, with the same hover as a menu', async ({ page }) => {
       await open(page, { tw, section: 'fields' })
 

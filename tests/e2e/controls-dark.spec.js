@@ -142,7 +142,7 @@ test.describe('dark check: the 3a components the dark-mode hosts render', () => 
   }
 
   test('the field hairline: measured in both themes and recorded, not gated', async ({ page }) => {
-    // border-strong is the sample's 17% line (1.35:1 on white). WCAG 1.4.11 asks 3:1 of a boundary that identifies a control; the
+    // border-strong is the sample's 17% line (1.41:1 on white). WCAG 1.4.11 asks 3:1 of a boundary that identifies a control; the
     // approved design draws a hairline, and a field is also found by its fill, its placeholder and its label. The number is
     // attached to the report so the decision stays visible; the controls whose shape alone identifies them (checkbox, radio,
     // toggle) are gated at 3:1 in controls-choices.

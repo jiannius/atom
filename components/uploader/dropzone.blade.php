@@ -39,9 +39,10 @@ x-on:drop.prevent="drop($event)"
         x-bind:class="{
             'opacity-50 pointer-events-none': uploading,
             'border-accent-ink bg-accent-soft': dragging,
+            'border-border-strong': !dragging,
         }"
         x-bind:aria-busy="uploading"
-        class="relative flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-control border border-dashed border-border-strong p-6 text-center text-sm text-fg-muted transition-colors hover:bg-surface-sunken">
+        class="relative flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-control border border-dashed p-6 text-center text-sm text-fg-muted transition-colors hover:bg-surface-sunken">
             <span x-show="!uploading" class="flex flex-col items-center gap-2">
                 <atom:icon.upload class="size-5" />
                 <span>{{ t($label) }}</span>

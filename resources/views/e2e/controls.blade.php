@@ -98,6 +98,14 @@ $show = fn (string $name) => $section === null || $section === $name;
             <div data-testid="f-date-range"><atom:date-picker variant="range" label="Period"/></div>
             <div data-testid="f-time"><atom:time-picker label="Time"/></div>
             <div data-testid="f-otp"><atom:input.otp length="6"/></div>
+            <div data-testid="f-input-error"><atom:input label="Error only" value="x" error="Not allowed"/></div>
+            <div data-testid="f-tel-invalid"><atom:input label="Invalid phone" type="tel" invalid/></div>
+            <div data-testid="f-color-invalid"><atom:input label="Invalid colour" type="color" invalid/></div>
+            <div data-testid="f-email-invalid"><atom:input label="Invalid email" type="email" multiple invalid/></div>
+            <div data-testid="f-date-invalid"><atom:date-picker label="Invalid date" invalid/></div>
+            <div data-testid="f-date-range-invalid"><atom:date-picker variant="range" label="Invalid period" invalid/></div>
+            <div data-testid="f-time-invalid"><atom:time-picker label="Invalid time" invalid/></div>
+            <div data-testid="f-otp-invalid"><atom:input.otp length="4" invalid/></div>
         </div>
     </section>
     @endif

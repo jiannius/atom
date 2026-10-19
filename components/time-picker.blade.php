@@ -35,9 +35,10 @@ $labelId = $label ? $attributes->fieldId('atom-time-picker', $name, $label).'-la
        box and the inputs inside it draw none. */
     $classes = Arr::toCssClasses([
         'h-control relative flex w-full items-center pl-2.5 pr-8 no-spinner rounded-control border bg-surface text-sm text-fg cursor-default',
-        'has-[:focus-visible]:border-focus has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
+        $invalid ? 'has-[:focus-visible]:border-danger-fg' : 'has-[:focus-visible]:border-focus',
+    'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
         $invalid ? 'border-danger-fg' : 'border-border-strong',
-        'group-has-[[data-atom-error]]/field:border-danger-fg',
+        'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
     ]);
     @endphp
 

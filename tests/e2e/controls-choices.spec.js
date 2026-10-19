@@ -133,6 +133,31 @@ for (const tw of ['floor', 'latest']) {
       expect((await style(page.getByTestId('r-rating').locator('[data-atom-rating-track]'), 'outline-width'))['outline-width']).toBe('2px')
     })
 
+    test('the dropzone border turns accent while a file is dragged over it, and back after', async ({ page }) => {
+      await open(page, { tw, section: 'ranges', accent: '#4c55c9' })
+
+      const root = page.getByTestId('r-uploader').locator('[x-data]').first()
+      const zone = page.getByTestId('r-uploader').locator('button')
+      const borderOf = async () => (await style(zone, 'border-top-color'))['border-top-color']
+      const accentInk = await page.evaluate(() => {
+        const probe = document.createElement('span')
+        probe.style.color = 'var(--atom-accent-ink)'
+        document.body.append(probe)
+        const colour = getComputedStyle(probe).color
+        probe.remove()
+        return colour
+      })
+
+      const rest = await borderOf()
+      expect(rest).not.toBe(accentInk)
+
+      await root.dispatchEvent('dragover')
+      await expect.poll(borderOf).toBe(accentInk)
+
+      await root.dispatchEvent('dragleave')
+      await expect.poll(borderOf).toBe(rest)
+    })
+
     test('the dropzone: a dashed hairline at radius 7, 13px muted text, and the upload button is a control', async ({ page }) => {
       await open(page, { tw, section: 'ranges' })
 

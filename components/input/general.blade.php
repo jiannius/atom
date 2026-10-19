@@ -18,9 +18,10 @@ $classes = Arr::toCssClasses([
     'h-control w-full no-spinner rounded-control border bg-surface text-sm text-fg',
     'placeholder:text-fg-subtle',
     'disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-fg-subtle',
-    'focus-visible:border-focus focus-visible:outline-offset-0',
+    $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
+    'focus-visible:outline-offset-0',
     $invalid ? 'border-danger-fg' : 'border-border-strong',
-    'group-has-[[data-atom-error]]/field:border-danger-fg',
+    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
     $icon ? 'pl-8' : 'pl-2.5',
     $copyable || $clearable || $iconSuffix || $type === 'password' ? 'pr-8' : 'pr-2.5',
 ]);

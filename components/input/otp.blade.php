@@ -13,9 +13,10 @@ $groups = $groups ? (int) $groups : null;
 $box = Arr::toCssClasses([
     'size-10 text-center text-lg font-medium no-spinner rounded-control border bg-surface text-fg',
     'disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-fg-subtle',
-    'focus-visible:border-focus focus-visible:outline-offset-0',
+    $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
+    'focus-visible:outline-offset-0',
     $invalid ? 'border-danger-fg' : 'border-border-strong',
-    'group-has-[[data-atom-error]]/field:border-danger-fg',
+    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
 ]);
 @endphp
 

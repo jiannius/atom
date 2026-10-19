@@ -141,8 +141,25 @@ describe('restyled components', function () {
     });
 
     it('rings a control on :focus-visible only, never :focus', function () {
-        $offenders = restyleOffenders(fn ($token) => in_array('focus', $token['variants'], true)
-            && preg_match('/^(?:outline|ring)(?:-|$)/', $token['utility']) === 1);
+        // Four shapes, each of which draws on a mouse click: `focus:outline-*` / `focus:ring-*`, the same behind a
+        // group, peer or has variant (`group-focus:`, `peer-focus:`, `has-focus:`), a `:focus` inside an arbitrary variant
+        // (`has-[:focus]:`, `group-has-[:focus]:`, `[&:focus]:`) with any utility, and `focus-within:` with an outline or ring.
+        // `:focus-visible` is the one that belongs to a keyboard, and `:focus-visible` inside a bracket is not matched.
+        $offenders = restyleOffenders(function ($token) {
+            $isRing = preg_match('/^(?:outline|ring)(?:-|$)/', $token['utility']) === 1;
+
+            foreach ($token['variants'] as $variant) {
+                if (str_contains($variant, '[') && preg_match('/:focus(?![-\w])/', $variant)) {
+                    return true;
+                }
+
+                if ($isRing && preg_match('/(?:^|-)(?:focus|focus-within)$/', $variant)) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
 
         expect($offenders)->toBe([]);
     });
@@ -248,5 +265,62 @@ describe('structural CSS of the restyled controls', function () {
         expect($css)
             ->toMatch('/\[data-atom-slider-input\]\s*\{[^}]*height:\s*4px/')
             ->toMatch('/::-webkit-slider-thumb\s*\{[^}]*width:\s*16px;[^}]*height:\s*16px;[^}]*border:\s*2px solid currentColor/');
+    });
+});
+
+describe('review round 1', function () {
+    beforeEach(fn () => view()->share('errors', new \Illuminate\Support\ViewErrorBag));
+
+    it('keeps the danger border on an invalid field that has the focus: the outline carries the focus', function (string $tag) {
+        $html = renderBlade($tag);
+
+        expect($html)
+            ->toMatch('/(?:has-\[:focus-visible\]|focus-visible):border-danger-fg/')
+            ->not->toMatch('/(?:has-\[:focus-visible\]|focus-visible):border-focus/')
+            // an error from the field's wrapper keeps it too, whichever of the two ways the field is focused
+            ->toMatch('/group-has-\[\[data-atom-error\]\]\/field:(?:has-\[:focus-visible\]|focus-visible):border-danger-fg/');
+    })->with([
+        'input' => '<atom:input label="x" invalid />',
+        'textarea' => '<atom:textarea label="x" invalid />',
+        'tel' => '<atom:input label="x" type="tel" invalid />',
+        'colour' => '<atom:input label="x" type="color" invalid />',
+        'email' => '<atom:input label="x" type="email" multiple invalid />',
+        'otp' => '<atom:input.otp length="4" invalid />',
+        'date' => '<atom:date-picker label="x" invalid />',
+        'range' => '<atom:date-picker variant="range" label="x" invalid />',
+        'time' => '<atom:time-picker label="x" invalid />',
+        'native select' => '<atom:select label="x" :options="[]" invalid />',
+        'listbox' => '<atom:select label="x" variant="listbox" :options="[]" invalid />',
+    ]);
+
+    it('gives a valid field the focus colour on its border', function () {
+        expect(renderBlade('<atom:input label="x" />'))
+            ->toContain('focus-visible:border-focus')
+            ->not->toContain(' focus-visible:border-danger-fg');
+    });
+
+    it('toggles the dropzone border by what is dragged over it, so the two colours never compete', function () {
+        $html = renderBlade('<atom:uploader.dropzone />');
+
+        expect($html)
+            ->toContain("'border-accent-ink bg-accent-soft': dragging")
+            ->toContain("'border-border-strong': !dragging")
+            // the static class list no longer carries the resting colour, which compiled after the accent and always won
+            ->not->toMatch('/\sclass="[^"]*\bborder-border-strong\b/');
+    });
+
+    it('sizes the pikaday arrows with a class Tailwind 4.0.7 compiles', function () {
+        $html = renderBlade('<atom:date-picker.calendar />');
+
+        expect($html)->toContain('pika-next]:bg-[length:16px]')
+            ->and($html)->not->toContain('bg-size-');
+    });
+
+    it('prints the check mark svg with one class attribute', function () {
+        $html = renderBlade('<atom:checkbox label="x" />');
+
+        preg_match('/<svg[^>]*>/', $html, $svg);
+
+        expect(substr_count($svg[0], 'class='))->toBe(1);
     });
 });
