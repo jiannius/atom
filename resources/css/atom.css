@@ -1402,6 +1402,24 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
     }
 }
 
+/* The save bar (form.actions bar): its blurred surface and hairline are a pseudo-element that runs on from the bar's own box (the page's
+   padding box) to the edge of the screen. The sidebar shell stops it at the shell's content edge, so it does not cover the sidebar; the
+   top-nav shell lets it start at the screen's left edge. Outside a shell the variables are missing and the surface is just the bar's box.
+   The page is clipped sideways while a save bar is on it, so the part past the screen never makes a sideways scrollbar. */
+[data-atom-sidebar] ~ [data-atom-main] {
+    --atom-bar-left: 0px;
+    --atom-bar-right: -100vmax;
+}
+
+[data-atom-header-bar] ~ [data-atom-main] {
+    --atom-bar-left: -100vmax;
+    --atom-bar-right: -100vmax;
+}
+
+html:has([data-atom-save-bar]) {
+    overflow-x: clip;
+}
+
 /* A page that prints its own <h1> (page.header at level 1) replaces the layout's hidden fallback, so a screen reader
    meets one h1. The fallback stays for a page without one. A page.header inside a modal is level 2 and does not match. */
 [data-atom-main]:has(h1[data-atom-page-header-title]) > [data-atom-page-title] {

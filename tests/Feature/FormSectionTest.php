@@ -103,11 +103,22 @@ describe('save bar', function () {
             ->and(domQuery(renderBlade('<atom:form.actions />'), '//button[@type="submit"]'))->toHaveCount(1);
     });
 
-    it('is sticky at the bottom of the screen with a blurred surface and a hairline', function () {
+    it('is sticky at the bottom of the screen; its blurred surface and hairline are a pseudo-element that can run to the screen edge', function () {
         $bar = domQuery(renderBlade('<atom:form.actions bar />'), '//*[@data-atom-save-bar]')[0];
+        $classes = domClasses($bar);
 
-        expect(domClasses($bar))->toContain('sticky', 'bottom-0', 'border-t', 'bg-surface/95', 'backdrop-blur-sm')
-            ->and(domClasses($bar))->not->toContain('-bottom-6');
+        expect($classes)->toContain('sticky', 'bottom-0', 'isolate', 'before:border-t', 'before:bg-surface/95', 'before:backdrop-blur-sm', 'before:-z-10', 'before:inset-y-0')
+            ->and($classes)->toContain('before:left-[var(--atom-bar-left,0px)]', 'before:right-[var(--atom-bar-right,0px)]')
+            // the surface is not on the bar's own box: that box is the page's padding box, which may be narrower than the screen
+            ->and($classes)->not->toContain('border-t', 'bg-surface/95', 'backdrop-blur-sm', '-bottom-6');
+    });
+
+    it('lets atom.css open the bleed only in a shell, and clips the page sideways only while a save bar is on it', function () {
+        $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/atom.css');
+
+        expect($css)->toContain("[data-atom-sidebar] ~ [data-atom-main] {\n    --atom-bar-left: 0px;\n    --atom-bar-right: -100vmax;")
+            ->and($css)->toContain("[data-atom-header-bar] ~ [data-atom-main] {\n    --atom-bar-left: -100vmax;\n    --atom-bar-right: -100vmax;")
+            ->and($css)->toContain("html:has([data-atom-save-bar]) {\n    overflow-x: clip;");
     });
 
     it('bleeds to the page gutter and sits inside it; outside a page it bleeds nowhere and keeps a 1rem padding', function () {

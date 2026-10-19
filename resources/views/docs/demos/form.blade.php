@@ -40,5 +40,5 @@ view="atom::docs.demos.form.section-footer"/>
 
 <atom:docs.example
 title="Save bar"
-description="atom:form.actions with bar is the save bar of a page form: sticky at the bottom of the screen, a blurred surface with a hairline above it, bleeding out to the page's gutters and taking the page's bottom room, so it ends the page flush. The start slot holds live totals or a dirty state; the buttons are at the end, full width on a phone, and the submit is the screen's one primary action. In a modal or a slide-over use sticky instead (atom:form.modal draws it for you)."
+description="atom:form.actions with bar is the save bar of a page form: sticky at the bottom of the screen, a blurred surface with a hairline above it that runs the full width of the screen's content area (to the sidebar in the sidebar shell, to both edges in the top-nav shell), while its content stays on the page column. It takes the page's bottom room, so it ends the page flush. The start slot holds live totals or a dirty state; the buttons are at the end, full width on a phone, and the submit is the screen's one primary action. In a modal or a slide-over use sticky instead (atom:form.modal draws it for you)."
 view="atom::docs.demos.form.save-bar"/>
