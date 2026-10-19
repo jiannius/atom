@@ -582,6 +582,9 @@ for (const tw of ['floor', 'latest']) {
           await gate(page.getByTestId('tcb-on').locator('[data-atom-icon]'), GRAPHIC, 'text', 'check mark on the fill')
           await gate(page.getByTestId('tcb-off'), GRAPHIC, 'border', 'empty box edge')
 
+          // the bulk bar's words: a muted count and clear link, and the select-all link in the accent ink
+          for (const id of ['bulk-count', 'bulk-link', 'bulk-clear']) await gate(page.getByTestId(id), TEXT, 'text', id)
+
           await page.evaluate(() => window.dispatchEvent(new CustomEvent('table-filter:set', { detail: { key: 'state', label: 'State', display: 'Paid' } })))
           const chip = page.locator('[data-atom-table-filter-chip]')
           await gate(chip, TEXT, 'text', 'chip value')

@@ -53,6 +53,7 @@
     .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .text-left { text-align: left; }
     .uppercase { text-transform: uppercase; }
+    .size-4 { width: 1rem; height: 1rem; }
     .size-5 { width: 1.25rem; height: 1.25rem; }
     .size-3 { width: 0.75rem; height: 0.75rem; }
     .rounded-md { border-radius: 0.375rem; }

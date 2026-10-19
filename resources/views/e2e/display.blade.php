@@ -252,6 +252,14 @@ $pager = fn (int $page) => new \Illuminate\Pagination\LengthAwarePaginator(colle
             <atom:table.checkbox data-checked data-testid="tcb-on"/>
         </div>
 
+        {{-- the words of the table's bulk bar: the bar itself is an Alpine template that needs a Livewire component, so these are the
+             classes it carries (a muted count, links in the accent ink), on the surface it sits on --}}
+        <div class="flex items-center gap-3 rounded-panel border bg-surface p-3" data-testid="bulk-bar">
+            <span class="text-sm font-medium text-fg-muted" data-testid="bulk-count">3 selected</span>
+            <span class="text-sm font-medium text-accent-ink" data-testid="bulk-link">Select all 120</span>
+            <span class="text-sm font-medium text-fg-muted" data-testid="bulk-clear">Clear selection</span>
+        </div>
+
         <atom:table.filters data-testid="filters" overflow="card">
             <atom:button variant="ghost">Status</atom:button>
             <x-slot:more><span>More filter controls</span></x-slot:more>
