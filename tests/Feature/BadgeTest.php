@@ -195,6 +195,24 @@ describe('navlist badge', function () {
 });
 
 describe('badge group', function () {
+    it('hides the overflow with a rule that names its own limit, not a class built at run time', function () {
+        $html = renderBlade('<atom:badge.group max="2"><atom:badge label="a" /><atom:badge label="b" /><atom:badge label="c" /></atom:badge.group>');
+        $group = domQuery($html, '//*[@data-atom-badge-group]')[0];
+
+        expect($group->getAttribute('data-max'))->toBe('2')
+            ->and($html)->toContain('[data-atom-badge-group][data-max="2"] [data-atom-badge]:nth-child(n+3) { display: none }')
+            ->and($group->getAttribute('class'))->not->toContain('nth-child')
+            // the rule is not a child of the group, so it cannot shift the count
+            ->and(domQuery($html, '//*[@data-atom-badge-group]/style'))->toBeEmpty();
+    });
+
+    it('takes the limit as a whole number of at least one, whatever it is given', function (mixed $max, string $limit) {
+        $html = renderBlade('<atom:badge.group :max="$max"><atom:badge label="a" /></atom:badge.group>', compact('max'));
+
+        expect(domQuery($html, '//*[@data-atom-badge-group]')[0]->getAttribute('data-max'))->toBe($limit)
+            ->and($html)->toContain('nth-child(n+'.((int) $limit + 1).')');
+    })->with([[3, '3'], ['4', '4'], ['2; } body { display: none', '2'], [1, '1']]);
+
     it('draws the overflow count in the muted role token', function () {
         $html = renderBlade('<atom:badge.group max="1"><atom:badge label="a" /><atom:badge label="b" /></atom:badge.group>');
 
