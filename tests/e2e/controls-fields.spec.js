@@ -1,5 +1,5 @@
 import { test, expect, devices } from '@playwright/test'
-import { open, ratio, style, contrastOf } from './controls-helpers.js'
+import { open, ratio, style, contrastOf, focusByKeyboard } from './controls-helpers.js'
 
 // V4-3a, the text controls: input (every type), textarea, select (native, listbox, filter), date and time pickers, otp.
 // Heights from the control token, the 13px body size, the strong hairline, no shadow, a :focus-visible ring hugging the border,
@@ -166,7 +166,7 @@ for (const dark of [false, true]) {
         await open(page, { dark, accent, section: 'fields' })
 
         const input = page.getByTestId('f-input-empty').locator('input')
-        await input.focus()
+        await focusByKeyboard(page, input)
         expect((await input.evaluate(contrastOf, { what: 'outline' })).ratio, 'the focus ring').toBeGreaterThanOrEqual(3)
 
         for (const [id, selector] of [['f-input-invalid', 'input'], ['f-textarea-invalid', 'textarea'], ['f-select-native-invalid', '[data-atom-select-native] > div:first-of-type']]) {

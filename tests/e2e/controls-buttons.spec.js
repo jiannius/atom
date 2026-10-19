@@ -1,5 +1,5 @@
 import { test, expect, devices } from '@playwright/test'
-import { open, ratio, style, contrastOf } from './controls-helpers.js'
+import { open, ratio, style, contrastOf, focusByKeyboard } from './controls-helpers.js'
 
 // V4-3a, the button: three tiers (primary = the solid accent, default = bordered, ghost), the control token for height,
 // 16px icons, no shadow, a :focus-visible ring; light and dark, measured on the consumer's Tailwind (`node tests/consumer/build.mjs`).
@@ -158,8 +158,7 @@ for (const dark of [false, true]) {
   test(`focus ring, ${dark ? 'dark' : 'light'}: the ring on the page is at least 3:1`, async ({ page }) => {
     await open(page, { dark, section: 'buttons' })
 
-    await page.getByTestId('btn-primary').focus()
-    await page.keyboard.press('Tab')
+    await focusByKeyboard(page, page.getByTestId('btn-default'))
 
     const ring = await page.getByTestId('btn-default').evaluate(contrastOf, { what: 'outline' })
     expect(ring.ratio).toBeGreaterThanOrEqual(3)

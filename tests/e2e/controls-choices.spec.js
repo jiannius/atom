@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { open, ratio, style, contrastOf } from './controls-helpers.js'
+import { open, ratio, style, contrastOf, focusByKeyboard } from './controls-helpers.js'
 
 // V4-3a, checkbox, radio, toggle, slider, rating and the uploader: the swatch sizes, no shadow, the ring, and the 3:1 that a
 // control's boundary and its checked state owe the surface (a control with no text of its own is found by its shape alone),
@@ -178,9 +178,7 @@ for (const dark of [false, true]) {
       expect(await ratio(page.getByTestId('c-checkbox-caption').locator('[data-atom-caption]')), 'the caption').toBeGreaterThanOrEqual(4.5)
 
       // the ring on the page
-      await input(page, 'c-checkbox').focus()
-      await page.keyboard.press('Shift+Tab')
-      await page.keyboard.press('Tab')
+      await focusByKeyboard(page, input(page, 'c-checkbox'))
       expect((await swatch(page, 'c-checkbox').evaluate(contrastOf, { what: 'outline' })).ratio, 'the focus ring').toBeGreaterThanOrEqual(3)
     })
 

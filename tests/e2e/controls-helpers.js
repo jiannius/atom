@@ -82,3 +82,15 @@ export const style = (locator, ...props) => locator.evaluate((el, props) => {
   out.width = box.width
   return out
 }, props)
+
+/**
+ * Put the keyboard's focus ring on a control and let it settle: focus it, step away and back (a script's focus() alone is not
+ * always :focus-visible), then wait for its transitions. `transition-colors` includes `outline-color`, so a ring read at once is
+ * the middle of a fade from currentColor and not the colour it ends at.
+ */
+export async function focusByKeyboard(page, locator) {
+  await locator.focus()
+  await page.keyboard.press('Shift+Tab')
+  await page.keyboard.press('Tab')
+  await locator.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished.catch(() => null))))
+}

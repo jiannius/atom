@@ -152,6 +152,38 @@ $show = fn (string $name) => $section === null || $section === $name;
         </div>
     </section>
     @endif
+
+    @if ($show('more'))
+    <section class="grid gap-4" data-testid="more">
+        <h2 class="text-lg font-semibold">Variants the apps use</h2>
+
+        @php
+        $options = [['value' => 'a', 'label' => 'Draft'], ['value' => 'b', 'label' => 'Sent'], ['value' => 'c', 'label' => 'Paid']];
+        @endphp
+
+        <div class="grid gap-4 sm:grid-cols-2">
+            <div data-testid="m-email"><atom:input label="Recipients" type="email" multiple/></div>
+            <div data-testid="m-listbox-multiple"><atom:select label="Statuses" variant="listbox" multiple :options="$options"/></div>
+            <div data-testid="m-listbox-searchable"><atom:select label="Searchable" variant="listbox" searchable :options="$options"/></div>
+            <div data-testid="m-select-prefix"><atom:select label="With prefix" prefix="Status" :options="$options"/></div>
+            <div data-testid="m-date-time"><atom:date-picker label="With time" time/></div>
+            <div data-testid="m-textarea-readonly"><atom:textarea label="Read only" readonly>Locked text</atom:textarea></div>
+            <div data-testid="m-textarea-autoresize"><atom:textarea label="Autoresize" autoresize>Grows with its text</atom:textarea></div>
+            <div data-testid="m-file"><atom:input label="Attachment" type="file"/></div>
+            <div data-testid="m-radio-group"><atom:radio.group label="Plan"><atom:radio name="plan" value="a" label="Monthly"/><atom:radio name="plan" value="b" label="Yearly" checked/></atom:radio.group></div>
+            <div data-testid="m-radio-card"><atom:radio.group variant="card"><atom:radio name="card" value="a" label="Card one" checked/><atom:radio name="card" value="b" label="Card two"/></atom:radio.group></div>
+            <div data-testid="m-checkbox-start"><atom:checkbox align="start" label="Aligned to the start" caption="A caption that runs under the label"/></div>
+            <div class="flex flex-wrap items-center gap-2" data-testid="m-buttons">
+                <atom:button variant="ghost" size="sm" icon="download" data-testid="m-ghost-sm">Download</atom:button>
+                <atom:button variant="ghost" size="xs" icon="more" data-testid="m-ghost-xs"/>
+                <atom:button variant="ghost" color="danger" size="sm" icon="delete" data-testid="m-ghost-danger"/>
+                <atom:button type="delete" variant="ghost" color="danger" data-testid="m-delete-ghost">Delete</atom:button>
+                <atom:button variant="secondary" data-testid="m-secondary">Secondary</atom:button>
+                <atom:button variant="outline" data-testid="m-outline">Outline</atom:button>
+            </div>
+        </div>
+    </section>
+    @endif
 </div>
 
 @livewireScripts
