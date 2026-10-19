@@ -103,22 +103,27 @@ describe('save bar', function () {
             ->and(domQuery(renderBlade('<atom:form.actions />'), '//button[@type="submit"]'))->toHaveCount(1);
     });
 
-    it('is sticky at the bottom of the screen; its blurred surface and hairline are a pseudo-element that can run to the screen edge', function () {
+    it('is sticky at the bottom of the screen; its surface and hairline are pseudo-elements that fill its box', function () {
         $bar = domQuery(renderBlade('<atom:form.actions bar />'), '//*[@data-atom-save-bar]')[0];
         $classes = domClasses($bar);
 
-        expect($classes)->toContain('sticky', 'bottom-0', 'isolate', 'before:border-t', 'before:bg-surface/95', 'before:backdrop-blur-sm', 'before:-z-10', 'before:inset-y-0')
-            ->and($classes)->toContain('before:left-[var(--atom-bar-left,0px)]', 'before:right-[var(--atom-bar-right,0px)]')
-            // the surface is not on the bar's own box: that box is the page's padding box, which may be narrower than the screen
-            ->and($classes)->not->toContain('border-t', 'bg-surface/95', 'backdrop-blur-sm', '-bottom-6');
+        expect($classes)->toContain('sticky', 'bottom-0', 'isolate', 'before:inset-0', 'before:-z-10', 'before:bg-surface/95', 'before:backdrop-blur-sm')
+            ->and($classes)->toContain('after:absolute', 'after:inset-x-0', 'after:top-0', 'after:h-px', 'after:-z-10', 'after:bg-border')
+            // the surface is not on the bar's own box (the page's padding box, narrower than the screen), and nothing takes layout room to bleed
+            ->and($classes)->not->toContain('border-t', 'bg-surface/95', 'backdrop-blur-sm', '-bottom-6', 'before:border-t')
+            ->and(implode(' ', $classes))->not->toContain('before:left-')->not->toContain('before:right-');
     });
 
-    it('lets atom.css open the bleed only in a shell, and clips the page sideways only while a save bar is on it', function () {
+    it('lets atom.css bleed the surface with a clipped box-shadow only in a shell, and never clips the page', function () {
         $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/atom.css');
 
         expect($css)->toContain("[data-atom-sidebar] ~ [data-atom-main] {\n    --atom-bar-left: 0px;\n    --atom-bar-right: -100vmax;")
             ->and($css)->toContain("[data-atom-header-bar] ~ [data-atom-main] {\n    --atom-bar-left: -100vmax;\n    --atom-bar-right: -100vmax;")
-            ->and($css)->toContain("html:has([data-atom-save-bar]) {\n    overflow-x: clip;");
+            ->and($css)->toContain('clip-path: inset(0 var(--atom-bar-right, 0px) 0 var(--atom-bar-left, 0px));')
+            ->and($css)->toContain('box-shadow: 0 0 0 100vmax color-mix(in oklab, var(--atom-surface) 95%, transparent);')
+            ->and($css)->toContain('box-shadow: 0 0 0 100vmax var(--atom-border);')
+            ->and($css)->not->toContain('html:has([data-atom-save-bar])')
+            ->and($css)->not->toMatch('/\\[data-atom-save-bar\\][^{]*\\{[^}]*overflow-x/');
     });
 
     it('bleeds to the page gutter and sits inside it; outside a page it bleeds nowhere and keeps a 1rem padding', function () {

@@ -8,11 +8,12 @@
      - `sticky`: pinned to the bottom of a modal or slide-over (the footer <atom:form.modal> draws), bleeding to the panel's edges.
      - `bar`: the save bar of a PAGE form. Sticky at the bottom of the screen. Its CONTENT is aligned to the page column: the bar's
        own box is the page's padding box (it bleeds out to the edges <atom:page> pads) and pads itself by the page's gutter, whatever
-       the page's width. Its blurred surface and the hairline above it are a pseudo-element that goes on from there to the edge of the
-       screen (in the sidebar shell from the shell's content edge, in the top-nav shell from the screen's left edge), the way a
-       full-width bar does: atom.css sets --atom-bar-left and --atom-bar-right on the shells' <main>, and clips the page sideways
-       while a save bar is on it. Outside a shell and a page the variables are missing: the surface is the bar's own box, it bleeds
-       nowhere and keeps a 1rem padding, so it never overflows its parent.
+       the page's width. Its blurred surface (::before) and the hairline above it (::after) fill that box, and atom.css goes on from there to the edge
+       of the screen with a box-shadow spread, clipped by a clip-path (in the sidebar shell from the shell's content edge, in the
+       top-nav shell from the screen's left edge), the way a full-width bar does: atom.css sets --atom-bar-left and --atom-bar-right
+       on the shells' <main>. A shadow takes no room, so nothing scrolls sideways or prints smaller. The sidebar shell's bleed assumes
+       the page starts at <main>'s content edge (no mx-auto on <atom:page>). Outside a shell and a page the variables are missing: the
+       surface is the bar's own box, it bleeds nowhere and keeps a 1rem padding, so it never overflows its parent.
        It also takes the page's 120px of bottom room as its own (a negative margin), so at the end of the page it sits flush with the
        bottom, as it does everywhere above it, instead of 120px up.
        The `start` slot is what sits at its start (live totals, "Unsaved changes"); the default slot is the buttons, at the end,
@@ -32,7 +33,7 @@ $stickyBar = $sticky && ! $bar;
     'flex items-center gap-3',
     'justify-between' => ! $bar,
     'bottom-0 z-10 flex-wrap gap-x-7 gap-y-3 sticky isolate' => $bar,
-    'before:absolute before:inset-y-0 before:-z-10 before:border-t before:bg-surface/95 before:backdrop-blur-sm before:left-[var(--atom-bar-left,0px)] before:right-[var(--atom-bar-right,0px)]' => $bar,
+    'before:absolute before:inset-0 before:-z-10 before:bg-surface/95 before:backdrop-blur-sm after:absolute after:inset-x-0 after:top-0 after:-z-10 after:h-px after:bg-border' => $bar,
     'ms-[calc(var(--atom-gutter-s,0px)*-1)] me-[calc(var(--atom-gutter-e,0px)*-1)] ps-[var(--atom-gutter-s,1rem)] pe-[var(--atom-gutter-e,1rem)] mb-[calc(var(--atom-page-pb,0px)*-1)] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]' => $bar,
     'sticky -bottom-6 z-10 bg-surface -mx-6 px-6 pt-4 pb-6 -mb-6 border-t' => $stickyBar,
 ]) }} data-atom-form-actions @if ($bar) data-atom-save-bar @endif>

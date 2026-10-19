@@ -59,23 +59,51 @@ const contrastBetween = (page, a, b) => page.evaluate(([a, b]) => {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 }, [a, b])
 
-// whether the save bar (its blurred surface included: a pseudo-element is the bar for a hit test) is what is under a point on the bar's own row
-const barAt = (page, x) => page.evaluate((x) => {
+// How far the save bar's surface reaches, from the computed style of its ::before: the box, plus the box-shadow spread, clipped by the
+// clip-path insets the shell sets. (The side regions are a shadow, so they are not hit-testable: a click goes through them.)
+const surfaceReach = (page) => page.evaluate(() => {
   const bar = document.querySelector('[data-atom-save-bar]')
   const r = bar.getBoundingClientRect()
+  const c = getComputedStyle(bar, '::before')
+  const spread = parseFloat((c.boxShadow.match(/ (-?[\d.]+)px$/) || [0, 0])[1])
+  const inset = c.clipPath.match(/^inset\((.+)\)$/)
 
-  return document.elementsFromPoint(x, r.top + r.height / 2).includes(bar)
-}, x)
+  // no clip-path: the shadow is not held to the content area at all
+  if (!inset) return { left: r.left - spread, right: r.right + spread, clipped: false }
+
+  // the computed value is the shortest form: one to four lengths, top, right, bottom, left
+  const v = inset[1].split(' ').map(parseFloat)
+  const [, right, , left] = [v[0], v[1] ?? v[0], v[2] ?? v[0], v[3] ?? v[1] ?? v[0]]
+
+  return { left: r.left - Math.min(Math.max(-left, 0), spread) + Math.max(left, 0), right: r.right + Math.min(Math.max(-right, 0), spread) - Math.max(right, 0), clipped: true }
+})
+
+const barAt = async (page, x) => {
+  const reach = await surfaceReach(page)
+
+  return x >= reach.left - 0.5 && x <= reach.right + 0.5
+}
+
+// The colour of one pixel of the screen, read back from a screenshot
+const pixel = async (page, x, y) => {
+  const png = await page.screenshot({ clip: { x: Math.round(x), y: Math.round(y), width: 1, height: 1 } })
+
+  return page.evaluate(async (base64) => {
+    const image = new Image()
+    image.src = `data:image/png;base64,${base64}`
+    await image.decode()
+    const cv = document.createElement('canvas')
+    cv.width = cv.height = 1
+    const ctx = cv.getContext('2d')
+    ctx.drawImage(image, 0, 0)
+
+    return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3)
+  }, png.toString('base64'))
+}
 
 const clientWidth = (page) => page.evaluate(() => document.documentElement.clientWidth)
 
-// whether the page cannot be scrolled sideways by a visitor: nothing sticks out, or the page is clipped sideways (it is while a save bar is
-// on it: the bar's surface goes on past the screen edge). scrollWidth alone cannot tell, since a clipped page still reports the width it clips.
-const noSideScroll = (page) => page.evaluate(() => {
-  const root = document.documentElement
-
-  return root.scrollWidth <= root.clientWidth || ['clip', 'hidden'].includes(getComputedStyle(root).overflowX)
-})
+const noSideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
 for (const tw of ['floor', 'latest']) {
   test.describe(`list page, ${tw} consumer build`, () => {
@@ -573,14 +601,17 @@ for (const tw of ['floor', 'latest']) {
         // the surface and the hairline are the bar's pseudo-element
         const surface = await bar.evaluate((el) => {
           const c = getComputedStyle(el, '::before')
-          return { border: c.borderTopWidth, blur: c.backdropFilter, background: c.backgroundColor }
+          const h = getComputedStyle(el, '::after')
+          return { border: h.height, hairline: h.backgroundColor, blur: c.backdropFilter, background: c.backgroundColor }
         })
 
         // a page taller than the screen, or the test proves nothing
         expect(doc).toBeGreaterThan(700 * 1.4)
         expect(s.position).toBe('sticky')
         expect(s.bottom).toBe('0px')
+        // the hairline is a 1px ::after at the bar's top, in the border colour; the surface a translucent ::before
         expect(surface.border).toBe('1px')
+        expect(surface.hairline).not.toBe('rgba(0, 0, 0, 0)')
         expect(surface.blur).toContain('blur(8px)')
         // a surface you can see through: the blurred bar is not opaque
         expect(surface.background).toMatch(/\/ 0?\.9\d*\)|rgba\(.*0\.9/)
@@ -746,7 +777,7 @@ for (const tw of ['floor', 'latest']) {
             expect(Math.abs(buttons.right - (pageBox.right - gutter))).toBeLessThan(1)
             expect(await barAt(page, width - 1)).toBe(true)
             expect(await barAt(page, pageBox.right + 5) || pageBox.right >= width - 6).toBe(true)
-            expect(await barAt(page, shell === 'sidebar' ? pageBox.x - 5 : -1)).toBe(false)
+            if (shell === 'sidebar') expect(await barAt(page, pageBox.x - 5)).toBe(false)
             expect(await barAt(page, shell === 'sidebar' ? pageBox.x + 2 : 1)).toBe(true)
             expect(await noSideScroll(page)).toBe(true)
           })
@@ -766,6 +797,76 @@ for (const tw of ['floor', 'latest']) {
         })
       })
     }
+
+    test('real sideways overflow on a save-bar page still scrolls: nothing is clipped, and the bleed takes no room', async ({ page }) => {
+      for (const shell of ['sidebar', 'header']) {
+        await open(page, `/atom/e2e/save-bar-context?shell=${shell}&wide=1`, { tw })
+
+        const dims = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, overflowX: getComputedStyle(document.documentElement).overflowX, bodyOverflowX: getComputedStyle(document.body).overflowX }))
+
+        expect(dims.sw, shell).toBeGreaterThan(dims.cw)
+        expect(dims.overflowX, shell).not.toMatch(/clip|hidden/)
+        expect(dims.bodyOverflowX, shell).not.toMatch(/clip|hidden/)
+
+        // and it is reachable: a scroll moves the page
+        await page.evaluate(() => window.scrollTo(400, 0))
+        expect(await page.evaluate(() => window.scrollX), shell).toBeGreaterThan(0)
+      }
+    })
+
+    test('without that block, the surface adds nothing to the page width, in both shells', async ({ page }) => {
+      for (const shell of ['sidebar', 'header']) {
+        await open(page, `/atom/e2e/save-bar-context?shell=${shell}`, { tw })
+
+        const dims = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }))
+
+        expect(dims.sw, shell).toBeLessThanOrEqual(dims.cw)
+      }
+    })
+
+    for (const dark of [false, true]) {
+      test(`the surface past the page column is the same colour as inside it, ${dark ? 'dark' : 'light'}`, async ({ page }) => {
+        await page.setViewportSize({ width: 1600, height: 700 })
+
+        for (const shell of ['sidebar', 'header']) {
+          await open(page, `/atom/e2e/save-bar-context?shell=${shell}&width=narrow`, { tw, dark })
+
+          const bar = await box(page.locator('[data-atom-save-bar]'))
+          const width = await clientWidth(page)
+          // low in the bar, in its padding, where no text is; the hairline is at the top
+          const y = bar.bottom - 5
+          const inside = await pixel(page, bar.x + bar.width * 0.4, y)
+          const outside = await pixel(page, width - 4, y)
+          const beyondLeft = shell === 'header' ? await pixel(page, 4, y) : null
+
+          // the same surface over the same page: within a rounding step per channel
+          for (const [name, sample] of [['right', outside], ['left', beyondLeft]]) {
+            if (!sample) continue
+            for (let i = 0; i < 3; i++) expect(Math.abs(sample[i] - inside[i]), `${shell}, ${name}, channel ${i}: ${sample} against ${inside}`).toBeLessThanOrEqual(2)
+          }
+
+          // and the hairline carries on too: the row of pixels at the top of the bar differs from the surface under it, inside and past the column
+          const lineInside = await pixel(page, bar.x + bar.width * 0.4, Math.floor(bar.y + 0.1))
+          const lineOutside = await pixel(page, width - 4, Math.floor(bar.y + 0.1))
+          expect(Math.abs(lineOutside[0] - lineInside[0]) + Math.abs(lineOutside[1] - lineInside[1]) + Math.abs(lineOutside[2] - lineInside[2]), `${shell}: the hairline past the column`).toBeLessThanOrEqual(6)
+          expect(Math.abs(lineInside[0] - inside[0]) + Math.abs(lineInside[1] - inside[1]) + Math.abs(lineInside[2] - inside[2]), `${shell}: a hairline you can see`).toBeGreaterThan(3)
+        }
+      })
+    }
+
+    test('the sidebar shell does not paint the surface over the sidebar', async ({ page }) => {
+      await page.setViewportSize({ width: 1600, height: 700 })
+      await open(page, '/atom/e2e/save-bar-context?shell=sidebar&width=narrow', { tw })
+
+      const bar = await box(page.locator('[data-atom-save-bar]'))
+      const y = bar.bottom - 5
+      const sidebar = await pixel(page, bar.x - 20, y)
+      const beside = await pixel(page, bar.x - 20, bar.y - 40)
+
+      // the sidebar column under the bar is what it is above it: the bar adds nothing there
+      expect(sidebar).toEqual(beside)
+      expect((await surfaceReach(page)).left).toBeGreaterThanOrEqual(bar.x - 1)
+    })
 
     test('a page that changes its bottom room through the variable keeps the bar flush with the bottom', async ({ page }) => {
       for (const [query, room] of [['mode=page', 120], ['mode=page&pb=80', 80]]) {

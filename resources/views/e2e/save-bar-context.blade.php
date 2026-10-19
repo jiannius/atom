@@ -1,13 +1,14 @@
 @php
 // ?mode=bare puts the save bar in a plain box with no <atom:page> around it; ?mode=page puts it in a page.
 // ?pb=80 sets the page's bottom room to 80px through its variable. ?shell=sidebar|header puts the page in an app shell.
-// ?width=narrow|full is the page's width (the default is 1240px).
+// ?width=narrow|full is the page's width (the default is 1240px). ?wide=1 puts a 2400px block in the page: real sideways overflow.
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
 $mode = request()->query('mode') === 'bare' ? 'bare' : 'page';
 $pb = request()->query('pb') === '80';
 $shell = in_array(request()->query('shell'), ['sidebar', 'header'], true) ? request()->query('shell') : null;
 $width = in_array(request()->query('width'), ['narrow', 'full'], true) ? request()->query('width') : null;
 $dark = request()->query('dark') === '1';
+$wide = request()->query('wide') === '1';
 @endphp
 
 @if ($shell)
@@ -20,6 +21,7 @@ $dark = request()->query('dark') === '1';
             <atom:page.header title="Save bar" />
             <atom:form x-on:submit.prevent>
                 <div class="h-[1400px]">Long content</div>
+                @if ($wide) <div class="h-5 w-[2400px] bg-border">A wide block</div> @endif
                 <atom:form.actions bar>
                     <x-slot:start><span data-testid="start">Total RM 1.00</span></x-slot:start>
                     <atom:button type="submit">Save</atom:button>
