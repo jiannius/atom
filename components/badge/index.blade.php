@@ -12,14 +12,16 @@
 @php
 $color ??= (is_enum($status) ? $status->color() : data_get($status, 'color'));
 
-// only a strict hex colour takes the hex branch, anything else is a name: a tone, or neutral when it is not one we know.
-// The hex is written as #rrggbb, so nothing but a validated colour reaches the style. The tint and the ink follow the theme:
-// the hex mixed into the surface (14%) behind, and into the foreground (45%) as the text, so the ink holds 4.5:1 on its own
-// tint whatever the hex is. A caller `style` is appended last so it wins.
+/* only a strict hex colour takes the hex branch, anything else is a name: a tone, or neutral when it is not one we know.
+   The hex is written as #rrggbb, so nothing but a validated colour reaches the style. The tint and the ink follow the theme:
+   the hex mixed into the surface (14%) behind, and the ink is the hex with its lightness held inside the accent-ink band
+   (dark enough in light, light enough in dark: the recipe of accent-ink), so it holds 4.5:1 on its own tint whatever the hex is.
+   A browser without relative colour keeps the first `color`, the foreground. A caller `style` is appended last so it wins. */
 $hex = \Jiannius\Atom\Services\Color::opaque($color);
 
 $style = ! $hex ? null : Arr::toCssStyles(array_filter([
-    'color: color-mix(in oklab, '.$hex.' 45%, var(--atom-fg))',
+    'color: var(--atom-fg)',
+    'color: oklch(from '.$hex.' clamp(var(--atom-ink-min), l, var(--atom-ink-max)) c h)',
     'background-color: color-mix(in oklab, '.$hex.' 14%, var(--atom-surface))',
     $attributes->get('style'),
 ]));

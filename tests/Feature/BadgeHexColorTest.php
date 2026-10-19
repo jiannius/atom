@@ -91,9 +91,10 @@ describe('badge hex colour', function () {
     it('renders the hex style for a valid hex colour', function (string $color) {
         $badge = badgeHexColorElement('<atom:badge :color="$color" label="Custom" />', compact('color'));
 
-        // a borderless pill: the ink and the tint, both read from the hex, and no border colour
-        expect(badgeHexColorProperties($badge))->toBe(['color', 'background-color'])
-            ->and($badge->getAttribute('style'))->toStartWith('color: color-mix(in oklab, '.Color::opaque($color).' ')
+        // a borderless pill: the foreground as the fallback ink, the ink and the tint both read from the hex, and no border colour
+        expect(badgeHexColorProperties($badge))->toBe(['color', 'color', 'background-color'])
+            ->and($badge->getAttribute('style'))->toStartWith('color: var(--atom-fg);')
+            ->and($badge->getAttribute('style'))->toContain('color: oklch(from '.Color::opaque($color).' clamp(var(--atom-ink-min), l, var(--atom-ink-max)) c h)')
             ->and($badge->getAttribute('style'))->toContain('background-color: color-mix(in oklab, '.Color::opaque($color).' ')
             ->and(domClasses($badge))->not->toContain('border');
     })->with('badge hex colors');
@@ -137,7 +138,7 @@ describe('badge hex colour', function () {
         $badge = badgeHexColorElement('<atom:badge :status="$status" />', compact('status'));
 
         if ($isHex) {
-            expect(badgeHexColorProperties($badge))->toBe(['color', 'background-color']);
+            expect(badgeHexColorProperties($badge))->toBe(['color', 'color', 'background-color']);
         } else {
             expect($badge->hasAttribute('style'))->toBeFalse()
                 ->and(domClasses($badge))->toContain('bg-neutral-bg');

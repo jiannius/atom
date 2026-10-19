@@ -14,7 +14,7 @@ $showLabel = $label !== false && (! $indeterminate || is_string($label));
 $labelText = is_string($label) ? t($label) : $percent.'%';
 
 $track = Arr::toCssClasses([
-    'relative w-full overflow-hidden rounded-pill bg-neutral-bg',
+    'relative w-full overflow-hidden rounded-pill bg-border-strong',
     match ($size) {
         'sm' => 'h-1',
         default => 'h-1.5',
@@ -47,7 +47,7 @@ $bar = Arr::toCssClasses([
         aria-valuemax="100"
         @unless ($indeterminate) aria-valuenow="{{ $percent }}" @endunless>
         @if ($indeterminate)
-            <div class="{{ $bar }} absolute inset-y-0 w-2/5" style="animation: atom-progress-indeterminate 1.5s ease-in-out infinite"></div>
+            <div class="{{ $bar }} absolute inset-y-0 w-2/5 motion-reduce:animate-none!" style="animation: atom-progress-indeterminate 1.5s ease-in-out infinite"></div>
         @else
             <div class="{{ $bar }}" style="width: {{ $percent }}%"></div>
         @endif

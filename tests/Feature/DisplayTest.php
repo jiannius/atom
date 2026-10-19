@@ -53,7 +53,7 @@ describe('badge', function () {
         expect($html)
             ->toContain('data-atom-badge')
             ->toContain('Custom')
-            ->toContain('color: color-mix(in oklab, #ff0000 ');
+            ->toContain('color: oklch(from #ff0000 ');
     });
 
     it('groups badges with an overflow counter', function () {

@@ -293,7 +293,7 @@ describe('B2: duplicate or wrong attributes', function () {
         $badge = domQuery($html, '//*[@data-atom-badge]')[0];
 
         expect(substr_count($html, 'style='))->toBe(1);
-        expect($badge->getAttribute('style'))->toContain('color: color-mix(in oklab, #ff0000 ')
+        expect($badge->getAttribute('style'))->toContain('color: oklch(from #ff0000 ')
             ->and($badge->getAttribute('style'))->toContain('background-color:')
             ->and($badge->getAttribute('style'))->toEndWith('margin-left: 4px;')
             ->and($badge->getAttribute('id'))->toBe('b')

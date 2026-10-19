@@ -188,11 +188,11 @@ describe('profile', function () {
 });
 
 describe('progress', function () {
-    it('is a pill track on the neutral tone, 6px high and 4px at sm', function () {
+    it('is a pill track on the strong hairline token, 6px high and 4px at sm', function () {
         $default = renderBlade('<atom:progress :value="40" />');
         $small = renderBlade('<atom:progress :value="40" size="sm" />');
 
-        expect(domClasses(domQuery($default, '//*[@role="progressbar"]')[0]))->toContain('bg-neutral-bg', 'rounded-pill', 'h-1.5')
+        expect(domClasses(domQuery($default, '//*[@role="progressbar"]')[0]))->toContain('bg-border-strong', 'rounded-pill', 'h-1.5')
             ->and(domClasses(domQuery($small, '//*[@role="progressbar"]')[0]))->toContain('h-1');
     });
 
