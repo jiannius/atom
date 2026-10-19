@@ -11,6 +11,8 @@
      - Crumbs are the header's own `crumbs` prop here (use the shell's `crumbs` slot instead, not both).
      - A list, a search and a failed load each have their own empty state, each with a next step. The next step is a plain
        button: the header's primary stays the one primary on the screen.
+     - A person in a list is `<atom:avatar size="xs">` and their name. Something the reader has to act on, such as a blocked
+       job, is one `<atom:callout>` under the header, in the tone of the status (warning here), never a hand-built box.
 
      Open it with ?status=draft|in-progress|blocked|done to see the primary action follow the status. --}}
 @php
@@ -95,6 +97,10 @@ $tasks = [
             </x-slot:primary>
         </atom:page.header>
 
+        @if ($status === 'blocked')
+            <atom:callout variant="warning" heading="Waiting for parts" content="The seal kit is on back order, so the pressure test cannot start. Order it from another supplier or move the due date." data-testid="record-callout"/>
+        @endif
+
         <atom:stat.group>
             <atom:stat label="Labour hours" value="7.5" breakdown="of 10 quoted" delta="-2.5" inverse/>
             <atom:stat label="Parts cost" prefix="RM" value="1,280.00" breakdown="7 parts" delta="+6%" inverse/>
@@ -156,7 +162,12 @@ $tasks = [
                             <atom:table.cell>
                                 <atom:status :tone="$taskStatus === 'Done' ? 'success' : 'neutral'" :label="$taskStatus"/>
                             </atom:table.cell>
-                            <atom:table.cell>{{ $who }}</atom:table.cell>
+                            <atom:table.cell>
+                                <span class="inline-flex items-center gap-2">
+                                    <atom:avatar size="xs" :square="false" :name="$who"/>
+                                    {{ $who }}
+                                </span>
+                            </atom:table.cell>
                             <atom:table.cell align="right" class="tabular-nums">{{ $hours }}</atom:table.cell>
                         </atom:table.row>
                     @endforeach

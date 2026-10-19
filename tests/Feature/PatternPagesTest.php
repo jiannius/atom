@@ -126,6 +126,25 @@ describe('record page pattern', function () {
         ['done', 'Done', 'Create invoice'],
     ]);
 
+    it('puts one warning callout under the header when the job is blocked, and none otherwise', function (string $status, int $callouts) {
+        request()->query->set('status', $status);
+
+        $html = view('atom::docs.patterns.record-page')->render();
+        $found = domQuery($html, '//*[@data-testid="record-callout"]');
+
+        expect($found)->toHaveCount($callouts);
+
+        if ($callouts) {
+            expect(domClasses($found[0]))->toContain('bg-warning-bg');
+        }
+    })->with([['draft', 0], ['in-progress', 0], ['blocked', 1], ['done', 0]]);
+
+    it('shows who a task is assigned to as an avatar and a name', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(domQuery($html, '//tbody//td[3]//*[@data-atom-avatar]'))->toHaveCount(4);
+    });
+
     it('pulses only while the record is in progress', function (string $status, int $running) {
         request()->query->set('status', $status);
 
@@ -303,6 +322,14 @@ describe('document page pattern', function () {
             ->and(domQuery($html, '//article[@data-testid="paper"]//table//tbody/tr'))->toHaveCount(4)
             ->and(domQuery($html, '//*[@data-testid="balance-box"]//*[@data-atom-progress]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-testid="history"]//*[@data-atom-timeline][@data-kind="event"]/ol/li'))->toHaveCount(4);
+    });
+
+    it('draws the rail as cards, with the details as a description list', function () {
+        $html = view('atom::docs.patterns.document-page')->render();
+
+        expect(domQuery($html, '//aside//*[@data-atom-card]'))->toHaveCount(3)
+            ->and(domQuery($html, '//aside//*[@data-atom-dd-group]/*[@data-atom-dd]'))->toHaveCount(4)
+            ->and(domQuery($html, '//aside//section'))->toBeEmpty();
     });
 
     it('has one primary action and it follows the state', function (string $status, string $action, int $events) {

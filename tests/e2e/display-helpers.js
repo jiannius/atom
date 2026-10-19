@@ -43,3 +43,41 @@ export const TONE_NAMES = {
 }
 
 export const HEXES = ['f5c518', 'ff0000', '00ff00', '0000ff', '808080', 'ffffff', '000000', '3e496b', '9f5afd']
+
+/**
+ * Every visible piece of text under `root`, each measured against its own surface: the ones under `min`, as `{ text, ratio }`.
+ * It reads the text nodes (an element's own words), skips what is hidden, disabled or screen-reader only, and measures the element
+ * that owns the node, so an inline child is measured in its own colour. It fails when it finds fewer than `atLeast` of them.
+ */
+export async function sweepText(page, rootSelector, min = TEXT, atLeast = 3) {
+  return page.evaluate(({ rootSelector, min, atLeast, src }) => {
+    const measure = new Function(`return ${src}`)()
+    const failures = []
+    const seen = new Set()
+    let measured = 0
+
+    for (const root of document.querySelectorAll(rootSelector)) {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const text = node.textContent.trim()
+        const el = node.parentElement
+
+        if (!text || !el || seen.has(el) || ['SCRIPT', 'STYLE', 'TEMPLATE'].includes(el.tagName)) continue
+        seen.add(el)
+
+        const hidden = !el.getClientRects().length || getComputedStyle(el).visibility === 'hidden' || el.closest('[hidden], [aria-hidden="true"], .sr-only, [aria-disabled="true"], [popover]:not(:popover-open), template')
+        if (hidden) continue
+
+        const found = measure(el, { what: 'text' })
+        measured++
+        if (found.ratio < min) failures.push({ text: text.slice(0, 40), ratio: Math.round(found.ratio * 100) / 100, colour: found.colour, on: String(found.back) })
+      }
+    }
+
+    // a sweep that read next to nothing proves nothing: say so
+    if (measured < atLeast) failures.push({ text: `only ${measured} text nodes found under ${rootSelector}`, ratio: 0 })
+
+    return failures
+  }, { rootSelector, min, atLeast, src: contrastOf.toString() })
+}

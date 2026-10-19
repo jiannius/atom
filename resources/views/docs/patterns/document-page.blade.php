@@ -9,8 +9,8 @@
        too, and the 500 and 600 weights a printed page uses. It is plain markup, not <atom:table>: a document table has a
        dark rule under its header and no hover.
      - Money is tabular, right-aligned, with the currency named once ("Amount (RM)", "Total (RM)"); identifiers are monospace.
-     - The rail is panels: `rounded-panel border bg-surface p-4`, each headed by a 12px muted title. From 1080px it sits beside the
-       document; below that it stacks under it.
+     - The rail is `<atom:card>`s, each headed by a 12px muted title; label and value pairs are `<atom:dd.group>`, a progress bar is
+       `<atom:progress>`. From 1080px it sits beside the document; below that it stacks under it.
      - The history is <atom:timeline>: a dot per event in the tone of what happened (danger for a reminder about money owed, success
        for a payment, accent for a send, neutral for a creation), the time under it, and a detail where there is one. Items
        rendered in a @foreach (or an @if that changes) carry a `wire:key`, as here: their folded state is Alpine's. --}}
@@ -171,26 +171,26 @@ $money = fn (float $amount) => number_format($amount, 2);
             </article>
 
             <aside class="grid min-w-0 gap-3.5 min-[1080px]:sticky min-[1080px]:top-16" aria-label="Invoice details">
-                <section class="grid gap-3 rounded-panel border bg-surface p-4" data-testid="balance-box">
+                <atom:card class="grid gap-3" data-testid="balance-box">
                     <h3 class="m-0 text-xs font-medium text-fg-subtle">Balance due</h3>
                     <div @class(['text-[26px] font-semibold leading-[1.15] tracking-[-0.02em] tabular-nums', 'text-danger-fg' => $balance > 0 && $status === 'overdue', 'text-success-fg' => $balance <= 0]) data-testid="balance">
                         <small class="me-1 text-[13px] font-medium tracking-normal text-fg-subtle">RM</small>{{ $money($balance) }}
                     </div>
                     <atom:progress :value="(int) round($received / $total * 100)" size="sm" :variant="$received >= $total ? 'success' : null" aria-label="Paid"/>
                     <div class="text-xs tabular-nums text-fg-subtle">RM {{ $money($received) }} of {{ $money($total) }} received</div>
-                </section>
+                </atom:card>
 
-                <section class="grid gap-3 rounded-panel border bg-surface p-4">
+                <atom:card class="grid gap-3">
                     <h3 class="m-0 text-xs font-medium text-fg-subtle">Details</h3>
-                    <dl class="m-0 grid grid-cols-[92px_minmax(0,1fr)] gap-x-3 gap-y-2">
-                        <dt class="text-fg-subtle">Customer</dt><dd class="m-0 min-w-0 break-words">Customer A Sdn Bhd</dd>
-                        <dt class="text-fg-subtle">Contact</dt><dd class="m-0 min-w-0 break-words">accounts@customer-a.example</dd>
-                        <dt class="text-fg-subtle">Terms</dt><dd class="m-0">Net 30</dd>
-                        <dt class="text-fg-subtle">Owner</dt><dd class="m-0">You</dd>
-                    </dl>
-                </section>
+                    <atom:dd.group>
+                        <atom:dd label="Customer">Customer A Sdn Bhd</atom:dd>
+                        <atom:dd label="Contact">accounts@customer-a.example</atom:dd>
+                        <atom:dd label="Terms">Net 30</atom:dd>
+                        <atom:dd label="Owner">You</atom:dd>
+                    </atom:dd.group>
+                </atom:card>
 
-                <section class="grid gap-3 rounded-panel border bg-surface p-4" data-testid="history">
+                <atom:card class="grid gap-3" data-testid="history">
                     <h3 class="m-0 text-xs font-medium text-fg-subtle">Activity</h3>
                     <atom:timeline label="Invoice history">
                         @if ($status === 'overdue')
@@ -204,7 +204,7 @@ $money = fn (float $amount) => number_format($amount, 2);
                         @endif
                         <atom:timeline.item wire:key="history-created" title="Created" body="from quote Q-0231" actor="Ana" time="2 Oct"/>
                     </atom:timeline>
-                </section>
+                </atom:card>
             </aside>
         </div>
     </atom:page>
