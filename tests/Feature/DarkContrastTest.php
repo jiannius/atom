@@ -26,14 +26,16 @@ describe('dark-mode contrast', function () {
         }
     });
 
-    it('gives the stats indicator a dark variant for both directions', function () {
+    it('reads the stats indicator from the success and danger tokens for both directions', function () {
         view()->share('errors', new \Illuminate\Support\ViewErrorBag);
 
         expect(Blade::render('<atom:card variant="stats" heading="Sales" :indicator="5" data="1" />'))
-            ->toContain('text-green-500 dark:text-green-400');
+            ->toContain('text-success-fg')
+            ->not->toContain('dark:text-green');
 
         expect(Blade::render('<atom:card variant="stats" heading="Sales" :indicator="-5" data="1" />'))
-            ->toContain('text-red-500 dark:text-red-400');
+            ->toContain('text-danger-fg')
+            ->not->toContain('dark:text-red');
     });
 
     it('draws the filter trigger border above 3:1 in dark mode', function () {

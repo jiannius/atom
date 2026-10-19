@@ -76,7 +76,7 @@ describe('callout', function () {
         expect($html)
             ->toContain('Heads up')
             ->toContain('Body text')
-            ->toContain('bg-sky-100');
+            ->toContain('bg-info-bg');
     });
 
     it('labels the dismiss button when closeable', function () {

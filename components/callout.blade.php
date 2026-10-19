@@ -15,14 +15,25 @@ $icon ??= match ($variant) {
     default => 'announce',
 };
 
+/* A tone's tint and a hairline of its ink; the heading takes the tone's ink and the text stays fg, so the body reads at full
+   contrast. An unknown variant is the neutral tint. */
+$tone = match ($variant) {
+    'info' => 'info',
+    'success' => 'success',
+    'warning' => 'warning',
+    'danger', 'error' => 'danger',
+    default => 'neutral',
+};
+
 $classes = Arr::toCssClasses([
-    '[:where(&)]:relative [:where(&)]:w-full rounded-lg border py-4 px-6',
-    match ($variant) {
-        'info' => 'bg-sky-100 dark:bg-sky-900/20 border-sky-200 dark:border-sky-400/50 text-sky-600 dark:text-sky-100/80 [&_[data-atom-icon]]:text-sky-400',
-        'success' => 'bg-green-100 dark:bg-green-900/20 border-green-200 dark:border-green-400/50 text-green-600 dark:text-green-100/80 [&_[data-atom-icon]]:text-green-400',
-        'warning' => 'bg-yellow-100 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-400/50 text-yellow-600 dark:text-yellow-100/80 [&_[data-atom-icon]]:text-yellow-400',
-        'danger', 'error' => 'bg-red-100 dark:bg-red-900/20 border-red-200 dark:border-red-400/50 text-red-600 dark:text-red-100/80 [&_[data-atom-icon]]:text-red-400',
-        default => 'border-zinc-200 bg-zinc-100',
+    '[:where(&)]:relative [:where(&)]:w-full rounded-panel border px-4 py-3 text-fg',
+    'pe-11' => $closeable,
+    match ($tone) {
+        'info' => 'bg-info-bg border-info-fg/20 [&_[data-atom-icon]]:text-info-fg [&_[data-atom-callout-heading]]:text-info-fg',
+        'success' => 'bg-success-bg border-success-fg/20 [&_[data-atom-icon]]:text-success-fg [&_[data-atom-callout-heading]]:text-success-fg',
+        'warning' => 'bg-warning-bg border-warning-fg/20 [&_[data-atom-icon]]:text-warning-fg [&_[data-atom-callout-heading]]:text-warning-fg',
+        'danger' => 'bg-danger-bg border-danger-fg/20 [&_[data-atom-icon]]:text-danger-fg [&_[data-atom-callout-heading]]:text-danger-fg',
+        default => 'bg-neutral-bg border-border [&_[data-atom-icon]]:text-fg-muted',
     },
 ]);
 @endphp
@@ -30,15 +41,15 @@ $classes = Arr::toCssClasses([
 <div x-data="{ show: true }" x-show="show" {{ $attributes->class($classes) }}>
     <div class="flex gap-3">
         @if ($icon)
-            <x-dynamic-component :component="'atom::icon.'.$icon" class="shrink-0 mt-0.5" variant="solid" />
+            <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4 shrink-0 mt-[3px]" variant="solid" />
         @endif
 
-        <div class="flex flex-col gap-2 min-w-0 flex-1">
+        <div class="flex flex-col gap-1 min-w-0 flex-1">
             @if ($heading)
                 @if ($heading instanceof \Illuminate\View\ComponentSlot)
-                    {{ $heading }}
+                    <div data-atom-callout-heading>{{ $heading }}</div>
                 @else
-                    <div class="font-semibold">{{ t($heading) }}</div>
+                    <div class="font-semibold" data-atom-callout-heading>{{ t($heading) }}</div>
                 @endif
             @endif
 
@@ -55,8 +66,8 @@ $classes = Arr::toCssClasses([
         type="button"
         x-on:click.stop="show = false"
         aria-label="{{ t('Dismiss') }}"
-        class="absolute top-3 right-3 p-1 flex items-center justify-center">
-            <atom:icon.close class="size-5"/>
+        class="absolute top-2 right-2 size-7 flex items-center justify-center rounded-control text-fg-muted transition-colors hover:bg-fg/[0.06] hover:text-fg">
+            <atom:icon.close class="size-4"/>
         </button>
     @endif
 </div>

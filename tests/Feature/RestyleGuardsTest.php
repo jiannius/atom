@@ -46,6 +46,10 @@ function restyledComponents(): array
         // V4-3b, the data display
         'badge',
         'navlist/badge',
+        'card',
+        'callout',
+        'dd',
+        'list',
     ];
 }
 

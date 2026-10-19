@@ -14,16 +14,17 @@
 ])
 
 @php
+/* A panel: a fill and a hairline (the base border colour), no shadow. `subtle` is the sunken fill. */
 $classes = Arr::toCssClasses([
-    '[:where(&)]:relative rounded-lg border shadow-xs overflow-auto',
+    '[:where(&)]:relative rounded-panel border overflow-auto',
     $divided
-        ? 'divide-y divide-zinc-200 dark:divide-zinc-700 '.($inset ? '' : '[&>div]:p-6')
-        : ($inset ? '' : 'p-6'),
+        ? 'divide-y divide-border '.($inset ? '' : '[&>div]:p-4')
+        : ($inset ? '' : 'p-4'),
 
-    $subtle ? 'bg-zinc-100 dark:bg-zinc-700/30 border-transparent' : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700',
+    $subtle ? 'bg-surface-sunken' : 'bg-surface',
 
     match ($variant) {
-        'stats' => 'h-32 overflow-hidden transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-700/50 hover:outline-1 outline-offset-1 outline-zinc-200 dark:outline-zinc-700',
+        'stats' => 'h-32 overflow-hidden transition-colors hover:bg-surface-sunken',
         'chart' => 'h-[350px]',
         default => '',
     },
@@ -37,17 +38,17 @@ $merges = [
 
 <div {{ $attributes->class($classes)->merge($merges) }}>
     @if ($variant === 'stats')
-        <div class="absolute inset-0 p-6" style="z-index: 2">
+        <div class="absolute inset-0 p-4" style="z-index: 2">
             <atom:subheading>{{ t($heading) }}</atom:subheading>
 
-            <div class="text-3xl font-bold">
+            <div class="text-2xl font-semibold tabular-nums">
                 {{ $data }}
             </div>
 
             @if ($indicator)
-                <div class="flex items-center gap-2 {{ $indicator > 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400' }}">
-                    <x-dynamic-component :component="'atom::icon.'.($indicator > 0 ? 'arrow-up' : 'arrow-down')" class="size-5" />
-                    <div class="font-medium">{{ abs($indicator).'%' }}</div>
+                <div class="flex items-center gap-1 {{ $indicator > 0 ? 'text-success-fg' : 'text-danger-fg' }}">
+                    <x-dynamic-component :component="'atom::icon.'.($indicator > 0 ? 'arrow-up' : 'arrow-down')" class="size-4" />
+                    <div class="font-medium tabular-nums">{{ abs($indicator).'%' }}</div>
                 </div>
             @endif
         </div>
@@ -75,10 +76,10 @@ $merges = [
     @else
         @isset($cover)
             <figure {{ $cover->attributes->class([
-                'first:rounded-t-lg last:rounded-b-lg overflow-hidden',
+                'first:rounded-t-panel last:rounded-b-panel overflow-hidden',
                 '[&>*:not(video)]:transistion-transform [&>*:not(video)]:duration-200 [&>*:not(video):hover]:scale-105',
-                $subtle ? 'bg-zinc-200 dark:bg-zinc-700/60' : 'bg-zinc-100 dark:bg-zinc-700/30',
-                $inset ? '' : '-mx-6 -mt-6 mb-6',
+                $subtle ? 'bg-neutral-bg' : 'bg-surface-sunken',
+                $inset ? '' : '-mx-4 -mt-4 mb-4',
             ]) }}>
                 {{ $cover }}
             </figure>
