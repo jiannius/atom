@@ -56,7 +56,7 @@ data-atom-table-filters>
     </div>
 
     @if (isset($more) && $overflow === 'card')
-        <div x-show="expanded" x-cloak class="p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 flex flex-wrap items-center gap-3">
+        <div x-show="expanded" x-cloak class="p-4 rounded-panel border bg-surface flex flex-wrap items-center gap-3">
             {{ $more }}
         </div>
     @endif
@@ -77,10 +77,10 @@ data-atom-table-filters>
 
     <div x-show="active.length" x-cloak class="flex flex-wrap items-center gap-2">
         <template x-for="chip in active" x-bind:key="chip.key" hidden>
-            <div class="inline-flex items-center gap-1.5 rounded-md bg-zinc-100 dark:bg-zinc-800 px-2 py-1 text-sm" data-atom-table-filter-chip>
-                <span class="text-zinc-600 dark:text-zinc-300" x-text="chip.label + ':'"></span>
+            <div class="inline-flex h-[26px] items-center gap-1.5 rounded-pill bg-neutral-bg px-2.5 text-xs text-fg" data-atom-table-filter-chip>
+                <span class="text-fg-muted" x-text="chip.label + ':'"></span>
                 <span x-text="chip.display"></span>
-                <button type="button" x-on:click="clear(chip.key)" class="text-zinc-600 dark:text-zinc-300 hover:text-zinc-800 dark:hover:text-zinc-200">
+                <button type="button" x-on:click="clear(chip.key)" class="text-fg-muted transition-colors hover:text-fg">
                     <atom:icon.close class="size-3.5" />
                 </button>
             </div>

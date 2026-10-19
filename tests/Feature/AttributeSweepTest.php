@@ -54,7 +54,7 @@ describe('B1: components that never printed the bag', function () {
         expect($avatars[0]->nodeName)->toBe('figure')
             ->and($avatars[0]->getAttribute('id'))->toBe('me')
             ->and($avatars[0]->getAttribute('x-show'))->toBe('ready')
-            ->and(domClasses($avatars[0]))->toContain('ring-2', 'size-10', 'aspect-square');
+            ->and(domClasses($avatars[0]))->toContain('ring-2', 'size-[34px]', 'aspect-square');
         // name, src, size and square are props, not DOM attributes
         expect($avatars[0]->hasAttribute('name'))->toBeFalse();
     });
@@ -293,7 +293,7 @@ describe('B2: duplicate or wrong attributes', function () {
         $badge = domQuery($html, '//*[@data-atom-badge]')[0];
 
         expect(substr_count($html, 'style='))->toBe(1);
-        expect($badge->getAttribute('style'))->toContain('color: #ff0000')
+        expect($badge->getAttribute('style'))->toContain('color: color-mix(in oklab, #ff0000 ')
             ->and($badge->getAttribute('style'))->toContain('background-color:')
             ->and($badge->getAttribute('style'))->toEndWith('margin-left: 4px;')
             ->and($badge->getAttribute('id'))->toBe('b')
@@ -304,7 +304,7 @@ describe('B2: duplicate or wrong attributes', function () {
         $hex = domQuery(renderBlade('<atom:badge color="#ff0000" label="Custom" />'), '//*[@data-atom-badge]')[0];
         $named = domQuery(renderBlade('<atom:badge color="green" label="Active" />'), '//*[@data-atom-badge]')[0];
 
-        expect($hex->getAttribute('style'))->toContain('border-color:')
+        expect($hex->getAttribute('style'))->toContain('background-color:')
             ->and($hex->getAttribute('style'))->not->toContain('; ;')
             ->and($named->hasAttribute('style'))->toBeFalse();
     });
@@ -317,7 +317,7 @@ describe('B2: duplicate or wrong attributes', function () {
         expect($bar->getAttribute('style'))->toStartWith('width: 45%; height: 10px')
             ->and($bar->getAttribute('style'))->toEndWith('opacity: .5;')
             ->and($bar->hasAttribute('size'))->toBeFalse()
-            ->and(domClasses($bar))->toContain('bg-red-200', 'rounded-xl');
+            ->and(domClasses($bar))->toContain('bg-red-200', 'rounded-pill');
     });
 
     it('sizes a placeholder bar the same with no caller style', function () {
@@ -568,10 +568,10 @@ describe('B4: the previously left-out items', function () {
             expect($classes)->not->toContain($token);
         }
     })->with([
-        'callout' => ['callout', '//*[@x-show="show"]', ['[:where(&)]:relative', '[:where(&)]:w-full', 'rounded-lg'], ['relative', 'w-full']],
-        'skeleton' => ['skeleton', '//div[contains(@class, "animate-pulse")]', ['[:where(&)]:w-full', 'animate-pulse'], ['w-full']],
+        'callout' => ['callout', '//*[@x-show="show"]', ['[:where(&)]:relative', '[:where(&)]:w-full', 'rounded-panel'], ['relative', 'w-full']],
+        'skeleton' => ['skeleton', '//div[contains(@class, "animate-pulse")]', ['[:where(&)]:w-full', 'motion-safe:animate-pulse'], ['w-full']],
         'chart' => ['chart', '//*[@data-atom-chart]', ['[:where(&)]:w-full', 'h-64'], ['w-full']],
-        'card' => ['card', '//*[@data-atom-card]', ['[:where(&)]:relative', 'rounded-lg', 'p-6'], ['relative']],
+        'card' => ['card', '//*[@data-atom-card]', ['[:where(&)]:relative', 'rounded-panel', 'p-4'], ['relative']],
         'dropdown' => ['dropdown', '//*[@data-atom-dropdown]', ['group/dropdown', '[:where(&)]:relative'], ['relative']],
         'uploader' => ['uploader', '//*[contains(@class, "group/uploader")]', ['[:where(&)]:relative'], ['relative']],
     ]);

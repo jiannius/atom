@@ -56,6 +56,8 @@ function restyledComponents(): array
         'skeleton',
         'placeholder-bar',
         'kbd',
+        'pagination',
+        'table',
     ];
 }
 

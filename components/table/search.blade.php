@@ -94,7 +94,7 @@ data-atom-table-search>
     <div
     wire:loading
     wire:target="$refresh"
-    class="absolute inset-y-0 right-0 z-1 flex items-center pr-3 text-zinc-400">
+    class="absolute inset-y-0 right-0 z-1 flex items-center pr-3 text-fg-subtle">
         <atom:icon.loading class="size-4" />
     </div>
 </div>

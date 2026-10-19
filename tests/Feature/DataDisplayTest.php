@@ -240,3 +240,105 @@ describe('kbd', function () {
         }
     });
 });
+
+describe('pagination', function () {
+    $pager = fn (int $page = 3) => new \Illuminate\Pagination\LengthAwarePaginator(collect(range(1, 20)), 200, 20, $page);
+
+    it('draws every cell as a control-high square: the control token, a 7px radius, tabular figures', function () use ($pager) {
+        $html = renderBlade('<atom:pagination :paginator="$p" />', ['p' => $pager()]);
+
+        foreach (domQuery($html, '//nav//button|//nav//*[@aria-current]') as $cell) {
+            expect(domClasses($cell))->toContain('h-control', 'min-w-(--atom-control-h)', 'rounded-control', 'tabular-nums');
+        }
+
+        $buttons = domQuery($html, '//nav//button');
+
+        expect($buttons)->not->toBeEmpty();
+
+        foreach ($buttons as $button) {
+            expect(domClasses($button))->toContain('h-control', 'rounded-control');
+        }
+    });
+
+    it('marks the current page with aria-current, on a fill with a strong hairline, not with an underline alone', function () use ($pager) {
+        $current = domQuery(renderBlade('<atom:pagination :paginator="$p" />', ['p' => $pager(3)]), '//*[@aria-current="page"]');
+
+        expect($current)->toHaveCount(1)
+            ->and(domClasses($current[0]))->toContain('bg-neutral-bg', 'text-fg', 'border', 'border-border-strong')
+            ->and(trim($current[0]->textContent))->toBe('3');
+    });
+
+    it('dims a disabled end and keeps it out of the tab order', function () use ($pager) {
+        $html = renderBlade('<atom:pagination :paginator="$p" />', ['p' => $pager(1)]);
+        $off = domQuery($html, '//*[@aria-disabled="true"]//*[@aria-hidden="true"]');
+
+        expect($off)->toHaveCount(1)
+            ->and(domClasses($off[0]))->toContain('opacity-50', 'cursor-default', 'text-fg-subtle')
+            ->and(domQuery($html, '//*[@aria-disabled="true"]//button'))->toBeEmpty();
+    });
+
+    it('draws a 16px arrow, labels it, and puts no :focus ring on a cell', function () use ($pager) {
+        $html = renderBlade('<atom:pagination :paginator="$p" />', ['p' => $pager(3)]);
+        $arrow = domQuery($html, '//nav//button[@aria-label]/svg')[0];
+
+        expect($arrow->getAttribute('class'))->toBe('size-4')
+            ->and($html)->not->toMatch('/focus:(?:ring|outline)/');
+    });
+
+    it('prints the summary in the muted token, 12px', function () use ($pager) {
+        $summary = domQuery(renderBlade('<atom:pagination :paginator="$p" />', ['p' => $pager()]), '//nav/div[1]')[0];
+
+        expect(domClasses($summary))->toContain('text-xs', 'text-fg-muted');
+    });
+
+    it('draws the table\'s pager the same way', function () use ($pager) {
+        $html = renderBlade('<atom:table.pagination :paginate="$p" />', ['p' => $pager(2)]);
+
+        expect(domClasses(domQuery($html, '//*[@aria-current="page"]')[0]))->toContain('bg-neutral-bg', 'h-control')
+            ->and(domClasses(domQuery($html, '//nav/div[1]')[0]))->toContain('text-xs', 'text-fg-muted');
+    });
+});
+
+describe('table, the rest of its parts', function () {
+    it('draws the row checkbox as the 16px box of the checkbox control, on the accent ink when checked', function () {
+        $classes = domClasses(displayElement('<atom:table.checkbox />', 'data-atom-table-checkbox'));
+
+        expect($classes)->toContain('size-4', 'rounded', 'bg-surface', 'border-fg-subtle', 'data-[checked]:border-accent-ink', 'data-[checked]:bg-accent-ink', 'data-[checked]:*:opacity-100', '*:opacity-0');
+    });
+
+    it('draws a filter chip as a 26px pill on the neutral tone, with a muted name', function () {
+        $html = renderBlade('<atom:table.filters>x</atom:table.filters>');
+        $chip = domQuery($html, '//*[@data-atom-table-filter-chip]')[0];
+
+        expect(domClasses($chip))->toContain('h-[26px]', 'rounded-pill', 'bg-neutral-bg', 'text-xs');
+        expect($html)->toContain('text-fg-muted');
+    });
+
+    it('draws the card overflow row of the filters as a panel', function () {
+        $html = renderBlade('<atom:table.filters overflow="card"><x-slot:more>m</x-slot:more>x</atom:table.filters>');
+
+        expect($html)->toContain('rounded-panel border bg-surface');
+    });
+
+    it('draws the bulk bar in the muted token, its actions in the accent ink, and the loading spinner muted', function () {
+        $html = renderBlade(
+            '<atom:table :select-all="true" sticky-selection :paginate="$p"><x-slot:checked><button>Delete</button></x-slot:checked></atom:table>',
+            ['p' => new \Illuminate\Pagination\LengthAwarePaginator([], 120, 50, 1)],
+        );
+
+        $bar = domQuery($html, '//*[@data-atom-table-checked]')[0];
+        $barHtml = $bar->ownerDocument->saveHTML($bar);
+
+        expect($barHtml)->toContain('text-fg-muted', 'text-accent-ink')
+            ->not->toMatch('/\btext-(?:zinc|primary|muted)\b/')
+            ->and($html)->toContain('size-6 text-fg-muted');
+    });
+
+    it('pulses the loading skeleton only for a viewer who has not asked for less motion', function () {
+        $html = renderBlade('<atom:table skeleton>
+            <x-slot:columns><atom:table.column>A</atom:table.column></x-slot:columns>
+        </atom:table>');
+
+        expect($html)->toContain('motion-safe:animate-pulse')->not->toMatch('/(?<!motion-safe:)animate-pulse/');
+    });
+});

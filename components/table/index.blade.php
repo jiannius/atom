@@ -59,8 +59,8 @@ data-atom-table
     @if (isset($checked) && $checked->isNotEmpty())
         <template x-if="$wire._table.checkboxes.length || $wire._table.select_all" hidden>
             <div class="{{ Arr::toCssClasses(['min-h-10 flex items-center gap-3', $stripClasses]) }}" data-atom-table-checked>
-                <div class="shrink-0 flex items-center gap-2 text-sm font-medium text-zinc-400">
-                    <atom:icon.double-check class="size-5"/>
+                <div class="shrink-0 flex items-center gap-2 text-sm font-medium text-fg-muted">
+                    <atom:icon.double-check class="size-4"/>
                     <div>
                         <span x-text="$wire._table.select_all ? {{ $total }} : $wire._table.checkboxes.length"></span> {{ t('atom::messages.selected') }}
                     </div>
@@ -69,13 +69,13 @@ data-atom-table
                 @if ($canSelectAll)
                     {{-- offer cross-page select-all once a subset is chosen, then a way back out --}}
                     <template x-if="!$wire._table.select_all && $wire._table.checkboxes.length < {{ $total }}" hidden>
-                        <button type="button" wire:click="selectAllTableMatching" class="shrink-0 text-sm font-medium text-primary hover:underline" data-atom-table-select-all>
+                        <button type="button" wire:click="selectAllTableMatching" class="shrink-0 text-sm font-medium text-accent-ink hover:underline" data-atom-table-select-all>
                             {{ t('atom::messages.select-all') }} {{ number_format($total) }}
                         </button>
                     </template>
 
                     <template x-if="$wire._table.select_all" hidden>
-                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium text-zinc-500 hover:underline">
+                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium text-fg-muted hover:underline">
                             {{ t('atom::messages.deselect-all') }}
                         </button>
                     </template>
@@ -85,7 +85,7 @@ data-atom-table
                     {{-- the batch is the thing being built, so it needs to be
                          reviewable: this lists the selection instead of the filtered
                          rows, ignoring the search that hid half of it. --}}
-                    <button type="button" wire:click="toggleTableShowSelected" class="shrink-0 text-sm font-medium text-primary hover:underline" data-atom-table-show-selected>
+                    <button type="button" wire:click="toggleTableShowSelected" class="shrink-0 text-sm font-medium text-accent-ink hover:underline" data-atom-table-show-selected>
                         <span x-show="!$wire._table.show_selected">{{ t('atom::messages.show-selected') }}</span>
                         <span x-show="$wire._table.show_selected" x-cloak>{{ t('atom::messages.show-all') }}</span>
                     </button>
@@ -94,7 +94,7 @@ data-atom-table
                          filter, so the way out can't depend on finding the ticked
                          rows again. Hidden in select-all mode, which brings its own. --}}
                     <template x-if="!$wire._table.select_all" hidden>
-                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium text-zinc-500 hover:underline" data-atom-table-clear-selection>
+                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium text-fg-muted hover:underline" data-atom-table-clear-selection>
                             {{ t('atom::messages.clear-selection') }}
                         </button>
                     </template>
@@ -134,7 +134,7 @@ data-atom-table
                  or a grid or flex parent such as <atom:page> grows to the table's width instead) --}}
             <div class="relative min-w-0 overflow-x-auto" data-atom-table-scroll>
                 @if ($showSkeleton)
-                    <div class="animate-pulse divide-y divide-border" data-atom-table-skeleton>
+                    <div class="motion-safe:animate-pulse divide-y divide-border" data-atom-table-skeleton>
                         @for ($i = 0; $i < $skeletonRows; $i++)
                             <div class="py-4 px-4" data-atom-table-skeleton-row>
                                 <atom:placeholder-bar size="{{ [45, 70, 55, 80, 50][$i % 5] }}%x10" />
@@ -209,7 +209,7 @@ data-atom-table
                  the strut cannot reach the visible part — which is why the spinner
                  carries `top`/`bottom` of its own. It is small enough to move. --}}
             <div class="sticky top-[var(--atom-shell-bar-h,0px)] h-[calc(100dvh-var(--atom-shell-bar-h,0px))] max-h-full flex items-center">
-                <atom:icon.loading class="sticky top-[calc(var(--atom-shell-bar-h,0px)+1rem)] bottom-4 size-6 text-zinc-500" />
+                <atom:icon.loading class="sticky top-[calc(var(--atom-shell-bar-h,0px)+1rem)] bottom-4 size-6 text-fg-muted" />
             </div>
         </div>
     </div>
