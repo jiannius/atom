@@ -180,10 +180,10 @@ describe('save bar', function () {
             ->and(domQuery($html, '//*[@data-atom-form-modal-actions]'))->toHaveCount(1);
     });
 
-    it('is the one primary: the submit button, and nothing else on a page form carries bg-primary', function () {
+    it('is the one primary: the submit button, and nothing else on a page form carries bg-accent', function () {
         $html = renderBlade('<atom:form.actions bar><atom:button variant="ghost">Cancel</atom:button><atom:button>Save draft</atom:button><atom:button type="submit">Save and send</atom:button></atom:form.actions>');
 
-        $primaries = domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]');
+        $primaries = domQuery($html, '//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]');
 
         expect($primaries)->toHaveCount(1)->and($primaries[0]->getAttribute('type'))->toBe('submit');
     });

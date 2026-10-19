@@ -311,6 +311,27 @@
     height: var(--atom-control-h);
 }
 
+/* A control's neighbours in size: `xs` and `sm` sit 8px and 4px under the control token, `md` and `lg` 4px and 8px over. */
+@utility h-control-xs {
+    height: calc(var(--atom-control-h) - 8px);
+}
+
+@utility h-control-sm {
+    height: calc(var(--atom-control-h) - 4px);
+}
+
+@utility h-control-md {
+    height: calc(var(--atom-control-h) + 4px);
+}
+
+@utility h-control-lg {
+    height: calc(var(--atom-control-h) + 8px);
+}
+
+@utility min-h-control {
+    min-height: var(--atom-control-h);
+}
+
 @utility min-h-row {
     min-height: var(--atom-row-min-h);
 }

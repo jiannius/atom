@@ -118,7 +118,7 @@ describe('record page pattern', function () {
         expect($primary)->toHaveCount(1)
             ->and($primary[0]->textContent)->toContain($action)
             ->and(trim(domQuery($html, '//header//*[@data-atom-status]')[0]->textContent))->toBe($word)
-            ->and(domQuery($html, '//header[@data-atom-page-header]//*[@data-atom-button][contains(@class, "bg-primary")]'))->toHaveCount(1);
+            ->and(domQuery($html, '//header[@data-atom-page-header]//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]'))->toHaveCount(1);
     })->with([
         ['draft', 'Draft', 'Schedule job'],
         ['in-progress', 'In progress', 'Mark as done'],
@@ -201,7 +201,7 @@ describe('page component docs', function () {
 
 // One primary action per screen: the header's. An empty state's next step is a plain button.
 describe('one primary action', function () {
-    $primaries = fn (string $html) => domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]');
+    $primaries = fn (string $html) => domQuery($html, '//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]');
 
     it('keeps the record page to one primary button on every tab and status', function (string $tab, string $status) use ($primaries) {
         request()->query->set('tab', $tab);
@@ -281,7 +281,7 @@ describe('list page pattern', function () {
     it('has one primary action, the header\'s, and a status with a word on every row', function () {
         $html = view('atom::docs.patterns.list-page')->render();
 
-        expect(domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]'))->toHaveCount(1)
+        expect(domQuery($html, '//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-atom-page-actions]//*[@data-testid="list-primary"]'))->toHaveCount(1)
             ->and(domQuery($html, '//tbody//*[@data-atom-status]'))->toHaveCount(8);
     });
@@ -310,7 +310,7 @@ describe('document page pattern', function () {
 
         $html = view('atom::docs.patterns.document-page')->render();
 
-        expect(domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]'))->toHaveCount(1)
+        expect(domQuery($html, '//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-testid="document-primary"]')[0]->textContent)->toContain($action)
             ->and(domQuery($html, '//*[@data-testid="history"]//li'))->toHaveCount($events);
     })->with([['overdue', 'Record payment', 4], ['draft', 'Send invoice', 1], ['paid', 'Download receipt', 2]]);
@@ -370,7 +370,7 @@ describe('form page pattern', function () {
 
     it('has one primary action, the submit in the save bar, and totals at the start of the bar', function () {
         $html = view('atom::docs.patterns.form-page')->render();
-        $primary = domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]');
+        $primary = domQuery($html, '//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]');
 
         expect($primary)->toHaveCount(1)
             ->and($primary[0]->getAttribute('type'))->toBe('submit')
@@ -418,9 +418,9 @@ describe('slide-over form pattern', function () {
     it('has one primary action on the page and one in the slide-over: the submit', function () {
         $html = view('atom::docs.patterns.slide-over-form')->render();
 
-        expect(domQuery($html, '//dialog//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]'))->toHaveCount(1)
+        expect(domQuery($html, '//dialog//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]'))->toHaveCount(1)
             ->and(domQuery($html, '//dialog//*[@data-testid="slide-over-submit"]')[0]->getAttribute('type'))->toBe('submit')
-            ->and(domQuery($html, '//*[@data-atom-page-actions]//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]'))->toHaveCount(1);
+            ->and(domQuery($html, '//*[@data-atom-page-actions]//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]'))->toHaveCount(1);
     });
 });
 
@@ -461,7 +461,7 @@ describe('new component docs', function () {
 });
 
 describe('one primary action, V4-2c', function () {
-    $primaries = fn (string $html) => domQuery($html, '//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-primary ")]');
+    $primaries = fn (string $html) => domQuery($html, '//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]');
 
     it('keeps every page pattern to one primary button', function (string $page) use ($primaries) {
         expect($primaries(view('atom::docs.patterns.'.$page)->render()))->toHaveCount(1);
