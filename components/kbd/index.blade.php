@@ -30,10 +30,9 @@ $render = function ($token) use ($map) {
 };
 
 $cap = Arr::toCssClasses([
-    'inline-flex items-center justify-center min-w-5 px-1.5 py-0.5',
-    'rounded border border-zinc-200 dark:border-zinc-700',
-    'text-xs font-medium text-zinc-500 dark:text-zinc-400',
-    'bg-white dark:bg-zinc-800',
+    'inline-flex h-5 min-w-5 items-center justify-center px-1.5',
+    'rounded-nav border border-border-strong bg-surface-sunken',
+    'text-xs font-medium text-fg-muted',
 ]);
 @endphp
 

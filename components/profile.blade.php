@@ -10,13 +10,13 @@
         <atom:avatar :name="$name" :src="$avatar" :size="$size" />
     </div>
 
-    <div class="text-zinc-500 text-left dark:text-white truncate">
-        <div class="font-medium truncate">
+    <div class="min-w-0 text-left truncate">
+        <div class="font-medium text-fg truncate">
             {{ $name }}
         </div>
 
         @if ($email)
-            <div class="text-sm text-zinc-500 truncate dark:text-white/50">
+            <div class="text-xs text-fg-muted truncate">
                 {{ $email }}
             </div>
         @endif

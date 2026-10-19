@@ -138,3 +138,105 @@ describe('list', function () {
         expect(domQuery($html, '//a')[0]->getAttribute('href'))->toBe('https://example.test/x');
     });
 });
+
+describe('avatar', function () {
+    it('is a tinted square with a hairline, on the neutral tone', function () {
+        $classes = domClasses(displayElement('<atom:avatar name="Jane Roe" />', 'data-atom-avatar'));
+
+        expect($classes)->toContain('bg-neutral-bg', 'text-neutral-fg', 'border', 'rounded-control', 'size-[34px]', 'font-semibold', 'text-sm')
+            ->and(array_filter($classes, fn ($c) => str_starts_with($c, 'shadow')))->toBe([]);
+    });
+
+    it('has five sizes: 24, 28, 34, 48 and 64px, rounder as it grows', function (?string $size, string $box, string $radius) {
+        $classes = domClasses(displayElement('<atom:avatar name="Jane Roe" :size="$size" />', 'data-atom-avatar', compact('size')));
+
+        expect($classes)->toContain($box, $radius);
+    })->with([
+        ['xs', 'size-6', 'rounded-control'],
+        ['sm', 'size-7', 'rounded-control'],
+        [null, 'size-[34px]', 'rounded-control'],
+        ['lg', 'size-12', 'rounded-panel'],
+        ['xl', 'size-16', 'rounded-panel'],
+    ]);
+
+    it('is a circle when it is not square', function () {
+        expect(domClasses(displayElement('<atom:avatar name="Jane Roe" :square="false" />', 'data-atom-avatar')))->toContain('rounded-full')->not->toContain('aspect-square');
+    });
+
+    it('rings an overlapping avatar in the surface colour, so a stack keeps its edges', function () {
+        $html = renderBlade('<atom:avatar.group max="2"><atom:avatar name="Anna" /><atom:avatar name="Beth" /><atom:avatar name="Cara" /></atom:avatar.group>');
+        $group = domQuery($html, '//body/*[1]')[0];
+
+        expect(domClasses($group))->toContain('[&_[data-atom-avatar]]:ring-2', '[&_[data-atom-avatar]]:ring-surface')
+            ->and($html)->toContain('+1');
+    });
+
+    it('prints a name as text', function () {
+        $html = renderBlade('<atom:avatar :name="$n" :src="$s" />', ['n' => '"><script>x</script>', 's' => 'https://cdn.test/a.jpg']);
+
+        expect(domQuery($html, '//script'))->toBeEmpty();
+    });
+});
+
+describe('profile', function () {
+    it('names the person in the foreground and the email in the muted token', function () {
+        $html = renderBlade('<atom:profile name="Jane Roe" email="jane@test.com" />');
+
+        expect(domClasses(domQuery($html, '//*[@data-atom-profile]/div[2]/div[1]')[0]))->toContain('text-fg')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-profile]/div[2]/div[2]')[0]))->toContain('text-xs', 'text-fg-muted');
+    });
+});
+
+describe('progress', function () {
+    it('is a pill track on the neutral tone, 6px high and 4px at sm', function () {
+        $default = renderBlade('<atom:progress :value="40" />');
+        $small = renderBlade('<atom:progress :value="40" size="sm" />');
+
+        expect(domClasses(domQuery($default, '//*[@role="progressbar"]')[0]))->toContain('bg-neutral-bg', 'rounded-pill', 'h-1.5')
+            ->and(domClasses(domQuery($small, '//*[@role="progressbar"]')[0]))->toContain('h-1');
+    });
+
+    it('fills with the accent ink by default and with a tone\'s ink for a variant', function (?string $variant, string $fill) {
+        $html = renderBlade('<atom:progress :value="40" :variant="$variant" />', compact('variant'));
+
+        expect(domClasses(domQuery($html, '//*[@role="progressbar"]/div')[0]))->toContain($fill, 'rounded-pill');
+    })->with([
+        [null, 'bg-accent-ink'],
+        ['success', 'bg-success-fg'],
+        ['warning', 'bg-warning-fg'],
+        ['danger', 'bg-danger-fg'],
+        ['error', 'bg-danger-fg'],
+        ['info', 'bg-info-fg'],
+    ]);
+
+    it('prints the label in the muted token with tabular figures', function () {
+        $html = renderBlade('<atom:progress :value="40" label />');
+
+        expect($html)->toContain('text-fg-muted', 'tabular-nums', '40%');
+    });
+});
+
+describe('skeleton and placeholder bar', function () {
+    it('pulses only for a viewer who has not asked for less motion, on the hairline token', function () {
+        $html = renderBlade('<atom:skeleton />');
+
+        expect($html)->toContain('motion-safe:animate-pulse', '*:bg-border-strong')->not->toMatch('/(?<!motion-safe:)animate-pulse/');
+    });
+
+    it('draws a placeholder bar as a pill on the hairline token, which a caller class replaces', function () {
+        expect(domClasses(domQuery(renderBlade('<atom:placeholder-bar size="50%x8" />'), '//div')[0]))->toContain('rounded-pill', 'bg-border-strong');
+        expect(domClasses(domQuery(renderBlade('<atom:placeholder-bar size="50%x8" class="bg-neutral-bg" />'), '//div')[0]))->toContain('bg-neutral-bg')->not->toContain('bg-border-strong');
+    });
+});
+
+describe('kbd', function () {
+    it('draws a key cap on the sunken fill with a strong hairline, 20px high', function () {
+        $keys = domQuery(renderBlade('<atom:kbd keys="cmd k" />'), '//kbd');
+
+        expect($keys)->toHaveCount(2);
+
+        foreach ($keys as $key) {
+            expect(domClasses($key))->toContain('h-5', 'min-w-5', 'rounded-nav', 'border', 'border-border-strong', 'bg-surface-sunken', 'text-fg-muted', 'text-xs');
+        }
+    });
+});

@@ -50,6 +50,12 @@ function restyledComponents(): array
         'callout',
         'dd',
         'list',
+        'avatar',
+        'profile',
+        'progress',
+        'skeleton',
+        'placeholder-bar',
+        'kbd',
     ];
 }
 
