@@ -409,14 +409,9 @@ for (const tw of ['floor', 'latest']) {
         await page.setViewportSize({ width: 1280, height: 900 })
         await openDisplay(page, { tw, section: 'pager' })
 
-        // a window of 20 pages shows the dots on the middle one
-        const dots = page.getByTestId('pager-middle').getByRole('button', { name: 'Has more pages' })
-        const count = await dots.count()
-
-        if (count === 0) {
-          test.info().annotations.push({ type: 'note', description: 'ten pages show no dots' })
-          return
-        }
+        // a hundred pages: the window shows the dots on the middle one
+        const dots = page.getByTestId('pager-dots').getByRole('button', { name: 'Has more pages' })
+        expect(await dots.count()).toBeGreaterThan(0)
 
         await dots.first().click()
         const input = page.locator('input[type="number"]:visible').first()

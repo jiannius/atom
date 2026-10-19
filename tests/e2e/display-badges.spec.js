@@ -178,6 +178,17 @@ for (const tw of ['floor', 'latest']) {
       })
     }
 
+    test('a group with max 2 over three badges shows two of them and +1', async ({ page }) => {
+      await openDisplay(page, { tw, section: 'badges' })
+
+      const group = page.getByTestId('badge-group')
+      await expect(group.locator('[data-atom-badge]')).toHaveCount(3)
+      await expect(group.locator('[data-atom-badge]:visible')).toHaveCount(2)
+      await expect(group.locator('[data-atom-badge]:visible')).toHaveText(['One', 'Two'])
+      await expect(group.locator('[data-atom-badge-overflow]')).toHaveText('+1')
+      await expect(group.locator('[data-atom-badge]').nth(2)).toBeHidden()
+    })
+
     test('the +N of a badge group is muted text at 4.5:1', async ({ page }) => {
       for (const dark of [false, true]) {
         await openDisplay(page, { tw, section: 'badges', dark })

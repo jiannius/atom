@@ -240,6 +240,8 @@ $pager = fn (int $page) => new \Illuminate\Pagination\LengthAwarePaginator(colle
         <div class="rounded-panel border bg-surface" data-testid="pager-simple"><atom:pagination :paginator="$pager(3)" simple/></div>
         <div class="rounded-panel border bg-surface" data-testid="pager-bare"><atom:pagination :paginator="$pager(2)" :summary="false"/></div>
         <div class="rounded-panel border bg-surface" data-testid="pager-table"><atom:table.pagination :paginate="$pager(4)" :max-rows="false"/></div>
+        {{-- a hundred pages: the window shows the dots, which open the go-to-page box --}}
+        <div class="rounded-panel border bg-surface" data-testid="pager-dots"><atom:pagination :paginator="new \Illuminate\Pagination\LengthAwarePaginator(collect(range(1, 20)), 2000, 20, 50)"/></div>
     </section>
     @endif
 
