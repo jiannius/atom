@@ -475,3 +475,84 @@ it('points the guideline at the page components and the skill at the record page
         expect(file_exists(__DIR__.'/../../resources/views/docs/patterns/'.$name.'.blade.php'))->toBeTrue($name);
     }
 });
+
+// V4-2c: lists, forms and the timeline. The rules a host's agent follows live in the skill; the README and UPGRADE carry them for people.
+describe('lists, forms and the timeline in the docs', function () {
+    it('teaches the list rules in the skill: one panel, frameless, host-supplied counts, the header-slot limit, numeric money', function () {
+        $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+        expect($skill)->toContain('`frameless`')
+            ->and($skill)->toContain('<atom:table.toolbar>')
+            ->and($skill)->toContain('<atom:table.views')
+            ->and($skill)->toContain('the HOST supplies the counts')
+            ->and($skill)->toContain('atom never counts')
+            ->and($skill)->toContain('never `#[Locked]`')
+            ->and($skill)->toContain('Alpine template')
+            ->and($skill)->toContain('numeric')
+            ->and($skill)->toContain('font-id')
+            ->and($skill)->toContain('docs/patterns/list-page.blade.php')
+            ->and($skill)->toContain('document-page.blade.php')
+            ->and($skill)->toContain('form-page.blade.php')
+            ->and($skill)->toContain('slide-over-form.blade.php');
+    });
+
+    it('teaches form.section, the save bar and the timeline in the skill', function () {
+        $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+        expect($skill)->toContain('<atom:form.section')
+            ->and($skill)->toContain('`layout="stacked"`')
+            ->and($skill)->toContain("class=\"@md:col-span-2\"")
+            ->and($skill)->toContain('<atom:form.actions bar>')
+            ->and($skill)->toContain('`start` slot')
+            ->and($skill)->toContain('`sticky`')
+            ->and($skill)->toContain('<atom:timeline')
+            ->and($skill)->toContain('kind="step"')
+            ->and($skill)->toContain('kind="message"')
+            ->and($skill)->toContain('`composer` slot');
+    });
+
+    it('names the new components in the always-on guideline without growing it past its budget', function () {
+        $guideline = boostFile('guidelines/core.blade.php');
+
+        expect($guideline)->toContain('<atom:form.section>')
+            ->and($guideline)->toContain('<atom:timeline>')
+            ->and(str_word_count(strip_tags($guideline)))->toBeLessThan(700);
+    });
+
+    it('names every prop it documents on the components that have them', function () {
+        $readme = file_get_contents(__DIR__.'/../../README.md');
+
+        foreach (['table/index' => ['frameless'], 'table/column' => ['numeric'], 'table/cell' => ['numeric'], 'table/toolbar' => ['strip', 'trashed'], 'table/views' => ['counts', 'current'], 'form/section' => ['heading', 'subheading', 'layout', 'level'], 'form/actions' => ['sticky', 'bar'], 'timeline/index' => ['kind', 'label', 'collapsible']] as $component => $props) {
+            $source = file_get_contents(__DIR__.'/../../components/'.$component.'.blade.php');
+
+            foreach ($props as $prop) {
+                expect($source)->toContain("'".$prop."' =>");
+            }
+        }
+
+        expect($readme)->toContain('#### Lists, forms and the timeline')
+            ->and($readme)->toContain('<atom:table.views')
+            ->and($readme)->toContain('<atom:form.actions bar>')
+            ->and($readme)->toContain('<atom:timeline');
+    });
+
+    it('has the UPGRADE entry, and says what changes in a table a host already has', function () {
+        $upgrade = file_get_contents(__DIR__.'/../../UPGRADE.md');
+
+        expect($upgrade)->toContain('## Lists, forms and the timeline')
+            ->and($upgrade)->toContain('Recommended: frameless tables inside panels; `numeric` on money columns; `form.section` for settings and forms.')
+            ->and($upgrade)->toContain('no longer uppercase')
+            ->and($upgrade)->toContain('`px-row py-row leading-row`')
+            ->and($upgrade)->toContain('`--atom-gutter-s`')
+            ->and($upgrade)->toContain('Alpine template');
+    });
+
+    it('points the skill only at pattern pages and demos that exist', function () {
+        $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+        foreach (['list-page', 'document-page', 'form-page', 'slide-over-form'] as $name) {
+            expect(file_exists(__DIR__.'/../../resources/views/docs/patterns/'.$name.'.blade.php'))->toBeTrue($name);
+            expect($skill)->toContain($name.'.blade.php');
+        }
+    });
+});

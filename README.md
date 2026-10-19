@@ -455,6 +455,7 @@ An `href` is only followed if it is `http`, `https`, `mailto`, `tel`, `sms` or s
 | `<atom:empty>` | `kind` (`first-use`, `no-results` (default), `error`), `icon`, `size` (`sm`), `subtle`, `heading`, `subheading`. Slot `action` holds the next step; a default slot replaces the heading and subheading. The large state draws its icon in once (CSS only; not at `sm` or `subtle`, not under `prefers-reduced-motion`). |
 | `<atom:status>` | `tone` (`neutral` (default), `info`, `success`, `warning`, `danger`, `accent`), `label` (or the slot), `running` (pulses the dot; still under `prefers-reduced-motion`). A dot plus a word: the word is always printed. |
 | `<atom:stat>` | One figure of a totals strip. `label`, `value` (or the slot), `prefix` (a small currency), `delta` (`+12%`, `-3`: up or down from the sign, with an arrow and a hidden word; a zero, signed or not, is flat. A digit must follow the optional sign straight away, so `-.5%`, `−RM 200`, `n/a` and `new` print as plain text with no direction), `inverse` (a fall is the good news), `breakdown`, `tone` (`danger`, `warning`, `success`: tints the value), `href` (a clickable filter, through `safe_url()`). Sized by its content. Group: `<atom:stat.group>`, the outlined strip that wraps two to a row on a phone. |
+| `<atom:timeline>` | A vertical timeline of one `kind`: `event` (a record's activity: a dot in a `tone` on a spine, what happened, who and when, an optional `status` and a folded `detail`), `step` (a numbered spine of `done`, `current`, `pending` and `failed` steps; each step's body folds away unless `:collapsible="false"`) or `message` (two speakers, yours at `side="end"`, with an optional `composer` slot as the last row). Items are `<atom:timeline.item>`: `title`, `body` (or the slot), `actor`, `time` (a string, or a `DateTimeInterface` shown in the viewer's timezone; pass a date with no time as a `Y-m-d` string), `tone`, `status`, `state`, `open`, `speaker`, `side`. Every string prints as text; `label` names the list. |
 | `<atom:profile>` | `name`, `avatar`, `email`, `size`. |
 | `<atom:icon.*>` | 200+ icons. Examples: `<atom:icon.check/>`, `<atom:icon.arrow-left/>`, `<atom:icon.delete/>`. Browse `components/icon/`. |
 | `<atom:logo.*>` | Payment / brand marks: `apple-pay`, `fpx`, `google-pay`, `ipay88`, `master`, `senangpay`, `stripe`, `tng`, `visa`. |
@@ -501,8 +502,10 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | Tag | Notable props |
 | --- | ------------- |
 | `<atom:form>` | `inset`. Wraps form, handles auto loading state on submit. |
+| `<atom:form.section>` | One section of a form or settings page: `heading`, `subheading`, `layout` (`aside` (default): a 220px label column beside the fields from 768px, above them below that; `stacked`: always above, for a slide-over or modal), `level` (heading level, `2`; use `3` in a modal). The fields sit in a grid of two columns once their own box is 448px wide (`class="@md:col-span-2"` on a field spans the row). A hairline and the form's gap separate sections. Slot `footer`: a right-aligned row for a section that saves on its own. |
+| `<atom:form.actions>` | The form's footer. `sticky` pins it to a modal or slide-over (what `form.modal` draws); `bar` makes it the **save bar** of a page form: sticky at the bottom of the screen, a blurred surface and a hairline that run the full width of the screen's content area, with its content on the page column. Slot `start` holds live totals or a dirty state; the buttons are at the end (full width on a phone), and the submit is the screen's one primary action. |
 | `<atom:form.modal>` | `name`, `cols` (`auto`, `1`, `2`, `3`), `submit` (Save label), `dismissible`, `escapable`, `closeable`. Modal + form + sticky bar: Save on the left, and on the right the optional named slots `actions` (anything that should stay visible while the form scrolls, e.g. a running total) and `delete`, in that order. With only `delete`, or neither, the markup is unchanged. |
-| `<atom:table>` | `empty`, `paginate`, `maxRows` (array of row options), `skeleton`, `trashed`, `selectAll`, `stickySelection`. Slots: `columns`, `rows`, `header`, `checked` (bulk-action bar), `footer`. Children: `<atom:table.column>`, `<atom:table.row>`, `<atom:table.cell>`, `<atom:table.checkbox>`, `<atom:table.search>`, `<atom:table.filters>`, `<atom:table.trashed>`, `<atom:table.actions>`, `<atom:table.pagination>`. Driven by `$_table` state on the Livewire component. See [Table selection](#table-selection). |
+| `<atom:table>` | `empty`, `paginate`, `maxRows` (array of row options), `skeleton`, `trashed`, `selectAll`, `stickySelection`, `frameless` (no outer box: for a table inside a panel the page draws, with the saved views and toolbar above it). Slots: `columns`, `rows`, `header`, `checked` (bulk-action bar), `footer`. Children: `<atom:table.column>`, `<atom:table.row>`, `<atom:table.cell>`, `<atom:table.checkbox>`, `<atom:table.search>`, `<atom:table.filters>`, `<atom:table.trashed>`, `<atom:table.actions>`, `<atom:table.pagination>`, `<atom:table.toolbar>`, `<atom:table.views>`. `<atom:table.column>` and `<atom:table.cell>` take `numeric` (right-aligned, tabular figures: money and quantities). Driven by `$_table` state on the Livewire component. See [Table selection](#table-selection). |
 | `<atom:tabs>` | `tabs` (array), `size` (`sm`), `variant` (`button`, `border`). Child: `<atom:tabs.item>`. |
 | `<atom:page>` | The padded body of a screen (a shell's `<main>` is unpadded): a 1240px column, 26px above, 120px below, a 22px gap between its blocks. `width` (`narrow` is 980px, `full` has no cap). |
 | `<atom:page.header>` | Crumbs, the title (`<h1>`, 22px) with its status beside it, key facts, actions. Props: `title`, `level` (`1`; use `2` in a modal or slide-over), `size` (`sm` for a modal or slide-over), `crumbs` (`[['label' => ..., 'href' => ...], ...]`; the last is the current page and prints as given, every other label goes through `t()`, so a parent crumb that holds record data should not contain a `|`), `facts` (strings or `['label' => ..., 'value' => ..., 'mono' => true]`). Slots: `status`, `meta` (more facts), `actions`, `menu` (the overflow menu's items), `primary` (the one action for the record's current status). |
@@ -537,6 +540,90 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 ```
 
 The header's crumbs and the shell's `crumbs` slot are two places for the same thing: use one. The header's `crumbs` are a static list; only `<atom:breadcrumbs />` inside `@persist('breadcrumbs')` remembers where the user came from (and the filters they left a listing with) and draws the component's `breadcrumbs()` method, so a page that uses the header's `crumbs` instead loses that trail. A level-1 `page.header` replaces the layout's hidden fallback `<h1>`; in a modal or a slide-over (for a form, never a whole record) pass `level="2" size="sm"`.
+
+#### Lists, forms and the timeline
+
+Four pattern pages in `resources/views/docs/patterns/` (also at `/atom/docs/patterns/...` in a local app) show whole screens built from these parts: `list-page` (saved views, a toolbar and a frameless table in one panel), `document-page` (an invoice with lines, totals and a timeline), `form-page` (sections and the save bar) and `slide-over-form`. Copy the structure, not the data.
+
+**A list is one panel.** The panel is yours (`rounded-panel border bg-surface overflow-hidden`); inside it go the saved views, the toolbar and a `frameless` table, separated by hairlines. A table with no panel around it keeps its own frame. A wide table scrolls sideways inside its panel, never the page.
+
+```blade
+<div class="min-w-0 overflow-hidden rounded-panel border bg-surface">
+    <atom:table.views wire:model.live="filters.view" :current="$filters['view']" :counts="fn ($view) => $this->count($view)">
+        <atom:table.views.item value="all" label="All" />
+        <atom:table.views.item value="unpaid" label="Unpaid" />
+    </atom:table.views>
+
+    <atom:table frameless :paginate="$this->invoices">
+        <x-slot:header>
+            <atom:table.toolbar>
+                <atom:table.search wire:model.live.debounce.250ms="filters.search" placeholder="Search number or customer" />
+                <x-slot:end><atom:button size="sm" variant="ghost" icon="download">Export</atom:button></x-slot:end>
+            </atom:table.toolbar>
+        </x-slot:header>
+
+        <x-slot:columns>
+            <atom:table.column>Number</atom:table.column>
+            <atom:table.column numeric>Amount (RM)</atom:table.column>
+        </x-slot:columns>
+
+        <x-slot:rows>
+            @foreach ($this->invoices as $invoice)
+                <atom:table.row wire:key="invoice-{{ $invoice->id }}">
+                    <atom:table.cell><span class="font-id">{{ $invoice->number }}</span></atom:table.cell>
+                    <atom:table.cell numeric>{{ number_format($invoice->total, 2) }}</atom:table.cell>
+                </atom:table.row>
+            @endforeach
+        </x-slot:rows>
+    </atom:table>
+</div>
+```
+
+- **Saved views** are tabs with counts. Bind them with `wire:model` (`.live` to refetch at once): the property holds the chosen view's `value`, so a component that uses [`WithUrlFilters`](#filters-in-the-url--withurlfilters) can carry the view in the URL (declare `'view' => 'all'` and a `isUrlFilterValid()` that knows the values; never `#[Locked]` the property). `:current` draws the first paint right, since the browser reads the property only once Alpine starts. **The host supplies the counts**: an array keyed by `value`, or a closure that gets the `value`; atom never runs a count query, and a closure runs once per item on every render, so keep it to one cached or grouped query. An item with an `href` is a link, for a list that is a page per view.
+- **The toolbar** goes in the table's `header` slot: the table draws the hairline strip around it and swaps it for the `checked` bulk bar while rows are ticked. The slot is an Alpine template, so **text the server renders into it is not refreshed by a re-render**: put a count or a total below the table (in the panel's foot), not in the slot. Placed anywhere else (above a table, on a page with no Livewire component), give the toolbar `strip` to draw its own strip.
+- **Money** is a `numeric` column and `numeric` cells (right-aligned, tabular figures), with the currency named once in the header (`Amount (RM)`), never in each cell. **Identifiers** (an invoice number, a reference) are `font-id`.
+- A row is at least 40px (44 comfortable, 48 on a touch device) with 9px of padding above and below: a cell with two lines (a name and a 12px line under it) grows, and never touches its borders. Header cells are 12px labels, not uppercase.
+
+**A form is sections.** `<atom:form.section>` is a heading, a line of help and the fields; the form's own gap and a hairline separate sections, so put sections straight in `<atom:form>` (or `form.grid cols="1"`, or `form.modal cols="1"`).
+
+```blade
+<atom:page width="narrow">
+    <atom:page.header title="New invoice" />
+
+    <atom:form wire:submit="save">
+        <atom:form.section heading="Details" subheading="Dates and terms printed on the invoice.">
+            <atom:input wire:model="issued" label="Issue date" />
+            <atom:input wire:model="terms" label="Payment terms" />
+            <div class="@md:col-span-2"><atom:textarea wire:model="note" label="Note" /></div>
+        </atom:form.section>
+
+        <atom:form.actions bar>
+            <x-slot:start>
+                <span class="text-[17px] font-semibold">RM {{ number_format($this->total, 2) }}</span>
+            </x-slot:start>
+
+            <atom:button type="button" variant="ghost">Cancel</atom:button>
+            <atom:button type="submit">Save</atom:button>
+        </atom:form.actions>
+    </atom:form>
+</atom:page>
+```
+
+- `layout="aside"` (the default) puts the heading in a 220px column beside the fields once the section is 768px wide, and above them below that; `layout="stacked"` always puts it above (for a slide-over or a modal; use `level="3"` there). The fields are two across once their own box is 448px wide, one below that, whatever the screen: a 448px slide-over has one column, a 576px one two.
+- **The save bar** (`form.actions bar`) is the last thing in the page's form. It is sticky at the bottom of the screen on a blurred surface with a hairline above it, and runs the full width of the screen's content area (to the sidebar in the sidebar shell, to both edges in the top-nav shell), while its content stays on the page column, whatever the page's `width`. (The sidebar shell's bleed assumes the page starts at `<main>`'s content edge: no `mx-auto` on `<atom:page>`.) It takes the page's 120px of bottom room, so it ends the page flush with the bottom, and it needs an `<atom:page>` inside a shell (outside them it is just its own box). Its `start` slot is live totals or a dirty state; the submit is the screen's one primary action. In a modal or a slide-over use `sticky` (what `form.modal` draws, with its `actions` slot beside the submit).
+- A section that saves on its own (a settings panel) is its own `<atom:form>` with a `footer` slot; do not mix that with a page save bar.
+
+**The timeline** is one component in three kinds: `<atom:timeline>` (events, the default), `<atom:timeline kind="step">` and `<atom:timeline kind="message">`, each with `<atom:timeline.item>` rows. Order is yours; atom never sorts or fetches. A folded detail or step body is Alpine's state, which a Livewire re-render leaves alone.
+
+```blade
+<atom:timeline label="Invoice history">
+    @foreach ($this->events as $event)
+        <atom:timeline.item wire:key="event-{{ $event->id }}" :title="$event->title" :body="$event->body" :actor="$event->actor" :time="$event->created_at" :tone="$event->tone" />
+    @endforeach
+</atom:timeline>
+```
+
+A direct `<atom:input>` child of the composer's `<form>` (bare or with a `label`) fills the row beside the button; wrap it in anything else and the width is yours to set. **An item rendered in a `@foreach` needs a `wire:key`** (as any looped element does): a step's open state and an event's folded detail are Alpine's, and without a key a re-render that adds or reorders items hands one item's state to another. A `DateTimeInterface` passed as `time` is shown in the viewer's timezone (`Carbon::getLocalTimezone()`), and its `<time datetime>` keeps the instant's own offset. A calendar date with no time is passed as a `Y-m-d` string: as a `DateTimeInterface` a midnight-UTC date would show as, say, 8:00 am.
 
 #### Choosing a shell
 

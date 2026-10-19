@@ -1396,8 +1396,39 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
    (24px), so a page's content lines up with it. */
 @media (min-width: 64rem) {
     [data-atom-header-bar] ~ [data-atom-main] [data-atom-page] {
-        padding-inline: max(1.5rem, env(safe-area-inset-left, 0px)) max(1.5rem, env(safe-area-inset-right, 0px));
+        --atom-gutter-s: max(1.5rem, env(safe-area-inset-left, 0px));
+        --atom-gutter-e: max(1.5rem, env(safe-area-inset-right, 0px));
+        padding-inline: var(--atom-gutter-s) var(--atom-gutter-e);
     }
+}
+
+/* The save bar (form.actions bar): its blurred surface (::before) and hairline (::after) fill the bar's own box, which is the page's padding
+   box. They go on to the edge of the screen with a box-shadow spread, which takes no room (nothing scrolls sideways, nothing prints
+   smaller), clipped by a clip-path whose insets are the --atom-bar-left and --atom-bar-right the shells' <main> sets below. The sidebar shell
+   stops it at the shell's content edge, so it does not cover the sidebar; this assumes the page starts at <main>'s content edge (no mx-auto on
+   <atom:page>). The top-nav shell lets it run to both edges. Outside a shell the variables are missing, the clip is the box itself and the
+   surface is just the bar. The shadow colours are the surface at 95% and the border role: what `bg-surface/95` and `bg-border` draw. */
+[data-atom-sidebar] ~ [data-atom-main] {
+    --atom-bar-left: 0px;
+    --atom-bar-right: -100vmax;
+}
+
+[data-atom-header-bar] ~ [data-atom-main] {
+    --atom-bar-left: -100vmax;
+    --atom-bar-right: -100vmax;
+}
+
+[data-atom-save-bar]::before,
+[data-atom-save-bar]::after {
+    clip-path: inset(0 var(--atom-bar-right, 0px) 0 var(--atom-bar-left, 0px));
+}
+
+[data-atom-save-bar]::before {
+    box-shadow: 0 0 0 100vmax color-mix(in oklab, var(--atom-surface) 95%, transparent);
+}
+
+[data-atom-save-bar]::after {
+    box-shadow: 0 0 0 100vmax var(--atom-border);
 }
 
 /* A page that prints its own <h1> (page.header at level 1) replaces the layout's hidden fallback, so a screen reader

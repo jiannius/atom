@@ -22,3 +22,23 @@ view="atom::docs.demos.form.actions"/>
 title="Modal form"
 description="atom:form.modal composes modal + form + footer. Fields go in the default slot (laid out by cols=auto, default). Width derives from cols (1-col→xl, auto/2→2xl, 3→4xl) and is overridable via class. The footer auto-includes a Save submit; the right side takes two optional slots: actions (anything that should stay visible while the form scrolls, such as a running total) and delete, which sits at the far edge after actions."
 view="atom::docs.demos.form.modal"/>
+
+<atom:docs.example
+title="Sections"
+description="atom:form.section is a heading, a line of help and the fields in a grid. The default aside layout puts the heading in a 220px column beside the fields once the section is 768px wide, and above them below that. The fields are two across once their own box is 448px wide; class=@md:col-span-2 on a field spans the row. Sections are separated by a hairline and the form's own gap."
+view="atom::docs.demos.form.section"/>
+
+<atom:docs.example
+title="Stacked sections"
+description="layout=stacked always puts the heading above its fields: the layout for a narrow place, such as a slide-over or a modal (use level=3 there, under the modal's own heading). It works in atom:form.modal with cols=1."
+view="atom::docs.demos.form.section-stacked"/>
+
+<atom:docs.example
+title="Section footer"
+description="A footer slot adds a right-aligned row under the fields, for a section that saves on its own. Give that section its own atom:form."
+view="atom::docs.demos.form.section-footer"/>
+
+<atom:docs.example
+title="Save bar"
+description="atom:form.actions with bar is the save bar of a page form: sticky at the bottom of the screen, a blurred surface with a hairline above it that runs the full width of the screen's content area (to the sidebar in the sidebar shell, to both edges in the top-nav shell), while its content stays on the page column. It takes the page's bottom room, so it ends the page flush. The start slot holds live totals or a dirty state; the buttons are at the end, full width on a phone, and the submit is the screen's one primary action. In a modal or a slide-over use sticky instead (atom:form.modal draws it for you)."
+view="atom::docs.demos.form.save-bar"/>

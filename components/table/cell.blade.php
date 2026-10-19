@@ -4,14 +4,22 @@
     'filler' => null,
     'muted' => false,
     'truncate' => false,
+    'numeric' => false,
 ])
 
 @php
+// A numeric cell (money, quantities) is right-aligned with tabular figures, so a column of amounts lines up on the
+// decimal point; name the currency in the column header, not here.
+$align = $numeric ? 'right' : $align;
+
+// The row's height is a floor, never a fixed height with no padding: the cell keeps its vertical padding, so a
+// two-line cell (a name and a 12px line under it) is as tall as it needs and stays clear of its borders.
 $classes = Arr::toCssClasses([
     // nowrap is the default, but at zero specificity (modal/menu use the same idiom)
     // so a caller's whitespace-normal, or a responsive md:whitespace-normal, wins.
-    'py-3 px-4 [:where(&)]:whitespace-nowrap',
-    $muted ? 'text-muted dark:text-muted-foreground' :'text-zinc-800 dark:text-zinc-200',
+    'px-row py-row leading-row h-(--atom-row-min-h) [:where(&)]:whitespace-nowrap',
+    $muted ? 'text-fg-muted' : 'text-fg',
+    'tabular-nums' => $numeric,
     $checkbox ? 'w-10' : '',
     // max-w-0 + w-full: the cell takes the room left over and ellipsises, instead of
     // sizing the column (and the table) to its longest value.

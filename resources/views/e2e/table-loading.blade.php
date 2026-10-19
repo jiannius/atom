@@ -72,6 +72,11 @@ $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->q
     .table-fixed { table-layout: fixed; }
     .py-3 { padding-block: 0.75rem; }
     .px-4 { padding-inline: 1rem; }
+    /* the row tokens a cell and a header read (atom.tailwind.css): 9px by 12px, and the header's 8px */
+    .py-row { padding-block: 9px; }
+    .px-row { padding-inline: 12px; }
+    .py-2 { padding-block: 0.5rem; }
+    .h-\(--atom-row-min-h\) { height: 40px; }
     .py-2 { padding-block: 0.5rem; }
     .whitespace-nowrap { white-space: nowrap; }
     .space-y-4 > * + * { margin-top: 1rem; }

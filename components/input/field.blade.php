@@ -8,7 +8,7 @@
     'labelId' => null,
 ])
 
-<div {{ $attributes->class(['group/field', 'grid md:grid-cols-5' => $inline]) }}>
+<div {{ $attributes->class(['group/field', 'grid md:grid-cols-5' => $inline]) }} data-atom-input-field>
     @if (isset($label) && $label instanceof \Illuminate\View\ComponentSlot)
         <div class="{{ $inline ? 'py-2 md:col-span-2' : 'pb-2' }}">
             {{ $label }}

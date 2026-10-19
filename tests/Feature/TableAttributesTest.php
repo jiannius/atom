@@ -32,7 +32,7 @@ it('prints the caller attributes on the table root', function () {
 it('keeps the root defaults and the filter-changed listener when the caller passes nothing', function () {
     $root = domQuery(tableAttributesRender(), '//*[@data-atom-table]')[0];
 
-    expect(domClasses($root))->toBe(['group/table', 'space-y-4'])
+    expect(domClasses($root))->toBe(['group/table', 'min-w-0', 'max-w-full', 'space-y-4'])
         ->and($root->getAttribute('x-data'))->toBe('{}')
         ->and($root->hasAttribute('x-on:table-filter:changed.window'))->toBeTrue();
 });
@@ -81,7 +81,7 @@ describe('wrapping', function () {
 
         expect(domClasses($th))->toContain('[:where(&)]:whitespace-nowrap')->not->toContain('whitespace-nowrap')
             // the wrapper keeps its spacing and carries no whitespace utility of its own
-            ->and(domClasses($wrapper))->toContain('py-1.5', 'px-3')
+            ->and(domClasses($wrapper))->toContain('px-row', 'py-2')
             ->and(implode(' ', domClasses($wrapper)))->not->toContain('whitespace');
     });
 

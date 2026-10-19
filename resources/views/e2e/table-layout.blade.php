@@ -31,6 +31,12 @@
     .table-fixed { table-layout: fixed; }
     .py-3 { padding-block: 0.75rem; }
     .px-4 { padding-inline: 1rem; }
+    /* the row tokens a cell and a header read (atom.tailwind.css): 9px by 12px, and the header's 8px */
+    .py-row { padding-block: 9px; }
+    .px-row { padding-inline: 12px; }
+    .py-2 { padding-block: 0.5rem; }
+    .h-\(--atom-row-min-h\) { height: 40px; }
+    .p-0 { padding: 0; }
     .p-1 { padding: 0.25rem; }
     .py-1\.5 { padding-block: 0.375rem; }
     .px-3 { padding-inline: 0.75rem; }
