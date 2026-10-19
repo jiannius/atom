@@ -32,7 +32,7 @@ $labelId = $label ? $attributes->fieldId('atom-radio-group', $name, $label).'-la
     </atom:input.field>
 @elseif ($attributes->get('variant') === 'card')
     <atom:card :subtle="$attributes->get('subtle')" inset>
-        <div {{ $attributes->class(['flex flex-col divide-y divide-zinc-200 dark:divide-zinc-700 [&>[data-atom-radio]]:py-3 [&>[data-atom-radio]]:px-5']) }}>
+        <div {{ $attributes->class(['flex flex-col divide-y divide-border [&>[data-atom-radio]]:py-3 [&>[data-atom-radio]]:px-4']) }}>
             {{ $slot }}
         </div>
     </atom:card>

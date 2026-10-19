@@ -34,9 +34,9 @@ x-modelable="value"
     @if ($slot->isNotEmpty() || $label || $caption)
         <div>
             @if ($slot->isNotEmpty())
-                <label for="{{ $id }}" class="dark:text-white">{{ $slot }}</label>
+                <label for="{{ $id }}" class="text-sm text-fg">{{ $slot }}</label>
             @elseif ($label)
-                <label for="{{ $id }}" class="dark:text-white">{{ t($label) }}</label>
+                <label for="{{ $id }}" class="text-sm text-fg">{{ t($label) }}</label>
             @endif
 
             @if ($caption)
@@ -58,13 +58,13 @@ x-modelable="value"
         step="{{ $step }}"
         x-model="value"
         @if ($name) name="{{ $name }}" @endif
-        class="w-full text-primary"
+        class="w-full"
         {{ $attributes->only(['required', 'disabled']) }}
         data-atom-slider-input/>
     </div>
 
     @if ($labels)
-        <div class="flex justify-between text-xs text-zinc-500 dark:text-zinc-400" aria-hidden="true" data-atom-slider-labels>
+        <div class="flex justify-between text-xs text-fg-muted" aria-hidden="true" data-atom-slider-labels>
             <span>{{ $min }}</span>
             <span>{{ $max }}</span>
         </div>

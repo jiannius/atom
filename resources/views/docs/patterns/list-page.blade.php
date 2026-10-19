@@ -82,7 +82,7 @@ $money = fn (float $amount) => number_format($amount, 2);
             </x-slot:meta>
 
             <x-slot:primary>
-                <atom:button size="sm" variant="primary" icon="add" data-testid="list-primary">New invoice</atom:button>
+                <atom:button variant="primary" icon="add" data-testid="list-primary">New invoice</atom:button>
             </x-slot:primary>
         </atom:page.header>
 
@@ -109,7 +109,7 @@ $money = fn (float $amount) => number_format($amount, 2);
                 <atom:table.search placeholder="Search number or customer"/>
 
                 <x-slot:end>
-                    <atom:button size="sm" variant="ghost" icon="download">Export</atom:button>
+                    <atom:button variant="ghost" icon="download">Export</atom:button>
                 </x-slot:end>
             </atom:table.toolbar>
 

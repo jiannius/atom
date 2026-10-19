@@ -42,6 +42,12 @@ const CONSUMER_CSS = `
   .pl-3 { padding-left: 12px; }
   .pr-16 { padding-right: 64px; }
   .size-5 { width: 20px; height: 20px; }
+  .size-4 { width: 16px; height: 16px; }
+  .h-control { height: 28px; }
+  .pr-14 { padding-right: 56px; }
+  .pr-2\\.5 { padding-right: 10px; }
+  .pl-2\\.5 { padding-left: 10px; }
+  .mb-2 { margin-bottom: 8px; }
   [data-atom-icon] > * { width: 100%; height: 100%; }
   .w-\\[300px\\] { width: 300px; }
   .text-sm { font-size: 14px; line-height: 20px; }
@@ -257,8 +263,8 @@ test('a capped panel keeps its own scroll position through a reposition', async 
   await expect.poll(() => panel(page).evaluate((el) => el.offsetHeight < el.scrollHeight)).toBe(true)
 
   // the user has scrolled the panel down to the time row
-  await panel(page).evaluate((el) => { el.scrollTop = 40 })
-  expect(await panel(page).evaluate((el) => el.scrollTop)).toBe(40)
+  await panel(page).evaluate((el) => { el.scrollTop = 20 })
+  expect(await panel(page).evaluate((el) => el.scrollTop)).toBe(20)
 
   // a small page scroll makes autoUpdate reposition the open panel; it stays capped
   // (a few px more room, still short of its natural height)
@@ -282,11 +288,11 @@ test('flip measures the natural height, so a capped panel moves to the roomier s
   // while the room below it stays the same: one resize that opens room above but none below.
   await page.evaluate(() => {
     for (const el of document.querySelectorAll('[data-probe]:not([data-probe="date"])')) el.style.display = 'none'
-    // field at page y 400, 40px tall; the page is 770 tall, so scrolled to the end at 620 it sits at y 250
-    document.querySelector('[data-spacer]').style.height = (770 - 440) + 'px'
+    // field at page y 400, 28px tall (the control token); the page is 748 tall, so scrolled to the end at 620 it sits at y 272
+    document.querySelector('[data-spacer]').style.height = (748 - 428) + 'px'
     window.scrollTo(0, 1e6)
   })
-  expect(await page.evaluate(() => window.scrollY)).toBe(150)
+  expect(await page.evaluate(() => window.scrollY)).toBe(128)
 
   await stack(page).getByPlaceholder('Select date').click()
   await expect(panel(page)).toBeVisible()
@@ -294,12 +300,12 @@ test('flip measures the natural height, so a capped panel moves to the roomier s
   const geometry = () => Promise.all([panel(page).boundingBox(), stack(page).getByPlaceholder('Select date').boundingBox()])
     .then(([p, f]) => ({ p, f }))
 
-  // at 620 the field has 243px above and 325px below, the panel needs 353: it opens below, capped to 325
+  // at 620 the field has 272px above and 320px below, the panel needs about 335: it opens below, capped to 320
   await expect.poll(() => panel(page).evaluate((el) => el.offsetHeight < el.scrollHeight)).toBe(true)
   let { p, f } = await geometry()
   expect(p.y).toBeGreaterThanOrEqual(f.y + f.height)
 
-  // 750px: still 325 below, now 373 above, which holds the whole panel
+  // 750px: still 322 below, now 400 above, which holds the whole panel
   await page.setViewportSize({ width: 1366, height: 750 })
 
   await expect.poll(async () => {

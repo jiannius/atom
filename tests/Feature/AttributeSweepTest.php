@@ -339,7 +339,7 @@ describe('B3: caller class swallowed', function () {
 
         expect(domClasses($root))->toContain('mt-4', 'max-w-sm', 'group/slider', 'space-y-2')
             ->and($root->getAttribute('wire:model'))->toBe('vol')
-            ->and(domClasses($input))->toBe(['w-full', 'text-primary']);
+            ->and(domClasses($input))->toBe(['w-full']);
         expect(substr_count(substr($html, 0, strpos($html, '>')), 'class='))->toBe(1);
     });
 
@@ -383,7 +383,7 @@ describe('B3: caller class swallowed', function () {
 
         expect(domClasses($root))->toContain('justify-center', 'mt-2', 'flex', 'items-center', 'gap-2')
             ->and(domClasses($box))->not->toContain('justify-center')
-            ->and(domClasses($box))->toContain('size-11');
+            ->and(domClasses($box))->toContain('size-10');
     });
 
     it('gives the separator label its own classes instead of copying the root class', function () {

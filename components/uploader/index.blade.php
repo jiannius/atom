@@ -40,17 +40,17 @@ x-on:livewire-upload-progress="progress = $event.detail.progress"
             x-bind:class="uploading && 'opacity-50 pointer-events-none'"
             x-on:click="$refs.fileinput.click()">
                 <div x-show="!uploading" class="flex items-center gap-2">
-                    <atom:icon.upload /> {{ t($label) }}
+                    <atom:icon.upload class="size-4" /> {{ t($label) }}
                 </div>
 
                 <div x-show="uploading" class="flex items-center gap-2 opacity-50">
-                    <atom:icon.loading /> {{ t('Uploading') }}...
+                    <atom:icon.loading class="size-4" /> {{ t('Uploading') }}...
                 </div>
 
-                <div x-show="uploading" class="absolute inset-0 bg-zinc-400 opacity-30" x-bind:style="`width: ${progress}%`"></div>
+                <div x-show="uploading" class="absolute inset-0 bg-accent opacity-20" x-bind:style="`width: ${progress}%`"></div>
             </atom:button>
 
-            <atom:tooltip x-show="uploading" content="Cancel Upload" class="shrink-0 flex items-center justify-center text-muted dark:text-muted-foreground">
+            <atom:tooltip x-show="uploading" content="Cancel Upload" class="shrink-0 flex items-center justify-center text-fg-muted">
                 <button type="button" x-on:click="$wire.cancelUpload({{ js($attributes->wire('model')->value()) }})" aria-label="{{ t('Cancel upload') }}" class="flex items-center justify-center">
                     <atom:icon.stop class="size-4" />
                 </button>

@@ -44,6 +44,6 @@ describe('input.otp', function () {
     });
 
     it('flags the invalid state', function () {
-        expect(renderBlade('<atom:input.otp invalid/>'))->toContain('border-red-400');
+        expect(renderBlade('<atom:input.otp invalid/>'))->toContain('border-danger-fg');
     });
 });

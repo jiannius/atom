@@ -121,6 +121,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/page-parts', fn () => view('atom::e2e.page-parts'));
         Route::middleware('web')->get('/atom/e2e/shell-editor', fn () => view('atom::e2e.shell-editor'));
         Route::middleware('web')->get('/atom/e2e/tokens', fn () => view('atom::e2e.tokens'));
+        // The restyled controls (V4-3a), on the consumer's Tailwind: ?tw, ?density, ?dark=1, ?accent, ?section
+        Route::middleware('web')->get('/atom/e2e/controls', fn () => view('atom::e2e.controls'));
         // The stylesheet tests/consumer/build.mjs compiled with a consumer's Tailwind (floor or latest), for a page
         // that opts in through <atom:html :styles>. 404 when it has not been built, so a missing build is loud.
         Route::get('/atom/e2e/consumer-css/{name}', function (string $name) {

@@ -15,7 +15,7 @@ $styles = $styles ?? [];
     </x-slot>
 
     <x-slot:context>
-        <atom:button size="sm" variant="ghost" icon-suffix="dropdown">Acme Studio</atom:button>
+        <atom:button variant="ghost" icon-suffix="dropdown">Acme Studio</atom:button>
     </x-slot>
 
     <x-slot:search>
@@ -37,7 +37,7 @@ $styles = $styles ?? [];
     </x-slot>
 
     <x-slot:actions>
-        <atom:button size="sm" variant="primary" icon="add">New invoice</atom:button>
+        <atom:button variant="primary" icon="add">New invoice</atom:button>
     </x-slot>
 
     <x-slot:dropdown>

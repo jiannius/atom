@@ -22,32 +22,30 @@
             <div
             aria-hidden="true"
             @class([
-                'size-4.5 rounded-md flex items-center justify-center',
-                'bg-white dark:bg-white/10',
-                'border border-zinc-300 dark:border-white/10',
-                'text-zinc-300 dark:text-transparent',
-                'peer-checked:border-zinc-800 peer-checked:shadow-sm peer-checked:*:opacity-100',
-                'dark:peer-checked:border-white',
-                'peer-focus-visible:outline-1 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-zinc-400',
-                'group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-red-500 group-has-[.error]/radio:outline-offset-1',
+                'size-4 rounded-full flex items-center justify-center',
+                'bg-surface border border-fg-subtle',
+                'peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100',
+                'peer-disabled:opacity-50 peer-disabled:cursor-not-allowed',
+                'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus',
+                'group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1',
             ])>
-                <div class="size-3 opacity-0 rounded bg-zinc-700 dark:bg-white"></div>
+                <div class="size-1.5 opacity-0 rounded-full bg-surface"></div>
             </div>
         </div>
 
         @if ($slot->isNotEmpty())
-            <div class="dark:text-white">
+            <div class="text-fg">
                 {{ $slot }}
             </div>
         @elseif ($label)
-            <div class="dark:text-white">
+            <div class="text-fg">
                 {{ t($label) }}
             </div>
         @endif
     </div>
 
     @if ($caption)
-        <div class="inline-flex ml-6.5">
+        <div class="inline-flex ml-6">
             <atom:caption>{{ t($caption) }}</atom:caption>
         </div>
     @endif

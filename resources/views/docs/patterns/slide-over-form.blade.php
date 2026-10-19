@@ -56,7 +56,7 @@ $open = request()->query('open') === '1';
     <atom:page data-testid="slide-over-page">
         <atom:page.header title="Customers" :facts="[['value' => '4 customers']]">
             <x-slot:primary>
-                <atom:button size="sm" variant="primary" icon="add" x-on:click="atom.modal('new-customer').slide()" data-testid="open-slide-over">New customer</atom:button>
+                <atom:button variant="primary" icon="add" x-on:click="atom.modal('new-customer').slide()" data-testid="open-slide-over">New customer</atom:button>
             </x-slot:primary>
         </atom:page.header>
 

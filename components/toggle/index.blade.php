@@ -21,19 +21,19 @@ $merges = ['name' => $name];
                 <div
                 aria-hidden="true"
                 @class([
-                    'group h-5 w-8 relative inline-flex items-center rounded-full transition',
-                    'bg-zinc-200 dark:bg-zinc-900 peer-checked:bg-zinc-900 dark:peer-checked:bg-white',
-                    'border border-zinc-200 dark:border-zinc-600',
-                    'peer-checked:[&>span]:translate-x-[12px] dark:peer-checked:[&>span]:bg-zinc-900',
-                    'peer-disabled:opacity-40 peer-disabled:cursor-not-allowed',
-                    'peer-focus-visible:ring-1 peer-focus-visible:ring-offset-1 peer-focus-visible:ring-primary',
-                    'group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-red-500 group-has-[.error]/toggle:outline-offset-1',
+                    'group h-5 w-9 relative inline-flex items-center rounded-full transition',
+                    'bg-surface border border-fg-subtle',
+                    'peer-checked:bg-accent-ink peer-checked:border-accent-ink',
+                    'peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface',
+                    'peer-disabled:opacity-50 peer-disabled:cursor-not-allowed',
+                    'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus',
+                    'group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1',
                 ])>
-                    <span class="size-3.5 rounded-full transition translate-x-[2px] bg-white"></span>
+                    <span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle"></span>
                 </div>
             </div>
     
-            <div class="dark:text-white">
+            <div class="text-fg">
                 @if ($slot->isNotEmpty())
                     {{ $slot }}
                 @elseif ($label)
@@ -43,7 +43,7 @@ $merges = ['name' => $name];
         </div>
 
         @if ($caption)
-            <div class="inline-flex ml-6.5">
+            <div class="inline-flex ml-11">
                 <atom:caption>{{ t($caption) }}</atom:caption>
             </div>
         @endif

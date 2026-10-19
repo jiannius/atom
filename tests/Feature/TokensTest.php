@@ -84,7 +84,7 @@ function tokenHex(array $block, string $role): string
 }
 
 const TOKEN_ROLES = [
-    'canvas', 'surface', 'surface-sunken', 'surface-raised', 'border', 'border-strong', 'fg', 'fg-muted', 'fg-subtle', 'focus',
+    'canvas', 'surface', 'surface-sunken', 'surface-raised', 'border', 'border-strong', 'control-border', 'fg', 'fg-muted', 'fg-subtle', 'focus',
     'neutral-bg', 'neutral-fg', 'info-bg', 'info-fg', 'success-bg', 'success-fg', 'warning-bg', 'warning-fg', 'danger-bg', 'danger-fg',
     'shadow-pop',
 ];

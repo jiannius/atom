@@ -9,16 +9,14 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'min-h-10 w-full py-2 no-spinner rounded-lg shadow-sm outline-offset-1',
-    'flex items-center gap-2 flex-wrap',
-    'text-zinc-700 dark:text-zinc-200',
-    'bg-white dark:bg-white/10',
-    'dark:placeholder-zinc-400',
-    'has-[:focus]:outline-1 has-[:focus]:outline-zinc-200 dark:has-[:focus]:outline-2 hover:outline-1 hover:outline-zinc-100/50',
-    $invalid ? 'border border-red-400' : 'border border-zinc-200 dark:border-white/10',
-    'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-red-400',
-    $icon ? 'pl-10' : 'pl-3',
-    $clearable ? 'pr-10' : 'pr-3',
+    'min-h-control w-full py-0.5 no-spinner rounded-control border bg-surface text-sm text-fg',
+    'flex items-center gap-1.5 flex-wrap',
+    $invalid ? 'has-[:focus-visible]:border-danger-fg' : 'has-[:focus-visible]:border-focus',
+    'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
+    $invalid ? 'border-danger-fg' : 'border-control-border',
+    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
+    $icon ? 'pl-8' : 'pl-2.5',
+    $clearable ? 'pr-8' : 'pr-2.5',
 ]);
 @endphp
 
@@ -38,11 +36,11 @@ data-atom-input-email>
             <template x-for="val in emailInputValue" hidden>
                 <div
                 x-bind:class="validate(val.email)
-                ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-500 dark:text-muted-foreground'
-                : 'bg-red-100 dark:bg-red-800/10 border-red-400 text-red-500 dark:text-red-400'"
-                class="shrink-0 rounded-md border text-sm py-0.5 pl-2 inline-flex items-center -ml-1">
+                ? 'bg-surface-sunken border-border-strong text-fg-muted'
+                : 'bg-danger-bg border-danger-fg text-danger-fg'"
+                class="shrink-0 rounded-nav border text-sm py-px pl-2 inline-flex items-center">
                     <div x-text="`${val.name} <${val.email}>`"></div>
-                    <button type="button" x-on:click="remove(val.email)" x-bind:aria-label="`{{ t('Remove') }} ${val.email}`" class="shrink-0 flex items-center justify-center px-2">
+                    <button type="button" x-on:click="remove(val.email)" x-bind:aria-label="`{{ t('Remove') }} ${val.email}`" class="shrink-0 flex items-center justify-center px-1.5">
                         <atom:icon.close class="size-4" />
                     </button>
                 </div>
@@ -52,7 +50,7 @@ data-atom-input-email>
             type="email"
             x-model="text"
             x-on:blur="text && keyEnter()"
-            class="flex-1 focus:outline-none appearance-none bg-transparent"
+            class="flex-1 h-5 focus-visible:outline-none appearance-none bg-transparent placeholder:text-fg-subtle"
             {{ $attributes->merge([
                 'invalid' => $invalid,
                 'placeholder' => t($placeholder),
@@ -63,7 +61,7 @@ data-atom-input-email>
             <template x-for="(opt, i) in options" hidden>
                 <atom:menu.item
                 x-on:click="select(opt)"
-                x-bind:class="pointer === i ? 'bg-zinc-100 dark:bg-zinc-800' : ''">
+                x-bind:class="pointer === i ? 'bg-fg/5' : ''">
                     <div x-text="`${opt.name} <${opt.email}>`" class="text-sm"></div>
                 </atom:menu.item>
             </template>
@@ -76,8 +74,8 @@ data-atom-input-email>
         x-show="emailInputValue?.length"
         x-on:click="emailInputValue = []"
         aria-label="{{ t('Clear all') }}"
-        class="z-1 absolute top-0 right-0 h-10 flex items-center justify-center text-muted dark:text-muted-foreground pr-3 cursor-pointer hover:text-zinc-800 dark:hover:text-white">
-            <atom:icon.close />
+        class="z-1 absolute top-0 right-0 h-control flex items-center justify-center text-fg-subtle px-2.5 cursor-pointer hover:text-fg">
+            <atom:icon.close class="size-4" />
         </button>
     @endif
 </div>

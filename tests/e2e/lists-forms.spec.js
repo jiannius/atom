@@ -287,8 +287,8 @@ for (const tw of ['floor', 'latest']) {
       test('the header holds the page`s one primary action, and nothing in the panel is a second', async ({ page }) => {
         await list(page)
 
-        await expect(page.locator('[data-atom-button].bg-primary')).toHaveCount(1)
-        await expect(page.getByTestId('list-primary')).toHaveClass(/bg-primary/)
+        await expect(page.locator('[data-atom-button].bg-accent:not(dialog *)')).toHaveCount(1)
+        await expect(page.getByTestId('list-primary')).toHaveClass(/(?:^| )bg-accent(?: |$)/)
       })
 
       test('header text and cell text hold 4.5:1 on the panel in both themes', async ({ page }) => {
@@ -606,7 +606,7 @@ for (const tw of ['floor', 'latest']) {
         })
 
         // a page taller than the screen, or the test proves nothing
-        expect(doc).toBeGreaterThan(700 * 1.4)
+        expect(doc).toBeGreaterThan(700 * 1.15)
         expect(s.position).toBe('sticky')
         expect(s.bottom).toBe('0px')
         // the hairline is a 1px ::after at the bar's top, in the border colour; the surface a translucent ::before
@@ -677,8 +677,8 @@ for (const tw of ['floor', 'latest']) {
       test('the submit is the one primary action', async ({ page }) => {
         await form(page)
 
-        await expect(page.locator('[data-atom-button].bg-primary')).toHaveCount(1)
-        await expect(page.getByTestId('form-primary')).toHaveClass(/bg-primary/)
+        await expect(page.locator('[data-atom-button].bg-accent:not(dialog *)')).toHaveCount(1)
+        await expect(page.getByTestId('form-primary')).toHaveClass(/(?:^| )bg-accent(?: |$)/)
         expect(await page.getByTestId('form-primary').getAttribute('type')).toBe('submit')
       })
 
@@ -1231,7 +1231,7 @@ for (const tw of ['floor', 'latest']) {
 
         await expect(page.locator('[data-atom-page-header] [data-atom-status]').first()).toHaveText(word)
         await expect(page.getByTestId('document-primary')).toContainText(action)
-        await expect(page.locator('[data-atom-button].bg-primary')).toHaveCount(1)
+        await expect(page.locator('[data-atom-button].bg-accent:not(dialog *)')).toHaveCount(1)
       }
     })
 

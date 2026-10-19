@@ -15,21 +15,20 @@ $options = is_array($options) || $options instanceof \Illuminate\Support\Collect
     ? collect($options)->map(fn ($option) => is_enum($option) ? $option->option() : $option)->toArray()
     : $options;
 
+/* A filter trigger is a control of the toolbar: the control token's height, a strong hairline, the label in the muted tone
+   and the chosen value in a chip beside it. */
 $classes = Arr::toCssClasses([
-    'inline-flex items-center gap-2',
-    'min-h-10 py-1.5 appearance-none rounded-lg shadow-xs outline-offset-1',
-    'text-zinc-700 dark:text-zinc-200 text-left pr-3',
-    'bg-white dark:bg-white/10',
-    'focus:outline-1 focus:outline-zinc-200 dark:focus:outline-2 hover:outline-1 hover:outline-zinc-100/50',
-    'border border-zinc-200 dark:border-zinc-500',
-    $icon ? 'pl-10' : 'pl-3',
+    'inline-flex items-center gap-1.5',
+    'min-h-control py-0.5 appearance-none rounded-control border border-control-border bg-surface text-sm text-fg text-left pr-2',
+    'hover:bg-surface-sunken',
+    $icon ? 'pl-8' : 'pl-2.5',
 ]);
 
 $optionClasses = Arr::toCssClasses([
-    'flex items-center gap-3 w-full py-2 px-3 my-1 first:mt-0 last:mb-0 rounded-md',
-    'text-left text-zinc-800 dark:text-white cursor-default',
-    'hover:bg-zinc-800/5 dark:hover:bg-zinc-600',
-    '[&[data-active]]:bg-zinc-800/5 dark:[&[data-active]]:bg-zinc-600',
+    'flex items-center gap-2 w-full min-h-control py-1 px-2 my-0.5 first:mt-0 last:mb-0 rounded-nav',
+    'text-left text-sm text-fg cursor-default',
+    'hover:bg-fg/5',
+    '[&[data-active]]:bg-fg/5',
 ]);
 @endphp
 
@@ -90,12 +89,12 @@ x-on:keyup.space.prevent=""
         @endif
         {{ $attributes->class($classes)->only('class') }}>
             @if ($icon)
-                <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-zinc-400 pl-3 left-0">
-                    <x-dynamic-component :component="'atom::icon.'.$icon" />
+                <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pl-2.5 left-0">
+                    <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4" />
                 </div>
             @endif
 
-            <div class="font-medium text-muted dark:text-muted-foreground">
+            <div class="font-medium text-fg-muted">
                 {{ t($label) }}
             </div>
 
@@ -103,11 +102,11 @@ x-on:keyup.space.prevent=""
                  sits on ITS baseline with the descender gap underneath, ~2.5px above
                  the centre the button's items-center is holding everything else at.
                  The icon wrapper is already inline-flex shrink-0. --}}
-            <atom:icon.dropdown />
+            <atom:icon.dropdown class="size-4 text-fg-subtle" />
 
             @if ($multiple === true)
                 <template x-if="!isEmpty" hidden>
-                    <div class="shrink-0 bg-zinc-100 dark:bg-zinc-900 rounded-md px-2 py-1 text-sm max-w-56 truncate">
+                    <div class="shrink-0 bg-surface-sunken rounded-nav px-1.5 py-px text-sm max-w-56 truncate">
                         <template x-if="selectedOptions.length > 1" hidden>
                             <div class="flex items-center gap-2">
                                 <span x-text="selectedOptions.length"></span> {{ t('selected') }}
@@ -121,13 +120,13 @@ x-on:keyup.space.prevent=""
                 </template>
             @else
                 <template x-if="!isEmpty" hidden>
-                    <div x-text="selectedOptions.label" class="shrink-0 bg-zinc-100 dark:bg-zinc-900 rounded-md px-2 py-1 text-sm"></div>
+                    <div x-text="selectedOptions.label" class="shrink-0 bg-surface-sunken rounded-nav px-1.5 py-px text-sm"></div>
                 </template>
             @endif
 
             @if ($clearable)
                 <template x-if="!isEmpty" hidden>
-                    <div class="shrink-0 cursor-pointer flex items-center justify-center" x-on:click.stop="clear()">
+                    <div class="shrink-0 cursor-pointer flex items-center justify-center text-fg-subtle hover:text-fg" x-on:click.stop="clear()">
                         <atom:icon.close class="size-4" />
                     </div>
                 </template>
@@ -145,8 +144,8 @@ x-on:keyup.space.prevent=""
                 clearTimeout(timer)
                 timer = setTimeout(() => fetch(), 300)
             }"
-            class="px-3 pt-2 pb-3 flex items-center gap-2 border-b border-zinc-200 dark:border-zinc-700">
-                <atom:icon.search class="text-zinc-400 shrink-0"/>
+            class="px-2.5 py-1.5 flex items-center gap-2 border-b border-border">
+                <atom:icon.search class="size-4 text-fg-subtle shrink-0"/>
 
                 <input
                 type="text"
@@ -161,7 +160,7 @@ x-on:keyup.space.prevent=""
                     aria-autocomplete="list"
                     x-bind:aria-expanded="open ? 'true' : 'false'"
                 @endif
-                class="appearance-none grow w-full focus:outline-none"
+                class="appearance-none grow w-full text-sm placeholder:text-fg-muted focus-visible:outline-none"
                 placeholder="{{ t('Search') }}"
                 autofocus
                 data-atom-select-search>
@@ -169,17 +168,17 @@ x-on:keyup.space.prevent=""
                 <div
                 x-show="!loading && text"
                 x-on:click.stop="text = null; $dispatch('input')"
-                class="shrink-0 flex items-center justify-center text-zinc-400 hover:text-zinc-800 cursor-pointer">
-                    <atom:icon.close />
+                class="shrink-0 flex items-center justify-center text-fg-subtle hover:text-fg cursor-pointer">
+                    <atom:icon.close class="size-4" />
                 </div>
 
                 <div x-show="loading" class="shrink-0 flex items-center justify-center">
-                    <atom:icon.loading />
+                    <atom:icon.loading class="size-4" />
                 </div>
             </div>
 
-            <div x-show="!searchable && loading" class="p-2 flex items-center justify-center gap-2 opacity-50">
-                <atom:icon.loading /> {{ t('Loading') }}...
+            <div x-show="!searchable && loading" class="p-2 flex items-center justify-center gap-2 text-sm opacity-50">
+                <atom:icon.loading class="size-4" /> {{ t('Loading') }}...
             </div>
 
             <div x-show="!loading && !options.length">
@@ -192,18 +191,18 @@ x-on:keyup.space.prevent=""
                     <div>
                         <template x-if="option.group" hidden>
                             <div role="group" x-bind:aria-label="option.group">
-                                <div x-text="option.group" class="text-sm text-zinc-500 dark:text-zinc-400 py-1.5 px-3" aria-hidden="true"></div>
+                                <div x-text="option.group" class="text-xs font-medium text-fg-muted py-1.5 px-2" aria-hidden="true"></div>
                                 <template x-for="(groupOption, j) in option.options" x-bind:key="`group-option-${groupOption.value}-${j}`" hidden>
                                     <div
                                     role="option"
                                     x-bind:aria-selected="isSelected(groupOption) ? 'true' : 'false'"
                                     x-bind:data-label="groupOption.label"
                                     x-on:click="select(groupOption)"
-                                    x-bind:class="isSelected(groupOption) && 'bg-zinc-100 dark:bg-zinc-600'"
+                                    x-bind:class="isSelected(groupOption) && 'bg-fg/10'"
                                     data-atom-option
                                     class="{{ $optionClasses }}">
                                         <div x-bind:class="!isSelected(groupOption) && 'opacity-0'" class="shrink-0 flex items-center justify-center">
-                                            <atom:icon.check class="size-4 text-zinc-400 dark:text-zinc-200" />
+                                            <atom:icon.check class="size-4 text-fg-muted" />
                                         </div>
 
                                         <div x-html="getOptionHtml(groupOption)" class="grow" data-option-content></div>
@@ -218,11 +217,11 @@ x-on:keyup.space.prevent=""
                             x-bind:aria-selected="isSelected(option) ? 'true' : 'false'"
                             x-bind:data-label="option.label"
                             x-on:click="select(option)"
-                            x-bind:class="isSelected(option) && 'bg-zinc-100 dark:bg-zinc-600'"
+                            x-bind:class="isSelected(option) && 'bg-fg/10'"
                             data-atom-option
                             class="{{ $optionClasses }}">
                                 <div x-bind:class="!isSelected(option) && 'opacity-0'" class="shrink-0 flex items-center justify-center">
-                                    <atom:icon.check class="size-4 text-zinc-400 dark:text-zinc-200" />
+                                    <atom:icon.check class="size-4 text-fg-muted" />
                                 </div>
 
                                 <div x-html="getOptionHtml(option)" class="grow" data-option-content></div>
@@ -233,7 +232,7 @@ x-on:keyup.space.prevent=""
             </div>
 
             @if (isset($actions) && $actions->isNotEmpty())
-                <div x-show="options.length || !loading" class="border-t border-zinc-200 mt-1 pt-1 dark:border-zinc-700">
+                <div x-show="options.length || !loading" class="border-t border-border mt-1 pt-1">
                     {{ $actions }}
                 </div>
             @endif

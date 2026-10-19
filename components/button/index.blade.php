@@ -25,26 +25,35 @@ $variant ??= data_get($social, 'name') ?? match ($type) {
     default => 'default',
 };
 
+/* An icon is only ever the caller's (or a social button's own brand mark): type="submit" and type="delete" add none. */
 $icon = [
-    'start' => $icon ?? data_get($social, 'name') ?? match ($type) {
-        'submit' => 'check',
-        'delete' => 'delete',
-        default => null,
-    },
+    'start' => $icon ?? data_get($social, 'name'),
     'end' => $iconSuffix,
     'class' => match ($size) {
-        'lg' => 'size-10',
-        'md' => 'size-6',
-        'sm' => 'size-4',
-        'xs' => 'size-3',
-        default => 'size-5',
+        'lg' => 'size-5',
+        'xs' => 'size-3.5',
+        default => 'size-4',
     },
 ];
+
+/* The tier is the variant: `primary` is the solid accent (one per view), the default is bordered, `ghost` has no
+   border or fill until hover, `link` is text. The tones (`danger`, `warning`, `success`, `info`) are solid fills of the
+   role token's text colour, soft (the tone's own tint) when `inverted`. Written out in full, never built from a variable,
+   so Tailwind finds each class. `accent` is the old name of `primary`; the social variants are the default tier with the
+   brand's icon. */
+$tone = match ($variant) {
+    'primary', 'accent' => 'accent',
+    'danger', 'error' => 'danger',
+    'warning' => 'warning',
+    'success' => 'success',
+    'info' => 'info',
+    default => null,
+};
 
 $classes = [
     'group/button relative items-center justify-center overflow-hidden',
     $block ? 'flex w-full' : 'inline-flex',
-    'whitespace-nowrap font-medium transition-colors outline-offset-1',
+    'whitespace-nowrap font-medium transition-colors',
     'disabled:pointer-events-none disabled:cursor-default disabled:opacity-50',
     '[&.is-loading]:opacity-50 [&.is-loading]:pointer-events-none',
     // A submit button also reflects its parent <atom:form>'s loading state
@@ -54,71 +63,63 @@ $classes = [
 ];
 
 if ($variant === 'link') {
-    $classes[] = 'bg-transparent text-zinc-800 dark:text-zinc-200 border border-transparent underline-offset-5 decoration-dotted hover:underline focus:underline focus:outline-none';
+    $classes[] = 'bg-transparent text-fg border border-transparent underline-offset-4 decoration-dotted hover:underline focus-visible:underline';
 }
-else {
-    $classes[] = 'focus:outline-1';
-
-    if ($variant === 'ghost') {
-        $classes[] = 'bg-transparent border border-transparent';
-        $classes[] = match ($color) {
-            'primary' => 'text-primary focus:outline-primary hover:bg-primary hover:text-primary-foreground',
-            'accent' => 'text-accent focus:outline-accent hover:bg-accent hover:text-accent-foreground',
-            'warning' => 'text-yellow-500 focus:outline-yellow-300 hover:bg-yellow-500 hover:text-yellow-800',
-            'danger', 'error' => 'text-red-500 focus:outline-red-300 hover:bg-red-500 hover:text-red-100',
-            'success' => 'text-green-600 focus:outline-green-300 hover:bg-green-600 hover:text-green-100',
-            default => 'text-zinc-600 dark:text-zinc-400 focus:outline-zinc-200 hover:bg-zinc-100 hover:text-zinc-800 dark:hover:bg-zinc-700 dark:hover:text-zinc-300',
-        };
-    }
-    else if ($inverted) {
-        $classes[] = 'inset-shadow-xs inset-shadow-zinc-100/30';
-
-        $classes[] = match ($variant) {
-            'primary' => 'bg-primary-foreground text-primary border border-transparent focus:outline-primary hover:bg-primary hover:text-primary-foreground',
-            'accent' => 'bg-accent-foreground text-accent border border-transparent focus:outline-accent hover:bg-accent hover:text-accent-foreground',
-            'warning' => 'bg-yellow-100 text-yellow-500 border border-transparent focus:outline-yellow-300 hover:bg-yellow-500 hover:text-yellow-800',
-            'danger', 'error' => 'bg-red-100 text-red-500 border border-transparent focus:outline-red-300 hover:bg-red-500 hover:text-red-100',
-            'facebook' => 'bg-blue-100 text-blue-600 border border-transparent focus:outline-blue-300 hover:bg-blue-600 hover:text-blue-100',
-            'google' => 'bg-rose-100 text-rose-600 border border-transparent focus:outline-rose-300 hover:bg-rose-600 hover:text-rose-100',
-            'linkedin' => 'bg-sky-100 text-sky-600 border border-transparent focus:outline-sky-300 hover:bg-sky-600 hover:text-sky-100',
-            'whatsapp' => 'bg-green-100 text-green-600 border border-transparent focus:outline-green-300 hover:bg-green-600 hover:text-green-100',
-            'telegram' => 'bg-sky-100 text-sky-600 border border-transparent focus:outline-sky-300 hover:bg-sky-600 hover:text-sky-100',
-            default => 'bg-zinc-100 text-zinc-500 border border-transparent focus:outline-zinc-200 hover:bg-white hover:text-zinc-800 hover:border-zinc-200',
-        };
-    }
-    else {
-        $classes[] = 'inset-shadow-zinc-100/30 hover:opacity-90';
-
-        $classes[] = match ($variant) {
-            'primary' => 'bg-primary text-primary-foreground border border-transparent focus:outline-primary inset-shadow-xs',
-            'accent' => 'bg-accent text-accent-foreground border border-transparent focus:outline-accent inset-shadow-xs',
-            'warning' => 'bg-yellow-500 text-yellow-800 border border-transparent focus:outline-yellow-500 inset-shadow-xs',
-            'danger', 'error' => 'bg-red-500 text-red-100 border border-transparent focus:outline-red-500 inset-shadow-xs',
-            'facebook' => 'bg-blue-600 text-blue-100 border border-transparent focus:outline-blue-700 inset-shadow-xs',
-            'google' => 'bg-rose-600 text-rose-100 border border-transparent focus:outline-rose-700 inset-shadow-xs',
-            'linkedin' => 'bg-sky-600 text-sky-100 border border-transparent focus:outline-sky-700 inset-shadow-xs',
-            'whatsapp' => 'bg-green-600 text-green-100 border border-transparent focus:outline-green-700 inset-shadow-xs',
-            'telegram' => 'bg-sky-600 text-sky-100 border border-transparent focus:outline-sky-700 inset-shadow-xs',
-            default => 'bg-white text-zinc-800 border border-zinc-200 hover:bg-zinc-100/30 dark:hover:bg-zinc-50 focus:outline-zinc-200 shadow-sm',
-        };
-    }
+else if ($variant === 'ghost') {
+    $classes[] = 'bg-transparent border border-transparent';
+    $classes[] = match ($color) {
+        'primary', 'accent' => 'text-accent-ink hover:bg-accent-soft',
+        'warning' => 'text-warning-fg hover:bg-warning-bg',
+        'danger', 'error' => 'text-danger-fg hover:bg-danger-bg',
+        'success' => 'text-success-fg hover:bg-success-bg',
+        'info' => 'text-info-fg hover:bg-info-bg',
+        default => 'text-fg-muted hover:bg-fg/5 hover:text-fg',
+    };
 }
-
-if ($slot->isEmpty() && data_get($icon, 'start')) {
-    $classes[] = match ($size) {
-        'lg' => 'size-12 rounded-lg',
-        'sm' => 'size-8 rounded-md',
-        'xs' => 'size-6 rounded-md',
-        default => 'size-10 rounded-lg',
+else if ($inverted && $tone) {
+    $classes[] = 'border border-transparent';
+    $classes[] = match ($tone) {
+        'accent' => 'bg-accent-soft text-accent-ink hover:bg-accent hover:text-accent-foreground',
+        'warning' => 'bg-warning-bg text-warning-fg hover:bg-warning-fg hover:text-surface',
+        'success' => 'bg-success-bg text-success-fg hover:bg-success-fg hover:text-surface',
+        'info' => 'bg-info-bg text-info-fg hover:bg-info-fg hover:text-surface',
+        default => 'bg-danger-bg text-danger-fg hover:bg-danger-fg hover:text-surface',
+    };
+}
+else if ($tone) {
+    $classes[] = 'border border-transparent';
+    $classes[] = match ($tone) {
+        'accent' => 'bg-accent text-accent-foreground hover:bg-accent-hover',
+        'warning' => 'bg-warning-fg text-surface hover:bg-warning-fg/90',
+        'success' => 'bg-success-fg text-surface hover:bg-success-fg/90',
+        'info' => 'bg-info-fg text-surface hover:bg-info-fg/90',
+        default => 'bg-danger-fg text-surface hover:bg-danger-fg/90',
     };
 }
 else {
+    $classes[] = 'border border-control-border bg-surface text-fg hover:bg-surface-sunken';
+}
+
+/* Heights come from the control token (28px compact, 32 comfortable, 40 on a touch device): `sm` and `xs` sit 4px and 8px
+   under it, `md` and `lg` 4px and 8px over. A slotless button with an icon is a square of the same height. */
+$height = match ($size) {
+    'lg' => 'h-control-lg',
+    'md' => 'h-control-md',
+    'sm' => 'h-control-sm',
+    'xs' => 'h-control-xs',
+    default => 'h-control',
+};
+
+if ($slot->isEmpty() && data_get($icon, 'start')) {
+    $classes[] = $height.' aspect-square '.($size === 'xs' ? 'rounded-nav' : 'rounded-control');
+}
+else {
     $classes[] = match ($size) {
-        'lg' => 'text-lg h-14 px-5 gap-2 rounded-lg',
-        'md' => 'text-base h-12 px-4 gap-2 rounded-lg',
-        'sm' => 'text-sm h-8 px-3 gap-1 rounded-md',
-        'xs' => 'text-xs h-6 px-2 gap-1 rounded-md',
-        default => 'h-10 px-4 gap-2 rounded-lg',
+        'lg' => 'text-lg h-control-lg px-4 gap-2 rounded-control',
+        'md' => 'text-base h-control-md px-3.5 gap-2 rounded-control',
+        'sm' => 'text-sm h-control-sm px-2.5 gap-1.5 rounded-control',
+        'xs' => 'text-xs h-control-xs px-2 gap-1 rounded-nav',
+        default => 'text-sm h-control px-3 gap-1.5 rounded-control',
     };
 }
 

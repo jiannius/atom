@@ -19,32 +19,53 @@ describe('button', function () {
     });
 
     it('styles variants', function () {
-        expect(renderBlade('<atom:button>Default</atom:button>'))->toContain('bg-white');
-        expect(renderBlade('<atom:button variant="primary">P</atom:button>'))->toContain('bg-primary');
-        expect(renderBlade('<atom:button variant="accent">A</atom:button>'))->toContain('bg-accent');
-        expect(renderBlade('<atom:button variant="danger">D</atom:button>'))->toContain('bg-red-500');
+        // three tiers: the default is bordered, `primary` the solid accent (`accent` is its old name), `ghost` bare
+        expect(renderBlade('<atom:button>Default</atom:button>'))->toContain('bg-surface')->toContain('border-control-border');
+        expect(renderBlade('<atom:button variant="primary">P</atom:button>'))->toContain('bg-accent text-accent-foreground');
+        expect(renderBlade('<atom:button variant="accent">A</atom:button>'))->toContain('bg-accent text-accent-foreground');
+        expect(renderBlade('<atom:button variant="danger">D</atom:button>'))->toContain('bg-danger-fg');
         expect(renderBlade('<atom:button variant="ghost">G</atom:button>'))->toContain('bg-transparent');
+    });
+
+    it('draws no shadow on any tier', function (string $variant) {
+        expect(renderBlade('<atom:button variant="'.$variant.'">B</atom:button>'))
+            ->not->toContain('shadow');
+    })->with(['default', 'primary', 'accent', 'danger', 'warning', 'success', 'ghost', 'link', 'google']);
+
+    it('treats the variants outline and secondary, which v3 never had, as the default tier', function (string $variant) {
+        expect(renderBlade('<atom:button variant="'.$variant.'">B</atom:button>'))
+            ->toContain('bg-surface')
+            ->toContain('border-control-border');
+    })->with(['outline', 'secondary']);
+
+    it('draws a social button as the default tier, with the brand icon and no brand colour', function () {
+        $html = renderBlade('<atom:button variant="google" icon="google">Sign in</atom:button>');
+
+        expect($html)
+            ->toContain('border-control-border')
+            ->not->toMatch('/(?:bg|text|border)-(?:rose|blue|sky|green)-/');
     });
 
     it('gives the link variant a dark-mode text colour', function () {
         // Regression: link was text-zinc-800 with no dark: variant, so it was
         // near-invisible on dark backgrounds.
         expect(renderBlade('<atom:button variant="link">L</atom:button>'))
-            ->toContain('underline-offset-5')
-            ->toContain('dark:text-zinc-200');
+            ->toContain('underline-offset-4')
+            ->toContain('text-fg')
+            ->not->toContain('dark:');
     });
 
     it('tints ghost buttons by colour', function () {
-        expect(renderBlade('<atom:button variant="ghost" color="danger">D</atom:button>'))->toContain('text-red-500');
-        expect(renderBlade('<atom:button variant="ghost" color="primary">P</atom:button>'))->toContain('text-primary');
+        expect(renderBlade('<atom:button variant="ghost" color="danger">D</atom:button>'))->toContain('text-danger-fg');
+        expect(renderBlade('<atom:button variant="ghost" color="primary">P</atom:button>'))->toContain('text-accent-ink');
     });
 
     it('sizes the button', function () {
-        expect(renderBlade('<atom:button size="xs">x</atom:button>'))->toContain('h-6');
-        expect(renderBlade('<atom:button size="sm">s</atom:button>'))->toContain('h-8');
-        expect(renderBlade('<atom:button>d</atom:button>'))->toContain('h-10');
-        expect(renderBlade('<atom:button size="md">m</atom:button>'))->toContain('h-12');
-        expect(renderBlade('<atom:button size="lg">l</atom:button>'))->toContain('h-14');
+        expect(renderBlade('<atom:button size="xs">x</atom:button>'))->toContain('h-control-xs');
+        expect(renderBlade('<atom:button size="sm">s</atom:button>'))->toContain('h-control-sm');
+        expect(renderBlade('<atom:button>d</atom:button>'))->toContain('h-control ');
+        expect(renderBlade('<atom:button size="md">m</atom:button>'))->toContain('h-control-md');
+        expect(renderBlade('<atom:button size="lg">l</atom:button>'))->toContain('h-control-lg');
     });
 
     it('spans full width when block', function () {
@@ -63,8 +84,9 @@ describe('button', function () {
         $html = renderBlade('<atom:button icon="settings"/>');
 
         expect($html)
-            ->toContain('rounded-lg')
-            ->toContain('size-10');
+            ->toContain('rounded-control')
+            ->toContain('aspect-square')
+            ->toContain('h-control');
     });
 
     it('auto-labels an icon-only button from the icon name', function () {
@@ -85,17 +107,23 @@ describe('button', function () {
 
         expect($html)
             ->toContain('type="submit"')
-            ->toContain('bg-primary')
+            ->toContain('bg-accent')
             ->toContain('wire:loading.class="is-loading"')
-            ->toContain('wire:target="submit"')
-            ->toContain('data-atom-icon'); // the check icon
+            ->toContain('wire:target="submit"');
+    });
+
+    it('adds no icon of its own to a submit or a delete button', function () {
+        // the loading spinner is the one icon every button holds; a check or a trash can would be a second
+        expect(substr_count(renderBlade('<atom:button type="submit">Save</atom:button>'), 'data-atom-icon'))->toBe(1);
+        expect(substr_count(renderBlade('<atom:button type="delete">Delete</atom:button>'), 'data-atom-icon'))->toBe(1);
+        expect(substr_count(renderBlade('<atom:button type="submit" icon="check">Save</atom:button>'), 'data-atom-icon'))->toBe(2);
     });
 
     it('auto-wires the delete confirm flow', function () {
         $html = renderBlade('<atom:button type="delete">Delete</atom:button>');
 
         expect($html)
-            ->toContain('bg-red-100') // danger + inverted
+            ->toContain('bg-danger-bg') // danger + inverted
             ->toContain('atom.confirm({')
             ->toContain("\$dispatch(&#039;confirmed&#039;)")
             ->toContain('x-on:confirmed="$wire.delete()"');
@@ -133,16 +161,6 @@ describe('button', function () {
         $html = renderBlade("<atom:button :social=\"['name' => 'telegram', 'url' => 'https://x.test', 'text' => 'hi']\">Share</atom:button>");
 
         expect($html)->toContain('href="https://t.me/share/url?url=https://x.test&amp;text=hi"');
-    });
-
-    it('uses the brand text colour on hover for an inverted whatsapp button', function () {
-        // Regression: the inverted whatsapp variant had hover:text-sky-100
-        // copied from telegram instead of hover:text-green-100.
-        $html = renderBlade("<atom:button inverted :social=\"['name' => 'whatsapp', 'number' => '123', 'text' => 'hi']\">Chat</atom:button>");
-
-        expect($html)
-            ->toContain('hover:text-green-100')
-            ->not->toContain('hover:text-sky-100');
     });
 
     it('wires the loading state for a wire:click button', function () {

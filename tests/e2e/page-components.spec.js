@@ -193,7 +193,7 @@ for (const tw of ['floor', 'latest']) {
           await expect(page.locator('[data-atom-page-header] [data-atom-status]')).toHaveText(word)
           await expect(page.getByTestId('record-primary')).toContainText(action)
           // one primary action in the header, whatever the status
-          await expect(page.locator('[data-atom-page-header] [data-atom-button].bg-primary')).toHaveCount(1)
+          await expect(page.locator('[data-atom-page-header] [data-atom-button].bg-accent')).toHaveCount(1)
         }
       })
 

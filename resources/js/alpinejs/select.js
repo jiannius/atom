@@ -229,7 +229,7 @@ export default (config) => {
             // The result goes straight into x-html, so every field interpolated here
             // is escaped. An option's own `html` (above) is the trusted escape hatch.
             let color = safeColor(option.color)
-                ? '<div style="background-color: '+escapeHtml(safeColor(option.color))+'" class="shrink-0 w-3 h-3 rounded-full bg-zinc-100 flex items-center justify-center"></div>'
+                ? '<div style="background-color: '+escapeHtml(safeColor(option.color))+'" class="shrink-0 w-3 h-3 rounded-full flex items-center justify-center"></div>'
                 : ''
 
             return '<div class="flex items-center gap-2">'+color+'<span>'+escapeHtml(option.label)+'</span></div>'

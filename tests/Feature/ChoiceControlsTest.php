@@ -28,7 +28,7 @@ describe('checkbox', function () {
         expect($html)
             ->toContain('class="sr-only peer"')
             ->toContain('aria-hidden="true"')
-            ->toContain('peer-focus-visible:outline-1')
+            ->toContain('peer-focus-visible:outline-2')
             ->not->toContain('role="checkbox"')
             ->not->toContain('tabindex');
     });
@@ -74,7 +74,7 @@ describe('toggle', function () {
         expect($html)
             ->toContain('class="peer sr-only"')
             ->toContain('aria-hidden="true"')
-            ->toContain('peer-focus-visible:ring-1')
+            ->toContain('peer-focus-visible:outline-2')
             ->not->toContain('role="checkbox"')
             ->not->toContain('tabindex');
     });
