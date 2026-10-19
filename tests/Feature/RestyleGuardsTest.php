@@ -37,6 +37,12 @@ function restyledComponents(): array
         'textarea',
         'date-picker',
         'time-picker',
+        'checkbox',
+        'radio',
+        'toggle',
+        'slider',
+        'rating',
+        'uploader',
     ];
 }
 
@@ -186,5 +192,61 @@ describe('restyled components', function () {
         }
 
         expect(array_values(array_unique($offenders)))->toBe([]);
+    });
+});
+
+describe('structural CSS of the restyled controls', function () {
+    /**
+     * The rules of atom.css whose selector names one of the given hooks, one string per rule, with comments removed.
+     *
+     * @param  list<string>  $hooks
+     * @return list<string>
+     */
+    function cssRulesFor(array $hooks): array
+    {
+        $css = preg_replace('#/\*.*?\*/#s', '', file_get_contents(__DIR__.'/../../resources/css/atom.css'));
+        preg_match_all('/([^{}]+)\{([^{}]*)\}/', $css, $matches, PREG_SET_ORDER);
+
+        $rules = [];
+
+        foreach ($matches as [$whole, $selector]) {
+            foreach ($hooks as $hook) {
+                if (str_contains($selector, $hook)) {
+                    $rules[] = trim($whole);
+                    break;
+                }
+            }
+        }
+
+        return $rules;
+    }
+
+    it('draws the slider and the rating with role tokens: no hex or rgb colour, no shadow, no html.dark pair', function () {
+        $rules = cssRulesFor(['data-atom-slider', 'data-atom-rating']);
+
+        expect($rules)->not->toBeEmpty();
+
+        foreach ($rules as $rule) {
+            expect($rule)->not->toMatch('/#[0-9a-fA-F]{3,8}\b|rgba?\(|:\s*(?:white|black)\s*[;}]|box-shadow:\s*(?!none)|html\.dark/');
+        }
+    });
+
+    it('reads the fill, the track and the ring of the slider and the rating from the tokens', function () {
+        $css = implode("\n", cssRulesFor(['data-atom-slider', 'data-atom-rating']));
+
+        expect($css)
+            ->toContain('var(--atom-accent-ink)')
+            ->toContain('var(--atom-border-strong)')
+            ->toContain('var(--atom-surface)')
+            ->toContain('var(--atom-focus)')
+            ->toContain('var(--atom-fg-subtle)');
+    });
+
+    it('keeps the slider\'s geometry: a 4px track and a 16px thumb with a 2px border', function () {
+        $css = implode("\n", cssRulesFor(['data-atom-slider-input']));
+
+        expect($css)
+            ->toMatch('/\[data-atom-slider-input\]\s*\{[^}]*height:\s*4px/')
+            ->toMatch('/::-webkit-slider-thumb\s*\{[^}]*width:\s*16px;[^}]*height:\s*16px;[^}]*border:\s*2px solid currentColor/');
     });
 });

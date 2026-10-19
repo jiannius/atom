@@ -38,20 +38,20 @@ x-on:drop.prevent="drop($event)"
         x-on:click="$refs.fileinput.click()"
         x-bind:class="{
             'opacity-50 pointer-events-none': uploading,
-            'border-zinc-400 bg-zinc-50 dark:border-zinc-500 dark:bg-zinc-700/30': dragging,
+            'border-accent-ink bg-accent-soft': dragging,
         }"
         x-bind:aria-busy="uploading"
-        class="relative flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed border-zinc-300 p-6 text-center text-muted dark:text-muted-foreground transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-700/30">
+        class="relative flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-control border border-dashed border-border-strong p-6 text-center text-sm text-fg-muted transition-colors hover:bg-surface-sunken">
             <span x-show="!uploading" class="flex flex-col items-center gap-2">
-                <atom:icon.upload class="size-6" />
+                <atom:icon.upload class="size-5" />
                 <span>{{ t($label) }}</span>
             </span>
 
             <span x-show="uploading" class="flex items-center gap-2">
-                <atom:icon.loading class="size-5" /> {{ t('Uploading') }}...
+                <atom:icon.loading class="size-4" /> {{ t('Uploading') }}...
             </span>
 
-            <span x-show="uploading" class="absolute inset-x-0 bottom-0 h-1 bg-zinc-400" x-bind:style="`width: ${progress}%`"></span>
+            <span x-show="uploading" class="absolute inset-x-0 bottom-0 h-1 bg-accent-ink" x-bind:style="`width: ${progress}%`"></span>
         </button>
     @endif
 </div>

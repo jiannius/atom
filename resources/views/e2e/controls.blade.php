@@ -101,6 +101,57 @@ $show = fn (string $name) => $section === null || $section === $name;
         </div>
     </section>
     @endif
+
+    @if ($show('choices'))
+    <section class="grid gap-4" data-testid="choices">
+        <h2 class="text-lg font-semibold">Choice controls</h2>
+
+        <div class="grid gap-3 sm:grid-cols-3">
+            <div class="grid gap-2">
+                <div data-testid="c-checkbox"><atom:checkbox label="Unchecked" /></div>
+                <div data-testid="c-checkbox-checked"><atom:checkbox label="Checked" checked /></div>
+                <div data-testid="c-checkbox-disabled"><atom:checkbox label="Disabled" disabled /></div>
+                <div data-testid="c-checkbox-disabled-checked"><atom:checkbox label="Disabled, checked" disabled checked /></div>
+                <div data-testid="c-checkbox-caption"><atom:checkbox label="With a caption" caption="Helper text under it" checked /></div>
+            </div>
+            <div class="grid gap-2">
+                <div data-testid="c-radio"><atom:radio name="r" label="Unchecked" value="a" /></div>
+                <div data-testid="c-radio-checked"><atom:radio name="r" label="Checked" value="b" checked /></div>
+                <div data-testid="c-radio-disabled"><atom:radio name="r2" label="Disabled" value="c" disabled /></div>
+                <div data-testid="c-radio-disabled-checked"><atom:radio name="r3" label="Disabled, checked" value="d" disabled checked /></div>
+            </div>
+            <div class="grid gap-2">
+                <div data-testid="c-toggle"><atom:toggle label="Off" /></div>
+                <div data-testid="c-toggle-checked"><atom:toggle label="On" checked /></div>
+                <div data-testid="c-toggle-disabled"><atom:toggle label="Disabled" disabled /></div>
+                <div data-testid="c-toggle-disabled-checked"><atom:toggle label="Disabled, on" disabled checked /></div>
+            </div>
+        </div>
+
+        <div data-testid="c-card-group">
+            <atom:checkbox.group variant="card">
+                <atom:checkbox label="Email me about invoices" checked />
+                <atom:checkbox label="Email me about payments" />
+            </atom:checkbox.group>
+        </div>
+    </section>
+    @endif
+
+    @if ($show('ranges'))
+    <section class="grid gap-4" data-testid="ranges">
+        <h2 class="text-lg font-semibold">Slider, rating, uploader</h2>
+
+        <div class="grid gap-6 sm:grid-cols-2">
+            <div data-testid="r-slider"><atom:slider label="Volume" name="vol" value="40" bubble labels /></div>
+            <div data-testid="r-slider-disabled"><atom:slider label="Locked" name="vol2" value="70" disabled /></div>
+            <div data-testid="r-rating"><atom:rating label="Rating" name="rate" :value="3" /></div>
+            <div data-testid="r-rating-half"><atom:rating label="Half stars" name="rate2" :value="2.5" half /></div>
+            <div data-testid="r-rating-readonly"><atom:rating label="Read only" name="rate3" :value="4" readonly /></div>
+            <div data-testid="r-uploader"><atom:uploader.dropzone /></div>
+            <div data-testid="r-uploader-button"><atom:uploader label="Upload" /></div>
+        </div>
+    </section>
+    @endif
 </div>
 
 @livewireScripts
