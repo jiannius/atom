@@ -177,7 +177,8 @@ it('documents the components that need a script, a flag or a colour the source d
         ->and($skill)->toContain('`table-filter`')
         ->and($skill)->toContain('overflow="modal"')
         ->and($skill)->toContain('`updatingAtomComponent`')
-        ->and($skill)->toContain('border-zinc-200 dark:border-zinc-700');
+        ->and($skill)->toContain('Colour with role tokens, never `zinc-*` or a `dark:` pair')
+        ->and($skill)->toContain('Controls (restyled in V4-3a)');
 });
 
 // These are the rules an agent breaks without ever opening the skill: a public action, a select
@@ -201,7 +202,8 @@ it('keeps the action, option-set and layout rules in the always-on guideline', f
         ->and($guideline)->toContain('bare `grid-cols-2`')
         ->and($guideline)->toContain('<atom:callout>')
         ->and($guideline)->toContain('<atom:navlist>')
-        ->and($guideline)->toContain('border-t border-zinc-200 dark:border-zinc-700');
+        ->and($guideline)->toContain('role tokens (`bg-surface`, `text-fg-muted`, `border-border`)')
+        ->and($guideline)->toContain('`type="submit"` and `"delete"` add no icon');
 });
 
 it('says sanitize() is for chat HTML only and the JSON editor value is stored as JSON', function () {

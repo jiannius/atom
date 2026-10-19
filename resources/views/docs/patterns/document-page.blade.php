@@ -83,8 +83,8 @@ $money = fn (float $amount) => number_format($amount, 2);
             </x-slot:status>
 
             <x-slot:actions>
-                <atom:button size="sm">Edit</atom:button>
-                <atom:button size="sm" icon="download">PDF</atom:button>
+                <atom:button>Edit</atom:button>
+                <atom:button icon="download">PDF</atom:button>
             </x-slot:actions>
 
             <x-slot:menu>
@@ -93,7 +93,7 @@ $money = fn (float $amount) => number_format($amount, 2);
             </x-slot:menu>
 
             <x-slot:primary>
-                <atom:button size="sm" variant="primary" data-testid="document-primary">{{ $primaryLabel }}</atom:button>
+                <atom:button variant="primary" data-testid="document-primary">{{ $primaryLabel }}</atom:button>
             </x-slot:primary>
         </atom:page.header>
 

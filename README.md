@@ -430,7 +430,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 
 | Tag | Notable props |
 | --- | ------------- |
-| `<atom:button>` | `type` (`submit`, `delete`), `variant` (`primary`, `danger`, `accent`, `ghost`, `link`, `facebook`, `google`, `linkedin`, `whatsapp`, `telegram`), `size` (`xs`, `sm`, `md`, `lg`), `block`, `href`, `icon`, `iconSuffix`, `inverted`, `newtab`. Wraps `wire:click`, dispatches `confirmed` for `type="delete"` (auto-confirmed → `$wire.delete()`). |
+| `<atom:button>` | `type` (`submit`, `delete`), `variant` (`primary` the solid accent, one per view; the default, bordered; `ghost`; `link`; the tones `danger`, `warning`, `success`, `info`; `accent` is the old name of `primary`; `facebook`, `google`, `linkedin`, `whatsapp`, `telegram` are the default tier with the brand's icon), `color` (for `ghost`), `size` (`xs`, `sm`, `md`, `lg`, from the control height), `block`, `href`, `icon`, `iconSuffix`, `inverted` (the tone's tint), `newtab`. Wraps `wire:click`, dispatches `confirmed` for `type="delete"` (auto-confirmed → `$wire.delete()`). `type="submit"` and `"delete"` add no icon: pass `icon=`. |
 | `<atom:button.group>` | Layout helper for adjacent buttons. |
 | `<atom:link>` | `href`, `icon`, `iconSuffix`, `variant="accent"`, `newtab`, `rel`. |
 

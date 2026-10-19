@@ -9,7 +9,7 @@ Every component ships with a canonical, verified usage example:
 @verbatim
 - **Demo snippets:** `vendor/jiannius/atom/resources/views/docs/demos/<component>/*.blade.php` — each file is a tiny, copy-paste-ready Blade example (these power the live `/atom/docs` pages, so they are rendered and verified, never stale). Read the relevant one before writing `<atom:...>` markup.
 - **Prop reference:** the `@props([...])` block at the top of `vendor/jiannius/atom/components/<component>/index.blade.php` (or `components/<component>.blade.php` for flat components) is the authoritative prop list.
-- **Browsable docs:** with `APP_ENV=local`, visit `/atom/docs` for live previews, prop tables, and searchable icon/logo galleries.
+- **Browsable docs:** with `APP_ENV=local`, visit `/atom/docs` for live previews and prop tables.
 @endverbatim
 
 @verbatim
@@ -48,7 +48,7 @@ Views drift when they hand-roll what Atom already has.
 - Notices, status and empty lists: `<atom:callout>`, `<atom:status>` and `<atom:empty>`, not hand-built boxes.
 - Screens: `<atom:page>`, `<atom:page.header>`, `<atom:timeline>`; rules in the skill's Patterns section.
 - Navigation: `<atom:navlist>`, not hand-rolled links, in `<atom:layouts.sidebar>` or `<atom:layouts.header>`. Sections: `<atom:separator>`, not `<hr>`.
-- Give every border or divider a light-mode colour: `border-t border-zinc-200 dark:border-zinc-700`, since Tailwind v4 defaults to `currentColor`.
+- Colour with role tokens (`bg-surface`, `text-fg-muted`, `border-border`), not `zinc-*` or `dark:` pairs. One `variant="primary"` button per view; `type="submit"` and `"delete"` add no icon (`icon=`).
 @endverbatim
 
 
