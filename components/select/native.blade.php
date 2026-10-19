@@ -41,7 +41,7 @@ $classes = Arr::toCssClasses([
     '[&_select]:text-fg [&_select]:text-left',
     '[&_select]:has-[option.placeholder:checked]:text-fg-subtle',
     '[&_select]:focus-visible:outline-none [&_select]:disabled:cursor-not-allowed [&_select]:disabled:text-fg-subtle',
-    $invalid ? 'border-danger-fg' : 'border-border-strong',
+    $invalid ? 'border-danger-fg' : 'border-control-border',
     $multiple ? 'min-h-control py-1' : 'h-control',
     $icon ? 'pl-8' : 'pl-2.5',
     'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',

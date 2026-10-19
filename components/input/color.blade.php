@@ -10,7 +10,7 @@ $classes = Arr::toCssClasses([
     'placeholder:text-fg-subtle',
     $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
     'focus-visible:outline-offset-0',
-    $invalid ? 'border-danger-fg' : 'border-border-strong',
+    $invalid ? 'border-danger-fg' : 'border-control-border',
     'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
 ]);
 @endphp

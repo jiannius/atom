@@ -19,7 +19,7 @@ $options = is_array($options) || $options instanceof \Illuminate\Support\Collect
    and the chosen value in a chip beside it. */
 $classes = Arr::toCssClasses([
     'inline-flex items-center gap-1.5',
-    'min-h-control py-0.5 appearance-none rounded-control border border-border-strong bg-surface text-sm text-fg text-left pr-2',
+    'min-h-control py-0.5 appearance-none rounded-control border border-control-border bg-surface text-sm text-fg text-left pr-2',
     'hover:bg-surface-sunken',
     $icon ? 'pl-8' : 'pl-2.5',
 ]);

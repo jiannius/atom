@@ -20,7 +20,7 @@ describe('button', function () {
 
     it('styles variants', function () {
         // three tiers: the default is bordered, `primary` the solid accent (`accent` is its old name), `ghost` bare
-        expect(renderBlade('<atom:button>Default</atom:button>'))->toContain('bg-surface')->toContain('border-border-strong');
+        expect(renderBlade('<atom:button>Default</atom:button>'))->toContain('bg-surface')->toContain('border-control-border');
         expect(renderBlade('<atom:button variant="primary">P</atom:button>'))->toContain('bg-accent text-accent-foreground');
         expect(renderBlade('<atom:button variant="accent">A</atom:button>'))->toContain('bg-accent text-accent-foreground');
         expect(renderBlade('<atom:button variant="danger">D</atom:button>'))->toContain('bg-danger-fg');
@@ -35,14 +35,14 @@ describe('button', function () {
     it('treats the variants outline and secondary, which v3 never had, as the default tier', function (string $variant) {
         expect(renderBlade('<atom:button variant="'.$variant.'">B</atom:button>'))
             ->toContain('bg-surface')
-            ->toContain('border-border-strong');
+            ->toContain('border-control-border');
     })->with(['outline', 'secondary']);
 
     it('draws a social button as the default tier, with the brand icon and no brand colour', function () {
         $html = renderBlade('<atom:button variant="google" icon="google">Sign in</atom:button>');
 
         expect($html)
-            ->toContain('border-border-strong')
+            ->toContain('border-control-border')
             ->not->toMatch('/(?:bg|text|border)-(?:rose|blue|sky|green)-/');
     });
 

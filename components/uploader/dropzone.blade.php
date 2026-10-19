@@ -39,7 +39,7 @@ x-on:drop.prevent="drop($event)"
         x-bind:class="{
             'opacity-50 pointer-events-none': uploading,
             'border-accent-ink bg-accent-soft': dragging,
-            'border-border-strong': !dragging,
+            'border-control-border': !dragging,
         }"
         x-bind:aria-busy="uploading"
         class="relative flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-control border border-dashed p-6 text-center text-sm text-fg-muted transition-colors hover:bg-surface-sunken">

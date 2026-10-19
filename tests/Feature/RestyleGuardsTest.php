@@ -149,7 +149,7 @@ describe('restyled components', function () {
             $isRing = preg_match('/^(?:outline|ring)(?:-|$)/', $token['utility']) === 1;
 
             foreach ($token['variants'] as $variant) {
-                if (str_contains($variant, '[') && preg_match('/:focus(?![-\w])/', $variant)) {
+                if (str_contains($variant, '[') && preg_match('/:focus(?!-visible)(?!\w)/', $variant)) {
                     return true;
                 }
 
@@ -165,7 +165,7 @@ describe('restyled components', function () {
     });
 
     it('gives every border and divider colour a token, and a divider a colour of its own', function () {
-        $token = 'border|border-strong|fg|fg-muted|fg-subtle|focus|surface|canvas|accent|accent-ink|accent-soft|accent-hover|accent-content|neutral-bg|neutral-fg|info-bg|info-fg|success-bg|success-fg|warning-bg|warning-fg|danger-bg|danger-fg|transparent|current|inherit';
+        $token = 'border|border-strong|control-border|fg|fg-muted|fg-subtle|focus|surface|canvas|accent|accent-ink|accent-soft|accent-hover|accent-content|neutral-bg|neutral-fg|info-bg|info-fg|success-bg|success-fg|warning-bg|warning-fg|danger-bg|danger-fg|transparent|current|inherit';
         $offenders = [];
 
         foreach (restyledTokens() as $path => $tokens) {
@@ -304,9 +304,9 @@ describe('review round 1', function () {
 
         expect($html)
             ->toContain("'border-accent-ink bg-accent-soft': dragging")
-            ->toContain("'border-border-strong': !dragging")
+            ->toContain("'border-control-border': !dragging")
             // the static class list no longer carries the resting colour, which compiled after the accent and always won
-            ->not->toMatch('/\sclass="[^"]*\bborder-border-strong\b/');
+            ->not->toMatch('/\sclass="[^"]*\bborder-control-border\b/');
     });
 
     it('sizes the pikaday arrows with a class Tailwind 4.0.7 compiles', function () {

@@ -5,7 +5,7 @@
 
 @php
 $class = Arr::toCssClasses([
-    'h-control px-2.5 border border-border-strong bg-surface-sunken text-sm text-fg-muted flex items-center justify-center',
+    'h-control px-2.5 border border-control-border bg-surface-sunken text-sm text-fg-muted flex items-center justify-center',
     'group-has-[:focus-visible]:border-focus',
 ]);
 @endphp

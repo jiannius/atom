@@ -42,7 +42,7 @@ describe('dark-mode contrast', function () {
         $html = Blade::render('<atom:select variant="filter" label="Status" :options="[]" />');
 
         expect($html)
-            ->toContain('border border-border-strong')
+            ->toContain('border border-control-border')
             ->not->toContain('dark:border-white/10');
     });
 });

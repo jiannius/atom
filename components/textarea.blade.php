@@ -36,7 +36,7 @@ $classes = Arr::toCssClasses([
     'disabled:resize-none disabled:cursor-not-allowed read-only:resize-none',
     'resize-none' => $autoresize,
     'border border-danger-fg' => $invalid,
-    'border border-border-strong' => !$invalid && !$transparent,
+    'border border-control-border' => !$invalid && !$transparent,
     'border-0 bg-transparent focus-visible:bg-surface-sunken' => $transparent,
     'bg-surface focus-visible:outline-offset-0 disabled:bg-surface-sunken disabled:text-fg-subtle' => !$transparent,
     'focus-visible:border-focus' => !$transparent && !$invalid,

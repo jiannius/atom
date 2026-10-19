@@ -97,7 +97,7 @@ else if ($tone) {
     };
 }
 else {
-    $classes[] = 'border border-border-strong bg-surface text-fg hover:bg-surface-sunken';
+    $classes[] = 'border border-control-border bg-surface text-fg hover:bg-surface-sunken';
 }
 
 /* Heights come from the control token (28px compact, 32 comfortable, 40 on a touch device): `sm` and `xs` sit 4px and 8px

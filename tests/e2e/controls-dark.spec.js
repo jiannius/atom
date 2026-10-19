@@ -141,16 +141,50 @@ test.describe('dark check: the 3a components the dark-mode hosts render', () => 
     })
   }
 
-  test('the field hairline: measured in both themes and recorded, not gated', async ({ page }) => {
-    // border-strong is the sample's 17% line (1.41:1 on white). WCAG 1.4.11 asks 3:1 of a boundary that identifies a control; the
-    // approved design draws a hairline, and a field is also found by its fill, its placeholder and its label. The number is
-    // attached to the report so the decision stays visible; the controls whose shape alone identifies them (checkbox, radio,
-    // toggle) are gated at 3:1 in controls-choices.
-    for (const dark of [false, true]) {
-      await open(page, { dark, section: 'fields' })
-      const r = (await page.getByTestId('f-input').locator('input').evaluate(contrastOf, { what: 'border' })).ratio
-      test.info().annotations.push({ type: `field boundary contrast, ${dark ? 'dark' : 'light'}`, description: r.toFixed(2) })
-      expect(r).toBeGreaterThan(1.1)
+  test('the box of every control holds 3:1 on the dark surface it sits on', async ({ page }) => {
+    // --atom-control-border is a solid grey in dark (3.4:1 on the surface). Text fields, the default button, the select and date
+    // triggers and the dropzone are gated; chips and dividers inside a field keep the lighter border-strong (gated at 1.2).
+    await open(page, { dark: true, section: 'fields' })
+
+    const native = '[data-atom-select-native] > div:first-of-type'
+    const boxes = [
+      ['input', 'f-input', 'input'], ['input, empty', 'f-input-empty', 'input'], ['password', 'f-password', 'input'], ['number', 'f-number', 'input'],
+      ['tel', 'f-tel', 'input[type=tel]'], ['colour', 'f-color', 'input'], ['email', 'f-email', '[data-atom-input-email] [data-atom-dropdown-trigger]'],
+      ['textarea', 'f-textarea', 'textarea'], ['native select', 'f-select-native', native], ['listbox', 'f-select-listbox', '[data-atom-select-combobox]'],
+      ['filter', 'f-select-filter', '[data-atom-select-combobox]'], ['date', 'f-date', 'input'], ['range', 'f-date-range', 'input'],
+      ['time', 'f-time', 'div[x-data="timePicker()"]'], ['otp box', 'f-otp', 'input'],
+    ]
+
+    for (const [name, id, selector] of boxes) {
+      const r = (await page.getByTestId(id).locator(selector).first().evaluate(contrastOf, { what: 'border' })).ratio
+      expect(r, `${name} boundary`).toBeGreaterThanOrEqual(3)
     }
+
+    // the prefix and suffix boxes of an affixed input
+    expect((await page.getByTestId('f-input-affix').locator('div.border').first().evaluate(contrastOf, { what: 'border' })).ratio, 'prefix box').toBeGreaterThanOrEqual(3)
+
+    // the default button, in the buttons section
+    await open(page, { dark: true, section: 'buttons' })
+    for (const id of ['btn-default', 'btn-google']) {
+      expect((await page.getByTestId(id).evaluate(contrastOf, { what: 'border' })).ratio, id).toBeGreaterThanOrEqual(3)
+    }
+
+    // the dropzone
+    await open(page, { dark: true, section: 'ranges' })
+    expect((await page.getByTestId('r-uploader').locator('button').evaluate(contrastOf, { what: 'border' })).ratio, 'dropzone').toBeGreaterThanOrEqual(3)
+
+    const dark = (await page.getByTestId('r-uploader').locator('button').evaluate(contrastOf, { what: 'border' })).ratio
+    test.info().annotations.push({ type: 'control boundary contrast, dark', description: dark.toFixed(2) })
+  })
+
+  test('the light hairline is an accepted exception, measured and recorded', async ({ page }) => {
+    // In light the box of a control is the sample's 17% line (1.41:1 on white), under the 3:1 of WCAG 1.4.11; TJ accepted it: a
+    // field is also found by its fill, its placeholder and its label. The number is attached to the report so the decision stays visible;
+    // the controls found by their shape alone (checkbox, radio, toggle) are gated at 3:1 in controls-choices.
+    await open(page, { dark: false, section: 'fields' })
+    const r = (await page.getByTestId('f-input').locator('input').evaluate(contrastOf, { what: 'border' })).ratio
+    test.info().annotations.push({ type: 'field boundary contrast, light (accepted exception)', description: r.toFixed(2) })
+    expect(r).toBeGreaterThan(1.3)
+    expect(r).toBeLessThan(1.6)
   })
 })

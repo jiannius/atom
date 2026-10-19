@@ -104,6 +104,7 @@
     --color-surface-raised: var(--atom-surface-raised);
     --color-border: var(--atom-border);
     --color-border-strong: var(--atom-border-strong);
+    --color-control-border: var(--atom-control-border);
     --color-fg: var(--atom-fg);
     --color-fg-muted: var(--atom-fg-muted);
     --color-fg-subtle: var(--atom-fg-subtle);
@@ -146,6 +147,9 @@
         --atom-surface-raised: #ffffff;
         --atom-border: rgba(45, 32, 8, 0.1);
         --atom-border-strong: rgba(45, 32, 8, 0.17);
+        /* the box of a control (field, default button, select and date triggers, dropzone): the hairline in light (about 1.4:1, the
+           design's line), a solid grey in dark that holds 3:1 on canvas, surface and sunken (3.6, 3.4 and 3.7:1; 3.1 on raised) */
+        --atom-control-border: rgba(45, 32, 8, 0.17);
         --atom-fg: #1b1a17;
         --atom-fg-muted: #5f5b53;
         --atom-fg-subtle: #6f6b62;
@@ -180,6 +184,7 @@
         --atom-surface-raised: #242321;
         --atom-border: rgba(255, 245, 225, 0.085);
         --atom-border-strong: rgba(255, 245, 225, 0.15);
+        --atom-control-border: #726e65;
         --atom-fg: #ecebe7;
         --atom-fg-muted: #a6a297;
         --atom-fg-subtle: #928e84;
