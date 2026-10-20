@@ -19,9 +19,9 @@ $hasMaxWidth = str($attributes->get('class'))->contains('max-w-');
 
 $classes = Arr::toCssClasses([
     'group/modal',
-    '[:where(&)]:max-w-full min-w-sm shadow-lg rounded-xl',
+    '[:where(&)]:max-w-full min-w-sm shadow-pop rounded-modal',
     'w-full' => $hasMaxWidth,
-    'bg-white dark:bg-zinc-900 border border-transparent dark:border-zinc-700 transition-transform',
+    'bg-surface-raised text-fg border border-border-strong transition-transform',
     $inset ? 'p-0' : 'p-6',
 
     '[&[data-atom-modal]]:m-auto',
@@ -67,33 +67,6 @@ $classes = Arr::toCssClasses([
     '[&[data-atom-modal-slide-bottom]]:translate-y-full',
     '[&[data-atom-modal-slide-bottom][data-open]]:translate-y-0',
 ]);
-
-// Flux::classes()
-//     ->add(match ($variant) {
-//         default => 'p-6 [:where(&)]:max-w-xl shadow-lg rounded-xl',
-//         'flyout' => match($position) {
-//             'bottom' => 'fixed m-0 p-8 min-w-[100vw] overflow-y-auto mt-auto [--fx-flyout-translate:translateY(50px)] border-t',
-//             'left' => 'fixed m-0 p-8 max-h-dvh min-h-dvh md:[:where(&)]:min-w-[25rem] overflow-y-auto mr-auto [--fx-flyout-translate:translateX(-50px)] border-e rtl:mr-0 rtl:ml-auto rtl:[--fx-flyout-translate:translateX(50px)]',
-//             default => 'fixed m-0 p-8 max-h-dvh min-h-dvh md:[:where(&)]:min-w-[25rem] overflow-y-auto ml-auto [--fx-flyout-translate:translateX(50px)] border-s rtl:ml-0 rtl:mr-auto rtl:[--fx-flyout-translate:translateX(-50px)]',
-//         },
-//         'bare' => '',
-//     })
-//     ->add(match ($variant) {
-//         default => 'bg-white dark:bg-zinc-800 border border-transparent dark:border-zinc-700',
-//         'flyout' => 'bg-white dark:bg-zinc-800 border-transparent dark:border-zinc-700',
-//         'bare' => 'bg-transparent',
-//     });
-
-// // Support adding the .self modifier to the wire:model directive...
-// if (($wireModel = $attributes->wire('model')) && $wireModel->directive && ! $wireModel->hasModifier('self')) {
-//     unset($attributes[$wireModel->directive]);
-
-//     $wireModel->directive .= '.self';
-
-//     $attributes = $attributes->merge([$wireModel->directive => $wireModel->value]);
-// }
-
-// [ $styleAttributes, $attributes ] = Flux::splitAttributes($attributes, ['autofocus', 'class', 'style', 'wire:close', 'x-on:close', 'wire:cancel', 'x-on:cancel']);
 @endphp
 
 <dialog
@@ -108,13 +81,13 @@ x-on:keydown.escape.stop.prevent="escapeClose"
 @if ($dismissible) x-on:click="backdropClick" @endif
 {{ $attributes->class($classes) }}>
     @if ($closeable)
-        <div class="absolute top-0 end-0 mt-4 me-4">
+        <div class="absolute top-3 end-3">
             <button
             type="button"
             aria-label="{{ t('Close') }}"
-            class="flex items-center justify-center text-zinc-400! hover:text-zinc-800! dark:hover:text-white! focus:outline-none"
+            class="flex h-control aspect-square items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-fg/[0.06] hover:text-fg"
             x-on:click="closeModal">
-                <atom:icon.close />
+                <atom:icon.close class="size-4" />
             </button>
         </div>
     @endif

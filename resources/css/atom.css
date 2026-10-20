@@ -61,6 +61,8 @@ html:has([data-atom-command][data-open]) {
     overflow: hidden;
 }
 
+/* The scrim behind a modal, a slide-over and the command palette is the warm near-black of the dark canvas, whatever the
+   theme (a scrim is not a surface, so it reads no role token). The lightbox keeps the heavier black: it frames a photo. */
 dialog[data-atom-modal]::backdrop,
 dialog[data-atom-modal-slide]::backdrop,
 dialog[data-atom-modal-slide-left]::backdrop,
@@ -68,7 +70,7 @@ dialog[data-atom-modal-slide-bottom]::backdrop,
 dialog[data-atom-lightbox]::backdrop {
     margin: auto;
     opacity: 0;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(21, 20, 18, 0.5);
     transition: all 75ms allow-discrete;
 }
 
@@ -88,7 +90,7 @@ dialog[data-atom-lightbox][data-open]::backdrop {
 
 dialog[data-atom-command]::backdrop {
     opacity: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(21, 20, 18, 0.4);
     transition: opacity 75ms allow-discrete;
 }
 

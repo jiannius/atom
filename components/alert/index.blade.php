@@ -35,27 +35,27 @@ $config = [
         <div class="space-y-3">
             <template x-if="config.heading" hidden>
                 <div class="flex items-center gap-3">
-                    <atom:icon.error x-show="config.variant === 'danger'" class="size-8 text-red-500" variant="solid" />
-                    <atom:icon.check-circle x-show="config.variant === 'success'" class="size-8 text-green-500" variant="solid" />
-                    <atom:icon.warning x-show="config.variant === 'warning'" class="size-8 text-yellow-500" variant="solid" />
-                    <div x-text="config.heading" class="text-lg font-medium"></div>
+                    <atom:icon.error x-show="config.variant === 'danger'" class="size-5 text-danger-fg" variant="solid" />
+                    <atom:icon.check-circle x-show="config.variant === 'success'" class="size-5 text-success-fg" variant="solid" />
+                    <atom:icon.warning x-show="config.variant === 'warning'" class="size-5 text-warning-fg" variant="solid" />
+                    <div x-text="config.heading" class="text-lg font-semibold"></div>
                 </div>
             </template>
 
             <template x-if="config.subheading" hidden>
-                <div x-text="config.subheading" class="text-zinc-400"></div>
+                <div x-text="config.subheading" class="text-fg-muted"></div>
             </template>
 
             <template x-if="typeof config.message === 'string'" hidden>
-                <div x-text="config.message" class="text-zinc-400"></div>
+                <div x-text="config.message" class="text-fg-muted"></div>
             </template>
 
             <template x-if="Array.isArray(config.message) && config.message.length === 1" hidden>
-                <div x-text="config.message[0]" class="text-zinc-400"></div>
+                <div x-text="config.message[0]" class="text-fg-muted"></div>
             </template>
 
             <template x-if="Array.isArray(config.message) && config.message.length > 1" hidden>
-                <ul class="list-disc list-outside ml-6 text-zinc-400">
+                <ul class="list-disc list-outside ms-6 text-fg-muted">
                     <template x-for="message in config.message">
                         <li x-text="message"></li>
                     </template>
