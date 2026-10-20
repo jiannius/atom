@@ -9,10 +9,10 @@ $href = safe_url($href);
 $el = $href ? 'a' : 'button';
 $label = trim(strip_tags($slot->toHtml()));
 $classes = Arr::toCssClasses([
-    'flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-start text-sm',
-    'text-zinc-700 dark:text-zinc-200',
-    'hover:bg-zinc-100 dark:hover:bg-zinc-800',
-    '[&[data-active]]:bg-zinc-100 dark:[&[data-active]]:bg-zinc-800',
+    'flex w-full cursor-pointer items-center gap-2.5 rounded-nav px-2.5 min-h-control py-1 text-start text-sm',
+    'text-fg focus-visible:-outline-offset-2',
+    'hover:bg-fg/[0.06]',
+    '[&[data-active]]:bg-fg/[0.06]',
 ]);
 @endphp
 
@@ -24,12 +24,12 @@ $classes = Arr::toCssClasses([
     'data-label' => $label,
 ]) }}>
     @if ($icon)
-        <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4 shrink-0 text-zinc-400"/>
+        <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4 shrink-0 text-fg-subtle"/>
     @endif
 
     <span class="flex-1 truncate">{{ $slot }}</span>
 
     @if ($shortcut)
-        <kbd class="shrink-0 rounded border border-zinc-200 px-1.5 py-0.5 text-xs text-zinc-400 dark:border-zinc-700">{{ $shortcut }}</kbd>
+        <kbd class="shrink-0 rounded-nav border border-border-strong bg-surface-sunken px-1.5 text-xs font-medium text-fg-muted">{{ $shortcut }}</kbd>
     @endif
 </{{ $el }}>
