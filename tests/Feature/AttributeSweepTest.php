@@ -364,7 +364,7 @@ describe('B3: caller class swallowed', function () {
         $html = renderBlade('<atom:tabs.item class="text-red-500" value="a">A</atom:tabs.item>');
         $tab = domQuery($html, '//button')[0];
 
-        expect(domClasses($tab))->toContain('text-red-500', 'grow', 'px-4', '-mb-px')
+        expect(domClasses($tab))->toContain('text-red-500', 'grow', 'px-3', '-mb-px')
             ->and($tab->getAttribute('type'))->toBe('button');
         expect(substr_count($html, 'class='))->toBe(1);
     });
@@ -372,7 +372,7 @@ describe('B3: caller class swallowed', function () {
     it('keeps the tab item defaults with no caller class', function () {
         $tab = domQuery(renderBlade('<atom:tabs.item>A</atom:tabs.item>'), '//button')[0];
 
-        expect(domClasses($tab))->toContain('grow', 'self-stretch', 'px-4')
+        expect(domClasses($tab))->toContain('grow', 'self-stretch', 'px-3')
             ->and(domClasses($tab))->not->toContain('text-red-500');
     });
 

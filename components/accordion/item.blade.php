@@ -12,7 +12,7 @@ $id = 'atom-accordion-'.Str::random(8);
         type="button"
         x-on:click="toggle('{{ $id }}')"
         x-bind:aria-expanded="isOpen('{{ $id }}')"
-        {{ $attributes->class(['w-full flex items-center justify-between gap-3 py-3 text-left font-medium select-none']) }}>
+        {{ $attributes->class(['w-full flex items-center justify-between gap-3 min-h-row py-2 text-left text-sm font-medium text-fg select-none focus-visible:-outline-offset-2']) }}>
         <span>
             @if ($heading instanceof \Illuminate\View\ComponentSlot)
                 {{ $heading }}
@@ -21,7 +21,7 @@ $id = 'atom-accordion-'.Str::random(8);
             @endif
         </span>
 
-        <atom:icon.down class="size-4 shrink-0 transition-transform duration-200" x-bind:class="isOpen('{{ $id }}') && 'rotate-180'"/>
+        <atom:icon.down class="size-4 shrink-0 text-fg-subtle transition-transform duration-200" x-bind:class="isOpen('{{ $id }}') && 'rotate-180'"/>
     </button>
 
     <div

@@ -15,23 +15,23 @@ data-atom-breadcrumbs>
     @endif
 
     <template x-if="breadcrumbs.length > 1" hidden>
-        <ol {{ $attributes->class(['flex flex-wrap items-center gap-2 overflow-hidden']) }}>
+        <ol {{ $attributes->class(['flex flex-wrap items-center gap-1.5 text-sm overflow-hidden']) }}>
             <template x-for="(item, i) in breadcrumbs" x-bind:key="`${item.title}-${item.url}-${i}`">
                 <li class="shrink-0 max-w-40 lg:max-w-64">
-                    <div class="flex items-center gap-2 truncate text-zinc-800">
+                    <div class="flex items-center gap-1.5 truncate">
                         <template x-if="i !== breadcrumbs.length - 1">
-                            <div class="flex items-center gap-2 truncate">
+                            <div class="flex items-center gap-1.5 truncate">
                                 <a
                                 x-text="item.title"
                                 x-bind:href="atom.safeUrl(item.href)"
-                                class="leading-none font-medium truncate whitespace-nowrap dark:text-zinc-300"
+                                class="leading-none font-medium truncate whitespace-nowrap rounded-nav text-fg-muted transition-colors hover:text-fg"
                                 wire:navigate></a>
-                                <atom:icon.right class="shrink-0 text-muted dark:text-muted-foreground size-4"/>
+                                <atom:icon.right class="shrink-0 text-fg-subtle size-4"/>
                             </div>
                         </template>
 
                         <template x-if="i === breadcrumbs.length - 1">
-                            <span x-text="item.title" class="leading-none truncate whitespace-nowrap text-muted dark:text-muted-foreground"></span>
+                            <span x-text="item.title" class="leading-none font-medium truncate whitespace-nowrap text-fg" aria-current="page"></span>
                         </template>
                     </div>
                 </li>                
