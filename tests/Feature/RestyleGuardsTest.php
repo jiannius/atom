@@ -58,7 +58,33 @@ function restyledComponents(): array
         'kbd',
         'pagination',
         'table',
+        // V4-3c, the overlays and the navigation
+        'modal',
+        'dropdown',
+        'menu',
+        'tooltip',
+        'toast',
+        'alert',
+        'confirm',
+        'command',
+        'context-menu',
+        'lightbox',
+        'tabs',
+        'breadcrumbs',
+        'accordion',
     ];
+}
+
+/**
+ * The raised layers among them, and so the only components that may cast a shadow: the dialogs, the panels a trigger opens, the
+ * toast and the palette. Tabs, breadcrumbs, accordion and the tooltip (a label, not a panel) are drawn with a fill and a hairline.
+ * Even a raised layer has one shadow, the `shadow-pop` token, never a size from Tailwind's scale.
+ *
+ * @return list<string>
+ */
+function raisedLayers(): array
+{
+    return ['modal', 'menu', 'toast', 'alert', 'confirm', 'command', 'lightbox'];
 }
 
 /**
@@ -149,10 +175,30 @@ describe('restyled components', function () {
         expect($offenders)->toBe([]);
     });
 
-    it('draws no shadow', function () {
-        $offenders = restyleOffenders(fn ($token) => preg_match('/^(?:inset-|drop-)?shadow(?:-(?!none$).+)?$/', $token['utility']) === 1);
+    it('draws no shadow, except the shadow-pop token on a raised layer', function () {
+        $isShadow = fn ($token) => preg_match('/^(?:inset-|drop-)?shadow(?:-(?!none$).+)?$/', $token['utility']) === 1;
 
-        expect($offenders)->toBe([]);
+        // a raised layer's file may name `shadow-pop` and nothing else
+        $allow = [];
+        foreach (raisedLayers() as $entry) {
+            foreach (restyledTokens() as $path => $_) {
+                if (str_starts_with($path, 'components/'.$entry.'/') || $path === 'components/'.$entry.'.blade.php') {
+                    $allow[$path] = ['shadow-pop'];
+                }
+            }
+        }
+
+        expect(restyleOffenders($isShadow, $allow))->toBe([]);
+    });
+
+    it('lets the raised layers cast the shadow token, and the others nothing', function () {
+        foreach (['modal/index', 'menu/index', 'toast/index', 'command/index', 'lightbox'] as $file) {
+            expect(file_get_contents(__DIR__.'/../../components/'.$file.'.blade.php'))->toContain('shadow-pop');
+        }
+
+        foreach (['tooltip/content', 'tabs/index', 'tabs/item', 'breadcrumbs', 'accordion/index', 'accordion/item'] as $file) {
+            expect(file_get_contents(__DIR__.'/../../components/'.$file.'.blade.php'))->not->toMatch('/\bshadow-/');
+        }
     });
 
     it('rings a control on :focus-visible only, never :focus', function () {
