@@ -8,8 +8,8 @@
     'label' => null,
     'value' => null,
     'count' => null,
-    'current' => false,
-    'newtab' => false,
+    'current' => null,
+    'newtab' => null,
 ])
 
 @php

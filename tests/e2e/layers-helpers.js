@@ -37,15 +37,31 @@ export async function showPrompt(page, kind, config) {
   return dialog
 }
 
-/** Show a toast that stays, and wait until it is drawn. Returns the panel inside the popover. */
+/**
+ * Show a toast that stays, and wait until THIS toast is drawn. Returns the panel inside the popover. The previous toast is closed
+ * first and waited out, because the root keeps `opacity-100` from it until the new one's `nextTick`: that class alone proves nothing.
+ * Then the popover must be open and the new text (the heading, else the message) must be in the panel, and so must a visible icon
+ * when the variant has one.
+ */
 export async function showToast(page, config) {
+  const root = page.locator('[data-atom-toast]')
+
+  await page.evaluate(() => { window.dispatchEvent(new CustomEvent('atom-toast-close')) })
+  await expect(root).not.toHaveClass(/opacity-100/)
+  await expect(root).toBeHidden()
+
   await page.evaluate((c) => { atom.toast({ delay: 0, ...c }) }, config)
 
-  const root = page.locator('[data-atom-toast]')
   await expect(root).toHaveClass(/opacity-100/)
+  await expect(root).toBeVisible()
+
+  const panel = root.locator('> div').first()
+  const first = Array.isArray(config.message) ? config.message[0] : config.message
+  await expect(panel).toContainText(config.heading ?? config.subheading ?? first)
+  if (config.variant) await expect(panel.locator('[data-atom-icon]:visible').first()).toBeVisible()
   await settle(root)
 
-  return root.locator('> div').first()
+  return panel
 }
 
 /** Open the sheet's dropdown and return its menu, once it is open and faded in. */

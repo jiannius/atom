@@ -74,7 +74,20 @@ describe('tabs', function () {
     it('marks the current tab active', function () {
         $html = Blade::render('<atom:tabs :tabs="[[\'label\' => \'A\', \'value\' => \'a\', \'current\' => true]]" />');
 
-        expect($html)->toContain('data-active');
+        // the attribute on the tab itself: every tab carries `not-[data-active]:truncate`, so a substring says nothing
+        expect($html)->toMatch('/<button\b[^>]*\sdata-active(?=[\s>=])[^>]*>/');
+    });
+
+    it('opens a tab given as an array in a new tab, as its newtab key says', function () {
+        $html = Blade::render('<atom:tabs :tabs="[[\'label\' => \'A\', \'href\' => \'/a\', \'newtab\' => true]]" />');
+
+        expect($html)->toMatch('/<a\b[^>]*\starget="_blank"/');
+    });
+
+    it('marks no tab active when none is current', function () {
+        $html = Blade::render('<atom:tabs :tabs="[[\'label\' => \'A\', \'value\' => \'a\']]" />');
+
+        expect($html)->not->toMatch('/<button\b[^>]*\sdata-active(?=[\s>=])[^>]*>/');
     });
 
     it('stays static — no alpine state — without wire:model', function () {
@@ -89,7 +102,8 @@ describe('tabs', function () {
 
         expect($html)
             ->toContain('data-atom-tabs')
-            ->toContain('data-active')              // current
+            ->toMatch('/<button\b[^>]*\sdata-active(?=[\s>=])[^>]*>\s*Profile/')  // current
+            ->not->toMatch('/<a\b[^>]*\sdata-active(?=[\s>=])/')
             ->toContain('href="/billing"')          // link tab renders an <a>
             ->not->toContain('x-modelable')
             ->not->toContain('x-data')

@@ -45,7 +45,7 @@ for (const tw of ['floor', 'latest']) {
         expect((await style(close.locator('[data-atom-icon]'))).width).toBe(16)
 
         // after the content in the tab order, so showModal() puts the focus on the first field and no ring is drawn on the close button
-        expect(await page.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? document.activeElement?.tagName)).not.toBe(null)
+        await expect(dialog.getByTestId('m-basic-input')).toBeFocused()
         await expect(close).not.toBeFocused()
         expect((await style(close, 'outline-style'))['outline-style']).toBe('none')
       })
