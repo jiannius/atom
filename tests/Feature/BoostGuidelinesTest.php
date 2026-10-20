@@ -597,3 +597,14 @@ it('keeps the skill\'s colour-name table the one Color::tone() draws', function 
         }
     }
 });
+
+// V4-3c, the overlays and navigation: the skill carries the one raised-layer rule and the tone-token icons.
+it('teaches the raised layer and the overlays\' tokens', function () {
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+    expect($skill)->toContain('Overlays and navigation (restyled in V4-3c)')
+        ->and($skill)->toContain('`shadow-pop` token')
+        ->and($skill)->toContain('last tab stop')
+        ->and($skill)->toContain('`bg-fg text-canvas`')
+        ->and($skill)->toContain('`text-danger-fg`, never `text-red-500`');
+});
