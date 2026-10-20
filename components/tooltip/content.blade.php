@@ -3,12 +3,14 @@
 ])
 
 @php
+/* The inverse of the surface it floats over (the fg as a fill, the canvas as its text): dark on a light page and light on a
+   dark one, 15:1 either way. It is a label, not a panel, so it has no hairline and no shadow. */
 $classes = Arr::toCssClasses([
-    'relative py-1.5 px-2.5',
-    'rounded-md',
-    'text-sm text-white font-medium',
-    'bg-zinc-800 dark:bg-zinc-700 dark:border dark:border-white/10',
-    'p-0 overflow-visible',
+    'relative px-2 py-1',
+    'rounded-nav',
+    'text-xs text-canvas font-medium',
+    'bg-fg',
+    'overflow-visible',
 ]);
 @endphp
 
@@ -19,6 +21,6 @@ $classes = Arr::toCssClasses([
     {{ $slot }}
 
     @if ($kbd)
-        <span class="ps-1 text-zinc-300">{{ $kbd }}</span>
+        <span class="ps-1 text-canvas/70">{{ $kbd }}</span>
     @endif
 </div>
