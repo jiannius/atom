@@ -80,6 +80,10 @@ x-on:atom-modal-close.window="closeModal"
 x-on:keydown.escape.stop.prevent="escapeClose"
 @if ($dismissible) x-on:click="backdropClick" @endif
 {{ $attributes->class($classes) }}>
+    {{ $slot }}
+
+    {{-- After the content, so showModal() puts the focus on the first field or action rather than on this button (a ring on
+         the close button at every open); it is placed by `absolute`, so the order is the keyboard's alone. --}}
     @if ($closeable)
         <div class="absolute top-3 end-3">
             <button
@@ -91,6 +95,4 @@ x-on:keydown.escape.stop.prevent="escapeClose"
             </button>
         </div>
     @endif
-
-    {{ $slot }}
 </dialog>

@@ -61,7 +61,7 @@ if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attribute
 
 <{{ $el }} {{ $attributes->class($classes)->merge($merges) }}>
     @if ($iconStart = data_get($icons, 'start'))
-        <x-dynamic-component :component="'atom::icon.'.$iconStart" class="shrink-0 size-4 opacity-70"/>
+        <x-dynamic-component :component="'atom::icon.'.$iconStart" class="shrink-0 size-4 text-current/70"/>
     @endif
 
     <div class="grow leading-tight whitespace-nowrap truncate">
@@ -73,6 +73,6 @@ if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attribute
     @endif
 
     @if ($iconEnd = data_get($icons, 'end'))
-        <x-dynamic-component :component="'atom::icon.'.$iconEnd" class="shrink-0 size-4 opacity-70"/>
+        <x-dynamic-component :component="'atom::icon.'.$iconEnd" class="shrink-0 size-4 text-current/70"/>
     @endif
 </{{ $el }}>

@@ -14,6 +14,14 @@ data-atom-lightbox>
     class="fixed inset-0 flex items-center justify-center overflow-auto">
         <button
         type="button"
+        x-on:click="close()"
+        aria-label="{{ t('Close') }}"
+        class="absolute top-5 right-6 size-10 flex items-center justify-center rounded-pill border border-border-strong bg-surface-raised text-fg shadow-pop transition-colors hover:bg-surface-sunken cursor-pointer">
+            <atom:icon.close class="size-5" />
+        </button>
+
+        <button
+        type="button"
         x-on:click.stop="prev()"
         aria-label="{{ t('Previous') }}"
         class="absolute top-1/2 left-6 -translate-y-1/2 size-10 flex items-center justify-center rounded-pill border border-border-strong bg-surface-raised text-fg shadow-pop transition-colors hover:bg-surface-sunken cursor-pointer">
@@ -26,14 +34,6 @@ data-atom-lightbox>
         aria-label="{{ t('Next') }}"
         class="absolute top-1/2 right-6 -translate-y-1/2 size-10 flex items-center justify-center rounded-pill border border-border-strong bg-surface-raised text-fg shadow-pop transition-colors hover:bg-surface-sunken cursor-pointer">
             <atom:icon.right class="size-5" />
-        </button>
-
-        <button
-        type="button"
-        x-on:click="close()"
-        aria-label="{{ t('Close') }}"
-        class="absolute top-5 right-6 size-10 flex items-center justify-center rounded-pill border border-border-strong bg-surface-raised text-fg shadow-pop transition-colors hover:bg-surface-sunken cursor-pointer">
-            <atom:icon.close class="size-5" />
         </button>
 
         <template x-for="(item, i) in gallery" hidden>
