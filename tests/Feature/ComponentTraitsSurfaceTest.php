@@ -326,3 +326,16 @@ it('names WithBreadcrumbs when a component defines breadcrumbs() without it', fu
 it('lets a component with every trait render all of it', function () {
     Livewire::test(ComponentHelpersFixture::class)->assertOk();
 });
+
+it('echoes an editor image upload back as temporary preview urls', function () {
+    \Illuminate\Support\Facades\Storage::fake('local');
+    config()->set('livewire.temporary_file_upload.disk', 'local');
+
+    $test = Livewire::test(ComponentHelpersFixture::class)
+        ->set('_editor.images', [\Illuminate\Http\UploadedFile::fake()->image('a.jpg')]);
+
+    $images = $test->get('_editor.images');
+
+    expect($images)->toHaveCount(1);
+    expect($images[0])->toBeString()->toContain('preview-file');
+});
