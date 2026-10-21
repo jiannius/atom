@@ -6,6 +6,15 @@ import { open, ratio, style, gate, token, contrastOf, sweepText, ACCENTS, TEXT, 
 
 export { open, ratio, style, gate, token, contrastOf, sweepText, ACCENTS, TEXT, GRAPHIC }
 
+/**
+ * Let every finite animation and transition on the page end, so a colour is read where it ends and not in the middle of a fade. An infinite
+ * one (a spinner) never ends, so it is left out, and the wait is capped: a page that cannot settle in 3s is read as it is.
+ */
+export const settled = (page) => page.evaluate(() => Promise.race([
+  Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => null))),
+  new Promise((resolve) => setTimeout(resolve, 3000)),
+]))
+
 /** Open the content sheet. */
 export const openContent = (page, options = {}) => open(page, { path: 'content', ...options })
 

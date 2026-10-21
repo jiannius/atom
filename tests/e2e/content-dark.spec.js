@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openContent, gate, sweepText, tokenHex, chartReady, ACCENTS, TEXT, GRAPHIC } from './content-helpers.js'
+import { openContent, gate, sweepText, contrastOf, settled, chartReady, ACCENTS, TEXT, GRAPHIC } from './content-helpers.js'
 import { openLook, measureSweep } from './calendar-look.js'
 
 // V4-3d, the dark check. Scoped to the 3d components, and the variants of them, that the dark-mode hosts render (found by scanning
@@ -64,7 +64,7 @@ for (const tw of ['floor', 'latest']) {
           await gate(page.getByTestId('chat').locator('.editor').first(), boundary, 'border', 'chat frame')
 
           const placeholder = page.getByTestId('tiptap').locator('p.is-editor-empty')
-          const found = await placeholder.evaluate((el, src) => new Function(`return ${src}`)()(el, { what: 'text', pseudo: '::before' }), (await import('./controls-helpers.js')).contrastOf.toString())
+          const found = await placeholder.evaluate(contrastOf, { what: 'text', pseudo: '::before' })
           expect(found.ratio, `placeholder ${found.colour} on ${found.back}`).toBeGreaterThanOrEqual(TEXT)
 
           for (const button of await page.getByTestId('tiptap').getByRole('toolbar').locator('button:visible').all()) await gate(button.locator('svg').first(), GRAPHIC, 'text', 'toolbar glyph')
@@ -76,11 +76,12 @@ for (const tw of ['floor', 'latest']) {
           await openContent(page, { tw, dark, accent, section: 'chart' })
 
           for (const id of ['chart-bar', 'chart-bar-default']) {
-            const { root, series } = await chartReady(page, id)
+            const { root } = await chartReady(page, id)
 
             for (const bar of await root.locator('.apexcharts-bar-area').all()) await gate(bar, GRAPHIC, 'svg-fill', `${id} bar`)
             await gate(root.locator('.apexcharts-xaxis-label').first(), TEXT, 'svg-fill', `${id} label`)
-            expect(await series.count()).toBe(1)
+            // the fixture has four points, and one bar is drawn for each
+            expect(await root.locator('.apexcharts-bar-area').count()).toBe(4)
           }
 
           const area = await chartReady(page, 'chart-area', 'area')
@@ -144,7 +145,7 @@ for (const tw of ['floor', 'latest']) {
           await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
           await page.evaluate(() => document.fonts.ready)
           // the theme and the accent were set after load, so the colours transition: read them at their end, not in the middle of the fade
-          await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => null))))
+          await settled(page)
 
           expect(await sweepText(page, 'body', TEXT, 15)).toEqual([])
         })

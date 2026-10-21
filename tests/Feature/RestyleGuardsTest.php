@@ -453,9 +453,26 @@ describe('V4-3d text, editor and chart', function () {
         }
     });
 
+    it('takes the theme listener off the document when a chart goes, and reads the tokens from the chart\'s own element', function () {
+        foreach (['bar', 'area', 'trend'] as $name) {
+            $js = file_get_contents(__DIR__.'/../../resources/js/alpinejs/chart/'.$name.'.js');
+
+            expect($js, $name)->toContain('destroy ()')->toContain("removeEventListener('darkmode-changed'")->toContain('isConnected')->toContain('this.$el');
+        }
+
+        expect(file_get_contents(__DIR__.'/../../resources/js/alpinejs/chart/colors.js'))->toContain('el.append(probe)')->not->toContain('documentElement.append')->toContain('var(${name}, ${FALLBACK[name]');
+    });
+
     it('draws the chart with the tokens: no palette hex left in the factories', function () {
         foreach (glob(__DIR__.'/../../resources/js/alpinejs/chart/*.js') as $file) {
-            expect(file_get_contents($file))->not->toMatch('/#[0-9a-fA-F]{6}\b|\'(?:black|white)\'|bg-zinc|shadow-lg/', basename($file));
+            $js = file_get_contents($file);
+
+            // colors.js alone holds hex: the greys a token falls back to on a page that does not define it (its FALLBACK table)
+            if (basename($file) === 'colors.js') {
+                $js = preg_replace('/const FALLBACK = \{.*?\n\}/s', '', $js);
+            }
+
+            expect($js)->not->toMatch('/#[0-9a-fA-F]{6}\b|\'(?:black|white)\'|bg-zinc|shadow-lg/', basename($file));
         }
     });
 });

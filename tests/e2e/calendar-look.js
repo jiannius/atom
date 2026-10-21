@@ -6,18 +6,15 @@
 // host draws: no CDN, no network. It was Tailwind's browser build from a CDN until V4-3d, when the calendar moved onto the role tokens that
 // only atom.tailwind.css defines.
 
-/** Kept for the specs that still name it: nothing skips any more, the build is on disk or the run fails. */
-export const SKIP_REASON = 'SKIPPED, NOT PASSED: the consumer Tailwind build is missing, so the look and contrast checks did not run'
-
 /**
- * Open the look fixture and give it the consumer's Tailwind, with a class-based dark variant as atom's opt-in dark mode is. Always returns
- * true; a missing build (`node tests/consumer/build.mjs` not run) is a failure, never a skip.
+ * Open the look fixture and give it the consumer's Tailwind, with a class-based dark variant as atom's opt-in dark mode is. A missing build
+ * (`node tests/consumer/build.mjs` not run) throws: a look check is never a skip.
  */
 export async function openLook (page, { view = 'month', query = '', theme = 'light', tailwind = true, tw = 'latest', accent = null } = {}) {
     await page.goto(`/atom/e2e/calendar-look?view=${view}${query ? '&' + query : ''}`)
     await page.waitForFunction(() => window.Livewire !== undefined && window.Alpine !== undefined && window.atomLook !== undefined)
 
-    if (!tailwind) return true
+    if (!tailwind) return
 
     // asked from the page, as the stylesheet is, so a route a test puts in front of it is seen
     const status = await page.evaluate((url) => fetch(url).then((response) => response.status), `/atom/e2e/consumer-css/${tw}`)
@@ -36,8 +33,6 @@ export async function openLook (page, { view = 'month', query = '', theme = 'lig
 
     await page.evaluate(() => document.fonts.ready)
     await page.waitForTimeout(200)
-
-    return true
 }
 
 /**

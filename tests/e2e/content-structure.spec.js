@@ -1,5 +1,5 @@
 import { test, expect, devices } from '@playwright/test'
-import { openContent, style, token, tokenHex, hexOf, chartReady } from './content-helpers.js'
+import { openContent, style, token, tokenHex, hexOf, chartReady, settled } from './content-helpers.js'
 import { openLook } from './calendar-look.js'
 
 /** `#rrggbb` channels. */
@@ -214,6 +214,43 @@ for (const tw of ['floor', 'latest']) {
         expect(s['font-size'], tag).toBe(`${size}px`)
         expect(s['font-weight'], tag).toBe('590')
       }
+
+      // a paragraph in a flow has 12px under it; the first is not in a cell or a list item
+      const flow = content.locator(':scope > p').first()
+      expect((await style(flow, 'margin-bottom'))['margin-bottom']).toBe('12px')
+      expect(parseFloat((await style(flow, 'line-height'))['line-height'])).toBeCloseTo(14 * 1.6, 1)
+    })
+
+    test('printed content (no table wrapper): a paragraph in a cell has no margin, so a cell is one line and its padding; a list pitches by line and a quarter rem', async ({ page }) => {
+      await openContent(page, { tw, section: 'editor' })
+      const content = page.getByTestId('content')
+
+      // the table is printed bare: no .tableWrapper around it
+      expect(await content.locator('.tableWrapper, .table-wrapper').count()).toBe(0)
+
+      const cellP = await style(content.locator('td p').first(), 'margin-bottom', 'margin-top')
+      expect([cellP['margin-bottom'], cellP['margin-top']]).toEqual(['0px', '0px'])
+
+      // line (22.4) + 2 x 0.375rem padding (12) + the 1px borders, never the 12px a flow paragraph would add
+      const cell = await style(content.locator('td').first())
+      expect(cell.height).toBeGreaterThan(34)
+      expect(cell.height).toBeLessThan(38)
+      expect((await style(content.locator('th').first())).height).toBeLessThan(38)
+
+      const items = content.locator('li')
+      expect(await items.count()).toBe(2)
+      expect((await style(items.first().locator('p'), 'margin-bottom'))['margin-bottom']).toBe('4px')
+
+      const pitch = await items.evaluateAll((els) => els[1].getBoundingClientRect().top - els[0].getBoundingClientRect().top)
+      expect(pitch).toBeGreaterThan(26)
+      expect(pitch).toBeLessThan(27)
+
+      // a bare table has the gap of a paragraph under it, and a quote does not add its margin to its paragraph's
+      expect((await style(content.locator(':scope > table'), 'margin-bottom'))['margin-bottom']).toBe('12px')
+      expect((await style(content.locator('blockquote > p'), 'margin-bottom'))['margin-bottom']).toBe('0px')
+
+      // the list itself has 12px under it, like a paragraph
+      expect((await style(content.locator('ul'), 'margin-bottom'))['margin-bottom']).toBe('12px')
     })
 
     test('a link is the accent ink with a solid underline; a mention is the info tone', async ({ page }) => {
@@ -370,6 +407,52 @@ for (const tw of ['floor', 'latest']) {
       }
     })
 
+    test('the colours are read from the chart\'s own element: a chart in a .dark subtree follows it when the theme event comes', async ({ page }) => {
+      await openContent(page, { tw, section: 'chart' })
+      const { root } = await chartReady(page, 'chart-bar')
+
+      const label = root.locator('.apexcharts-xaxis-label').first()
+      await expect.poll(() => hexOf(label, 'fill')).toBe(await tokenHex(page, 'fg-muted'))
+      const light = await tokenHex(page, 'fg-muted')
+
+      // only this chart's wrapper is dark: the page is not
+      await root.evaluate((el) => {
+        el.parentElement.classList.add('dark')
+        document.dispatchEvent(new CustomEvent('darkmode-changed', { detail: 'dark' }))
+      })
+
+      await expect.poll(() => hexOf(label, 'fill')).not.toBe(light)
+      // the dark muted foreground is the lighter half of the pair
+      expect(await hexOf(label, 'fill')).toBe('#a6a297')
+    })
+
+    test('the theme listener goes with the chart: every one a chart added is taken off when its tree is destroyed', async ({ page }) => {
+      await page.addInitScript(() => {
+        window.__themeListeners = { added: 0, removed: 0 }
+        const add = EventTarget.prototype.addEventListener
+        const remove = EventTarget.prototype.removeEventListener
+
+        EventTarget.prototype.addEventListener = function (type, ...rest) { if (type === 'darkmode-changed') window.__themeListeners.added++; return add.call(this, type, ...rest) }
+        EventTarget.prototype.removeEventListener = function (type, ...rest) { if (type === 'darkmode-changed') window.__themeListeners.removed++; return remove.call(this, type, ...rest) }
+      })
+      await openContent(page, { tw, section: 'chart' })
+      await chartReady(page, 'chart-bar')
+      await chartReady(page, 'chart-area', 'area')
+
+      // three cards with a sparkline and four charts: wait until every one has registered
+      await expect.poll(() => page.evaluate(() => window.__themeListeners.added)).toBeGreaterThanOrEqual(7)
+      const added = await page.evaluate(() => window.__themeListeners.added)
+
+      // the way a Livewire morph or a wire:navigate swap takes a block of the page away: Alpine's tree is destroyed, then the nodes go
+      await page.evaluate(() => {
+        const section = document.querySelector('[data-testid="chart"]')
+
+        window.Alpine.destroyTree(section)
+        section.remove()
+      })
+      await expect.poll(() => page.evaluate(() => window.__themeListeners.removed)).toBe(added)
+    })
+
     test('the grid is the hairline token and the labels the muted one', async ({ page }) => {
       await openContent(page, { tw, section: 'chart' })
       const { root } = await chartReady(page, 'chart-bar')
@@ -430,10 +513,20 @@ for (const tw of ['floor', 'latest']) {
 
         return { bg: s.backgroundColor, edge: s.borderLeftColor, label: el.getAttribute('aria-label') }
       }))
-      const tints = new Set([await token(page, 'danger-bg'), await token(page, 'warning-bg'), await token(page, 'success-bg'), await token(page, 'info-bg'), await token(page, 'neutral-bg')])
+      const pairs = new Map([
+        [await token(page, 'danger-bg'), await token(page, 'danger-fg')],
+        [await token(page, 'warning-bg'), await token(page, 'warning-fg')],
+        [await token(page, 'success-bg'), await token(page, 'success-fg')],
+        [await token(page, 'info-bg'), await token(page, 'info-fg')],
+        [await token(page, 'neutral-bg'), await token(page, 'fg-subtle')],
+        [await token(page, 'accent-soft'), await token(page, 'accent-ink')],
+      ])
 
       expect(chips.length).toBeGreaterThan(3)
-      expect(chips.filter((c) => tints.has(c.bg)).length).toBeGreaterThan(2)
+
+      const toned = chips.filter((c) => pairs.has(c.bg))
+      expect(toned.length).toBeGreaterThan(2)
+      for (const chip of toned) expect(chip.edge, `${chip.label}: the edge is the ink of its tint's tone`).toBe(pairs.get(chip.bg))
     })
 
     test('the day list is a raised panel: the raised fill, a strong hairline, a 10px radius and the shadow token', async ({ page }) => {
@@ -459,6 +552,7 @@ for (const tw of ['floor', 'latest']) {
       await page.addStyleTag({ url: `/atom/e2e/consumer-css/${tw}` })
       await page.evaluate(() => document.documentElement.classList.remove('dark'))
       await page.evaluate(() => document.fonts.ready)
+      await settled(page)
     }
 
     test('an example is a surface panel over a sunken source block, both at the panel radius with a hairline and no shadow', async ({ page }) => {
