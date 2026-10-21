@@ -7,7 +7,7 @@ Atom (`jiannius/atom`) is a Tailwind + Alpine + Livewire component library for L
 Every component ships with a canonical, verified usage example:
 
 @verbatim
-- **Demo snippets:** `vendor/jiannius/atom/resources/views/docs/demos/<component>/*.blade.php` — each file is a tiny, copy-paste-ready Blade example (these power the live `/atom/docs` pages, so they are rendered and verified, never stale). Read the relevant one before writing `<atom:...>` markup.
+- **Demo snippets:** `vendor/jiannius/atom/resources/views/docs/demos/<component>/*.blade.php` — each file is a tiny, copy-paste-ready Blade example (rendered and verified in `/atom/docs`, never stale). Read the relevant one before writing `<atom:...>` markup.
 - **Prop reference:** the `@props([...])` block at the top of `vendor/jiannius/atom/components/<component>/index.blade.php` (or `components/<component>.blade.php` for flat components) is the authoritative prop list.
 - **Browsable docs:** with `APP_ENV=local`, visit `/atom/docs` for live previews and prop tables.
 @endverbatim
@@ -33,12 +33,16 @@ Never write `<x-atom::name>`, `<x-icon />`, or bespoke equivalents when an Atom 
 
 ### Security rules that always apply
 
-- Chat HTML from the browser is untrusted: clean it with `Jiannius\Atom\Tiptap\Content::sanitize()` before you store it, and print it through `<atom:tiptap.content>`. Never print editor or chat HTML with `x-html`, `{!! !!}` or `->html()`. `sanitize()` is for chat HTML only: the `<atom:tiptap>` JSON value is stored as JSON and printed with `<atom:tiptap.content>`.
+- Chat HTML from the browser is untrusted: clean it with `Jiannius\Atom\Tiptap\Content::sanitize()` before you store it, and print it through `<atom:tiptap.content>`. Never print editor or chat HTML with `x-html`, `{!! !!}` or `->html()`. `sanitize()` is for chat HTML only: the `<atom:tiptap>` JSON value is stored as JSON.
 - A URL a user typed goes through `safe_url($url)` (PHP) or `atom.safeUrl(url)` (JS) before it reaches your own `href`, `formaction`, `window.open()` or `location`; `{{ }}` escaping does not stop `javascript:`. It checks the scheme only, so a redirect must also check the host.
 - A public `$filters` passed to `->filter()` is untrusted: it still filters any visible column and calls any named scope, so pass only allowed keys (`filter(Arr::only($this->filters, [...]))`) when that matters. Don't `#[Locked]` it: the table controls bind to it. URL filters: `WithUrlFilters`.
 - A `'html'` key in a select option set is trusted, not escaped: wrap every interpolated user or database field in `e()`.
 - `POST /atom/action/{Name}` is public and unauthenticated, so an action is browser-callable only if it implements `WebAction`. Implement it only when the browser must call it; then add `authorize()`, validate every param, and return columns, not models. A component that shadows `action()` must declare it `protected`.
 - A string `<atom:select options="name">` needs `app/Actions/GetOptions.php` extending `\Jiannius\Atom\Actions\GetOptions`, with `name` declared in `$auth` (the default) or `$guest`, and the query scoped to the current tenant. Otherwise the select renders empty, silently.
+
+### Livewire components
+
+Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEditor`, `WithRecaptcha`. `$this->toast()` and siblings are PHP-only (JS: `atom.toast()`).
 
 ### Keep the layout on Atom
 
@@ -56,13 +60,11 @@ Views drift when they hand-roll what Atom already has.
 ### Going deeper
 
 The rules above apply to every view. The **`atom-components` skill** carries the rest: the
-`AtomComponent` trait and the method names it occupies, forms and reCAPTCHA, modals, tables,
-navigation, patterns, breadcrumbs, the calendar,
-toast/alert/confirm, dropdowns, tooltips, `<atom:select>` option sets, Actions
-and the `WebAction` contract, enums, the editor and sanitising, safe URLs, share
-buttons, mail, broadcasting, and conventions.
+component traits and the names they occupy, forms and reCAPTCHA, modals, tables,
+navigation, patterns, breadcrumbs, the calendar, notifications, dropdowns, option sets,
+Actions, enums, the editor, safe URLs, share buttons, mail and broadcasting.
 
-Activate it before writing non-trivial Atom markup or any Livewire component.
+Activate it before writing non-trivial Atom markup or a Livewire component.
 The skill loads only if Boost skills are enabled (`boost.json`) and the agent supports
 skills (Claude Code, Codex, Cursor, Gemini, Amp). Otherwise run
 `php artisan boost:install` and enable skills.

@@ -10,6 +10,8 @@
 ])
 
 @php
+app('atom')->requireTrait(\Jiannius\Atom\Traits\WithTable::class, '<atom:table>');
+
 // First-load skeleton: opt-in, and only while a paginator hasn't loaded yet.
 // Gated behind $skeleton so static/synchronous tables are completely unaffected.
 $showSkeleton = $skeleton && is_null($paginate);
@@ -24,7 +26,7 @@ $canSelectAll = $selectAll && $paginate;
 // that clears it, because a bulk action over rows the user can no longer see is
 // a surprise. With `sticky-selection` the checked ids are kept instead, so a
 // user can build one batch across several searches — the component then owes a
-// tableSelectionQuery() (see Traits\AtomComponent) or those ids resolve to
+// tableSelectionQuery() (see Traits\WithTable) or those ids resolve to
 // nothing. select_all always goes: it means "everything matching *this* query",
 // which stops being true the moment the query changes.
 $onFilterChanged = $stickySelection

@@ -2,13 +2,15 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithTable;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class TableFixture extends Component
 {
-    use AtomComponent;
+    use WithPagination;
+    use WithTable;
 
     /** @var array<string,mixed> */
     public array $filters = ['search' => null, 'status' => []];

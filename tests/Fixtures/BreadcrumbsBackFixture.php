@@ -2,12 +2,12 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithBreadcrumbs;
 use Livewire\Component;
 
 class BreadcrumbsBackFixture extends Component
 {
-    use AtomComponent;
+    use WithBreadcrumbs;
 
     /**
      * A listing (the trail root) and a record page below it. The declared URLs are

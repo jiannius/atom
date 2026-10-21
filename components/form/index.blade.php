@@ -32,6 +32,8 @@ if ($disabled) {
     $errorToast = false;
 }
 elseif ($recaptcha) {
+    app('atom')->requireTrait(\Jiannius\Atom\Traits\WithRecaptcha::class, '<atom:form recaptcha>');
+
     // Intercept the submit so reCAPTCHA can mint + attach a token before the
     // Livewire action fires. Drop the native wire:submit (it would fire
     // immediately) and call the method ourselves once the token is set.

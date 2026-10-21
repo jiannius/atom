@@ -2,13 +2,10 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
 use Livewire\Component;
 
 class SelectMorphFixture extends Component
 {
-    use AtomComponent;
-
     public ?string $country = null;
 
     public ?string $status = null;

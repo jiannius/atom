@@ -2,9 +2,10 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithTable;
 use Jiannius\Atom\Traits\WithUrlFilters;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
  * Drives the E2E for the list parts (V4-2c): saved views bound with wire:model so WithUrlFilters carries the view in the URL, a
@@ -15,7 +16,8 @@ use Livewire\Component;
  */
 class TableViewsFixture extends Component
 {
-    use AtomComponent;
+    use WithPagination;
+    use WithTable;
     use WithUrlFilters;
 
     /** @var array<string, mixed> */

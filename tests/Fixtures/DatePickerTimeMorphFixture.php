@@ -2,13 +2,10 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
 use Livewire\Component;
 
 class DatePickerTimeMorphFixture extends Component
 {
-    use AtomComponent;
-
     public ?string $date = null;
 
     public int $renders = 0;

@@ -1,6 +1,6 @@
 <atom:docs.example
 title="Basic"
-description="Static rows shown here. In Livewire, sorting, checkboxes, max rows and pagination are driven by the $_table state from AtomComponent plus the toTable() builder macro."
+description="Static rows shown here. In Livewire, sorting, checkboxes, max rows and pagination are driven by the $_table state from the WithTable trait plus the toTable() builder macro."
 view="atom::docs.demos.table.basic"/>
 
 <atom:docs.example

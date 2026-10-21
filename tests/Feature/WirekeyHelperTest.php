@@ -1,6 +1,6 @@
 <?php
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Livewire\Component;
 
 /**
  * wirekey() builds a wire:key from the values a block depends on, so a morph
@@ -11,9 +11,8 @@ use Jiannius\Atom\Traits\AtomComponent;
  */
 function wirekeyHost(): object
 {
-    return new class {
-        use AtomComponent;
-    };
+    // a macro on Livewire\Component: any component has it, with no trait
+    return new class extends Component {};
 }
 
 it('changes the key when an argument changes to 0', function () {

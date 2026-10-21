@@ -2,9 +2,10 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithTable;
 use Jiannius\Atom\Traits\WithUrlFilters;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
  * WithUrlFilters over a real model, so a test can see what the filter() macro would
@@ -13,7 +14,8 @@ use Livewire\Component;
  */
 class UrlFiltersItemFixture extends Component
 {
-    use AtomComponent;
+    use WithPagination;
+    use WithTable;
     use WithUrlFilters;
 
     /** @var array<string, mixed> */

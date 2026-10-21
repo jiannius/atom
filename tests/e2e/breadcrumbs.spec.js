@@ -126,7 +126,7 @@ test('pushed crumbs still accumulate across navigations', () => {
   expect(trail.breadcrumbs.map(item => item.href)).toEqual(['/app', '/app/customers', '/app/customers/5'])
 })
 
-// $_breadcrumbs defaults to [] on the AtomComponent trait, so a page that renders
+// $_breadcrumbs defaults to [] on the WithBreadcrumbs trait, so a page that renders
 // <atom:breadcrumbs> over a component with no breadcrumbs() method reaches build()
 // with an empty payload. Before the root selector was fixed, build() bailed earlier
 // on such pages and never got here.

@@ -14,7 +14,10 @@ use Jiannius\Atom\Tests\Fixtures\UrlFiltersMountDefaultFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersPaginatedFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersStrayFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersThrowingFixture;
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithBreadcrumbs;
+use Jiannius\Atom\Traits\WithEditor;
+use Jiannius\Atom\Traits\WithRecaptcha;
+use Jiannius\Atom\Traits\WithTable;
 use Jiannius\Atom\Traits\WithUrlFilters;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -661,8 +664,10 @@ describe('the names the trait occupies', function () {
         }
     });
 
-    it('claims no name a host is likely to want, and keeps AtomComponent off the opt-in', function () {
-        expect(class_uses_recursive(AtomComponent::class))->not->toHaveKey(WithUrlFilters::class);
+    it('claims no name a host is likely to want, and no other atom trait carries the opt-in', function () {
+        foreach ([WithTable::class, WithBreadcrumbs::class, WithEditor::class, WithRecaptcha::class] as $trait) {
+            expect(class_uses_recursive($trait))->not->toHaveKey(WithUrlFilters::class);
+        }
 
         foreach (['items', 'rows', 'filters', 'query'] as $name) {
             expect((new ReflectionClass(WithUrlFilters::class))->hasProperty($name))->toBeFalse();

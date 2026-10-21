@@ -2,9 +2,11 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithBreadcrumbs;
+use Jiannius\Atom\Traits\WithTable;
 use Jiannius\Atom\Traits\WithUrlFilters;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
  * Drives the tests for the WithUrlFilters trait: a listing whose filters live in
@@ -17,7 +19,9 @@ use Livewire\Component;
  */
 class UrlFiltersFixture extends Component
 {
-    use AtomComponent;
+    use WithBreadcrumbs;
+    use WithPagination;
+    use WithTable;
     use WithUrlFilters;
 
     /** @var array<string, mixed> */

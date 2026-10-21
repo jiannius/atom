@@ -176,7 +176,7 @@ it('documents the components that need a script, a flag or a colour the source d
     expect($skill)->toContain('sharer.js@0.5.4')
         ->and($skill)->toContain('`table-filter`')
         ->and($skill)->toContain('overflow="modal"')
-        ->and($skill)->toContain('`updatingAtomComponent`')
+        ->and($skill)->toContain('`updatedWithTable`')
         ->and($skill)->toContain('Colour with role tokens, never `zinc-*` or a `dark:` pair')
         ->and($skill)->toContain('Controls (restyled in V4-3a)');
 });

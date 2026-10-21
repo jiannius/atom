@@ -2,6 +2,7 @@
 
 use Jiannius\Atom\Services\TableSort;
 use Jiannius\Atom\Tests\Fixtures\Item;
+use Jiannius\Atom\Tests\Fixtures\OwnTableFixture;
 use Jiannius\Atom\Tests\Fixtures\TableFixture;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -9,7 +10,7 @@ use Livewire\Livewire;
 /**
  * Issue #54 — toTable()'s "raw:" sort had no allow-list.
  *
- * _table is a plain public Livewire property (Traits\AtomComponent), so a
+ * _table is a plain public Livewire property (Traits\WithTable), so a
  * client could $wire.set('_table.sort.column', 'raw:<anything>') and
  * toTable() forwarded the substring after "raw:" straight into
  * orderByRaw(), regardless of the sort= attributes declared on
@@ -17,7 +18,7 @@ use Livewire\Livewire;
  *
  * Fixed with a signed token: components/table/column.blade.php signs a
  * declared raw: sort (Services\TableSort::sign()) before it ever reaches the
- * browser, and AtomComponent::updatingAtomComponent() refuses (403) any
+ * browser, and the raw: sort gate (AtomServiceProvider's update listener) refuses (403) any
  * client update that would leave _table.sort.column holding an unsigned or
  * tampered raw: value — before it ever reaches toTable(). An unsigned raw:
  * value can therefore only have come from PHP, where it stays trusted.
@@ -97,7 +98,7 @@ it('trusts an unsigned raw: sort set from PHP, not through the client', function
     $test = Livewire::test(TableFixture::class);
 
     // Mutating the property directly (not via ->set()) never touches
-    // updatingAtomComponent()'s client gate — this is what a host's own
+    // the update listener's client gate — this is what a host's own
     // mount() assigning $_table['sort']['column'] = 'raw:...' looks like.
     $test->instance()->_table['sort']['column'] = 'raw:amount * -1';
     $test->instance()->_table['sort']['direction'] = 'asc';
@@ -132,7 +133,7 @@ it('clamps a hostile sort direction on the raw: branch to asc', function () {
  * Review finding (medium): the gate above only checked is_string($sortColumn)
  * on the resolved value, so an array-valued column — or a deeper path like
  * "_table.sort.column.0" that turns the leaf into an array — sailed straight
- * through updatingAtomComponent() and then hit str($sortColumn) in toTable(),
+ * through the sort gate and then hit str($sortColumn) in toTable(),
  * an unauthenticated 500 rather than a 403 on any sortable table.
  */
 
@@ -171,4 +172,130 @@ it('refuses a non-string sort direction', function () {
     Livewire::test(TableFixture::class)
         ->set('_table.sort.direction', ['asc'])
         ->assertForbidden();
+});
+
+
+/**
+ * Review finding (medium): toTable() read `_table` from any component that had the
+ * property, WithTable or not. A host's own public $_table has no sort
+ * gate, so a client could set an unsigned raw: column that then read as PHP-set and
+ * trusted: the #54 injection through a component that never opted in.
+ */
+it('reads the table state only from a component that uses WithTable', function () {
+    Item::factory()->count(2)->create();
+
+    $test = Livewire::test(OwnTableFixture::class)
+        ->set('_table.sort.column', 'raw:(SELECT 1)')
+        ->set('_table.sort.direction', 'desc');
+
+    // nothing gates the host's own property, so the value did land
+    expect($test->get('_table.sort.column'))->toBe('raw:(SELECT 1)');
+
+    DB::enableQueryLog();
+    withLivewireContext($test->instance(), fn () => Item::query()->toTable());
+    $log = collect(DB::getQueryLog())->pluck('query')->implode(' ; ');
+    DB::disableQueryLog();
+
+    expect($log)->not->toContain('(SELECT 1)')
+        ->and($log)->toContain('order by "id" desc');
+});
+
+it('applies no sort and the default row count to a component with no table state at all', function () {
+    Item::factory()->count(3)->create();
+
+    $component = new class extends \Livewire\Component {
+        public function render() { return '<div></div>'; }
+    };
+
+    DB::enableQueryLog();
+    $rows = withLivewireContext($component, fn () => Item::query()->toTable());
+    $log = collect(DB::getQueryLog())->pluck('query')->implode(' ; ');
+    DB::disableQueryLog();
+
+    expect($rows->perPage())->toBe(100)
+        ->and($log)->toContain('order by "id" desc');
+});
+
+it('still sorts by the table state of a component that uses WithTable', function () {
+    Item::factory()->create(['name' => 'b']);
+    Item::factory()->create(['name' => 'a']);
+
+    $test = Livewire::test(TableFixture::class)
+        ->set('_table.sort.column', 'name')
+        ->set('_table.sort.direction', 'asc');
+
+    $names = withLivewireContext($test->instance(), fn ($c) => $c->items()->pluck('name')->all());
+
+    expect($names)->toBe(['a', 'b']);
+});
+
+/**
+ * Review finding (medium): the gate used to be a trait hook, and a method of the same
+ * name on the host (Livewire's ordinary updating hook for a `$withTable` property)
+ * silently replaced it, while toTable() still trusted _table because the component uses
+ * WithTable. It is a listener on Livewire's `update` event now: no host method touches it.
+ */
+it('still refuses an unsigned raw: sort when the host defines updatingWithTable() itself', function () {
+    Item::factory()->count(2)->create();
+
+    $shadow = \Jiannius\Atom\Tests\Fixtures\SortGateShadowFixture::class;
+
+    Livewire::test($shadow)->set('_table.sort.column', 'raw:(SELECT 1)')->assertForbidden();
+    Livewire::test($shadow)->set('_table.sort', ['column' => 'raw:(SELECT 1)', 'direction' => 'asc'])->assertForbidden();
+    Livewire::test($shadow)->set('_table', ['sort' => ['column' => 'raw:(SELECT 1)', 'direction' => 'asc']])->assertForbidden();
+    Livewire::test($shadow)->set('_table.sort.column.0', 'raw:(SELECT 1)')->assertForbidden();
+
+    $test = Livewire::test($shadow);
+
+    DB::enableQueryLog();
+    withLivewireContext($test->instance(), fn () => Item::query()->toTable());
+    $log = collect(DB::getQueryLog())->pluck('query')->implode(' ; ');
+    DB::disableQueryLog();
+
+    expect($log)->not->toContain('(SELECT 1)');
+});
+
+it('refuses the magic $set too', function () {
+    // $wire.$set() reaches the server as an ordinary update
+    Livewire::test(TableFixture::class)->call('$set', '_table.sort.column', 'raw:(SELECT 1)')->assertForbidden();
+});
+
+it('leaves a legitimate update to the table state alone', function () {
+    Livewire::test(TableFixture::class)
+        ->set('_table.max_rows', 50)
+        ->set('_table.sort.column', 'name')
+        ->set('_table.sort.direction', 'desc')
+        ->assertOk()
+        ->assertSet('_table.max_rows', 50);
+});
+
+it('refuses the upload endpoint naming the sort column as its target', function () {
+    \Illuminate\Support\Facades\Storage::fake('local');
+    config()->set('livewire.temporary_file_upload.disk', 'local');
+
+    // WithFileUploads writes the upload into whatever property the browser names, through
+    // the same update event: a file is no string
+    Livewire::test(\Jiannius\Atom\Tests\Fixtures\ComponentHelpersFixture::class)
+        ->set('_table.sort.column', \Illuminate\Http\UploadedFile::fake()->image('a.jpg'))
+        ->assertForbidden();
+});
+
+/**
+ * The gate runs first: a host's own updating hooks (saving a sort preference) share the
+ * `update` event and must not see, or store, a value the gate refuses.
+ */
+it('refuses an unsigned raw: sort before any host updating hook sees it', function () {
+    $fixture = \Jiannius\Atom\Tests\Fixtures\SortGateOrderFixture::class;
+    $fixture::$seen = [];
+
+    Livewire::test($fixture)->set('_table.sort.column', 'raw:(SELECT 1)')->assertForbidden();
+    Livewire::test($fixture)->set('_table.sort', ['column' => 'raw:(SELECT 1)', 'direction' => 'asc'])->assertForbidden();
+    Livewire::test($fixture)->set('_table', ['sort' => ['column' => 'raw:(SELECT 1)']])->assertForbidden();
+
+    expect($fixture::$seen)->toBe([]);
+
+    // a legitimate update still reaches the host's hooks
+    Livewire::test($fixture)->set('_table.sort.column', 'name')->assertOk();
+
+    expect(collect($fixture::$seen)->pluck(1)->all())->toContain('name');
 });

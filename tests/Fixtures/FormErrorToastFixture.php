@@ -2,7 +2,8 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithEditor;
+use Jiannius\Atom\Traits\WithRecaptcha;
 use Livewire\Component;
 
 /**
@@ -14,7 +15,8 @@ use Livewire\Component;
  */
 class FormErrorToastFixture extends Component
 {
-    use AtomComponent;
+    use WithEditor;
+    use WithRecaptcha;
 
     /** Every field of the "controls" form, which fails them all. */
     public const CONTROL_KEYS = [

@@ -6,10 +6,14 @@
 ])
 
 @php
+if ($sort || $checkbox) {
+    app('atom')->requireTrait(\Jiannius\Atom\Traits\WithTable::class, '<atom:table.column>');
+}
+
 // A "raw:" sort has to reach the client signed, or a tampered value could
 // splice arbitrary SQL into toTable()'s orderByRaw() — issue #54. Sign it
 // here so the value the Alpine handler round-trips through $wire.set() is
-// the one AtomComponent::updatingAtomComponent() and toTable() will accept.
+// the one the raw: sort gate (AtomServiceProvider's update listener) and toTable() will accept.
 $sortValue = $sort && str($sort)->startsWith('raw:')
     ? \Jiannius\Atom\Services\TableSort::sign(str($sort)->after('raw:')->toString())
     : $sort;

@@ -171,7 +171,7 @@ trait WithUrlFilters
      *
      * Not a replacement for the filter() macro's own checks, which is what guards
      * the rest. Future: if sort is ever persisted in the URL, re-check
-     * `_table.sort.column` here with TableSort::isUnsafeFromClient() — AtomComponent
+     * `_table.sort.column` here with TableSort::isUnsafeFromClient() — WithTable
      * only guards a browser update, and a URL value is not one.
      */
     public function mountWithUrlFilters(): void
@@ -221,6 +221,11 @@ trait WithUrlFilters
      */
     public function updatingWithUrlFilters($name, $value): void
     {
+        // a host property named `withUrlFilters` calls this hook with its value for $name
+        if (! is_string($name)) {
+            return;
+        }
+
         $property = $this->urlFiltersProperty();
 
         if ($name === $property) {
@@ -256,6 +261,10 @@ trait WithUrlFilters
      */
     public function updatedWithUrlFilters($name, $value): void
     {
+        if (! is_string($name)) {
+            return;
+        }
+
         $property = $this->urlFiltersProperty();
 
         if ($name === $property) {

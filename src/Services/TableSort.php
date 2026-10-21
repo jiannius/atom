@@ -35,6 +35,41 @@ class TableSort
     }
 
     /**
+     * Whether a client-driven update to the component property path $name (new value
+     * $value) would leave "_table.sort.column" or "_table.sort.direction" unsafe:
+     * non-string, or a string "raw:" column with no valid signature. Livewire fires
+     * its update event once per dotted path a $wire.set() targets, so "_table.sort.column",
+     * "_table.sort" and "_table" wholesale are all checked, and so is a path deeper than
+     * the leaf ("_table.sort.column.0"), which can only turn that leaf into an array.
+     */
+    public static function isUnsafeUpdate(string $name, mixed $value) : bool
+    {
+        if (str_starts_with($name, '_table.sort.column.') || str_starts_with($name, '_table.sort.direction.')) {
+            return true;
+        }
+
+        $column = match ($name) {
+            '_table.sort.column' => $value,
+            '_table.sort' => data_get($value, 'column'),
+            '_table' => data_get($value, 'sort.column'),
+            default => null,
+        };
+
+        if ($column !== null && (!is_string($column) || static::isUnsafeFromClient($column))) {
+            return true;
+        }
+
+        $direction = match ($name) {
+            '_table.sort.direction' => $value,
+            '_table.sort' => data_get($value, 'direction'),
+            '_table' => data_get($value, 'sort.direction'),
+            default => null,
+        };
+
+        return $direction !== null && !is_string($direction);
+    }
+
+    /**
      * The trusted SQL expression behind a "raw:" column value, for toTable()
      * to hand to orderByRaw(). Returns null when a signed value's signature
      * does not match. An unsigned "raw:<expr>" value is trusted as-is here —

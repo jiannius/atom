@@ -25,6 +25,20 @@ abstract class TestCase extends Orchestra
     }
 
     /**
+     * A Livewire::test() call that throws never reaches Livewire's own flush, so its
+     * static state (the "disable back-button cache" flag, the render stack) would leak
+     * into the next request of a later test: an asset response with no-store headers.
+     */
+    protected function tearDown(): void
+    {
+        if ($this->app && $this->app->bound('livewire')) {
+            $this->app->make('livewire')->flushState();
+        }
+
+        parent::tearDown();
+    }
+
+    /**
      * Register the package + Livewire service providers into the test app.
      *
      * @return array<int, class-string>

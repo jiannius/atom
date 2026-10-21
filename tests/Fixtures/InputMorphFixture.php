@@ -2,13 +2,10 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
 use Livewire\Component;
 
 class InputMorphFixture extends Component
 {
-    use AtomComponent;
-
     public ?string $search = null;
 
     public ?string $live = null;
