@@ -12,8 +12,8 @@
         <x-slot:rows>
             @foreach ($props as $prop)
                 <atom:table.row>
-                    <atom:table.cell><code class="text-sm">{{ $prop['name'] }}</code></atom:table.cell>
-                    <atom:table.cell muted><code class="text-sm">{{ var_export($prop['default'], true) }}</code></atom:table.cell>
+                    <atom:table.cell><code class="font-id">{{ $prop['name'] }}</code></atom:table.cell>
+                    <atom:table.cell muted><code class="font-id">{{ var_export($prop['default'], true) }}</code></atom:table.cell>
                 </atom:table.row>
             @endforeach
         </x-slot:rows>

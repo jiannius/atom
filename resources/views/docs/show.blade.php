@@ -2,7 +2,7 @@
     <atom:heading size="xl">{{ str($entry['name'])->headline() }}</atom:heading>
 
     <div class="mt-2 flex items-center gap-2">
-        <code class="rounded bg-zinc-100 px-2 py-1 text-sm dark:bg-zinc-800">{{ $entry['tag'] }}</code>
+        <code class="font-id rounded-nav bg-surface-sunken px-2 py-1">{{ $entry['tag'] }}</code>
         <atom:copy :value="$entry['tag']"/>
     </div>
 

@@ -8,7 +8,7 @@
             <atom:table.cell>Jane Cooper</atom:table.cell>
             <atom:table.actions>
                 <atom:menu.item>Edit</atom:menu.item>
-                <atom:menu.item class="text-red-600">Delete</atom:menu.item>
+                <atom:menu.item variant="danger">Delete</atom:menu.item>
             </atom:table.actions>
         </atom:table.row>
     </x-slot:rows>
