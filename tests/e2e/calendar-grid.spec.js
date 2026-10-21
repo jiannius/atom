@@ -829,15 +829,15 @@ test.describe('today after midnight', () => {
         const head = (date) => probe(page, 'grid').locator(`[data-atom-calendar-column-head][data-date="${date}"] span`).last()
 
         await expect(column(page, '2026-10-09', 'grid')).toHaveAttribute('aria-current', 'date')
-        await expect(head('2026-10-09')).toHaveClass(/bg-zinc-900/)
+        await expect(head('2026-10-09')).toHaveClass(/bg-accent-ink/)
 
         await page.clock.runFor('01:00')
 
         await expect(column(page, '2026-10-10', 'grid')).toHaveAttribute('aria-current', 'date')
         await expect(column(page, '2026-10-09', 'grid')).not.toHaveAttribute('aria-current', 'date')
         await expect(probe(page, 'grid').locator('[data-atom-calendar-column][aria-current="date"]')).toHaveCount(1)
-        await expect(head('2026-10-10')).toHaveClass(/bg-zinc-900/)
-        await expect(head('2026-10-09')).not.toHaveClass(/bg-zinc-900/)
+        await expect(head('2026-10-10')).toHaveClass(/bg-accent-ink/)
+        await expect(head('2026-10-09')).not.toHaveClass(/bg-accent-ink/)
 
         await button(page, 'Month', 'grid').click()
         await expect(probe(page, 'grid').locator('[role="gridcell"][aria-current="date"]')).toHaveAttribute('data-date', '2026-10-10')

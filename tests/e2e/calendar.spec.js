@@ -322,10 +322,10 @@ test.describe('bound to a Livewire property', () => {
 
         await expect(dot).toHaveAttribute('data-atom-calendar-hex', '')
         expect(await dot.evaluate((el) => el.style.getPropertyValue('--atom-calendar-hue'))).toBe('#ff8800')
-        // the dot is the colour moved to show on a light ground (3:1, see calendar/colors.js): the orange is darkened, and the dark theme's value is kept beside it
-        expect(await dot.evaluate((el) => el.style.getPropertyValue('--atom-calendar-edge'))).toBe('#cc6d00')
+        // the dot is the colour moved to show on a light ground (3:1, see calendar/colors.js): the orange is darkened against the sunken fill (#f3f1ed), and the dark theme's value is kept beside it
+        expect(await dot.evaluate((el) => el.style.getPropertyValue('--atom-calendar-edge'))).toBe('#c26700')
         expect(await dot.evaluate((el) => el.style.getPropertyValue('--atom-calendar-edge-dark'))).toBe('#ff8800')
-        expect(await dot.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(204, 109, 0)')
+        expect(await dot.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(194, 103, 0)')
 
         const danger = chip(page, 'Invoice overdue')
 
@@ -333,12 +333,12 @@ test.describe('bound to a Livewire property', () => {
         await expect(danger.getByText('Overdue', { exact: true })).toHaveCount(1)
     })
 
-    test('an item with no colour is zinc, not blue', async ({ page }) => {
-        // Open the docs has no colour: its bar takes the zinc palette entry the server printed
+    test('an item with no colour is zinc (the neutral tone), not blue', async ({ page }) => {
+        // Open the docs has no colour: its bar takes the zinc palette entry the server printed, which is the neutral tone's tint and ink
         const bar = chip(page, 'Open the docs')
 
-        await expect(bar).toHaveClass(/bg-zinc-100/)
-        await expect(bar).toHaveClass(/border-zinc-500/)
+        await expect(bar).toHaveClass(/bg-neutral-bg/)
+        await expect(bar).toHaveClass(/border-fg-subtle/)
         await expect(bar).not.toHaveClass(/sky/)
     })
 
