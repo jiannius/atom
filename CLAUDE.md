@@ -84,7 +84,7 @@ The `Atom` class is registered both by FQN and by the `'atom'` container alias â
 
 **`toTable()` trusts `_table` only from a component that uses `WithTable`** (`class_uses_recursive`, not `property_exists`). A host's own public `$_table` has no sort gate, so a client could `set('_table.sort.column', 'raw:...')`, and an unsigned `raw:` reads as PHP-set and trusted: the #54 injection through a component that never opted in. Any other component gets no sort and the default row count (it does not throw: it can be a plain paginated list).
 
-**A property or method named like a trait hook.** Livewire runs `updatingWithTable`-style hooks for a property called `withTable` too, with the value where the path goes, and a host method of that name takes the place of a trait's. So no gate lives in a trait hook; the hooks that remain (`updatedWithTable`, `updatedWithEditor`, `WithUrlFilters`') start with an `is_string($name)` guard (an array there was a `TypeError`); keep it in any new hook (`HookNamedPropertiesFixture`, `SortGateShadowFixture`, `ComponentTraitsSurfaceTest`).
+**A property or method named like a trait hook.** Livewire runs `updatingWithTable`-style hooks for a property called `withTable` too, with the value where the path goes, and a host method of that name takes the place of a trait's. So no gate lives in a trait hook; the hooks that remain (`updatedWithTable`, `updatedWithEditor`, `WithUrlFilters`) start with an `is_string($name)` guard (an array there was a `TypeError`); keep it in any new hook (`HookNamedPropertiesFixture`, `SortGateShadowFixture`, `ComponentTraitsSurfaceTest`).
 
 ### Signed `raw:` table sort
 
