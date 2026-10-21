@@ -2,6 +2,8 @@
 
 Each change that breaks a host is listed once, under the release that made it. The entries are written as the work lands; the codemod and the full checklist come with the 4.0 release.
 
+**Read "PHP globals: dates and macros" first:** every date in your app changes type and string form unless you add one line, and nothing throws for the string change.
+
 ## Installing a pre-release
 
 Pin an exact version: `composer require jiannius/atom:4.0.0-alpha.1`. Composer accepts an exact pre-release version even under `"minimum-stability": "stable"`, so `composer.json` needs no other change. A range is different: `^4.0` alone never picks the alpha; `^4.0@alpha` does, or a lower `minimum-stability`.
@@ -224,7 +226,9 @@ A component that renders `<atom:table>` (or a sortable column, a checkbox cell, 
 
 `atom:upgrade` will rewrite `use AtomComponent;` to the traits a component's markup and methods need, and print a review list for what it cannot see (a table rendered from a child partial, `breadcrumbs()` on a parent class, a `$wire.toast` call in JS), when 4.0 ships. Until then, change the traits by hand.
 
-## PHP globals
+## PHP globals: dates and macros
+
+**Warning: without one line in `AppServiceProvider::boot()`, every date in your app is a different class, is mutable, and prints differently, and some of that fails silently.**
 
 **Dates are the framework's again.** atom no longer swaps Laravel's `Date` facade to `Jiannius\Atom\Services\Carbon`, so `now()`, `today()` and a model's date casts return Illuminate dates: **mutable**, with no `->pretty()`, `->local()`, `->recent()` or `->toDateRangeString()`. Add this to `AppServiceProvider::boot()` to keep immutable dates and those methods on every date:
 
@@ -236,7 +240,9 @@ Date::use(\Jiannius\Atom\Services\Carbon::class);
 
 Search your PHP and Blade for `->pretty(`, `->local(`, `->recent(` and `->toDateRangeString(`: each call on a model date or on `now()` throws "Method ... does not exist" without the line. A host that does not want the swap can call `carbon($date)->pretty()` (or `Carbon::instance($date)`) where it needs them; `Jiannius\Atom\Services\Carbon`, `Carbon::getLocalTimezone()` and the `carbon()` helper are unchanged, and atom's own code (`breakdown()`, the calendar, the timeline) works on either kind of date. Code that relied on a date being immutable (`$date->addDay()` leaving `$date` alone) now changes the date in place without the line: use `->copy()` or add the line.
 
-**Macros removed.** None of these had a caller in the hosts checked:
+**The string form of a date changes, with no error.** `Services\Carbon::__toString()` returns ISO 8601 with a `Z` (`2026-03-01T10:00:00Z`); the Illuminate default is `Y-m-d H:i:s` (`2026-03-01 10:00:00`). Without the line, everything that turns a date into a string changes output: `{{ $date }}`, `(string) $date`, concatenation and interpolation, a cache key built from a date, and a date bound as a string. `json_encode()` and `toJson()` are the same either way (both print `2026-03-01T10:00:00.000000Z`). Search for dates printed or concatenated without `->format()`, and for cache keys and stored strings built from them. Also search for `instanceof Jiannius\Atom\Services\Carbon` and for parameters or return types typed `Jiannius\Atom\Services\Carbon`: a model date no longer matches them (type to `Carbon\CarbonInterface` instead). The `Date::use()` line above restores all of it: the class, the immutability, `pretty()`, `local()`, `recent()` and `toDateRangeString()`, and the ISO string form.
+
+**Macros removed.** atom itself does not call any of these:
 
 - `Request`: `subdomain()`, `hostWithoutSubdomain()` and `isLivewireRequest()` (use `app('livewire')->isLivewireRequest()`);
 - `Str` and `Stringable`: `dotpath()`;
