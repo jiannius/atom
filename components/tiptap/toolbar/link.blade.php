@@ -22,7 +22,7 @@
       toolbars, which stop on the input wrapper.)
     --}}
     <atom:menu popover>
-        <div x-on:click.stop>
+        <div x-on:click.stop class="[&_.link-menu]:border-0 [&_.link-menu]:shadow-none [&_.link-menu]:bg-transparent">
             <atom:tiptap.menu.link/>
         </div>
     </atom:menu>
