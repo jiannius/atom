@@ -334,7 +334,11 @@ like the trait too, so a property called `withTable`, `withEditor`, `withBreadcr
 would be, and a method of yours named like a hook (`updatingWithTable`) is called for it. Do not
 name a property or a method after a trait hook. The `raw:` table-sort gate does not depend on
 any of this: it is a listener on Livewire's `update` event for every component that uses
-`WithTable`, which no host method can shadow.
+`WithTable`, registered to run before any `updating*` hook of yours (so a hook that saves a sort
+preference never sees an unsigned `raw:` value), and no host method can shadow it. A URL is read
+into a property through no update event, so a `WithTable` component that puts `_table` in its
+`queryString` or a `#[Url]` throws at mount. Your own modules installed as Composer path packages
+are skipped by the `breadcrumbs()` guard, like any package: give them the trait yourself.
 
 **Yours to define:** `breadcrumbs` (optional), `tableQuery` (required for `tableSelection()`),
 `tableSelectionQuery` (override for sticky selection).

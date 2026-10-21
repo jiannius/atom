@@ -279,3 +279,23 @@ it('refuses the upload endpoint naming the sort column as its target', function 
         ->set('_table.sort.column', \Illuminate\Http\UploadedFile::fake()->image('a.jpg'))
         ->assertForbidden();
 });
+
+/**
+ * The gate runs first: a host's own updating hooks (saving a sort preference) share the
+ * `update` event and must not see, or store, a value the gate refuses.
+ */
+it('refuses an unsigned raw: sort before any host updating hook sees it', function () {
+    $fixture = \Jiannius\Atom\Tests\Fixtures\SortGateOrderFixture::class;
+    $fixture::$seen = [];
+
+    Livewire::test($fixture)->set('_table.sort.column', 'raw:(SELECT 1)')->assertForbidden();
+    Livewire::test($fixture)->set('_table.sort', ['column' => 'raw:(SELECT 1)', 'direction' => 'asc'])->assertForbidden();
+    Livewire::test($fixture)->set('_table', ['sort' => ['column' => 'raw:(SELECT 1)']])->assertForbidden();
+
+    expect($fixture::$seen)->toBe([]);
+
+    // a legitimate update still reaches the host's hooks
+    Livewire::test($fixture)->set('_table.sort.column', 'name')->assertOk();
+
+    expect(collect($fixture::$seen)->pluck(1)->all())->toContain('name');
+});

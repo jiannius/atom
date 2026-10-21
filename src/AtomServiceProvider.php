@@ -166,8 +166,12 @@ class AtomServiceProvider extends ServiceProvider
         // The signed raw: sort gate (issue #54). Livewire fires `update` for every client
         // update of a property path, before the value is written, and an event listener
         // cannot be shadowed by a method of the host component the way a trait hook can.
-        \Livewire\on('update', function ($component, $path, $value) {
+        // `before`, not `on`: a host's own updating(), updatingTable() or
+        // updatingTableSortColumn() hook runs on the same event and would see (and could
+        // store) the unsigned value if the gate came after it.
+        \Livewire\before('update', function ($component, $path, $value) {
             if (is_string($path)
+                && str_starts_with($path, '_table')
                 && in_array(\Jiannius\Atom\Traits\WithTable::class, class_uses_recursive($component), true)
                 && \Jiannius\Atom\Services\TableSort::isUnsafeUpdate($path, $value)
             ) {
@@ -176,6 +180,14 @@ class AtomServiceProvider extends ServiceProvider
         });
 
         \Livewire\on('mount', function ($component) {
+            if ($this->hasTableInQueryString($component)) {
+                throw new \LogicException(sprintf(
+                    '%s uses WithTable and puts `_table` in its query string: a crafted link would set the table sort, '
+                    .'and the signed `raw:` sort gate only guards a browser update. Keep `_table` out of `queryString` and `#[Url]`.',
+                    get_class($component),
+                ));
+            }
+
             if ($this->hasOrphanBreadcrumbsMethod($component)) {
                 throw new \LogicException(sprintf(
                     '%s defines breadcrumbs() but nothing calls it: add `use \\%s;` to the component.',
@@ -183,6 +195,60 @@ class AtomServiceProvider extends ServiceProvider
                 ));
             }
         });
+    }
+
+    /**
+     * Whether a component that uses WithTable has `_table` (or a path under it) in its
+     * query string. Livewire reads the URL into a property before mount(), through no
+     * `update` event, so the raw: sort gate never sees it. Every declaration form
+     * SupportQueryString reads counts: a `queryString` property or method, a
+     * `queryString{Trait}` member of a used trait, and #[Url] on a public property.
+     */
+    protected function hasTableInQueryString(object $component) : bool
+    {
+        $traits = class_uses_recursive($component);
+
+        if (!in_array(\Jiannius\Atom\Traits\WithTable::class, $traits, true)) {
+            return false;
+        }
+
+        $entries = [];
+
+        if (method_exists($component, 'queryString')) {
+            $entries[] = (fn () => $this->queryString())->call($component);
+        }
+        elseif (property_exists($component, 'queryString')) {
+            $entries[] = (fn () => $this->queryString)->call($component);
+        }
+
+        foreach ($traits as $trait) {
+            $member = 'queryString'.class_basename($trait);
+
+            if (method_exists($component, $member)) {
+                $entries[] = (fn () => $this->{$member}())->call($component);
+            }
+            elseif (property_exists($component, $member)) {
+                $entries[] = (fn () => $this->{$member})->call($component);
+            }
+        }
+
+        foreach ($entries as $entry) {
+            foreach ((array) $entry as $key => $value) {
+                $key = is_string($key) ? $key : $value;
+
+                if (is_string($key) && ($key === '_table' || str_starts_with($key, '_table.'))) {
+                    return true;
+                }
+            }
+        }
+
+        if (property_exists($component, '_table')) {
+            foreach ((new \ReflectionProperty($component, '_table'))->getAttributes(\Livewire\Features\SupportQueryString\BaseUrl::class, \ReflectionAttribute::IS_INSTANCEOF) as $attribute) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

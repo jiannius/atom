@@ -603,3 +603,74 @@ it('ignores a non-upload value the browser sets on _editor.images', function () 
 
     Livewire::test(ComponentHelpersFixture::class)->set('_editor.images', 'x')->assertOk();
 });
+
+/**
+ * Livewire reads the URL into a property before mount(), through no update event, so the
+ * raw: sort gate never sees it: a WithTable component must not take `_table` from the URL.
+ */
+trait WithUrlTableFoo
+{
+    protected $queryStringWithUrlTableFoo = ['_table.sort'];
+}
+
+dataset('table query string forms', [
+    'queryString property' => fn () => new class extends Component {
+        use WithTable;
+        protected $queryString = ['_table'];
+        public function render() { return '<div></div>'; }
+    },
+    'a path under _table' => fn () => new class extends Component {
+        use WithTable;
+        protected $queryString = ['_table.sort'];
+        public function render() { return '<div></div>'; }
+    },
+    'keyed with an alias' => fn () => new class extends Component {
+        use WithTable;
+        protected $queryString = ['_table.sort.column' => ['as' => 'sort']];
+        public function render() { return '<div></div>'; }
+    },
+    'queryString method' => fn () => new class extends Component {
+        use WithTable;
+        protected function queryString() { return ['search', '_table']; }
+        public function render() { return '<div></div>'; }
+    },
+    'queryString member of another trait' => fn () => new class extends Component {
+        use WithTable, WithUrlTableFoo;
+        public function render() { return '<div></div>'; }
+    },
+    '#[Url] on a redeclared _table' => fn () => new class extends Component {
+        use WithTable;
+        #[\Livewire\Attributes\Url]
+        public $_table = [
+            'sort' => ['column' => null, 'direction' => null],
+            'checkboxes' => [],
+            'select_all' => false,
+            'max_rows' => 100,
+            'show_trashed' => false,
+            'show_selected' => false,
+        ];
+        public function render() { return '<div></div>'; }
+    },
+]);
+
+it('refuses a WithTable component that takes _table from the URL', function ($component) {
+    expect(fn () => Livewire::test($component::class))->toThrow(Exception::class, 'puts `_table` in its query string');
+})->with('table query string forms');
+
+it('leaves a WithTable component with an ordinary query string, and a component without WithTable, alone', function () {
+    $ordinary = new class extends Component {
+        use WithTable;
+        public string $search = '';
+        protected $queryString = ['search', 'page'];
+        public function render() { return '<div>ok</div>'; }
+    };
+
+    $without = new class extends Component {
+        protected $queryString = ['_table'];
+        public $_table = [];
+        public function render() { return '<div>ok</div>'; }
+    };
+
+    Livewire::test($ordinary::class)->assertOk();
+    Livewire::test($without::class)->assertOk();
+});
