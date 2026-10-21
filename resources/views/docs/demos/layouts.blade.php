@@ -7,7 +7,7 @@
         app layout, for example per role.
     </p>
 
-    <pre class="overflow-x-auto rounded-xl bg-zinc-900 p-4 text-sm text-zinc-100"><code>&lt;x-dynamic-component
+    <pre class="font-id overflow-x-auto rounded-panel border bg-surface-sunken p-4 text-fg"><code>&lt;x-dynamic-component
     :component="$user->modules()->count() &lt;= 2 ? 'atom::layouts.header' : 'atom::layouts.sidebar'"
     title="Invoices"&gt;
     &lt;x-slot:nav&gt;
@@ -35,7 +35,7 @@
 
     <ul class="list-disc ps-5">
         @foreach (\Jiannius\Atom\Services\Docs::PATTERNS as $name => $label)
-            <li><a class="underline" href="{{ route('atom.docs.pattern', $name) }}">{{ $label }}</a></li>
+            <li><atom:link :href="route('atom.docs.pattern', $name)">{{ $label }}</atom:link></li>
         @endforeach
     </ul>
 </div>

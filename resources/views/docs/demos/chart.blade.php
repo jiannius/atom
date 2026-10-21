@@ -1,6 +1,6 @@
 <atom:docs.example
 title="Bar"
-description="Vertical bars from label/value/tooltip data. Pass a color and an optional max goal line."
+description="Vertical bars from label/value/tooltip data. color is a tone (success, danger, warning, info, accent or neutral; green, red, orange and the like still read as theirs) or a hex, and the accent when you pass none. An optional max draws a goal line."
 view="atom::docs.demos.chart.bar"/>
 
 <atom:docs.example
@@ -10,5 +10,5 @@ view="atom::docs.demos.chart.area"/>
 
 <atom:docs.example
 title="Trend"
-description="Compact sparkline for inline trends. Takes a plain numeric array; color is green, red or gray."
+description="Compact sparkline for inline trends. Takes a plain numeric array; color is a tone, and neutral when you pass none."
 view="atom::docs.demos.chart.trend"/>

@@ -14,9 +14,8 @@ $blocked = filled($href) && safe_url($href) === null;
 $href = safe_url($href);
 
 $classes = Arr::toCssClasses([
-    'underline underline-offset-5 decoration-dotted',
+    'text-accent-ink underline underline-offset-[3px] decoration-1 decoration-current/40 hover:decoration-current',
     'cursor-pointer' => !$blocked,
-    $variant === 'accent' ? 'text-accent' : 'text-sky-600 dark:text-zinc-300',
     $icon || $iconSuffix ? 'inline-flex items-center gap-2' : '',
 ]);
 
@@ -28,18 +27,5 @@ $merges = [
 ];
 @endphp
 
-<a {{ $attributes->class($classes)->merge($merges) }}>
-    @if ($icon)
-        <x-dynamic-component :component="'atom::icon.'.$icon" class="shrink-0"/>
-    @endif
-
-    @if ($slot->isEmpty())    
-        {{ $href }}
-    @else
-        {{ $slot }}
-    @endif
-
-    @if ($iconSuffix)
-        <x-dynamic-component :component="'atom::icon.'.$iconSuffix" class="shrink-0"/>
-    @endif
-</a>
+{{-- No whitespace inside the anchor: it would be underlined, and a link in a sentence would run on past its last letter. --}}
+<a {{ $attributes->class($classes)->merge($merges) }}>@if ($icon)<x-dynamic-component :component="'atom::icon.'.$icon" class="size-4 shrink-0"/>@endif{{ $slot->isEmpty() ? $href : $slot }}@if ($iconSuffix)<x-dynamic-component :component="'atom::icon.'.$iconSuffix" class="size-4 shrink-0"/>@endif</a>

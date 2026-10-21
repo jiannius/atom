@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Blade;
 
 describe('link', function () {
-    it('renders an anchor with the dotted-underline style', function () {
+    it('renders an anchor in the accent ink with a solid underline', function () {
         $html = Blade::render('<atom:link href="/docs">Read the docs</atom:link>');
 
         expect($html)
@@ -11,7 +11,8 @@ describe('link', function () {
             ->toContain('href="/docs"')
             ->toContain('Read the docs')
             ->toContain('underline')
-            ->toContain('decoration-dotted');
+            ->toContain('text-accent-ink')
+            ->not->toContain('decoration-dotted');
     });
 
     it('renders a leading icon', function () {

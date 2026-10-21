@@ -9,9 +9,9 @@
     @if ($label) aria-label="{{ t($label) }}" @endif
     @if ($active) x-bind:aria-pressed="{{ $active }}" x-bind:data-active="{{ $active }}" @endif
     {{ $attributes->class([
-        'size-8 rounded-md flex items-center justify-center',
-        'hover:bg-zinc-100 dark:hover:bg-zinc-700',
-        '[&[data-active=true]]:bg-zinc-100 dark:[&[data-active=true]]:bg-zinc-700',
+        'h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted',
+        'hover:bg-fg/5 hover:text-fg',
+        '[&[data-active=true]]:bg-fg/10 [&[data-active=true]]:text-fg',
     ]) }}>
         {{ $slot }}
     </button>

@@ -1,52 +1,38 @@
-// Helpers for tests/e2e/calendar-look.spec.js: the look fixture in a browser with Tailwind, and a contrast measurement of what is on screen.
+// Helpers for tests/e2e/calendar-look.spec.js: the look fixture in a browser with the consumer's Tailwind, and a contrast measurement of what
+// is on screen.
 //
-// The rig ships no Tailwind, so the calendar's colours only exist once Tailwind's browser build is injected. It is loaded from a CDN at a
-// pinned version (no dependency of the package). A page that cannot reach it cannot be checked: under CI (`CI` set) that is a failure, so
-// a build with no network never passes for want of looking; on a machine it is a skip, said loudly so it is not mistaken for a pass.
-
-export const TAILWIND = 'https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11'
-
-/** The reason a test gives when it skips for want of Tailwind. */
-export const SKIP_REASON = 'SKIPPED, NOT PASSED: Tailwind could not be loaded from the CDN, so the look and contrast checks did not run'
+// The rig ships no Tailwind, so the calendar's colours only exist once a compiled stylesheet is added. It is the consumer fixture's build
+// (`node tests/consumer/build.mjs`: the hosts' floor, 4.0.7, or the latest pin), which holds atom's own tokens, so what is measured is what a
+// host draws: no CDN, no network. It was Tailwind's browser build from a CDN until V4-3d, when the calendar moved onto the role tokens that
+// only atom.tailwind.css defines.
 
 /**
- * Open the look fixture and give it Tailwind, with a class-based dark variant as atom's opt-in dark mode is. Returns false when
- * Tailwind cannot be loaded (offline) and `CI` is not set, so a test can skip with SKIP_REASON; with `CI` set it throws instead.
+ * Open the look fixture and give it the consumer's Tailwind, with a class-based dark variant as atom's opt-in dark mode is. A missing build
+ * (`node tests/consumer/build.mjs` not run) throws: a look check is never a skip.
  */
-export async function openLook (page, { view = 'month', query = '', theme = 'light', tailwind = true } = {}) {
+export async function openLook (page, { view = 'month', query = '', theme = 'light', tailwind = true, tw = 'latest', accent = null } = {}) {
     await page.goto(`/atom/e2e/calendar-look?view=${view}${query ? '&' + query : ''}`)
     await page.waitForFunction(() => window.Livewire !== undefined && window.Alpine !== undefined && window.atomLook !== undefined)
 
-    if (!tailwind) return true
+    if (!tailwind) return
 
-    try {
-        await page.evaluate(() => {
-            const style = document.createElement('style')
+    // asked from the page, as the stylesheet is, so a route a test puts in front of it is seen
+    const status = await page.evaluate((url) => fetch(url).then((response) => response.status), `/atom/e2e/consumer-css/${tw}`)
 
-            style.setAttribute('type', 'text/tailwindcss')
-            style.textContent = '@custom-variant dark (&:where(.dark, .dark *)); @theme { --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif; }'
-            document.head.append(style)
-        })
-        await page.addScriptTag({ url: TAILWIND })
-    } catch (error) {
-        const message = `Tailwind could not be loaded from ${TAILWIND} (${String(error.message).split('\n')[0]}): the look and contrast checks cannot run.`
+    if (status !== 200) throw new Error('run `node tests/consumer/build.mjs` first: the consumer stylesheet is missing')
 
-        if (process.env.CI) throw new Error(message)
+    await page.addStyleTag({ url: `/atom/e2e/consumer-css/${tw}` })
 
-        console.warn(`\n!!! calendar-look: ${message} Their tests are SKIPPED, not passed. Set CI=1 to make this a failure.\n`)
-
-        return false
-    }
-
-    // Tailwind's browser build compiles on a mutation observer: wait until a class it generates has been applied
+    // wait until a class the stylesheet generates has been applied
     await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-atom-calendar]')).borderTopWidth === '1px', null, { timeout: 15000 })
+
+    // a host's brand colour, as its own @theme sets it
+    if (accent) await page.addStyleTag({ content: `:root { --color-accent: ${accent}; }` })
 
     if (theme === 'dark') await page.evaluate(() => document.documentElement.classList.add('dark'))
 
     await page.evaluate(() => document.fonts.ready)
     await page.waitForTimeout(200)
-
-    return true
 }
 
 /**
@@ -299,7 +285,7 @@ export async function measureContrast (page) {
             if (shadow) add('selection edge on the ground', rgba(shadow[1]), el, [[rect.left + 2, rect.top + rect.height / 2]], false, el.getAttribute('data-kind') ?? '')
         }
 
-        for (const el of visible('[data-atom-calendar-preview] span[aria-hidden="true"][class*="bg-zinc"], [data-atom-calendar-ghost] span[aria-hidden="true"][class*="bg-zinc"]')) {
+        for (const el of visible('[data-atom-calendar-preview] span[aria-hidden="true"][class*="bg-fg-muted"], [data-atom-calendar-ghost] span[aria-hidden="true"][class*="bg-fg-muted"]')) {
             add('resize grip on its tint', rgba(getComputedStyle(el).backgroundColor), el, [middle(el.getBoundingClientRect())], false)
         }
 

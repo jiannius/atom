@@ -1,6 +1,6 @@
 <atom:dropdown>
     <atom:tiptap.toolbar.button label="Text Color">
-        <svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 24 24" fill="currentColor"><path d="M15.2459 14H8.75407L7.15407 18H5L11 3H13L19 18H16.8459L15.2459 14ZM14.4459 12L12 5.88516L9.55407 12H14.4459ZM3 20H21V22H3V20Z"></path></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor"><path d="M15.2459 14H8.75407L7.15407 18H5L11 3H13L19 18H16.8459L15.2459 14ZM14.4459 12L12 5.88516L9.55407 12H14.4459ZM3 20H21V22H3V20Z"></path></svg>
     </atom:tiptap.toolbar.button>
 
     <atom:menu popover>
@@ -9,14 +9,14 @@
                 <div
                 x-on:click="commands().setColor(@js($color)); close()"
                 x-bind:style="{ backgroundColor: @js($color) }"
-                class="cursor-pointer w-6 h-6 border border-zinc-300 dark:border-zinc-600 rounded hover:ring-1 hover:ring-offset-1 hover:ring-gray-500">
+                class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
                 </div>
             @endforeach
 
             <div
             x-on:click="commands().unsetColor(); close()"
-            class="cursor-pointer w-6 h-6 border border-red-500 rounded flex items-center justify-center text-red-500 hover:ring-1 hover:ring-offset-1 hover:ring-gray-500">
-                <atom:icon.close />
+            class="cursor-pointer w-6 h-6 border border-danger-fg rounded-nav flex items-center justify-center text-danger-fg hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+                <atom:icon.close class="size-4" />
             </div>
         </div>
     </atom:menu>

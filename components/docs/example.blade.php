@@ -15,15 +15,15 @@ $source = app(\Jiannius\Atom\Services\Docs::class)->source($view);
         <atom:caption class="mt-1.5 max-w-2xl leading-relaxed">{{ $description }}</atom:caption>
     @endif
 
-    <div class="mt-5 rounded-xl border border-zinc-200 p-6 dark:border-zinc-700">
+    <div class="mt-5 rounded-panel border bg-surface p-6">
         @include($view)
     </div>
 
-    <div class="relative mt-3 rounded-xl bg-zinc-900 dark:border dark:border-zinc-700">
-        <div class="absolute end-3 top-3 text-zinc-400 hover:text-white">
+    <div class="relative mt-3 rounded-panel border bg-surface-sunken">
+        <div class="absolute end-3 top-3 text-fg-subtle hover:text-fg">
             <atom:copy :value="$source"/>
         </div>
 
-        <pre class="overflow-x-auto p-4 text-sm text-zinc-100"><code>{{ $source }}</code></pre>
+        <pre class="font-id overflow-x-auto p-4 text-fg"><code>{{ $source }}</code></pre>
     </div>
 </section>

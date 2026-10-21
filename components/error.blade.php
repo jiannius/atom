@@ -2,7 +2,7 @@
 $errors = $attributes->get('errors');
 
 $attrs = $attributes
-    ->class(['error text-red-500 text-sm font-medium'])
+    ->class(['error text-danger-fg text-sm font-medium'])
     ->except('errors')
     ;
 @endphp

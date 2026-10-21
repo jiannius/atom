@@ -432,7 +432,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | --- | ------------- |
 | `<atom:button>` | `type` (`submit`, `delete`), `variant` (`primary` the solid accent, one per view; the default, bordered; `ghost`; `link`; the tones `danger`, `warning`, `success`, `info`; `accent` is the old name of `primary`; `facebook`, `google`, `linkedin`, `whatsapp`, `telegram` are the default tier with the brand's icon), `color` (for `ghost`), `size` (`xs`, `sm`, `md`, `lg`, from the control height), `block`, `href`, `icon`, `iconSuffix`, `inverted` (the tone's tint), `newtab`. Wraps `wire:click`, dispatches `confirmed` for `type="delete"` (auto-confirmed → `$wire.delete()`). `type="submit"` and `"delete"` add no icon: pass `icon=`. |
 | `<atom:button.group>` | Layout helper for adjacent buttons. |
-| `<atom:link>` | `href`, `icon`, `iconSuffix`, `variant="accent"`, `newtab`, `rel`. |
+| `<atom:link>` | `href`, `icon`, `iconSuffix`, `variant="accent"`, `newtab`, `rel`. The accent ink (4.5:1 on the canvas, a card and a callout of each tone) with a solid underline. |
 
 An `href` is only followed if it is `http`, `https`, `mailto`, `tel`, `sms` or scheme-less; see [Upgrading to 3.29.13](#upgrading-to-32913).
 
@@ -448,7 +448,7 @@ An `href` is only followed if it is `http`, `https`, `mailto`, `tel`, `sms` or s
 | `<atom:avatar>` | `src`, `name`, `initial`, `square` (default `true`), `size` (`xs` 24px, `sm` 28, default 34, `lg` 48, `xl` 64). Initials sit on the neutral tone with a hairline; a stack (`<atom:avatar.group max="3">`) rings each avatar in the surface colour. |
 | `<atom:badge>` | A borderless pill on the tone tokens (4.5:1 or more in both themes). `status` (enum-aware), `size` (`xs` 18px, `default` 22, `lg` 26), `icon`, `color`, `label`. `color` is a tone (`neutral` (default), `info`, `success`, `warning`, `danger`, `accent`), `black` (a solid pill), a colour name that maps to a tone (`blue`/`sky`/`cyan`/`indigo` info; `green`/`emerald`/`teal`/`lime` success; `yellow`/`amber`/`orange` warning; `red`/`rose` danger; `purple`/`violet`/`fuchsia`/`pink` accent; `gray`/`zinc`/`slate`/`stone`/`white` and any unknown name neutral) or a strict hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`: the tint and ink are read from it). A state written as a word with a dot is `<atom:status>`. Group: `<atom:badge.group>`. |
 | `<atom:card>` | A panel: a fill and a hairline at the panel radius, 16px of padding, no shadow. `inset` (no padding), `subtle` (the sunken fill), `divided` (hairlines between child divs), a `cover` slot, `variant` (`stats`, `chart`), `heading`, `data`, `indicator`, `trend`, `color`. |
-| `<atom:chart>` | Standalone ApexCharts chart. `type` (`bar`, `area`, `trend`), `data` (bar/area: `label`/`value`/`tooltip` rows; trend: plain number array), `color` (`red`/`green`/`orange`/`gray` or `#hex`), `max` (`['value'=>, 'label'=>]` goal line), `min`. Default height `h-64` (`h-16` for trend), override with a `h-*` class. |
+| `<atom:chart>` | Standalone ApexCharts chart. `type` (`bar`, `area`, `trend`), `data` (bar/area: `label`/`value`/`tooltip` rows; trend: plain number array), `color` (a tone: `success`, `danger`, `warning`, `info`, `accent`, `neutral`; the names `red`/`green`/`orange`/`gray` and the like still read as theirs; or `#hex`; the accent when none), `max` (`['value'=>, 'label'=>]` goal line), `min`. Default height `h-64` (`h-16` for trend), override with a `h-*` class. |
 | `<atom:callout>` | A tone's tint with a hairline of its ink, a 16px icon and the heading in the ink; the text stays the foreground. `icon`, `heading`, `content`, `variant` (`info`, `success`, `warning`, `danger`, `error`; none is neutral), `closeable`. |
 | `<atom:skeleton>` | Loading block on the strong hairline token; it pulses only for a viewer who has not asked for reduced motion. |
 | `<atom:placeholder-bar>` | `size="100%x20px"`. |
@@ -709,7 +709,7 @@ there's no server-side or cross-device state.
 | `<atom:error>` | Plain error message slot. |
 | `<atom:html>` | Page boilerplate (see [Page boilerplate](#page-boilerplate)). |
 | `<atom:sharer>` | `sites` (array), `url`, `title` — social share buttons. atom does not bundle [sharer.js](https://ellisonleao.github.io/sharer.js): load it on the page (`<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`) or the share buttons do nothing (the copy-link button works without it). The default sites (`facebook`, `twitter-x`, `linkedin`, `whatsapp`, `telegram`, `email`) were checked against sharer.js 0.5.4; a site needs an atom icon of the same name. |
-| `<atom:whatsapp>` | `number`, `text` — floating WhatsApp button. |
+| `<atom:whatsapp>` | `number`, `text` — floating WhatsApp button: a pill in the success ink with `shadow-pop`, fixed bottom right (a caller's `fixed bottom-32 right-14` wins). |
 
 ---
 
@@ -1147,15 +1147,15 @@ An item is an array (or `Arrayable`):
 
 A missing `id`, `title` or `start` throws an `InvalidArgumentException`, because that is a bug in the code that builds the items. A `start` that cannot be read skips the item and reports it once.
 
-**Colours.** `red`, `orange`, `yellow`, `green`, `blue`, `purple`, `black`, `zinc` and `gray` are presets, each a tint, an accent edge and a dot that read in light and dark, with the text left neutral. An item with no colour, or a name the calendar does not know, is zinc. A hex colour (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`) is used as it is, and its edge is adjusted where it would not show. Add or replace a preset in `config/atom.php`:
+**Colours.** `red`, `orange`, `yellow`, `green`, `blue`, `purple`, `black`, `zinc` and `gray` are presets, each a tint, an accent edge and a dot on the tone tokens (`red` is danger, `green` success, `blue` info, `orange` and `yellow` warning, `purple` the accent, `black` the foreground, `zinc` and `gray` neutral), so they read in light and dark and follow the host's accent, with the text left neutral. An item with no colour, or a name the calendar does not know, is zinc. A hex colour (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`) is used as it is, and its edge is adjusted where it would not show. Add or replace a preset in `config/atom.php`:
 
 ```php
 'calendar' => [
     'colors' => [
         'teal' => [
-            'tint' => 'bg-teal-100 dark:bg-teal-500/20',
-            'accent' => 'border-teal-600 dark:border-teal-400',
-            'dot' => 'bg-teal-600 dark:bg-teal-400',
+            'tint' => 'bg-success-bg',
+            'accent' => 'border-success-fg',
+            'dot' => 'bg-success-fg',
         ],
     ],
 ],

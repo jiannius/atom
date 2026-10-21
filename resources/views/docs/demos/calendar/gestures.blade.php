@@ -26,5 +26,5 @@ x-on:calendar-item-click="add($event)"
 class="space-y-4">
     <atom:calendar selectable :views="['month', 'week', 'day']" view="week" :items="$items" />
 
-    <pre x-text="log.length ? log.map((entry) => JSON.stringify(entry)).join('\n') : 'Move, resize, select or click something.'" data-calendar-log class="overflow-x-auto rounded-lg bg-zinc-100 p-3 text-xs text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"></pre>
+    <pre x-text="log.length ? log.map((entry) => JSON.stringify(entry)).join('\n') : 'Move, resize, select or click something.'" data-calendar-log class="font-id overflow-x-auto rounded-panel border bg-surface-sunken p-3 text-fg"></pre>
 </div>

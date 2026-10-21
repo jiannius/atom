@@ -22,8 +22,8 @@ $style = Arr::toCssStyles(array_filter([
 href="{{ $url }}"
 style="{{ $style }}"
 {{ $attributes->except(['href', 'style'])->merge(['target' => '_blank'])->class([
-    'bg-green-500 rounded-full shadow flex items-center justify-center gap-3 py-2 px-5 text-lg text-white transition-transform hover:scale-110',
+    'bg-success-fg text-surface rounded-pill shadow-pop flex items-center justify-center gap-2 h-control-lg px-5 text-sm font-medium transition-transform hover:scale-105',
     '[:where(&)]:fixed [:where(&)]:right-14 [:where(&)]:bottom-14',
 ]) }}>
-    <atom:icon.whatsapp /> {{ t('Whatsapp Us') }}
+    <atom:icon.whatsapp class="size-4" /> {{ t('Whatsapp Us') }}
 </a>

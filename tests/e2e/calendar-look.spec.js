@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { SKIP_REASON, TAILWIND, measureContrast, measureSweep, openLook } from './calendar-look.js'
+import { measureContrast, measureSweep, openLook } from './calendar-look.js'
 
 // The look of the calendar: every view in every state the design names (the look fixture, tests/Fixtures/CalendarLookFixture.php, clock
 // frozen at 2026-10-09 10:30), in light and dark, wide and narrow.
 //
 // The rig ships no Tailwind, so two kinds of test live here. The first runs on the bare rig and holds what atom.css owns: the structure
-// is there, a gesture's shapes sit where the layout puts them and take no pointer. The second injects Tailwind's browser build from a CDN
-// (a page that cannot reach it skips them, and fails under CI) and measures what only Tailwind's colours decide: the contrast of every
+// is there, a gesture's shapes sit where the layout puts them and take no pointer. The second adds the consumer's compiled stylesheet
+// (tests/consumer/build.mjs, atom's own tokens in it) and measures what only the colours decide: the contrast of every
 // text and every cue against the ground it is actually on, and what fits in what.
 
 const WIDE = { width: 1280, height: 900 }
@@ -172,13 +172,14 @@ test.describe('on the bare rig: the structure and the shapes of a gesture', () =
 test.describe('with Tailwind: contrast against the ground each thing is on', () => {
     test.describe.configure({ timeout: 90000 })
 
-    // What a sweep has to find on the page for its colours to be covered: every preset (gray has zinc's classes, so it is one) and the hex
-    // items, as far as a view shows them (the day is one date, the month shows a hex item as a dot or a chip, or not at all behind "+N more").
-    const PRESETS = ['black', 'blue', 'green', 'orange', 'purple', 'red', 'yellow', 'zinc']
+    // What a sweep has to find on the page for its colours to be covered: every preset (gray has zinc's classes, and yellow has orange's:
+    // both are the warning tone, so each pair is one) and the hex items, as far as a view shows them (the day is one date, the month shows
+    // a hex item as a dot or a chip, or not at all behind "+N more").
+    const PRESETS = ['black', 'blue', 'green', 'orange', 'purple', 'red', 'zinc']
     const required = {
         month: [...PRESETS, '#ffee00'],
         week: [...PRESETS, '#000080', '#ff8800', '#ffee00'],
-        day: ['black', 'blue', 'orange', 'purple', 'red', 'yellow', 'zinc'],
+        day: ['black', 'blue', 'orange', 'purple', 'red', 'zinc'],
     }
 
     // The most that may be tried and never measured (clipped or covered at every scroll position), as a share of what was tried. It was
@@ -192,9 +193,7 @@ test.describe('with Tailwind: contrast against the ground each thing is on', () 
                 test(`${view}, ${theme}, ${size}: every text is at least 4.5:1 and every cue 3:1, in every state, over the whole of the grid`, async ({ page }) => {
                     await page.setViewportSize(viewport)
 
-                    const ok = await openLook(page, { view, theme })
-
-                    test.skip(!ok, SKIP_REASON)
+                    await openLook(page, { view, theme })
 
                     const worstText = []
                     const worstCue = []
@@ -246,9 +245,7 @@ test.describe('with Tailwind: contrast against the ground each thing is on', () 
             test(`${theme}: a failing colour only on ${name} goes red in the sweep, and is not in the opening screen`, async ({ page }) => {
                 await page.setViewportSize(viewport)
 
-                const ok = await openLook(page, { view, theme })
-
-                test.skip(!ok, SKIP_REASON)
+                await openLook(page, { view, theme })
 
                 // the text of that one block, on that one date
                 await page.addStyleTag({ content: `[data-atom-calendar-column][data-date="${date}"] [data-atom-calendar-chip="block"][aria-label^="${title},"] span { color: ${poor} !important }` })
@@ -269,9 +266,7 @@ test.describe('with Tailwind: contrast against the ground each thing is on', () 
 
     for (const theme of ['light', 'dark']) {
         test(`${theme}: the text of a dot chip and of "+N more" keeps its contrast under a pointer`, async ({ page }) => {
-            const ok = await openLook(page, { view: 'month', theme })
-
-            test.skip(!ok, SKIP_REASON)
+            await openLook(page, { view: 'month', theme })
 
             // and so do the toolbar's ghost buttons, text and glyph, which take a ground of their own under a pointer
             const targets = {
@@ -296,9 +291,7 @@ test.describe('with Tailwind: contrast against the ground each thing is on', () 
 
     for (const theme of ['light', 'dark']) {
         test(`${theme}: the toolbar's buttons are ghost buttons, on the toolbar's own ground and not a box of their own, and their glyphs are measured`, async ({ page }) => {
-            const ok = await openLook(page, { view: 'week', theme })
-
-            test.skip(!ok, SKIP_REASON)
+            await openLook(page, { view: 'week', theme })
 
             const buttons = look(page).locator(':scope > div:first-child [data-atom-button]')
 
@@ -332,15 +325,13 @@ test.describe('with Tailwind: contrast against the ground each thing is on', () 
     test('a hex colour has its edge moved to show on the ground of each theme, and a preset has not been touched', async ({ page }) => {
         const edgeOf = (title) => look(page).locator('[data-atom-calendar-chip="block"]', { hasText: title }).evaluate((el) => getComputedStyle(el).borderLeftColor)
 
-        let ok = await openLook(page, { view: 'week', theme: 'light' })
-
-        test.skip(!ok, SKIP_REASON)
+        await openLook(page, { view: 'week', theme: 'light' })
 
         // orange #ff8800 is darkened on white; the navy is as it is
         expect(await edgeOf('Hex colour')).not.toBe('rgb(255, 136, 0)')
         expect(await edgeOf('Navy hex')).toBe('rgb(0, 0, 128)')
 
-        ok = await openLook(page, { view: 'week', theme: 'dark' })
+        await openLook(page, { view: 'week', theme: 'dark' })
 
         // the other way round on the dark ground
         expect(await edgeOf('Hex colour')).toBe('rgb(255, 136, 0)')
@@ -352,9 +343,7 @@ test.describe('with Tailwind: what fits in what', () => {
     test.describe.configure({ timeout: 60000 })
 
     test('a 45 minute item has room for its two lines at the default hour, and a shorter one for its one', async ({ page }) => {
-        const ok = await openLook(page, { view: 'week', query: 'scroll=00:00' })
-
-        test.skip(!ok, SKIP_REASON)
+        await openLook(page, { view: 'week', query: 'scroll=00:00' })
 
         await page.evaluate(() => {
             const engine = window.atomLook.engine()
@@ -387,9 +376,7 @@ test.describe('with Tailwind: what fits in what', () => {
         test(`the now line stays inside today's column at 390 wide, in the ${name} view`, async ({ page }) => {
             await page.setViewportSize(NARROW)
 
-            const ok = await openLook(page, { view })
-
-            test.skip(!ok, SKIP_REASON)
+            await openLook(page, { view })
 
             const line = await look(page).locator('[data-atom-calendar-now-line]').boundingBox()
             const column = await look(page).locator('[data-atom-calendar-column][data-date="2026-10-09"]').boundingBox()
@@ -524,9 +511,7 @@ test.describe('with Tailwind: a narrow block gives the room of its time to its t
             test(`${name}, ${theme}: a narrow block's title that did not fit shows more of itself than it did, one that fitted is as it was`, async ({ page }) => {
                 await page.setViewportSize(viewport)
 
-                const ok = await openLook(page, { view, theme, query: 'scroll=08:00' })
-
-                test.skip(!ok, SKIP_REASON)
+                await openLook(page, { view, theme, query: 'scroll=08:00' })
 
                 const after = {}
                 const before = {}
@@ -553,9 +538,7 @@ test.describe('with Tailwind: a narrow block gives the room of its time to its t
     test('the title of a narrow block is clamped to two lines and never spills out of the block', async ({ page }) => {
         await page.setViewportSize(WIDE)
 
-        const ok = await openLook(page, { view: 'week', query: 'scroll=08:00' })
-
-        test.skip(!ok, SKIP_REASON)
+        await openLook(page, { view: 'week', query: 'scroll=08:00' })
 
         expect(await titleOf(page, 'Workshop A').evaluate((el) => getComputedStyle(el).webkitLineClamp)).toBe('2')
 
@@ -633,9 +616,7 @@ test.describe('a narrow block breaks its title between words, and cuts a word th
         test(`${name}: no line starts or ends inside a word`, async ({ page }) => {
             await page.setViewportSize(viewport)
 
-            const ok = await openLook(page, { view, tailwind, query: 'scroll=08:00' })
-
-            test.skip(!ok, SKIP_REASON)
+            await openLook(page, { view, tailwind, query: 'scroll=08:00' })
 
             const list = await titles(page)
 
@@ -652,9 +633,7 @@ test.describe('a narrow block breaks its title between words, and cuts a word th
     test('a word too long for its lane is cut by an ellipsis, and a title of several words is clamped to two lines', async ({ page }) => {
         await page.setViewportSize(WIDE)
 
-        const ok = await openLook(page, { view: 'week', query: 'scroll=08:00' })
-
-        test.skip(!ok, SKIP_REASON)
+        await openLook(page, { view: 'week', query: 'scroll=08:00' })
 
         const list = await titles(page)
         const cut = list.filter((title) => title.cut)
@@ -800,9 +779,7 @@ test.describe('with Tailwind: a shape of a gesture is on a ground of its own', (
 
     for (const theme of ['light', 'dark']) {
         test(`${theme}: a selection, an item waiting for the host, and the ghost of a move or a resize do not show what is under them`, async ({ page }) => {
-            const ok = await openLook(page, { view: 'week', theme, query: 'scroll=09:00' })
-
-            test.skip(!ok, SKIP_REASON)
+            await openLook(page, { view: 'week', theme, query: 'scroll=09:00' })
 
             for (const kind of ['select', 'pending', 'move', 'resize']) {
                 await apply(page, kind)
@@ -817,43 +794,13 @@ test.describe('with Tailwind: a shape of a gesture is on a ground of its own', (
     }
 })
 
-test.describe('what the page does when Tailwind cannot be loaded', () => {
-    // the CDN made unreachable for this page
-    const offline = (page) => page.route('**/@tailwindcss/browser@4**', (route) => route.abort())
+test.describe('what the page does when the consumer build is missing', () => {
+    // the stylesheet route answers 404 when tests/consumer/build.mjs has not run
+    const missing = (page) => page.route('**/atom/e2e/consumer-css/**', (route) => route.fulfill({ status: 404, body: '' }))
 
-    test('under CI it fails, loudly, naming what could not be loaded', async ({ page }) => {
-        const was = process.env.CI
+    test('it fails, loudly, naming what to run: a look check is never a skip', async ({ page }) => {
+        await missing(page)
 
-        process.env.CI = '1'
-
-        try {
-            await offline(page)
-            await expect(openLook(page, { view: 'week' })).rejects.toThrow(TAILWIND)
-        } finally {
-            if (was === undefined) delete process.env.CI
-            else process.env.CI = was
-        }
-    })
-
-    test('outside CI it says so on the console and answers false, which the tests turn into a skip whose reason says it is not a pass', async ({ page }) => {
-        const was = process.env.CI
-        const warn = console.warn
-        const warnings = []
-
-        delete process.env.CI
-        console.warn = (...args) => { warnings.push(args.join(' ')) }
-
-        try {
-            await offline(page)
-
-            expect(await openLook(page, { view: 'week' })).toBe(false)
-        } finally {
-            console.warn = warn
-
-            if (was !== undefined) process.env.CI = was
-        }
-
-        expect(warnings.join('\n')).toContain('SKIPPED, not passed')
-        expect(SKIP_REASON).toContain('NOT PASSED')
+        await expect(openLook(page, { view: 'week' })).rejects.toThrow('node tests/consumer/build.mjs')
     })
 })

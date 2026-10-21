@@ -1,14 +1,21 @@
+import { seriesColor } from './colors'
+
 export default (config) => {
+    // the theme listener and the first-render timer belong outside the component, so destroy() can take them off
+    let onTheme = null
+    let timer = null
+    let rendered = false
+    let destroyed = false
+
     return {
-        colors: {
-            green: '#6ee7b7',
-            red: '#fda4af',
-            gray: '#d4d4d8',
-        },
+        chart: null,
 
         init () {
             import('apexcharts').then(ApexCharts => {
-                let chart = new ApexCharts.default(this.$el, {
+                // the element went before the library arrived
+                if (destroyed || !this.$el.isConnected) return
+
+                this.chart = new ApexCharts.default(this.$el, {
                     chart: {
                         type: 'area',
                         height: '100%',
@@ -29,16 +36,34 @@ export default (config) => {
                     colors: [this.getColor()],
                 })
 
-                setTimeout(() => chart.render(), 200)
+                timer = setTimeout(() => {
+                    if (!this.$el.isConnected) return
+
+                    this.chart.render()
+                    rendered = true
+                }, 200)
+
+                onTheme = () => {
+                    if (this.$el.isConnected && rendered) this.chart.updateOptions({ colors: [this.getColor()] })
+                }
+
+                document.addEventListener('darkmode-changed', onTheme)
             })
         },
 
+        destroy () {
+            destroyed = true
+            clearTimeout(timer)
+
+            if (onTheme) document.removeEventListener('darkmode-changed', onTheme)
+
+            onTheme = null
+            rendered = false
+        },
+
+        /** The sparkline's ink: a tone (`success`, `danger`, `neutral`...; `green`, `red` and `gray` still read as theirs) or a hex. */
         getColor () {
-            let color = config.color || ''
-
-            if (color.startsWith('#')) return color
-
-            return this.colors[color || 'gray']
+            return seriesColor(config.color, 'neutral', this.$el)
         },
     }
 }

@@ -59,7 +59,7 @@ $menus = $hasToolbarSlot ? ['link', 'table', 'image', 'youtube'] : $buttons;
         placeholder: @js($placeholder),
         readonly: @js($readonly),
         autofocus: @js($autofocus),
-        class: @js(Arr::toCssClasses(['editor-content m-3 focus:outline-none', $attributes->get('class', 'min-h-10')])),
+        class: @js(Arr::toCssClasses(['editor-content m-3 focus-visible:outline-none', $attributes->get('class', 'min-h-10')])),
         labelledby: @js($attributes->get('aria-labelledby')),
     })"
     x-modelable="editorContent"
@@ -68,14 +68,16 @@ $menus = $hasToolbarSlot ? ['link', 'table', 'image', 'youtube'] : $buttons;
         <div x-show="loading"><atom:skeleton /></div>
 
         <div x-show="!loading" @class([
-            'editor relative rounded-lg',
-            'shadow-sm bg-white dark:bg-white/10 border border-zinc-200 dark:border-white/10' => !$transparent,
-            'has-focus:outline-1 has-focus:outline-zinc-200' => !$transparent,
+            'editor relative rounded-control',
+            'bg-surface border border-control-border' => !$transparent,
+            'has-[[contenteditable]:focus-visible]:border-focus has-[[contenteditable]:focus-visible]:outline-2 has-[[contenteditable]:focus-visible]:outline-focus has-[[contenteditable]:focus-visible]:outline-offset-0' => !$transparent,
             'border-0 bg-transparent' => $transparent,
         ])>
             @if (!$readonly && ($hasToolbarSlot || count($buttons)))
-                <div class="sticky top-[var(--atom-shell-bar-h,0px)] z-1 p-1">
-                    <div role="toolbar" aria-label="{{ t('Formatting') }}" class="flex gap-1 items-center flex-wrap p-1 bg-white rounded-md dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700">
+                {{-- The toolbar is flat: no box of its own. The sticky strip is the frame's surface with the one hairline between it and the text,
+                     and its top corners follow the inside of the frame's (a sticky fill must cover what scrolls under it, and must not square off the corner). --}}
+                <div class="sticky top-[var(--atom-shell-bar-h,0px)] z-1 p-1 bg-surface border-b border-border rounded-t-[calc(var(--radius-control)-1px)]">
+                    <div role="toolbar" aria-label="{{ t('Formatting') }}" class="flex gap-1 items-center flex-wrap">
                         @if ($hasToolbarSlot)
                             {{ $toolbar }}
                         @else

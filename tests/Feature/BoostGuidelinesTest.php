@@ -608,3 +608,13 @@ it('teaches the raised layer and the overlays\' tokens', function () {
         ->and($skill)->toContain('`bg-fg text-canvas`')
         ->and($skill)->toContain('`text-danger-fg`, never `text-red-500`');
 });
+
+// V4-3d, the text, editor, calendar and chart: the skill carries the one rule, and no longer teaches the dotted link.
+it('teaches the 3d tokens and no longer the dotted link', function () {
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+
+    expect($skill)->toContain('Text, editor, calendar and chart (restyled in V4-3d)')
+        ->and($skill)->toContain('`text-accent-ink`')
+        ->and($skill)->toContain('`orange` and `yellow` are both warning')
+        ->and($skill)->not->toContain('dotted underline');
+});

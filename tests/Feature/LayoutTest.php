@@ -46,9 +46,9 @@ describe('heading', function () {
 
         expect($html)->toContain($expected);
     })->with([
-        ['xs', 'text-xs font-medium'],
-        ['sm', 'text-sm font-medium'],
-        ['default', 'text-base font-medium'],
+        ['xs', 'text-xs font-semibold'],
+        ['sm', 'text-sm font-semibold'],
+        ['default', 'text-base font-semibold'],
         ['lg', 'text-lg font-semibold'],
         ['xl', 'text-xl font-semibold'],
     ]);
@@ -81,7 +81,7 @@ describe('subheading', function () {
 
         expect($html)
             ->toContain('data-atom-subheading')
-            ->toContain('text-zinc-500')
+            ->toContain('text-fg-muted')
             ->toContain('Caption');
     });
 
@@ -133,7 +133,7 @@ describe('separator', function () {
         expect($html)
             ->toContain('data-atom-separator')
             ->toContain('role="none"')
-            ->toContain('bg-zinc-200');
+            ->toContain('bg-border');
     });
 
     it('wraps a centred label between two rules', function () {
@@ -141,7 +141,7 @@ describe('separator', function () {
 
         expect($html)->toContain('OR');
         // centre alignment draws a rule on each side of the label
-        expect(substr_count($html, 'bg-zinc-200'))->toBe(2);
+        expect(substr_count($html, 'bg-border'))->toBe(2);
     });
 });
 

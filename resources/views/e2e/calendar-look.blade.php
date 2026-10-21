@@ -1,7 +1,7 @@
-<atom:html title="E2E: Calendar (look)" :vite="[]" :dark="false" class="min-h-screen bg-white dark:bg-zinc-900">
+<atom:html title="E2E: Calendar (look)" :vite="[]" :dark="false" class="min-h-screen bg-canvas">
 {{-- The calendar as it looks (tests/Fixtures/CalendarLookFixture.php), for the screenshots and the contrast check: every state in one
      fixed set of items, the clock frozen at 2026-10-09 10:30. The page ships no Tailwind and no stand-in for it, so what it shows
-     on its own is the structure atom.css owns; the look is read with Tailwind injected (the contact sheet, tests/e2e/calendar-look.spec.js).
+     on its own is the structure atom.css owns; the look is read with the consumer's compiled stylesheet added (the contact sheet, tests/e2e/calendar-look.spec.js).
 
      A move, a resize, a selection and a pending item are set by hand here, to be looked at without a pointer: a state is set on the engine:
      ?state=select|move|resize|pending|popover, or window.atomLook.apply(state) once the page is up. ?view=week|day|month,

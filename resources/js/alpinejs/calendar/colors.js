@@ -5,10 +5,10 @@
 // the dark ground. Each is moved toward black for the light ground and toward white for the dark one, only as far as it must, so a colour
 // that already shows is used as it is. Pure, no DOM.
 
-// the grounds the edge sits on: white, and zinc-800 (what atom's card is in dark mode), and how well it has to show, with a little over 3
-// for the tint under it
-export const LIGHT_GROUND = [255, 255, 255]
-export const DARK_GROUND = [39, 39, 42]
+// the grounds the edge sits on: the lowest-contrast ground of each theme (the sunken fill that a weekend or an outside day is drawn on:
+// #f3f1ed, and the dark surface, #1c1b19), and how well it has to show, with a little over 3 for the tint under it
+export const LIGHT_GROUND = [243, 241, 237]
+export const DARK_GROUND = [28, 27, 25]
 export const EDGE_CONTRAST = 3.4
 
 // #rgb, #rgba, #rrggbb or #rrggbbaa as [r, g, b], or null; the alpha is left out, as the item's tint is drawn from the colour alone

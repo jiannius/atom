@@ -14,7 +14,7 @@
                 @foreach ($items as $item)
                     <a
                     href="{{ route('atom.docs.show', $item['name']) }}"
-                    class="rounded-lg border border-zinc-200 px-4 py-3 font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                    class="rounded-panel border bg-surface px-4 py-3 text-sm font-medium hover:bg-surface-sunken">
                         {{ $item['name'] }}
                     </a>
                 @endforeach
@@ -30,7 +30,7 @@
             @foreach (\Jiannius\Atom\Services\Docs::PATTERNS as $name => $label)
                 <a
                 href="{{ route('atom.docs.pattern', $name) }}"
-                class="rounded-lg border border-zinc-200 px-4 py-3 font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                class="rounded-panel border bg-surface px-4 py-3 text-sm font-medium hover:bg-surface-sunken">
                     {{ $label }}
                 </a>
             @endforeach

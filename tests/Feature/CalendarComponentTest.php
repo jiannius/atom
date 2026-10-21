@@ -485,49 +485,84 @@ describe('calendar source guards', function () {
         }
     });
 
-    it('keeps chip text to zinc, with red for danger only', function () {
+    it('keeps chip text to the foreground tokens, with the danger ink for danger only', function () {
         // a hue on a tint of itself fails contrast (yellow on yellow-100 is 1.8:1), so colour is decoration
-        // and the text stays neutral
+        // and the text stays neutral: fg or fg-muted, and the danger ink for an overdue item
         $offenders = [];
+        $seen = [];
 
         foreach (['components/calendar/chip.blade.php', 'components/calendar/index.blade.php'] as $path) {
             $contents = file_get_contents(__DIR__.'/../../'.$path);
 
-            preg_match_all('/(?:^|[\s\'"])((?:[a-z-]+:)*text-([a-z]+)-(\d+))(?=[\s\'"])/m', $contents, $matches, PREG_SET_ORDER);
+            preg_match_all('/(?:^|[\s\'"])((?:[a-z-]+:)*text-([a-z-]+))(?=[\s\'"])/m', $contents, $matches, PREG_SET_ORDER);
 
             foreach ($matches as $match) {
-                [, $token, $hue, $step] = $match;
+                [, $token, $colour] = $match;
 
-                $allowed = $hue === 'zinc' || ($hue === 'red' && in_array($step, ['700', '300'], true));
+                // sizes and alignment are not colours
+                if (preg_match('/^(?:xs|sm|base|lg|xl|2xl|3xl|left|right|center|start|end)$/', $colour)) {
+                    continue;
+                }
 
-                if (! $allowed) {
+                $seen[$colour] = true;
+
+                if (! in_array($colour, ['fg', 'fg-muted', 'danger-fg', 'surface', 'canvas'], true)) {
                     $offenders[] = $path.' → '.$token;
                 }
             }
         }
 
-        expect(array_values(array_unique($offenders)))->toBe([]);
+        // not vacuous: the text colours the calendar uses are the ones the rule names
+        expect(array_values(array_unique($offenders)))->toBe([])
+            ->and(array_keys($seen))->toContain('fg', 'fg-muted', 'danger-fg', 'surface');
     });
 
-    it('draws every border and divider with a light and a dark colour on the same element', function () {
-        // Tailwind v4 draws an uncoloured border in currentColor; PaletteTest holds the whole package to this,
-        // and this pins that it is looking at the calendar's own files
-        foreach (calendarSources() as $path => $contents) {
-            if (! str_ends_with($path, '.blade.php')) {
-                continue;
+    it('draws every border and divider with a colour token on the same element, and no dark: pair', function () {
+        // Tailwind v4 draws an uncoloured border in currentColor; atom's base rule gives every border the hairline colour, and
+        // the calendar names its own anyway, on the element that has the width (in its class, or in the binding that adds it), so a
+        // theme change moves them with no dark: pair. Read from the render, so a binding in a template is an element too.
+        $html = calendarRender(':views="[\'month\', \'week\', \'day\']" selectable');
+        $elements = domQuery($html, '//*[@class or @*[name()="x-bind:class"]]');
+        $withWidth = 0;
+
+        expect($elements)->not->toBeEmpty();
+
+        foreach ($elements as $element) {
+            $classes = $element->getAttribute('class').' '.$element->getAttribute('x-bind:class');
+            $tokens = array_filter(preg_split('/[\s\'?:,{}]+/', trim($classes)));
+            $hasWidth = (bool) array_filter($tokens, fn ($t) => preg_match('/^border(-[trblxy])?$/', $t) || str_starts_with($t, 'not-first:border-l'));
+
+            expect(array_filter($tokens, fn ($t) => str_starts_with($t, 'dark:') && preg_match('/^dark:(?:bg|text|border|ring|outline)-/', $t)))->toBe([], $classes);
+
+            // an <atom:button> in the toolbar is the button's own border, held by its own guards
+            if ($hasWidth && ! $element->hasAttribute('data-atom-button')) {
+                $withWidth++;
+                expect(array_filter($tokens, fn ($t) => preg_match('/^border-(?:border|border-strong|danger-fg|accent-ink|fg|fg-subtle|[a-z]+-fg)(\/\d+)?$/', $t)))->not->toBe([], $classes);
             }
+        }
 
-            // the class attributes, which include the strings an x-bind:class chooses between (a colour may carry an opacity)
-            preg_match_all('/class="([^"]*)"/', $contents, $matches);
+        // not vacuous: the toolbar, the cells, the hour lines and the day list all have a border
+        expect($withWidth)->toBeGreaterThan(5);
+    });
 
-            foreach ($matches[1] as $classes) {
-                $tokens = array_filter(preg_split('/[\s\'?]+/', trim($classes)));
-                $hasWidth = (bool) array_filter($tokens, fn ($t) => preg_match('/^border(-[trblxy])?$/', $t) || str_starts_with($t, 'not-first:border-l'));
+    it('draws the preset palette from the tone tokens, with no palette step and no dark: pair', function () {
+        $presets = json_decode(calendarRoot(calendarRender())->getAttribute('data-atom-calendar-palette'), true);
 
-                if ($hasWidth) {
-                    expect(array_filter($tokens, fn ($t) => preg_match('/^border-zinc-\d+(\/\d+)?$/', $t)))->not->toBe([], $path.': '.$classes);
-                    expect(array_filter($tokens, fn ($t) => preg_match('/^dark:border-zinc-\d+(\/\d+)?$/', $t)))->not->toBe([], $path.': '.$classes);
-                }
+        $expected = [
+            'red' => 'danger', 'orange' => 'warning', 'yellow' => 'warning', 'green' => 'success', 'blue' => 'info',
+        ];
+
+        foreach ($expected as $name => $tone) {
+            expect($presets[$name])->toBe(['tint' => 'bg-'.$tone.'-bg', 'accent' => 'border-'.$tone.'-fg', 'dot' => 'bg-'.$tone.'-fg']);
+        }
+
+        expect($presets['purple'])->toBe(['tint' => 'bg-accent-soft', 'accent' => 'border-accent-ink', 'dot' => 'bg-accent-ink'])
+            ->and($presets['black']['dot'])->toBe('bg-fg')
+            ->and($presets['zinc'])->toBe($presets['gray']);
+
+        foreach ($presets as $name => $classes) {
+            foreach ($classes as $part => $class) {
+                expect($class)->not->toMatch('/dark:|-\d{2,3}\b/', $name.' '.$part);
             }
         }
     });
