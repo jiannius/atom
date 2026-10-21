@@ -1,5 +1,5 @@
 <atom:context-menu>
-    <div class="flex h-40 items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 text-zinc-500 select-none dark:border-zinc-700 dark:text-zinc-400">
+    <div class="flex h-40 items-center justify-center rounded-panel border border-dashed border-control-border text-fg-muted select-none">
         Right-click anywhere in this box
     </div>
 

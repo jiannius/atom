@@ -20,16 +20,18 @@ $icons = [
 $href = safe_url($href);
 $el = $href ? 'a' : 'button';
 
+/* A row of the control height (28px compact, 40 on touch) with a 6px radius. Hover and keyboard focus tint it; the focus ring
+   is the base :focus-visible rule, drawn inside the row so the panel's padding does not clip it. A tone item reads the
+   tone's text colour and tints with the tone's fill. */
 $classes = Arr::toCssClasses([
-    'flex items-center gap-2 w-full py-2 px-3 rounded-md',
-    'text-left text-zinc-800 dark:text-white',
-    'focus:outline-none',
-    'disabled:pointer-events-none disabled:cursor-default',
-    '[:where([data-atom-menu]_&)]:my-1 first:[:where([data-atom-menu]_&)]:mt-0 last:[:where([data-atom-menu]_&)]:mb-0',
+    'flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav',
+    'text-left text-sm focus-visible:-outline-offset-2',
+    'disabled:pointer-events-none disabled:cursor-default disabled:opacity-50',
+    '[:where([data-atom-menu]_&)]:my-px first:[:where([data-atom-menu]_&)]:mt-0 last:[:where([data-atom-menu]_&)]:mb-0',
     match ($variant) {
-        'danger', 'delete', 'remove' => 'focus:bg-red-100 hover:text-red-500 hover:bg-red-100',
-        'warning' => 'focus:bg-yellow-100 hover:text-yellow-500 hover:bg-yellow-100',
-        default => 'focus:bg-zinc-800/5 dark:focus:bg-zinc-700 hover:bg-zinc-800/5 dark:hover:bg-zinc-600',
+        'danger', 'delete', 'remove' => 'text-danger-fg hover:bg-danger-bg focus-visible:bg-danger-bg',
+        'warning' => 'text-warning-fg hover:bg-warning-bg focus-visible:bg-warning-bg',
+        default => 'text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]',
     },
 ]);
 
@@ -59,7 +61,7 @@ if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attribute
 
 <{{ $el }} {{ $attributes->class($classes)->merge($merges) }}>
     @if ($iconStart = data_get($icons, 'start'))
-        <x-dynamic-component :component="'atom::icon.'.$iconStart" class="shrink-0 opacity-40 size-5"/>
+        <x-dynamic-component :component="'atom::icon.'.$iconStart" class="shrink-0 size-4 text-current/70"/>
     @endif
 
     <div class="grow leading-tight whitespace-nowrap truncate">
@@ -71,6 +73,6 @@ if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attribute
     @endif
 
     @if ($iconEnd = data_get($icons, 'end'))
-        <x-dynamic-component :component="'atom::icon.'.$iconEnd" class="shrink-0 opacity-40 size-5"/>
+        <x-dynamic-component :component="'atom::icon.'.$iconEnd" class="shrink-0 size-4 text-current/70"/>
     @endif
 </{{ $el }}>

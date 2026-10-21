@@ -6,20 +6,27 @@
 
 @php
 $model = $attributes->wire('model')->value();
+
+$height = match (true) {
+    $variant === 'button' && $size === 'sm' => 'h-control',
+    $variant === 'button' => 'h-control-md',
+    $size === 'sm' => 'h-control-md',
+    default => 'h-control-lg',
+};
 @endphp
 
+{{-- Two looks, both fills and hairlines with no shadow. The default is a line: the strip is ruled underneath and the current tab
+     is underlined. `variant="button"` is a segmented control: a sunken track with the current tab as the surface. Heights come from
+     the control token (the line is a control and a half; the segments are one control inside a 2px track). --}}
 <div @class([
     'select-none',
 
-    'p-1 bg-zinc-100 dark:bg-zinc-700' => $variant === 'button',
-    'border-b border-zinc-300 dark:border-zinc-700' => !$variant,
+    'p-0.5 bg-surface-sunken' => $variant === 'button',
+    'border-b border-border' => !$variant,
 
-    'h-8' => $size === 'sm',
-    'h-10' => !$size,
-    '[[data-atom-table-toolbar]_&]:h-12',
+    $height,
 
-    'rounded' => $variant === 'button' && $size === 'sm',
-    'rounded-md' => $variant === 'button' && !$size,
+    'rounded-control' => $variant === 'button',
 ]) data-atom-tabs>
     <div {{ $attributes->class(['inline-flex items-center h-full']) }}
         @if ($model)

@@ -15,7 +15,7 @@ role="group"
 @if ($heading) aria-labelledby="{{ $headingId }}" @endif
 {{ $attributes->class('py-1 [&:not(:first-child)]:mt-1') }}>
     @if ($heading)
-        <div id="{{ $headingId }}" data-atom-command-heading class="px-3 py-1 text-xs font-medium text-zinc-400">{{ $heading }}</div>
+        <div id="{{ $headingId }}" data-atom-command-heading class="px-2.5 py-1 text-xs font-medium text-fg-muted">{{ $heading }}</div>
     @endif
 
     {{ $slot }}

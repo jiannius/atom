@@ -71,29 +71,31 @@ x-bind:class="{
 class="p-6 bg-transparent opacity-0 scale-75 transition-all duration-100"
 data-atom-toast
 popover="manual">
-    <div class="py-4 px-6 max-w-lg min-w-xs flex gap-3 rounded-lg bg-zinc-900 dark:bg-zinc-600 shadow border border-zinc-200 dark:border-zinc-700">
+    {{-- A raised layer, like every overlay: the raised surface, the strong hairline, the one shadow token. The tone is the icon's
+         alone, so the text keeps full contrast whatever the variant. --}}
+    <div class="py-3 ps-4 pe-3 max-w-lg min-w-xs flex gap-3 rounded-panel bg-surface-raised text-fg text-sm shadow-pop border border-border-strong">
         <div class="grow">
             <template x-if="config.heading" hidden>
                 <div class="flex flex-col gap-2">
                     <div class="flex items-center gap-3">
-                        <div class="shrink-0 size-5 flex items-center justify-center">
-                            <atom:icon.error x-show="config.variant === 'danger'" class="text-red-500" variant="solid" />
-                            <atom:icon.check-circle x-show="config.variant === 'success'" class="text-green-500" variant="solid" />
-                            <atom:icon.warning x-show="config.variant === 'warning'" class="text-yellow-500" variant="solid" />
+                        <div class="shrink-0 size-4 flex items-center justify-center">
+                            <atom:icon.error x-show="config.variant === 'danger'" class="size-4 text-danger-fg" variant="solid" />
+                            <atom:icon.check-circle x-show="config.variant === 'success'" class="size-4 text-success-fg" variant="solid" />
+                            <atom:icon.warning x-show="config.variant === 'warning'" class="size-4 text-warning-fg" variant="solid" />
                         </div>
-                        <div x-text="config.heading" class="text-zinc-100 font-medium"></div>
+                        <div x-text="config.heading" class="font-semibold"></div>
                     </div>
 
                     <template x-if="config.subheading" hidden>
-                        <div x-text="config.subheading" class="text-sm text-zinc-300"></div>
+                        <div x-text="config.subheading" class="text-fg-muted"></div>
                     </template>
         
                     <template x-if="typeof config.message === 'string'" hidden>
-                        <div x-text="config.message" class="text-sm text-zinc-300"></div>
+                        <div x-text="config.message" class="text-fg-muted"></div>
                     </template>
         
                     <template x-if="Array.isArray(config.message) && config.message.length" hidden>
-                        <ul class="list-disc list-outside ml-6 text-sm text-zinc-300">
+                        <ul class="list-disc list-outside ms-6 text-fg-muted">
                             <template x-for="message in config.message">
                                 <li x-text="message"></li>
                             </template>
@@ -108,14 +110,14 @@ popover="manual">
             
             <template x-if="!config.heading && (config.subheading || config.message || config.html)" hidden>
                 <div class="flex items-center gap-3">
-                    <div class="shrink-0 size-5 flex items-center justify-center">
-                        <atom:icon.error x-show="config.variant === 'danger'" class="text-red-500" variant="solid" />
-                        <atom:icon.check-circle x-show="config.variant === 'success'" class="text-green-500" variant="solid" />
-                        <atom:icon.warning x-show="config.variant === 'warning'" class="text-yellow-500" variant="solid" />
+                    <div class="shrink-0 size-4 flex items-center justify-center">
+                        <atom:icon.error x-show="config.variant === 'danger'" class="size-4 text-danger-fg" variant="solid" />
+                        <atom:icon.check-circle x-show="config.variant === 'success'" class="size-4 text-success-fg" variant="solid" />
+                        <atom:icon.warning x-show="config.variant === 'warning'" class="size-4 text-warning-fg" variant="solid" />
                     </div>
 
                     <template x-if="config.subheading || config.message" hidden>
-                        <div x-text="config.subheading || config.message" class="text-zinc-100"></div>
+                        <div x-text="config.subheading || config.message"></div>
                     </template>
 
                     <template x-if="config.html" hidden>
@@ -130,8 +132,8 @@ popover="manual">
             type="button"
             x-on:click.stop="closeToast"
             aria-label="{{ t('Close') }}"
-            class="flex items-center justify-center text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200">
-                <atom:icon.close class="size-5"/>
+            class="flex size-7 items-center justify-center rounded-control text-fg-subtle transition-colors hover:bg-fg/[0.06] hover:text-fg">
+                <atom:icon.close class="size-4"/>
             </button>
         </div>
     </div>

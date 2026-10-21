@@ -4,11 +4,12 @@
 
 @php
 $classes = Arr::toCssClasses([
-    '[:where(&)]:min-w-48 p-[.3125rem]',
-    'rounded-lg shadow-xs',
-    'border border-zinc-200 dark:border-zinc-700',
-    'bg-white dark:bg-zinc-800',
-    'focus:outline-hidden',
+    /* a raised layer: the raised surface, the strong hairline and the one shadow token. The 4px of padding and the
+       6px radius of an item make the panel's 10px corner concentric. */
+    '[:where(&)]:min-w-48 p-1 text-fg',
+    'rounded-panel shadow-pop',
+    'border border-border-strong',
+    'bg-surface-raised',
 ]);
 @endphp
 

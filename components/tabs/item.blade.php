@@ -8,8 +8,8 @@
     'label' => null,
     'value' => null,
     'count' => null,
-    'current' => false,
-    'newtab' => false,
+    'current' => null,
+    'newtab' => null,
 ])
 
 @php
@@ -31,35 +31,27 @@ $merges = [
     'target' => $element === 'a' && $newtab ? '_blank' : null,
 ];
 
+/* The label is fg-muted on the track or the page (6:1 on either) and fg when current, in both themes. A line tab is underlined
+   with a 2px fg border that overlaps the strip's hairline; a segment is a pill of the surface with its own hairline, which
+   is what tells it from the sunken track now that nothing casts a shadow. The ring is the base :focus-visible rule, drawn inside. */
 $classes = [
-    // The muted tokens are tuned to the page ground, and this strip is not on it:
-    // the button variant raises it to zinc-100/zinc-700, two steps off. Muted on
-    // that surface is 4.4:1 at best, and the pair here was inverted on top of it —
-    // the dark-mode token in light mode — for 2.3:1. Hard-coded rather than
-    // semantic because staying semantic would need a raised-surface pair of its
-    // own; these two clear AA on the raised strip and on the page ground alike.
-    'grow self-stretch transition-colors duration-200 text-zinc-600 dark:text-zinc-300',
-    'flex items-center gap-2 justify-center px-4',
+    'grow self-stretch transition-colors duration-200 text-fg-muted text-sm font-medium',
+    'flex items-center gap-2 justify-center px-3',
     'not-[data-active]:truncate',
-    'hover:text-zinc-800 dark:hover:text-white',
-    
-    'rounded' => $variant === 'button',
+    'hover:text-fg',
+    'focus-visible:-outline-offset-2',
+
+    'rounded-nav border border-transparent' => $variant === 'button',
 
     '-mb-px pb-px' => !$variant,
 
-    'data-[active]:font-medium',
     'data-[active]:whitespace-nowrap',
     'data-[active]:w-max',
-    'dark:data-[active]:text-white',
+    'data-[active]:text-fg',
 
-    'data-[active]:bg-white' => $variant === 'button',
-    'dark:data-[active]:bg-zinc-500' => $variant === 'button',
-    'data-[active]:shadow-sm' => $variant === 'button',
+    'data-[active]:bg-surface data-[active]:border-border-strong' => $variant === 'button',
 
-    'data-[active]:border-b-2' => !$variant,
-    'data-[active]:border-zinc-800' => !$variant,
-    'dark:data-[active]:border-white' => !$variant,
-    'data-[active]:text-zinc-800' => !$variant,
+    'border-b-2 border-transparent data-[active]:border-fg' => !$variant,
 ];
 @endphp
 
@@ -68,7 +60,7 @@ $classes = [
 @if ($current) data-active @endif
 {{ $attributes->merge($merges)->class($classes) }}>
     @if ($icon)
-        <x-dynamic-component :component="'atom::icon.'.$icon" class="shrink-0" />
+        <x-dynamic-component :component="'atom::icon.'.$icon" class="shrink-0 size-4" />
     @endif
 
     @if ($slot->isNotEmpty())

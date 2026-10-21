@@ -81,9 +81,11 @@ describe('menu.item', function () {
 
     it('tints danger variants', function () {
         expect(renderBlade('<atom:menu.item variant="danger">D</atom:menu.item>'))
-            ->toContain('hover:bg-red-100');
+            ->toContain('text-danger-fg')
+            ->toContain('hover:bg-danger-bg');
         expect(renderBlade('<atom:menu.item variant="warning">W</atom:menu.item>'))
-            ->toContain('hover:bg-yellow-100');
+            ->toContain('text-warning-fg')
+            ->toContain('hover:bg-warning-bg');
     });
 
     it('auto-wires the delete confirm flow', function () {

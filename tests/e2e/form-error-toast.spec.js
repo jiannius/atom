@@ -118,8 +118,8 @@ test.describe('the error toast', () => {
     await expect(items).toHaveText(['Name is required.', 'Email is required.'])
 
     // danger variant: the red error glyph shows, the success one does not
-    await expect(toast(page).locator('span.text-red-500')).toBeVisible()
-    await expect(toast(page).locator('span.text-green-500')).toBeHidden()
+    await expect(toast(page).locator('span.text-danger-fg')).toBeVisible()
+    await expect(toast(page).locator('span.text-success-fg')).toBeHidden()
   })
 
   test('outside a modal it stays up past the 6s a modal one gets, until the X is clicked', async ({ page }) => {
