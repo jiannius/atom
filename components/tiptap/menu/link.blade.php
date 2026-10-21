@@ -54,7 +54,7 @@ x-data="{
 }"
 x-on:link-menu-edit="link = null; edit()"
 x-on:link-menu-on="isEditing = false; getLink($event.detail)"
-class="link-menu bg-surface-raised rounded-panel shadow-pop border border-border-strong [[popover]_&]:border-0 [[popover]_&]:shadow-none">
+class="link-menu bg-surface-raised rounded-panel border-border-strong has-[>div]:border has-[>div]:shadow-pop [[popover]_&]:border-0! [[popover]_&]:shadow-none!">
     <template x-if="link && !isEditing">
         <div class="py-2 px-3 flex items-center gap-4 cursor-pointer max-w-xl">
             <div class="grow flex items-center gap-2">

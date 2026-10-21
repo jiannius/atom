@@ -74,8 +74,10 @@ $menus = $hasToolbarSlot ? ['link', 'table', 'image', 'youtube'] : $buttons;
             'border-0 bg-transparent' => $transparent,
         ])>
             @if (!$readonly && ($hasToolbarSlot || count($buttons)))
-                <div class="sticky top-[var(--atom-shell-bar-h,0px)] z-1 p-1">
-                    <div role="toolbar" aria-label="{{ t('Formatting') }}" class="flex gap-1 items-center flex-wrap p-1 bg-surface rounded-control border">
+                {{-- The toolbar is flat: no box of its own. The sticky strip is the frame's surface with the one hairline between it and the text,
+                     and its top corners follow the inside of the frame's (a sticky fill must cover what scrolls under it, and must not square off the corner). --}}
+                <div class="sticky top-[var(--atom-shell-bar-h,0px)] z-1 p-1 bg-surface border-b border-border rounded-t-[calc(var(--radius-control)-1px)]">
+                    <div role="toolbar" aria-label="{{ t('Formatting') }}" class="flex gap-1 items-center flex-wrap">
                         @if ($hasToolbarSlot)
                             {{ $toolbar }}
                         @else

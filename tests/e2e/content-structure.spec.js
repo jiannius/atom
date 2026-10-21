@@ -322,7 +322,7 @@ for (const tw of ['floor', 'latest']) {
       expect((await style(editable, 'outline-style'))['outline-style']).toBe('none')
     })
 
-    test('the toolbar buttons are control-high squares at the nav radius with 16px icons, and the bar is a hairline on the surface', async ({ page }) => {
+    test('the toolbar buttons are control-high squares at the nav radius with 16px icons', async ({ page }) => {
       await openContent(page, { tw, section: 'editor' })
 
       const toolbar = page.getByTestId('tiptap').getByRole('toolbar')
@@ -337,11 +337,95 @@ for (const tw of ['floor', 'latest']) {
         expect(s['border-top-left-radius']).toBe('6px')
         expect((await style(button.locator('svg').first())).width).toBe(16)
       }
+    })
 
-      const bar = await style(toolbar, 'background-color', 'border-top-width', 'box-shadow')
-      expect(bar['background-color']).toBe(await token(page, 'surface'))
-      expect(bar['border-top-width']).toBe('1px')
-      expect(bar['box-shadow']).toBe('none')
+    test('the toolbar is flat: no border, radius, fill or shadow of its own, only the one hairline between its strip and the text', async ({ page }) => {
+      await openContent(page, { tw, section: 'editor' })
+
+      const editor = page.getByTestId('tiptap')
+      const toolbar = editor.getByRole('toolbar')
+      await expect(toolbar).toBeVisible({ timeout: 15000 })
+
+      // the toolbar itself: nothing drawn
+      const own = await style(toolbar, 'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width', 'border-top-left-radius', 'border-bottom-right-radius', 'background-color', 'box-shadow')
+      expect([own['border-top-width'], own['border-right-width'], own['border-bottom-width'], own['border-left-width']]).toEqual(['0px', '0px', '0px', '0px'])
+      expect([own['border-top-left-radius'], own['border-bottom-right-radius']]).toEqual(['0px', '0px'])
+      expect(own['background-color']).toBe('rgba(0, 0, 0, 0)')
+      expect(own['box-shadow']).toBe('none')
+
+      // the strip it sits in: the frame's own surface, a hairline underneath and nowhere else, no shadow
+      const strip = await style(toolbar.locator('..'), 'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width', 'border-bottom-color', 'background-color', 'box-shadow', 'border-bottom-left-radius')
+      expect([strip['border-top-width'], strip['border-right-width'], strip['border-bottom-width'], strip['border-left-width']]).toEqual(['0px', '0px', '1px', '0px'])
+      expect(strip['border-bottom-color']).toBe(await token(page, 'border'))
+      expect(strip['background-color']).toBe(await token(page, 'surface'))
+      expect(strip['box-shadow']).toBe('none')
+      expect(strip['border-bottom-left-radius']).toBe('0px')
+
+      // so the strip is the only visible box in the frame that draws a border (the bubble menus are hidden until their node is selected)
+      const lines = await editor.locator('.editor').first().evaluate((frame) => [...frame.querySelectorAll('*')]
+        .filter((el) => el.checkVisibility({ visibilityProperty: true }) && el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().height > 0)
+        .filter((el) => parseFloat(getComputedStyle(el).borderTopWidth) + parseFloat(getComputedStyle(el).borderBottomWidth) > 0)
+        .map((el) => el.className.toString().slice(0, 40)))
+      expect(lines, 'the strip is the only box inside the frame that draws a border').toHaveLength(1)
+    })
+
+    test('the bubble menus stay raised panels, and a link menu with nothing in it draws no stray line', async ({ page }) => {
+      await openContent(page, { tw, section: 'editor' })
+
+      const editor = page.getByTestId('tiptap')
+      await expect(editor.getByRole('toolbar')).toBeVisible({ timeout: 15000 })
+
+      const menu = editor.locator('.tiptap-menu .link-menu')
+
+      // collapsed: its template renders nothing, so it has neither border nor shadow to draw as a line across the frame
+      const idle = await style(menu, 'border-top-width', 'box-shadow')
+      expect(idle['border-top-width']).toBe('0px')
+      expect(idle['box-shadow']).toBe('none')
+
+      // with a link in it: the raised panel, as the other bubble menus are
+      await menu.evaluate((el) => { window.Alpine.$data(el).link = { href: 'https://example.com' } })
+      await expect(menu.locator('> div')).toBeVisible()
+
+      const shown = await style(menu, 'border-top-width', 'border-top-color', 'border-top-left-radius', 'background-color', 'box-shadow')
+      expect(shown['border-top-width']).toBe('1px')
+      expect(shown['border-top-color']).toBe(await token(page, 'border-strong'))
+      expect(shown['border-top-left-radius']).toBe('10px')
+      expect(shown['background-color']).toBe(await token(page, 'surface-raised'))
+      expect(shown['box-shadow']).not.toBe('none')
+
+      // the other three are raised too (hidden until their node is selected: their classes are what is read)
+      for (const name of ['table-menu', 'image-menu', 'youtube-menu']) {
+        const s = await style(editor.locator(`.${name}`), 'border-top-width', 'border-top-left-radius', 'background-color', 'box-shadow')
+        expect([s['border-top-width'], s['border-top-left-radius'], s['background-color']], name).toEqual(['1px', '10px', await token(page, 'surface-raised')])
+        expect(s['box-shadow'], name).not.toBe('none')
+      }
+    })
+
+    test('the link form inside the toolbar\'s popover is not a second panel: no border and no shadow of its own', async ({ page }) => {
+      await openContent(page, { tw, section: 'editor' })
+
+      const editor = page.getByTestId('tiptap')
+      await expect(editor.getByRole('toolbar')).toBeVisible({ timeout: 15000 })
+
+      await editor.getByRole('toolbar').getByRole('button', { name: 'Link' }).click()
+      const form = editor.locator('[popover] .link-menu')
+      await expect(form).toBeVisible()
+      await expect(form.getByPlaceholder('Link URL')).toBeVisible()
+
+      const s = await style(form, 'border-top-width', 'box-shadow')
+      expect(s['border-top-width']).toBe('0px')
+      // `shadow-none` is a stack of transparent zero shadows: nothing is drawn
+      expect(s['box-shadow'].replace(/rgba\(0, 0, 0, 0\) 0px 0px 0px 0px(, )?/g, '')).toBe('')
+    })
+
+    test('the chat composer has no toolbar strip, and its frame is the same field', async ({ page }) => {
+      await openContent(page, { tw, section: 'editor' })
+
+      const chat = page.getByTestId('chat')
+      await expect(chat.locator('.editor').first()).toBeVisible({ timeout: 15000 })
+
+      expect(await chat.getByRole('toolbar').count()).toBe(0)
+      expect((await style(chat.locator('.editor').first(), 'border-top-width'))['border-top-width']).toBe('1px')
     })
 
     test('a toolbar button reads the foreground on a fill when it is the active one', async ({ page }) => {
