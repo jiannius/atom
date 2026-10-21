@@ -19,7 +19,7 @@
     x-bind:data-lifted="isLifted(chip) ? '' : null"
     x-bind:data-atom-calendar-hex="isHex(chip) && !chip.danger ? '' : null"
     x-bind:style="hue(chip)"
-    x-bind:class="[colorClass(chip, 'tint'), chip.danger ? 'border-red-600 dark:border-red-400' : colorClass(chip, 'accent')]"
+    x-bind:class="[colorClass(chip, 'tint'), chip.danger ? 'border-danger-fg' : colorClass(chip, 'accent')]"
     x-on:pointerdown="itemPress(chip, $event)"
     x-bind:data-atom-calendar-item="chip.id"
     x-bind:data-draggable="canDrag(chip) ? '' : null"
@@ -29,9 +29,9 @@
     x-on:keydown.space="itemKey(chip, $event)"
     x-on:mouseenter="tooltip($el)"
     data-atom-calendar-chip="bar"
-    class="flex h-5 w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm border-l-[3px] px-1.5 text-xs font-medium outline-offset-1 hover:brightness-95 dark:hover:brightness-125 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
-        <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-600 dark:text-zinc-300'" class="inline-flex shrink-0"></span>
-        <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" data-atom-calendar-chip-title class="truncate"></span>
+    class="flex h-5 w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm border-l-[3px] px-1.5 text-xs font-medium outline-offset-1 hover:brightness-95 dark:hover:brightness-125">
+        <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-danger-fg' : 'text-fg-muted'" class="inline-flex shrink-0"></span>
+        <span x-text="chip.title" x-bind:class="chip.danger ? 'text-danger-fg' : 'text-fg'" data-atom-calendar-chip-title class="truncate"></span>
         <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
         <span x-show="canResize(chip)" aria-hidden="true" data-atom-calendar-handle="end"></span>
     </a>
@@ -53,16 +53,16 @@
     x-on:keydown.space="itemKey(chip, $event)"
     x-on:mouseenter="tooltip($el)"
     data-atom-calendar-chip="dot"
-    class="flex h-5 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm px-1 text-xs outline-offset-1 hover:bg-zinc-100 dark:hover:bg-zinc-700/60 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
+    class="flex h-5 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-sm px-1 text-xs outline-offset-1 hover:bg-fg/5">
         <span
-        x-bind:class="chip.danger ? 'bg-red-600 dark:bg-red-400' : colorClass(chip, 'dot')"
+        x-bind:class="chip.danger ? 'bg-danger-fg' : colorClass(chip, 'dot')"
         x-bind:data-atom-calendar-hex="isHex(chip) && !chip.danger ? '' : null"
         x-bind:style="hue(chip)"
         data-atom-calendar-dot
         class="size-2 shrink-0 rounded-full"></span>
-        <span x-text="chip.time" class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-400"></span>
-        <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-600 dark:text-zinc-300'" class="inline-flex shrink-0"></span>
-        <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" data-atom-calendar-chip-title class="truncate font-medium"></span>
+        <span x-text="chip.time" class="shrink-0 font-normal tabular-nums text-fg-muted"></span>
+        <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-danger-fg' : 'text-fg-muted'" class="inline-flex shrink-0"></span>
+        <span x-text="chip.title" x-bind:class="chip.danger ? 'text-danger-fg' : 'text-fg'" data-atom-calendar-chip-title class="truncate font-medium"></span>
         <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
     </a>
 </template>
@@ -82,7 +82,7 @@
     x-bind:data-lifted="isLifted(chip) ? '' : null"
     x-bind:data-atom-calendar-hex="isHex(chip) && !chip.danger ? '' : null"
     x-bind:style="hue(chip)"
-    x-bind:class="[colorClass(chip, 'tint'), chip.danger ? 'border-red-600 dark:border-red-400' : colorClass(chip, 'accent')]"
+    x-bind:class="[colorClass(chip, 'tint'), chip.danger ? 'border-danger-fg' : colorClass(chip, 'accent')]"
     x-on:pointerdown="itemPress(chip, $event)"
     x-bind:data-atom-calendar-item="chip.id"
     x-bind:data-draggable="canDrag(chip) ? '' : null"
@@ -91,14 +91,14 @@
     x-on:keydown.enter="itemKey(chip, $event)"
     x-on:keydown.space="itemKey(chip, $event)"
     data-atom-calendar-chip="block"
-    class="flex h-full w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-xs ring-1 ring-white dark:ring-zinc-800 outline-offset-1 hover:brightness-95 dark:hover:brightness-125 focus-visible:outline-2 focus-visible:outline-zinc-900 dark:focus-visible:outline-white">
+    class="flex h-full w-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-xs ring-1 ring-surface outline-offset-1 hover:brightness-95 dark:hover:brightness-125">
         <span class="flex min-w-0 items-center gap-1">
-            <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-600 dark:text-zinc-300'" class="inline-flex shrink-0"></span>
-            <span x-text="chip.title" x-bind:class="chip.danger ? 'text-red-700 dark:text-red-300' : 'text-zinc-800 dark:text-zinc-100'" data-atom-calendar-item-title class="truncate font-semibold"></span>
-            <span x-show="chip.compact" x-text="'· ' + chip.time" data-atom-calendar-item-time class="shrink-0 font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
+            <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-danger-fg' : 'text-fg-muted'" class="inline-flex shrink-0"></span>
+            <span x-text="chip.title" x-bind:class="chip.danger ? 'text-danger-fg' : 'text-fg'" data-atom-calendar-item-title class="truncate font-semibold"></span>
+            <span x-show="chip.compact" x-text="'· ' + chip.time" data-atom-calendar-item-time class="shrink-0 font-normal tabular-nums text-fg-muted"></span>
             <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
         </span>
-        <span x-show="!chip.compact" x-text="chip.range" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-zinc-600 dark:text-zinc-300"></span>
+        <span x-show="!chip.compact" x-text="chip.range" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-fg-muted"></span>
         <span x-show="canResize(chip)" aria-hidden="true" data-atom-calendar-handle="end"></span>
     </a>
 </template>

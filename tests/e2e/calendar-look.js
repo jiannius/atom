@@ -299,7 +299,7 @@ export async function measureContrast (page) {
             if (shadow) add('selection edge on the ground', rgba(shadow[1]), el, [[rect.left + 2, rect.top + rect.height / 2]], false, el.getAttribute('data-kind') ?? '')
         }
 
-        for (const el of visible('[data-atom-calendar-preview] span[aria-hidden="true"][class*="bg-zinc"], [data-atom-calendar-ghost] span[aria-hidden="true"][class*="bg-zinc"]')) {
+        for (const el of visible('[data-atom-calendar-preview] span[aria-hidden="true"][class*="bg-fg-muted"], [data-atom-calendar-ghost] span[aria-hidden="true"][class*="bg-fg-muted"]')) {
             add('resize grip on its tint', rgba(getComputedStyle(el).backgroundColor), el, [middle(el.getBoundingClientRect())], false)
         }
 
