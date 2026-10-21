@@ -27,18 +27,5 @@ $merges = [
 ];
 @endphp
 
-<a {{ $attributes->class($classes)->merge($merges) }}>
-    @if ($icon)
-        <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4 shrink-0"/>
-    @endif
-
-    @if ($slot->isEmpty())    
-        {{ $href }}
-    @else
-        {{ $slot }}
-    @endif
-
-    @if ($iconSuffix)
-        <x-dynamic-component :component="'atom::icon.'.$iconSuffix" class="size-4 shrink-0"/>
-    @endif
-</a>
+{{-- No whitespace inside the anchor: it would be underlined, and a link in a sentence would run on past its last letter. --}}
+<a {{ $attributes->class($classes)->merge($merges) }}>@if ($icon)<x-dynamic-component :component="'atom::icon.'.$icon" class="size-4 shrink-0"/>@endif{{ $slot->isEmpty() ? $href : $slot }}@if ($iconSuffix)<x-dynamic-component :component="'atom::icon.'.$iconSuffix" class="size-4 shrink-0"/>@endif</a>

@@ -54,11 +54,11 @@ x-data="{
 }"
 x-on:link-menu-edit="link = null; edit()"
 x-on:link-menu-on="isEditing = false; getLink($event.detail)"
-class="link-menu bg-surface-raised rounded-panel shadow-pop border border-border-strong">
+class="link-menu bg-surface-raised rounded-panel shadow-pop border border-border-strong [[popover]_&]:border-0 [[popover]_&]:shadow-none">
     <template x-if="link && !isEditing">
         <div class="py-2 px-3 flex items-center gap-4 cursor-pointer max-w-xl">
             <div class="grow flex items-center gap-2">
-                <atom:icon.link class="shrink-0 text-fg-muted" />
+                <atom:icon.link class="size-4 shrink-0 text-fg-muted" />
                 <div class="grow grid">
                     <div x-text="link.href" class="font-medium truncate text-accent-ink"></div>
                 </div>
@@ -77,7 +77,7 @@ class="link-menu bg-surface-raised rounded-panel shadow-pop border border-border
             <atom:input x-model="href" placeholder="Link URL">
                 <x-slot:actions>
                     <button type="button" x-on:click="save()">
-                        <atom:icon.check />
+                        <atom:icon.check class="size-4" />
                     </button>
                 </x-slot:actions>
             </atom:input>

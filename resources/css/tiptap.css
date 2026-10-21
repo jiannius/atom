@@ -138,6 +138,7 @@
     justify-content: center;
 }
 
+.editor-content table,
 .editor-content .table-wrapper table,
 .editor-content .tableWrapper table {
     border-collapse: collapse;
@@ -146,6 +147,8 @@
     overflow: hidden;
 }
 
+.editor-content table td,
+.editor-content table th,
 .editor-content .table-wrapper table td,
 .editor-content .table-wrapper table th,
 .editor-content .tableWrapper table td,
@@ -159,6 +162,8 @@
     position: relative;
 }
 
+.editor-content table td > *,
+.editor-content table th > *,
 .editor-content .table-wrapper table td > *,
 .editor-content .table-wrapper table th > *,
 .editor-content .tableWrapper table td > *,
@@ -166,6 +171,7 @@
     margin-bottom: 0;
 }
 
+.editor-content table th,
 .editor-content .table-wrapper table th,
 .editor-content .tableWrapper table th {
     font-weight: var(--font-weight-semibold, 590);
@@ -198,6 +204,7 @@
     pointer-events: none;
 }
 
+.editor-content table p,
 .editor-content .table-wrapper table p,
 .editor-content .tableWrapper table p {
     margin: 0;
