@@ -58,9 +58,9 @@ $merges = [
                 <div x-data="chartTrend({
                     data: @js($trend),
                     color: @js(match (true) {
-                        $indicator > 0 => 'green',
-                        $indicator < 0 => 'red',
-                        default => 'gray',
+                        $indicator > 0 => 'success',
+                        $indicator < 0 => 'danger',
+                        default => 'neutral',
                     }),
                 })"></div>
             </div>

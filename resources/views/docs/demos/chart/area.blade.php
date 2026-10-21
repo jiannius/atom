@@ -8,4 +8,4 @@ $data = [
 ];
 @endphp
 
-<atom:chart type="area" :data="$data" color="orange" :max="['value' => 60, 'label' => 'Goal']" :min="['value' => 0]"/>
+<atom:chart type="area" :data="$data" color="warning" :max="['value' => 60, 'label' => 'Goal']" :min="['value' => 0]"/>

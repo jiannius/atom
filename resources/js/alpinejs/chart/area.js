@@ -1,16 +1,13 @@
+import { seriesColor, chrome, tooltipHtml } from './colors'
+
 export default (config) => {
     return {
         chart: null,
 
-        colors: {
-            red: '#fda4af',
-            green: '#0f766e',
-            orange: '#ea580c',
-            gray: '#d4d4d8',
-        },
-
         init () {
             import('apexcharts').then(ApexCharts => {
+                let { line, onLine } = chrome()
+
                 this.chart = new ApexCharts.default(this.$el, {
                     chart: {
                         type: 'area',
@@ -31,15 +28,7 @@ export default (config) => {
                         curve: 'smooth',
                     },
                     tooltip: {
-                        custom: ({ series, seriesIndex, dataPointIndex, w }) => {
-                            let data = config.data[dataPointIndex]
-                            let tooltip = document.createElement('div')
-
-                            tooltip.setAttribute('class', 'bg-black/80 text-sm text-white rounded-md px-3 py-1 shadow-lg')
-                            tooltip.innerText = data.tooltip
-                                        
-                            return tooltip.outerHTML
-                        },
+                        custom: ({ dataPointIndex }) => tooltipHtml(config.data[dataPointIndex].tooltip),
                     },
                     ...(config.max?.value ? {
                         yaxis: {
@@ -49,12 +38,12 @@ export default (config) => {
                         annotations: {
                             yaxis: [{
                                 y: config.max.value,
-                                borderColor: 'black',
+                                borderColor: line,
                                 label: {
-                                    borderColor: 'black',
+                                    borderColor: line,
                                     style: {
-                                        color: 'white',
-                                        background: 'black',
+                                        color: onLine,
+                                        background: line,
                                         fontSize: '12px',
                                     },
                                     position: 'center',
@@ -77,17 +66,15 @@ export default (config) => {
         setColors () {
             if (!this.chart) return
 
-            let dark = document.documentElement.classList.contains('dark')
-
-            let dataColor = config.color || ''
-            if (!dataColor || !dataColor.startsWith('#')) dataColor = this.colors[dataColor || 'gray']
+            let { text, line, onLine } = chrome()
 
             this.chart.updateOptions({
-                colors: [dataColor],
+                colors: [seriesColor(config.color, 'accent')],
+                chart: { foreColor: text },
                 xaxis: {
                     labels: {
                         style: {
-                            colors: config.data.map(() => (dark ? 'white' : 'black')),
+                            colors: config.data.map(() => text),
                         },
                     },
                 },
@@ -99,12 +86,12 @@ export default (config) => {
                     annotations: {
                         yaxis: [{
                             y: config.max.value,
-                            borderColor: dark ? 'white' : 'black',
+                            borderColor: line,
                             label: {
-                                borderColor: dark ? 'white' : 'black',
+                                borderColor: line,
                                 style: {
-                                    color: dark ? 'black' : 'white',
-                                    background: dark ? 'white' : 'black',
+                                    color: onLine,
+                                    background: line,
                                     fontSize: '12px',
                                 },
                                 position: 'center',

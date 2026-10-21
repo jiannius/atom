@@ -1,14 +1,12 @@
+import { seriesColor } from './colors'
+
 export default (config) => {
     return {
-        colors: {
-            green: '#6ee7b7',
-            red: '#fda4af',
-            gray: '#d4d4d8',
-        },
+        chart: null,
 
         init () {
             import('apexcharts').then(ApexCharts => {
-                let chart = new ApexCharts.default(this.$el, {
+                this.chart = new ApexCharts.default(this.$el, {
                     chart: {
                         type: 'area',
                         height: '100%',
@@ -29,16 +27,15 @@ export default (config) => {
                     colors: [this.getColor()],
                 })
 
-                setTimeout(() => chart.render(), 200)
+                setTimeout(() => this.chart.render(), 200)
+
+                document.addEventListener('darkmode-changed', () => this.chart.updateOptions({ colors: [this.getColor()] }))
             })
         },
 
+        /** The sparkline's ink: a tone (`success`, `danger`, `neutral`...; `green`, `red` and `gray` still read as theirs) or a hex. */
         getColor () {
-            let color = config.color || ''
-
-            if (color.startsWith('#')) return color
-
-            return this.colors[color || 'gray']
+            return seriesColor(config.color, 'neutral')
         },
     }
 }

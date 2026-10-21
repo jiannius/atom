@@ -1,17 +1,8 @@
+import { seriesColor, chrome, tooltipHtml } from './colors'
+
 export default (config) => {
     return {
         chart: null,
-
-        colors: {
-            red: '#fda4af',
-            green: '#0f766e',
-            orange: '#ea580c',
-            gray: '#d4d4d8',
-        },
-
-        get isDarkMode () {
-            return document.documentElement.classList.contains('dark')
-        },
 
         init () {
             import('apexcharts').then(ApexCharts => {
@@ -38,15 +29,7 @@ export default (config) => {
                         show: false,
                     },
                     tooltip: {
-                        custom: ({ series, seriesIndex, dataPointIndex, w }) => {
-                            let data = config.data[dataPointIndex]
-                            let tooltip = document.createElement('div')
-
-                            tooltip.setAttribute('class', 'bg-zinc-800 text-white text-sm rounded-md px-3 py-1 shadow-lg')
-                            tooltip.innerText = data.tooltip
-
-                            return tooltip.outerHTML
-                        },
+                        custom: ({ dataPointIndex }) => tooltipHtml(config.data[dataPointIndex].tooltip),
                     },
                     xaxis: {
                         axisTicks: { show: false },
@@ -72,16 +55,16 @@ export default (config) => {
         setColors () {
             if (!this.chart) return
 
-            let dataColor = config.color || ''
-            if (!dataColor || !dataColor.startsWith('#')) dataColor = this.colors[dataColor || 'gray']
+            let { text, grid, line, onLine } = chrome()
 
             this.chart.updateOptions({
-                colors: [dataColor],
-                grid: { borderColor: this.isDarkMode ? '#52525D' : '#f4f4f5' },
+                colors: [seriesColor(config.color, 'accent')],
+                chart: { foreColor: text },
+                grid: { borderColor: grid },
                 xaxis: {
                     labels: {
                         style: {
-                            colors: config.data.map(() => (this.isDarkMode ? 'white' : 'black')),
+                            colors: config.data.map(() => text),
                         },
                     },
                 },
@@ -89,12 +72,12 @@ export default (config) => {
                     annotations: {
                         yaxis: [{
                             y: config.max.value,
-                            borderColor: this.isDarkMode ? 'white' : 'black',
+                            borderColor: line,
                             label: {
-                                borderColor: this.isDarkMode ? 'white' : 'black',
+                                borderColor: line,
                                 style: {
-                                    color: this.isDarkMode ? 'black' : 'white',
-                                    background: this.isDarkMode ? 'white' : 'black',
+                                    color: onLine,
+                                    background: line,
                                     fontSize: '12px',
                                 },
                                 position: 'center',
