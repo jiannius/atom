@@ -553,9 +553,12 @@ it('ignores a package installed through a symlink (a Composer path repository) a
 });
 
 /**
- * Livewire pops its render stack without a `finally`: a view that throws leaves a stale
- * component on it. On a long-lived worker every later table rendered outside a render
- * (a mail, a PDF) must not be taken for a missing trait. No flush between the two.
+ * Livewire before 4.4.8 pops its render stack without a `finally`: a view that throws
+ * leaves a stale component on it. On a long-lived worker every later table rendered
+ * outside a render (a mail, a PDF) must not be taken for a missing trait. No flush
+ * between the two. Livewire 4.4.8 pops in a `finally`, so the entry is planted by hand
+ * when the throwing view no longer leaves one, and the test does not depend on which
+ * Livewire version is installed.
  */
 it('is not fooled by a render stack left behind by a view that threw', function () {
     try {
@@ -564,11 +567,20 @@ it('is not fooled by a render stack left behind by a view that threw', function 
     catch (Throwable) {
     }
 
-    // the stale entry is really there, and no component is current
-    expect(HandleComponents::$renderStack)->not->toBeEmpty();
-    expect(app('livewire')->current())->toBeFalsy();
+    try {
+        if (empty(HandleComponents::$renderStack)) {
+            HandleComponents::$renderStack[] = new RenderThrowsFixture;
+        }
 
-    expect(Blade::render('<atom:table><x-slot:rows></x-slot:rows></atom:table>'))->toContain('data-atom-table');
+        // the stale entry is really there, and no component is current
+        expect(HandleComponents::$renderStack)->not->toBeEmpty();
+        expect(app('livewire')->current())->toBeFalsy();
+
+        expect(Blade::render('<atom:table><x-slot:rows></x-slot:rows></atom:table>'))->toContain('data-atom-table');
+    }
+    finally {
+        HandleComponents::$renderStack = [];
+    }
 });
 
 it('checks a table inside an island, which never pushes the render stack', function () {

@@ -75,9 +75,9 @@ class Atom
      * action (an export, a PDF, a mail), a static page and a docs demo have no
      * component to check and nothing happens.
      *
-     * Two guards keep it from a false alarm. Livewire pops the render stack without a
-     * `finally`, so a view that threw leaves a stale entry on a long-lived worker
-     * (Octane, a queue): the top counts only when it is also the component Livewire
+     * Two guards keep it from a false alarm. Livewire before 4.4.8 pops the render
+     * stack without a `finally`, so a view that threw leaves a stale entry on a
+     * long-lived worker (Octane, a queue): the top counts only when it is also the component Livewire
      * is currently working on, which is popped in a `finally`. An island render never
      * pushes the stack, but shares `__livewire` with the view, so that is read instead,
      * again only when it is the current component. If Livewire stops exposing the render
