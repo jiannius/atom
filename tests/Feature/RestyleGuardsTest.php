@@ -72,19 +72,40 @@ function restyledComponents(): array
         'tabs',
         'breadcrumbs',
         'accordion',
+        // V4-3d, the text, the editor, the calendar, the chart and the docs chrome
+        'heading',
+        'subheading',
+        'caption',
+        'label',
+        'error',
+        'link',
+        'separator',
+        'sharer',
+        'copy',
+        'embed',
+        'whatsapp',
+        'tiptap',
+        'editor',
+        'calendar',
+        'chart',
+        'docs',
     ];
 }
 
 /**
  * The raised layers among them, and so the only components that may cast a shadow: the dialogs, the panels a trigger opens, the
- * toast and the palette. Tabs, breadcrumbs, accordion and the tooltip (a label, not a panel) are drawn with a fill and a hairline.
+ * toast and the palette, a floating button, the editor's bubble menus and mention list, and the calendar's lifted item and day list. Tabs, breadcrumbs, accordion and the tooltip (a label, not a panel) are drawn with a fill and a hairline.
  * Even a raised layer has one shadow, the `shadow-pop` token, never a size from Tailwind's scale.
  *
  * @return list<string>
  */
 function raisedLayers(): array
 {
-    return ['modal', 'menu', 'toast', 'alert', 'confirm', 'command', 'lightbox'];
+    return [
+        'modal', 'menu', 'toast', 'alert', 'confirm', 'command', 'lightbox',
+        // V4-3d: the floating whatsapp button, the editor's bubble menus and mention list, and the calendar's lifted item and day list
+        'whatsapp', 'tiptap/menu', 'tiptap/mention', 'calendar',
+    ];
 }
 
 /**
@@ -196,9 +217,20 @@ describe('restyled components', function () {
             expect(file_get_contents(__DIR__.'/../../components/'.$file.'.blade.php'))->toContain('shadow-pop');
         }
 
-        foreach (['tooltip/content', 'tabs/index', 'tabs/item', 'breadcrumbs', 'accordion/index', 'accordion/item'] as $file) {
+        foreach (['tooltip/content', 'tabs/index', 'tabs/item', 'breadcrumbs', 'accordion/index', 'accordion/item', 'tiptap/index', 'tiptap/chat', 'tiptap/toolbar/button'] as $file) {
             expect(file_get_contents(__DIR__.'/../../components/'.$file.'.blade.php'))->not->toMatch('/\bshadow-/');
         }
+
+        foreach (['whatsapp', 'tiptap/menu/link', 'tiptap/menu/table', 'tiptap/mention', 'calendar/index'] as $file) {
+            expect(file_get_contents(__DIR__.'/../../components/'.$file.'.blade.php'))->toContain('shadow-pop');
+        }
+    });
+
+    it('keeps the calendar itself a fill and a hairline: only its lifted item and its day list are raised', function () {
+        $root = collect(explode("\n", file_get_contents(__DIR__.'/../../components/calendar/index.blade.php')))
+            ->first(fn ($line) => str_contains($line, 'relative min-w-0 overflow-hidden'));
+
+        expect($root)->toContain('rounded-panel')->toContain('border-border')->not->toMatch('/\bshadow-/');
     });
 
     it('rings a control on :focus-visible only, never :focus', function () {
@@ -383,5 +415,47 @@ describe('review round 1', function () {
         preg_match('/<svg[^>]*>/', $html, $svg);
 
         expect(substr_count($svg[0], 'class='))->toBe(1);
+    });
+});
+
+describe('V4-3d text, editor and chart', function () {
+    it('draws the editor content with role tokens: no hex or rgb colour and no named colour, in tiptap.css', function () {
+        $css = preg_replace('#/\*.*?\*/#s', '', file_get_contents(__DIR__.'/../../resources/css/tiptap.css'));
+
+        // a colour is a var(--atom-*): any literal one is a pair somebody has to keep in step with the dark theme
+        expect($css)->not->toMatch('/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|oklch\(|:\s*(?:white|black|gray|grey|red|blue|green|sky)\s*[;}]/');
+        expect($css)->not->toMatch('/box-shadow:\s*(?!none)/');
+        expect($css)->not->toContain('.dark');
+    });
+
+    it('reads the editor content from the reading size and the accent ink', function () {
+        $css = file_get_contents(__DIR__.'/../../resources/css/tiptap.css');
+
+        expect($css)
+            ->toContain('font-size: var(--atom-text-base);')
+            ->toMatch('/\.editor-content a \{[^}]*color: var\(--atom-accent-ink\)/')
+            ->toMatch('/\.editor-content \.mention \{[^}]*var\(--atom-info-bg\)[^}]*var\(--atom-info-fg\)/s');
+    });
+
+    it('draws a link in the accent ink, whatever the variant', function (string $tag) {
+        expect(renderBlade($tag))->toContain('text-accent-ink')->not->toMatch('/\btext-(?:sky|accent|zinc)(?![\w-])/');
+    })->with([
+        'default' => '<atom:link href="/x">x</atom:link>',
+        'accent variant' => '<atom:link href="/x" variant="accent">x</atom:link>',
+        'with an icon' => '<atom:link href="/x" icon="link">x</atom:link>',
+    ]);
+
+    it('maps the stats card onto tones, not colour names', function () {
+        foreach ([[5, 'success'], [-5, 'danger'], [0, 'neutral']] as [$indicator, $tone]) {
+            $html = renderBlade('<atom:card variant="stats" heading="Sales" data="12" :indicator="$indicator" :trend="[1, 2, 3]" />', ['indicator' => $indicator]);
+
+            expect($html)->toContain("color: '".$tone."',");
+        }
+    });
+
+    it('draws the chart with the tokens: no palette hex left in the factories', function () {
+        foreach (glob(__DIR__.'/../../resources/js/alpinejs/chart/*.js') as $file) {
+            expect(file_get_contents($file))->not->toMatch('/#[0-9a-fA-F]{6}\b|\'(?:black|white)\'|bg-zinc|shadow-lg/', basename($file));
+        }
     });
 });
