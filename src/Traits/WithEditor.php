@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom\Traits;
 
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 /**
@@ -29,8 +30,11 @@ trait WithEditor
         if ($property === '_editor.images') {
             $images = [];
 
-            foreach ($value as $upload) {
-                $images[] = $upload->temporaryUrl();
+            // the browser can set this property to anything: only an upload has a url
+            foreach (is_iterable($value) ? $value : [] as $upload) {
+                if ($upload instanceof TemporaryUploadedFile) {
+                    $images[] = $upload->temporaryUrl();
+                }
             }
 
             $this->fill(['_editor.images' => $images]);

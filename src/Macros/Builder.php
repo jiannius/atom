@@ -53,14 +53,14 @@ class Builder
             // current() returns false (not null) when no component is on the stack,
             // e.g. toTable() called from a job/console/test — guard so ?-> works.
             // Only a component that uses WithTable has its _table trusted: one with a
-            // public $_table of its own has no signed-sort gate (updatingWithTable()), so a
+            // public $_table of its own has no signed-sort gate (the update listener), so a
             // client could set an unsigned raw: column that would read as PHP-set here.
             $component = app('livewire')->current() ?: null;
             $config = $component && in_array(\Jiannius\Atom\Traits\WithTable::class, class_uses_recursive($component), true)
                 ? $component->_table
                 : null;
 
-            // Defence in depth: WithTable::updatingWithTable() refuses a client
+            // Defence in depth: the raw: sort gate (AtomServiceProvider's update listener) refuses a client
             // update that would leave these non-string, but $_table is a
             // plain public property PHP code can still set directly — a
             // non-string column means "no sort" rather than a str() crash,
@@ -82,7 +82,7 @@ class Builder
                 if (str($sortColumn)->startsWith('raw:')) {
                     // A signed value came from the client — verify() strips the
                     // signature; an unsigned one can only have come from PHP
-                    // (WithTable::updatingWithTable() refuses the
+                    // (the raw: sort gate (AtomServiceProvider's update listener) refuses the
                     // client any other way), so it stays trusted as-is.
                     $expression = TableSort::expression($sortColumn);
 

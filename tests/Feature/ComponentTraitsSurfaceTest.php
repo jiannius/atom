@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Blade;
 use App\Actions\Spy;
 use Jiannius\Atom\Tests\Fixtures\ComponentHelpersFixture;
 use Jiannius\Atom\Tests\Fixtures\HookNamedPropertiesFixture;
+use Jiannius\Atom\Tests\Fixtures\IslandTableFixture;
+use Jiannius\Atom\Tests\Fixtures\RenderThrowsFixture;
 use Jiannius\Atom\Tests\Fixtures\TraitGuardActionFixture;
 use Jiannius\Atom\Tests\Fixtures\TraitGuardChildFixture;
 use Jiannius\Atom\Tests\Fixtures\TraitGuardParentFixture;
@@ -16,6 +18,7 @@ use Livewire\Component;
 use Livewire\Drawer\Utils;
 use Livewire\Livewire;
 use Livewire\Exceptions\MethodNotFoundException;
+use Livewire\Mechanisms\HandleComponents\HandleComponents;
 use Livewire\WithPagination;
 
 /**
@@ -57,7 +60,6 @@ it('WithTable occupies only the names it documents', function () {
         'tableSelectionQuery',
         'toggleTableShowSelected',
         'updatedWithTable',
-        'updatingWithTable',
     ]);
 });
 
@@ -436,7 +438,7 @@ it('still refuses a raw: sort when the property named like the trait is set in t
 it('ignores a #[Computed] property that happens to be called breadcrumbs', function () {
     $component = new class extends Component {
         #[\Livewire\Attributes\Computed]
-        public function breadcrumbs() { return ['Home']; }
+        public function breadcrumbs($breadcrumbs = null) { return ['Home']; }
 
         public function render() { return '<div>{{ count($this->breadcrumbs) }}</div>'; }
     };
@@ -450,7 +452,7 @@ it('ignores a component that lives in vendor/', function () {
     file_put_contents($dir.'/VendorBreadcrumbsComponent.php', '<?php
         namespace AtomTestPackage;
         class VendorBreadcrumbsComponent extends \Livewire\Component {
-            public function breadcrumbs() { return []; }
+            public function breadcrumbs($b) { return []; }
             public function render() { return "<div>vendor</div>"; }
         }');
 
@@ -471,7 +473,7 @@ it('ignores a breadcrumbs() inherited from a vendor/ class', function () {
     file_put_contents($dir.'/VendorBase.php', '<?php
         namespace AtomTestPackage;
         abstract class VendorBase extends \Livewire\Component {
-            public function breadcrumbs() { return []; }
+            public function breadcrumbs($b) { return []; }
         }');
 
     try {
@@ -491,10 +493,113 @@ it('ignores a breadcrumbs() inherited from a vendor/ class', function () {
 
 it('still throws for a host component with its own plain breadcrumbs() method', function () {
     $component = new class extends Component {
-        public function breadcrumbs() { return []; }
+        public function breadcrumbs($breadcrumbs) { return $breadcrumbs; }
 
         public function render() { return '<div></div>'; }
     };
 
     expect(fn () => Livewire::test($component::class))->toThrow(Exception::class, 'WithBreadcrumbs');
+});
+
+it('leaves a breadcrumbs() that takes no parameter alone: v3 passed the builder in', function () {
+    $component = new class extends Component {
+        public function breadcrumbs() { return []; }
+
+        public function render() { return '<div>zero</div>'; }
+    };
+
+    Livewire::test($component::class)->assertOk()->assertSee('zero');
+});
+
+it('ignores a package installed through a symlink (a Composer path repository) and a custom vendor-dir', function () {
+    $real = sys_get_temp_dir().'/atom-pkg-'.bin2hex(random_bytes(4));
+    $link = sys_get_temp_dir().'/atom-pkg-link-'.bin2hex(random_bytes(4));
+    mkdir($real.'/src', 0777, true);
+    file_put_contents($real.'/src/LinkedPackageComponent.php', '<?php
+        namespace AtomLinkedPackage;
+        class LinkedPackageComponent extends \\Livewire\\Component {
+            public function breadcrumbs($b) { return []; }
+            public function render() { return "<div>linked</div>"; }
+        }');
+    symlink($real, $link);
+
+    $original = \Composer\InstalledVersions::getAllRawData()[0];
+
+    try {
+        require_once $real.'/src/LinkedPackageComponent.php';
+
+        // the package is installed at a symlink that points outside any vendor/
+        $data = $original;
+        $data['versions']['acme/linked'] = ['pretty_version' => '1.0.0', 'version' => '1.0.0.0', 'reference' => null, 'type' => 'library', 'install_path' => $link, 'aliases' => [], 'dev_requirement' => false];
+        \Composer\InstalledVersions::reload($data);
+
+        Livewire::test(\AtomLinkedPackage\LinkedPackageComponent::class)->assertOk()->assertSee('linked');
+
+        // and without the registration the same component is a host's own and throws
+        \Composer\InstalledVersions::reload($original);
+
+        expect(fn () => Livewire::test(\AtomLinkedPackage\LinkedPackageComponent::class))->toThrow(Exception::class, 'WithBreadcrumbs');
+    }
+    finally {
+        \Composer\InstalledVersions::reload($original);
+        @unlink($link);
+        @unlink($real.'/src/LinkedPackageComponent.php');
+        @rmdir($real.'/src');
+        @rmdir($real);
+    }
+});
+
+/**
+ * Livewire pops its render stack without a `finally`: a view that throws leaves a stale
+ * component on it. On a long-lived worker every later table rendered outside a render
+ * (a mail, a PDF) must not be taken for a missing trait. No flush between the two.
+ */
+it('is not fooled by a render stack left behind by a view that threw', function () {
+    try {
+        app('livewire')->mount(RenderThrowsFixture::class);
+    }
+    catch (Throwable) {
+    }
+
+    // the stale entry is really there, and no component is current
+    expect(HandleComponents::$renderStack)->not->toBeEmpty();
+    expect(app('livewire')->current())->toBeFalsy();
+
+    expect(Blade::render('<atom:table><x-slot:rows></x-slot:rows></atom:table>'))->toContain('data-atom-table');
+});
+
+it('checks a table inside an island, which never pushes the render stack', function () {
+    $test = Livewire::test(IslandTableFixture::class);
+
+    $test->assertDontSeeHtml('data-atom-table');
+
+    $name = $test->snapshot['memo']['islands'][0]['name'];
+
+    // the island loads through an update request that names it in the call's metadata
+    $response = $this->withHeaders(['X-Livewire' => 'true'])->postJson(app('livewire')->getUpdateUri(), [
+        'components' => [[
+            'snapshot' => json_encode($test->snapshot),
+            'updates' => [],
+            'calls' => [['method' => '__lazyLoadIsland', 'params' => [], 'metadata' => ['island' => ['name' => $name, 'mode' => 'morph']]]],
+        ]],
+    ]);
+
+    expect($response->status())->toBe(500);
+    expect($response->getContent())->toContain('needs the WithTable trait');
+});
+
+it('does nothing when Livewire no longer exposes the render stack', function () {
+    // the guard is a property_exists() on the class; this pins that it names the property it reads
+    expect(property_exists(HandleComponents::class, 'renderStack'))->toBeTrue();
+});
+
+/**
+ * The browser can set _editor.images to anything. Only an upload has a temporary url.
+ */
+it('ignores a non-upload value the browser sets on _editor.images', function () {
+    $test = Livewire::test(ComponentHelpersFixture::class)->set('_editor.images', ['x', 42, ['a']])->assertOk();
+
+    expect($test->get('_editor.images'))->toBe([]);
+
+    Livewire::test(ComponentHelpersFixture::class)->set('_editor.images', 'x')->assertOk();
 });

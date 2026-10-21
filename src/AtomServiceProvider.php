@@ -163,6 +163,18 @@ class AtomServiceProvider extends ServiceProvider
      */
     protected function registerComponentGuards() : void
     {
+        // The signed raw: sort gate (issue #54). Livewire fires `update` for every client
+        // update of a property path, before the value is written, and an event listener
+        // cannot be shadowed by a method of the host component the way a trait hook can.
+        \Livewire\on('update', function ($component, $path, $value) {
+            if (is_string($path)
+                && in_array(\Jiannius\Atom\Traits\WithTable::class, class_uses_recursive($component), true)
+                && \Jiannius\Atom\Services\TableSort::isUnsafeUpdate($path, $value)
+            ) {
+                abort(403, 'Invalid table sort.');
+            }
+        });
+
         \Livewire\on('mount', function ($component) {
             if ($this->hasOrphanBreadcrumbsMethod($component)) {
                 throw new \LogicException(sprintf(
@@ -174,10 +186,11 @@ class AtomServiceProvider extends ServiceProvider
     }
 
     /**
-     * Whether the component has a breadcrumbs() method for WithBreadcrumbs to call and
-     * does not use the trait. A method carrying a Livewire attribute (a #[Computed]
-     * property that happens to be called breadcrumbs) is the host's own, and so is a
-     * component (or the method it inherits) that lives in vendor/, a third-party package.
+     * Whether the component has a breadcrumbs(Breadcrumbs $b) method for WithBreadcrumbs
+     * to call and does not use the trait. The v3 convention passed the builder in, so a
+     * method that takes no parameter is something else; a method carrying a Livewire
+     * attribute (a #[Computed] property called breadcrumbs) is the host's own; and so is
+     * a component, or an inherited method, that lives in a Composer package (vendor/).
      */
     protected function hasOrphanBreadcrumbsMethod(object $component) : bool
     {
@@ -191,21 +204,57 @@ class AtomServiceProvider extends ServiceProvider
 
         $method = new \ReflectionMethod($component, 'breadcrumbs');
 
+        if ($method->getNumberOfParameters() < 1) {
+            return false;
+        }
+
         foreach ($method->getAttributes() as $attribute) {
             if (str_starts_with($attribute->getName(), 'Livewire\\')) {
                 return false;
             }
         }
 
-        $vendor = (realpath(base_path('vendor')) ?: base_path('vendor')).DIRECTORY_SEPARATOR;
+        $roots = $this->packageRoots();
 
         foreach ([(new \ReflectionClass($component))->getFileName(), $method->getFileName()] as $file) {
-            if ($file && str_starts_with($file, $vendor)) {
-                return false;
+            foreach ($roots as $root) {
+                if ($file && str_starts_with($file, $root)) {
+                    return false;
+                }
             }
         }
 
         return true;
+    }
+
+    /**
+     * The real directories of the installed Composer packages (a path repository is a
+     * symlink, so reflection reports the target, not vendor/), the app's vendor
+     * directory, and nothing of the root package. Each ends with a separator.
+     *
+     * @return list<string>
+     */
+    protected function packageRoots() : array
+    {
+        $roots = [base_path('vendor')];
+
+        if (class_exists(\Composer\InstalledVersions::class)) {
+            $root = \Composer\InstalledVersions::getRootPackage()['name'] ?? null;
+
+            foreach (\Composer\InstalledVersions::getInstalledPackages() as $name) {
+                if ($name !== $root && ($path = \Composer\InstalledVersions::getInstallPath($name))) {
+                    $roots[] = $path;
+                }
+            }
+        }
+
+        return collect($roots)
+            ->map(fn ($path) => realpath($path) ?: null)
+            ->filter()
+            ->map(fn ($path) => rtrim($path, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**

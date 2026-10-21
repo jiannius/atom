@@ -70,18 +70,40 @@ class Atom
      * a piece of markup depends on, naming the trait and the component class.
      *
      * "Being rendered" is Livewire's render stack, which is pushed around a
-     * component's view render (initial render, update, nested children, lazy and
-     * island renders alike) and not around mount, hydrate or an action. So
-     * Blade::render('<atom:table>') in an action (an export, a PDF, a mail), a static
-     * page and a docs demo have no component to check and nothing happens.
+     * component's view render (initial render, update, nested children and lazy loads)
+     * and not around mount, hydrate or an action. So Blade::render('<atom:table>') in an
+     * action (an export, a PDF, a mail), a static page and a docs demo have no
+     * component to check and nothing happens.
+     *
+     * Two guards keep it from a false alarm. Livewire pops the render stack without a
+     * `finally`, so a view that threw leaves a stale entry on a long-lived worker
+     * (Octane, a queue): the top counts only when it is also the component Livewire
+     * is currently working on, which is popped in a `finally`. An island render never
+     * pushes the stack, but shares `__livewire` with the view, so that is read instead,
+     * again only when it is the current component. If Livewire stops exposing the render
+     * stack, nothing is checked.
      *
      * @param  class-string  $trait
      * @param  string  $for  what needs it, e.g. "<atom:table>"
      */
     public function requireTrait(string $trait, string $for) : void
     {
+        if (!property_exists(\Livewire\Mechanisms\HandleComponents\HandleComponents::class, 'renderStack')) {
+            return;
+        }
+
+        $current = app('livewire')->current() ?: null;
+
+        if (!$current) {
+            return;
+        }
+
         $stack = \Livewire\Mechanisms\HandleComponents\HandleComponents::$renderStack;
-        $component = end($stack) ?: null;
+        $top = end($stack) ?: null;
+
+        $component = $top === $current
+            ? $top
+            : (app('view')->shared('__livewire') === $current ? $current : null);
 
         if (!$component || in_array($trait, class_uses_recursive($component), true)) {
             return;

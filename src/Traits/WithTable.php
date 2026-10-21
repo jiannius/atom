@@ -2,8 +2,6 @@
 
 namespace Jiannius\Atom\Traits;
 
-use Jiannius\Atom\Services\TableSort;
-
 /**
  * State and methods behind <atom:table>: sort, checkboxes, "select all
  * matching", max rows, trashed toggle. Add it to any Livewire component that
@@ -11,6 +9,10 @@ use Jiannius\Atom\Services\TableSort;
  * blades throw a clear error when it is missing.
  *
  * Pagination is Livewire's own: add WithPagination as well for a paginated table.
+ *
+ * The signed `raw:` sort gate (issue #54) is not a method of this trait: a method of
+ * the same name on the host would silently replace it. AtomServiceProvider listens on
+ * Livewire's `update` event for every component that uses the trait.
  */
 trait WithTable
 {
@@ -33,63 +35,6 @@ trait WithTable
         if (is_string($property) && $property === '_table.show_trashed') {
             $this->resetTableCheckboxes();
         }
-    }
-
-    /**
-     * Guard the table's reserved state before a client-driven update
-     * lands (Livewire calls this once per dotted path a $wire.set() targets).
-     *
-     * "_table.sort.column" is a plain public property, so a client can set it
-     * to any "raw:" value it likes and toTable() would hand that straight to
-     * orderByRaw() — issue #54. Refuse any update that would leave it holding
-     * a "raw:" value with no valid signature; a signed one (produced by
-     * components/table/column.blade.php) is let through unchanged. Also
-     * refuse anything that would leave either leaf non-string (an array, or
-     * a deeper path such as "_table.sort.column.0") — toTable() only expects
-     * a string there, and a non-string used to reach str() and crash the
-     * request (500) rather than being rejected (403).
-     */
-    public function updatingWithTable($name, $value)
-    {
-        // a host property named `withTable` calls this hook with its value for $name
-        if (is_string($name) && $this->isUnsafeTableSortUpdate($name, $value)) {
-            abort(403, 'Invalid table sort.');
-        }
-    }
-
-    /**
-     * Whether a client-driven update to $name (new value $value) would leave
-     * "_table.sort.column" or "_table.sort.direction" unsafe: non-string, or
-     * a string "raw:" column with no valid signature.
-     */
-    protected function isUnsafeTableSortUpdate($name, $value) : bool
-    {
-        // A path deeper than the leaf itself (e.g. "_table.sort.column.0")
-        // can only turn that leaf into an array — no legitimate update ever
-        // needs to reach this deep.
-        if (str_starts_with($name, '_table.sort.column.') || str_starts_with($name, '_table.sort.direction.')) {
-            return true;
-        }
-
-        $column = match ($name) {
-            '_table.sort.column' => $value,
-            '_table.sort' => data_get($value, 'column'),
-            '_table' => data_get($value, 'sort.column'),
-            default => null,
-        };
-
-        if ($column !== null && (!is_string($column) || TableSort::isUnsafeFromClient($column))) {
-            return true;
-        }
-
-        $direction = match ($name) {
-            '_table.sort.direction' => $value,
-            '_table.sort' => data_get($value, 'direction'),
-            '_table' => data_get($value, 'sort.direction'),
-            default => null,
-        };
-
-        return $direction !== null && !is_string($direction);
     }
 
     /**

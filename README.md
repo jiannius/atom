@@ -295,7 +295,7 @@ Pagination and uploads are Livewire's own: add `WithPagination` to a paginated c
 `WithFileUploads` to one with an uploader. Rendering `<atom:table>`, a sortable `<atom:table.column>`,
 a checkbox cell, the trashed toggle, the tiptap image toolbar or `<atom:form recaptcha>` in a
 component without its trait throws an error naming the trait and the component class, and so does
-a component that defines `breadcrumbs()` without `WithBreadcrumbs` (nothing would call it; a method with a Livewire attribute such as `#[Computed]`, and a component in `vendor/`, are left alone). The check is made while the component's view renders, so table markup rendered to a string in `mount()` or an action (an export, a PDF) is not an error.
+a component that defines `breadcrumbs()` without `WithBreadcrumbs` (nothing would call it; a method that takes no parameter, a method with a Livewire attribute such as `#[Computed]`, and a component or inherited method from a Composer package are left alone). The check is made while the component's view renders, so table markup rendered to a string in `mount()` or an action (an export, a PDF) is not an error.
 `<atom:table.pagination>` asks for `WithPagination` the same way. `toTable()` reads the table state only from a component
 that uses `WithTable`; on any other it applies no sort.
 
@@ -322,7 +322,7 @@ reason; the prefix *is* the protection.
 | | Invoked by | Breaks |
 | --- | --- | --- |
 | `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
-| `mountWithBreadcrumbs`, `updatedWithEditor`, `updatedWithTable`, `updatingWithTable` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear, the `raw:` table-sort signature gate |
+| `mountWithBreadcrumbs`, `updatedWithEditor`, `updatedWithTable` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear |
 | `resetTableCheckboxes`, `selectAllTableMatching`, `toggleTableShowSelected`, `clearTableSelectAll` | atom's markup, by name | the checked-bar buttons no-op |
 | `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed` | each other, and your own `items()` | bulk actions target the wrong rows |
 | `$paginators`, `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination` | Livewire's `WithPagination` | pagination |
@@ -330,8 +330,11 @@ reason; the prefix *is* the protection.
 
 **Property names the hooks answer to.** Livewire calls a trait's hook for a property named
 like the trait too, so a property called `withTable`, `withEditor`, `withBreadcrumbs`,
-`withRecaptcha` or `withUrlFilters` also runs `updatingWithTable()` and the rest, with the value
-where the path would be. The hooks ignore a non-string path, so it is harmless, but pick another name.
+`withRecaptcha` or `withUrlFilters` also runs the trait's hook, with the value where the path
+would be, and a method of yours named like a hook (`updatingWithTable`) is called for it. Do not
+name a property or a method after a trait hook. The `raw:` table-sort gate does not depend on
+any of this: it is a listener on Livewire's `update` event for every component that uses
+`WithTable`, which no host method can shadow.
 
 **Yours to define:** `breadcrumbs` (optional), `tableQuery` (required for `tableSelection()`),
 `tableSelectionQuery` (override for sticky selection).
@@ -1008,7 +1011,7 @@ Livewire's JS writes a list as `status[0]=a&status[1]=b`; a hand-written `status
 read correctly by PHP but rewritten by the browser on load. Generate links with the indexed form.
 
 Sort is not persisted. If it ever is, the URL value must be re-checked on mount with
-`TableSort::isUnsafeFromClient()`: `updatingWithTable()` only guards a browser update, and
+`TableSort::isUnsafeFromClient()`: the `raw:` sort gate only guards a browser update, and
 a URL value is not one. The seam is documented on `mountWithUrlFilters()`.
 
 `tests/Feature/UrlFiltersTest.php` and `tests/e2e/url-filters.spec.js` (fixture
