@@ -46,12 +46,29 @@ const toPlain = (css) => {
     return `rgba(${r}, ${g}, ${b}, ${Math.round((a / 255) * 100) / 100})`
 }
 
-/** The value of a role token (`--atom-fg-muted`) on the page now, as a plain colour. */
-export const role = (name) => {
+// what a token falls back to on a page that does not define it (no atom.tailwind.css): neutral greys that read on a light or a dark page
+const FALLBACK = {
+    '--atom-fg': '#6f6b62',
+    '--atom-fg-muted': '#6f6b62',
+    '--atom-fg-subtle': '#8d887e',
+    '--atom-border': '#d3cfc6',
+    '--atom-canvas': '#ffffff',
+    '--atom-accent-ink': '#4c55c9',
+    '--atom-info-fg': '#1f4fa0',
+    '--atom-success-fg': '#17663a',
+    '--atom-warning-fg': '#7a5200',
+    '--atom-danger-fg': '#a3261c',
+}
+
+/**
+ * The value of a role token (`--atom-fg-muted`) as the chart's own element sees it, as a plain colour. The probe lives inside `el`, so a
+ * nested `.dark` subtree or a density scope is honoured; a page with no tokens gets a grey and never a full-ink line.
+ */
+export const role = (name, el = document.documentElement) => {
     const probe = document.createElement('span')
 
-    probe.style.cssText = `position: absolute; visibility: hidden; color: var(${name})`
-    document.documentElement.append(probe)
+    probe.style.cssText = `position: absolute; visibility: hidden; color: var(${name}, ${FALLBACK[name] ?? FALLBACK['--atom-fg-muted']})`
+    el.append(probe)
 
     const css = getComputedStyle(probe).color
 
@@ -61,18 +78,18 @@ export const role = (name) => {
 }
 
 /** The colour of a series: a hex as it is, else the ink of the tone the name stands for (`fallback` when there is no name). */
-export const seriesColor = (name, fallback = 'neutral') => {
+export const seriesColor = (name, fallback = 'neutral', el = document.documentElement) => {
     if (typeof name === 'string' && name.startsWith('#')) return name
 
-    return role(INK[name ? toneOf(name) : fallback])
+    return role(INK[name ? toneOf(name) : fallback], el)
 }
 
 /** What the chart draws around the series, from the tokens: text, the hairline grid, and the label of the goal line. */
-export const chrome = () => ({
-    text: role('--atom-fg-muted'),
-    grid: role('--atom-border'),
-    line: role('--atom-fg'),
-    onLine: role('--atom-canvas'),
+export const chrome = (el = document.documentElement) => ({
+    text: role('--atom-fg-muted', el),
+    grid: role('--atom-border', el),
+    line: role('--atom-fg', el),
+    onLine: role('--atom-canvas', el),
 })
 
 /** The tooltip Apex prints for a point: the tooltip's recipe (the foreground as the fill, the canvas as the text), as inline styles so no host build has to find a class. */

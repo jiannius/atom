@@ -61,6 +61,20 @@
     font-size: var(--atom-text-base);
 }
 
+/* a paragraph inside a cell or a list item sits in its box: the block margin of a paragraph is for paragraphs in a flow, and (0,2,1)
+   beats the table rules below, so they are named here with the same weight */
+.editor-content :is(td, th) > p:not(.is-editor-empty) {
+    margin: 0;
+}
+
+.editor-content li > p:not(.is-editor-empty) {
+    margin-bottom: 0.25rem;
+}
+
+.editor-content :is(ul, ol) {
+    margin-bottom: 0.75rem;
+}
+
 .editor-content blockquote {
     border-left: 2px solid var(--atom-border-strong);
     color: var(--atom-fg-muted);
@@ -208,6 +222,16 @@
 .editor-content .table-wrapper table p,
 .editor-content .tableWrapper table p {
     margin: 0;
+}
+
+/* a table printed bare (no wrapper, whose padding is its gap) has a paragraph's gap under it, and a quote does not stack its own
+   margin on the margin of the paragraph inside it */
+.editor-content > table {
+    margin-bottom: 0.75rem;
+}
+
+.editor-content blockquote > p:last-child:not(.is-editor-empty) {
+    margin-bottom: 0;
 }
 
 .editor-content [data-youtube-video] {

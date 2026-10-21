@@ -1,11 +1,19 @@
 import { seriesColor, chrome, tooltipHtml } from './colors'
 
 export default (config) => {
+    // the theme listener belongs to the document, so it is kept here to be taken off again when the element goes (destroy())
+    let onTheme = null
+    let rendered = false
+    let destroyed = false
+
     return {
         chart: null,
 
         init () {
             import('apexcharts').then(ApexCharts => {
+                // the element went before the library arrived
+                if (destroyed || !this.$el.isConnected) return
+
                 this.chart = new ApexCharts.default(this.$el, {
                     chart: {
                         type: 'bar',
@@ -44,21 +52,36 @@ export default (config) => {
                 })
 
                 this.$nextTick(() => {
+                    if (!this.$el.isConnected) return
+
                     this.chart.render()
+                    rendered = true
                     this.setColors()
                 })
 
-                document.addEventListener('darkmode-changed', () => this.setColors())
+                onTheme = () => {
+                    if (this.$el.isConnected && rendered) this.setColors()
+                }
+
+                document.addEventListener('darkmode-changed', onTheme)
             })
+        },
+
+        destroy () {
+            destroyed = true
+            if (onTheme) document.removeEventListener('darkmode-changed', onTheme)
+
+            onTheme = null
+            rendered = false
         },
 
         setColors () {
             if (!this.chart) return
 
-            let { text, grid, line, onLine } = chrome()
+            let { text, grid, line, onLine } = chrome(this.$el)
 
             this.chart.updateOptions({
-                colors: [seriesColor(config.color, 'accent')],
+                colors: [seriesColor(config.color, 'accent', this.$el)],
                 chart: { foreColor: text },
                 grid: { borderColor: grid },
                 xaxis: {
