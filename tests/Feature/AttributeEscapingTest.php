@@ -162,7 +162,7 @@ describe('embed', function () {
             ->and(attributeEscapingElements($html, 'source'))->toBeEmpty()
             ->and(strtolower($html))->not->toContain('javascript')
             // Falls back to the generic file icon rather than a broken element.
-            ->and($html)->toContain('text-muted');
+            ->and($html)->toContain('text-fg-subtle');
     })->with([
         'image' => ['javascript:alert(1)//x.jpg'],
         'video' => ['javascript:alert(1)//x.mp4'],

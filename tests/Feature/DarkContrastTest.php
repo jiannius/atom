@@ -9,11 +9,12 @@ use Illuminate\Support\Facades\Blade;
  */
 describe('dark-mode contrast', function () {
     it('gives the subheading and the caption a dark text colour', function () {
+        // the role token is one name for both themes: no dark half to keep in step
         expect(Blade::render('<atom:subheading>Sub</atom:subheading>'))
-            ->toContain('text-zinc-500 dark:text-zinc-400');
+            ->toContain('text-fg-muted')->not->toContain('dark:');
 
         expect(Blade::render('<atom:caption>Cap</atom:caption>'))
-            ->toContain('text-zinc-500 dark:text-zinc-400');
+            ->toContain('text-fg-muted')->not->toContain('dark:');
     });
 
     it('reads every badge colour from a role token pair, so no colour has a light half and a dark half to keep in step', function () {

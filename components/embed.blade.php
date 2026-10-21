@@ -51,7 +51,7 @@ $type = Arr::pick([
 $classes = Arr::toCssClasses([
     'w-full h-full object-contain' => in_array($type, ['image', 'video']),
     'w-full h-full' => $type === 'youtube',
-    'flex items-center justify-center w-full h-full text-muted dark:text-muted-foreground' => $type === 'icon',
+    'flex items-center justify-center w-full h-full text-fg-subtle' => $type === 'icon',
 ]);
 
 $merges = [

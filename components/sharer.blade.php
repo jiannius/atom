@@ -24,7 +24,7 @@ $linkSharers = ['email'];
 @endphp
 
 <div {{ $attributes }}>
-    <div class="text-sm text-zinc-400 font-medium mb-2">
+    <div class="text-sm text-fg-muted font-medium mb-2">
         {{ t('Share to') }}
     </div>
 
@@ -38,18 +38,8 @@ $linkSharers = ['email'];
                 data-url="{{ $url }}"
                 data-title="{{ $title }}"
                 aria-label="{{ str($site)->headline()->toString() }}"
-                class="size-10 rounded flex text-2xl cursor-pointer border border-transparent hover:bg-slate-100 hover:border-zinc-200">
-                    <x-dynamic-component :component="'atom::icon.'.$site" size="24" @class([
-                        'm-auto',
-                        match ($site) {
-                            'facebook' => 'text-blue-500',
-                            'twitter-x' => 'text-black',
-                            'linkedin' => 'text-blue-400',
-                            'whatsapp' => 'text-green-500',
-                            'telegram' => 'text-blue-500',
-                            default => 'text-zinc-800',
-                        }
-                    ]) />
+                class="h-control aspect-square rounded-control flex items-center justify-center cursor-pointer text-fg-muted hover:bg-fg/5 hover:text-fg">
+                    <x-dynamic-component :component="'atom::icon.'.$site" class="size-4" />
                 </button>
             </atom:tooltip>
         @endforeach
@@ -59,8 +49,8 @@ $linkSharers = ['email'];
             type="button"
             x-on:click.stop="$clipboard({{ js($url) }})"
             aria-label="{{ t('Copy Link') }}"
-            class="size-10 rounded flex text-lg cursor-pointer border border-transparent hover:bg-slate-100 hover:border-zinc-200">
-                <atom:icon.link size="24" class="m-auto" />
+            class="h-control aspect-square rounded-control flex items-center justify-center cursor-pointer text-fg-muted hover:bg-fg/5 hover:text-fg">
+                <atom:icon.link class="size-4" />
             </button>
         </atom:tooltip>
     </div>

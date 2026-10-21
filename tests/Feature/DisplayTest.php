@@ -113,7 +113,7 @@ describe('embed', function () {
         $html = Blade::render('<atom:embed />');
 
         // Regression: parse_url(null) raised a deprecation + undefined "path" index.
-        expect($html)->toContain('text-muted');
+        expect($html)->toContain('text-fg-subtle');
     });
 });
 
@@ -296,11 +296,12 @@ describe('sharer', function () {
             ->each->toBeIn($known);
     });
 
-    it('keeps the X button labelled and coloured as before', function () {
+    it('keeps the X button labelled, and draws every button in the muted token (no brand hue, which was black on black in dark)', function () {
         $html = Blade::render('<atom:sharer url="https://example.com" title="Hi" />');
 
         expect(sharerButtons($html)['x'])->toContain('aria-label="Twitter X"')
-            ->and($html)->toContain('text-black');
+            ->and(sharerButtons($html)['x'])->toContain('text-fg-muted')
+            ->and($html)->not->toMatch('/\btext-(?:black|blue|green|zinc)-?\d*\b/');
     });
 
     it('marks the mailto: email sharer as a link so it does not open a blank popup', function () {

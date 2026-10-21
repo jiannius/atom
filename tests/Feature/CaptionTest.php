@@ -14,12 +14,12 @@ it('prints the caller attributes on the caption element', function () {
     expect($caption->getAttribute('id'))->toBe('hint')
         ->and($caption->getAttribute('x-show'))->toBe('open')
         ->and($caption->getAttribute('data-test'))->toBe('x')
-        ->and(domClasses($caption))->toContain('mt-2', 'text-sm', 'text-zinc-500', 'dark:text-zinc-400')
+        ->and(domClasses($caption))->toContain('mt-2', 'text-sm', 'text-fg-muted')
         ->and(trim($caption->textContent))->toBe('Help text');
 });
 
 it('keeps the default look when the caller passes nothing', function () {
     $caption = domQuery(renderBlade('<atom:caption>Help</atom:caption>'), '//*[@data-atom-caption]')[0];
 
-    expect(domClasses($caption))->toBe(['text-sm', 'text-zinc-500', 'dark:text-zinc-400']);
+    expect(domClasses($caption))->toBe(['text-sm', 'text-fg-muted']);
 });

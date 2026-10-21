@@ -392,7 +392,7 @@ describe('B3: caller class swallowed', function () {
         $label = domQuery($html, '//span')[0];
 
         expect(domClasses($root))->toContain('py-3', 'w-full', 'flex')
-            ->and(domClasses($label))->toContain('font-medium', 'uppercase', 'text-sm', 'mx-4')
+            ->and(domClasses($label))->toContain('font-medium', 'uppercase', 'text-xs', 'mx-4')
             ->and(domClasses($label))->not->toContain('py-3');
     });
 
@@ -496,7 +496,7 @@ describe('B4: the previously left-out items', function () {
         $default = domQuery(renderBlade('<atom:whatsapp number="1" />'), '//a')[0];
         $placed = domQuery(renderBlade('<atom:whatsapp number="1" class="fixed bottom-32 right-14" />'), '//a')[0];
 
-        expect(domClasses($default))->toContain('[:where(&)]:fixed', '[:where(&)]:right-14', '[:where(&)]:bottom-14', 'bg-green-500')
+        expect(domClasses($default))->toContain('[:where(&)]:fixed', '[:where(&)]:right-14', '[:where(&)]:bottom-14', 'bg-success-fg')
             ->and(domClasses($default))->not->toContain('fixed')
             ->and(domClasses($default))->not->toContain('bottom-14');
 

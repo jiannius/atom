@@ -5,7 +5,7 @@
 
 @php
 $classes = Arr::toCssClasses([
-    'flex items-center gap-2 select-none font-medium leading-6 text-zinc-800 dark:text-white',
+    'flex items-center gap-2 select-none text-sm font-medium leading-5 text-fg',
 
     match ($align) {
         'right' => 'justify-end',
@@ -28,7 +28,7 @@ $classes = Arr::toCssClasses([
 @else
     <label {{ $attributes->class($classes) }} data-atom-label>
         @if ($icon)
-            <x-dynamic-component :component="'atom::icon.'.$icon" class="shrink-0"/>
+            <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4 shrink-0"/>
         @endif
 
         {{ $slot }}
