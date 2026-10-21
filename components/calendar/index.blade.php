@@ -239,7 +239,7 @@ data-atom-calendar
                                 <div x-bind:style="{ gridColumn: String(day.col), gridRow: '1' }" data-atom-calendar-number class="flex items-center">
                                     <span
                                     x-text="day.number"
-                                    x-bind:class="day.today ? 'bg-accent text-accent-foreground' : (day.outside || day.past ? 'text-fg-muted' : 'text-fg')"
+                                    x-bind:class="day.today ? 'bg-accent-ink text-surface' : (day.outside || day.past ? 'text-fg-muted' : 'text-fg')"
                                     class="inline-flex size-6 items-center justify-center rounded-full text-sm font-medium tabular-nums"></span>
                                 </div>
                             </template>
@@ -329,7 +329,7 @@ data-atom-calendar
                                 <span x-text="weekdayName(column.date)" class="text-xs font-medium uppercase tracking-wide text-fg-muted"></span>
                                 <span
                                 x-text="column.number"
-                                x-bind:class="column.today ? 'bg-accent text-accent-foreground' : (column.past ? 'text-fg-muted' : 'text-fg')"
+                                x-bind:class="column.today ? 'bg-accent-ink text-surface' : (column.past ? 'text-fg-muted' : 'text-fg')"
                                 class="inline-flex size-8 items-center justify-center rounded-full text-lg font-semibold tabular-nums"></span>
                             </button>
                         </template>
@@ -346,7 +346,7 @@ data-atom-calendar
                                 <span
                                 x-text="column.number"
                                 aria-hidden="true"
-                                x-bind:class="column.today ? 'bg-accent text-accent-foreground' : (column.past ? 'text-fg-muted' : 'text-fg')"
+                                x-bind:class="column.today ? 'bg-accent-ink text-surface' : (column.past ? 'text-fg-muted' : 'text-fg')"
                                 class="inline-flex size-8 items-center justify-center rounded-full text-lg font-semibold tabular-nums"></span>
                             </div>
                         </template>
@@ -480,9 +480,9 @@ data-atom-calendar
                                             class="flex h-full min-w-0 flex-col overflow-hidden rounded-md border-l-[3px] px-1.5 py-0.5 text-xs">
                                                 <span class="flex min-w-0 items-center gap-1">
                                                     <span x-text="shape.title" x-bind:class="shape.danger ? 'text-danger-fg' : 'text-fg'" data-atom-calendar-item-title class="truncate font-semibold"></span>
-                                                    <span x-show="shape.compact" x-text="'· ' + timeLabel(shape)" data-atom-calendar-item-time class="shrink-0 font-normal tabular-nums text-fg-muted"></span>
+                                                    <span x-show="shape.compact" x-text="'· ' + timeLabel(shape)" data-atom-calendar-item-time class="shrink-0 font-normal tabular-nums text-fg"></span>
                                                 </span>
-                                                <span x-show="!shape.compact" x-text="timeRange(shape)" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-fg-muted"></span>
+                                                <span x-show="!shape.compact" x-text="timeRange(shape)" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-fg"></span>
                                             </div>
 
                                             <template x-if="shape.kind === 'resize'">
@@ -527,7 +527,7 @@ data-atom-calendar
                     <div x-text="popoverDate ? weekdayName(popoverDate) : ''" class="text-xs font-medium uppercase tracking-wide text-fg-muted"></div>
                     <div
                     x-text="popoverDate ? Number(popoverDate.slice(8, 10)) : ''"
-                    x-bind:class="popoverDate && popoverDate === todayDate ? 'bg-accent text-accent-foreground' : 'text-fg'"
+                    x-bind:class="popoverDate && popoverDate === todayDate ? 'bg-accent-ink text-surface' : 'text-fg'"
                     class="inline-flex size-9 items-center justify-center rounded-full text-2xl font-semibold tabular-nums"></div>
                 </div>
 

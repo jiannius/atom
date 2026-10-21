@@ -95,10 +95,10 @@
         <span class="flex min-w-0 items-center gap-1">
             <span x-show="chip.danger || chip.icon" x-effect="setIcon($el, chip.danger ? 'warning' : chip.icon)" x-bind:class="chip.danger ? 'text-danger-fg' : 'text-fg-muted'" class="inline-flex shrink-0"></span>
             <span x-text="chip.title" x-bind:class="chip.danger ? 'text-danger-fg' : 'text-fg'" data-atom-calendar-item-title class="truncate font-semibold"></span>
-            <span x-show="chip.compact" x-text="'· ' + chip.time" data-atom-calendar-item-time class="shrink-0 font-normal tabular-nums text-fg-muted"></span>
+            <span x-show="chip.compact" x-text="'· ' + chip.time" data-atom-calendar-item-time class="shrink-0 font-normal tabular-nums text-fg"></span>
             <span x-show="chip.danger" x-text="labels.ui?.overdue" data-atom-calendar-sr></span>
         </span>
-        <span x-show="!chip.compact" x-text="chip.range" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-fg-muted"></span>
+        <span x-show="!chip.compact" x-text="chip.range" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-fg"></span>
         <span x-show="canResize(chip)" aria-hidden="true" data-atom-calendar-handle="end"></span>
     </a>
 </template>
