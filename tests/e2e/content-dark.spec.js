@@ -143,6 +143,8 @@ for (const tw of ['floor', 'latest']) {
           await page.addStyleTag({ content: `:root { --color-accent: ${accent}; }` })
           await page.evaluate((d) => document.documentElement.classList.toggle('dark', d), dark)
           await page.evaluate(() => document.fonts.ready)
+          // the theme and the accent were set after load, so the colours transition: read them at their end, not in the middle of the fade
+          await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => null))))
 
           expect(await sweepText(page, 'body', TEXT, 15)).toEqual([])
         })
