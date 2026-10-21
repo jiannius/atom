@@ -1,1 +1,1 @@
-<div class="w-px h-5 mx-1 bg-zinc-200 dark:bg-zinc-700" aria-hidden="true"></div>
+<div class="w-px h-5 mx-1 bg-border" aria-hidden="true"></div>

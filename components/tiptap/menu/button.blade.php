@@ -3,7 +3,7 @@
 ])
 
 @php
-$classes = 'p-2 rounded-md flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-700';
+$classes = 'h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg';
 @endphp
 
 @if ($label)

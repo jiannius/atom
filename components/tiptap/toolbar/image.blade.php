@@ -21,7 +21,7 @@ x-data="{
     <input type="file" x-ref="fileinput" x-on:change="read($event.target.files)" class="hidden" accept="image/*" multiple>
 
     <atom:tiptap.toolbar.button label="Image" active="isActive('image')" x-show="!uploading" x-on:click="$refs.fileinput.click()">
-        <atom:icon.image class="size-5" />
+        <atom:icon.image class="size-4" />
     </atom:tiptap.toolbar.button>
 
     <atom:tiptap.toolbar.button label="Uploading" x-show="uploading" class="opacity-50 pointer-events-none gap-1">
