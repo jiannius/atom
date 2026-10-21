@@ -9,7 +9,7 @@ use Livewire\Livewire;
 /**
  * Issue #54 — toTable()'s "raw:" sort had no allow-list.
  *
- * _table is a plain public Livewire property (Traits\AtomComponent), so a
+ * _table is a plain public Livewire property (Traits\WithTable), so a
  * client could $wire.set('_table.sort.column', 'raw:<anything>') and
  * toTable() forwarded the substring after "raw:" straight into
  * orderByRaw(), regardless of the sort= attributes declared on
@@ -17,7 +17,7 @@ use Livewire\Livewire;
  *
  * Fixed with a signed token: components/table/column.blade.php signs a
  * declared raw: sort (Services\TableSort::sign()) before it ever reaches the
- * browser, and AtomComponent::updatingAtomComponent() refuses (403) any
+ * browser, and WithTable::updatingWithTable() refuses (403) any
  * client update that would leave _table.sort.column holding an unsigned or
  * tampered raw: value — before it ever reaches toTable(). An unsigned raw:
  * value can therefore only have come from PHP, where it stays trusted.
@@ -97,7 +97,7 @@ it('trusts an unsigned raw: sort set from PHP, not through the client', function
     $test = Livewire::test(TableFixture::class);
 
     // Mutating the property directly (not via ->set()) never touches
-    // updatingAtomComponent()'s client gate — this is what a host's own
+    // updatingWithTable()'s client gate — this is what a host's own
     // mount() assigning $_table['sort']['column'] = 'raw:...' looks like.
     $test->instance()->_table['sort']['column'] = 'raw:amount * -1';
     $test->instance()->_table['sort']['direction'] = 'asc';
@@ -132,7 +132,7 @@ it('clamps a hostile sort direction on the raw: branch to asc', function () {
  * Review finding (medium): the gate above only checked is_string($sortColumn)
  * on the resolved value, so an array-valued column — or a deeper path like
  * "_table.sort.column.0" that turns the leaf into an array — sailed straight
- * through updatingAtomComponent() and then hit str($sortColumn) in toTable(),
+ * through updatingWithTable() and then hit str($sortColumn) in toTable(),
  * an unauthenticated 500 rather than a 403 on any sortable table.
  */
 

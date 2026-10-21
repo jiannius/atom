@@ -2,12 +2,12 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithBreadcrumbs;
 use Livewire\Component;
 
 class SafeUrlBreadcrumbsFixture extends Component
 {
-    use AtomComponent;
+    use WithBreadcrumbs;
 
     /**
      * A trail with a hostile URL in it, as a host would build one from a record's

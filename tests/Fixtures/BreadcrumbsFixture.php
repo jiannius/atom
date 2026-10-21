@@ -2,12 +2,12 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithBreadcrumbs;
 use Livewire\Component;
 
 class BreadcrumbsFixture extends Component
 {
-    use AtomComponent;
+    use WithBreadcrumbs;
 
     /**
      * A single-crumb trail — the shape where the breadcrumb IS the visible page

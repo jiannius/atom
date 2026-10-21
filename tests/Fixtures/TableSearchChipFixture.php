@@ -2,7 +2,8 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithTable;
+use Livewire\WithPagination;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -16,7 +17,8 @@ use Livewire\Component;
  */
 class TableSearchChipFixture extends Component
 {
-    use AtomComponent;
+    use WithTable;
+    use WithPagination;
 
     #[Url]
     public ?string $search = null;

@@ -4,7 +4,6 @@ namespace Jiannius\Atom\Tests\Fixtures;
 
 use Jiannius\Atom\Services\Calendar;
 use Jiannius\Atom\Services\Carbon;
-use Jiannius\Atom\Traits\AtomComponent;
 use Livewire\Component;
 
 /**
@@ -14,7 +13,6 @@ use Livewire\Component;
  */
 class CalendarLookFixture extends Component
 {
-    use AtomComponent;
 
     public string $date = '2026-10-09';
 

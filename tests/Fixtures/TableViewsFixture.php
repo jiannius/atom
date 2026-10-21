@@ -2,7 +2,8 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithTable;
+use Livewire\WithPagination;
 use Jiannius\Atom\Traits\WithUrlFilters;
 use Livewire\Component;
 
@@ -15,7 +16,8 @@ use Livewire\Component;
  */
 class TableViewsFixture extends Component
 {
-    use AtomComponent;
+    use WithTable;
+    use WithPagination;
     use WithUrlFilters;
 
     /** @var array<string, mixed> */

@@ -171,7 +171,7 @@ trait WithUrlFilters
      *
      * Not a replacement for the filter() macro's own checks, which is what guards
      * the rest. Future: if sort is ever persisted in the URL, re-check
-     * `_table.sort.column` here with TableSort::isUnsafeFromClient() — AtomComponent
+     * `_table.sort.column` here with TableSort::isUnsafeFromClient() — WithTable
      * only guards a browser update, and a URL value is not one.
      */
     public function mountWithUrlFilters(): void

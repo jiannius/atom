@@ -52,9 +52,12 @@ class Builder
         return function ($filters = null, $maxRows = null) {
             // current() returns false (not null) when no component is on the stack,
             // e.g. toTable() called from a job/console/test — guard so ?-> works.
-            $config = (app('livewire')->current() ?: null)?->_table;
+            // A component without WithTable has no _table (Livewire throws on an
+            // unknown property): the table state is simply absent, not an error.
+            $component = app('livewire')->current() ?: null;
+            $config = $component && property_exists($component, '_table') ? $component->_table : null;
 
-            // Defence in depth: updatingAtomComponent() refuses a client
+            // Defence in depth: WithTable::updatingWithTable() refuses a client
             // update that would leave these non-string, but $_table is a
             // plain public property PHP code can still set directly — a
             // non-string column means "no sort" rather than a str() crash,
@@ -76,7 +79,7 @@ class Builder
                 if (str($sortColumn)->startsWith('raw:')) {
                     // A signed value came from the client — verify() strips the
                     // signature; an unsigned one can only have come from PHP
-                    // (AtomComponent::updatingAtomComponent() refuses the
+                    // (WithTable::updatingWithTable() refuses the
                     // client any other way), so it stays trusted as-is.
                     $expression = TableSort::expression($sortColumn);
 

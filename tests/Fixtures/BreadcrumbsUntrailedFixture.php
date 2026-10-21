@@ -2,12 +2,12 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithBreadcrumbs;
 use Livewire\Component;
 
 class BreadcrumbsUntrailedFixture extends Component
 {
-    use AtomComponent;
+    use WithBreadcrumbs;
 
     // Deliberately declares NO breadcrumbs() method, so $_breadcrumbs stays [] —
     // the empty-payload path through the Alpine factory.

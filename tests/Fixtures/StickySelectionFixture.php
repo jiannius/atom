@@ -2,7 +2,8 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithTable;
+use Livewire\WithPagination;
 use Livewire\Component;
 
 /**
@@ -15,7 +16,8 @@ use Livewire\Component;
  */
 class StickySelectionFixture extends Component
 {
-    use AtomComponent;
+    use WithTable;
+    use WithPagination;
 
     public string $search = '';
 

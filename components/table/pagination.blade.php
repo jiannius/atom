@@ -4,6 +4,9 @@
 ])
 
 @php
+app('atom')->requireTrait(\Jiannius\Atom\Traits\WithTable::class, '<atom:table.pagination>');
+app('atom')->requireTrait(\Livewire\WithPagination::class, '<atom:table.pagination>');
+
 /* One recipe for every cell of the pager: a control-high square (28px, 40 on touch), a 7px radius, tabular figures. A disabled
    end is dimmed, the current page sits on the neutral fill with a strong hairline, a link tints on hover. The focus ring is the
    base :focus-visible outline (the gap between cells leaves room for it). */

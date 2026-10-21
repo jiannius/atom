@@ -66,6 +66,29 @@ class Atom
     }
 
     /**
+     * Throw when the Livewire component being rendered lacks the trait a piece of
+     * markup depends on, naming the trait and the component class. Outside a
+     * Livewire render (a static page, a docs demo) there is no component to check
+     * and nothing happens.
+     *
+     * @param  class-string  $trait
+     * @param  string  $for  what needs it, e.g. "<atom:table>"
+     */
+    public function requireTrait(string $trait, string $for) : void
+    {
+        $component = app('livewire')->current() ?: null;
+
+        if (!$component || in_array($trait, class_uses_recursive($component), true)) {
+            return;
+        }
+
+        throw new \LogicException(sprintf(
+            '%s needs the %s trait: add `use \\%s;` to %s.',
+            $for, class_basename($trait), $trait, get_class($component),
+        ));
+    }
+
+    /**
      * Trigger action from anywhere in the application
      */
     public function action($name, $params = [])

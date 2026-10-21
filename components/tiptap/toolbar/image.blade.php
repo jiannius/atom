@@ -1,3 +1,7 @@
+@php
+app('atom')->requireTrait(\Jiannius\Atom\Traits\WithEditor::class, '<atom:tiptap> image upload');
+@endphp
+
 <div
 x-data="{
     uploading: false,

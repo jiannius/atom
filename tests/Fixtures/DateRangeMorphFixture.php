@@ -2,12 +2,10 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
 use Livewire\Component;
 
 class DateRangeMorphFixture extends Component
 {
-    use AtomComponent;
 
     public ?string $date = null;
 

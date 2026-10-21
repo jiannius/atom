@@ -6,7 +6,8 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithTable;
+use Livewire\WithPagination;
 use Livewire\Component;
 
 /**
@@ -21,7 +22,8 @@ use Livewire\Component;
  */
 class TableLoadingFixture extends Component
 {
-    use AtomComponent;
+    use WithTable;
+    use WithPagination;
 
     /** Total rows behind the paginator — enough to page at every offered size. */
     public const TOTAL = 500;

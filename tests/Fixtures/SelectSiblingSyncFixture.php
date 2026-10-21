@@ -2,7 +2,6 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
 use Livewire\Component;
 
 /**
@@ -13,7 +12,6 @@ use Livewire\Component;
  */
 class SelectSiblingSyncFixture extends Component
 {
-    use AtomComponent;
 
     public ?string $accountId = null;
 

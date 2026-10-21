@@ -3,16 +3,17 @@
 namespace Jiannius\Atom\Traits;
 
 use Jiannius\Atom\Services\TableSort;
-use Livewire\WithFileUploads;
-use Livewire\WithPagination;
 
-trait AtomComponent
+/**
+ * State and methods behind <atom:table>: sort, checkboxes, "select all
+ * matching", max rows, trashed toggle. Add it to any Livewire component that
+ * renders <atom:table> or sorts through the toTable() builder macro; the table
+ * blades throw a clear error when it is missing.
+ *
+ * Pagination is Livewire's own: add WithPagination as well for a paginated table.
+ */
+trait WithTable
 {
-    use WithPagination;
-    use WithFileUploads;
-
-    public $_breadcrumbs = [];
-
     public $_table = [
         'sort' => ['column' => null, 'direction' => null],
         'checkboxes' => [],
@@ -22,42 +23,11 @@ trait AtomComponent
         'show_selected' => false,
     ];
 
-    public $_editor = [
-        'images' => [],
-    ];
-
-    public $_recaptcha = null;
-
     /**
-     * Mount the atom component
+     * Update the table state
      */
-    public function mountAtomComponent()
+    public function updatedWithTable($property, $value)
     {
-        if (method_exists($this, 'breadcrumbs')) {
-            $this->_breadcrumbs = $this->breadcrumbs(app('atom')->breadcrumbs())->build();
-        }
-    }
-
-    /**
-     * Update the atom component
-     */
-    public function updatedAtomComponent($property, $value)
-    {
-        // we generate a temporary preview url for editor images upload
-        // upon persist the editor content to the model, it will then search all the temporary url
-        // and store it in the disk (model need to use the AsEditorContent casts to the desired column)
-        // in case the editor content is not persisted (eg, user decided not to save the content)
-        // the temporary upload will just go through the normal purging process by livewire
-        if ($property === '_editor.images') {
-            $images = [];
-
-            foreach ($value as $upload) {
-                $images[] = $upload->temporaryUrl();
-            }
-
-            $this->fill(['_editor.images' => $images]);
-        }
-
         // A trashed-view toggle changes which rows are listed, so a lingering
         // checkbox selection would point at rows no longer shown. Clear it.
         if ($property === '_table.show_trashed') {
@@ -66,7 +36,7 @@ trait AtomComponent
     }
 
     /**
-     * Guard the atom component's reserved state before a client-driven update
+     * Guard the table's reserved state before a client-driven update
      * lands (Livewire calls this once per dotted path a $wire.set() targets).
      *
      * "_table.sort.column" is a plain public property, so a client can set it
@@ -79,7 +49,7 @@ trait AtomComponent
      * a string there, and a non-string used to reach str() and crash the
      * request (500) rather than being rejected (403).
      */
-    public function updatingAtomComponent($name, $value)
+    public function updatingWithTable($name, $value)
     {
         if ($this->isUnsafeTableSortUpdate($name, $value)) {
             abort(403, 'Invalid table sort.');
@@ -223,7 +193,9 @@ trait AtomComponent
 
         // the selection ignores the filters, so the page it was on means nothing
         // on the other side of the flip
-        $this->resetPage();
+        if (method_exists($this, 'resetPage')) {
+            $this->resetPage();
+        }
     }
 
     /**
@@ -255,84 +227,5 @@ trait AtomComponent
     public function isTableShowTrashed()
     {
         return data_get($this->_table, 'show_trashed', false);
-    }
-
-    /**
-     * Generate a wire key from every argument as given — a falsy one (0, '0',
-     * false, '', null) still counts, so a key built from index 0 changes with it.
-     */
-    public function wirekey(...$args)
-    {
-        return $args
-            ? md5(json_encode($args))
-            : md5((string) str()->ulid());
-    }
-
-    /**
-     * Show modal in front end
-     */
-    public function modal($name = null)
-    {
-        return app('atom')->modal($name ?? app('livewire')->current()->getName());
-    }
-
-    /**
-     * Show command palette in front end
-     */
-    public function command($name = null)
-    {
-        return app('atom')->command($name ?? app('livewire')->current()->getName());
-    }
-
-    /**
-     * Show toast in front end
-     */
-    public function toast(...$args)
-    {
-        app('atom')->toast(...$args);
-    }
-
-    /**
-     * Show alert in front end
-     */
-    public function alert(...$args)
-    {
-        app('atom')->alert(...$args);
-    }
-
-    /**
-     * Show confirm in front end
-     */
-    public function confirm(...$args)
-    {
-        app('atom')->confirm(...$args);
-    }
-
-    /**
-     * Trigger action
-     *
-     * Protected on purpose: Livewire exposes every public method a component
-     * declares, and a trait method counts as declared by the using class — so a
-     * public one here is callable from the browser as $wire.action(...). This
-     * forwards to Atom::action(), which honours a caller-controlled `method`,
-     * so exposing it reopens on Livewire exactly what the WebAction contract
-     * closed on POST /atom/action. Call it from the browser through that route
-     * (atom.action(...) in JS) with the action opted into WebAction.
-     */
-    protected function action($name, $params = [], $render = false)
-    {
-        if (!$render) $this->skipRender();
-
-        return app('atom')->action($name, $params);
-    }
-
-    /**
-     * Verify the reCAPTCHA token carried by <atom:form recaptcha>.
-     * Throws a validation error when the token resolves to a bot; fails open
-     * (does nothing) when recaptcha is not configured or cannot be reached.
-     */
-    public function verifyRecaptcha(?string $action = null, ?float $minScore = null) : void
-    {
-        app('atom')->recaptcha()->verify($this->_recaptcha, $action, $minScore);
     }
 }

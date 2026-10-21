@@ -8,6 +8,10 @@
 ])
 
 @php
+if ($checkbox) {
+    app('atom')->requireTrait(\Jiannius\Atom\Traits\WithTable::class, '<atom:table.cell checkbox>');
+}
+
 // A numeric cell (money, quantities) is right-aligned with tabular figures, so a column of amounts lines up on the
 // decimal point; name the currency in the column header, not here.
 $align = $numeric ? 'right' : $align;

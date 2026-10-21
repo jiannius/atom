@@ -2,12 +2,10 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
-use Jiannius\Atom\Traits\AtomComponent;
 use Livewire\Component;
 
 class DropdownMorphFixture extends Component
 {
-    use AtomComponent;
 
     public ?string $slow = null;
 

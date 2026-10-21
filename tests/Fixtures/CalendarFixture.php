@@ -5,7 +5,6 @@ namespace Jiannius\Atom\Tests\Fixtures;
 use Illuminate\Support\Facades\Validator;
 use Jiannius\Atom\Services\Calendar;
 use Jiannius\Atom\Services\Carbon;
-use Jiannius\Atom\Traits\AtomComponent;
 use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
@@ -18,7 +17,6 @@ use Livewire\Component;
  */
 class CalendarFixture extends Component
 {
-    use AtomComponent;
 
     public string $date = '2026-10-09';
 
