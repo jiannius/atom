@@ -65,7 +65,12 @@ describe('the date', function () {
 });
 
 describe('breakdown()', function () {
+    afterEach(fn () => Auth::forgetUser());
+
     beforeEach(function () {
+        // breakdown() shifts the start into the viewer's zone, so pin it rather than read the TIMEZONE environment
+        Auth::setUser(new GenericUser(['id' => 1, 'timezone' => 'UTC']));
+
         // the macro writes MySQL; teach the test database the three functions it calls
         $pdo = DB::connection()->getPdo();
         $pdo->sqliteCreateFunction('year', fn ($date) => (int) substr($date, 0, 4));
