@@ -3,7 +3,6 @@
     'title' => '',
     'dark' => false,
     'density' => 'compact',
-    'editor' => false,
     'scripts' => [],
     'styles' => [],
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
@@ -45,7 +44,6 @@ $barEmpty = ! $dark
 :styles="$styles"
 :scripts="$scripts"
 :vite="$vite"
-:editor="$editor"
 :attributes="$attributes->class('min-h-screen bg-canvas')">
     {{-- stashed sidebar backdrop --}}
     <div

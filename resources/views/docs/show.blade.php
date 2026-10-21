@@ -1,4 +1,4 @@
-<atom:docs.layout :title="str($entry['name'])->headline()" :editor="$entry['name'] === 'editor'">
+<atom:docs.layout :title="str($entry['name'])->headline()">
     <atom:heading size="xl">{{ str($entry['name'])->headline() }}</atom:heading>
 
     <div class="mt-2 flex items-center gap-2">

@@ -84,7 +84,6 @@ Useful `<atom:html>` props (all optional):
 | `dark`        | Opts the page into dark mode (off by default, on every layout too). Adds `class="dark"` to `<html>` and emits the `window.darkmode()` bootstrap, which then follows the stored preference or, with none, the visitor's `prefers-color-scheme`. Required for `<atom:darkmode-toggle>` to work. |
 | `styles`      | Additional stylesheet URLs.                                         |
 | `scripts`     | Additional script URLs.                                             |
-| `editor`      | Loads the editor CSS chunk (for pages using `<atom:editor>`).       |
 | `vite`        | Vite entries from your host app.                                    |
 | `noindex`     | Sets `robots` to `noindex,nofollow`.                                |
 
@@ -432,7 +431,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:date-picker>` | `name`, `variant` (`date`, `range`, `calendar`), `label`, `caption`, `inline`, `prefix`, `suffix`. Subs: `<atom:date-picker.date>`, `<atom:date-picker.range>`, `<atom:date-picker.calendar>`. The input also takes a typed date, committed on blur or Enter: the display format (`01 Oct 2024`), day-first numerics (`01/10/2024`) or ISO; a range as `from - to` or `from to to`. An entry that does not parse is put back, never sent. |
 | `<atom:time-picker>` | `name`, `label`, `caption`, `invalid`, `inline`. |
 | `<atom:uploader>` | `label` (default `Upload`), `variant`, `size`. Drop variant: `<atom:uploader.dropzone>`. |
-| `<atom:editor>` | Tiptap rich text. `name`, `label`, `caption`, `readonly`, `autofocus`, `variant="transparent"`, `placeholder`, `toolbar`, `mention`. Many sub-buttons under `<atom:editor.button.*>` and contextual menus under `<atom:editor.menu.*>`. Requires `<atom:html editor>` on the page. |
+| `<atom:editor>` | Tiptap rich text. `name`, `label`, `caption`, `readonly`, `autofocus`, `variant="transparent"`, `placeholder`, `toolbar`, `mention`. Many sub-buttons under `<atom:editor.button.*>` and contextual menus under `<atom:editor.menu.*>`. |
 
 ### Buttons & links
 

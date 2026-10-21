@@ -3,7 +3,6 @@
     'title' => '',
     'dark' => false,
     'density' => 'compact',
-    'editor' => false,
     'scripts' => [],
     'styles' => [],
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
@@ -44,7 +43,6 @@ $initials = $user && blank($initials)
 :styles="$styles"
 :scripts="$scripts"
 :vite="$vite"
-:editor="$editor"
 :attributes="$attributes->class('min-h-screen bg-canvas')">
     {{-- The bar: 52px, sticky, hairline below. atom.css lets it span the page's rows (a sticky grid item can only
          travel inside its own grid area). Not `relative`: below lg the nav panel is positioned against this element. --}}
