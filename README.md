@@ -383,7 +383,6 @@ $q->filter(['search' => 'tj', 'status:!=' => 'archived']);
 $q->breakdown($diff, $start);            // group-by year/month/day for charts
 $q->randomCode(8, 'code');               // unique random code
 User::query()->tableColumns();           // cached SHOW COLUMNS
-User::query()->tableHasColumn('email');
 User::query()->tableColumnType('created_at');
 ```
 
@@ -396,16 +395,12 @@ User::query()->tableColumnType('created_at');
 ```php
 request()->portal();                     // → 'auth' | 'admin' | 'app' | etc., derived from route name
 request()->portal('admin');              // → boolean
-request()->subdomain();                  // → "client" from "client.app.test"
-request()->hostWithoutSubdomain();
-request()->isLivewireRequest();
 ```
 
 ### `Str` / `Stringable` (`src/Macros/Str.php`)
 
 ```php
 str('foo.bar')->namespace();             // → "Foo\Bar"
-str('App\Models\User')->dotpath();       // → "App.Models.User"
 str('3 months')->interval();             // → "Quarterly"
 str()->initials('Tan Joon Long');        // → "TJ"
 ```
@@ -414,23 +409,6 @@ str()->initials('Tan Joon Long');        // → "TJ"
 
 ```php
 Arr::pick(['xs' => false, 'sm' => true, 'lg' => false]);  // → "sm"
-```
-
-### `ComponentAttributeBag` (`src/Macros/ComponentAttributeBag.php`)
-
-Used inside component templates:
-
-```blade
-{{-- inside components/button/index.blade.php style code --}}
-$attributes->size('md')                  {{-- → "xs"|"sm"|"md"|"lg"|... from `sm`/`md`/`lg` modifiers or size= --}}
-$attributes->modifier()                  {{-- → "lazy", "live", etc. from wire:model.X --}}
-$attributes->modifier('live')            {{-- → boolean --}}
-$attributes->field()                     {{-- → field name from field=, for=, or wire:model --}}
-$attributes->hasLike('wire:click*')
-$attributes->getLike('x-on:click*')
-$attributes->getAny('alt', 'title', 'aria-label')
-$attributes->classes()->add('foo')->add($condition && 'bar')
-$attributes->styles()->add('width', '100px')
 ```
 
 ---

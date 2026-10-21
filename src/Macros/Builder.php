@@ -144,17 +144,6 @@ class Builder
     }
 
     /**
-     * Check if table has column
-     */
-    public function tableHasColumn()
-    {
-        return function ($column) {
-            $columns = $this->getModel()->tableColumns();
-            return $columns->where('name', $column)->count() > 0;
-        };
-    }
-
-    /**
      * Get table column type
      */
     public function tableColumnType()

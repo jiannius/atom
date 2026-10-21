@@ -19,7 +19,7 @@ $error ??= $errors?->first($name);
 // field as an unnamed "edit text" — the visible caption is presentational only. The id
 // is derived, never random: see ComponentAttributeBag::fieldId(). Only minted where
 // there is a label to carry it, so an unlabelled field keeps the markup it had.
-$fieldId = $label ? $attributes->fieldId('atom-input', $name, $label, $type) : null;
+$fieldId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-input', $name, $label, $type) : null;
 
 // `file` is named the other way round. The uploader's own <input type="file"> is hidden,
 // so it is out of the accessibility tree and a <label for> computes no name from it — the

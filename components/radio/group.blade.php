@@ -15,7 +15,7 @@ $error ??= $errors?->first($name);
 // a screen reader read the choices with no idea what they were choosing. A radiogroup
 // cannot take a <label for> — it is not one control — so it is named by pointing back at
 // the field's label. Derived, not minted per render: see ComponentAttributeBag::fieldId().
-$labelId = $label ? $attributes->fieldId('atom-radio-group', $name, $label).'-label' : null;
+$labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-radio-group', $name, $label).'-label' : null;
 @endphp
 
 @if ($label || $caption)

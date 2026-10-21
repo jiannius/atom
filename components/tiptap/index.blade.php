@@ -16,7 +16,7 @@
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
 $model = $attributes->wire('model')->value();
-$lazy = $attributes->modifier('blur');
+$lazy = \Jiannius\Atom\Services\Attributes::modifier($attributes, 'blur');
 $transparent = $variant === 'transparent';
 
 $presets = [
@@ -30,7 +30,7 @@ $presets = [
 // field's label. The attributes have to be set through the editor's own config because
 // ProseMirror creates the contenteditable itself — see resources/js/alpinejs/tiptap.js.
 // Derived, not minted per render: see ComponentAttributeBag::fieldId().
-$labelId = $label ? $attributes->fieldId('atom-tiptap', $name, $label).'-label' : null;
+$labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-tiptap', $name, $label).'-label' : null;
 
 $hasToolbarSlot = $toolbar instanceof \Illuminate\View\ComponentSlot;
 $buttons = $hasToolbarSlot ? [] : (is_array($toolbar) ? $toolbar : ($presets[$toolbar] ?? $presets['full']));

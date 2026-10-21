@@ -13,7 +13,7 @@ $transparent = $variant === 'transparent';
 // Same as <atom:tiptap>: ProseMirror creates the contenteditable, so it takes no
 // <label for> and is named through the editor config instead. Derived, not minted per
 // render — see ComponentAttributeBag::fieldId().
-$labelId = $label ? $attributes->fieldId('atom-tiptap-chat', $attributes->wire('model')->value(), $label).'-label' : null;
+$labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-tiptap-chat', $attributes->wire('model')->value(), $label).'-label' : null;
 @endphp
 
 @if ($label || $caption)

@@ -88,7 +88,7 @@ $payload = $calendar->payload($anchor, $items ?? []);
 // and empty for a name that is all punctuation); a bound calendar is its component and its property; one with neither takes a number from
 // the engine when it starts (`n1`, `n2`), which is the same for as long as the page lives. Two calendars bound to the same property of
 // the same component need a `name` each, or they have one id between them.
-$uid = $name ? 'atom-calendar-'.collect([\Illuminate\Support\Str::slug((string) $name), substr(md5((string) $name), 0, 8)])->filter()->implode('-') : ($model && $component ? $attributes->fieldId('atom-calendar', method_exists($component, 'getId') ? $component->getId() : $component->getName(), $model) : null);
+$uid = $name ? 'atom-calendar-'.collect([\Illuminate\Support\Str::slug((string) $name), substr(md5((string) $name), 0, 8)])->filter()->implode('-') : ($model && $component ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-calendar', method_exists($component, 'getId') ? $component->getId() : $component->getName(), $model) : null);
 
 // A colour is decoration: a tint behind a chip, an accent edge and a dot, each a tone's token (the tint and the ink of the tone,
 // which hold their contrast in light and dark and follow the host's accent). Chip text stays neutral. The names a host already passes
