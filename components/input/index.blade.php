@@ -17,7 +17,7 @@ $error ??= $errors?->first($name);
 
 // The label needs something to point at. Without it a screen reader announces every
 // field as an unnamed "edit text" — the visible caption is presentational only. The id
-// is derived, never random: see ComponentAttributeBag::fieldId(). Only minted where
+// is derived, never random: see Services\Attributes::fieldId(). Only minted where
 // there is a label to carry it, so an unlabelled field keeps the markup it had.
 $fieldId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-input', $name, $label, $type) : null;
 

@@ -224,6 +224,31 @@ A component that renders `<atom:table>` (or a sortable column, a checkbox cell, 
 
 `atom:upgrade` will rewrite `use AtomComponent;` to the traits a component's markup and methods need, and print a review list for what it cannot see (a table rendered from a child partial, `breadcrumbs()` on a parent class, a `$wire.toast` call in JS), when 4.0 ships. Until then, change the traits by hand.
 
+## PHP globals
+
+**Dates are the framework's again.** atom no longer swaps Laravel's `Date` facade to `Jiannius\Atom\Services\Carbon`, so `now()`, `today()` and a model's date casts return Illuminate dates: **mutable**, with no `->pretty()`, `->local()`, `->recent()` or `->toDateRangeString()`. Add this to `AppServiceProvider::boot()` to keep immutable dates and those methods on every date:
+
+```php
+use Illuminate\Support\Facades\Date;
+
+Date::use(\Jiannius\Atom\Services\Carbon::class);
+```
+
+Search your PHP and Blade for `->pretty(`, `->local(`, `->recent(` and `->toDateRangeString(`: each call on a model date or on `now()` throws "Method ... does not exist" without the line. A host that does not want the swap can call `carbon($date)->pretty()` (or `Carbon::instance($date)`) where it needs them; `Jiannius\Atom\Services\Carbon`, `Carbon::getLocalTimezone()` and the `carbon()` helper are unchanged, and atom's own code (`breakdown()`, the calendar, the timeline) works on either kind of date. Code that relied on a date being immutable (`$date->addDay()` leaving `$date` alone) now changes the date in place without the line: use `->copy()` or add the line.
+
+**Macros removed.** None of these had a caller in the hosts checked:
+
+- `Request`: `subdomain()`, `hostWithoutSubdomain()` and `isLivewireRequest()` (use `app('livewire')->isLivewireRequest()`);
+- `Str` and `Stringable`: `dotpath()`;
+- Eloquent and query `Builder`: `tableHasColumn()` (use `Schema::hasColumn()`);
+- `ComponentAttributeBag`: all of them, `size()`, `field()`, `getAny()`, `getLike()`, `classes()`, `styles()`, `fieldId()`, `modifier()` and `hasLike()`. atom no longer touches your attribute bag; its own components use an internal helper. A host component that called one of them reads the attribute itself (`$attributes->get('size')`, `$attributes->has('lg')`).
+
+What stays: `Request::portal()`, `Str::namespace()`, `interval()` and `initials()`, `Arr::pick()`, and on the builders `whereDateBetween()`, `toPage()`, `toTable()`, `filter()`, `randomCode()`, `breakdown()`, `tableColumns()` and `tableColumnType()`. `tests/Feature/MacroAllowlistTest.php` pins the full list.
+
+**Two dead declarations are gone.** The `editor` prop of `<atom:html>` and the shells (`layouts.sidebar`, `layouts.header`) was never read, because `<atom:tiptap>` links its own stylesheet: delete it from your markup (left in, it lands as an `editor` attribute on `<body>`). The provider also no longer registers a `database/migrations` path, which the package never had.
+
+`atom:upgrade` will add the `Date::use()` line, flag the date-method calls and the removed macros, and delete the `editor` attribute, when 4.0 ships. Until then, change them by hand.
+
 ## What is not restyled
 
 Nothing. Every component, the editor's content, the calendar, the chart and the docs are on the tokens, and the guards (`RestyleGuardsTest`) hold every component file (one allowance: the shells' mobile scrim, `bg-black/20`): no raw palette name, no `dark:` colour pair, no shadow except `shadow-pop` on a raised layer, no `:focus` ring. Two things are left alone on purpose: `resources/css/editor.css`, the legacy editor's sheet that nothing in atom links (it goes with the legacy editor, V4-4d), and a host's own markup, which keeps whatever palette classes it wrote: the `zinc` and `gray` ramps are atom's warm neutral palette now, so they do not break.

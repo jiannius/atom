@@ -15,7 +15,7 @@ $error ??= $errors?->first($name);
 
 // Hour, minute and meridiem are three separate inputs, so a single <label for> cannot
 // reach them: the set is named as a group pointing back at the field's label, and each
-// input carries its own name. Derived, not per render: see ComponentAttributeBag::fieldId().
+// input carries its own name. Derived, not per render: see Services\Attributes::fieldId().
 $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-time-picker', $name, $label).'-label' : null;
 @endphp
 

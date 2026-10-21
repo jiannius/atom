@@ -24,7 +24,7 @@
     // `native` renders a real <select>, so its label can point straight at it. `listbox`
     // is a composed widget whose combobox is a button or a search input, so it is named
     // the other way round — aria-labelledby back at the label. Both ids derive from the
-    // field rather than being minted per render: see ComponentAttributeBag::fieldId().
+    // field rather than being minted per render: see Services\Attributes::fieldId().
     $fieldId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-select', $name, $label, $variant) : null;
     $labelId = $fieldId && $variant !== 'native' ? $fieldId.'-label' : null;
 

@@ -20,7 +20,7 @@ $transparent = $variant === 'transparent';
 
 // Same association as <atom:input>: without an id to point at, the label is decoration
 // and a screen reader announces the field unnamed. Derived, never random — see
-// ComponentAttributeBag::fieldId() for why a per-render id breaks Livewire's morph.
+// Services\Attributes::fieldId() for why a per-render id breaks Livewire's morph.
 $textareaId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-textarea', $name, $label) : null;
 
 $merges = compact('rows', 'variant', 'autoresize', 'placeholder', 'required', 'invalid');

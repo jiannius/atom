@@ -29,7 +29,7 @@ $presets = [
 // nothing to bind to: it is given a textbox role and named by pointing back at the
 // field's label. The attributes have to be set through the editor's own config because
 // ProseMirror creates the contenteditable itself — see resources/js/alpinejs/tiptap.js.
-// Derived, not minted per render: see ComponentAttributeBag::fieldId().
+// Derived, not minted per render: see Services\Attributes::fieldId().
 $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-tiptap', $name, $label).'-label' : null;
 
 $hasToolbarSlot = $toolbar instanceof \Illuminate\View\ComponentSlot;

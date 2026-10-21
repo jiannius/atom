@@ -30,8 +30,7 @@ The service provider (`Jiannius\Atom\AtomServiceProvider`) auto-registers via La
 - Mount its routes under `/atom/*` (asset serving + action endpoint).
 - Register all components under the `atom` view namespace.
 - Install the `<atom:...>` Blade tag compiler.
-- Swap Laravel's `Date` facade for `Jiannius\Atom\Services\Carbon`.
-- Mix macros onto `Eloquent\Builder`, `Query\Builder`, `ComponentAttributeBag`, `Request`, `Str`, `Stringable`, and `Arr`.
+- Mix macros onto `Eloquent\Builder`, `Query\Builder`, `Request`, `Str`, `Stringable`, `Arr` and `Livewire\Component`.
 - Register the artisan command `atom:purge-editor-images`.
 
 No publishing step is required to get started.
@@ -241,7 +240,7 @@ All `heading`, `subheading`, and `message` strings are auto-passed through `t()`
 | -------- | ------- |
 | `t($key, $count = 1, $params = [])` | Translation shim. Number → `trans_choice`, array → `__($key, $array)`, scalar → `__($key, $params)`. Used internally by every component. |
 | `num($value)` | Wraps Laravel's `Number` helper. Adds `->currency($iso, $rounding, $bracket, $abbreviate, $maxPrecision, $roundingMode)` (2dp, rounded half-up; `$roundingMode` is `half-up`, `half-even` or `half-down`) and `->filesize($precision)`. All other `Number::*` methods proxy through. |
-| `carbon(...$args)` | Returns a `Jiannius\Atom\Services\Carbon` instance. |
+| `carbon(...$args)` | Returns a `Jiannius\Atom\Services\Carbon` instance (immutable, with `pretty()` and `local()`). `now()` is Laravel's own date unless you opt in with `Date::use()`. |
 | `js($value)` | Alias for `Js::from()`. |
 | `is_enum($value)` | True for `UnitEnum` / `BackedEnum`. |
 | `is_using_trait($class, $trait)` | True if `$class` (recursively) uses `$trait`. |
@@ -1741,7 +1740,7 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 
 - Window-level Livewire events are prefixed `atom-` (`atom-modal-show`, `atom-modal-close`, `atom-toast-show`, `atom-alert-show`, `atom-confirm-show`). Grep by this prefix when tracing overlay state.
 - `<atom:button type="delete">` auto-dispatches `confirmed` on accept, which (unless overridden) calls `$wire.delete()`.
-- Date handling everywhere goes through `Jiannius\Atom\Services\Carbon` because of the `Date::use()` swap in the service provider.
+- Where atom builds a date itself (the calendar, the timeline, `carbon()`) it uses `Jiannius\Atom\Services\Carbon`. It does not swap the `Date` facade: add `Date::use(\Jiannius\Atom\Services\Carbon::class);` to `AppServiceProvider::boot()` if you want `now()` and model dates to be that immutable class, with `->pretty()` and `->local()`.
 - Components prefer `Arr::toCssClasses([...])` and `match` over conditional class strings. See `components/button/index.blade.php` for the canonical pattern.
 - The bundled `dist/` directory is **committed**; the package serves it itself. If you fork and edit JS/CSS sources, run `npm run build` and commit `dist/`.
 - `atom.css` defines `[x-cloak] { display: none !important }`, so `x-cloak` works out of the box in any app loading atom's stylesheet — Tailwind ships no such rule, and without one the attribute is inert. The `!important` matters: `[x-cloak]` and a utility like `.flex` have equal specificity, so otherwise the winner is whichever stylesheet loads last. Alpine strips the attribute on init, so the rule only ever hides pre-boot markup — which also means **`x-cloak` must sit on an element Alpine will initialise** (one carrying `x-data`, or inside one), or it stays hidden forever. `tests/Feature/XCloakTest.php` enforces both halves.
