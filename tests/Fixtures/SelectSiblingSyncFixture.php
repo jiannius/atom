@@ -12,7 +12,6 @@ use Livewire\Component;
  */
 class SelectSiblingSyncFixture extends Component
 {
-
     public ?string $accountId = null;
 
     /**

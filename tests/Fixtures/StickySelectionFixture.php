@@ -3,8 +3,8 @@
 namespace Jiannius\Atom\Tests\Fixtures;
 
 use Jiannius\Atom\Traits\WithTable;
-use Livewire\WithPagination;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
  * Drives the E2E for <atom:table :sticky-selection>: tick rows, narrow the list
@@ -16,8 +16,8 @@ use Livewire\Component;
  */
 class StickySelectionFixture extends Component
 {
-    use WithTable;
     use WithPagination;
+    use WithTable;
 
     public string $search = '';
 

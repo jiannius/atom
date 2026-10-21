@@ -1,7 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\Blade;
+use App\Actions\Spy;
 use Jiannius\Atom\Tests\Fixtures\ComponentHelpersFixture;
+use Jiannius\Atom\Tests\Fixtures\HookNamedPropertiesFixture;
+use Jiannius\Atom\Tests\Fixtures\TraitGuardActionFixture;
+use Jiannius\Atom\Tests\Fixtures\TraitGuardChildFixture;
+use Jiannius\Atom\Tests\Fixtures\TraitGuardParentFixture;
+use Jiannius\Atom\Tests\Fixtures\TraitGuardTableChildFixture;
 use Jiannius\Atom\Traits\WithBreadcrumbs;
 use Jiannius\Atom\Traits\WithEditor;
 use Jiannius\Atom\Traits\WithRecaptcha;
@@ -204,18 +210,32 @@ it('refuses a crafted calls payload naming a helper macro, and nothing runs', fu
     $test = Livewire::test(ComponentHelpersFixture::class);
 
     foreach (COMPONENT_MACROS as $name) {
+        Spy::$ran = 0;
+
+        $params = $name === 'action' ? ['spy', ['method' => 'handle']] : ['x'];
+
         $response = $this->withHeaders(['X-Livewire' => 'true'])->postJson(app('livewire')->getUpdateUri(), [
             'components' => [[
                 'snapshot' => json_encode($test->snapshot),
                 'updates' => [],
-                'calls' => [['method' => $name, 'params' => $name === 'action' ? ['open', ['method' => 'secret']] : ['x'], 'metadata' => []]],
+                'calls' => [['method' => $name, 'params' => $params, 'metadata' => []]],
             ]],
         ]);
 
-        // refused: no 2xx, and the component never dispatched or ran anything
+        // refused by Livewire's own allow-list, before the macro could be reached
         expect($response->status())->toBeGreaterThanOrEqual(400);
-        expect($response->getContent())->not->toContain('atom-toast-show')->not->toContain('"secret"');
+        expect($response->getContent())->toContain("Public method [{$name}] not found");
+        expect($response->getContent())->not->toContain('atom-toast-show');
+        expect(Spy::$ran)->toBe(0, "{$name} must not have run an action");
     }
+});
+
+it('runs an action only from PHP, and the spy proves the browser path never reaches it', function () {
+    Spy::$ran = 0;
+
+    Livewire::test(ComponentHelpersFixture::class)->call('runSpy')->assertSet('result', ['ran' => 'spy']);
+
+    expect(Spy::$ran)->toBe(1);
 });
 
 it('still lets the same component call its helpers from PHP', function () {
@@ -255,7 +275,7 @@ it('lets a class method of the same name win over the macro', function () {
  */
 it('names WithTable and the component when <atom:table> is rendered without it', function () {
     $component = new class extends Component {
-        public function render() { return Blade::render('<div><atom:table :paginate="null"><x-slot:rows></x-slot:rows></atom:table></div>'); }
+        public function render() { return '<div><atom:table :paginate="null"><x-slot:rows></x-slot:rows></atom:table></div>'; }
     };
 
     expect(fn () => Livewire::test($component::class))
@@ -268,7 +288,7 @@ it('names WithTable for each table part that reads _table', function (string $bl
 
         public function __construct(string $blade = '') { if ($blade) { static::$blade = $blade; } }
 
-        public function render() { return Blade::render('<div>'.static::$blade.'</div>'); }
+        public function render() { return '<div>'.static::$blade.'</div>'; }
     };
 
     $component::$blade = $blade;
@@ -289,7 +309,7 @@ it('also asks a paginated table for WithPagination', function () {
         {
             $paginator = new \Illuminate\Pagination\LengthAwarePaginator([1], 200, 10, 1);
 
-            return Blade::render('<div><atom:table.pagination :paginate="$paginate" /></div>', ['paginate' => $paginator]);
+            return view('atom-test::trait-guard-pager', ['paginate' => $paginator]);
         }
     };
 
@@ -302,10 +322,10 @@ it('does not complain about a table outside a Livewire component', function () {
 
 it('names WithEditor for the tiptap image toolbar, and WithRecaptcha for <atom:form recaptcha>', function () {
     $toolbar = new class extends Component {
-        public function render() { return Blade::render('<div><atom:tiptap.toolbar.image /></div>'); }
+        public function render() { return '<div><atom:tiptap.toolbar.image /></div>'; }
     };
     $form = new class extends Component {
-        public function render() { return Blade::render('<div><atom:form recaptcha wire:submit="save">x</atom:form></div>'); }
+        public function render() { return '<div><atom:form recaptcha wire:submit="save">x</atom:form></div>'; }
     };
 
     expect(fn () => Livewire::test($toolbar::class))->toThrow(Exception::class, 'needs the WithEditor trait');
@@ -338,4 +358,143 @@ it('echoes an editor image upload back as temporary preview urls', function () {
 
     expect($images)->toHaveCount(1);
     expect($images[0])->toBeString()->toContain('preview-file');
+});
+
+
+/**
+ * The missing-trait check follows Livewire's render stack: the component whose view is
+ * rendering. mount(), an action and a static page have none, so rendering table markup
+ * to a string there (an export, a PDF, a mail body) is not an error.
+ */
+it('does not throw for table markup rendered in mount() or an action of a component without WithTable', function () {
+    $test = Livewire::test(TraitGuardActionFixture::class);
+
+    expect($test->get('html'))->toContain('data-atom-table');
+
+    $test->set('html', '')->call('export');
+
+    expect($test->get('html'))->toContain('data-atom-table');
+});
+
+it('checks the child that is rendering, not its parent', function () {
+    // a parent with WithTable cannot cover a child without it
+    expect(fn () => Livewire::test(TraitGuardParentFixture::class, ['child' => TraitGuardChildFixture::class]))
+        ->toThrow(Exception::class, 'to '.TraitGuardChildFixture::class);
+
+    // and the child's own trait is enough, whatever the parent uses
+    Livewire::test(TraitGuardParentFixture::class, ['child' => TraitGuardTableChildFixture::class])
+        ->assertSeeHtml('data-atom-table');
+});
+
+it('checks a lazy component when it renders, not when its placeholder does', function () {
+    foreach ([TraitGuardChildFixture::class => false, TraitGuardTableChildFixture::class => true] as $class => $hasTrait) {
+        // the placeholder has no table and needs no trait
+        $test = Livewire::test($class, ['lazy' => true])->assertDontSeeHtml('data-atom-table');
+
+        preg_match('/__lazyLoad\(&#039;([^&]+)&#039;\)/', $test->html(), $match);
+
+        expect($match)->not->toBeEmpty('the lazy placeholder must carry its load call');
+
+        if ($hasTrait) {
+            $test->call('__lazyLoad', $match[1])->assertSeeHtml('data-atom-table');
+        }
+        else {
+            expect(fn () => $test->call('__lazyLoad', $match[1]))->toThrow(Exception::class, 'WithTable');
+        }
+    }
+});
+
+it('checks an update render of the same component', function () {
+    $test = Livewire::test(TraitGuardTableChildFixture::class)->call('$refresh')->assertSeeHtml('data-atom-table');
+
+    expect($test->effects['html'] ?? $test->html())->toContain('data-atom-table');
+});
+
+/**
+ * Livewire calls a trait's hook for a property of the same name too, with the value
+ * where the path would be; an array value was a TypeError (500).
+ */
+it('survives a host property named like a trait', function (string $property) {
+    $test = Livewire::test(HookNamedPropertiesFixture::class)
+        ->set($property, ['a'])
+        ->assertOk()
+        ->assertSet($property, ['a']);
+
+    $test->set($property, [])->assertOk();
+})->with(['withTable', 'withEditor', 'withBreadcrumbs', 'withUrlFilters']);
+
+it('still refuses a raw: sort when the property named like the trait is set in the same request', function () {
+    Livewire::test(HookNamedPropertiesFixture::class)
+        ->set('_table.sort.column', 'raw:(SELECT 1)')
+        ->assertForbidden();
+});
+
+/**
+ * A component with a breadcrumbs() method and no WithBreadcrumbs throws at mount, except
+ * where the method is plainly not WithBreadcrumbs' convention.
+ */
+it('ignores a #[Computed] property that happens to be called breadcrumbs', function () {
+    $component = new class extends Component {
+        #[\Livewire\Attributes\Computed]
+        public function breadcrumbs() { return ['Home']; }
+
+        public function render() { return '<div>{{ count($this->breadcrumbs) }}</div>'; }
+    };
+
+    Livewire::test($component::class)->assertOk()->assertSee('1');
+});
+
+it('ignores a component that lives in vendor/', function () {
+    $dir = base_path('vendor/atom-test-package');
+    @mkdir($dir, 0777, true);
+    file_put_contents($dir.'/VendorBreadcrumbsComponent.php', '<?php
+        namespace AtomTestPackage;
+        class VendorBreadcrumbsComponent extends \Livewire\Component {
+            public function breadcrumbs() { return []; }
+            public function render() { return "<div>vendor</div>"; }
+        }');
+
+    try {
+        require_once $dir.'/VendorBreadcrumbsComponent.php';
+
+        Livewire::test(\AtomTestPackage\VendorBreadcrumbsComponent::class)->assertOk()->assertSee('vendor');
+    }
+    finally {
+        @unlink($dir.'/VendorBreadcrumbsComponent.php');
+        @rmdir($dir);
+    }
+});
+
+it('ignores a breadcrumbs() inherited from a vendor/ class', function () {
+    $dir = base_path('vendor/atom-test-package');
+    @mkdir($dir, 0777, true);
+    file_put_contents($dir.'/VendorBase.php', '<?php
+        namespace AtomTestPackage;
+        abstract class VendorBase extends \Livewire\Component {
+            public function breadcrumbs() { return []; }
+        }');
+
+    try {
+        require_once $dir.'/VendorBase.php';
+
+        $component = new class extends \AtomTestPackage\VendorBase {
+            public function render() { return '<div>inherited</div>'; }
+        };
+
+        Livewire::test($component::class)->assertOk()->assertSee('inherited');
+    }
+    finally {
+        @unlink($dir.'/VendorBase.php');
+        @rmdir($dir);
+    }
+});
+
+it('still throws for a host component with its own plain breadcrumbs() method', function () {
+    $component = new class extends Component {
+        public function breadcrumbs() { return []; }
+
+        public function render() { return '<div></div>'; }
+    };
+
+    expect(fn () => Livewire::test($component::class))->toThrow(Exception::class, 'WithBreadcrumbs');
 });

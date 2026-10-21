@@ -221,6 +221,11 @@ trait WithUrlFilters
      */
     public function updatingWithUrlFilters($name, $value): void
     {
+        // a host property named `withUrlFilters` calls this hook with its value for $name
+        if (! is_string($name)) {
+            return;
+        }
+
         $property = $this->urlFiltersProperty();
 
         if ($name === $property) {
@@ -256,6 +261,10 @@ trait WithUrlFilters
      */
     public function updatedWithUrlFilters($name, $value): void
     {
+        if (! is_string($name)) {
+            return;
+        }
+
         $property = $this->urlFiltersProperty();
 
         if ($name === $property) {

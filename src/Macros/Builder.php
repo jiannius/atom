@@ -52,10 +52,13 @@ class Builder
         return function ($filters = null, $maxRows = null) {
             // current() returns false (not null) when no component is on the stack,
             // e.g. toTable() called from a job/console/test — guard so ?-> works.
-            // A component without WithTable has no _table (Livewire throws on an
-            // unknown property): the table state is simply absent, not an error.
+            // Only a component that uses WithTable has its _table trusted: one with a
+            // public $_table of its own has no signed-sort gate (updatingWithTable()), so a
+            // client could set an unsigned raw: column that would read as PHP-set here.
             $component = app('livewire')->current() ?: null;
-            $config = $component && property_exists($component, '_table') ? $component->_table : null;
+            $config = $component && in_array(\Jiannius\Atom\Traits\WithTable::class, class_uses_recursive($component), true)
+                ? $component->_table
+                : null;
 
             // Defence in depth: WithTable::updatingWithTable() refuses a client
             // update that would leave these non-string, but $_table is a

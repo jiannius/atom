@@ -41,6 +41,14 @@ class ComponentHelpersFixture extends Component
     }
 
     /**
+     * Run the spy action from PHP
+     */
+    public function runSpy(): void
+    {
+        $this->result = $this->action('spy');
+    }
+
+    /**
      * Render a Blade view that calls a helper through $this
      */
     public function render()

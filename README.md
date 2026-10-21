@@ -295,9 +295,9 @@ Pagination and uploads are Livewire's own: add `WithPagination` to a paginated c
 `WithFileUploads` to one with an uploader. Rendering `<atom:table>`, a sortable `<atom:table.column>`,
 a checkbox cell, the trashed toggle, the tiptap image toolbar or `<atom:form recaptcha>` in a
 component without its trait throws an error naming the trait and the component class, and so does
-a component that defines `breadcrumbs()` without `WithBreadcrumbs` (nothing would call it).
-`<atom:table.pagination>` asks for `WithPagination` the same way. `toTable()` on a component
-without `WithTable` simply applies no sort.
+a component that defines `breadcrumbs()` without `WithBreadcrumbs` (nothing would call it; a method with a Livewire attribute such as `#[Computed]`, and a component in `vendor/`, are left alone). The check is made while the component's view renders, so table markup rendered to a string in `mount()` or an action (an export, a PDF) is not an error.
+`<atom:table.pagination>` asks for `WithPagination` the same way. `toTable()` reads the table state only from a component
+that uses `WithTable`; on any other it applies no sort.
 
 #### Names the traits occupy
 
@@ -327,6 +327,11 @@ reason; the prefix *is* the protection.
 | `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed` | each other, and your own `items()` | bulk actions target the wrong rows |
 | `$paginators`, `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination` | Livewire's `WithPagination` | pagination |
 | `_startUpload`, `_finishUpload`, `_removeUpload`, `_uploadErrored` | Livewire's `WithFileUploads` | file uploads |
+
+**Property names the hooks answer to.** Livewire calls a trait's hook for a property named
+like the trait too, so a property called `withTable`, `withEditor`, `withBreadcrumbs`,
+`withRecaptcha` or `withUrlFilters` also runs `updatingWithTable()` and the rest, with the value
+where the path would be. The hooks ignore a non-string path, so it is harmless, but pick another name.
 
 **Yours to define:** `breadcrumbs` (optional), `tableQuery` (required for `tableSelection()`),
 `tableSelectionQuery` (override for sticky selection).
@@ -1027,7 +1032,6 @@ use Livewire\Component;
 
 class Index extends Component
 {
-
     /** The anchor: `Y-m-d` or `Y-m`. Empty, or anything unreadable, is the viewer's today. */
     public string $date = '';
 

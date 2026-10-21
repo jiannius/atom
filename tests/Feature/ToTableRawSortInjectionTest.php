@@ -2,6 +2,7 @@
 
 use Jiannius\Atom\Services\TableSort;
 use Jiannius\Atom\Tests\Fixtures\Item;
+use Jiannius\Atom\Tests\Fixtures\OwnTableFixture;
 use Jiannius\Atom\Tests\Fixtures\TableFixture;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -171,4 +172,59 @@ it('refuses a non-string sort direction', function () {
     Livewire::test(TableFixture::class)
         ->set('_table.sort.direction', ['asc'])
         ->assertForbidden();
+});
+
+
+/**
+ * Review finding (medium): toTable() read `_table` from any component that had the
+ * property, WithTable or not. A host's own public $_table has no updatingWithTable()
+ * gate, so a client could set an unsigned raw: column that then read as PHP-set and
+ * trusted: the #54 injection through a component that never opted in.
+ */
+it('reads the table state only from a component that uses WithTable', function () {
+    Item::factory()->count(2)->create();
+
+    $test = Livewire::test(OwnTableFixture::class)
+        ->set('_table.sort.column', 'raw:(SELECT 1)')
+        ->set('_table.sort.direction', 'desc');
+
+    // nothing gates the host's own property, so the value did land
+    expect($test->get('_table.sort.column'))->toBe('raw:(SELECT 1)');
+
+    DB::enableQueryLog();
+    withLivewireContext($test->instance(), fn () => Item::query()->toTable());
+    $log = collect(DB::getQueryLog())->pluck('query')->implode(' ; ');
+    DB::disableQueryLog();
+
+    expect($log)->not->toContain('(SELECT 1)')
+        ->and($log)->toContain('order by "id" desc');
+});
+
+it('applies no sort and the default row count to a component with no table state at all', function () {
+    Item::factory()->count(3)->create();
+
+    $component = new class extends \Livewire\Component {
+        public function render() { return '<div></div>'; }
+    };
+
+    DB::enableQueryLog();
+    $rows = withLivewireContext($component, fn () => Item::query()->toTable());
+    $log = collect(DB::getQueryLog())->pluck('query')->implode(' ; ');
+    DB::disableQueryLog();
+
+    expect($rows->perPage())->toBe(100)
+        ->and($log)->toContain('order by "id" desc');
+});
+
+it('still sorts by the table state of a component that uses WithTable', function () {
+    Item::factory()->create(['name' => 'b']);
+    Item::factory()->create(['name' => 'a']);
+
+    $test = Livewire::test(TableFixture::class)
+        ->set('_table.sort.column', 'name')
+        ->set('_table.sort.direction', 'asc');
+
+    $names = withLivewireContext($test->instance(), fn ($c) => $c->items()->pluck('name')->all());
+
+    expect($names)->toBe(['a', 'b']);
 });

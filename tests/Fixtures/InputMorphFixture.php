@@ -6,7 +6,6 @@ use Livewire\Component;
 
 class InputMorphFixture extends Component
 {
-
     public ?string $search = null;
 
     public ?string $live = null;

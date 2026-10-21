@@ -6,7 +6,6 @@ use Livewire\Component;
 
 class DatePickerTimeMorphFixture extends Component
 {
-
     public ?string $date = null;
 
     public int $renders = 0;

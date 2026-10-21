@@ -66,17 +66,22 @@ class Atom
     }
 
     /**
-     * Throw when the Livewire component being rendered lacks the trait a piece of
-     * markup depends on, naming the trait and the component class. Outside a
-     * Livewire render (a static page, a docs demo) there is no component to check
-     * and nothing happens.
+     * Throw when the Livewire component whose view is being rendered lacks the trait
+     * a piece of markup depends on, naming the trait and the component class.
+     *
+     * "Being rendered" is Livewire's render stack, which is pushed around a
+     * component's view render (initial render, update, nested children, lazy and
+     * island renders alike) and not around mount, hydrate or an action. So
+     * Blade::render('<atom:table>') in an action (an export, a PDF, a mail), a static
+     * page and a docs demo have no component to check and nothing happens.
      *
      * @param  class-string  $trait
      * @param  string  $for  what needs it, e.g. "<atom:table>"
      */
     public function requireTrait(string $trait, string $for) : void
     {
-        $component = app('livewire')->current() ?: null;
+        $stack = \Livewire\Mechanisms\HandleComponents\HandleComponents::$renderStack;
+        $component = end($stack) ?: null;
 
         if (!$component || in_array($trait, class_uses_recursive($component), true)) {
             return;

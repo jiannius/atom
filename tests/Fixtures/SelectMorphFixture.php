@@ -6,7 +6,6 @@ use Livewire\Component;
 
 class SelectMorphFixture extends Component
 {
-
     public ?string $country = null;
 
     public ?string $status = null;

@@ -13,7 +13,6 @@ use Livewire\Component;
  */
 class CalendarLookFixture extends Component
 {
-
     public string $date = '2026-10-09';
 
     /** The view the calendar opens in; ?view=week. */

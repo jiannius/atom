@@ -164,13 +164,48 @@ class AtomServiceProvider extends ServiceProvider
     protected function registerComponentGuards() : void
     {
         \Livewire\on('mount', function ($component) {
-            if (method_exists($component, 'breadcrumbs') && !in_array(\Jiannius\Atom\Traits\WithBreadcrumbs::class, class_uses_recursive($component), true)) {
+            if ($this->hasOrphanBreadcrumbsMethod($component)) {
                 throw new \LogicException(sprintf(
                     '%s defines breadcrumbs() but nothing calls it: add `use \\%s;` to the component.',
                     get_class($component), \Jiannius\Atom\Traits\WithBreadcrumbs::class,
                 ));
             }
         });
+    }
+
+    /**
+     * Whether the component has a breadcrumbs() method for WithBreadcrumbs to call and
+     * does not use the trait. A method carrying a Livewire attribute (a #[Computed]
+     * property that happens to be called breadcrumbs) is the host's own, and so is a
+     * component (or the method it inherits) that lives in vendor/, a third-party package.
+     */
+    protected function hasOrphanBreadcrumbsMethod(object $component) : bool
+    {
+        if (!method_exists($component, 'breadcrumbs')) {
+            return false;
+        }
+
+        if (in_array(\Jiannius\Atom\Traits\WithBreadcrumbs::class, class_uses_recursive($component), true)) {
+            return false;
+        }
+
+        $method = new \ReflectionMethod($component, 'breadcrumbs');
+
+        foreach ($method->getAttributes() as $attribute) {
+            if (str_starts_with($attribute->getName(), 'Livewire\\')) {
+                return false;
+            }
+        }
+
+        $vendor = (realpath(base_path('vendor')) ?: base_path('vendor')).DIRECTORY_SEPARATOR;
+
+        foreach ([(new \ReflectionClass($component))->getFileName(), $method->getFileName()] as $file) {
+            if ($file && str_starts_with($file, $vendor)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

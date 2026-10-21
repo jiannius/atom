@@ -7,8 +7,8 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 use Jiannius\Atom\Traits\WithTable;
-use Livewire\WithPagination;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
  * Drives the E2E for <atom:table>'s loading overlay: enough rows for the table to
@@ -22,8 +22,8 @@ use Livewire\Component;
  */
 class TableLoadingFixture extends Component
 {
-    use WithTable;
     use WithPagination;
+    use WithTable;
 
     /** Total rows behind the paginator — enough to page at every offered size. */
     public const TOTAL = 500;

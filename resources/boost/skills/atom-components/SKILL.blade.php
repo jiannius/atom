@@ -21,7 +21,7 @@ Livewire 4 single-file components are the default. A plain `Livewire\Component` 
 - `WithEditor`: `$_editor` and `WithFileUploads`; for `<atom:tiptap>` with image upload.
 - `WithRecaptcha`: `$_recaptcha` and `verifyRecaptcha()`; for `<atom:form recaptcha>`.
 
-Rendering one of these without its trait throws a message naming the trait and the component class (so does a `breadcrumbs()` method without `WithBreadcrumbs`).
+Rendering one of these without its trait throws a message naming the trait and the component class (so does a `breadcrumbs()` method without `WithBreadcrumbs`, unless it carries a Livewire attribute such as `#[Computed]`; table markup rendered to a string in `mount()` or an action is not checked). Do not name a property `withTable`, `withEditor`, `withBreadcrumbs`, `withRecaptcha` or `withUrlFilters`: Livewire runs the trait's hook for it.
 
 Helpers, on every component:
 

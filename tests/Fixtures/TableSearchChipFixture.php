@@ -3,9 +3,9 @@
 namespace Jiannius\Atom\Tests\Fixtures;
 
 use Jiannius\Atom\Traits\WithTable;
-use Livewire\WithPagination;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
  * Drives the E2E for <atom:table.search> inside <atom:table.filters>: a search
@@ -17,8 +17,8 @@ use Livewire\Component;
  */
 class TableSearchChipFixture extends Component
 {
-    use WithTable;
     use WithPagination;
+    use WithTable;
 
     #[Url]
     public ?string $search = null;

@@ -6,7 +6,6 @@ use Livewire\Component;
 
 class DateRangeMorphFixture extends Component
 {
-
     public ?string $date = null;
 
     public int $renders = 0;

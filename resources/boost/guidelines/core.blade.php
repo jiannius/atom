@@ -7,9 +7,9 @@ Atom (`jiannius/atom`) is a Tailwind + Alpine + Livewire component library for L
 Every component ships with a canonical, verified usage example:
 
 @verbatim
-- **Demo snippets:** `vendor/jiannius/atom/resources/views/docs/demos/<component>/*.blade.php` — each file is a tiny, copy-paste-ready Blade example (these power the live `/atom/docs` pages, so they are rendered and verified, never stale). Read the relevant one before writing `<atom:...>` markup.
+- **Demo snippets:** `vendor/jiannius/atom/resources/views/docs/demos/<component>/*.blade.php` — each file is a tiny, copy-paste-ready Blade example (rendered and verified in `/atom/docs`, never stale). Read the relevant one before writing `<atom:...>` markup.
 - **Prop reference:** the `@props([...])` block at the top of `vendor/jiannius/atom/components/<component>/index.blade.php` (or `components/<component>.blade.php` for flat components) is the authoritative prop list.
-- **Browsable docs:** with `APP_ENV=local`, `/atom/docs`.
+- **Browsable docs:** with `APP_ENV=local`, visit `/atom/docs` for live previews and prop tables.
 @endverbatim
 
 @verbatim
@@ -21,19 +21,19 @@ Use `<atom:name>` for every Atom component. Dot-paths map to subdirectories:
 - `<atom:icon.close />` → `components/icon/close.blade.php`
 - `<atom:input.email />` → `components/input/email.blade.php`
 
-Never write `<x-atom::name>` or bespoke equivalents of an Atom component.
+Never write `<x-atom::name>`, `<x-icon />`, or bespoke equivalents when an Atom component exists.
 
 ### Icons
 
 - Always `<atom:icon.name />`. Names live in `vendor/jiannius/atom/components/icon/`.
 - Default size is `size-5`. Override with `class="size-4"` etc.
 - Some icons accept `variant="solid"`. Pass any other Tailwind classes via `class`.
-- Icons are `aria-hidden` by default; a meaningful standalone icon needs `aria-label` (or `title`).
+- Icons are decorative by default and marked `aria-hidden`. For a meaningful standalone icon, pass `aria-label` (or `title`) to expose it to assistive tech.
 - An icon-only button (`<atom:button icon="..." />`, no slot) is auto-labelled from the icon name; override with `aria-label="..."`. Don't add a redundant `aria-label` to a button that already has visible text.
 
 ### Security rules that always apply
 
-- Chat HTML from the browser is untrusted: clean it with `Jiannius\Atom\Tiptap\Content::sanitize()` before you store it, and print it through `<atom:tiptap.content>`. Never print editor or chat HTML with `x-html`, `{!! !!}` or `->html()`. `sanitize()` is for chat HTML only: the `<atom:tiptap>` JSON value is stored as JSON and printed with `<atom:tiptap.content>`.
+- Chat HTML from the browser is untrusted: clean it with `Jiannius\Atom\Tiptap\Content::sanitize()` before you store it, and print it through `<atom:tiptap.content>`. Never print editor or chat HTML with `x-html`, `{!! !!}` or `->html()`. `sanitize()` is for chat HTML only: the `<atom:tiptap>` JSON value is stored as JSON.
 - A URL a user typed goes through `safe_url($url)` (PHP) or `atom.safeUrl(url)` (JS) before it reaches your own `href`, `formaction`, `window.open()` or `location`; `{{ }}` escaping does not stop `javascript:`. It checks the scheme only, so a redirect must also check the host.
 - A public `$filters` passed to `->filter()` is untrusted: it still filters any visible column and calls any named scope, so pass only allowed keys (`filter(Arr::only($this->filters, [...]))`) when that matters. Don't `#[Locked]` it: the table controls bind to it. URL filters: `WithUrlFilters`.
 - A `'html'` key in a select option set is trusted, not escaped: wrap every interpolated user or database field in `e()`.
@@ -42,10 +42,11 @@ Never write `<x-atom::name>` or bespoke equivalents of an Atom component.
 
 ### Livewire components
 
-Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEditor`, `WithRecaptcha`. `$this->toast()` and its siblings are PHP-only; JS uses `atom.toast()`.
+Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEditor`, `WithRecaptcha`. `$this->toast()` and siblings are PHP-only (JS: `atom.toast()`).
 
 ### Keep the layout on Atom
 
+Views drift when they hand-roll what Atom already has.
 
 - Forms: `<atom:form.section>`, `<atom:form.grid>`, `<atom:form.modal>` and `<atom:form.actions>`, never bare `grid-cols-2`.
 - Panels, label/value pairs, tags, notices, status and empty lists: `<atom:card>`, `<atom:dd>`, `<atom:badge>`, `<atom:callout>`, `<atom:status>`, `<atom:empty>`, never hand-built boxes.
@@ -59,14 +60,12 @@ Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEdito
 ### Going deeper
 
 The rules above apply to every view. The **`atom-components` skill** carries the rest: the
-component traits and the method names they occupy, forms and reCAPTCHA, modals, tables,
-navigation, patterns, breadcrumbs, the calendar,
-toast/alert/confirm, dropdowns, tooltips, `<atom:select>` option sets, Actions
-and the `WebAction` contract, enums, the editor and sanitising, safe URLs, share
-buttons, mail, broadcasting, and conventions.
+component traits and the names they occupy, forms and reCAPTCHA, modals, tables,
+navigation, patterns, breadcrumbs, the calendar, notifications, dropdowns, option sets,
+Actions, enums, the editor, safe URLs, share buttons, mail and broadcasting.
 
-Activate it before writing non-trivial Atom markup or any Livewire component.
-It loads only if Boost skills are enabled (`boost.json`) and the agent supports
-skills (Claude Code, Codex, Cursor, Gemini, Amp); otherwise run
-`php artisan boost:install`.
+Activate it before writing non-trivial Atom markup or a Livewire component.
+The skill loads only if Boost skills are enabled (`boost.json`) and the agent supports
+skills (Claude Code, Codex, Cursor, Gemini, Amp). Otherwise run
+`php artisan boost:install` and enable skills.
 @endverbatim

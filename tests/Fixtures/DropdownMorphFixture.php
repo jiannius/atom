@@ -6,7 +6,6 @@ use Livewire\Component;
 
 class DropdownMorphFixture extends Component
 {
-
     public ?string $slow = null;
 
     public ?string $plain = null;

@@ -6,7 +6,6 @@ use Livewire\Component;
 
 class DatePickerTypedFixture extends Component
 {
-
     public ?string $date = null;
 
     public ?string $deferredDate = null;

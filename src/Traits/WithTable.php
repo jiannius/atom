@@ -30,7 +30,7 @@ trait WithTable
     {
         // A trashed-view toggle changes which rows are listed, so a lingering
         // checkbox selection would point at rows no longer shown. Clear it.
-        if ($property === '_table.show_trashed') {
+        if (is_string($property) && $property === '_table.show_trashed') {
             $this->resetTableCheckboxes();
         }
     }
@@ -51,7 +51,8 @@ trait WithTable
      */
     public function updatingWithTable($name, $value)
     {
-        if ($this->isUnsafeTableSortUpdate($name, $value)) {
+        // a host property named `withTable` calls this hook with its value for $name
+        if (is_string($name) && $this->isUnsafeTableSortUpdate($name, $value)) {
             abort(403, 'Invalid table sort.');
         }
     }
