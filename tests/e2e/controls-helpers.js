@@ -23,7 +23,7 @@ export async function open(page, { path = 'controls', tw = 'latest', dark = fals
  * The contrast ratio of one colour of an element against the surface it is painted on: its own text colour against its own
  * background (every ancestor's fill, composited), a border against the same, or an outline against the parent's.
  * `what`: 'text' (color), 'border' (border-top-color, over the element's own fill), 'outline' (outline-color, over the parent's),
- * 'fill' (the element's own background against the parent's: a checked box, a track), 'placeholder' (its ::placeholder text), or a CSS property name for a colour.
+ * 'fill' (the element's own background against the parent's: a checked box, a track), 'placeholder' (its ::placeholder text), 'svg-fill' and 'svg-stroke' (an SVG shape's paint over the page behind it), or a CSS property name for a colour.
  * `pseudo` reads a pseudo-element (for a thumb: ::-webkit-slider-thumb is not reachable, so a control draws its own parts).
  */
 export function contrastOf(el, { what = 'text', pseudo = null } = {}) {
@@ -66,6 +66,8 @@ export function contrastOf(el, { what = 'text', pseudo = null } = {}) {
   else if (what === 'outline') { colour = s.outlineColor; includeSelf = false }
   else if (what === 'fill') { colour = s.backgroundColor; includeSelf = false }
   else if (what === 'placeholder') colour = getComputedStyle(el, '::placeholder').color
+  else if (what === 'svg-fill') colour = s.fill
+  else if (what === 'svg-stroke') colour = s.stroke
   else colour = s.getPropertyValue(what)
 
   under(includeSelf)

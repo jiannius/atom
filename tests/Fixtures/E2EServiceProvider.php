@@ -127,6 +127,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/display', fn () => view('atom::e2e.display'));
         // The restyled overlays and navigation (V4-3c), on the consumer's Tailwind: ?tw, ?density, ?dark=1, ?accent, ?section
         Route::middleware('web')->get('/atom/e2e/layers', fn () => view('atom::e2e.layers'));
+        // The restyled text, editor and chart (V4-3d), on the consumer's Tailwind: ?tw, ?density, ?dark=1, ?accent, ?section
+        Route::middleware('web')->get('/atom/e2e/content', fn () => view('atom::e2e.content'));
         // a picture for the lightbox: an SVG, so nothing is fetched from the network
         Route::get('/atom/e2e/photo.svg', fn () => response('<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320"><rect width="480" height="320" fill="#d9c9a3"/><circle cx="240" cy="140" r="70" fill="#8a6a2f"/><rect x="120" y="220" width="240" height="60" rx="30" fill="#8a6a2f"/></svg>', 200, ['Content-Type' => 'image/svg+xml']));
         // The stylesheet tests/consumer/build.mjs compiled with a consumer's Tailwind (floor or latest), for a page

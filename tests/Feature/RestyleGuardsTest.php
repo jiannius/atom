@@ -459,3 +459,28 @@ describe('V4-3d text, editor and chart', function () {
         }
     });
 });
+
+describe('every component', function () {
+    it('names no raw palette colour, no v3 alias and no dark: colour pair, whatever list it is on (V4-3d: nothing is left to restyle)', function () {
+        // a scrim over the page is not a role: black at 20% is a dimmer in either theme (the shells' mobile nav)
+        $allow = ['components/layouts/sidebar.blade.php' => ['bg-black/20']];
+        $offenders = [];
+
+        foreach (componentSources() as $path => $contents) {
+            foreach (elementTokens($contents) as $token) {
+                if (in_array($token['utility'], $allow[$path] ?? [], true)) {
+                    continue;
+                }
+
+                $raw = preg_match('/^(?:'.RESTYLE_COLOUR_UTILITIES.')-(?:(?:'.RESTYLE_PALETTE.')-\d+|white|black|muted|muted-foreground|primary|primary-foreground)(?:\/[\d.]+)?$/', $token['utility']) === 1;
+                $pair = in_array('dark', $token['variants'], true) && preg_match('/^(?:'.RESTYLE_COLOUR_UTILITIES.')-/', $token['utility']) === 1;
+
+                if ($raw || $pair) {
+                    $offenders[] = $path.':'.$token['line'].' → '.implode(':', [...$token['variants'], $token['utility']]);
+                }
+            }
+        }
+
+        expect(array_values(array_unique($offenders)))->toBe([]);
+    });
+});

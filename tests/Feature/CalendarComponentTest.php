@@ -506,7 +506,7 @@ describe('calendar source guards', function () {
 
                 $seen[$colour] = true;
 
-                if (! in_array($colour, ['fg', 'fg-muted', 'danger-fg', 'accent-foreground', 'canvas'], true)) {
+                if (! in_array($colour, ['fg', 'fg-muted', 'danger-fg', 'surface', 'canvas'], true)) {
                     $offenders[] = $path.' → '.$token;
                 }
             }
@@ -514,7 +514,7 @@ describe('calendar source guards', function () {
 
         // not vacuous: the text colours the calendar uses are the ones the rule names
         expect(array_values(array_unique($offenders)))->toBe([])
-            ->and(array_keys($seen))->toContain('fg', 'fg-muted', 'danger-fg', 'accent-foreground');
+            ->and(array_keys($seen))->toContain('fg', 'fg-muted', 'danger-fg', 'surface');
     });
 
     it('draws every border and divider with a colour token on the same element, and no dark: pair', function () {

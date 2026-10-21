@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test'
-import { SKIP_REASON, TAILWIND, measureContrast, measureSweep, openLook } from './calendar-look.js'
+import { SKIP_REASON, measureContrast, measureSweep, openLook } from './calendar-look.js'
 
 // The look of the calendar: every view in every state the design names (the look fixture, tests/Fixtures/CalendarLookFixture.php, clock
 // frozen at 2026-10-09 10:30), in light and dark, wide and narrow.
 //
 // The rig ships no Tailwind, so two kinds of test live here. The first runs on the bare rig and holds what atom.css owns: the structure
-// is there, a gesture's shapes sit where the layout puts them and take no pointer. The second injects Tailwind's browser build from a CDN
-// (a page that cannot reach it skips them, and fails under CI) and measures what only Tailwind's colours decide: the contrast of every
+// is there, a gesture's shapes sit where the layout puts them and take no pointer. The second adds the consumer's compiled stylesheet
+// (tests/consumer/build.mjs, atom's own tokens in it) and measures what only the colours decide: the contrast of every
 // text and every cue against the ground it is actually on, and what fits in what.
 
 const WIDE = { width: 1280, height: 900 }
@@ -172,13 +172,14 @@ test.describe('on the bare rig: the structure and the shapes of a gesture', () =
 test.describe('with Tailwind: contrast against the ground each thing is on', () => {
     test.describe.configure({ timeout: 90000 })
 
-    // What a sweep has to find on the page for its colours to be covered: every preset (gray has zinc's classes, so it is one) and the hex
-    // items, as far as a view shows them (the day is one date, the month shows a hex item as a dot or a chip, or not at all behind "+N more").
-    const PRESETS = ['black', 'blue', 'green', 'orange', 'purple', 'red', 'yellow', 'zinc']
+    // What a sweep has to find on the page for its colours to be covered: every preset (gray has zinc's classes, and yellow has orange's:
+    // both are the warning tone, so each pair is one) and the hex items, as far as a view shows them (the day is one date, the month shows
+    // a hex item as a dot or a chip, or not at all behind "+N more").
+    const PRESETS = ['black', 'blue', 'green', 'orange', 'purple', 'red', 'zinc']
     const required = {
         month: [...PRESETS, '#ffee00'],
         week: [...PRESETS, '#000080', '#ff8800', '#ffee00'],
-        day: ['black', 'blue', 'orange', 'purple', 'red', 'yellow', 'zinc'],
+        day: ['black', 'blue', 'orange', 'purple', 'red', 'zinc'],
     }
 
     // The most that may be tried and never measured (clipped or covered at every scroll position), as a share of what was tried. It was
@@ -817,43 +818,13 @@ test.describe('with Tailwind: a shape of a gesture is on a ground of its own', (
     }
 })
 
-test.describe('what the page does when Tailwind cannot be loaded', () => {
-    // the CDN made unreachable for this page
-    const offline = (page) => page.route('**/@tailwindcss/browser@4**', (route) => route.abort())
+test.describe('what the page does when the consumer build is missing', () => {
+    // the stylesheet route answers 404 when tests/consumer/build.mjs has not run
+    const missing = (page) => page.route('**/atom/e2e/consumer-css/**', (route) => route.fulfill({ status: 404, body: '' }))
 
-    test('under CI it fails, loudly, naming what could not be loaded', async ({ page }) => {
-        const was = process.env.CI
+    test('it fails, loudly, naming what to run: a look check is never a skip', async ({ page }) => {
+        await missing(page)
 
-        process.env.CI = '1'
-
-        try {
-            await offline(page)
-            await expect(openLook(page, { view: 'week' })).rejects.toThrow(TAILWIND)
-        } finally {
-            if (was === undefined) delete process.env.CI
-            else process.env.CI = was
-        }
-    })
-
-    test('outside CI it says so on the console and answers false, which the tests turn into a skip whose reason says it is not a pass', async ({ page }) => {
-        const was = process.env.CI
-        const warn = console.warn
-        const warnings = []
-
-        delete process.env.CI
-        console.warn = (...args) => { warnings.push(args.join(' ')) }
-
-        try {
-            await offline(page)
-
-            expect(await openLook(page, { view: 'week' })).toBe(false)
-        } finally {
-            console.warn = warn
-
-            if (was !== undefined) process.env.CI = was
-        }
-
-        expect(warnings.join('\n')).toContain('SKIPPED, not passed')
-        expect(SKIP_REASON).toContain('NOT PASSED')
+        await expect(openLook(page, { view: 'week' })).rejects.toThrow('node tests/consumer/build.mjs')
     })
 })
