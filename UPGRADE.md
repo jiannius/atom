@@ -206,6 +206,24 @@ Components use atom's tokens; remove overrides that patched the old look. Tag AP
 
 **Dark check.** The dark-mode contrast check covers the 3d components and variants the two dark-mode hosts render: heading, subheading, caption, label and error (in a field), link (on the canvas, in a card and a sunken card, and in a callout of each tone), separator, the editor (the content with a heading of each level, a link, a mention, a quote, a list, a table, inline code and a code block; the toolbar's glyphs; the placeholder; the field frame), the chat composer, the calendar (month and week, items of every colour and of a hex, the selection, a pending item, the day list), `copy`, `sharer`, `embed` and `whatsapp`, and the docs pages as pages. Each text role is measured against its own surface at 4.5:1 (an icon, a line, a series or a ring that carries meaning at 3:1; the field frame in light is the design's hairline and is held to 1.3:1 like every field's), in dark and light, for three accents, one of them light, and at both Tailwind builds (`tests/e2e/content-*.spec.js`, and the calendar's own sweep of every state in `calendar-look.spec.js`, which now reads the consumer build and no longer loads Tailwind from a CDN). The chart (bar, area and a sparkline, their lines, labels and the stats card's indicator) is not rendered by those hosts and is held to the same numbers anyway.
 
+## Livewire traits
+
+**`AtomComponent` is deleted (no alias).** Replace `use AtomComponent;` with only the traits the component needs, from `Jiannius\Atom\Traits\`:
+
+- `WithTable`: the component renders `<atom:table>` or sorts through `toTable()`;
+- `WithBreadcrumbs`: the component defines `breadcrumbs()`;
+- `WithEditor`: the component renders `<atom:tiptap>` with image upload (it brings `WithFileUploads`);
+- `WithRecaptcha`: the component uses `<atom:form recaptcha>` and `verifyRecaptcha()`;
+- plus Livewire's own `WithPagination` for a paginated list and `WithFileUploads` for an uploader. `AtomComponent` forced both on every component; neither is implied any more.
+
+A component that renders `<atom:table>` (or a sortable column, a checkbox cell, the trashed toggle, the pager), the tiptap image toolbar or `<atom:form recaptcha>` without the matching trait now throws an error naming the trait and the component class, and so does a component that defines `breadcrumbs()` without `WithBreadcrumbs` (nothing would call it any more). `toTable()` on a component without `WithTable` applies no sort.
+
+**The helpers are PHP-only.** `$this->toast()`, `modal()`, `alert()`, `confirm()`, `command()`, `wirekey()` and `action()` work unchanged in PHP and Blade on every Livewire component (they are macros on `Livewire\Component`, so no trait is needed), but they can no longer be called from the browser: `$wire.toast(...)` and the like are refused with a "method not found" error. Search your JS and Blade for `$wire.toast`, `$wire.alert`, `$wire.confirm`, `$wire.modal` and `$wire.command`, and use `atom.toast(...)`, `atom.alert(...)` or dispatch `atom-toast-show` instead. A component that defines one of these names as its own method keeps its method, as before; define a shadowed `action()` `protected`.
+
+**Hook names follow the traits.** `mountAtomComponent`, `updatingAtomComponent` and `updatedAtomComponent` are now `mountWithBreadcrumbs`, `updatingWithTable`, `updatedWithTable` and `updatedWithEditor`. Only a component that overrode or called one of them by name needs a change. `WithUrlFilters` reserves the `page` query key only on a component that uses `WithPagination`, which is now the component's own choice.
+
+`atom:upgrade` (with the 4.0 release) rewrites `use AtomComponent;` to the traits a component's markup and methods need, and prints a review list for what it cannot see (a table rendered from a child partial, `breadcrumbs()` on a parent class, a `$wire.toast` call in JS).
+
 ## What is not restyled
 
 Nothing. Every component, the editor's content, the calendar, the chart and the docs are on the tokens, and the guards (`RestyleGuardsTest`) hold every component file (one allowance: the shells' mobile scrim, `bg-black/20`): no raw palette name, no `dark:` colour pair, no shadow except `shadow-pop` on a raised layer, no `:focus` ring. Two things are left alone on purpose: `resources/css/editor.css`, the legacy editor's sheet that nothing in atom links (it goes with the legacy editor, V4-4d), and a host's own markup, which keeps whatever palette classes it wrote: the `zinc` and `gray` ramps are atom's warm neutral palette now, so they do not break.

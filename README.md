@@ -1,6 +1,6 @@
 # Atom
 
-A Laravel UI component library built on **Tailwind + Alpine + Livewire 4**. Atom ships ~50 anonymous Blade components, a Livewire trait, an `atom()` runtime singleton for dispatching modals/toasts/alerts/confirms from PHP, a set of Laravel macros, and a pre-built JS/CSS bundle that the package serves itself — there is nothing to `npm install` in your host app.
+A Laravel UI component library built on **Tailwind + Alpine + Livewire 4**. Atom ships ~50 anonymous Blade components, opt-in Livewire traits, an `atom()` runtime singleton for dispatching modals/toasts/alerts/confirms from PHP, a set of Laravel macros, and a pre-built JS/CSS bundle that the package serves itself — there is nothing to `npm install` in your host app.
 
 - Composer: `jiannius/atom`
 - Namespace: `Jiannius\Atom\`
@@ -123,12 +123,12 @@ A typical Livewire 4 form using Atom:
 // app/Livewire/Customers/Create.php
 namespace App\Livewire\Customers;
 
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithBreadcrumbs;
 use Livewire\Component;
 
 class Create extends Component
 {
-    use AtomComponent;
+    use WithBreadcrumbs;
 
     public $name;
     public $email;
@@ -261,31 +261,49 @@ num(0.065)->currency(maxPrecision: 6);    // → "0.065" (at least 2 decimals, a
 
 `currency()` rounds half-up (away from zero) by default, so `10.185` is `10.19`; before this change it rounded half-even (`10.18`). Pass `roundingMode: 'half-even'` (or `'half-down'`) for another mode, in any case. `roundingMode` does not affect the `$rounding` 0.05 step or `$abbreviate`. The input is a float: `175 * 9.825` is `1719.3749999999998` and prints `1,719.37`, so pass an exact value when a sum lands on a tie. In JavaScript, `(0.065).currency(symbol, round, maxPrecision)` takes the same `maxPrecision` (a number or numeric string, clamped 2 to 100; `null`, `NaN` or blank mean unset); without it the JS default allows up to 3 decimals, so it is not the same as the PHP default.
 
-### The `AtomComponent` Livewire trait
+### Livewire helpers and traits
 
-`use Jiannius\Atom\Traits\AtomComponent;` on any Livewire component to get:
-
-- `WithPagination` + `WithFileUploads` automatically.
-- Reserved state buckets:
-  - `$_breadcrumbs` — auto-populated from your optional `breadcrumbs($crumbs)` method.
-  - `$_table` — sort, checkboxes, select-all, max rows, show-trashed (consumed by `<atom:table>` — see [Table selection](#table-selection)).
-  - `$_editor.images` — temporary upload URLs for the rich text editor.
-- Short methods that delegate to `app('atom')`:
+Every Livewire component has these short helpers, with nothing to add. They are macros
+registered on `Livewire\Component` and delegate to `app('atom')`:
 
 ```php
 $this->modal('name-of-modal')->show();
 $this->toast('Saved!');
 $this->alert(message: 'Done.');
 $this->confirm(message: 'Sure?', onAccepted: 'doIt');
+$this->command('palette')->show();
 $this->action('Foo.Bar', $params);
 $this->wirekey('row', $id);     // stable md5 key for wire:key
 ```
 
-#### Names the trait occupies
+They work in PHP and in Blade (`$this->wirekey(...)`), and **cannot be called from the browser**:
+Livewire exposes every public method a component declares (a trait method included) and never a
+macro, so `$wire.toast(...)` and a crafted `calls` payload are refused with a "method not found"
+error. From JavaScript use `atom.toast(...)`, `atom.alert(...)` or dispatch `atom-toast-show`;
+reach an action through `atom.action(...)` with the action opted into `WebAction`.
 
-A trait method loses to a method of the same name on the class itself — with no error. So a
-component that defines one of these shadows atom's version. Whether that matters depends
-entirely on **who calls the name**, and the two halves are not equally risky.
+A component takes only the state it uses, each from its own trait in `Jiannius\Atom\Traits\`:
+
+| Trait | Brings | Use it for |
+| --- | --- | --- |
+| `WithTable` | `$_table` (sort, checkboxes, select-all, max rows, show-trashed), the table methods, the `raw:` sort gate | `<atom:table>` and `toTable()` sorting, see [Table selection](#table-selection) |
+| `WithBreadcrumbs` | `$_breadcrumbs`, built on mount from your optional `breadcrumbs($crumbs)` method | `<atom:breadcrumbs>` |
+| `WithEditor` | `$_editor.images` and Livewire's `WithFileUploads` | `<atom:tiptap>` with image upload |
+| `WithRecaptcha` | `$_recaptcha` and `verifyRecaptcha()` | `<atom:form recaptcha>` |
+
+Pagination and uploads are Livewire's own: add `WithPagination` to a paginated component and
+`WithFileUploads` to one with an uploader. Rendering `<atom:table>`, a sortable `<atom:table.column>`,
+a checkbox cell, the trashed toggle, the tiptap image toolbar or `<atom:form recaptcha>` in a
+component without its trait throws an error naming the trait and the component class, and so does
+a component that defines `breadcrumbs()` without `WithBreadcrumbs` (nothing would call it).
+`<atom:table.pagination>` asks for `WithPagination` the same way. `toTable()` on a component
+without `WithTable` simply applies no sort.
+
+#### Names the traits occupy
+
+A trait method, or a macro, loses to a method of the same name on the class itself — with no
+error. So a component that defines one of these shadows atom's version. Whether that matters
+depends entirely on **who calls the name**, and the two halves are not equally risky.
 
 **Safe to shadow** — nothing in atom ever calls these on your component. They're sugar that
 delegates to `app('atom')`, there for you to call and no one else. Define your own `toast()`
@@ -293,9 +311,9 @@ and you get yours; you'll know, because you wrote it.
 
 > `modal`, `command`, `toast`, `alert`, `confirm`, `action`, `wirekey`, `verifyRecaptcha`
 
-`action` is `protected` (see [Upgrading to 3.25](#upgrading-to-325)) — shadow it if you
-like, but define yours `protected` too. A `public function action()` on your component is
-callable from the browser as `$wire.action(...)`, which is the exposure 3.25 removed.
+A class method named `action` is a real method, so declare yours `protected`: a
+`public function action()` on your component is callable from the browser as `$wire.action(...)`,
+which is the exposure [3.25](#upgrading-to-325) removed.
 
 **Silent if shadowed** — atom or Livewire invokes these by name, so redefining one kills the
 feature behind it with nothing to show for it. All of them are prefixed for exactly this
@@ -304,7 +322,7 @@ reason; the prefix *is* the protection.
 | | Invoked by | Breaks |
 | --- | --- | --- |
 | `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
-| `mountAtomComponent`, `updatedAtomComponent`, `updatingAtomComponent` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear, the `raw:` table-sort signature gate |
+| `mountWithBreadcrumbs`, `updatedWithEditor`, `updatedWithTable`, `updatingWithTable` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear, the `raw:` table-sort signature gate |
 | `resetTableCheckboxes`, `selectAllTableMatching`, `toggleTableShowSelected`, `clearTableSelectAll` | atom's markup, by name | the checked-bar buttons no-op |
 | `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed` | each other, and your own `items()` | bulk actions target the wrong rows |
 | `$paginators`, `getPage`, `gotoPage`, `nextPage`, `previousPage`, `resetPage`, `setPage`, `queryStringHandlesPagination` | Livewire's `WithPagination` | pagination |
@@ -315,8 +333,8 @@ reason; the prefix *is* the protection.
 
 Nothing else is reserved. The computed property feeding `<atom:table :paginate="...">` is
 yours to name: atom neither defines nor looks for `items`, `rows`, `records`, `data`, or
-anything like them. `tests/Feature/AtomComponentSurfaceTest.php` pins this list, so it can't
-drift from the trait without a failing test.
+anything like them. `tests/Feature/ComponentTraitsSurfaceTest.php` pins these lists, so they can't
+drift from the traits without a failing test.
 
 ### The `Enum` trait
 
@@ -856,12 +874,13 @@ unchanged. It is not automatic because nested components (pickers, footprints, r
 panels) often carry a `$filters` of their own and would fight over `?status=`.
 
 ```php
-use Jiannius\Atom\Traits\AtomComponent;
+use Jiannius\Atom\Traits\WithTable;
 use Jiannius\Atom\Traits\WithUrlFilters;
+use Livewire\WithPagination;
 
 class Claims extends Component
 {
-    use AtomComponent, WithUrlFilters;
+    use WithPagination, WithTable, WithUrlFilters;
 
     public array $filters = ['search' => '', 'status' => [], 'region' => 'MY', 'tenant_id' => null];
 
@@ -903,8 +922,7 @@ URL). Two optional methods: `urlFiltersProperty()` (default `'filters'`) and
 `?claims_status=`). A key must be a plain identifier (letters, digits, underscore: it becomes
 a query key, so no `.`, no `col:operator`) or the component throws at mount. Filter on an
 operator through a named scope instead. A key (with its prefix) that another query-string entry already
-uses also throws at mount: `page` on a component that uses `WithPagination` (every `AtomComponent`
-does), your own `queryString`, a `#[Url]` property (a host `tab` is
+uses also throws at mount: `page` on a component that uses `WithPagination`, your own `queryString`, a `#[Url]` property (a host `tab` is
 one of these; a filter named `tab` or `page` is fine on a component with neither). A **custom
 paginator page name** (`->paginate(10, pageName: 'p')`) cannot be seen at mount, because Livewire
 registers it only when the paginator is built; the trait checks at the end of the **initial render**
@@ -985,7 +1003,7 @@ Livewire's JS writes a list as `status[0]=a&status[1]=b`; a hand-written `status
 read correctly by PHP but rewritten by the browser on load. Generate links with the indexed form.
 
 Sort is not persisted. If it ever is, the URL value must be re-checked on mount with
-`TableSort::isUnsafeFromClient()`: `updatingAtomComponent()` only guards a browser update, and
+`TableSort::isUnsafeFromClient()`: `updatingWithTable()` only guards a browser update, and
 a URL value is not one. The seam is documented on `mountWithUrlFilters()`.
 
 `tests/Feature/UrlFiltersTest.php` and `tests/e2e/url-filters.spec.js` (fixture
@@ -1005,12 +1023,10 @@ Bind the anchor date with `wire:model` and pass the items as a closure of the vi
 use App\Models\Event;
 use Jiannius\Atom\Services\Calendar;
 use Jiannius\Atom\Services\Carbon;
-use Jiannius\Atom\Traits\AtomComponent;
 use Livewire\Component;
 
 class Index extends Component
 {
-    use AtomComponent;
 
     /** The anchor: `Y-m-d` or `Y-m`. Empty, or anything unreadable, is the viewer's today. */
     public string $date = '';
@@ -1572,7 +1588,7 @@ Remote and static select options used to be turned into HTML without escaping `l
 3.25 makes the trait's `action()` helper `protected`. It was public, and Livewire exposes
 every public method a component declares — a trait method included, because reflection
 reports the *using class* as the declaring class. So on every component using
-`AtomComponent`, in every app:
+the old `AtomComponent` trait (since split into `WithTable` and friends), in every app:
 
 ```js
 $wire.action('SomeAction', { method: 'whicheverMethod', ...params })
