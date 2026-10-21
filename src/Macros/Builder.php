@@ -391,7 +391,7 @@ class Builder
                     ->get();
 
                 foreach (range(0, $diff['y']) as $n) {
-                    $carbon = $start->copy()->local()->addYears($n);
+                    $carbon = carbon($start)->local()->addYears($n);
                     $label = $carbon->year;
                     $value = $grouped->where('year', $carbon->year)->first();
                     $breakdown->put($label, data_get($value, 'total', 0));
@@ -408,7 +408,7 @@ class Builder
                     ->get();
 
                 foreach (range(0, $diff['m']) as $n) {
-                    $carbon = $start->copy()->local()->addMonths($n);
+                    $carbon = carbon($start)->local()->addMonths($n);
                     $label = $carbon->shortEnglishMonth.' '.$carbon->format('y');
                     $value = $grouped->where('month', $carbon->month)->where('year', $carbon->year)->first();
                     $breakdown->put($label, data_get($value, 'total', 0));
@@ -425,7 +425,7 @@ class Builder
                     ->get();
 
                 foreach (range(0, $diff['d']) as $n) {
-                    $carbon = $start->copy()->local()->addDays($n);
+                    $carbon = carbon($start)->local()->addDays($n);
                     $label = $carbon->day;
                     $value = $grouped->where('month', $carbon->month)->where('day', $carbon->day)->first();
                     $breakdown->put($label, data_get($value, 'total', 0));

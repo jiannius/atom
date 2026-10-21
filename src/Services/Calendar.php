@@ -272,7 +272,7 @@ class Calendar
      */
     public static function now(): Carbon
     {
-        return now()->setTimezone(self::timezone());
+        return Carbon::instance(now())->setTimezone(self::timezone());
     }
 
     /**

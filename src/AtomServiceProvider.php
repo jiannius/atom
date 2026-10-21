@@ -3,7 +3,6 @@
 namespace Jiannius\Atom;
 
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Jiannius\Atom\Commands\MigrateTiptapContent;
@@ -40,7 +39,6 @@ class AtomServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'atom');
         Blade::anonymousComponentPath(__DIR__.'/../components', 'atom');
 
-        $this->configureDate();
         $this->registerMacros();
         $this->registerComponentMacros();
         $this->registerComponentGuards();
@@ -71,14 +69,6 @@ class AtomServiceProvider extends ServiceProvider
         app('blade.compiler')->precompiler(function ($in) use ($compiler) {
             return $compiler->compile($in);
         });
-    }
-
-    /**
-     * Configure the date
-     */
-    protected function configureDate() : void
-    {
-        Date::use(\Jiannius\Atom\Services\Carbon::class);
     }
 
     /**
