@@ -209,6 +209,9 @@ it('refuses a browser call to any helper macro with a real update request', func
 })->with(COMPONENT_MACROS);
 
 it('refuses a crafted calls payload naming a helper macro, and nothing runs', function () {
+    // the refusal is asserted on the response body, which hides the message unless debug is on
+    config(['app.debug' => true]);
+
     $test = Livewire::test(ComponentHelpersFixture::class);
 
     foreach (COMPONENT_MACROS as $name) {
@@ -569,6 +572,9 @@ it('is not fooled by a render stack left behind by a view that threw', function 
 });
 
 it('checks a table inside an island, which never pushes the render stack', function () {
+    // the exception message is asserted on the response body, which hides it unless debug is on
+    config(['app.debug' => true]);
+
     $test = Livewire::test(IslandTableFixture::class);
 
     $test->assertDontSeeHtml('data-atom-table');
