@@ -113,7 +113,7 @@ describe('command', function () {
 describe('command.group heading anchor', function () {
     // An id is Livewire's morph key when nothing else keys the element, so one minted per
     // render makes the morph replace the group instead of patching it. Same trap as the
-    // field anchors — see FieldNameTest and ComponentAttributeBag::fieldId().
+    // field anchors — see FieldNameTest and Services\Attributes::fieldId().
     it('derives the heading id, so it is identical on every render', function () {
         $anchor = fn () => preg_match('/aria-labelledby="([^"]+)"/', Blade::render('<atom:command.group heading="Actions"><div>x</div></atom:command.group>'), $m) ? $m[1] : null;
 

@@ -15,15 +15,6 @@ class Stringable
         };
     }
 
-    public function dotpath()
-    {
-        return function () {
-            return new \Illuminate\Support\Stringable (
-                \Illuminate\Support\Str::dotpath($this->value)
-            );
-        };
-    }
-
     public function interval()
     {
         return function () {

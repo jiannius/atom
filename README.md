@@ -30,8 +30,7 @@ The service provider (`Jiannius\Atom\AtomServiceProvider`) auto-registers via La
 - Mount its routes under `/atom/*` (asset serving + action endpoint).
 - Register all components under the `atom` view namespace.
 - Install the `<atom:...>` Blade tag compiler.
-- Swap Laravel's `Date` facade for `Jiannius\Atom\Services\Carbon`.
-- Mix macros onto `Eloquent\Builder`, `Query\Builder`, `ComponentAttributeBag`, `Request`, `Str`, `Stringable`, and `Arr`.
+- Mix macros onto `Eloquent\Builder`, `Query\Builder`, `Request`, `Str`, `Stringable`, `Arr` and `Livewire\Component`.
 - Register the artisan command `atom:purge-editor-images`.
 
 No publishing step is required to get started.
@@ -84,7 +83,6 @@ Useful `<atom:html>` props (all optional):
 | `dark`        | Opts the page into dark mode (off by default, on every layout too). Adds `class="dark"` to `<html>` and emits the `window.darkmode()` bootstrap, which then follows the stored preference or, with none, the visitor's `prefers-color-scheme`. Required for `<atom:darkmode-toggle>` to work. |
 | `styles`      | Additional stylesheet URLs.                                         |
 | `scripts`     | Additional script URLs.                                             |
-| `editor`      | Loads the editor CSS chunk (for pages using `<atom:editor>`).       |
 | `vite`        | Vite entries from your host app.                                    |
 | `noindex`     | Sets `robots` to `noindex,nofollow`.                                |
 
@@ -242,7 +240,7 @@ All `heading`, `subheading`, and `message` strings are auto-passed through `t()`
 | -------- | ------- |
 | `t($key, $count = 1, $params = [])` | Translation shim. Number → `trans_choice`, array → `__($key, $array)`, scalar → `__($key, $params)`. Used internally by every component. |
 | `num($value)` | Wraps Laravel's `Number` helper. Adds `->currency($iso, $rounding, $bracket, $abbreviate, $maxPrecision, $roundingMode)` (2dp, rounded half-up; `$roundingMode` is `half-up`, `half-even` or `half-down`) and `->filesize($precision)`. All other `Number::*` methods proxy through. |
-| `carbon(...$args)` | Returns a `Jiannius\Atom\Services\Carbon` instance. |
+| `carbon(...$args)` | Returns a `Jiannius\Atom\Services\Carbon` instance (immutable, with `pretty()` and `local()`). `now()` is Laravel's own date unless you opt in with `Date::use()`. |
 | `js($value)` | Alias for `Js::from()`. |
 | `is_enum($value)` | True for `UnitEnum` / `BackedEnum`. |
 | `is_using_trait($class, $trait)` | True if `$class` (recursively) uses `$trait`. |
@@ -383,7 +381,6 @@ $q->filter(['search' => 'tj', 'status:!=' => 'archived']);
 $q->breakdown($diff, $start);            // group-by year/month/day for charts
 $q->randomCode(8, 'code');               // unique random code
 User::query()->tableColumns();           // cached SHOW COLUMNS
-User::query()->tableHasColumn('email');
 User::query()->tableColumnType('created_at');
 ```
 
@@ -396,16 +393,12 @@ User::query()->tableColumnType('created_at');
 ```php
 request()->portal();                     // → 'auth' | 'admin' | 'app' | etc., derived from route name
 request()->portal('admin');              // → boolean
-request()->subdomain();                  // → "client" from "client.app.test"
-request()->hostWithoutSubdomain();
-request()->isLivewireRequest();
 ```
 
 ### `Str` / `Stringable` (`src/Macros/Str.php`)
 
 ```php
 str('foo.bar')->namespace();             // → "Foo\Bar"
-str('App\Models\User')->dotpath();       // → "App.Models.User"
 str('3 months')->interval();             // → "Quarterly"
 str()->initials('Tan Joon Long');        // → "TJ"
 ```
@@ -414,23 +407,6 @@ str()->initials('Tan Joon Long');        // → "TJ"
 
 ```php
 Arr::pick(['xs' => false, 'sm' => true, 'lg' => false]);  // → "sm"
-```
-
-### `ComponentAttributeBag` (`src/Macros/ComponentAttributeBag.php`)
-
-Used inside component templates:
-
-```blade
-{{-- inside components/button/index.blade.php style code --}}
-$attributes->size('md')                  {{-- → "xs"|"sm"|"md"|"lg"|... from `sm`/`md`/`lg` modifiers or size= --}}
-$attributes->modifier()                  {{-- → "lazy", "live", etc. from wire:model.X --}}
-$attributes->modifier('live')            {{-- → boolean --}}
-$attributes->field()                     {{-- → field name from field=, for=, or wire:model --}}
-$attributes->hasLike('wire:click*')
-$attributes->getLike('x-on:click*')
-$attributes->getAny('alt', 'title', 'aria-label')
-$attributes->classes()->add('foo')->add($condition && 'bar')
-$attributes->styles()->add('width', '100px')
 ```
 
 ---
@@ -454,7 +430,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:date-picker>` | `name`, `variant` (`date`, `range`, `calendar`), `label`, `caption`, `inline`, `prefix`, `suffix`. Subs: `<atom:date-picker.date>`, `<atom:date-picker.range>`, `<atom:date-picker.calendar>`. The input also takes a typed date, committed on blur or Enter: the display format (`01 Oct 2024`), day-first numerics (`01/10/2024`) or ISO; a range as `from - to` or `from to to`. An entry that does not parse is put back, never sent. |
 | `<atom:time-picker>` | `name`, `label`, `caption`, `invalid`, `inline`. |
 | `<atom:uploader>` | `label` (default `Upload`), `variant`, `size`. Drop variant: `<atom:uploader.dropzone>`. |
-| `<atom:editor>` | Tiptap rich text. `name`, `label`, `caption`, `readonly`, `autofocus`, `variant="transparent"`, `placeholder`, `toolbar`, `mention`. Many sub-buttons under `<atom:editor.button.*>` and contextual menus under `<atom:editor.menu.*>`. Requires `<atom:html editor>` on the page. |
+| `<atom:editor>` | Tiptap rich text. `name`, `label`, `caption`, `readonly`, `autofocus`, `variant="transparent"`, `placeholder`, `toolbar`, `mention`. Many sub-buttons under `<atom:editor.button.*>` and contextual menus under `<atom:editor.menu.*>`. |
 
 ### Buttons & links
 
@@ -1764,7 +1740,7 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 
 - Window-level Livewire events are prefixed `atom-` (`atom-modal-show`, `atom-modal-close`, `atom-toast-show`, `atom-alert-show`, `atom-confirm-show`). Grep by this prefix when tracing overlay state.
 - `<atom:button type="delete">` auto-dispatches `confirmed` on accept, which (unless overridden) calls `$wire.delete()`.
-- Date handling everywhere goes through `Jiannius\Atom\Services\Carbon` because of the `Date::use()` swap in the service provider.
+- Where atom builds a date itself (the calendar, the timeline, `carbon()`) it uses `Jiannius\Atom\Services\Carbon`. It does not swap the `Date` facade: add `Date::use(\Jiannius\Atom\Services\Carbon::class);` to `AppServiceProvider::boot()` if you want `now()` and model dates to be that immutable class, with `->pretty()` and `->local()`.
 - Components prefer `Arr::toCssClasses([...])` and `match` over conditional class strings. See `components/button/index.blade.php` for the canonical pattern.
 - The bundled `dist/` directory is **committed**; the package serves it itself. If you fork and edit JS/CSS sources, run `npm run build` and commit `dist/`.
 - `atom.css` defines `[x-cloak] { display: none !important }`, so `x-cloak` works out of the box in any app loading atom's stylesheet — Tailwind ships no such rule, and without one the attribute is inert. The `!important` matters: `[x-cloak]` and a utility like `.flex` have equal specificity, so otherwise the winner is whichever stylesheet loads last. Alpine strips the attribute on init, so the rule only ever hides pre-boot markup — which also means **`x-cloak` must sit on an element Alpine will initialise** (one carrying `x-data`, or inside one), or it stays hidden forever. `tests/Feature/XCloakTest.php` enforces both halves.

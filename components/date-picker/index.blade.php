@@ -16,8 +16,8 @@
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
 
-// Derived, not minted per render: see ComponentAttributeBag::fieldId().
-$inputId = $label ? $attributes->fieldId('atom-date-picker', $name, $label, $variant) : null;
+// Derived, not minted per render: see Services\Attributes::fieldId().
+$inputId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-date-picker', $name, $label, $variant) : null;
 
 $merges = [
     'required' => $required,

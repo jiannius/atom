@@ -21,21 +21,6 @@ class Str
     }
 
     /**
-     * Convert namespace to dot annotation
-     */
-    public function dotpath()
-    {
-        return function ($string) {
-            return str($string)
-                ->replace('/', '.')
-                ->replace('\\', '.')
-                ->replace(' ', '.')
-                ->toString()
-                ;
-        };
-    }
-
-    /**
      * Convert interval to human readable string
      */
     public function interval()

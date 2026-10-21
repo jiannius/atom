@@ -14,7 +14,6 @@
     'dark' => false,
     'styles' => [],
     'scripts' => [],
-    'editor' => false,
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
 ])
 

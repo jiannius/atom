@@ -2,5 +2,5 @@
 
 <atom:docs.example
 title="Basic"
-description="Tiptap rich text. Requires editor CSS on the page — pass editor to atom:html (this docs page does it for you). Image uploads and persistence need a Livewire component plus the AsTiptapContent cast; see the editor content section in the Boost guidelines."
+description="Tiptap rich text. Image uploads and persistence need a Livewire component plus the AsTiptapContent cast; see the editor content section in the Boost guidelines."
 view="atom::docs.demos.editor.basic"/>

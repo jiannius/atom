@@ -3,7 +3,6 @@
 namespace Jiannius\Atom;
 
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Jiannius\Atom\Commands\MigrateTiptapContent;
@@ -34,13 +33,11 @@ class AtomServiceProvider extends ServiceProvider
     public function boot() : void
     {
         $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
-        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadTranslationsFrom(__DIR__.'/../lang', 'atom');
         $this->loadJsonTranslationsFrom(__DIR__.'/../lang');
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'atom');
         Blade::anonymousComponentPath(__DIR__.'/../components', 'atom');
 
-        $this->configureDate();
         $this->registerMacros();
         $this->registerComponentMacros();
         $this->registerComponentGuards();
@@ -74,21 +71,12 @@ class AtomServiceProvider extends ServiceProvider
     }
 
     /**
-     * Configure the date
-     */
-    protected function configureDate() : void
-    {
-        Date::use(\Jiannius\Atom\Services\Carbon::class);
-    }
-
-    /**
      * Register the macros
      */
     protected function registerMacros() : void
     {
         \Illuminate\Database\Eloquent\Builder::mixin(new \Jiannius\Atom\Macros\Builder());
         \Illuminate\Database\Query\Builder::mixin(new \Jiannius\Atom\Macros\Builder());
-        \Illuminate\View\ComponentAttributeBag::mixin(new \Jiannius\Atom\Macros\ComponentAttributeBag());
         \Illuminate\Http\Request::mixin(new \Jiannius\Atom\Macros\Request());
         \Illuminate\Support\Str::mixin(new \Jiannius\Atom\Macros\Str());
         \Illuminate\Support\Stringable::mixin(new \Jiannius\Atom\Macros\Stringable());
