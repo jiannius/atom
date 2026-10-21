@@ -14,6 +14,16 @@ describe('fieldId()', function () {
             ->toMatch('/^atom-input-[0-9a-f]{8}$/');
     });
 
+    it('keeps the exact ids the components mint, because a morph key must survive an upgrade', function () {
+        $bag = new ComponentAttributeBag();
+
+        // the prefix and parts of real call sites (input, textarea, select): the formula, and the literal ids it gives
+        expect(Attributes::fieldId($bag, 'atom-input', 'email', 'Email', 'text'))->toBe('atom-input-'.substr(md5('email|Email|text'), 0, 8))
+            ->and(Attributes::fieldId($bag, 'atom-input', 'email', 'Email', 'text'))->toBe('atom-input-7b0da0fb')
+            ->and(Attributes::fieldId($bag, 'atom-textarea', 'bio', 'Bio'))->toBe('atom-textarea-35d1a459')
+            ->and(Attributes::fieldId($bag, 'atom-select', 'country', 'Country', 'listbox'))->toBe('atom-select-0d5bdb57');
+    });
+
     it('changes the id when any part of the field changes', function () {
         $bag = new ComponentAttributeBag();
 

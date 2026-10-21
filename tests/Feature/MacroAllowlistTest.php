@@ -1,9 +1,35 @@
 <?php
 
 /**
- * What atom puts on a host's classes. Every macro whose closure was written inside
- * atom's src/ is collected from every macroable class the process has loaded, so a
- * macro added anywhere, on any class, fails here until it is listed on purpose.
+ * The file a macro's code lives in: a closure, an invokable object, an [object|class, method]
+ * pair or a 'Class::method' / function-name string. Null when it cannot be resolved.
+ */
+function atomMacroSourceFile(mixed $macro): ?string
+{
+    try {
+        $reflection = match (true) {
+            $macro instanceof Closure => new ReflectionFunction($macro),
+            is_object($macro) => new ReflectionMethod($macro, '__invoke'),
+            is_array($macro) && count($macro) === 2 => new ReflectionMethod($macro[0], $macro[1]),
+            is_string($macro) && str_contains($macro, '::') => new ReflectionMethod($macro),
+            is_string($macro) => new ReflectionFunction($macro),
+            default => null,
+        };
+    } catch (ReflectionException) {
+        return null;
+    }
+
+    return $reflection?->getFileName() ?: null;
+}
+
+/**
+ * What atom puts on a host's classes. Every macro whose code was written inside atom's
+ * src/ (a closure, an invokable object or a callable method) is collected from every class
+ * that declares a static $macros list and is loaded, so a macro added anywhere, on any
+ * such class, fails here until it is listed on purpose.
+ *
+ * Out of scope: a macro registered lazily on a class that has not been loaded yet (it
+ * appears only once the class is), and macros on other systems such as Carbon's own.
  *
  * @return array<class-string, list<string>>
  */
@@ -21,15 +47,10 @@ function atomRegisteredMacros(): array
             continue;
         }
 
-        $property = $reflection->getProperty('macros');
-        $property->setAccessible(true);
+        foreach ($reflection->getProperty('macros')->getValue() as $name => $macro) {
+            $file = atomMacroSourceFile($macro);
 
-        $macros = $property->getValue();
-
-        foreach ($macros as $name => $macro) {
-            $file = $macro instanceof Closure ? (new ReflectionFunction($macro))->getFileName() : null;
-
-            if ($file && str_starts_with(realpath($file), $src)) {
+            if ($file && str_starts_with(realpath($file) ?: $file, $src)) {
                 $found[$class][] = $name;
             }
         }

@@ -1,6 +1,8 @@
 <?php
 
+use Illuminate\Auth\GenericUser;
 use Illuminate\Support\Carbon as IlluminateCarbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -37,15 +39,28 @@ describe('the date', function () {
     });
 
     it('keeps the calendar\'s now in the viewer\'s zone', function () {
+        // the signed-in user's timezone outranks the TIMEZONE environment variable, so the zone is pinned here
+        Auth::setUser(new GenericUser(['id' => 1, 'timezone' => 'Asia/Kuala_Lumpur']));
         IlluminateCarbon::setTestNow('2026-10-09 20:00:00 UTC');
 
         try {
             config(['app.timezone' => 'UTC']);
 
-            expect(Calendar::now()->format('Y-m-d'))->toBe('2026-10-10');
+            expect(Calendar::timezone())->toBe('Asia/Kuala_Lumpur')
+                ->and(Calendar::now()->format('Y-m-d H:i'))->toBe('2026-10-10 04:00');
         } finally {
             IlluminateCarbon::setTestNow();
+            Auth::forgetUser();
         }
+    });
+
+    it('prints a date differently until the host opts in: ISO with a Z for atom\'s, Y-m-d H:i:s for Illuminate\'s', function () {
+        $illuminate = IlluminateCarbon::parse('2026-03-01 10:00:00', 'UTC');
+        $atom = AtomCarbon::parse('2026-03-01 10:00:00', 'UTC');
+
+        expect((string) $illuminate)->toBe('2026-03-01 10:00:00')
+            ->and((string) $atom)->toBe('2026-03-01T10:00:00Z')
+            ->and(json_encode($illuminate))->toBe(json_encode($atom));
     });
 });
 
