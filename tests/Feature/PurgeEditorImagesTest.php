@@ -4,6 +4,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Jiannius\Atom\Services\EditorBackups;
 
 /**
  * AsTiptapContent writes into an "editor" folder on config('atom.editor.disk'),
@@ -682,5 +683,89 @@ describe('atom:purge-editor-images names in odd forms', function () {
         $this->artisan('atom:purge-editor-images --dry-run')
             ->expectsOutputToContain('App\Models\PurgeLegacyPost: 1000 row(s) read')
             ->assertSuccessful();
+    });
+});
+
+describe('atom:purge-editor-images and the migration backups', function () {
+    it('keeps every referenced image over unmigrated, migrated and backed-up rows, and purges the orphan', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'in-legacy-row.jpg', 'in-json-row.jpg', 'poster-only-in-backup.jpg', 'orphan.jpg');
+        DB::table('purge_tiptap_articles')->insert([
+            // not migrated: legacy serialized HTML
+            ['doc' => purgeLegacyHtml('https://cdn.test/editor/in-legacy-row.jpg')],
+            // already Tiptap JSON
+            ['doc' => purgeTiptapDoc('https://cdn.test/tenant/editor/in-json-row.jpg')],
+            // migrated by the real command: the editor has no <video>, so only the backup still names the poster
+            ['doc' => serialize('<p>clip</p><video poster="https://cdn.test/tenant/editor/poster-only-in-backup.jpg"></video>')],
+        ]);
+
+        $this->artisan('atom:tiptap-migrate --force --accept=all')->assertSuccessful();
+        expect(DB::table('purge_tiptap_articles')->where('id', 3)->value('doc'))->not->toContain('poster-only-in-backup');
+
+        $this->artisan('atom:purge-editor-images')
+            ->expectsOutputToContain('backup(s) of migrated values')
+            ->assertSuccessful();
+
+        foreach (['in-legacy-row', 'in-json-row', 'poster-only-in-backup'] as $kept) {
+            Storage::disk('tiptap_disk')->assertExists('tenant/editor/'.$kept.'.jpg');
+        }
+
+        Storage::disk('tiptap_disk')->assertMissing('tenant/editor/orphan.jpg');
+
+        // once the backups are pruned nothing wants the poster any more
+        $this->artisan('atom:tiptap-migrate --prune-backups --force')->assertSuccessful();
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('tiptap_disk')->assertMissing('tenant/editor/poster-only-in-backup.jpg');
+        Storage::disk('tiptap_disk')->assertExists('tenant/editor/in-legacy-row.jpg');
+        Storage::disk('tiptap_disk')->assertExists('tenant/editor/in-json-row.jpg');
+    });
+
+    it('does not let a restored backup keep an image alive', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'restored-away.jpg');
+        DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
+        EditorBackups::on()->create();
+        $id = EditorBackups::on()->store('batch', \App\Models\PurgeTiptapArticle::class, '1', 'doc', purgeLegacyHtml('https://cdn.test/tenant/editor/restored-away.jpg'), purgeTiptapDoc(), false);
+        EditorBackups::on()->markRestored($id);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('tiptap_disk')->assertMissing('tenant/editor/restored-away.jpg');
+    });
+
+    it('keeps an image only a backup with non-UTF-8 bytes references', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'latin-backup.jpg', 'orphan.jpg');
+        DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
+        EditorBackups::on()->create();
+        EditorBackups::on()->store('batch', \App\Models\PurgeTiptapArticle::class, '1', 'doc', serialize("<p>caf\xE9</p><img src=\"https://cdn.test/tenant/editor/latin-backup.jpg\">"), purgeTiptapDoc(), true);
+
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('tiptap_disk')->assertExists('tenant/editor/latin-backup.jpg');
+        Storage::disk('tiptap_disk')->assertMissing('tenant/editor/orphan.jpg');
+    });
+
+    it('aborts without deleting anything when a backup cannot be read', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'orphan.jpg');
+        DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
+        EditorBackups::on()->create();
+        // a serialized object: unreadable, not "no images"
+        EditorBackups::on()->store('batch', \App\Models\PurgeTiptapArticle::class, '1', 'doc', serialize(new stdClass), purgeTiptapDoc(), false);
+
+        $this->artisan('atom:purge-editor-images')
+            ->expectsOutputToContain('backup #1')
+            ->assertFailed();
+
+        Storage::disk('tiptap_disk')->assertExists('tenant/editor/orphan.jpg');
+    });
+
+    it('does not need the backup table', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'orphan.jpg');
+        DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
+
+        expect(Schema::hasTable(EditorBackups::TABLE))->toBeFalse();
+        $this->artisan('atom:purge-editor-images')->assertSuccessful();
+
+        Storage::disk('tiptap_disk')->assertMissing('tenant/editor/orphan.jpg');
+        expect(Schema::hasTable(EditorBackups::TABLE))->toBeFalse();
     });
 });

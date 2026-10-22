@@ -9,6 +9,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Jiannius\Atom\Casts\AsTiptapContent;
 use Jiannius\Atom\Commands\Concerns\DiscoversModels;
+use Jiannius\Atom\Services\EditorBackups;
 use Throwable;
 
 class PurgeEditorImages extends Command
@@ -68,6 +69,11 @@ class PurgeEditorImages extends Command
     protected const REMOVED_CAST = 'Jiannius\\Atom\\Casts\\AsEditorContent';
 
     /**
+     * Backups are read this many at a time
+     */
+    protected const BACKUP_CHUNK = 200;
+
+    /**
      * Say how far a long scan has got every this many rows
      */
     protected const PROGRESS_EVERY = 1000;
@@ -93,6 +99,11 @@ class PurgeEditorImages extends Command
      * @var array<string, array<string, string>>
      */
     protected array $scanned = [];
+
+    /**
+     * How many backups of migrated values (atom_editor_backups) were read
+     */
+    protected int $scannedBackups = 0;
 
     /**
      * The needles with no delimiter character in them, needle => the file names
@@ -159,6 +170,7 @@ class PurgeEditorImages extends Command
         $this->problems = [];
         $this->castsInUse = [];
         $this->scanned = [];
+        $this->scannedBackups = 0;
 
         // list the files BEFORE reading the database: an image saved while the
         // scan runs is then not in the list, so it can never be called unreferenced
@@ -281,6 +293,10 @@ class PurgeEditorImages extends Command
 
         foreach ($this->scanned as $class => $columns) {
             $this->line('  '.$class.': '.collect($columns)->map(fn ($kind, $column) => $column.' ('.$kind.')')->join(', '));
+        }
+
+        if ($this->scannedBackups) {
+            $this->line('  '.$this->scannedBackups.' backup(s) of migrated values (a restore may need their images)');
         }
     }
 
@@ -620,6 +636,7 @@ class PurgeEditorImages extends Command
     {
         $images = collect();
         $reader = new AsTiptapContent;
+        $connections = ['' => null];
 
         foreach ($this->getModels() as $class) {
             try {
@@ -636,6 +653,7 @@ class PurgeEditorImages extends Command
                 }
 
                 $this->scanned[$class] = $columns;
+                $connections[$model->getConnectionName() ?? ''] = $model->getConnectionName();
 
                 $read = 0;
 
@@ -646,19 +664,7 @@ class PurgeEditorImages extends Command
 
                     foreach (array_keys($columns) as $column) {
                         try {
-                            $raw = $row->getRawOriginal($column);
-                            $sources = $reader->imageSources($row, $column, $raw);
-
-                            foreach ($this->findNamesIn($raw, $reader->get($row, $column, $raw, [])) as $name) {
-                                $images->push($name);
-                            }
-
-                            foreach ($sources as $src) {
-                                $clean = preg_replace('/[?#].*$/', '', $src);
-
-                                $images->push(basename($clean));
-                                $images->push(basename(rawurldecode($clean)));
-                            }
+                            $this->collectImages($reader, $row, $column, $row->getRawOriginal($column), $images);
                         }
                         catch (Throwable $e) {
                             $this->problems[] = $class.'::'.$column.' (row '.($row->getKey() ?? '?').'): '.$e->getMessage();
@@ -671,7 +677,68 @@ class PurgeEditorImages extends Command
             }
         }
 
+        $this->collectBackupImages($reader, $connections, $images);
+
         return $images->filter()->unique()->values();
+    }
+
+    /**
+     * Add every file name one stored value references to $images: the substring
+     * backstop over the raw and the decoded value, and the URLs in it. Throws for
+     * a value that cannot be read, which the caller records as a problem.
+     */
+    protected function collectImages(AsTiptapContent $reader, Model $row, string $column, mixed $raw, Collection $images): void
+    {
+        $sources = $reader->imageSources($row, $column, $raw);
+
+        foreach ($this->findNamesIn($raw, $reader->get($row, $column, $raw, [])) as $name) {
+            $images->push($name);
+        }
+
+        foreach ($sources as $src) {
+            $clean = preg_replace('/[?#].*$/', '', $src);
+
+            $images->push(basename($clean));
+            $images->push(basename(rawurldecode($clean)));
+        }
+    }
+
+    /**
+     * atom:tiptap-migrate keeps the original of every value it converts in
+     * atom_editor_backups, and --restore puts it back: a file only a backup
+     * references is still wanted until the backups are pruned. A backup that
+     * cannot be read, or a backup table that cannot be queried, is a problem
+     * like an unreadable model, never "no images".
+     *
+     * @param  array<string, string|null>  $connections  the connections to look on, by name
+     */
+    protected function collectBackupImages(AsTiptapContent $reader, array $connections, Collection $images): void
+    {
+        $holder = new class extends Model {};
+
+        foreach ($connections as $name) {
+            try {
+                $backups = EditorBackups::on($name);
+
+                if (! $backups->exists()) {
+                    continue;
+                }
+
+                foreach ($backups->pending()->lazyById(self::BACKUP_CHUNK) as $backup) {
+                    $this->scannedBackups++;
+
+                    try {
+                        $this->collectImages($reader, $holder, 'backup', EditorBackups::original($backup), $images);
+                    }
+                    catch (Throwable $e) {
+                        $this->problems[] = 'backup #'.$backup->id.' ('.$backup->model.'#'.$backup->row_key.' '.$backup->column_name.'): '.$e->getMessage();
+                    }
+                }
+            }
+            catch (Throwable $e) {
+                $this->problems[] = 'editor backups on connection '.($name ?? 'default').': '.$e->getMessage();
+            }
+        }
     }
 
     /**
