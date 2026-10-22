@@ -257,7 +257,7 @@ num(1500000)->currency('USD', abbreviate: true);  // → "USD 2M"
 num(0.065)->currency(maxPrecision: 6);    // → "0.065" (at least 2 decimals, at most 6, half-up; default stays 2dp)
 ```
 
-`currency()` rounds half-up (away from zero) by default, so `10.185` is `10.19`; before this change it rounded half-even (`10.18`). Pass `roundingMode: 'half-even'` (or `'half-down'`) for another mode, in any case. `roundingMode` does not affect the `$rounding` 0.05 step or `$abbreviate`. The input is a float: `175 * 9.825` is `1719.3749999999998` and prints `1,719.37`, so pass an exact value when a sum lands on a tie. In JavaScript, `(0.065).currency(symbol, round, maxPrecision)` takes the same `maxPrecision` (a number or numeric string, clamped 2 to 100; `null`, `NaN` or blank mean unset); without it the JS default allows up to 3 decimals, so it is not the same as the PHP default.
+`currency()` rounds half-up (away from zero) by default, so `10.185` is `10.19`; before this change it rounded half-even (`10.18`). Pass `roundingMode: 'half-even'` (or `'half-down'`) for another mode, in any case. `roundingMode` does not affect the `$rounding` 0.05 step or `$abbreviate`. The input is a float: `175 * 9.825` is `1719.3749999999998` and prints `1,719.37`, so pass an exact value when a sum lands on a tie. In JavaScript, `atom.currency(0.065, symbol, round, maxPrecision)` takes the same `maxPrecision` (a number or numeric string, clamped 2 to 100; `null`, `NaN` or blank mean unset); without it the JS default allows up to 3 decimals, so it is not the same as the PHP default.
 
 ### Livewire helpers and traits
 
@@ -1727,11 +1727,11 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 
 - `window.atom.safeUrl(url)` — the URL unchanged if it is safe to bind to an `href` or navigate to, else `null`. The JS twin of `safe_url()` (scheme only: a host check is still yours for a redirect); use it before `Livewire.navigate()`, `window.open()` or `x-bind:href` on a URL you did not write.
 - `window.atom.action(name, params)` — POST to `/atom/action/{name}` (actions implementing `WebAction` only; see [Actions](#actions)).
-- `window.dd(...args)` — `console.log` dump.
-- `window.empty(value)` — truthy-empty helper.
+- `atom.empty(value)` — true for `null`, `undefined`, `''`, a blank string, `[]` and `{}`.
+- `atom.currency(value, symbol, round, maxPrecision)` — `1,234.50`; half-up, `maxPrecision` as above.
+- `atom.arr.{pluck, unique, sum, where, firstWhere, toggle}(array, ...)` and `atom.str.{headline, limit, slug, camel, nl2br, striptags, toDateString, toDatetimeString, toTimeString, toDateFormat, fromNow}(string, ...)` — value first; atom adds nothing to `Array`, `Number` or `String`, and sets no `window.dd` or `window.empty`.
 - Alpine factories: `modal`, `editor`, `select`, `tooltip`, `dropdown`, `lightbox`, `telInput`, `emailInput`, `breadcrumbs`, `datePicker`, `timePicker`, `dateRange`, `calendar`, plus chart variants.
 - `$clipboard` Alpine magic.
-- Prototype additions on `Array`, `Number`, `String` (see `resources/js/prototypes/`).
 - Alpine plugins loaded: `@alpinejs/intersect`, `@marcreichel/alpine-autosize`.
 
 ---

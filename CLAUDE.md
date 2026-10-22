@@ -172,7 +172,7 @@ Local-env-only routes (registered in `routes/web.php`) serve a browsable compone
 ### Front-end (`resources/js/atom.js`)
 
 Entry point bundled by Vite. It:
-- Extends `Array`, `Number`, `String` prototypes (`prototypes/*`) — `window.atom`, `window.dd`, `window.empty` are also set.
+- Extends no built-in and sets no `window.dd` / `window.empty` (V4-4c): the former prototype helpers are functions on `window.atom` (`helpers/index.js`), value first: `atom.currency(n, symbol, round, maxPrecision)`, `atom.empty`, `atom.arr.*` (`helpers/arr.js`) and `atom.str.*` (`helpers/str.js`). Atom's own code imports `helpers/empty` or `helpers/arr` directly; an Alpine expression in a blade uses `atom.*`. `tests/Feature/JsGlobalsTest.php` fails on a prototype assignment in `resources/js` and on a call to a removed name in a blade or factory; `tests/e2e/js-globals.spec.js` checks the page.
 - Registers Alpine data factories (`modal`, `editor`, `select`, `tooltip`, `dropdown`, `lightbox`, `telInput`, `emailInput`, `breadcrumbs`, `datePicker`, `timePicker`, `dateRange`, `calendar` (the in-house engine, see Calendar above), chart variants) and the `$clipboard` magic.
 - Loads `@alpinejs/intersect` and `@marcreichel/alpine-autosize` plugins.
 
