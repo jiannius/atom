@@ -4,6 +4,9 @@ import toast from './toast'
 import modal from './modal'
 import command from './command'
 import empty from './empty'
+import arr from './arr'
+import str from './str'
+import currency from './currency'
 import confirm from './confirm'
 import floatingui from './floatingui'
 import recaptcha from './recaptcha'
@@ -15,6 +18,9 @@ export default {
     modal,
     command,
     empty,
+    arr,
+    str,
+    currency,
     confirm,
     floatingui,
     recaptcha,

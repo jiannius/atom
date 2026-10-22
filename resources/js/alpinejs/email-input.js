@@ -1,3 +1,5 @@
+import empty from '../helpers/empty'
+
 export default (config) => {
     return {
         text: null,

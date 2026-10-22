@@ -1,3 +1,5 @@
+import empty from './empty'
+
 export default class 
 {
     url

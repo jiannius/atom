@@ -1,7 +1,3 @@
-import './prototypes/array'
-import './prototypes/number'
-import './prototypes/string'
-
 import helpers from './helpers'
 import formErrors from './helpers/form-errors'
 import accordion from './alpinejs/accordion'
@@ -62,8 +58,6 @@ document.addEventListener('alpine:init', () => {
     Alpine.plugin(intersect)
 })
 
-window.dd = console.log.bind(console)
 window.atom = helpers
-window.empty = helpers.empty
 
 formErrors()
