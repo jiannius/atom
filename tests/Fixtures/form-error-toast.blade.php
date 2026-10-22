@@ -69,7 +69,7 @@
         <atom:time-picker label="Time" wire:model="timePick" />
         <atom:tiptap label="Tiptap" wire:model="tiptapEager" />
         <atom:tiptap label="Tiptap lazy" wire:model.blur="tiptapLazy" />
-        <atom:editor label="Editor" wire:model="editorField" />
+        <atom:tiptap label="Editor" wire:model="editorField" />
         <atom:uploader wire:model="upload" />
         <atom:checkbox label="Agree" wire:model="agree" />
         <atom:checkbox.group>

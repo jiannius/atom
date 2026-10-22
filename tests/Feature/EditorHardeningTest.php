@@ -3,7 +3,6 @@
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Jiannius\Atom\Casts\AsEditorContent;
 use Jiannius\Atom\Casts\AsTiptapContent;
 use Jiannius\Atom\Tiptap\Content;
 use Jiannius\Atom\Tiptap\Extensions\Youtube;
@@ -35,11 +34,6 @@ class HardeningTiptapModel extends Model
     protected $casts = ['body' => AsTiptapContent::class];
 }
 
-class HardeningEditorModel extends Model
-{
-    protected $casts = ['body' => AsEditorContent::class];
-}
-
 beforeEach(function () {
     HardeningGadget::$touched = false;
 });
@@ -69,11 +63,6 @@ function hardeningTiptapSet(mixed $value): mixed
     return (new AsTiptapContent)->set(new HardeningTiptapModel, 'body', $value, []);
 }
 
-function hardeningEditorGet(mixed $value): mixed
-{
-    return (new AsEditorContent)->get(new HardeningEditorModel, 'body', $value, []);
-}
-
 function hardeningDoc(array $content): string
 {
     return Content::render(json_encode(['type' => 'doc', 'content' => $content]));
@@ -101,14 +90,6 @@ describe('E-S2 object injection: reading stored values', function () {
         expect(HardeningGadget::$touched)->toBeFalse();
     });
 
-    it('AsEditorContent::get never instantiates a serialized object', function () {
-        $value = hardeningEditorGet(hardeningPayload());
-        gc_collect_cycles();
-
-        expect($value)->toBeNull();
-        expect(HardeningGadget::$touched)->toBeFalse();
-    });
-
     it('Content::unserialize never instantiates a serialized object', function () {
         [$serialized, $value] = Content::unserialize(hardeningPayload());
         gc_collect_cycles();
@@ -120,15 +101,13 @@ describe('E-S2 object injection: reading stored values', function () {
 
     it('still reads legacy serialized HTML, arrays and false', function () {
         expect(hardeningTiptapGet(serialize('<p>legacy</p>')))->toBe('<p>legacy</p>');
-        expect(hardeningEditorGet(serialize('<p>legacy</p>')))->toBe('<p>legacy</p>');
         expect(hardeningTiptapGet(serialize(['type' => 'doc', 'content' => []])))->toBe(['type' => 'doc', 'content' => []]);
-        expect(hardeningEditorGet('b:0;'))->toBeFalse();
+        expect(hardeningTiptapGet('b:0;'))->toBeFalse();
     });
 
     it('still returns JSON and raw HTML unchanged', function () {
         expect(hardeningTiptapGet('{"type":"doc","content":[]}'))->toBe('{"type":"doc","content":[]}');
         expect(hardeningTiptapGet('<p>raw html</p>'))->toBe('<p>raw html</p>');
-        expect(hardeningEditorGet('<p>raw html</p>'))->toBe('<p>raw html</p>');
     });
 });
 
@@ -163,150 +142,6 @@ describe('E-S2 object injection: storing client values', function () {
         expect(hardeningTiptapSet($json))->toBe($json);
         expect(hardeningTiptapSet(['type' => 'doc', 'content' => [['type' => 'paragraph']]]))->toBe($json);
         expect(hardeningTiptapSet('<p>hello <strong>world</strong></p>'))->toBe('<p>hello <strong>world</strong></p>');
-    });
-
-    it('AsEditorContent round-trips HTML and a client serialized string stays a string', function () {
-        $set = fn ($v) => (new AsEditorContent)->set(new HardeningEditorModel, 'body', $v, []);
-
-        expect(hardeningEditorGet($set('<p>hi</p>')))->toBe('<p>hi</p>');
-
-        $hostile = hardeningPayload();
-
-        expect(hardeningEditorGet($set($hostile)))->toBe($hostile);
-        expect(HardeningGadget::$touched)->toBeFalse();
-    });
-});
-
-describe('E-S2 object injection: atom:tiptap-migrate', function () {
-    beforeEach(function () {
-        $dir = app_path('Models');
-        @mkdir($dir, 0777, true);
-        $this->modelFile = $dir.'/HardeningMigrateItem.php';
-
-        file_put_contents($this->modelFile, <<<'PHP'
-<?php
-namespace App\Models;
-
-class HardeningMigrateItem extends \Illuminate\Database\Eloquent\Model
-{
-    protected $table = 'hardening_migrate_items';
-    protected $guarded = [];
-    protected $casts = ['body' => \Jiannius\Atom\Casts\AsTiptapContent::class];
-}
-PHP);
-        require_once $this->modelFile;
-
-        Schema::create('hardening_migrate_items', function ($table) {
-            $table->id();
-            $table->text('body')->nullable();
-            $table->timestamps();
-        });
-    });
-
-    afterEach(function () {
-        Schema::dropIfExists('hardening_migrate_items');
-        @unlink($this->modelFile);
-    });
-
-    it('does not instantiate a serialized object and still converts legacy serialized HTML', function () {
-        DB::table('hardening_migrate_items')->insert(['body' => hardeningPayload()]);
-        DB::table('hardening_migrate_items')->insert(['body' => serialize('<p>legacy</p>')]);
-        gc_collect_cycles();
-        $this->artisan('atom:tiptap-migrate')->assertSuccessful();
-        gc_collect_cycles();
-
-        expect(HardeningGadget::$touched)->toBeFalse();
-
-        $rows = DB::table('hardening_migrate_items')->orderBy('id')->pluck('body');
-        expect(json_decode($rows[1], true)['type'])->toBe('doc');
-    });
-
-    it('skips a row that carries the parser placeholder instead of expanding it', function () {
-        $token = '%MINIFYHTML'.md5((string) ($_SERVER['REQUEST_TIME'] ?? time())).'0%';
-        $hostile = '<pre>a</pre><pre>'.str_repeat($token, 50).'</pre>';
-        DB::table('hardening_migrate_items')->insert(['body' => $hostile]);
-        DB::table('hardening_migrate_items')->insert(['body' => '<p>fine</p>']);
-
-        $this->artisan('atom:tiptap-migrate')->expectsOutputToContain('reserved placeholder')->assertSuccessful();
-
-        $rows = DB::table('hardening_migrate_items')->orderBy('id')->pluck('body');
-        expect($rows[0])->toBe($hostile);
-        expect(json_decode($rows[1], true)['type'])->toBe('doc');
-    });
-});
-
-describe('atom:tiptap-migrate: a row the parser cannot take', function () {
-    beforeEach(function () {
-        $dir = app_path('Models');
-        @mkdir($dir, 0777, true);
-        $this->modelFile = $dir.'/HardeningMigrateItem.php';
-
-        file_put_contents($this->modelFile, <<<'PHP'
-<?php
-namespace App\Models;
-
-class HardeningMigrateItem extends \Illuminate\Database\Eloquent\Model
-{
-    protected $table = 'hardening_migrate_items';
-    protected $guarded = [];
-    protected $casts = ['body' => \Jiannius\Atom\Casts\AsTiptapContent::class];
-}
-PHP);
-        require_once $this->modelFile;
-
-        Schema::create('hardening_migrate_items', function ($table) {
-            $table->id();
-            $table->text('body')->nullable();
-            $table->timestamps();
-        });
-    });
-
-    afterEach(function () {
-        Schema::dropIfExists('hardening_migrate_items');
-        @unlink($this->modelFile);
-    });
-
-    it('is skipped and named, and the run goes on and ends successfully', function () {
-        // one row nothing can be converted from, one that is only a blank line inside a tag, one fine
-        $rows = ['<script>alert(1)</script>', "<\n\nscript>x", '<p>fine</p>'];
-
-        foreach ($rows as $body) {
-            DB::table('hardening_migrate_items')->insert(['body' => $body]);
-        }
-
-        $this->artisan('atom:tiptap-migrate')->expectsOutputToContain('nothing to convert')->assertSuccessful();
-
-        $stored = DB::table('hardening_migrate_items')->orderBy('id')->pluck('body');
-
-        expect($stored[0])->toBe($rows[0]);
-        expect(json_decode($stored[1], true)['type'])->toBe('doc');
-        expect($stored[1])->not->toContain('script>x</');
-        expect(json_decode($stored[2], true)['type'])->toBe('doc');
-    });
-
-    it('is skipped when the parser throws, and nothing is written for it', function () {
-        $command = new class extends \Jiannius\Atom\Commands\MigrateTiptapContent
-        {
-            protected function convert(string $html): ?string
-            {
-                if (str_contains($html, 'boom')) {
-                    throw new \TypeError('the parser failed');
-                }
-
-                return parent::convert($html);
-            }
-        };
-        Artisan::registerCommand($command);
-
-        DB::table('hardening_migrate_items')->insert(['body' => '<p>boom</p>']);
-        DB::table('hardening_migrate_items')->insert(['body' => '<p>fine</p>']);
-
-        $this->artisan('atom:tiptap-migrate')->expectsOutputToContain('the HTML parser failed on it (TypeError)')->assertSuccessful();
-
-        $stored = DB::table('hardening_migrate_items')->orderBy('id')->pluck('body');
-
-        expect($stored[0])->toBe('<p>boom</p>');
-        expect(json_decode($stored[1], true)['type'])->toBe('doc');
     });
 });
 

@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Jiannius\Atom\Casts\AsEditorContent;
+use Jiannius\Atom\Casts\AsTiptapContent;
 
 class PurgeScopedPost extends Model
 {
@@ -13,7 +13,7 @@ class PurgeScopedPost extends Model
 
     public $timestamps = false;
     protected $guarded = [];
-    protected $casts = ['body' => AsEditorContent::class];
+    protected $casts = ['body' => AsTiptapContent::class];
 
     protected static function booted(): void
     {

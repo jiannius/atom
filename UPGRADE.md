@@ -283,6 +283,27 @@ Search your JS and Blade (`x-text`, `x-bind`, `x-data`, `x-init`, `x-on`, `x-eff
 
 `atom:upgrade` will only report: it lists every site that calls an old helper, and rewrites none of them, because rewriting an expression inside an Alpine attribute by regex is unsafe. Until then, change them by hand.
 
+## The legacy editor: `AsEditorContent` and `<atom:editor*>`
+
+**`Jiannius\Atom\Casts\AsEditorContent` is deleted, and so are `<atom:editor>`, `<atom:editor.chat>` and `<atom:editor.content>`** (they were aliases of the `tiptap` components), and the built `editor.css` that nothing linked. `AsTiptapContent` keeps its name and keeps reading what the old cast stored (`serialize()`d HTML, and `serialize()`d JSON for a field that was `<atom:editor>`), so a column moves in two steps and never in one big bang.
+
+**Do this on 3.x first, before you require v4** (the minor that ships `atom:tiptap-migrate` v2; do not move a column to v4 still cast as `AsEditorContent`: the class is gone, Laravel ignores a cast it cannot resolve, and the attribute silently reads as the raw `serialize()`d string):
+
+1. Switch the casts from `AsEditorContent` to `AsTiptapContent`. Nothing is converted yet; the same rows read the same. **Change each editor column to `longText`**: the JSON is about 3.5 times the HTML, so an old value over about 18 KB cannot fit a MySQL `TEXT` (65,535 bytes); the command refuses such a row and says so. Run the command with the app's own database connection settings, since a connection charset that differs from the column's can mangle what is read.
+2. `php artisan atom:tiptap-migrate`: a dry run. **A plain run is a dry run now**: in 3.x a plain run wrote, so a deploy script that ran it stops migrating until it passes `--force`. It lists every value as clean, flagged (it would lose something: a class, an inline style, a `<font>`, a `<script>`, an unknown tag) or refused (a serialized object, JSON that is not a document, a value over the limits), and writes nothing. Read the flagged rows; fix the refused ones by hand.
+3. `php artisan atom:tiptap-migrate --force` converts the clean rows. Each original is backed up first, in `atom_editor_backups` (created on the model's own connection), in the same transaction as the update, and `updated_at` is not touched. Convert flagged rows you have read with `--accept=<ids>` (or `--accept=all`). `--restore[=ids] --force` puts rows back byte for byte.
+4. `php artisan atom:tiptap-migrate --compare` writes a JSON Lines review file (`storage/app/atom-editor-review-<time>.jsonl`): per migrated row the original HTML, the new HTML, and the difference in text and in tags and attributes. Review it yourself, or ask Claude in your project to read it and list what is missing from each `new_html`.
+5. `php artisan atom:tiptap-migrate --prune-backups` deletes the backups, only once you have signed off. It always asks in a terminal; without one it needs `--confirm-prune` (`--force` does not confirm it), and it leaves the empty `atom_editor_backups` table for you to drop. Until then `atom:purge-editor-images` keeps every image a backup still names.
+6. `php artisan atom:tiptap-migrate --status` exits 0 when nothing is left.
+
+**Flags and exit codes.** `--force`, `--accept=<ids|all>`, `--restore[=ids]`, `--discard-edits`, `--compare[=ids]`, `--output=`, `--prune-backups`, `--confirm-prune`, `--status`, `--model=`, `--column=`, `--path=`. A row id that is in more than one model or column is refused until `--model` and `--column` narrow it. `--force` exits 1 when a write failed or a refused value remains; `--restore --force` exits 1 when it skipped a value (an edited row, a row that is gone, a missing model class; `--discard-edits` overrides the edited case); `--status` exits 1 until nothing is left; `--dry` is refused with `--restore` and `--prune-backups`.
+
+Then on v4: `<atom:editor*>` becomes `<atom:tiptap*>`, with the same props. A column that still has serialized values keeps rendering (`AsTiptapContent` reads them) but is not migrated; the purge command stops, and names the column, if one is still cast as `AsEditorContent`.
+
+**Static prose wrapped in `<atom:editor.content>` is re-parsed by the editor schema and loses its markup.** Use a plain element with the `text-base` reading role instead (`<div class="text-base">`).
+
+`atom:upgrade` will rename the tags to `<atom:tiptap*>`, report any cast still on `AsEditorContent`, and refuse to finish while a cast, an unmigrated row or a flagged row remains (it reads `atom:tiptap-migrate --status`), when 4.0 ships. Until then, change the tags by hand.
+
 ## What is not restyled
 
 Nothing. Every component, the editor's content, the calendar, the chart and the docs are on the tokens, and the guards (`RestyleGuardsTest`) hold every component file (one allowance: the shells' mobile scrim, `bg-black/20`): no raw palette name, no `dark:` colour pair, no shadow except `shadow-pop` on a raised layer, no `:focus` ring. Two things are left alone on purpose: `resources/css/editor.css`, the legacy editor's sheet that nothing in atom links (it goes with the legacy editor, V4-4d), and a host's own markup, which keeps whatever palette classes it wrote: the `zinc` and `gray` ramps are atom's warm neutral palette now, so they do not break.

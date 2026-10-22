@@ -85,7 +85,6 @@ function restyledComponents(): array
         'embed',
         'whatsapp',
         'tiptap',
-        'editor',
         'calendar',
         'chart',
         'docs',

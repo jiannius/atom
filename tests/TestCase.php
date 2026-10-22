@@ -11,10 +11,10 @@ abstract class TestCase extends Orchestra
     /**
      * Boot the app, then forget the environment variables the suite must not
      * depend on. `testbench serve` (which Playwright starts) writes
-     * vendor/orchestra/testbench-core/laravel/.env with FILESYSTEM_DISK=local,
-     * and AsEditorContent reads that through env(): left in place it points
-     * the legacy cast at a disk no test set up, whichever ran first. An exported
-     * shell variable does the same, so it is removed from every place env() reads.
+     * vendor/orchestra/testbench-core/laravel/.env with FILESYSTEM_DISK=local:
+     * left in place it points anything that reads env('FILESYSTEM_DISK') at a
+     * disk no test set up, whichever ran first. An exported shell variable does
+     * the same, so it is removed from every place env() reads.
      */
     protected function setUp(): void
     {
