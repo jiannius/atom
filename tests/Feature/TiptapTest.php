@@ -144,30 +144,12 @@ describe('tiptap.mention', function () {
     });
 });
 
-describe('editor alias (back-compat)', function () {
-    it('<atom:editor> renders the tiptap shell and forwards props', function () {
-        $html = renderBlade('<atom:editor wire:model="body" toolbar="basic" />');
-
-        expect($html)
-            ->toContain('x-data="tiptap(')
-            ->toContain('x-modelable="editorContent"')
-            ->toContain('aria-label="Link"');   // basic preset forwarded through
-    });
-
-    it('<atom:editor.chat> renders the tiptap chat shell', function () {
-        $html = renderBlade('<atom:editor.chat wire:model="message" />');
-
-        expect($html)
-            ->toContain('chat: true')
-            ->toContain('aria-label="Submit"');
-    });
-
-    it('<atom:editor.content> renders stored content server-side', function () {
-        $json = json_encode(['type' => 'doc', 'content' => [['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'aliased']]]]]);
-        $html = renderBlade('<atom:editor.content>'.$json.'</atom:editor.content>');
-
-        expect($html)
-            ->toContain('editor-content')
-            ->toContain('<p>aliased</p>');
-    });
+describe('the removed editor aliases', function () {
+    it('has no <atom:editor*> component any more: it is <atom:tiptap*>', function (string $tag) {
+        expect(fn () => renderBlade($tag))->toThrow(InvalidArgumentException::class);
+    })->with([
+        'editor' => ['<atom:editor wire:model="body" />'],
+        'editor.chat' => ['<atom:editor.chat wire:model="message" />'],
+        'editor.content' => ['<atom:editor.content>x</atom:editor.content>'],
+    ]);
 });

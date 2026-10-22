@@ -24,7 +24,7 @@ trait WithEditor
     {
         // we generate a temporary preview url for editor images upload
         // upon persist the editor content to the model, it will then search all the temporary url
-        // and store it in the disk (model need to use the AsEditorContent casts to the desired column)
+        // and store it in the disk (model needs to use the AsTiptapContent cast on the desired column)
         // in case the editor content is not persisted (eg, user decided not to save the content)
         // the temporary upload will just go through the normal purging process by livewire
         if ($property === '_editor.images') {

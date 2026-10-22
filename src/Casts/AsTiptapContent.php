@@ -12,9 +12,10 @@ class AsTiptapContent implements CastsAttributes
 {
     /**
      * Read a stored value. New rows are Tiptap JSON (returned as-is). Legacy
-     * rows were stored by the v2 AsEditorContent cast as serialize()'d HTML —
-     * unserialize them (no classes allowed) to the raw HTML string. No forced
-     * migration.
+     * rows were stored by the old AsEditorContent cast (removed in v4) as
+     * serialize()'d HTML — unserialize them (no classes allowed) to the raw HTML
+     * string. This is the dual-read path: a host moves its rows to JSON with
+     * atom:tiptap-migrate when it is ready, never in one step.
      *
      * @param  array<string, mixed>  $attributes
      */
@@ -109,8 +110,8 @@ class AsTiptapContent implements CastsAttributes
     /**
      * Every file URL a stored value references, read the way get() reads it.
      * A stored value can be Tiptap JSON or HTML, raw or serialize()'d, in
-     * either cast's column (<atom:editor> emits JSON, so a host still on
-     * AsEditorContent stores serialize(<JSON>)). So the value is decoded once,
+     * the column (a host that came from the old AsEditorContent cast has
+     * serialize(<JSON>) there until atom:tiptap-migrate has run). So the value is decoded once,
      * then read as HTML (quoted and unquoted src, srcset, href) and, when it
      * decodes as a JSON document, as JSON too: its image nodes' srcs plus every
      * other src/href/srcset attribute in it (e.g. link marks). A value that is

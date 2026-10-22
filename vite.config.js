@@ -8,7 +8,6 @@ export default defineConfig({
     laravel({
       input: [
         'resources/css/atom.css',
-        'resources/css/editor.css',
         'resources/css/tiptap.css',
         'resources/js/atom.js',
       ],

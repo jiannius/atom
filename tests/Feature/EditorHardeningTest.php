@@ -3,7 +3,6 @@
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Jiannius\Atom\Casts\AsEditorContent;
 use Jiannius\Atom\Casts\AsTiptapContent;
 use Jiannius\Atom\Tiptap\Content;
 use Jiannius\Atom\Tiptap\Extensions\Youtube;
@@ -35,11 +34,6 @@ class HardeningTiptapModel extends Model
     protected $casts = ['body' => AsTiptapContent::class];
 }
 
-class HardeningEditorModel extends Model
-{
-    protected $casts = ['body' => AsEditorContent::class];
-}
-
 beforeEach(function () {
     HardeningGadget::$touched = false;
 });
@@ -69,11 +63,6 @@ function hardeningTiptapSet(mixed $value): mixed
     return (new AsTiptapContent)->set(new HardeningTiptapModel, 'body', $value, []);
 }
 
-function hardeningEditorGet(mixed $value): mixed
-{
-    return (new AsEditorContent)->get(new HardeningEditorModel, 'body', $value, []);
-}
-
 function hardeningDoc(array $content): string
 {
     return Content::render(json_encode(['type' => 'doc', 'content' => $content]));
@@ -101,14 +90,6 @@ describe('E-S2 object injection: reading stored values', function () {
         expect(HardeningGadget::$touched)->toBeFalse();
     });
 
-    it('AsEditorContent::get never instantiates a serialized object', function () {
-        $value = hardeningEditorGet(hardeningPayload());
-        gc_collect_cycles();
-
-        expect($value)->toBeNull();
-        expect(HardeningGadget::$touched)->toBeFalse();
-    });
-
     it('Content::unserialize never instantiates a serialized object', function () {
         [$serialized, $value] = Content::unserialize(hardeningPayload());
         gc_collect_cycles();
@@ -120,15 +101,13 @@ describe('E-S2 object injection: reading stored values', function () {
 
     it('still reads legacy serialized HTML, arrays and false', function () {
         expect(hardeningTiptapGet(serialize('<p>legacy</p>')))->toBe('<p>legacy</p>');
-        expect(hardeningEditorGet(serialize('<p>legacy</p>')))->toBe('<p>legacy</p>');
         expect(hardeningTiptapGet(serialize(['type' => 'doc', 'content' => []])))->toBe(['type' => 'doc', 'content' => []]);
-        expect(hardeningEditorGet('b:0;'))->toBeFalse();
+        expect(hardeningTiptapGet('b:0;'))->toBeFalse();
     });
 
     it('still returns JSON and raw HTML unchanged', function () {
         expect(hardeningTiptapGet('{"type":"doc","content":[]}'))->toBe('{"type":"doc","content":[]}');
         expect(hardeningTiptapGet('<p>raw html</p>'))->toBe('<p>raw html</p>');
-        expect(hardeningEditorGet('<p>raw html</p>'))->toBe('<p>raw html</p>');
     });
 });
 
@@ -163,17 +142,6 @@ describe('E-S2 object injection: storing client values', function () {
         expect(hardeningTiptapSet($json))->toBe($json);
         expect(hardeningTiptapSet(['type' => 'doc', 'content' => [['type' => 'paragraph']]]))->toBe($json);
         expect(hardeningTiptapSet('<p>hello <strong>world</strong></p>'))->toBe('<p>hello <strong>world</strong></p>');
-    });
-
-    it('AsEditorContent round-trips HTML and a client serialized string stays a string', function () {
-        $set = fn ($v) => (new AsEditorContent)->set(new HardeningEditorModel, 'body', $v, []);
-
-        expect(hardeningEditorGet($set('<p>hi</p>')))->toBe('<p>hi</p>');
-
-        $hostile = hardeningPayload();
-
-        expect(hardeningEditorGet($set($hostile)))->toBe($hostile);
-        expect(HardeningGadget::$touched)->toBeFalse();
     });
 });
 

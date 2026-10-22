@@ -7,7 +7,6 @@ use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
-use Jiannius\Atom\Casts\AsEditorContent;
 use Jiannius\Atom\Casts\AsTiptapContent;
 use Throwable;
 
@@ -61,6 +60,11 @@ class PurgeEditorImages extends Command
     protected const URLDECODE_MAX_BYTES = 1048576;
 
     /**
+     * The cast v4 removed, by name: a column still cast as it aborts the run
+     */
+    protected const REMOVED_CAST = 'Jiannius\\Atom\\Casts\\AsEditorContent';
+
+    /**
      * Say how far a long scan has got every this many rows
      */
     protected const PROGRESS_EVERY = 1000;
@@ -82,15 +86,15 @@ class PurgeEditorImages extends Command
     protected array $problems = [];
 
     /**
-     * The casts found on at least one model column, by name: 'legacy' for
-     * AsEditorContent and 'tiptap' for AsTiptapContent.
+     * The casts found on at least one model column, by name: 'tiptap' for
+     * AsTiptapContent.
      *
      * @var array<string, bool>
      */
     protected array $castsInUse = [];
 
     /**
-     * The editor columns found, by model class: column => 'legacy'|'tiptap'.
+     * The editor columns found, by model class: column => 'tiptap'.
      *
      * @var array<string, array<string, string>>
      */
@@ -198,7 +202,7 @@ class PurgeEditorImages extends Command
         }
 
         if (empty($this->castsInUse)) {
-            $this->warn('No model column casts to AsEditorContent or AsTiptapContent. Nothing was moved or deleted.');
+            $this->warn('No model column casts to AsTiptapContent. Nothing was moved or deleted.');
             return self::SUCCESS;
         }
 
@@ -258,9 +262,9 @@ class PurgeEditorImages extends Command
     }
 
     /**
-     * List the files of every disk a cast writes to, by disk name. A disk that
+     * List the files of the disk the cast writes to, by disk name. A disk that
      * cannot be listed is recorded, not thrown: it only matters if a model uses
-     * that cast.
+     * the cast.
      *
      * @return array<string, array{disk?: Filesystem, files?: Collection, error?: string}>
      */
@@ -268,21 +272,14 @@ class PurgeEditorImages extends Command
     {
         $snapshots = [];
 
-        foreach ([AsEditorContent::class, AsTiptapContent::class] as $cast) {
-            $name = null;
+        $name = null;
 
-            try {
-                $name = $cast::diskName();
-
-                if (isset($snapshots[$name])) {
-                    continue;
-                }
-
-                $snapshots[$name] = ['disk' => $cast::disk(), 'files' => $this->getStorageFiles($cast::disk())];
-            }
-            catch (Throwable $e) {
-                $snapshots[$name ?? $cast] = ['error' => $e->getMessage()];
-            }
+        try {
+            $name = AsTiptapContent::diskName();
+            $snapshots[$name] = ['disk' => AsTiptapContent::disk(), 'files' => $this->getStorageFiles(AsTiptapContent::disk())];
+        }
+        catch (Throwable $e) {
+            $snapshots[$name ?? AsTiptapContent::class] = ['error' => $e->getMessage()];
         }
 
         return $snapshots;
@@ -301,17 +298,13 @@ class PurgeEditorImages extends Command
     }
 
     /**
-     * Get the disks to scan, by name: the disk each cast that is in use writes to
+     * Get the disks to scan, by name: the disk the cast writes to, when a model uses it
      *
      * @return array<string, Filesystem>
      */
     public function getDisks(): array
     {
         $disks = [];
-
-        if ($this->castsInUse['legacy'] ?? false) {
-            $disks[AsEditorContent::diskName()] = AsEditorContent::disk();
-        }
 
         if ($this->castsInUse['tiptap'] ?? false) {
             $disks[AsTiptapContent::diskName()] = AsTiptapContent::disk();
@@ -625,7 +618,7 @@ class PurgeEditorImages extends Command
      */
     public function getStorageFiles(?Filesystem $disk = null): Collection
     {
-        // both casts use the same folder rule, so the folder follows the disk given
+        // the folder follows the disk given
         $disk ??= $this->getDisk();
         $folder = collect([data_get($disk->getConfig(), 'folder'), 'editor'])->filter()->join('/');
 
@@ -718,8 +711,11 @@ class PurgeEditorImages extends Command
     }
 
     /**
-     * Get the editor content columns of a model, as column => 'legacy'|'tiptap',
-     * and remember which casts were seen
+     * Get the editor content columns of a model, as column => 'tiptap', and
+     * remember which casts were seen. A column still cast as the removed
+     * AsEditorContent is a problem, not a column to skip: its images would look
+     * unreferenced, so the run is aborted until the host switches the cast and
+     * runs atom:tiptap-migrate.
      *
      * @return array<string, string>
      */
@@ -734,9 +730,8 @@ class PurgeEditorImages extends Command
                 continue;
             }
 
-            if (is_a($class, AsEditorContent::class, true)) {
-                $columns[$column] = 'legacy';
-                $this->castsInUse['legacy'] = true;
+            if (strcasecmp(ltrim($class, '\\'), self::REMOVED_CAST) === 0) {
+                $this->problems[] = $model::class.'::'.$column.' is still cast as the removed AsEditorContent: switch it to AsTiptapContent and run atom:tiptap-migrate';
             }
             elseif (is_a($class, AsTiptapContent::class, true)) {
                 $columns[$column] = 'tiptap';
@@ -929,11 +924,11 @@ class PurgeEditorImages extends Command
     }
 
     /**
-     * Get the disk AsEditorContent writes to
+     * Get the disk AsTiptapContent writes to
      */
     public function getDisk(): Filesystem
     {
-        return AsEditorContent::disk();
+        return AsTiptapContent::disk();
     }
 
     /**

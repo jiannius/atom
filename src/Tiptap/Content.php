@@ -1128,7 +1128,7 @@ class Content
 
     /**
      * Unserialize a stored legacy value without instantiating any class.
-     * Legacy AsEditorContent rows are serialize()'d strings, never objects, so
+     * Legacy rows (the old AsEditorContent cast) are serialize()'d strings, never objects, so
      * classes are refused; a payload holding an object comes back as null.
      *
      * @return array{0: bool, 1: mixed} [whether $value was serialized, the value]

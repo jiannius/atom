@@ -10,11 +10,6 @@
     "src": "resources/css/atom.css",
     "isEntry": true
   },
-  "resources/css/editor.css": {
-    "file": "assets/editor-bjbI0zjC.css",
-    "src": "resources/css/editor.css",
-    "isEntry": true
-  },
   "resources/css/tiptap.css": {
     "file": "assets/tiptap-BHlbiNx8.css",
     "src": "resources/css/tiptap.css",
