@@ -14,7 +14,6 @@ export default {
     toDateString: (value) => date(value)?.format('DD MMM YYYY'),
     toDatetimeString: (value) => date(value)?.format('DD MMM YYYY h:mm A'),
     toTimeString: (value) => date(value)?.format('h:mm A'),
-    fromNow: (value) => date(value)?.fromNow(),
 
     camel: (value) => {
         let str = value.toString().toLowerCase().replace(/[-_\s.]+(.)?/g, (_, c) => c ? c.toUpperCase() : '');
