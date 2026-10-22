@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +32,7 @@ class MigrateGadget
 const MIGRATE_OLD = '2020-01-01 00:00:00';
 
 beforeEach(function () {
-    foreach (['MigratePost', 'MigrateOtherPost'] as $file) {
+    foreach (['MigratePost', 'MigrateOtherPost', 'MigrateSecondPost', 'MigrateUuidPost', 'MigratePrefixedPost', 'MigrateScopedPost', 'MigrateChildPost', 'MigrateNamedConnectionPost'] as $file) {
         require_once __DIR__.'/../Fixtures/MigrateApp/Models/'.$file.'.php';
     }
 
@@ -40,6 +41,7 @@ beforeEach(function () {
 
     $this->app->useAppPath(__DIR__.'/../Fixtures/MigrateApp');
     config(['database.connections.other' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']]);
+    config(['database.connections.prefixed' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => 'px_']]);
 
     foreach ([null, 'other'] as $connection) {
         Schema::connection($connection)->create($connection ? 'migrate_other_posts' : 'migrate_posts', function (Blueprint $t) {
@@ -48,6 +50,31 @@ beforeEach(function () {
             $t->timestamps();
         });
     }
+
+    foreach (['migrate_second_posts', 'migrate_named_connection_posts'] as $table) {
+        Schema::create($table, function (Blueprint $t) {
+            $t->id();
+            $t->text('body')->nullable();
+            $t->timestamps();
+        });
+    }
+
+    Schema::create('migrate_uuid_posts', function (Blueprint $t) {
+        $t->string('id')->primary();
+        $t->text('body')->nullable();
+    });
+
+    Schema::connection('prefixed')->create('migrate_prefixed_posts', function (Blueprint $t) {
+        $t->id();
+        $t->text('body')->nullable();
+    });
+
+    Schema::create('migrate_scoped_posts', function (Blueprint $t) {
+        $t->id();
+        $t->text('body')->nullable();
+        $t->boolean('published')->default(true);
+        $t->softDeletes();
+    });
 
     Schema::create('migrate_removed_casts', function (Blueprint $t) {
         $t->id();
@@ -133,7 +160,7 @@ describe('atom:tiptap-migrate: the dry run', function () {
 
         $this->artisan('atom:tiptap-migrate')
             ->expectsOutputToContain('Dry run, nothing was written')
-            ->expectsOutputToContain('#'.$id['lossy'].' body: tags: font | attributes: font@color, p@class:MsoNormal, p@style:font-family')
+            ->expectsOutputToContain(\App\Models\MigratePost::class.'#'.$id['lossy'].' body: tags: font | attributes: font@color, p@class:MsoNormal, p@style:font-family')
             ->assertSuccessful();
 
         expect(DB::table('migrate_posts')->orderBy('id')->get()->all())->toEqual($before);
@@ -162,7 +189,7 @@ describe('atom:tiptap-migrate --force', function () {
         $id = migrateFixture();
         $before = DB::table('migrate_posts')->pluck('body', 'id')->all();
 
-        $this->artisan('atom:tiptap-migrate --force')->expectsOutputToContain('Migrated 3 value(s)')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --force')->expectsOutputToContain('Migrated 3 value(s)')->assertFailed();
 
         foreach (['legacy', 'plain', 'serializedJson'] as $name) {
             expect(migrateIsDocument(migrateBody($id[$name])))->toBeTrue($name);
@@ -187,7 +214,7 @@ describe('atom:tiptap-migrate --force', function () {
             $fired = true;
         });
 
-        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --force')->assertFailed();
 
         expect(DB::table('migrate_posts')->where('id', $id['legacy'])->value('updated_at'))->toBe(MIGRATE_OLD);
         expect(DB::table('migrate_posts')->pluck('updated_at')->unique()->all())->toBe([MIGRATE_OLD]);
@@ -208,11 +235,11 @@ describe('atom:tiptap-migrate --force', function () {
     it('is a no-op the second time: no new backup, no write', function () {
         migrateFixture();
 
-        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --force')->assertFailed();
         $bodies = DB::table('migrate_posts')->pluck('body', 'id')->all();
         $backups = migrateBackupCount();
 
-        $this->artisan('atom:tiptap-migrate --force')->expectsOutputToContain('Migrated 0 value(s)')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --force')->expectsOutputToContain('Migrated 0 value(s)')->assertFailed();
 
         expect(DB::table('migrate_posts')->pluck('body', 'id')->all())->toBe($bodies);
         expect(migrateBackupCount())->toBe($backups)->toBe(3);
@@ -259,12 +286,13 @@ describe('atom:tiptap-migrate: the backup table', function () {
     });
 
     it('leaves no backup and no change when the update fails midway', function () {
-        [$id] = migrateInsert([$original = serialize('<p>a</p>')]);
+        [$id] = migrateInsert([$original = serialize('<p>SECRETCONTENT</p>')]);
         EditorBackups::on()->create();
         DB::unprepared("CREATE TRIGGER migrate_fails BEFORE UPDATE OF body ON migrate_posts BEGIN SELECT RAISE(ABORT, 'update refused'); END");
 
         $this->artisan('atom:tiptap-migrate --force')
-            ->expectsOutputToContain('update refused')
+            ->expectsOutputToContain('QueryException (SQLSTATE')
+            ->doesntExpectOutputToContain('SECRETCONTENT')
             ->assertFailed();
 
         expect(migrateBody($id))->toBe($original);
@@ -412,7 +440,7 @@ describe('atom:tiptap-migrate --accept', function () {
         $id = migrateFixture();
         [$other] = migrateInsert(['<p class="x">second lossy</p>']);
 
-        $this->artisan("atom:tiptap-migrate --force --accept={$id['lossy']}")->assertSuccessful();
+        $this->artisan("atom:tiptap-migrate --force --accept={$id['lossy']}")->assertFailed();
 
         expect(migrateIsDocument(migrateBody($id['lossy'])))->toBeTrue();
         expect(migrateIsDocument(migrateBody($other)))->toBeFalse();
@@ -423,7 +451,7 @@ describe('atom:tiptap-migrate --accept', function () {
         $id = migrateFixture();
         [$other] = migrateInsert(['<p class="x">second lossy</p>']);
 
-        $this->artisan('atom:tiptap-migrate --force --accept=all')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --force --accept=all')->assertFailed();
 
         expect(migrateIsDocument(migrateBody($id['lossy'])))->toBeTrue();
         expect(migrateIsDocument(migrateBody($other)))->toBeTrue();
@@ -437,13 +465,13 @@ describe('atom:tiptap-migrate --accept', function () {
 
         $this->artisan("atom:tiptap-migrate --force --accept={$ids}")
             ->expectsOutputToContain('a refused row can never be accepted')
-            ->assertSuccessful();
+            ->assertFailed();
 
         foreach (['object', 'placeholder', 'script'] as $name) {
             expect(migrateBody($id[$name]))->toBe($before[$id[$name]]);
         }
 
-        $this->artisan('atom:tiptap-migrate --force --accept=all')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --force --accept=all')->assertFailed();
 
         foreach (['object', 'placeholder', 'script'] as $name) {
             expect(migrateBody($id[$name]))->toBe($before[$id[$name]]);
@@ -467,8 +495,8 @@ describe('atom:tiptap-migrate: hostile and unconvertible values', function () {
         gc_collect_cycles();
 
         $this->artisan('atom:tiptap-migrate --force')
-            ->expectsOutputToContain('#'.$id['object'].' body: a serialized value that holds an object or null')
-            ->assertSuccessful();
+            ->expectsOutputToContain(\App\Models\MigratePost::class.'#'.$id['object'].' body: a serialized value that holds an object or null')
+            ->assertFailed();
 
         gc_collect_cycles();
 
@@ -479,16 +507,16 @@ describe('atom:tiptap-migrate: hostile and unconvertible values', function () {
         $id = migrateFixture();
 
         $this->artisan('atom:tiptap-migrate --force')
-            ->expectsOutputToContain('#'.$id['placeholder'].' body: it carries the HTML parser\'s reserved placeholder')
-            ->assertSuccessful();
+            ->expectsOutputToContain(\App\Models\MigratePost::class.'#'.$id['placeholder'].' body: it carries the HTML parser\'s reserved placeholder')
+            ->assertFailed();
     });
 
     it('names a value with nothing to convert', function () {
         $id = migrateFixture();
 
         $this->artisan('atom:tiptap-migrate --force')
-            ->expectsOutputToContain('#'.$id['script'].' body: it has nothing to convert')
-            ->assertSuccessful();
+            ->expectsOutputToContain(\App\Models\MigratePost::class.'#'.$id['script'].' body: it has nothing to convert')
+            ->assertFailed();
     });
 
     it('names a value over the size limit', function () {
@@ -496,8 +524,8 @@ describe('atom:tiptap-migrate: hostile and unconvertible values', function () {
         [$id] = migrateInsert(['<p>'.str_repeat('long text ', 400).'</p>']);
 
         $this->artisan('atom:tiptap-migrate --force')
-            ->expectsOutputToContain('#'.$id.' body: it has nothing to convert, or is over the size or nesting limits')
-            ->assertSuccessful();
+            ->expectsOutputToContain(\App\Models\MigratePost::class.'#'.$id.' body: it has nothing to convert, or is over the size or nesting limits')
+            ->assertFailed();
 
         expect(migrateIsDocument(migrateBody($id)))->toBeFalse();
     });
@@ -506,8 +534,8 @@ describe('atom:tiptap-migrate: hostile and unconvertible values', function () {
         [$id] = migrateInsert([serialize('{"type":"doc","content":[{"type":"paragraph","attrs":{"x":1e999}}]}')]);
 
         $this->artisan('atom:tiptap-migrate --force')
-            ->expectsOutputToContain('#'.$id.' body: it has nothing to convert, or is over the size or nesting limits')
-            ->assertSuccessful();
+            ->expectsOutputToContain(\App\Models\MigratePost::class.'#'.$id.' body: it has nothing to convert, or is over the size or nesting limits')
+            ->assertFailed();
 
         expect(migrateBackupCount())->toBe(0);
     });
@@ -516,8 +544,8 @@ describe('atom:tiptap-migrate: hostile and unconvertible values', function () {
         [$json, $bracket] = migrateInsert(['{"a":1}', '[gallery] <img src="https://cdn.test/editor/a.jpg">']);
 
         $this->artisan('atom:tiptap-migrate --force')
-            ->expectsOutputToContain('#'.$json.' body: it is JSON, but not a Tiptap document')
-            ->assertSuccessful();
+            ->expectsOutputToContain(\App\Models\MigratePost::class.'#'.$json.' body: it is JSON, but not a Tiptap document')
+            ->assertFailed();
 
         expect(migrateBody($json))->toBe('{"a":1}');
         expect(migrateIsDocument(migrateBody($bracket)))->toBeTrue();
@@ -541,7 +569,7 @@ describe('atom:tiptap-migrate: hostile and unconvertible values', function () {
 
         $this->artisan('atom:tiptap-migrate --force')
             ->expectsOutputToContain('the HTML parser failed on it (TypeError)')
-            ->assertSuccessful();
+            ->assertFailed();
 
         expect(migrateBody($boom))->toBe('<p>boom</p>');
         expect(migrateIsDocument(migrateBody($fine)))->toBeTrue();
@@ -555,7 +583,7 @@ describe('atom:tiptap-migrate: the round-trip report', function () {
         $this->artisan('atom:tiptap-migrate')->expectsOutputToContain('1 clean, 0 flagged')->assertSuccessful();
     })->with([
         'bold and italic aliases' => ['<p>Hello <b>bold</b> and <i>it</i></p>'],
-        'divs become paragraphs' => ['<div>one</div><div>two</div>'],
+        'a div becomes a paragraph' => ['<div>one</div>'],
         'alignment' => ['<p style="text-align:center">centered</p>'],
         'a table' => ['<table><tr><td>a</td><td>b</td></tr></table>'],
         'a link and an image' => ['<p><a href="https://example.com/a?b=1&amp;c=2">link</a></p><img src="https://cdn.test/editor/a.jpg" alt="x">'],
@@ -568,7 +596,7 @@ describe('atom:tiptap-migrate: the round-trip report', function () {
         [$id] = migrateInsert([$html]);
 
         $this->artisan('atom:tiptap-migrate')
-            ->expectsOutputToContain('flagged  #'.$id.' body: '.$loses)
+            ->expectsOutputToContain('flagged  '.\App\Models\MigratePost::class.'#'.$id.' body: '.$loses)
             ->assertSuccessful();
     })->with([
         'a class' => ['<p class="MsoNormal">word</p>', 'attributes: p@class:MsoNormal'],
@@ -578,6 +606,10 @@ describe('atom:tiptap-migrate: the round-trip report', function () {
         'a font tag' => ['<font color="red">red</font>', 'tags: font | attributes: font@color'],
         'a caption' => ['<table><caption>Cap</caption><tr><td>a</td></tr></table>', 'tags: caption'],
         'a video' => ['<video src="a.mp4">fallback</video>', 'tags: video | attributes: video@src=a.mp4'],
+        'adjacent divs, which the editor fuses into one word' => ['<div>one</div><div>two</div>', 'text: missing "one", "two"; added "onetwo"'],
+        'a space between two marks, which the editor drops' => ["<p><b>Hello</b>\n<i>world</i></p>", 'text: missing "Hello", "world"; added "Helloworld"'],
+        'a center tag' => ['<center>middle</center>', 'tags: center'],
+        'a figure and its caption' => ['<figure><img src="https://cdn.test/editor/a.jpg"><figcaption>Cap</figcaption></figure>', 'tags: figcaption, figure'],
         'an iframe' => ['<p>a</p><iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>', 'tags: iframe | attributes: iframe@src=https://www.youtube.com/embed/dQw4w9WgXcQ'],
     ]);
 
@@ -687,7 +719,7 @@ describe('atom:tiptap-migrate --compare', function () {
 
     it('never writes to the database', function () {
         migrateFixture();
-        $this->artisan('atom:tiptap-migrate --accept=all --force')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --accept=all --force')->assertFailed();
         $bodies = DB::table('migrate_posts')->get()->all();
         $backups = DB::table(EditorBackups::TABLE)->get()->all();
 
@@ -737,18 +769,18 @@ describe('atom:tiptap-migrate --prune-backups', function () {
         migrateInsert([serialize('<p>one</p>')]);
         $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
 
-        $this->artisan('atom:tiptap-migrate --prune-backups --no-interaction')
-            ->expectsOutputToContain('pass --force')
+        $this->artisan('atom:tiptap-migrate --prune-backups --no-interaction --force')
+            ->expectsOutputToContain('pass --confirm-prune')
             ->assertFailed();
 
         expect(migrateBackupCount())->toBe(1);
     });
 
-    it('asks first, and deletes nothing on a no', function () {
+    it('asks first even with --force, and deletes nothing on a no', function () {
         migrateInsert([serialize('<p>one</p>')]);
         $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
 
-        $this->artisan('atom:tiptap-migrate --prune-backups')
+        $this->artisan('atom:tiptap-migrate --prune-backups --force --confirm-prune')
             ->expectsConfirmation('Delete the backups?', 'no')
             ->expectsOutputToContain('Nothing was deleted')
             ->assertSuccessful();
@@ -756,7 +788,7 @@ describe('atom:tiptap-migrate --prune-backups', function () {
         expect(migrateBackupCount())->toBe(1);
     });
 
-    it('deletes the backups and drops the table on a yes', function () {
+    it('deletes the backups on a yes and leaves the empty table in place', function () {
         migrateInsert([serialize('<p>one</p>')]);
         $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
 
@@ -765,16 +797,17 @@ describe('atom:tiptap-migrate --prune-backups', function () {
             ->expectsOutputToContain('Deleted 1 backup(s)')
             ->assertSuccessful();
 
-        expect(Schema::hasTable(EditorBackups::TABLE))->toBeFalse();
+        expect(Schema::hasTable(EditorBackups::TABLE))->toBeTrue();
+        expect(migrateBackupCount())->toBe(0);
     });
 
-    it('takes --force instead of a prompt', function () {
+    it('takes --confirm-prune instead of a prompt when there is no terminal', function () {
         migrateInsert([serialize('<p>one</p>')]);
         $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
 
-        $this->artisan('atom:tiptap-migrate --prune-backups --force --no-interaction')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --prune-backups --confirm-prune --no-interaction')->assertSuccessful();
 
-        expect(Schema::hasTable(EditorBackups::TABLE))->toBeFalse();
+        expect(migrateBackupCount())->toBe(0);
     });
 
     it('is the only thing that removes a backup: restore and a re-run leave them', function () {
@@ -787,7 +820,7 @@ describe('atom:tiptap-migrate --prune-backups', function () {
     });
 
     it('says there is nothing to prune when there are no backups', function () {
-        $this->artisan('atom:tiptap-migrate --prune-backups --force')->expectsOutputToContain('There are no backups')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --prune-backups --confirm-prune --no-interaction')->expectsOutputToContain('There are no backups')->assertSuccessful();
     });
 });
 
@@ -865,9 +898,9 @@ describe('atom:tiptap-migrate: models and connections', function () {
         expect(migrateBody($id, 'other', 'migrate_other_posts'))->toBe($original);
 
         $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
-        $this->artisan('atom:tiptap-migrate --prune-backups --force')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --prune-backups --confirm-prune --no-interaction')->assertSuccessful();
 
-        expect(Schema::connection('other')->hasTable(EditorBackups::TABLE))->toBeFalse();
+        expect(migrateBackupCount('other'))->toBe(0);
     });
 
     it('limits a run to --model', function () {
@@ -923,5 +956,315 @@ describe('atom:tiptap-migrate: the docs', function () {
         }
 
         expect($readme)->not->toContain('## The `AsEditorContent` cast');
+    });
+});
+
+describe('atom:tiptap-migrate: what the review found', function () {
+    beforeEach(function () {
+        $this->review = sys_get_temp_dir().'/atom-review-'.uniqid().'.jsonl';
+    });
+
+    afterEach(function () {
+        @unlink($this->review);
+    });
+
+    it('flags a bare "<", which libxml 2.9.13 drops the text after on both sides of the comparison', function () {
+        [$id] = migrateInsert(['<p>a < b and more</p>']);
+
+        $this->artisan('atom:tiptap-migrate')
+            ->expectsOutputToContain(\App\Models\MigratePost::class.'#'.$id.' body: '."a bare '<' can drop text on older libxml")
+            ->assertSuccessful();
+    });
+
+    it('does not flag a "<" that opens a tag, a closing tag or a comment', function () {
+        migrateInsert(['<p>fine</p><!-- note --><br/>']);
+
+        $this->artisan('atom:tiptap-migrate')->expectsOutputToContain('1 clean, 0 flagged')->assertSuccessful();
+    });
+
+    it('refuses JSON that would not fit the column, and says to change it to longText', function () {
+        $command = new class extends MigrateTiptapContent
+        {
+            protected function columnCapacity(Model $model, string $column): ?int
+            {
+                return 300;
+            }
+        };
+        Artisan::registerCommand($command);
+
+        [$small, $big] = migrateInsert([serialize('<p>fits</p>'), serialize('<p>'.str_repeat('text ', 100).'</p>')]);
+
+        $this->artisan('atom:tiptap-migrate --force')
+            ->expectsOutputToContain(\App\Models\MigratePost::class.'#'.$big.' body: the JSON (')
+            ->assertFailed();
+
+        expect(migrateIsDocument(migrateBody($small)))->toBeTrue();
+        expect(migrateIsDocument(migrateBody($big)))->toBeFalse();
+
+        $this->artisan('atom:tiptap-migrate --status')->expectsOutputToContain('Refused (need fixing by hand): 1')->assertFailed();
+    });
+
+    it('says "change it to longText first" in the reason', function () {
+        $command = new class extends MigrateTiptapContent
+        {
+            protected function columnCapacity(Model $model, string $column): ?int
+            {
+                return 100;
+            }
+        };
+        Artisan::registerCommand($command);
+        migrateInsert([serialize('<p>'.str_repeat('text ', 100).'</p>')]);
+
+        $this->artisan('atom:tiptap-migrate')->expectsOutputToContain('does not fit the column (it holds at most 100 bytes): change it to longText first')->assertSuccessful();
+    });
+
+    it('knows how much each column type holds', function (string $driver, string $typeName, string $type, ?int $capacity) {
+        expect(MigrateTiptapContent::capacityOf($driver, $typeName, $type))->toBe($capacity);
+    })->with([
+        'mysql text' => ['mysql', 'text', 'text', 65535],
+        'mariadb text' => ['mariadb', 'text', 'text', 65535],
+        'mysql tinytext' => ['mysql', 'tinytext', 'tinytext', 255],
+        'mysql mediumtext' => ['mysql', 'mediumtext', 'mediumtext', 16777215],
+        'mysql longtext' => ['mysql', 'longtext', 'longtext', null],
+        'mysql varchar' => ['mysql', 'varchar', 'varchar(255)', 255],
+        'postgres text' => ['pgsql', 'text', 'text', null],
+        'postgres varchar' => ['pgsql', 'varchar', 'character varying(120)', 120],
+        'sqlite text' => ['sqlite', 'text', 'text', null],
+        'sqlite varchar without a length' => ['sqlite', 'varchar', 'varchar', null],
+    ]);
+
+    it('looks the capacity up from the table, and sqlite holds anything', function () {
+        $command = new class extends MigrateTiptapContent
+        {
+            public function capacity(Model $model, string $column): ?int
+            {
+                return $this->columnCapacity($model, $column);
+            }
+        };
+
+        expect($command->capacity(new \App\Models\MigratePost, 'body'))->toBeNull();
+    });
+
+    it('never prints the content of a row in a failure, on the way in or on the way back', function () {
+        [$id] = migrateInsert([serialize('<p>SECRETCONTENT</p>')]);
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+        DB::unprepared("CREATE TRIGGER migrate_restore_fails BEFORE UPDATE OF body ON migrate_posts BEGIN SELECT RAISE(ABORT, 'refused SECRETCONTENT'); END");
+
+        $this->artisan('atom:tiptap-migrate --restore --force')
+            ->expectsOutputToContain('QueryException (SQLSTATE')
+            ->doesntExpectOutputToContain('SECRETCONTENT')
+            ->assertFailed();
+    });
+
+    it('refuses an empty --restore= and --compare=, and reads a bare one as every row', function () {
+        migrateInsert([serialize('<p>one</p>')]);
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate', ['--restore' => '', '--force' => true])->expectsOutputToContain('--restore= needs row ids')->assertFailed();
+        $this->artisan('atom:tiptap-migrate', ['--compare' => ' , ', '--output' => $this->review])->expectsOutputToContain('--compare= needs row ids')->assertFailed();
+        $this->artisan('atom:tiptap-migrate', ['--accept' => ''])->assertFailed();
+        expect(file_exists($this->review))->toBeFalse();
+        expect(DB::table(EditorBackups::TABLE)->whereNull('restored_at')->count())->toBe(1);
+
+        $this->artisan('atom:tiptap-migrate --restore --force')->expectsOutputToContain('Restored 1 value(s)')->assertSuccessful();
+    });
+
+    it('refuses --dry with --restore and with --prune-backups, which would otherwise write', function () {
+        migrateInsert([serialize('<p>one</p>')]);
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate --dry --restore --force')->expectsOutputToContain('--dry cannot be combined with --restore')->assertFailed();
+        $this->artisan('atom:tiptap-migrate --dry --prune-backups --confirm-prune --no-interaction')->expectsOutputToContain('--dry cannot be combined with --prune-backups')->assertFailed();
+
+        expect(migrateBackupCount())->toBe(1);
+        expect(DB::table(EditorBackups::TABLE)->whereNull('restored_at')->count())->toBe(1);
+    });
+
+    it('refuses a row id that is flagged in two models, lists both, and takes --model to choose', function () {
+        $first = DB::table('migrate_posts')->insertGetId(['body' => '<p class="x">first</p>']);
+        $second = DB::table('migrate_second_posts')->insertGetId(['body' => '<p class="x">second</p>']);
+        expect($second)->toBe($first);
+
+        $this->artisan("atom:tiptap-migrate --force --accept={$first}")
+            ->expectsOutputToContain("id {$first}: ".\App\Models\MigratePost::class.'.body, '.\App\Models\MigrateSecondPost::class.'.body')
+            ->assertFailed();
+
+        expect(migrateIsDocument(migrateBody($first)))->toBeFalse();
+        expect(migrateIsDocument(migrateBody($second, null, 'migrate_second_posts')))->toBeFalse();
+        expect(Schema::hasTable(EditorBackups::TABLE))->toBeFalse();
+
+        $this->artisan("atom:tiptap-migrate --force --accept={$first} --model=MigrateSecondPost")->assertSuccessful();
+
+        expect(migrateIsDocument(migrateBody($second, null, 'migrate_second_posts')))->toBeTrue();
+        expect(migrateIsDocument(migrateBody($first)))->toBeFalse();
+    });
+
+    it('does the same for --restore and --compare, and prints the model on every flagged line', function () {
+        DB::table('migrate_posts')->insert(['id' => 7, 'body' => serialize('<p class="x">first</p>')]);
+        DB::table('migrate_second_posts')->insert(['id' => 7, 'body' => serialize('<p class="x">second</p>')]);
+
+        $this->artisan('atom:tiptap-migrate')
+            ->expectsOutputToContain('flagged  '.\App\Models\MigratePost::class.'#7 body')
+            ->expectsOutputToContain('flagged  '.\App\Models\MigrateSecondPost::class.'#7 body')
+            ->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate --force --accept=all')->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate --restore=7 --force')->expectsOutputToContain('id 7: ')->assertFailed();
+        $this->artisan('atom:tiptap-migrate', ['--compare' => '7', '--output' => $this->review])->expectsOutputToContain('id 7: ')->assertFailed();
+        expect(migrateIsDocument(migrateBody(7)))->toBeTrue();
+
+        $this->artisan('atom:tiptap-migrate --restore=7 --force --model=MigratePost')->assertSuccessful();
+
+        expect(migrateBody(7))->toBe(serialize('<p class="x">first</p>'));
+        expect(migrateIsDocument(migrateBody(7, null, 'migrate_second_posts')))->toBeTrue();
+    });
+
+    it('warns when --model matches no target, and --status is not ready then', function () {
+        migrateInsert([serialize('<p>one</p>')]);
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate --status --model=NoSuchModel')
+            ->expectsOutputToContain('--model NoSuchModel matched no model with an AsTiptapContent column')
+            ->doesntExpectOutputToContain('Nothing left to migrate')
+            ->assertFailed();
+
+        $this->artisan('atom:tiptap-migrate --model=NoSuchModel')->expectsOutputToContain('Aborted, nothing was written')->assertFailed();
+        $this->artisan('atom:tiptap-migrate --restore --model=NoSuchModel --force')->expectsOutputToContain('--model NoSuchModel matched no backup')->assertFailed();
+        $this->artisan('atom:tiptap-migrate --status --column=nope')->expectsOutputToContain('--column nope matched no AsTiptapContent column')->assertFailed();
+    });
+
+    it('refuses a tampered backup on restore, and flags it in the review file', function () {
+        [$id] = migrateInsert([serialize('<p>one</p>')]);
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+        $migrated = migrateBody($id);
+        DB::table(EditorBackups::TABLE)->update(['original' => '<p>somebody wrote this later</p>']);
+
+        $this->artisan('atom:tiptap-migrate --restore --force')
+            ->expectsOutputToContain('the backup does not match its own hash')
+            ->assertFailed();
+
+        expect(migrateBody($id))->toBe($migrated);
+        expect(DB::table(EditorBackups::TABLE)->whereNull('restored_at')->count())->toBe(1);
+
+        $this->artisan('atom:tiptap-migrate --compare --output='.$this->review)->assertSuccessful();
+
+        $record = json_decode(file_get_contents($this->review), true);
+        expect($record['backup_intact'])->toBeFalse()
+            ->and($record['lossy'])->toBeTrue()
+            ->and($record['notes'])->toContain('the backup does not match its own hash');
+    });
+
+    it('counts a connection once, whether a model names the default one or not', function () {
+        [$one] = migrateInsert([serialize('<p>one</p>')]);
+        DB::table('migrate_named_connection_posts')->insert(['body' => serialize('<p>two</p>')]);
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate --compare --output='.$this->review)->expectsOutputToContain('Wrote 2 record(s)')->assertSuccessful();
+        expect(file($this->review))->toHaveCount(2);
+
+        $this->artisan('atom:tiptap-migrate --restore --force')->expectsOutputToContain('Restored 2 value(s)')->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --prune-backups --confirm-prune --no-interaction')->expectsOutputToContain('Deleted 4 backup(s)')->assertSuccessful();
+    });
+
+    it('writes the review file for its owner only', function () {
+        migrateInsert([serialize('<p>one</p>')]);
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate --compare --output='.$this->review)->assertSuccessful();
+
+        expect(fileperms($this->review) & 0777)->toBe(0600);
+    });
+
+    it('does not parse an original past the render limits when it compares', function () {
+        [$id] = migrateInsert([serialize('<p>'.str_repeat('long text ', 50).'</p>')]);
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+        config(['atom.editor.render_max_bytes' => 100]);
+
+        $this->artisan('atom:tiptap-migrate --compare --output='.$this->review)->assertSuccessful();
+
+        $record = json_decode(file_get_contents($this->review), true);
+        expect($record['notes'])->toContain('too large to compare')
+            ->and($record['lossy'])->toBeTrue()
+            ->and($record['original_html'])->toContain('long text');
+    });
+
+    it('refuses a row key or model that a backup cannot hold as it is', function () {
+        EditorBackups::on()->create();
+
+        foreach ([str_repeat('k', 192), "bad\xFFkey"] as $key) {
+            expect(fn () => EditorBackups::on()->store('batch', \App\Models\MigratePost::class, $key, 'body', '<p>x</p>', '{}', false))
+                ->toThrow(\Jiannius\Atom\Services\EditorBackupException::class, 'row key');
+        }
+
+        expect(migrateBackupCount())->toBe(0);
+    });
+
+    it('migrates, restores, compares and accepts on a string primary key', function () {
+        $uuid = '9d5b2a54-3f0e-4a4f-8a3b-5a0a5b0c1d11';
+        DB::table('migrate_uuid_posts')->insert([
+            ['id' => $uuid, 'body' => serialize('<p>uuid</p>')],
+            ['id' => 'second-key', 'body' => '<p class="x">flagged</p>'],
+        ]);
+
+        $this->artisan('atom:tiptap-migrate --force --accept=second-key')->assertSuccessful();
+
+        expect(migrateIsDocument(DB::table('migrate_uuid_posts')->where('id', $uuid)->value('body')))->toBeTrue();
+        expect(migrateIsDocument(DB::table('migrate_uuid_posts')->where('id', 'second-key')->value('body')))->toBeTrue();
+        expect(DB::table(EditorBackups::TABLE)->pluck('row_key')->sort()->values()->all())->toBe(['9d5b2a54-3f0e-4a4f-8a3b-5a0a5b0c1d11', 'second-key']);
+
+        $this->artisan('atom:tiptap-migrate --compare='.$uuid.' --output='.$this->review)->expectsOutputToContain('Wrote 1 record(s)')->assertSuccessful();
+        expect(json_decode(file_get_contents($this->review), true)['key'])->toBe($uuid);
+
+        $this->artisan("atom:tiptap-migrate --restore={$uuid} --force")->assertSuccessful();
+
+        expect(DB::table('migrate_uuid_posts')->where('id', $uuid)->value('body'))->toBe(serialize('<p>uuid</p>'));
+    });
+
+    it('works through a table prefix', function () {
+        $id = DB::connection('prefixed')->table('migrate_prefixed_posts')->insertGetId(['body' => $original = serialize('<p>prefixed</p>')]);
+
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+
+        expect(migrateIsDocument(migrateBody($id, 'prefixed', 'migrate_prefixed_posts')))->toBeTrue();
+        expect(migrateBackupCount('prefixed'))->toBe(1);
+        expect(DB::connection('prefixed')->getSchemaBuilder()->hasTable(EditorBackups::TABLE))->toBeTrue();
+        expect(collect(DB::connection('prefixed')->select("select name from sqlite_master where type = 'table'"))->pluck('name')->all())->toContain('px_'.EditorBackups::TABLE);
+
+        $this->artisan('atom:tiptap-migrate --compare --output='.$this->review)->expectsOutputToContain('Wrote 1 record(s)')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --restore --force')->assertSuccessful();
+
+        expect(migrateBody($id, 'prefixed', 'migrate_prefixed_posts'))->toBe($original);
+    });
+
+    it('migrates soft-deleted and globally scoped rows', function () {
+        DB::table('migrate_scoped_posts')->insert([
+            ['body' => serialize('<p>trashed</p>'), 'published' => 1, 'deleted_at' => '2020-01-01 00:00:00'],
+            ['body' => serialize('<p>hidden</p>'), 'published' => 0, 'deleted_at' => null],
+            ['body' => serialize('<p>trashed and hidden</p>'), 'published' => 0, 'deleted_at' => '2020-01-01 00:00:00'],
+        ]);
+        expect(\App\Models\MigrateScopedPost::count())->toBe(0);
+
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+
+        foreach (DB::table('migrate_scoped_posts')->pluck('body') as $body) {
+            expect(migrateIsDocument($body))->toBeTrue();
+        }
+
+        expect(migrateBackupCount())->toBe(3);
+    });
+
+    it('scans a child model on its parent\'s table once', function () {
+        migrateInsert([serialize('<p>one</p>')]);
+
+        $this->artisan('atom:tiptap-migrate --force')
+            ->expectsOutputToContain(\App\Models\MigratePost::class.' (body)')
+            ->doesntExpectOutputToContain('MigrateChildPost')
+            ->assertSuccessful();
+
+        expect(migrateBackupCount())->toBe(1);
+        expect(DB::table(EditorBackups::TABLE)->value('model'))->toBe(\App\Models\MigratePost::class);
     });
 });

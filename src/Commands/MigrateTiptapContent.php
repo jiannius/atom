@@ -4,9 +4,11 @@ namespace Jiannius\Atom\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Jiannius\Atom\Casts\AsTiptapContent;
 use Jiannius\Atom\Commands\Concerns\DiscoversModels;
+use Jiannius\Atom\Services\EditorBackupException;
 use Jiannius\Atom\Services\EditorBackups;
 use Jiannius\Atom\Tiptap\Content;
 use Throwable;
@@ -23,7 +25,7 @@ class MigrateTiptapContent extends Command
     /**
      * Rows are read this many at a time (by primary key)
      */
-    protected const CHUNK = 200;
+    protected const CHUNK = 50;
 
     /**
      * Say how far a long scan has got every this many rows
@@ -32,11 +34,12 @@ class MigrateTiptapContent extends Command
 
     /**
      * Tags that only wrap content: their text is compared, and their loss is not
-     * a loss of content (a div becomes a paragraph, a table gets a tbody)
+     * a loss of content (a div becomes a paragraph, a table gets a tbody). A tag
+     * that means something by its name alone (center, figure, figcaption, label,
+     * section, nav...) is not one: the editor drops it, so it shows up as lost.
      */
     protected const WRAPPER_TAGS = [
-        'html', 'head', 'body', 'div', 'span', 'p', 'br', 'section', 'article', 'header', 'footer', 'main',
-        'nav', 'aside', 'figure', 'figcaption', 'center', 'label', 'tbody', 'thead', 'tfoot', 'colgroup', 'col',
+        'html', 'head', 'body', 'div', 'span', 'p', 'br', 'tbody', 'thead', 'tfoot', 'colgroup', 'col',
     ];
 
     /**
@@ -67,15 +70,17 @@ class MigrateTiptapContent extends Command
 
     protected $signature = 'atom:tiptap-migrate
         {--force : Write the conversions (without it nothing is written: the run is a dry run)}
-        {--dry : The default; kept so 3.x scripts that pass it keep working}
+        {--dry : The default; kept so 3.x scripts that pass it keep working. Not with --restore or --prune-backups}
         {--accept= : Also convert these flagged (lossy) rows: row ids, comma separated, or "all"}
         {--restore= : Put the original values back (only these row ids, when given); needs --force to write}
         {--discard-edits : With --restore, also restore a row that was edited after it was migrated}
         {--compare= : Write a JSON Lines review file of the migrated rows (only these row ids, when given)}
         {--output= : Where --compare writes (default storage/app/atom-editor-review-<time>.jsonl)}
         {--prune-backups : Delete the backups. Only after the migration is signed off}
+        {--confirm-prune : Without a terminal, confirm --prune-backups (with one, it always asks)}
         {--status : Say what is left to migrate (exit code 1 when anything is)}
         {--model=* : Only this model (class name or basename, repeatable)}
+        {--column=* : Only this column (repeatable); with --model, narrows a row id that is in more than one}
         {--path=* : Also scan the models in this directory (repeatable, absolute or relative to base_path())}';
 
     protected $description = 'Convert legacy editor columns (cast as AsTiptapContent) to Tiptap JSON: dry run, backups, restore, review file';
@@ -112,10 +117,26 @@ class MigrateTiptapContent extends Command
             return self::FAILURE;
         }
 
+        if ($this->option('dry') && (isset($modes['--restore']) || isset($modes['--prune-backups']))) {
+            $this->error('--dry cannot be combined with '.(isset($modes['--restore']) ? '--restore' : '--prune-backups').': neither is a dry run by that flag (--restore lists without --force).');
+
+            return self::FAILURE;
+        }
+
         if ($this->input->hasParameterOption('--accept') && $this->acceptList() === []) {
             $this->error('--accept needs row ids (comma separated) or "all".');
 
             return self::FAILURE;
+        }
+
+        foreach (['restore', 'compare'] as $name) {
+            $value = $this->option($name);
+
+            if ($this->input->hasParameterOption('--'.$name) && is_string($value) && $this->splitIds($value) === []) {
+                $this->error('--'.$name.'= needs row ids (comma separated). For every row, leave the = off: --'.$name.'.');
+
+                return self::FAILURE;
+            }
         }
 
         return match (array_key_first($modes)) {
@@ -145,12 +166,12 @@ class MigrateTiptapContent extends Command
 
         foreach ($this->targets() as $target) {
             try {
-                $this->scan($target, function ($key, $column, $raw) use (&$rows) {
-                    $rows[$this->analyse($raw)['status']]++;
+                $this->scan($target, function ($key, $column, $raw) use (&$rows, $target) {
+                    $rows[$this->analyse($raw, $target['capacity'][$column] ?? null)['status']]++;
                 });
             }
             catch (Throwable $e) {
-                $this->problems[] = $target['class'].': '.$e->getMessage();
+                $this->problems[] = $target['class'].': '.EditorBackups::describe($e);
             }
         }
 
@@ -197,7 +218,10 @@ class MigrateTiptapContent extends Command
 
     /**
      * The default mode: classify every value, and with --force convert the ones
-     * that are safe (and the flagged ones named in --accept)
+     * that are safe (and the flagged ones named in --accept). The exit code is 1
+     * when something failed, and, with --force, when a refused value remains
+     * (it needs fixing by hand); flagged values left for review are not a
+     * failure, the dry run and --status say how many there are.
      */
     protected function handleMigrate(): int
     {
@@ -226,6 +250,11 @@ class MigrateTiptapContent extends Command
         }
 
         $accept = $this->acceptList();
+
+        if ($accept !== [] && $accept !== ['all'] && $this->refuseAmbiguous($this->ambiguousRows($targets, $accept), '--accept')) {
+            return self::FAILURE;
+        }
+
         $acceptSeen = [];
         $batch = (string) Str::uuid();
         $totals = ['migrated' => 0, 'clean' => 0, 'lossy' => 0, 'refused' => 0, 'empty' => 0, 'written' => 0, 'failed' => 0];
@@ -241,11 +270,12 @@ class MigrateTiptapContent extends Command
                         $this->info('  '.$target['class'].': '.$read.' value(s) read');
                     }
 
-                    $found = $this->analyse($raw);
+                    $found = $this->analyse($raw, $target['capacity'][$column] ?? null);
                     $counts[$found['status']]++;
+                    $where = $target['class'].'#'.$key.' '.$column;
 
                     if ($found['status'] === 'refused') {
-                        $lines['refused'][] = '#'.$key.' '.$column.': '.$found['reason'];
+                        $lines['refused'][] = $where.': '.$found['reason'];
 
                         return;
                     }
@@ -258,7 +288,7 @@ class MigrateTiptapContent extends Command
                         $acceptSeen[(string) $key] = true;
 
                         if ($accept !== ['all'] && ! in_array((string) $key, $accept, true)) {
-                            $lines['lossy'][] = '#'.$key.' '.$column.': '.$this->describe($found['diff']);
+                            $lines['lossy'][] = $where.': '.$this->describe($found['diff']);
 
                             return;
                         }
@@ -273,7 +303,7 @@ class MigrateTiptapContent extends Command
                     }
                     catch (Throwable $e) {
                         $counts['failed']++;
-                        $lines['failed'][] = '#'.$key.' '.$column.': '.$e->getMessage();
+                        $lines['failed'][] = $where.': '.EditorBackups::describe($e);
 
                         return;
                     }
@@ -283,13 +313,13 @@ class MigrateTiptapContent extends Command
                     }
                     else {
                         $counts['failed']++;
-                        $lines['failed'][] = '#'.$key.' '.$column.': the value changed while the command ran, left untouched';
+                        $lines['failed'][] = $where.': the value changed while the command ran, left untouched';
                     }
                 });
             }
             catch (Throwable $e) {
                 $counts['failed']++;
-                $lines['failed'][] = $target['class'].': '.$e->getMessage();
+                $lines['failed'][] = $target['class'].': '.EditorBackups::describe($e);
             }
 
             $this->info($target['class'].' ('.implode(', ', $target['columns']).'): '
@@ -326,7 +356,11 @@ class MigrateTiptapContent extends Command
             $this->line('Next: atom:tiptap-migrate --compare, review the file, then --prune-backups.');
         }
 
-        return $totals['failed'] ? self::FAILURE : self::SUCCESS;
+        if ($write && $totals['refused']) {
+            $this->error($totals['refused'].' value(s) were refused and need fixing by hand: the exit code is 1 until none is left.');
+        }
+
+        return $totals['failed'] || ($write && $totals['refused']) ? self::FAILURE : self::SUCCESS;
     }
 
     /**
@@ -349,6 +383,76 @@ class MigrateTiptapContent extends Command
     }
 
     /**
+     * The row ids, of those given, that are in more than one model or column of
+     * the targets in scope, with where. An id is only a safe handle for one
+     * (model, column): --model and --column narrow the targets to one.
+     *
+     * @param  array<int, array{class: string, model: Model, columns: array<int, string>}>  $targets
+     * @param  array<int, string>  $ids
+     * @return array<string, array<int, string>> id => where
+     */
+    protected function ambiguousRows(array $targets, array $ids): array
+    {
+        $found = [];
+
+        foreach ($targets as $target) {
+            $model = $target['model'];
+            $key = $model->getKeyName();
+
+            foreach ($target['columns'] as $column) {
+                foreach (array_chunk($ids, 500) as $chunk) {
+                    $present = $model->getConnection()->table($model->getTable())
+                        ->whereIn($key, $chunk)->whereNotNull($column)->pluck($key);
+
+                    foreach ($present as $id) {
+                        $found[(string) $id][] = $target['class'].'.'.$column;
+                    }
+                }
+            }
+        }
+
+        return array_filter($found, fn ($where) => count($where) > 1);
+    }
+
+    /**
+     * The row ids, of those given, that are in more than one model or column of
+     * the backups in scope, with where
+     *
+     * @param  array<int, string>  $ids
+     * @return array<string, array<int, string>> id => where
+     */
+    protected function ambiguousBackups(array $ids): array
+    {
+        $found = [];
+
+        foreach ($this->backupRows($ids, true) as [$backup]) {
+            $found[(string) $backup->row_key][$backup->model.'.'.$backup->column_name] = true;
+        }
+
+        return array_filter(array_map('array_keys', $found), fn ($where) => count($where) > 1);
+    }
+
+    /**
+     * Print the ambiguous ids and say whether there were any
+     *
+     * @param  array<string, array<int, string>>  $ambiguous
+     */
+    protected function refuseAmbiguous(array $ambiguous, string $option): bool
+    {
+        if (! $ambiguous) {
+            return false;
+        }
+
+        $this->error($option.': these ids are in more than one model or column, so no row was touched. Narrow them with --model and --column:');
+
+        foreach ($ambiguous as $id => $where) {
+            $this->line('  id '.$id.': '.implode(', ', $where));
+        }
+
+        return true;
+    }
+
+    /**
      * Back up one value and write its conversion, in one transaction, with the
      * backup first: if the update fails the backup goes with it, and a
      * committed update always has its backup. One transaction per value, not per
@@ -363,7 +467,7 @@ class MigrateTiptapContent extends Command
     protected function write(Model $model, string $key, string $column, string $raw, string $json, bool $lossy, string $batch): string
     {
         $backups = EditorBackups::on($model->getConnectionName());
-        $name = $model->getConnectionName() ?? '';
+        $name = $model->getConnection()->getName();
 
         if (! isset($this->ensured[$name])) {
             $backups->create();
@@ -385,11 +489,11 @@ class MigrateTiptapContent extends Command
             $updated = $row()->update([$column => $json]);
 
             if ($updated !== 1) {
-                throw new \RuntimeException('the update changed '.$updated.' rows, expected 1');
+                throw new EditorBackupException('the update changed '.$updated.' rows, expected 1');
             }
 
             if ($row()->value($column) !== $json) {
-                throw new \RuntimeException('the database did not store the converted value as sent');
+                throw new EditorBackupException('the database did not store the converted value as sent');
             }
 
             return 'written';
@@ -398,22 +502,35 @@ class MigrateTiptapContent extends Command
 
     /**
      * --restore[=ids]: put original values back, byte for byte. A row edited
-     * since it was migrated is skipped unless --discard-edits.
+     * since it was migrated is skipped unless --discard-edits, and so is a backup
+     * that no longer matches its own hash.
      */
     protected function handleRestore(): int
     {
         $write = (bool) $this->option('force');
         $discard = (bool) $this->option('discard-edits');
+        $ids = $this->idList('restore');
         $restored = 0;
         $skipped = 0;
         $failed = 0;
 
-        foreach ($this->backupRows($this->idList('restore')) as [$backup, $backups, $model]) {
+        if ($ids !== null && $this->refuseAmbiguous($this->ambiguousBackups($ids), '--restore')) {
+            return self::FAILURE;
+        }
+
+        foreach ($this->backupRows($ids) as [$backup, $backups, $model]) {
             $label = $backup->model.'#'.$backup->row_key.' '.$backup->column_name;
 
             if (! $model) {
                 $this->warn('Skipped '.$label.': the model class is not available.');
                 $skipped++;
+
+                continue;
+            }
+
+            if (! EditorBackups::intact($backup)) {
+                $this->error('Refused '.$label.': the backup does not match its own hash, so it was changed after it was written.');
+                $failed++;
 
                 continue;
             }
@@ -451,7 +568,7 @@ class MigrateTiptapContent extends Command
                     $row()->update([$backup->column_name => $original]);
 
                     if ($row()->value($backup->column_name) !== $original) {
-                        throw new \RuntimeException('the database did not give the original back byte for byte');
+                        throw new EditorBackupException('the database did not give the original back byte for byte');
                     }
 
                     $backups->markRestored($backup->id);
@@ -460,7 +577,7 @@ class MigrateTiptapContent extends Command
                 });
             }
             catch (Throwable $e) {
-                $this->error('Failed '.$label.': '.$e->getMessage());
+                $this->error('Failed '.$label.': '.EditorBackups::describe($e));
                 $failed++;
 
                 continue;
@@ -497,12 +614,17 @@ class MigrateTiptapContent extends Command
     /**
      * --compare[=ids]: a JSON Lines file, one record per migrated value, for a
      * person (or Claude) to review before --prune-backups. Reads the database
-     * and writes only the file.
+     * and writes only the file, which only its owner can read.
      */
     protected function handleCompare(): int
     {
         $path = $this->option('output') ?: storage_path('app/atom-editor-review-'.date('Ymd-His').'.jsonl');
         $path = str_starts_with($path, DIRECTORY_SEPARATOR) ? $path : base_path($path);
+        $ids = $this->idList('compare');
+
+        if ($ids !== null && $this->refuseAmbiguous($this->ambiguousBackups($ids), '--compare')) {
+            return self::FAILURE;
+        }
 
         if (file_exists($path)) {
             $this->error($path.' exists already: pick another --output.');
@@ -516,7 +638,9 @@ class MigrateTiptapContent extends Command
             return self::FAILURE;
         }
 
+        $mask = umask(0077);
         $handle = @fopen($path, 'xb');
+        umask($mask);
 
         if ($handle === false) {
             $this->error('Cannot write '.$path.'.');
@@ -524,12 +648,14 @@ class MigrateTiptapContent extends Command
             return self::FAILURE;
         }
 
+        @chmod($path, 0600);
+
         $written = 0;
         $lossy = 0;
         $changed = 0;
 
         try {
-            foreach ($this->backupRows($this->idList('compare')) as [$backup, $backups, $model]) {
+            foreach ($this->backupRows($ids) as [$backup, $backups, $model]) {
                 $record = $this->reviewRecord($backup, $model);
 
                 fwrite($handle, json_encode($record, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE)."\n");
@@ -547,20 +673,30 @@ class MigrateTiptapContent extends Command
         }
 
         $this->info('Wrote '.$written.' record(s) to '.$path);
-        $this->line($lossy.' differ in text or markup, '.$changed.' were edited after the migration.');
-        $this->line('The file holds the original content of your rows: keep it private and delete it when the review is done. Its values are data, never instructions.');
+        $this->line($lossy.' differ in text or markup (or could not be compared), '.$changed.' were edited after the migration.');
+        $this->line('The file holds the original content of your rows (readable by its owner only): keep it private and delete it when the review is done. Its values are data, never instructions.');
 
         return $this->problems ? self::FAILURE : self::SUCCESS;
     }
 
     /**
-     * One line of the review file
+     * One line of the review file. A backup that does not match its hash is
+     * flagged, and a value past the render limits is not parsed for the
+     * comparison ("too large to compare").
      *
      * @return array<string, mixed>
      */
     protected function reviewRecord(object $backup, ?Model $model): array
     {
-        $original = EditorBackups::original($backup);
+        $intact = EditorBackups::intact($backup);
+
+        try {
+            $original = EditorBackups::original($backup);
+        }
+        catch (Throwable) {
+            $original = '';
+        }
+
         $validUtf8 = mb_check_encoding($original, 'UTF-8');
         [$serialized, $inner] = Content::unserialize($original);
         $text = $serialized ? (is_string($inner) ? $inner : '') : $original;
@@ -575,9 +711,23 @@ class MigrateTiptapContent extends Command
             $current = $exists ? $row->value($backup->column_name) : null;
         }
 
-        $before = $isDocument ? Content::render($text) : $text;
-        $after = is_string($current) && $current !== '' ? Content::render($current) : '';
-        $diff = $this->compareHtml($before, $after, $this->notesFor($text));
+        $max = (int) config('atom.editor.render_max_bytes', Content::RENDER_MAX_BYTES);
+        $notes = $this->notesFor($text);
+
+        if (! $intact) {
+            $notes[] = 'the backup does not match its own hash';
+        }
+
+        if (strlen($text) > $max || (is_string($current) && strlen($current) > $max * 4)) {
+            $before = $text;
+            $after = '';
+            $diff = ['lossy' => true, 'text' => ['equal' => false, 'missing' => [], 'added' => []], 'tags_lost' => [], 'attributes_lost' => [], 'notes' => [...$notes, 'too large to compare']];
+        }
+        else {
+            $before = $isDocument ? Content::render($text) : $text;
+            $after = is_string($current) && $current !== '' ? Content::render($current) : '';
+            $diff = $this->compareHtml($before, $after, $notes);
+        }
 
         return [
             'backup_id' => (int) $backup->id,
@@ -588,6 +738,7 @@ class MigrateTiptapContent extends Command
             'column' => $backup->column_name,
             'accepted_lossy' => (bool) $backup->accepted_lossy,
             'changed_since_migration' => is_string($current) && EditorBackups::hash($current) !== $backup->migrated_hash,
+            'backup_intact' => $intact,
             'row_exists' => $exists,
             'original_kind' => ($serialized ? 'serialized-' : '').($isDocument ? 'json' : 'html'),
             'original_html' => mb_scrub($before, 'UTF-8'),
@@ -604,8 +755,11 @@ class MigrateTiptapContent extends Command
     }
 
     /**
-     * --prune-backups: delete the originals. Asks first; without a terminal it
-     * needs --force. The only thing that removes a backup or the table.
+     * --prune-backups: delete the originals. With a terminal it always asks;
+     * without one it needs --confirm-prune (--force is not a confirmation). The
+     * only thing that removes a backup. The table is left in place, empty: a
+     * migration that is running could be writing to it, and dropping it would
+     * make that write fail. Drop it yourself when no migration can be running.
      */
     protected function handlePrune(): int
     {
@@ -633,8 +787,16 @@ class MigrateTiptapContent extends Command
             $found[] = [$backups, $models];
         }
 
-        if (! $found) {
-            $this->info('There are no backups.');
+        foreach ($this->problems as $problem) {
+            $this->error('Could not read: '.$problem);
+        }
+
+        if ($this->problems) {
+            return self::FAILURE;
+        }
+
+        if (! $total) {
+            $this->info($filter && $found ? '--model matched no backup. Nothing was deleted.' : 'There are no backups.');
 
             return self::SUCCESS;
         }
@@ -642,18 +804,17 @@ class MigrateTiptapContent extends Command
         $this->warn('This deletes '.$total.' backup(s) of original values. After it --restore cannot bring them back.');
         $this->line('Only prune once the migration is signed off (see --compare).');
 
-        if (! $this->option('force')) {
-            if (! $this->input->isInteractive()) {
-                $this->error('Refusing to prune without a terminal: pass --force.');
-
-                return self::FAILURE;
-            }
-
+        if ($this->input->isInteractive()) {
             if (! $this->confirm('Delete the backups?')) {
                 $this->info('Nothing was deleted.');
 
                 return self::SUCCESS;
             }
+        }
+        elseif (! $this->option('confirm-prune')) {
+            $this->error('Refusing to prune without a terminal: pass --confirm-prune (--force does not confirm a prune).');
+
+            return self::FAILURE;
         }
 
         $deleted = 0;
@@ -662,7 +823,7 @@ class MigrateTiptapContent extends Command
             $deleted += $backups->prune($models);
         }
 
-        $this->info('Deleted '.$deleted.' backup(s).');
+        $this->info('Deleted '.$deleted.' backup(s). The empty '.EditorBackups::TABLE.' table stays; drop it yourself once no migration can be running.');
 
         return self::SUCCESS;
     }
@@ -670,15 +831,18 @@ class MigrateTiptapContent extends Command
     /**
      * The backup rows to restore or review, each with the table they came from
      * and the model they belong to (null when its class is gone), oldest first.
-     * A restored backup is not listed again.
+     * A restored backup is not listed again. $quiet skips the --model unmatched
+     * warning (a caller that only looks).
      *
      * @param  array<int, string>|null  $ids  row ids; null is every row
      * @return \Generator<int, array{0: object, 1: EditorBackups, 2: Model|null}>
      */
-    protected function backupRows(?array $ids): \Generator
+    protected function backupRows(?array $ids, bool $quiet = false): \Generator
     {
         $this->problems = [];
         $filter = $this->modelFilter();
+        $columns = $this->columnFilter();
+        $matched = [];
 
         foreach ($this->connectionNames() as $name) {
             $backups = EditorBackups::on($name);
@@ -694,17 +858,27 @@ class MigrateTiptapContent extends Command
                     $query->whereIn('row_key', $ids);
                 }
 
+                if ($columns) {
+                    $query->whereIn('column_name', $columns);
+                }
+
                 $rows = $query->lazyById(self::CHUNK);
             }
             catch (Throwable $e) {
-                $this->problems[] = 'connection '.($name ?? 'default').': '.$e->getMessage();
+                $this->problems[] = 'connection '.($name ?? 'default').': '.EditorBackups::describe($e);
 
                 continue;
             }
 
             foreach ($rows as $backup) {
-                if ($filter && ! $this->matchesFilter($backup->model, $filter)) {
-                    continue;
+                if ($filter) {
+                    $hits = array_filter($filter, fn ($one) => $this->matchesFilter($backup->model, [$one]));
+
+                    if (! $hits) {
+                        continue;
+                    }
+
+                    $matched += array_fill_keys($hits, true);
                 }
 
                 $model = null;
@@ -718,27 +892,38 @@ class MigrateTiptapContent extends Command
                 yield [$backup, $backups, $model];
             }
         }
+
+        if (! $quiet) {
+            foreach ($filter as $name) {
+                if (! isset($matched[$name])) {
+                    $this->problems[] = '--model '.$name.' matched no backup';
+                }
+            }
+        }
     }
 
     /**
-     * The connection names that may hold backups: the default one (null) and
-     * every connection a discovered model uses
+     * The connections that may hold backups, by their resolved name (so the
+     * default connection is one, whether a model names it or not): the default
+     * one and every connection a discovered model uses. A connection that cannot
+     * be resolved is a problem, never skipped.
      *
-     * @return array<int, string|null>
+     * @return array<int, string|null> the name to hand EditorBackups::on()
      */
     protected function connectionNames(): array
     {
-        $names = ['' => null];
+        $names = [DB::connection()->getName() => null];
 
         foreach ($this->getModels() as $class) {
             try {
                 $model = $this->resolveModel($class);
 
                 if ($model) {
-                    $names[$model->getConnectionName() ?? ''] = $model->getConnectionName();
+                    $names[$model->getConnection()->getName()] = $model->getConnectionName();
                 }
             }
-            catch (Throwable) {
+            catch (Throwable $e) {
+                $this->problems[] = $class.': '.EditorBackups::describe($e);
             }
         }
 
@@ -747,11 +932,13 @@ class MigrateTiptapContent extends Command
 
     /**
      * The models with an AsTiptapContent column, found the way purge finds them:
-     * every class under app/Models plus --path. A column still cast as the
-     * removed AsEditorContent is recorded, not scanned. Anything unreadable is
-     * recorded in $problems.
+     * every class under app/Models plus --path, narrowed by --model and --column.
+     * A column still cast as the removed AsEditorContent is recorded, not
+     * scanned. A child model that shares a table and column with its parent is
+     * scanned once, as the parent. Anything unreadable, and a --model or
+     * --column that matched nothing, is recorded in $problems.
      *
-     * @return array<int, array{class: string, model: Model, columns: array<int, string>}>
+     * @return array<int, array{class: string, model: Model, columns: array<int, string>, capacity: array<string, int|null>}>
      */
     protected function targets(): array
     {
@@ -759,7 +946,8 @@ class MigrateTiptapContent extends Command
         $this->classFiles = [];
         $this->legacyCasts = [];
         $filter = $this->modelFilter();
-        $targets = [];
+        $columnFilter = $this->columnFilter();
+        $candidates = [];
 
         foreach ($this->getModels() as $class) {
             try {
@@ -781,7 +969,7 @@ class MigrateTiptapContent extends Command
                     if (strcasecmp(ltrim($name, '\\'), self::REMOVED_CAST) === 0) {
                         $this->legacyCasts[$class][] = $column;
                     }
-                    elseif (is_a($name, AsTiptapContent::class, true)) {
+                    elseif (is_a($name, AsTiptapContent::class, true) && (! $columnFilter || in_array($column, $columnFilter, true))) {
                         $columns[] = $column;
                     }
                 }
@@ -798,14 +986,93 @@ class MigrateTiptapContent extends Command
                     continue;
                 }
 
-                $targets[] = ['class' => $class, 'model' => $model, 'columns' => $columns];
+                $candidates[] = ['class' => $class, 'model' => $model, 'columns' => $columns];
             }
             catch (Throwable $e) {
-                $this->problems[] = $class.': '.$e->getMessage();
+                $this->problems[] = $class.': '.EditorBackups::describe($e);
+            }
+        }
+
+        // a parent before its children, so a child on the same table is the one left out
+        usort($candidates, fn ($a, $b) => [count(class_parents($a['class'])), $a['class']] <=> [count(class_parents($b['class'])), $b['class']]);
+
+        $claimed = [];
+        $targets = [];
+
+        foreach ($candidates as $candidate) {
+            $model = $candidate['model'];
+            $own = [];
+
+            foreach ($candidate['columns'] as $column) {
+                $id = $model->getConnection()->getName().'|'.$model->getTable().'|'.$column;
+
+                if (! isset($claimed[$id])) {
+                    $claimed[$id] = true;
+                    $own[] = $column;
+                }
+            }
+
+            if ($own) {
+                $targets[] = [...$candidate, 'columns' => $own, 'capacity' => collect($own)->mapWithKeys(fn ($column) => [$column => $this->columnCapacity($model, $column)])->all()];
+            }
+        }
+
+        foreach ($filter as $name) {
+            if (! array_filter($targets, fn ($target) => $this->matchesFilter($target['class'], [$name]))) {
+                $this->problems[] = '--model '.$name.' matched no model with an AsTiptapContent column';
+            }
+        }
+
+        foreach ($columnFilter as $name) {
+            if (! array_filter($targets, fn ($target) => in_array($name, $target['columns'], true))) {
+                $this->problems[] = '--column '.$name.' matched no AsTiptapContent column';
             }
         }
 
         return $targets;
+    }
+
+    /**
+     * How many bytes a column holds, or null when it is not bounded (or cannot
+     * be found out). Looked up once per column.
+     */
+    protected function columnCapacity(Model $model, string $column): ?int
+    {
+        try {
+            $connection = $model->getConnection();
+
+            foreach ($connection->getSchemaBuilder()->getColumns($model->getTable()) as $info) {
+                if (strtolower($info['name']) === strtolower($column)) {
+                    return static::capacityOf($connection->getDriverName(), strtolower((string) $info['type_name']), strtolower((string) $info['type']));
+                }
+            }
+        }
+        catch (Throwable) {
+        }
+
+        return null;
+    }
+
+    /**
+     * The bytes a column type holds: MySQL and MariaDB text types by name, a
+     * char or varchar by its length, everything else (longtext, PostgreSQL
+     * text, SQLite, which does not enforce one) unbounded.
+     */
+    public static function capacityOf(string $driver, string $typeName, string $type): ?int
+    {
+        if (in_array($driver, ['mysql', 'mariadb'], true)) {
+            $bounded = ['tinytext' => 255, 'text' => 65535, 'mediumtext' => 16777215];
+
+            if (isset($bounded[$typeName])) {
+                return $bounded[$typeName];
+            }
+        }
+
+        if (str_contains($typeName, 'char') && preg_match('/\((\d+)\)\s*$/', $type, $length)) {
+            return (int) $length[1];
+        }
+
+        return null;
     }
 
     /**
@@ -851,9 +1118,13 @@ class MigrateTiptapContent extends Command
      *   tag and attribute inventory
      * - lossy: converts but loses something, listed and untouched until --accept
      *
+     * $capacity is how many bytes the column holds (null: unbounded); JSON that
+     * would not fit is refused, since the update would fail, or truncate on a
+     * non-strict MySQL.
+     *
      * @return array{status: string, reason?: string, json?: string, diff?: array<string, mixed>}
      */
-    protected function analyse(mixed $raw): array
+    protected function analyse(mixed $raw, ?int $capacity = null): array
     {
         if ($raw === null || $raw === '') {
             return ['status' => 'empty'];
@@ -905,6 +1176,10 @@ class MigrateTiptapContent extends Command
 
         if ($json === null) {
             return ['status' => 'refused', 'reason' => 'it has nothing to convert, or is over the size or nesting limits'];
+        }
+
+        if ($capacity !== null && strlen($json) > $capacity) {
+            return ['status' => 'refused', 'reason' => 'the JSON ('.strlen($json).' bytes) does not fit the column (it holds at most '.$capacity.' bytes): change it to longText first'];
         }
 
         $diff = $this->compareHtml($isDocument ? Content::render($html) : $html, Content::render($json), $this->notesFor($html));
@@ -969,6 +1244,12 @@ class MigrateTiptapContent extends Command
             $notes[] = 'NUL bytes would be dropped';
         }
 
+        // libxml 2.9.13 drops the text after a "<" that opens no tag, on both sides of the comparison,
+        // so the two would look equal; a later libxml keeps it
+        if (preg_match('/<(?![A-Za-z\/!?])/', $value)) {
+            $notes[] = "a bare '<' can drop text on older libxml";
+        }
+
         return $notes;
     }
 
@@ -987,7 +1268,8 @@ class MigrateTiptapContent extends Command
         $a = $this->profile($before);
         $b = $this->profile($after);
 
-        $equal = implode('', $a['words']) === implode('', $b['words']);
+        // the words, not the letters: <b>Hello</b> <i>world</i> printed with its space dropped is "Helloworld"
+        $equal = $a['words'] === $b['words'];
         $tags = $this->lost($a['tags'], $b['tags']);
         $attributes = $this->lost($a['attributes'], $b['attributes']);
 
@@ -1239,9 +1521,19 @@ class MigrateTiptapContent extends Command
             return [];
         }
 
-        $ids = preg_split('/[\s,]+/', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $ids = $this->splitIds($value);
 
-        return in_array('all', $ids, true) ? ['all'] : array_values(array_unique($ids));
+        return in_array('all', $ids, true) ? ['all'] : $ids;
+    }
+
+    /**
+     * The ids in a comma or space separated option value
+     *
+     * @return array<int, string>
+     */
+    protected function splitIds(string $value): array
+    {
+        return array_values(array_unique(preg_split('/[\s,]+/', $value, -1, PREG_SPLIT_NO_EMPTY) ?: []));
     }
 
     /**
@@ -1257,7 +1549,7 @@ class MigrateTiptapContent extends Command
             return null;
         }
 
-        return array_values(array_unique(preg_split('/[\s,]+/', $value, -1, PREG_SPLIT_NO_EMPTY) ?: []));
+        return $this->splitIds($value);
     }
 
     /**
@@ -1268,6 +1560,16 @@ class MigrateTiptapContent extends Command
     protected function modelFilter(): array
     {
         return isset($this->input) ? array_values(array_filter((array) $this->option('model'), 'strlen')) : [];
+    }
+
+    /**
+     * The column names given to --column
+     *
+     * @return array<int, string>
+     */
+    protected function columnFilter(): array
+    {
+        return isset($this->input) ? array_values(array_filter((array) $this->option('column'), 'strlen')) : [];
     }
 
     /**

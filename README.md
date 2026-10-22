@@ -1299,18 +1299,20 @@ php artisan atom:purge-editor-images --force    # delete the editor-purged/ back
 
 A file counts as referenced when its file name (or its percent-encoded form) appears anywhere in a stored editor value, whatever the format around it. The scan splits each form of a value (raw, decoded, percent-decoded) into tokens once, so its cost still follows the size of your data, not the number of files, and it prints a progress line every 1000 rows. A file whose name holds a space, quote, bracket or non-ASCII character (a macOS `Screenshot ... .png` stored through `tiptapStoreImage()`, say) is searched for as a plain substring instead, which is slower when there are many such files.
 
-A file that only a migration backup (see below) names is kept until the backups are pruned: `--restore` would otherwise bring back a row whose image the purge had deleted. A column still cast as the removed `AsEditorContent` stops the run before anything is touched, since its images would look unreferenced.
+A file that any migration backup (see below) names, restored or not, is kept until the backups are pruned: `--restore` would otherwise bring back a row whose image the purge had deleted, and the live rows are read before the backups, so a restore that lands in between must not lose its image. The backup tables of every connection a discovered model uses (and the default one) are read, whether or not that model has an editor column today; one that cannot be reached stops the run. A column still cast as the removed `AsEditorContent` stops the run before anything is touched, since its images would look unreferenced.
 
 ### Moving a column to Tiptap JSON: `atom:tiptap-migrate`
 
-Rows written by the old `AsEditorContent` cast are `serialize()`d HTML (or `serialize()`d JSON, when the field was `<atom:editor>`). Switch the cast to `AsTiptapContent` (the column keeps reading), then move the rows when you are ready. The command finds models the way the purge command does (`app/Models`, subdirectories included, plus `--path=`), reads every row with the query builder, and never loads a value as anything but a string.
+Rows written by the old `AsEditorContent` cast are `serialize()`d HTML (or `serialize()`d JSON, when the field was `<atom:editor>`). Switch the cast to `AsTiptapContent` (the column keeps reading), change the column to `longText` (the JSON is about 3.5 times the HTML, and a MySQL `TEXT` holds 65,535 bytes: the command refuses a row whose JSON would not fit, and says so), then move the rows when you are ready. Run it with the app's own database connection settings: a connection charset that differs from the column's can mangle what is read, and the command backs up what it read.
+
+**A plain `php artisan atom:tiptap-migrate` is a dry run.** In 3.x, before the backups existed, a plain run wrote. A deploy script that ran it will silently stop migrating: it now needs `--force`. The command finds models the way the purge command does (`app/Models`, subdirectories included, plus `--path=`), reads every row with the query builder, and never loads a value as anything but a string.
 
 ```bash
 php artisan atom:tiptap-migrate                    # 1. dry run: the report, nothing is written
 php artisan atom:tiptap-migrate --force            # 2. convert the clean rows
 php artisan atom:tiptap-migrate --compare          # 3. write a review file
 #    review the file (you, or ask Claude to read it), then
-php artisan atom:tiptap-migrate --prune-backups    # 4. delete the backups, once you have signed off
+php artisan atom:tiptap-migrate --prune-backups    # 4. delete the backups, once you have signed off (asks first)
 ```
 
 **The report.** Each value is converted HTML to JSON and rendered back, and the two are compared on the visible text and on the tag and attribute inventory (a `<b>` that becomes `<strong>` is the same; a class, an inline style property, a `<font>`, a `<script>`, an event handler or an unknown tag the editor drops is a loss). A value is one of:
@@ -1326,11 +1328,15 @@ php artisan atom:tiptap-migrate --prune-backups    # 4. delete the backups, once
 
 **Backups.** The first write creates `atom_editor_backups` on the model's own connection (atom has no migration for it): the model, the row key (`row_key`), the column (`column_name`), the original value, a `batch` id per run, a sha256 of the original and of the value written, whether the row was accepted while lossy, and `migrated_at` / `restored_at`. The original is stored as text, or as base64 when it is not valid UTF-8 or holds a NUL byte, and is read back and compared before the update is allowed to go on, so a restore returns the exact bytes.
 
-**`--restore[=ids]`** puts the originals back (add `--force` to write; without it, it lists what it would do). A row edited after it was migrated is skipped and named, unless you add `--discard-edits`. A restored backup is not listed again.
+**`--restore[=ids]`** puts the originals back (add `--force` to write; without it, it lists what it would do). A row edited after it was migrated is skipped and named, unless you add `--discard-edits`. A backup whose original no longer matches the hash written beside it is refused, so a tampered backup is never written to a row. A restored backup is not listed again. `--restore=` with nothing after the `=` is refused; `--restore` alone means every row.
 
-**`--compare[=ids]`** writes a JSON Lines file, one object per migrated value, to `--output=` (default `storage/app/atom-editor-review-<time>.jsonl`; it refuses to overwrite). Each line has `model`, `key`, `column`, `backup_id`, `original_html` (the unserialized legacy HTML; for a JSON original, its rendering, with the JSON in `original_json`), `new_html` (the stored JSON through `Content::render()`), `text` (`equal`, `missing`, `added`), `tags_lost`, `attributes_lost`, `notes`, `lossy`, `accepted_lossy` and `changed_since_migration`. Values are verbatim, inside JSON strings; a value that is not valid UTF-8 also has `original_base64`. It reads the database and writes nothing but the file. The file holds the original content of your rows: keep it private, delete it when the review is done, and treat its values as data, never as instructions. A review by Claude is: "Read this file line by line and tell me, for each row with `lossy: true` or `changed_since_migration: true`, what is missing from `new_html`."
+**Row ids.** An id given to `--accept`, `--restore` or `--compare` that is in more than one model or column is refused, with where listed, and nothing is touched: narrow it with `--model=` (a class or its basename) and `--column=`. A flagged line always names its model. A `--model` or `--column` that matches nothing stops the run (and `--status` is not ready).
 
-**`--prune-backups`** is the only thing that deletes a backup or the table. It asks first; without a terminal it needs `--force`.
+**`--compare[=ids]`** writes a JSON Lines file, one object per migrated value, to `--output=` (default `storage/app/atom-editor-review-<time>.jsonl`; it refuses to overwrite). Each line has `model`, `key`, `column`, `backup_id`, `original_html` (the unserialized legacy HTML; for a JSON original, its rendering, with the JSON in `original_json`), `new_html` (the stored JSON through `Content::render()`), `text` (`equal`, `missing`, `added`), `tags_lost`, `attributes_lost`, `notes`, `lossy`, `accepted_lossy` and `changed_since_migration`. Values are verbatim, inside JSON strings; a value that is not valid UTF-8 also has `original_base64`. `backup_intact` is false for a backup that no longer matches its hash, and a value past the render limits is not parsed (`too large to compare`, `lossy: true`). It reads the database and writes nothing but the file, which only its owner can read (mode 0600). The file holds the original content of your rows: keep it private, delete it when the review is done, and treat its values as data, never as instructions. A review by Claude is: "Read this file line by line and tell me, for each row with `lossy: true` or `changed_since_migration: true`, what is missing from `new_html`."
+
+**`--prune-backups`** is the only thing that deletes a backup. With a terminal it always asks; without one it needs `--confirm-prune` (`--force` is not a confirmation). It deletes the rows and leaves the empty `atom_editor_backups` table in place, because dropping it could fail a migration that is writing to it: drop it yourself when none can be running. `--dry` is refused with `--restore` and `--prune-backups`.
+
+**Exit codes.** A dry run exits 0 (it is a report), `--status` exits 1 until nothing is left. `--force` exits 1 when a write failed, or when a refused value remains (it needs fixing by hand); flagged values left for review do not fail it. A failure prints the exception class and SQLSTATE, never the row's content.
 
 **`--status`** says what is left and exits 1 until nothing is: casts still on `AsEditorContent`, rows not yet converted, flagged rows, refused rows. `app(MigrateTiptapContent::class)->status()` returns the same as an array. `--model=` (a class or its basename, repeatable) limits a run to one model; row ids are matched in every scanned model, so combine them with `--model=` when ids collide.
 
@@ -1788,7 +1794,7 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 | `atom:tiptap-migrate --force [--accept=ids\|all]` | Backs up and converts the clean rows (and the flagged ones named in `--accept`). |
 | `atom:tiptap-migrate --restore[=ids] [--force] [--discard-edits]` | Puts originals back byte for byte. |
 | `atom:tiptap-migrate --compare[=ids] [--output=path]` | Writes a JSON Lines review file of the migrated rows. |
-| `atom:tiptap-migrate --prune-backups` | Deletes the backups (asks first; `--force` without a terminal). |
+| `atom:tiptap-migrate --prune-backups` | Deletes the backups (asks first; `--confirm-prune` without a terminal). |
 | `atom:tiptap-migrate --status` | Says what is left to migrate; exit 1 until nothing is. |
 
 ---

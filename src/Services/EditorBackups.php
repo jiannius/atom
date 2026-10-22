@@ -7,6 +7,7 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 /**
  * The backups atom:tiptap-migrate writes before it changes a stored value: one
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Schema;
  * connection (atom has no package migration). The original is kept byte for
  * byte: as text when it is valid UTF-8 without a NUL, base64 otherwise, and a
  * backup is read back and compared before the caller is allowed to go on.
- * Nothing else drops the table or its rows but prune().
+ * Nothing but prune() deletes a backup; the table is never dropped.
  */
 class EditorBackups
 {
@@ -74,14 +75,21 @@ class EditorBackups
     }
 
     /**
-     * Keep an original value. The row is read back and compared byte for byte,
-     * and a backup that does not hold the value throws: the caller must not
-     * write over what it could not keep.
+     * Keep an original value. The row is read back and compared byte for byte
+     * (the key, model and column too: a non-strict MySQL truncates a string
+     * that is too long without an error), and a backup that does not hold the
+     * value throws: the caller must not write over what it could not keep.
      *
      * @return int the id of the backup
      */
     public function store(string $batch, string $model, string $key, string $column, string $original, string $migrated, bool $acceptedLossy): int
     {
+        foreach (['row key' => $key, 'model' => $model, 'column' => $column] as $what => $value) {
+            if (! mb_check_encoding($value, 'UTF-8') || mb_strlen($value) > 191 || str_contains($value, "\0")) {
+                throw new EditorBackupException('the '.$what.' is not valid UTF-8 or is longer than 191 characters, so it cannot be backed up');
+            }
+        }
+
         [$stored, $encoding] = static::encode($original);
 
         $id = (int) $this->connection()->table(static::TABLE)->insertGetId([
@@ -97,10 +105,14 @@ class EditorBackups
             'migrated_at' => now()->toDateTimeString(),
         ]);
 
-        $back = $this->connection()->table(static::TABLE)->where('id', $id)->first(['original', 'encoding']);
+        $back = $this->connection()->table(static::TABLE)->where('id', $id)->first(['original', 'encoding', 'row_key', 'model', 'column_name']);
 
         if (! $back || ! is_string($back->original) || static::decode($back->original, $back->encoding) !== $original) {
-            throw new \RuntimeException('the backup could not hold the original value byte for byte');
+            throw new EditorBackupException('the backup could not hold the original value byte for byte');
+        }
+
+        if ($back->row_key !== $key || $back->model !== $model || $back->column_name !== $column) {
+            throw new EditorBackupException('the backup could not hold the row key, model and column as they are');
         }
 
         return $id;
@@ -123,8 +135,9 @@ class EditorBackups
     }
 
     /**
-     * Delete the backups (of these models only, when given) and drop the table
-     * when nothing is left. The only call that removes a backup.
+     * Delete the backups (of these models only, when given). The only call that
+     * removes a backup. The table stays, even empty: dropping it could race a
+     * migration that is writing to it, and an empty table costs nothing.
      *
      * @param  array<int, string>|null  $models
      * @return int the number of backups deleted
@@ -141,13 +154,7 @@ class EditorBackups
             $query->whereIn('model', $models);
         }
 
-        $deleted = $query->delete();
-
-        if ($this->connection()->table(static::TABLE)->doesntExist()) {
-            Schema::connection($this->connection)->drop(static::TABLE);
-        }
-
-        return $deleted;
+        return $query->delete();
     }
 
     /**
@@ -168,6 +175,43 @@ class EditorBackups
         return mb_check_encoding($value, 'UTF-8') && ! str_contains($value, "\0")
             ? [$value, 'raw']
             : [base64_encode($value), 'base64'];
+    }
+
+    /**
+     * Whether a backup still holds the value it was made from: its original
+     * must hash to the hash written beside it
+     */
+    public static function intact(object $backup): bool
+    {
+        try {
+            return hash_equals((string) $backup->original_hash, static::hash(static::original($backup)));
+        }
+        catch (Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Say what failed without saying what the row held: a database error is its
+     * class and SQLSTATE (its message carries the SQL and the bound values), one
+     * of atom's own is its message (a fixed string), anything else its class.
+     * Capped, and safe to print or log.
+     */
+    public static function describe(Throwable $e): string
+    {
+        $class = class_basename($e);
+
+        if ($e instanceof \PDOException || $e instanceof \Illuminate\Database\QueryException) {
+            $info = $e->errorInfo ?? [];
+
+            return $class.' (SQLSTATE '.($info[0] ?? $e->getCode()).(isset($info[1]) ? ', driver code '.$info[1] : '').')';
+        }
+
+        if ($e instanceof EditorBackupException || $e instanceof \UnexpectedValueException) {
+            return mb_substr(mb_scrub($e->getMessage(), 'UTF-8'), 0, 300);
+        }
+
+        return $class;
     }
 
     /**
