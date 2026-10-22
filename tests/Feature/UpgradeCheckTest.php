@@ -414,7 +414,7 @@ describe('atom:upgrade-check: the CLAUDE.md atom section', function () {
 
     it('is in sync when the host holds what the installed version renders, between other sections', function () {
         $dir = ($this->host)();
-        file_put_contents($dir.'/CLAUDE.md', "<laravel-boost-guidelines>\n=== foundation rules ===\n\nOther rules.\n\n".upgradeBlock()."\n=== acme/other-package/core rules ===\n\nPlaybook.\n</laravel-boost-guidelines>\n");
+        file_put_contents($dir.'/CLAUDE.md', "<laravel-boost-guidelines>\n=== foundation rules ===\n\nOther rules.\n\n".upgradeBlock()."\n=== acme/other-package/core rules ===\n\nOther package rules.\n</laravel-boost-guidelines>\n");
 
         expect(upgradeGuidelineState($dir))->toBe(['state' => 'in_sync', 'files' => ['CLAUDE.md' => ['state' => 'in_sync']]]);
     });
