@@ -32,6 +32,13 @@ trait DiscoversModels
     protected array $classFiles = [];
 
     /**
+     * Extra model directories for a caller that has no --path option to read
+     *
+     * @var array<int, string>
+     */
+    protected array $modelPaths = [];
+
+    /**
      * Instantiate a model class. Returns null for something that is
      * legitimately not a model (trait, interface, enum, abstract class) and
      * throws for a class that cannot be loaded, since that could be a model we
@@ -67,7 +74,7 @@ trait DiscoversModels
     {
         $paths = [app_path('Models')];
 
-        foreach (isset($this->input) ? (array) $this->option('path') : [] as $path) {
+        foreach ([...$this->modelPaths, ...(isset($this->input) ? (array) $this->option('path') : [])] as $path) {
             if (trim((string) $path) === '') {
                 $this->problems[] = '--path: empty (it would scan the whole project)';
                 continue;
