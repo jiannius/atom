@@ -784,14 +784,26 @@ describe('atom:purge-editor-images and the migration backups', function () {
         Storage::disk('tiptap_disk')->assertMissing('tenant/editor/orphan.jpg');
     });
 
-    it('aborts when a backup connection cannot be reached, rather than skip it', function () {
+    it('warns about and skips a model with no editor column on a connection this config does not define', function () {
         purgeEditorFiles('tiptap_disk', 'tenant/editor', 'orphan.jpg');
         DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
-        // the model names a connection that is not configured: its backups cannot be looked at
-        require_once __DIR__.'/../Fixtures/PurgeNoCast/OtherOnly/PurgeOtherConnectionNote.php';
-        config(['database.connections.other' => null]);
+        require_once __DIR__.'/../Fixtures/PurgeNoCast/ReportingNoColumn/PurgeReportingNote.php';
 
-        $this->artisan('atom:purge-editor-images', ['--path' => [realpath(__DIR__.'/../Fixtures/PurgeNoCast/OtherOnly')]])->assertFailed();
+        $this->artisan('atom:purge-editor-images', ['--path' => [realpath(__DIR__.'/../Fixtures/PurgeNoCast/ReportingNoColumn')]])
+            ->expectsOutputToContain('Database connection [reporting] not configured')
+            ->assertSuccessful();
+
+        Storage::disk('tiptap_disk')->assertMissing('tenant/editor/orphan.jpg');
+    });
+
+    it('still aborts when a model WITH an editor column is on a connection this config does not define', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'orphan.jpg');
+        DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
+        require_once __DIR__.'/../Fixtures/PurgeNoCast/ReportingWithColumn/PurgeReportingArticle.php';
+
+        $this->artisan('atom:purge-editor-images', ['--path' => [realpath(__DIR__.'/../Fixtures/PurgeNoCast/ReportingWithColumn')]])
+            ->expectsOutputToContain('PurgeReportingArticle')
+            ->assertFailed();
 
         Storage::disk('tiptap_disk')->assertExists('tenant/editor/orphan.jpg');
     });

@@ -647,11 +647,25 @@ class PurgeEditorImages extends Command
                     continue;
                 }
 
-                // a backup keeps protecting its images whatever the model casts today, so every
-                // discovered model's connection is looked at, by its resolved name (the default is one)
-                $connections[$model->getConnection()->getName()] = $model->getConnectionName();
-
                 $columns = $this->getEditorColumns($model);
+
+                // a backup keeps protecting its images whatever the model casts today, so every
+                // discovered model's connection is looked at, by its resolved name (the default is one).
+                // A connection this config does not define cannot hold backups this config wrote, so a
+                // model without an editor column on one is warned about and skipped; one with a column
+                // is still a problem, since its rows cannot be read.
+                try {
+                    $connections[$model->getConnection()->getName()] = $model->getConnectionName();
+                }
+                catch (\InvalidArgumentException $e) {
+                    if (! empty($columns)) {
+                        throw $e;
+                    }
+
+                    $this->warn($class.': '.EditorBackups::describe($e).' (no editor column, so it is skipped)');
+
+                    continue;
+                }
 
                 if (empty($columns)) {
                     continue;

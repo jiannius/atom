@@ -32,7 +32,7 @@ class MigrateGadget
 const MIGRATE_OLD = '2020-01-01 00:00:00';
 
 beforeEach(function () {
-    foreach (['MigratePost', 'MigrateOtherPost', 'MigrateSecondPost', 'MigrateUuidPost', 'MigratePrefixedPost', 'MigrateScopedPost', 'MigrateChildPost', 'MigrateNamedConnectionPost'] as $file) {
+    foreach (['MigratePost', 'MigrateOtherPost', 'MigrateSecondPost', 'MigrateUuidPost', 'MigratePrefixedPost', 'MigrateScopedPost', 'MigrateChildPost', 'MigrateNamedConnectionPost', 'MigrateTwoColumnPost'] as $file) {
         require_once __DIR__.'/../Fixtures/MigrateApp/Models/'.$file.'.php';
     }
 
@@ -58,6 +58,12 @@ beforeEach(function () {
             $t->timestamps();
         });
     }
+
+    Schema::create('migrate_two_column_posts', function (Blueprint $t) {
+        $t->id();
+        $t->text('body')->nullable();
+        $t->text('summary')->nullable();
+    });
 
     Schema::create('migrate_uuid_posts', function (Blueprint $t) {
         $t->string('id')->primary();
@@ -239,7 +245,7 @@ describe('atom:tiptap-migrate --force', function () {
         $bodies = DB::table('migrate_posts')->pluck('body', 'id')->all();
         $backups = migrateBackupCount();
 
-        $this->artisan('atom:tiptap-migrate --force')->expectsOutputToContain('Migrated 0 value(s)')->assertFailed();
+        $this->artisan('atom:tiptap-migrate --force')->expectsOutputToContain('Nothing was migrated')->doesntExpectOutputToContain('The originals are in')->assertFailed();
 
         expect(DB::table('migrate_posts')->pluck('body', 'id')->all())->toBe($bodies);
         expect(migrateBackupCount())->toBe($backups)->toBe(3);
@@ -403,7 +409,7 @@ describe('atom:tiptap-migrate --restore', function () {
 
         $this->artisan('atom:tiptap-migrate --restore --force')
             ->expectsOutputToContain('edited since the migration')
-            ->assertSuccessful();
+            ->assertFailed();
 
         expect(migrateBody($id))->toBe('{"type":"doc","content":[]}');
 
@@ -431,7 +437,7 @@ describe('atom:tiptap-migrate --restore', function () {
         $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
         DB::table('migrate_posts')->delete();
 
-        $this->artisan('atom:tiptap-migrate --restore --force')->expectsOutputToContain('the row no longer exists')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --restore --force')->expectsOutputToContain('the row no longer exists')->assertFailed();
     });
 });
 
@@ -1266,5 +1272,134 @@ describe('atom:tiptap-migrate: what the review found', function () {
 
         expect(migrateBackupCount())->toBe(1);
         expect(DB::table(EditorBackups::TABLE)->value('model'))->toBe(\App\Models\MigratePost::class);
+    });
+});
+
+describe('atom:tiptap-migrate: the recheck', function () {
+    it('warns about and skips a model with no editor column on a connection this config does not define', function () {
+        require_once __DIR__.'/../Fixtures/MigrateReporting/NoColumn/MigrateReportingNote.php';
+        $path = realpath(__DIR__.'/../Fixtures/MigrateReporting/NoColumn');
+        [$id] = migrateInsert([serialize('<p>one</p>')]);
+
+        $this->artisan('atom:tiptap-migrate', ['--force' => true, '--path' => [$path]])->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate', ['--restore' => true, '--force' => true, '--path' => [$path]])
+            ->expectsOutputToContain('Database connection [reporting] not configured')
+            ->assertSuccessful();
+
+        expect(migrateBody($id))->toBe(serialize('<p>one</p>'));
+
+        $this->artisan('atom:tiptap-migrate', ['--force' => true, '--path' => [$path]])->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate', ['--compare' => true, '--output' => $review = sys_get_temp_dir().'/atom-review-'.uniqid().'.jsonl', '--path' => [$path]])->assertSuccessful();
+        unlink($review);
+        $this->artisan('atom:tiptap-migrate', ['--prune-backups' => true, '--confirm-prune' => true, '--no-interaction' => true, '--path' => [$path]])->assertSuccessful();
+
+        expect(migrateBackupCount())->toBe(0);
+    });
+
+    it('still fails closed for a model WITH an editor column on a connection this config does not define', function () {
+        require_once __DIR__.'/../Fixtures/MigrateReporting/WithColumn/MigrateReportingArticle.php';
+        $path = realpath(__DIR__.'/../Fixtures/MigrateReporting/WithColumn');
+        migrateInsert([serialize('<p>one</p>')]);
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate', ['--prune-backups' => true, '--confirm-prune' => true, '--no-interaction' => true, '--path' => [$path]])
+            ->expectsOutputToContain('Database connection [reporting] not configured')
+            ->assertFailed();
+        $this->artisan('atom:tiptap-migrate', ['--restore' => true, '--force' => true, '--path' => [$path]])->assertFailed();
+
+        expect(migrateBackupCount())->toBe(1);
+    });
+
+    it('prunes only the --column it is given', function () {
+        DB::table('migrate_two_column_posts')->insert(['body' => serialize('<p>body</p>'), 'summary' => serialize('<p>summary</p>')]);
+        $this->artisan('atom:tiptap-migrate --force')->assertSuccessful();
+        expect(migrateBackupCount())->toBe(2);
+
+        $this->artisan('atom:tiptap-migrate --prune-backups --model=MigrateTwoColumnPost --column=summary --confirm-prune --no-interaction')
+            ->expectsOutputToContain('This deletes 1 backup(s)')
+            ->expectsOutputToContain('Deleted 1 backup(s)')
+            ->assertSuccessful();
+
+        expect(DB::table(EditorBackups::TABLE)->pluck('column_name')->all())->toBe(['body']);
+
+        $this->artisan('atom:tiptap-migrate --prune-backups --column=nothing --confirm-prune --no-interaction')
+            ->expectsOutputToContain('matched no backup')
+            ->assertSuccessful();
+
+        expect(migrateBackupCount())->toBe(1);
+    });
+
+    it('knows what a key column holds, and only looks an id up in a column that could hold it', function () {
+        $command = new class extends MigrateTiptapContent
+        {
+            public function kind(Model $model): string
+            {
+                return $this->keyKind($model);
+            }
+
+            public function holds(Model $model, string $id): bool
+            {
+                return $this->keyHolds($model, $id);
+            }
+        };
+
+        $post = new \App\Models\MigratePost;
+        $uuid = new \App\Models\MigrateUuidPost;
+
+        expect($command->kind($post))->toBe('int')
+            ->and($command->kind($uuid))->toBe('string')
+            ->and($command->holds($post, '12'))->toBeTrue()
+            ->and($command->holds($post, 'abc'))->toBeFalse()
+            ->and($command->holds($post, '12abc'))->toBeFalse()
+            ->and($command->holds($uuid, 'anything'))->toBeTrue();
+    });
+
+    it('does not look a non-numeric id up in an integer key, and a lookup that fails is a problem, not a crash', function () {
+        $command = new class extends MigrateTiptapContent
+        {
+            public static array $asked = [];
+
+            protected function presentIds(Model $model, string $key, string $column, array $ids): iterable
+            {
+                static::$asked[] = [$model::class, $ids];
+
+                return [];
+            }
+        };
+        Artisan::registerCommand($command);
+        migrateInsert(['<p class="x">flagged</p>']);
+
+        $this->artisan('atom:tiptap-migrate --force --accept=not-a-number')->assertSuccessful();
+
+        // only the string-keyed model was asked, the integer-keyed ones were not
+        expect(array_unique(array_column($command::$asked, 0)))->toBe([\App\Models\MigrateUuidPost::class]);
+
+        $failing = new class extends MigrateTiptapContent
+        {
+            protected function presentIds(Model $model, string $key, string $column, array $ids): iterable
+            {
+                throw new \Illuminate\Database\QueryException('testing', 'select SECRETCONTENT', [], new \PDOException('SECRETCONTENT'));
+            }
+        };
+        Artisan::registerCommand($failing);
+        [$id] = migrateInsert(['<p class="y">flagged too</p>']);
+
+        $this->artisan("atom:tiptap-migrate --force --accept={$id}")
+            ->expectsOutputToContain('the ids could not be looked up (QueryException (SQLSTATE')
+            ->doesntExpectOutputToContain('SECRETCONTENT')
+            ->assertFailed();
+
+        expect(migrateIsDocument(migrateBody($id)))->toBeFalse();
+        expect(Schema::hasTable(EditorBackups::TABLE))->toBeFalse();
+    });
+
+    it('exits 1 when a restore skipped a value, with the model class gone', function () {
+        EditorBackups::on()->create();
+        EditorBackups::on()->store('batch', 'Gone\\Missing\\Model', '1', 'body', '<p>x</p>', '{}', false);
+
+        $this->artisan('atom:tiptap-migrate --restore --force')
+            ->expectsOutputToContain('the model class is not available')
+            ->expectsOutputToContain('1 value(s) were skipped')
+            ->assertFailed();
     });
 });

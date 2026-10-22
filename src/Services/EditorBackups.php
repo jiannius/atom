@@ -140,9 +140,10 @@ class EditorBackups
      * migration that is writing to it, and an empty table costs nothing.
      *
      * @param  array<int, string>|null  $models
+     * @param  array<int, string>|null  $columns
      * @return int the number of backups deleted
      */
-    public function prune(?array $models = null): int
+    public function prune(?array $models = null, ?array $columns = null): int
     {
         if (! $this->exists()) {
             return 0;
@@ -152,6 +153,10 @@ class EditorBackups
 
         if ($models !== null) {
             $query->whereIn('model', $models);
+        }
+
+        if ($columns) {
+            $query->whereIn('column_name', $columns);
         }
 
         return $query->delete();
@@ -194,7 +199,9 @@ class EditorBackups
     /**
      * Say what failed without saying what the row held: a database error is its
      * class and SQLSTATE (its message carries the SQL and the bound values), one
-     * of atom's own is its message (a fixed string), anything else its class.
+     * of atom's own is its message (a fixed string), a LogicException (an
+     * unconfigured connection, say) its message, which has no row in it, anything
+     * else its class.
      * Capped, and safe to print or log.
      */
     public static function describe(Throwable $e): string
@@ -207,7 +214,7 @@ class EditorBackups
             return $class.' (SQLSTATE '.($info[0] ?? $e->getCode()).(isset($info[1]) ? ', driver code '.$info[1] : '').')';
         }
 
-        if ($e instanceof EditorBackupException || $e instanceof \UnexpectedValueException) {
+        if ($e instanceof EditorBackupException || $e instanceof \UnexpectedValueException || $e instanceof \LogicException) {
             return mb_substr(mb_scrub($e->getMessage(), 'UTF-8'), 0, 300);
         }
 

@@ -251,8 +251,22 @@ class MigrateTiptapContent extends Command
 
         $accept = $this->acceptList();
 
-        if ($accept !== [] && $accept !== ['all'] && $this->refuseAmbiguous($this->ambiguousRows($targets, $accept), '--accept')) {
-            return self::FAILURE;
+        if ($accept !== [] && $accept !== ['all']) {
+            $ambiguous = $this->ambiguousRows($targets, $accept);
+
+            if ($this->problems) {
+                $this->error('Aborted, nothing was written. These could not be checked:');
+
+                foreach ($this->problems as $problem) {
+                    $this->line('  - '.$problem);
+                }
+
+                return self::FAILURE;
+            }
+
+            if ($this->refuseAmbiguous($ambiguous, '--accept')) {
+                return self::FAILURE;
+            }
         }
 
         $acceptSeen = [];
@@ -351,9 +365,12 @@ class MigrateTiptapContent extends Command
                 .($accept === [] ? '' : ', and the flagged ones named in --accept would be converted too').'.');
             $this->line('Flagged rows are left untouched until --accept=<ids> (or "all"). Run with --force to write.');
         }
-        else {
+        elseif ($totals['written']) {
             $this->info('Migrated '.$totals['written'].' value(s) to Tiptap JSON. The originals are in '.EditorBackups::TABLE.'.');
             $this->line('Next: atom:tiptap-migrate --compare, review the file, then --prune-backups.');
+        }
+        else {
+            $this->info('Nothing was migrated.');
         }
 
         if ($write && $totals['refused']) {
@@ -399,19 +416,76 @@ class MigrateTiptapContent extends Command
             $model = $target['model'];
             $key = $model->getKeyName();
 
-            foreach ($target['columns'] as $column) {
-                foreach (array_chunk($ids, 500) as $chunk) {
-                    $present = $model->getConnection()->table($model->getTable())
-                        ->whereIn($key, $chunk)->whereNotNull($column)->pluck($key);
+            // an id the key column cannot hold is not in it, and asking would be an error on PostgreSQL
+            $holdable = array_values(array_filter($ids, fn ($id) => $this->keyHolds($model, $id)));
 
-                    foreach ($present as $id) {
-                        $found[(string) $id][] = $target['class'].'.'.$column;
+            if (! $holdable) {
+                continue;
+            }
+
+            foreach ($target['columns'] as $column) {
+                try {
+                    foreach (array_chunk($holdable, 500) as $chunk) {
+                        foreach ($this->presentIds($model, $key, $column, $chunk) as $id) {
+                            $found[(string) $id][] = $target['class'].'.'.$column;
+                        }
                     }
+                }
+                catch (Throwable $e) {
+                    $this->problems[] = $target['class'].'.'.$column.': the ids could not be looked up ('.EditorBackups::describe($e).')';
                 }
             }
         }
 
         return array_filter($found, fn ($where) => count($where) > 1);
+    }
+
+    /**
+     * The ids, of a chunk, that have a value in a column
+     *
+     * @param  array<int, string>  $ids
+     * @return iterable<int, mixed>
+     */
+    protected function presentIds(Model $model, string $key, string $column, array $ids): iterable
+    {
+        return $model->getConnection()->table($model->getTable())->whereIn($key, $ids)->whereNotNull($column)->pluck($key);
+    }
+
+    /**
+     * What a model's key column holds: 'int', 'uuid' or 'string' (anything else).
+     * Looked up from the table's columns, the model's key type when they cannot be.
+     */
+    protected function keyKind(Model $model): string
+    {
+        try {
+            foreach ($model->getConnection()->getSchemaBuilder()->getColumns($model->getTable()) as $info) {
+                if (strtolower($info['name']) === strtolower($model->getKeyName())) {
+                    $type = strtolower((string) $info['type_name']);
+
+                    return match (true) {
+                        (bool) preg_match('/int|serial/', $type) => 'int',
+                        $type === 'uuid' => 'uuid',
+                        default => 'string',
+                    };
+                }
+            }
+        }
+        catch (Throwable) {
+        }
+
+        return $model->getKeyType() === 'int' ? 'int' : 'string';
+    }
+
+    /**
+     * Whether a model's key column could hold this id (so a lookup of it is not a type error)
+     */
+    protected function keyHolds(Model $model, string $id): bool
+    {
+        return match ($this->keyKind($model)) {
+            'int' => (bool) preg_match('/^-?\d{1,19}$/', $id),
+            'uuid' => (bool) preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $id),
+            default => true,
+        };
     }
 
     /**
@@ -503,7 +577,9 @@ class MigrateTiptapContent extends Command
     /**
      * --restore[=ids]: put original values back, byte for byte. A row edited
      * since it was migrated is skipped unless --discard-edits, and so is a backup
-     * that no longer matches its own hash.
+     * that no longer matches its own hash. With --force the exit code is 1 when a
+     * value was skipped (an edited row, a row that is gone, a model that is not
+     * there) or failed: it is still migrated.
      */
     protected function handleRestore(): int
     {
@@ -608,7 +684,11 @@ class MigrateTiptapContent extends Command
             $this->line('Run with --force to restore.');
         }
 
-        return $failed ? self::FAILURE : self::SUCCESS;
+        if ($write && $skipped) {
+            $this->error($skipped.' value(s) were skipped and still hold their migrated value: the exit code is 1 (--discard-edits overrides a row edited since).');
+        }
+
+        return $failed || ($write && $skipped) ? self::FAILURE : self::SUCCESS;
     }
 
     /**
@@ -705,14 +785,20 @@ class MigrateTiptapContent extends Command
         $current = null;
         $exists = false;
 
+        $notes = $this->notesFor($text);
+
         if ($model) {
-            $row = $model->getConnection()->table($model->getTable())->where($model->getKeyName(), $backup->row_key);
-            $exists = $row->exists();
-            $current = $exists ? $row->value($backup->column_name) : null;
+            try {
+                $row = $model->getConnection()->table($model->getTable())->where($model->getKeyName(), $backup->row_key);
+                $exists = $row->exists();
+                $current = $exists ? $row->value($backup->column_name) : null;
+            }
+            catch (Throwable $e) {
+                $notes[] = 'the row could not be read ('.EditorBackups::describe($e).')';
+            }
         }
 
         $max = (int) config('atom.editor.render_max_bytes', Content::RENDER_MAX_BYTES);
-        $notes = $this->notesFor($text);
 
         if (! $intact) {
             $notes[] = 'the backup does not match its own hash';
@@ -764,6 +850,7 @@ class MigrateTiptapContent extends Command
     protected function handlePrune(): int
     {
         $filter = $this->modelFilter();
+        $columns = $this->columnFilter();
         $found = [];
         $total = 0;
 
@@ -783,6 +870,10 @@ class MigrateTiptapContent extends Command
                 $query->whereIn('model', $models);
             }
 
+            if ($columns) {
+                $query->whereIn('column_name', $columns);
+            }
+
             $total += $query->count();
             $found[] = [$backups, $models];
         }
@@ -796,7 +887,7 @@ class MigrateTiptapContent extends Command
         }
 
         if (! $total) {
-            $this->info($filter && $found ? '--model matched no backup. Nothing was deleted.' : 'There are no backups.');
+            $this->info(($filter || $columns) && $found ? '--model and --column matched no backup. Nothing was deleted.' : 'There are no backups.');
 
             return self::SUCCESS;
         }
@@ -820,7 +911,7 @@ class MigrateTiptapContent extends Command
         $deleted = 0;
 
         foreach ($found as [$backups, $models]) {
-            $deleted += $backups->prune($models);
+            $deleted += $backups->prune($models, $columns);
         }
 
         $this->info('Deleted '.$deleted.' backup(s). The empty '.EditorBackups::TABLE.' table stays; drop it yourself once no migration can be running.');
@@ -915,6 +1006,8 @@ class MigrateTiptapContent extends Command
         $names = [DB::connection()->getName() => null];
 
         foreach ($this->getModels() as $class) {
+            $model = null;
+
             try {
                 $model = $this->resolveModel($class);
 
@@ -922,12 +1015,41 @@ class MigrateTiptapContent extends Command
                     $names[$model->getConnection()->getName()] = $model->getConnectionName();
                 }
             }
+            catch (\InvalidArgumentException $e) {
+                // a connection this config does not define cannot hold backups this config wrote: a model
+                // without an editor column on one is skipped with a warning, one with a column is a problem
+                if ($model && ! $this->hasEditorColumn($model)) {
+                    if (isset($this->output)) {
+                        $this->warn($class.': '.EditorBackups::describe($e).' (no editor column, so it is skipped)');
+                    }
+
+                    continue;
+                }
+
+                $this->problems[] = $class.': '.EditorBackups::describe($e);
+            }
             catch (Throwable $e) {
                 $this->problems[] = $class.': '.EditorBackups::describe($e);
             }
         }
 
         return array_values($names);
+    }
+
+    /**
+     * Whether a model casts any column as AsTiptapContent, or as the removed AsEditorContent
+     */
+    protected function hasEditorColumn(Model $model): bool
+    {
+        foreach ($model->getCasts() as $cast) {
+            $name = is_string($cast) ? Str::before($cast, ':') : '';
+
+            if ($name !== '' && (strcasecmp(ltrim($name, '\\'), self::REMOVED_CAST) === 0 || is_a($name, AsTiptapContent::class, true))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
