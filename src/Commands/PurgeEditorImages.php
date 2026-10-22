@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Jiannius\Atom\Casts\AsTiptapContent;
 use Jiannius\Atom\Commands\Concerns\DiscoversModels;
@@ -636,7 +637,7 @@ class PurgeEditorImages extends Command
     {
         $images = collect();
         $reader = new AsTiptapContent;
-        $connections = ['' => null];
+        $connections = [DB::connection()->getName() => null];
 
         foreach ($this->getModels() as $class) {
             try {
@@ -646,6 +647,10 @@ class PurgeEditorImages extends Command
                     continue;
                 }
 
+                // a backup keeps protecting its images whatever the model casts today, so every
+                // discovered model's connection is looked at, by its resolved name (the default is one)
+                $connections[$model->getConnection()->getName()] = $model->getConnectionName();
+
                 $columns = $this->getEditorColumns($model);
 
                 if (empty($columns)) {
@@ -653,7 +658,6 @@ class PurgeEditorImages extends Command
                 }
 
                 $this->scanned[$class] = $columns;
-                $connections[$model->getConnectionName() ?? ''] = $model->getConnectionName();
 
                 $read = 0;
 
@@ -706,11 +710,13 @@ class PurgeEditorImages extends Command
     /**
      * atom:tiptap-migrate keeps the original of every value it converts in
      * atom_editor_backups, and --restore puts it back: a file only a backup
-     * references is still wanted until the backups are pruned. A backup that
-     * cannot be read, or a backup table that cannot be queried, is a problem
-     * like an unreadable model, never "no images".
+     * references is still wanted until the backups are pruned. Every backup is
+     * read, restored or not: the live rows are read first, so a restore that
+     * lands in between would otherwise let an image its row needs be deleted.
+     * A backup that cannot be read, or a backup table that cannot be queried, is
+     * a problem like an unreadable model, never "no images".
      *
-     * @param  array<string, string|null>  $connections  the connections to look on, by name
+     * @param  array<string, string|null>  $connections  the connections to look on, by resolved name
      */
     protected function collectBackupImages(AsTiptapContent $reader, array $connections, Collection $images): void
     {
@@ -724,19 +730,19 @@ class PurgeEditorImages extends Command
                     continue;
                 }
 
-                foreach ($backups->pending()->lazyById(self::BACKUP_CHUNK) as $backup) {
+                foreach ($backups->connection()->table(EditorBackups::TABLE)->lazyById(self::BACKUP_CHUNK) as $backup) {
                     $this->scannedBackups++;
 
                     try {
                         $this->collectImages($reader, $holder, 'backup', EditorBackups::original($backup), $images);
                     }
                     catch (Throwable $e) {
-                        $this->problems[] = 'backup #'.$backup->id.' ('.$backup->model.'#'.$backup->row_key.' '.$backup->column_name.'): '.$e->getMessage();
+                        $this->problems[] = 'backup #'.$backup->id.' ('.$backup->model.'#'.$backup->row_key.' '.$backup->column_name.'): '.EditorBackups::describe($e);
                     }
                 }
             }
             catch (Throwable $e) {
-                $this->problems[] = 'editor backups on connection '.($name ?? 'default').': '.$e->getMessage();
+                $this->problems[] = 'editor backups on connection '.($name ?? 'default').': '.EditorBackups::describe($e);
             }
         }
     }

@@ -712,7 +712,7 @@ describe('atom:purge-editor-images and the migration backups', function () {
         Storage::disk('tiptap_disk')->assertMissing('tenant/editor/orphan.jpg');
 
         // once the backups are pruned nothing wants the poster any more
-        $this->artisan('atom:tiptap-migrate --prune-backups --force')->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate --prune-backups --confirm-prune --no-interaction')->assertSuccessful();
         $this->artisan('atom:purge-editor-images')->assertSuccessful();
 
         Storage::disk('tiptap_disk')->assertMissing('tenant/editor/poster-only-in-backup.jpg');
@@ -720,16 +720,17 @@ describe('atom:purge-editor-images and the migration backups', function () {
         Storage::disk('tiptap_disk')->assertExists('tenant/editor/in-json-row.jpg');
     });
 
-    it('does not let a restored backup keep an image alive', function () {
-        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'restored-away.jpg');
+    it('still reads a restored backup: the live rows are read first, so a restore that lands in between must not lose its image', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'restored-back.jpg', 'orphan.jpg');
         DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
         EditorBackups::on()->create();
-        $id = EditorBackups::on()->store('batch', \App\Models\PurgeTiptapArticle::class, '1', 'doc', purgeLegacyHtml('https://cdn.test/tenant/editor/restored-away.jpg'), purgeTiptapDoc(), false);
+        $id = EditorBackups::on()->store('batch', \App\Models\PurgeTiptapArticle::class, '1', 'doc', purgeLegacyHtml('https://cdn.test/tenant/editor/restored-back.jpg'), purgeTiptapDoc(), false);
         EditorBackups::on()->markRestored($id);
 
         $this->artisan('atom:purge-editor-images')->assertSuccessful();
 
-        Storage::disk('tiptap_disk')->assertMissing('tenant/editor/restored-away.jpg');
+        Storage::disk('tiptap_disk')->assertExists('tenant/editor/restored-back.jpg');
+        Storage::disk('tiptap_disk')->assertMissing('tenant/editor/orphan.jpg');
     });
 
     it('keeps an image only a backup with non-UTF-8 bytes references', function () {
@@ -767,5 +768,43 @@ describe('atom:purge-editor-images and the migration backups', function () {
 
         Storage::disk('tiptap_disk')->assertMissing('tenant/editor/orphan.jpg');
         expect(Schema::hasTable(EditorBackups::TABLE))->toBeFalse();
+    });
+
+    it('reads the backups of a connection whose models have no editor column any more', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'kept-by-other-connection.jpg', 'orphan.jpg');
+        DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
+        config(['database.connections.other' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '']]);
+        require_once __DIR__.'/../Fixtures/PurgeNoCast/OtherOnly/PurgeOtherConnectionNote.php';
+        EditorBackups::on('other')->create();
+        EditorBackups::on('other')->store('batch', \Modules\Archive\Models\PurgeOtherConnectionNote::class, '1', 'body', purgeLegacyHtml('https://cdn.test/editor/kept-by-other-connection.jpg'), purgeTiptapDoc(), false);
+
+        $this->artisan('atom:purge-editor-images', ['--path' => [realpath(__DIR__.'/../Fixtures/PurgeNoCast/OtherOnly')]])->assertSuccessful();
+
+        Storage::disk('tiptap_disk')->assertExists('tenant/editor/kept-by-other-connection.jpg');
+        Storage::disk('tiptap_disk')->assertMissing('tenant/editor/orphan.jpg');
+    });
+
+    it('aborts when a backup connection cannot be reached, rather than skip it', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'orphan.jpg');
+        DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
+        // the model names a connection that is not configured: its backups cannot be looked at
+        require_once __DIR__.'/../Fixtures/PurgeNoCast/OtherOnly/PurgeOtherConnectionNote.php';
+        config(['database.connections.other' => null]);
+
+        $this->artisan('atom:purge-editor-images', ['--path' => [realpath(__DIR__.'/../Fixtures/PurgeNoCast/OtherOnly')]])->assertFailed();
+
+        Storage::disk('tiptap_disk')->assertExists('tenant/editor/orphan.jpg');
+    });
+
+    it('reads the default connection once, whether a model names it or not', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'orphan.jpg');
+        DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
+        require_once __DIR__.'/../Fixtures/PurgeNoCast/DefaultOnly/PurgeDefaultConnectionNote.php';
+        EditorBackups::on()->create();
+        EditorBackups::on()->store('batch', \App\Models\PurgeTiptapArticle::class, '1', 'doc', purgeLegacyHtml(), purgeTiptapDoc(), false);
+
+        $this->artisan('atom:purge-editor-images', ['--path' => [realpath(__DIR__.'/../Fixtures/PurgeNoCast/DefaultOnly')]])
+            ->expectsOutputToContain('1 backup(s) of migrated values')
+            ->assertSuccessful();
     });
 });
