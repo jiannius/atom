@@ -79,6 +79,7 @@ class MigrateTiptapContent extends Command
         {--prune-backups : Delete the backups. Only after the migration is signed off}
         {--confirm-prune : Without a terminal, confirm --prune-backups (with one, it always asks)}
         {--status : Say what is left to migrate (exit code 1 when anything is)}
+        {--for-v4 : With --status, kept for scripts written against 3.38+: on v4 the exit code is the v4 gate already, so it changes nothing}
         {--model=* : Only this model (class name or basename, repeatable)}
         {--column=* : Only this column (repeatable); with --model, narrows a row id that is in more than one}
         {--path=* : Also scan the models in this directory (repeatable, absolute or relative to base_path())}';
@@ -113,6 +114,12 @@ class MigrateTiptapContent extends Command
 
         if (count($modes) > 1) {
             $this->error(implode(', ', array_keys($modes)).' cannot be combined.');
+
+            return self::FAILURE;
+        }
+
+        if ($this->option('for-v4') && ! isset($modes['--status'])) {
+            $this->error('--for-v4 only goes with --status.');
 
             return self::FAILURE;
         }

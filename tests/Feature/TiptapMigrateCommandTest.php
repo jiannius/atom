@@ -864,6 +864,14 @@ describe('atom:tiptap-migrate --status', function () {
             ->assertFailed();
     });
 
+    it('accepts --for-v4 from 3.38 scripts: on v4 plain --status is already the gate', function () {
+        DB::table('migrate_removed_casts')->insert(['body' => serialize('<p>x</p>')]);
+
+        $this->artisan('atom:tiptap-migrate', ['--status' => true, '--for-v4' => true, '--path' => [migrateRemovedCastPath()]])->assertFailed();
+        $this->artisan('atom:tiptap-migrate', ['--status' => true, '--for-v4' => true])->assertSuccessful();
+        $this->artisan('atom:tiptap-migrate', ['--for-v4' => true])->expectsOutputToContain('--for-v4 only goes with --status')->assertFailed();
+    });
+
     it('is callable as a method, for the upgrade gate', function () {
         migrateFixture();
 
