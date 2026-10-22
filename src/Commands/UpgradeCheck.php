@@ -4,6 +4,7 @@ namespace Jiannius\Atom\Commands;
 
 use Illuminate\Console\Command;
 use Jiannius\Atom\Services\UpgradeCheck as Scanner;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class UpgradeCheck extends Command
 {
@@ -43,7 +44,8 @@ class UpgradeCheck extends Command
             }
         }
 
-        $this->output->write($content);
+        // raw: a matching line may hold <info> or <error>, which the console would read as a style
+        $this->output->write($content, false, OutputInterface::OUTPUT_RAW);
 
         return self::SUCCESS;
     }

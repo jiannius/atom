@@ -967,6 +967,48 @@ describe('atom:tiptap-migrate on 3.x: a column still cast as AsEditorContent', f
         expect(migrateIsDocument(DB::table('migrate_legacy_casts')->where('id', $id)->value('body')))->toBeTrue();
     });
 
+    it('has a v4 gate: --status --for-v4 fails while a cast is still on AsEditorContent, plain --status does not', function () {
+        DB::table('migrate_legacy_casts')->insert(['body' => '<p>x</p>']);
+        $path = migrateLegacyCastPath();
+        $this->artisan('atom:tiptap-migrate', ['--force' => true, '--path' => [$path]])->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate', ['--status' => true, '--path' => [$path]])
+            ->expectsOutputToContain('not a v4 gate')
+            ->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate', ['--status' => true, '--for-v4' => true, '--path' => [$path]])
+            ->expectsOutputToContain('Not ready for v4 yet')
+            ->assertFailed();
+
+        // no cast left on AsEditorContent (the default scan has none) and nothing left: the gate passes
+        $this->artisan('atom:tiptap-migrate', ['--status' => true, '--for-v4' => true])
+            ->expectsOutputToContain('Ready for v4')
+            ->assertSuccessful();
+    });
+
+    it('keeps --for-v4 for --status', function () {
+        $this->artisan('atom:tiptap-migrate', ['--for-v4' => true])->expectsOutputToContain('--for-v4 only goes with --status')->assertFailed();
+    });
+
+    it('warns on --force that the column will hold JSON, when a legacy cast is in scope', function () {
+        DB::table('migrate_legacy_casts')->insert(['body' => '<p>x</p>']);
+        $path = migrateLegacyCastPath();
+
+        $this->artisan('atom:tiptap-migrate', ['--path' => [$path]])
+            ->doesntExpectOutputToContain('after --force the column holds JSON')
+            ->assertSuccessful();
+
+        $this->artisan('atom:tiptap-migrate', ['--force' => true, '--path' => [$path]])
+            ->expectsOutputToContain('{!! !!}, x-html, strip_tags')
+            ->assertSuccessful();
+    });
+
+    it('says on every plain run that it no longer writes', function () {
+        $this->artisan('atom:tiptap-migrate')
+            ->expectsOutputToContain('A plain run never writes any more (before 3.38.0 it did): pass --force to convert.')
+            ->assertSuccessful();
+    });
+
     it('narrows to a legacy column with --model and --column like any other', function () {
         DB::table('migrate_legacy_casts')->insert(['body' => '<p>x</p>']);
 

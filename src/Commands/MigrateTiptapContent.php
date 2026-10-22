@@ -74,7 +74,8 @@ class MigrateTiptapContent extends Command
         {--output= : Where --compare writes (default storage/app/atom-editor-review-<time>.jsonl)}
         {--prune-backups : Delete the backups. Only after the migration is signed off}
         {--confirm-prune : Without a terminal, confirm --prune-backups (with one, it always asks)}
-        {--status : Say what is left to migrate (exit code 1 when anything is)}
+        {--status : Say what is left to migrate (exit code 1 while a row is left or unreadable; a cast still on AsEditorContent is listed, not a failure)}
+        {--for-v4 : With --status, the exit code follows ready_for_v4: also 1 while a cast is still on AsEditorContent}
         {--model=* : Only this model (class name or basename, repeatable)}
         {--column=* : Only this column (repeatable); with --model, narrows a row id that is in more than one}
         {--path=* : Also scan the models in this directory (repeatable, absolute or relative to base_path())}';
@@ -109,6 +110,12 @@ class MigrateTiptapContent extends Command
 
         if (count($modes) > 1) {
             $this->error(implode(', ', array_keys($modes)).' cannot be combined.');
+
+            return self::FAILURE;
+        }
+
+        if ($this->option('for-v4') && ! isset($modes['--status'])) {
+            $this->error('--for-v4 only goes with --status.');
 
             return self::FAILURE;
         }
@@ -192,7 +199,8 @@ class MigrateTiptapContent extends Command
     /**
      * --status: print status() and fail when there is a row left to convert or
      * something could not be read. A cast still on AsEditorContent is reported
-     * as not yet switched, and is not a failure on 3.x.
+     * as not yet switched, and is not a failure on 3.x unless --for-v4 asks for
+     * the v4 gate.
      */
     protected function handleStatus(): int
     {
@@ -223,7 +231,13 @@ class MigrateTiptapContent extends Command
             $this->info('Ready for v4.');
         }
 
-        return $status['ready'] ? self::SUCCESS : self::FAILURE;
+        $gate = $this->option('for-v4') ? $status['ready_for_v4'] : $status['ready'];
+
+        if (! $this->option('for-v4')) {
+            $this->line('This exit code is not a v4 gate (a cast on AsEditorContent does not fail it): use --status --for-v4.');
+        }
+
+        return $gate ? self::SUCCESS : self::FAILURE;
     }
 
     /**
@@ -247,6 +261,10 @@ class MigrateTiptapContent extends Command
 
         foreach ($this->legacyCasts as $class => $columns) {
             $this->line($class.': '.implode(', ', $columns).' is still cast as AsEditorContent. It is migrated like any other column; switch the cast to AsTiptapContent (v4 removes the class).');
+
+            if ($write) {
+                $this->warn($class.': after --force the column holds JSON. Anything that prints it raw ({!! !!}, x-html, strip_tags) prints JSON now: print it through <atom:tiptap.content> or Content::render() first, and switch the cast, since a save through AsEditorContent writes serialize(<JSON>) again.');
+            }
         }
 
         if ($this->problems) {
@@ -371,6 +389,7 @@ class MigrateTiptapContent extends Command
         $this->newLine();
 
         if (! $write) {
+            $this->warn('A plain run never writes any more (before 3.38.0 it did): pass --force to convert.');
             $this->info('Dry run, nothing was written: '.$totals['clean'].' value(s) are clean'
                 .($accept === [] ? '' : ', and the flagged ones named in --accept would be converted too').'.');
             $this->line('Flagged rows are left untouched until --accept=<ids> (or "all"). Run with --force to write.');

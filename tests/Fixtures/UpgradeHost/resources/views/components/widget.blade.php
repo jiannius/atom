@@ -27,3 +27,5 @@ if (empty($total)) {
     const x = rows.sum('amount')
     console.log(empty(x), atom.empty(x))
 </script>
+
+<atom:table :rows="empty($x) ? dd($y) : []" />

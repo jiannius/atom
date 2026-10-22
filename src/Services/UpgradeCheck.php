@@ -30,6 +30,21 @@ class UpgradeCheck
     public const REVIEW = 'review';
 
     /**
+     * Where the list of breaks lives (UPGRADE.md is on the v4 branch, not in 3.x)
+     */
+    public const GUIDE = 'https://github.com/jiannius/atom/blob/v4/UPGRADE.md';
+
+    /**
+     * The checks whose finding the Date::use line fixes
+     */
+    public const COVERED_BY_DATE_USE = ['date-pretty', 'date-local', 'date-recent', 'date-range-string', 'carbon-typed', 'date-printed-bare'];
+
+    /**
+     * Files whose average line is longer than this many bytes look minified and are skipped
+     */
+    public const MINIFIED_LINE = 20000;
+
+    /**
      * Directory names skipped at any depth
      */
     public const SKIP_DIRECTORIES = ['vendor', 'node_modules', '.git'];
@@ -102,6 +117,13 @@ class UpgradeCheck
     public const BAG_MACROS = ['size', 'field', 'getAny', 'getLike', 'classes', 'styles', 'fieldId', 'modifier', 'hasLike'];
 
     /**
+     * What the last scan did not read, as [path, reason]
+     *
+     * @var array<int, array{path: string, reason: string}>
+     */
+    protected array $skipped = [];
+
+    /**
      * @param  string|null  $guidelinePath  the guideline to compare a host's copy with (default: this package's)
      */
     public function __construct(protected ?string $guidelinePath = null) {}
@@ -135,8 +157,8 @@ class UpgradeCheck
             'css-border-color-rule' => [
                 'title' => 'Delete the copied border-color base rule (atom sets its own)',
                 'section' => 'Tokens', 'severity' => static::VISUAL, 'codemod' => 'report',
-                'detect' => 'a CSS rule on `*` (or `*, ::after, ::before`) that sets border-color',
-                'kinds' => ['css'], 'pattern' => '/(?:\*\s*,\s*[^{}]*::?(?:after|before)[^{}]*|(?<![\w\-.#>+~\[\]:])\*)\s*\{[^{}]*border-color\s*:/',
+                'detect' => 'a CSS rule whose selector is `*` (or `*, ::after, ::before`, at the start of a rule) that sets border-color',
+                'kinds' => ['css'], 'pattern' => '/(?:^|[;{}])\s*\K\*\s*(?:,[^{}]*::?(?:after|before)[^{}]*)?\{[^{}]*border-color\s*:/',
             ],
             'css-root-font-size' => [
                 'title' => 'Remove the html font-size override (the 14px root is gone)',
@@ -266,9 +288,8 @@ class UpgradeCheck
             'wire-helper-listener' => [
                 'title' => 'An event mapped to toast(), modal()... fails with EventHandlerDoesNotExist',
                 'section' => 'Livewire traits', 'severity' => static::BREAKS, 'codemod' => 'report',
-                'detect' => '$listeners entry or #[On] method named like a helper',
-                'kinds' => ['php', 'blade'],
-                'pattern' => '/[\'"]\s*=>\s*[\'"](?:'.$helpers.')[\'"]|#\[On\([^\]]*\]\s*(?:public\s+|protected\s+)?function\s+(?:'.$helpers.')\s*\(/s',
+                'detect' => 'a handler named like a helper in a $listeners property, a getListeners() return array or a #[On] method (no other array)',
+                'kinds' => ['php', 'blade'], 'custom' => 'wireHelperListeners',
             ],
             'trait-hook-name' => [
                 'title' => 'mountAtomComponent / updatingAtomComponent / updatedAtomComponent are gone',
@@ -322,8 +343,8 @@ class UpgradeCheck
                 'kinds' => ['blade'], 'pattern' => '/\{\{\s*\$[\w>\-?]+?->\s*\w+_(?:at|date)\s*\}\}/',
             ],
             'carbon-import' => [
-                'title' => 'Jiannius\Atom\Services\Carbon is no longer what a model date is',
-                'section' => 'PHP globals: dates and macros', 'severity' => static::BREAKS, 'codemod' => 'report',
+                'title' => 'Jiannius\Atom\Services\Carbon is unchanged, but it is no longer what a model date is (an import is fine; look at its types)',
+                'section' => 'PHP globals: dates and macros', 'severity' => static::REVIEW, 'codemod' => 'report',
                 'detect' => 'use Jiannius\Atom\Services\Carbon in PHP and Blade',
                 'kinds' => ['php', 'blade'], 'pattern' => '/^[ \t]*use\s+\\\\?Jiannius\\\\Atom\\\\Services\\\\Carbon\b[^;]*;/m',
             ],
@@ -456,7 +477,10 @@ class UpgradeCheck
         $candidates = [];
         $localScopes = [];
         $scanned = ['app' => 0, 'tests' => 0];
-        $dateFeaturesUsed = false;
+        $published = [];
+        $dateUse = null;
+        $appProvider = null;
+        $this->skipped = [];
 
         foreach ($this->discover($root) as [$path, $relative, $scope, $kind]) {
             $source = @file_get_contents($path);
@@ -465,8 +489,30 @@ class UpgradeCheck
                 continue;
             }
 
+            // minified code has no lines: a regex over one is slow for nothing
+            if (in_array($kind, ['js', 'css', 'config'], true) && strlen($source) > 100000 && strlen($source) / (substr_count($source, "\n") + 1) > static::MINIFIED_LINE) {
+                $this->skipped[] = ['path' => $relative, 'reason' => 'looks minified'];
+
+                continue;
+            }
+
             $scanned[$scope]++;
             $prepared = $this->prepare($kind, $source);
+
+            if (str_starts_with($relative, 'resources/views/vendor/atom/')) {
+                $published[] = $relative;
+            }
+
+            if ($kind === 'php' && $scope === 'app' && str_ends_with($relative, 'ServiceProvider.php')) {
+                if (basename($relative) === 'AppServiceProvider.php') {
+                    $appProvider ??= $relative;
+                }
+
+                if (preg_match('/\bDate\s*::\s*use\s*\(/', $prepared['full'])) {
+                    $dateUse ??= $relative;
+                }
+            }
+
             $starts = $this->lineStarts($source);
             $lines = null;
 
@@ -576,20 +622,49 @@ class UpgradeCheck
             }
         }
 
+        // bootstrap/ is not scanned, but a provider can be registered there
+        foreach (glob($root.'/bootstrap/*.php') ?: [] as $file) {
+            if (! is_link($file) && preg_match('/\bDate\s*::\s*use\s*\(/', $this->blankPhpComments((string) @file_get_contents($file)))) {
+                $dateUse ??= 'bootstrap/'.basename($file);
+            }
+        }
+
         $dateFeaturesUsed = $findings['date-pretty'] || $findings['date-local'] || $findings['date-recent'] || $findings['date-range-string'] || $findings['carbon-import'];
 
-        foreach ($this->dateUseLineFindings($root, $dateFeaturesUsed) as $finding) {
-            $findings['date-use-line'][] = $finding;
+        if ($dateUse === null && is_dir($root.'/app')) {
+            $findings['date-use-line'][] = [
+                'file' => $appProvider ?? '',
+                'line' => $appProvider ? 1 : 0,
+                'text' => $appProvider ? 'no Date::use( call found' : 'no AppServiceProvider found',
+                'scope' => 'app',
+                'note' => ($dateFeaturesUsed ? 'the app uses date methods or the Carbon class' : 'dates change class, mutability and string form without it')
+                    .($appProvider ? '' : '; add the call to the boot() of a service provider'),
+            ];
+        }
+
+        // with the Date::use line the class, the mutability and the string form are the ones atom had
+        if ($dateUse !== null) {
+            foreach (static::COVERED_BY_DATE_USE as $id) {
+                foreach ($findings[$id] as &$finding) {
+                    $finding['note'] = trim(($finding['note'] ?? '').'; covered by the Date::use line ('.$dateUse.')', '; ');
+                }
+
+                unset($finding);
+            }
         }
 
         $components = $this->components($root, $candidates);
         $result = [
             'root' => basename($root),
+            'guide' => static::GUIDE,
             'atom_version' => $this->installedVersion(),
             'scanned' => $scanned,
             'checks' => [],
             'components' => $components,
             'tags' => $this->tagReport($tags),
+            'published_views' => $published,
+            'skipped' => $this->skipped,
+            'date_use' => $dateUse,
             'guideline' => $this->guideline($root),
         ];
 
@@ -599,7 +674,7 @@ class UpgradeCheck
                 'id' => $id,
                 'title' => $check['title'],
                 'section' => $check['section'],
-                'severity' => $check['severity'],
+                'severity' => $dateUse !== null && in_array($id, static::COVERED_BY_DATE_USE, true) ? static::REVIEW : $check['severity'],
                 'codemod' => $check['codemod'],
                 'detect' => $check['detect'],
                 'count' => count(array_filter($list, fn ($finding) => $finding['scope'] === 'app')),
@@ -671,59 +746,109 @@ class UpgradeCheck
 
         foreach (static::DIRECTORIES as $directory) {
             $path = $root.DIRECTORY_SEPARATOR.$directory;
+
+            if (is_link($path)) {
+                $this->skipped[] = ['path' => $directory, 'reason' => 'symlink'];
+
+                continue;
+            }
+
             $stat = is_dir($path) ? @stat($path) : false;
 
             // modules and Modules are one directory on a case-insensitive disk: tell them apart by inode
             if ($stat !== false && ! isset($seen[$stat['dev'].':'.$stat['ino']])) {
                 $seen[$stat['dev'].':'.$stat['ino']] = true;
-                $roots[] = [$path, $directory];
+                $roots[] = $path;
             }
         }
 
-        foreach ($roots as [$path]) {
-            $iterator = new \RecursiveIteratorIterator(new \RecursiveCallbackFilterIterator(
-                new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS),
-                function (\SplFileInfo $file) use ($root) {
-                    if ($file->isLink() && $file->isDir()) {
-                        return false;
-                    }
-
-                    if ($file->isDir()) {
-                        $relative = ltrim(substr($file->getPathname(), strlen($root)), DIRECTORY_SEPARATOR);
-
-                        return ! in_array($file->getFilename(), static::SKIP_DIRECTORIES, true) && ! in_array($relative, static::SKIP_PATHS, true);
-                    }
-
-                    return true;
-                }
-            ));
-
-            $files = [];
-
-            foreach ($iterator as $file) {
-                if ($file->isFile()) {
-                    $files[] = $file->getPathname();
-                }
-            }
-
+        foreach ($roots as $path) {
+            $files = $this->walk($root, $path);
             sort($files);
 
             foreach ($files as $file) {
                 $kind = $this->kindOf($file);
 
-                if ($kind === null || filesize($file) > static::MAX_BYTES) {
+                if ($kind === null) {
                     continue;
                 }
 
-                $relative = ltrim(substr($file, strlen($root)), DIRECTORY_SEPARATOR);
+                $relative = str_replace(DIRECTORY_SEPARATOR, '/', ltrim(substr($file, strlen($root)), DIRECTORY_SEPARATOR));
 
-                yield [$file, str_replace(DIRECTORY_SEPARATOR, '/', $relative), str_starts_with($relative, 'tests'.DIRECTORY_SEPARATOR) ? 'tests' : 'app', $kind];
+                if (filesize($file) > static::MAX_BYTES) {
+                    $this->skipped[] = ['path' => $relative, 'reason' => 'over '.(static::MAX_BYTES / 1048576).' MB'];
+
+                    continue;
+                }
+
+                yield [$file, $relative, str_starts_with($relative, 'tests/') ? 'tests' : 'app', $kind];
             }
         }
 
         foreach (glob($root.'/vite.config.*') ?: [] as $file) {
+            if (is_link($file)) {
+                $this->skipped[] = ['path' => basename($file), 'reason' => 'symlink'];
+
+                continue;
+            }
+
             yield [$file, basename($file), 'app', 'config'];
         }
+    }
+
+    /**
+     * Every regular file under a directory. A symlink (file or directory) is not
+     * followed, a directory that cannot be read is recorded, and `vendor/` is
+     * skipped at any depth except atom's own published views.
+     *
+     * @return array<int, string>
+     */
+    protected function walk(string $root, string $directory): array
+    {
+        $relativeDirectory = str_replace(DIRECTORY_SEPARATOR, '/', ltrim(substr($directory, strlen($root)), DIRECTORY_SEPARATOR));
+        $entries = @scandir($directory);
+
+        if ($entries === false) {
+            $this->skipped[] = ['path' => $relativeDirectory, 'reason' => 'unreadable'];
+
+            return [];
+        }
+
+        $files = [];
+
+        foreach ($entries as $name) {
+            if ($name === '.' || $name === '..') {
+                continue;
+            }
+
+            $path = $directory.DIRECTORY_SEPARATOR.$name;
+            $relative = ($relativeDirectory === '' ? '' : $relativeDirectory.'/').$name;
+
+            if (is_link($path)) {
+                $this->skipped[] = ['path' => $relative, 'reason' => 'symlink'];
+
+                continue;
+            }
+
+            if (is_dir($path)) {
+                // only atom's own published views live under resources/views/vendor that are read
+                $publishedViews = $relative === 'resources/views/vendor';
+
+                if ((! $publishedViews && in_array($name, static::SKIP_DIRECTORIES, true)) || in_array($relative, static::SKIP_PATHS, true)) {
+                    continue;
+                }
+
+                if ($relativeDirectory === 'resources/views/vendor' && $name !== 'atom') {
+                    continue;
+                }
+
+                $files = array_merge($files, $this->walk($root, $path));
+            } elseif (is_file($path)) {
+                $files[] = $path;
+            }
+        }
+
+        return $files;
     }
 
     /**
@@ -842,6 +967,7 @@ class UpgradeCheck
         $n = strlen($js);
         $out = $js;
         $i = 0;
+        $last = '';
 
         while ($i < $n) {
             $c = $js[$i];
@@ -860,8 +986,40 @@ class UpgradeCheck
                 }
 
                 $i++;
+                $last = $quote;
 
                 continue;
+            }
+
+            // a regex literal may hold a quote: skip it whole, so the quote does not open a string
+            if ($c === '/' && $next !== '/' && $next !== '*' && ($last === '' || str_contains('(,=:[!&|?{};+-*%<>~^', $last) || preg_match('/\b(?:return|typeof|case|in|of|void)\s*$/', substr($js, max(0, $i - 8), min(8, $i))))) {
+                $j = $i + 1;
+                $class = false;
+
+                while ($j < $n && $js[$j] !== "\n") {
+                    if ($js[$j] === '\\') {
+                        $j += 2;
+
+                        continue;
+                    }
+
+                    if ($js[$j] === '[') {
+                        $class = true;
+                    } elseif ($js[$j] === ']') {
+                        $class = false;
+                    } elseif ($js[$j] === '/' && ! $class) {
+                        break;
+                    }
+
+                    $j++;
+                }
+
+                if (($js[$j] ?? '') === '/') {
+                    $i = $j + 1;
+                    $last = '/';
+
+                    continue;
+                }
             }
 
             if ($c === '/' && $next === '/' && ($js[$i - 1] ?? '') !== ':') {
@@ -890,6 +1048,10 @@ class UpgradeCheck
                 $i = $end;
 
                 continue;
+            }
+
+            if (! ctype_space($c)) {
+                $last = $c;
             }
 
             $i++;
@@ -926,7 +1088,36 @@ class UpgradeCheck
             $offset = max($end, $start + 1);
         }
 
-        return $out;
+        return $this->maskBoundAttributes($out);
+    }
+
+    /**
+     * A bound attribute on a component tag (`:items="$rows"`) is a PHP expression, not JavaScript
+     */
+    protected function maskBoundAttributes(string $text): string
+    {
+        if (! preg_match_all('/<(?:atom:|x-)[a-z][\w.\-:]*/i', $text, $tags, PREG_OFFSET_CAPTURE)) {
+            return $text;
+        }
+
+        foreach ($tags[0] as [$tag, $at]) {
+            $from = $at + strlen($tag);
+            $attributes = $this->readAttributes($text, $from);
+
+            if (! preg_match_all('/(?<=\s):[\w.\-]+\s*=\s*("[^"]*"|\'[^\']*\')/', $attributes, $bound, PREG_OFFSET_CAPTURE)) {
+                continue;
+            }
+
+            foreach ($bound[1] as [$value, $valueAt]) {
+                for ($j = $from + $valueAt, $end = $j + strlen($value); $j < $end; $j++) {
+                    if ($text[$j] !== "\n") {
+                        $text[$j] = ' ';
+                    }
+                }
+            }
+        }
+
+        return $text;
     }
 
     /**
@@ -1225,6 +1416,115 @@ class UpgradeCheck
     }
 
     /**
+     * Handlers named like a helper in the places Livewire reads event listeners
+     * from: a `$listeners` property, the array a `getListeners()` returns, and
+     * the method under an `#[On(...)]` attribute. Any other array is not one.
+     *
+     * @param  array{full: string, markup: string}  $prepared
+     * @return array<int, array{0: int, 1: string|null}>
+     */
+    protected function wireHelperListeners(string $kind, array $prepared, string $source): array
+    {
+        $text = $prepared['full'];
+        $helpers = implode('|', static::HELPERS);
+        $arrays = [];
+        $found = [];
+
+        if (preg_match_all('/\$listeners\s*=\s*\[/', $text, $m, PREG_OFFSET_CAPTURE)) {
+            foreach ($m[0] as [$match, $at]) {
+                $arrays[] = $at + strlen($match) - 1;
+            }
+        }
+
+        if (preg_match_all('/function\s+getListeners\s*\([^)]*\)[^{;]*\{/', $text, $m, PREG_OFFSET_CAPTURE)) {
+            foreach ($m[0] as [$match, $at]) {
+                $open = $at + strlen($match) - 1;
+                $close = $this->matchingDelimiter($text, $open) ?? strlen($text);
+
+                if (preg_match_all('/\breturn\s*\[/', substr($text, $open, $close - $open), $returns, PREG_OFFSET_CAPTURE)) {
+                    foreach ($returns[0] as [$return, $rat]) {
+                        $arrays[] = $open + $rat + strlen($return) - 1;
+                    }
+                }
+            }
+        }
+
+        foreach ($arrays as $open) {
+            $close = $this->matchingDelimiter($text, $open) ?? strlen($text);
+            $inner = substr($text, $open, $close - $open + 1);
+
+            if (! preg_match_all('/([\'"])((?:\\\\.|(?!\1).)*)\1/s', $inner, $strings, PREG_OFFSET_CAPTURE | PREG_SET_ORDER)) {
+                continue;
+            }
+
+            foreach ($strings as $string) {
+                $start = $string[0][1];
+                $end = $start + strlen($string[0][0]);
+                $before = rtrim(substr($inner, 0, $start));
+                $after = ltrim(substr($inner, $end));
+
+                if (str_starts_with($after, '=>')) {
+                    continue; // an event name
+                }
+
+                $isValue = str_ends_with($before, '=>');
+                $isListItem = (str_ends_with($before, '[') || str_ends_with($before, ',')) && ($after === '' || $after[0] === ',' || $after[0] === ']');
+
+                if (($isValue || $isListItem) && in_array($string[2][0], static::HELPERS, true)) {
+                    $found[] = [$open + $start, null];
+                }
+            }
+        }
+
+        if (preg_match_all('/#\[On\([^\]]*\]\s*(?:public\s+|protected\s+)?function\s+(?:'.$helpers.')\s*\(/s', $text, $m, PREG_OFFSET_CAPTURE)) {
+            foreach ($m[0] as [$match, $at]) {
+                $found[] = [$at, null];
+            }
+        }
+
+        usort($found, fn ($a, $b) => $a[0] <=> $b[0]);
+
+        return $found;
+    }
+
+    /**
+     * The index of the bracket that closes the one at $open, strings skipped
+     */
+    protected function matchingDelimiter(string $text, int $open): ?int
+    {
+        $close = ['(' => ')', '[' => ']', '{' => '}'][$text[$open]] ?? null;
+
+        if ($close === null) {
+            return null;
+        }
+
+        $depth = 0;
+        $n = strlen($text);
+
+        for ($i = $open; $i < $n; $i++) {
+            $c = $text[$i];
+
+            if ($c === '"' || $c === "'") {
+                $i++;
+
+                while ($i < $n && $text[$i] !== $c) {
+                    $i += $text[$i] === '\\' ? 2 : 1;
+                }
+
+                continue;
+            }
+
+            if ($c === $text[$open]) {
+                $depth++;
+            } elseif ($c === $close && --$depth === 0) {
+                return $i;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * The class-body `use AtomComponent` sites of a file, as [offset, note]. A
      * token scan, so a comment or a `use` import is not one; a `use` inside a
      * class (or an anonymous class, as a single-file Livewire component has)
@@ -1246,6 +1546,7 @@ class UpgradeCheck
         }
 
         $sites = [];
+        $aliases = ['AtomComponent'];
         $depth = 0;
         $offset = 0;
         $count = count($tokens);
@@ -1258,15 +1559,20 @@ class UpgradeCheck
                 $depth++;
             } elseif ($token === '}') {
                 $depth--;
-            } elseif (is_array($token) && $token[0] === T_USE && $depth >= 1) {
+            } elseif (is_array($token) && $token[0] === T_USE) {
                 $names = '';
 
                 for ($j = $i + 1; $j < $count && $tokens[$j] !== ';' && $tokens[$j] !== '{'; $j++) {
                     $names .= is_array($tokens[$j]) ? $tokens[$j][1] : $tokens[$j];
                 }
 
-                // a closure's `use (` follows a parenthesis and is not a trait
-                if (preg_match('/(?:^|[\s,\\\\])AtomComponent\s*(?:,|$)/', trim($names).',')) {
+                if ($depth === 0) {
+                    // `use ...\AtomComponent as Alias;` makes Alias the trait's name in this file
+                    if (preg_match('/AtomComponent\s+as\s+(\w+)/', $names, $alias)) {
+                        $aliases[] = $alias[1];
+                    }
+                } elseif (preg_match('/(?:^|[\s,\\\\])(?:'.implode('|', array_map('preg_quote', $aliases)).')\s*(?:,|$)/', trim($names).',')) {
+                    // a closure's `use (` follows a parenthesis and is not a trait
                     $sites[] = [$offset, null];
                 }
             }
@@ -1302,36 +1608,6 @@ class UpgradeCheck
         }
 
         return $found;
-    }
-
-    /**
-     * Whether AppServiceProvider (any provider under app/Providers) calls Date::use
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    protected function dateUseLineFindings(string $root, bool $datesUsed): array
-    {
-        $providers = glob($root.'/app/Providers/*.php') ?: [];
-
-        foreach ($providers as $provider) {
-            if (preg_match('/\bDate\s*::\s*use\s*\(/', $this->blankPhpComments((string) file_get_contents($provider)))) {
-                return [];
-            }
-        }
-
-        if (! is_dir($root.'/app')) {
-            return [];
-        }
-
-        $target = is_file($root.'/app/Providers/AppServiceProvider.php') ? 'app/Providers/AppServiceProvider.php' : 'app/Providers';
-
-        return [[
-            'file' => $target,
-            'line' => 1,
-            'text' => 'no Date::use( call found',
-            'scope' => 'app',
-            'note' => $datesUsed ? 'the app uses date methods or the Carbon class' : 'dates change class, mutability and string form without it',
-        ]];
     }
 
     /**
@@ -1670,7 +1946,25 @@ class UpgradeCheck
         try {
             $content = (string) file_get_contents($path);
             $content = preg_replace_callback('/(?<fence>`{3,}|~{3,}).*?\k<fence>/s', fn (array $m) => str_replace('&', '___AMPERSAND___', $m[0]), $content) ?? $content;
-            $rendered = Blade::render(str_replace(array_keys($placeholders), array_values($placeholders), $content));
+            // compiled in memory: Blade::render() would write the compiled view into the host's storage/framework/views
+            $compiled = Blade::compileString(str_replace(array_keys($placeholders), array_values($placeholders), $content));
+            $rendered = (function (string $__php): string {
+                $__env = app('view');
+                $level = ob_get_level();
+                ob_start();
+
+                try {
+                    eval('?>'.$__php);
+
+                    return (string) ob_get_clean();
+                } catch (Throwable $e) {
+                    while (ob_get_level() > $level) {
+                        ob_end_clean();
+                    }
+
+                    throw $e;
+                }
+            })($compiled);
             $rendered = html_entity_decode($rendered, ENT_QUOTES | ENT_HTML5);
             $rendered = str_replace('___AMPERSAND___', '&', $rendered);
 
@@ -1745,9 +2039,33 @@ class UpgradeCheck
     {
         $out = [];
         $out[] = 'atom upgrade check'.($result['atom_version'] ? ' (installed '.$result['atom_version'].')' : '');
+        $out[] = 'What each check means: '.$result['guide'];
         $out[] = 'Scanned '.$result['scanned']['app'].' file(s) in app/, resources/, routes/, modules/, config/, database/'.($result['scanned']['tests'] ? ' and '.$result['scanned']['tests'].' in tests/' : '').'. Read only: nothing was written.';
         $out[] = 'A finding is a candidate from a text scan, not a proof: check the receiver of a date method, and the file.';
+        $out[] = 'The report and --output quote up to 160 characters of each matching line: treat the file like source code.';
         $out[] = '';
+
+        if ($result['skipped']) {
+            $out[] = 'NOT READ ('.count($result['skipped']).')';
+            $out[] = '-----------';
+
+            foreach ($result['skipped'] as $skipped) {
+                $out[] = $skipped['path'].'  ('.$skipped['reason'].')';
+            }
+
+            $out[] = '';
+        }
+
+        if ($result['published_views']) {
+            $out[] = 'PUBLISHED ATOM VIEWS ('.count($result['published_views']).'): re-diff against v4';
+            $out[] = '------------------------------------------------';
+
+            foreach ($result['published_views'] as $view) {
+                $out[] = $view;
+            }
+
+            $out[] = '';
+        }
 
         $groups = [];
 
@@ -1777,7 +2095,7 @@ class UpgradeCheck
                             break 2;
                         }
 
-                        $out[] = '    '.($scope === 'tests' ? '(tests) ' : '').$finding['file'].':'.$finding['line'].'  '.$finding['text'].(isset($finding['note']) ? '  <- '.$finding['note'] : '');
+                        $out[] = '    '.($scope === 'tests' ? '(tests) ' : '').($finding['line'] ? $finding['file'].':'.$finding['line'] : '(app)').'  '.$finding['text'].(isset($finding['note']) ? '  <- '.$finding['note'] : '');
                         $shown++;
                     }
                 }

@@ -46,7 +46,7 @@ function upgradeRemove(string $dir): void
     }
 
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST) as $item) {
-        $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
+        $item->isDir() && ! $item->isLink() ? rmdir($item->getPathname()) : unlink($item->getPathname());
     }
 
     rmdir($dir);
@@ -123,9 +123,10 @@ describe('atom:upgrade-check: the findings', function () {
             'badge-color-name' => [$orders.':11'],
             'chart-color-unknown' => [$orders.':14'],
             'link-colour-override' => [$orders.':16'],
-            'use-atom-component' => [$php.':11', $profile.':7'],
+            'use-atom-component' => ['app/Livewire/Aliased.php:10', $php.':11', $profile.':7'],
             'wire-helper-browser' => [$widget.':21', $widget.':22'],
-            'wire-helper-listener' => [$php.':13'],
+            // the $listeners entry, the getListeners() return array and the #[On] method: not the options() array
+            'wire-helper-listener' => ['app/Livewire/Listens.php:12', 'app/Livewire/Listens.php:12', 'app/Livewire/Listens.php:15', $php.':13'],
             'trait-hook-name' => [$php.':27'],
             'table-state-in-url' => ['app/Http/UrlTable.php:7'],
             'date-use-line' => ['app/Providers/AppServiceProvider.php:1'],
@@ -139,14 +140,14 @@ describe('atom:upgrade-check: the findings', function () {
             'macro-request' => [$php.':45', $php.':46'],
             'macro-str' => [$php.':47'],
             'macro-builder' => [$php.':48'],
-            'macro-attribute-bag' => [],
+            'macro-attribute-bag' => ['resources/views/components/field.blade.php:2'],
             'js-currency' => [$widget.':15'],
             'js-array-helper' => ['resources/js/app.js:6', $widget.':16', $widget.':16', $widget.':20', $widget.':27'],
             'js-string-helper' => ['resources/js/app.js:6', $widget.':16'],
             'js-date-helper' => ['resources/js/app.js:4', 'resources/js/app.js:5', $widget.':16'],
             'js-from-now' => [$widget.':16'],
             'js-empty' => [$widget.':15', $widget.':28'],
-            'js-dd' => ['resources/js/app.js:3', $widget.':15'],
+            'js-dd' => ['resources/js/app.js:3', 'resources/js/app.js:8', $widget.':15'],
             'editor-cast' => ['app/Models/Article.php:12'],
             'editor-tag' => [$profile.':15', $profile.':16', $profile.':17', $profile.':19'],
             'editor-content-static' => [$profile.':17'],
@@ -214,7 +215,8 @@ describe('atom:upgrade-check: the findings', function () {
     it('infers the traits each component needs from its view, its partials and its methods', function () {
         $components = collect($this->result['components'])->where('scope', 'app')->keyBy('file');
 
-        expect($components)->toHaveCount(2)
+        expect($components)->toHaveCount(3)
+            ->and($components['app/Livewire/Aliased.php']['traits'])->toBe([])
             ->and($components['app/Livewire/Orders.php']['traits'])->toBe(['WithTable', 'WithBreadcrumbs', 'WithPagination', 'WithFileUploads'])
             ->and($components['app/Livewire/Orders.php']['partials'])->toBe(['resources/views/partials/extra.blade.php'])
             ->and($components['app/Livewire/Orders.php']['line'])->toBe(11)
@@ -235,7 +237,7 @@ describe('atom:upgrade-check: the findings', function () {
     });
 
     it('reports test findings apart from the app ones', function () {
-        expect($this->result['scanned'])->toBe(['app' => 12, 'tests' => 1])
+        expect($this->result['scanned'])->toBe(['app' => 15, 'tests' => 1])
             ->and($this->result['checks']['date-pretty']['count'])->toBe(1)
             ->and($this->result['checks']['date-pretty']['tests_count'])->toBe(1)
             ->and($this->result['summary']['tests_findings'])->toBe(5);
@@ -338,7 +340,8 @@ describe('atom:upgrade-check: the command', function () {
         Artisan::call('atom:upgrade-check', ['--path' => upgradeFixture(), '--json' => true]);
         $json = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
 
-        expect(array_keys($json))->toBe(['root', 'atom_version', 'scanned', 'checks', 'components', 'tags', 'guideline', 'summary'])
+        expect(array_keys($json))->toBe(['root', 'guide', 'atom_version', 'scanned', 'checks', 'components', 'tags', 'published_views', 'skipped', 'date_use', 'guideline', 'summary'])
+            ->and($json['guide'])->toBe('https://github.com/jiannius/atom/blob/v4/UPGRADE.md')
             ->and(array_keys($json['checks']['date-pretty']))->toBe(['id', 'title', 'section', 'severity', 'codemod', 'detect', 'count', 'tests_count', 'findings'])
             ->and($json['checks']['date-pretty']['findings'][0])->toBe(['file' => 'app/Livewire/Orders.php', 'line' => 38, 'text' => '$a = $order->placed_at->pretty();', 'scope' => 'app'])
             ->and($json['checks']['date-pretty']['severity'])->toBe('breaks at runtime')
@@ -406,7 +409,7 @@ describe('atom:upgrade-check: the CLAUDE.md atom section', function () {
 
     it('is in sync when the host holds what the installed version renders, between other sections', function () {
         $dir = ($this->host)();
-        file_put_contents($dir.'/CLAUDE.md', "<laravel-boost-guidelines>\n=== foundation rules ===\n\nOther rules.\n\n".upgradeBlock()."\n=== jiannius/playbook/core rules ===\n\nPlaybook.\n</laravel-boost-guidelines>\n");
+        file_put_contents($dir.'/CLAUDE.md', "<laravel-boost-guidelines>\n=== foundation rules ===\n\nOther rules.\n\n".upgradeBlock()."\n=== acme/other-package/core rules ===\n\nPlaybook.\n</laravel-boost-guidelines>\n");
 
         expect(upgradeGuidelineState($dir))->toBe(['state' => 'in_sync', 'files' => ['CLAUDE.md' => ['state' => 'in_sync']]]);
     });
@@ -475,13 +478,192 @@ describe('atom:upgrade-check: the CLAUDE.md atom section', function () {
     });
 });
 
+describe('atom:upgrade-check: read only, and what it will not follow', function () {
+    it('writes nothing anywhere in the host, storage/ included: Blade compiles in memory', function () {
+        $dir = ($this->host)();
+        @mkdir($dir.'/storage/framework/views', 0777, true);
+        file_put_contents($dir.'/CLAUDE.md', "=== jiannius/atom/core rules ===\n\nx\n");
+
+        // point Blade's cache at the host, the way a real run on base_path() would
+        config(['view.compiled' => $dir.'/storage/framework/views']);
+
+        foreach (['blade.compiler', 'view.engine.resolver', 'view'] as $abstract) {
+            $this->app->forgetInstance($abstract);
+            Illuminate\Support\Facades\Blade::clearResolvedInstance($abstract);
+        }
+
+        $before = upgradeSnapshot($dir);
+
+        Artisan::call('atom:upgrade-check', ['--path' => $dir]);
+        Artisan::call('atom:upgrade-check', ['--path' => $dir, '--json' => true]);
+
+        expect(upgradeSnapshot($dir))->toBe($before)
+            ->and(glob($dir.'/storage/framework/views/*'))->toBe([]);
+    });
+
+    it('does not read a symlinked file or directory, nor a symlinked vite.config, and says so', function () {
+        $dir = ($this->host)();
+        $outside = sys_get_temp_dir().'/atom-upgrade-outside-'.bin2hex(random_bytes(4));
+        $this->hosts[] = $outside;
+        @mkdir($outside.'/dir', 0777, true);
+        file_put_contents($outside.'/leak.php', "<?php\n\$d->pretty();\n");
+        file_put_contents($outside.'/dir/leak.php', "<?php\n\$d->pretty();\n");
+        file_put_contents($outside.'/vite.config.js', "import 'vite-plugin-bunny-fonts'\n");
+        symlink($outside.'/leak.php', $dir.'/app/Linked.php');
+        symlink($outside.'/dir', $dir.'/app/LinkedDir');
+        symlink($outside.'/vite.config.js', $dir.'/vite.config.mjs');
+
+        $result = (new UpgradeCheck)->scan($dir);
+
+        expect(upgradeAt($result, 'date-pretty'))->toBe(['app/Livewire/Orders.php:38'])
+            ->and(upgradeAt($result, 'css-old-font'))->toBe(['resources/css/app.css:4', 'vite.config.js:2'])
+            ->and($result['skipped'])->toBe([
+                ['path' => 'app/Linked.php', 'reason' => 'symlink'],
+                ['path' => 'app/LinkedDir', 'reason' => 'symlink'],
+                ['path' => 'vite.config.mjs', 'reason' => 'symlink'],
+            ]);
+    });
+
+    it('reports a directory it cannot read instead of failing the scan', function () {
+        if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+            $this->markTestSkipped('root reads every directory');
+        }
+
+        $dir = ($this->host)();
+        @mkdir($dir.'/app/Locked', 0777, true);
+        file_put_contents($dir.'/app/Locked/x.php', "<?php\n\$d->pretty();\n");
+        chmod($dir.'/app/Locked', 0000);
+
+        try {
+            $result = (new UpgradeCheck)->scan($dir);
+            Artisan::call('atom:upgrade-check', ['--path' => $dir]);
+            $output = Artisan::output();
+        } finally {
+            chmod($dir.'/app/Locked', 0755);
+        }
+
+        expect($result['skipped'])->toBe([['path' => 'app/Locked', 'reason' => 'unreadable']])
+            ->and(upgradeAt($result, 'date-pretty'))->toBe(['app/Livewire/Orders.php:38'])
+            ->and($output)->toContain('NOT READ (1)')->toContain('app/Locked  (unreadable)');
+    });
+
+    it('counts and lists a file over 2 MB and a minified one, which it does not read', function () {
+        $dir = ($this->host)();
+        file_put_contents($dir.'/resources/js/big.js', str_repeat("dd(x)\n", 400000));
+        file_put_contents($dir.'/resources/js/bundle.js', 'var a=1;'.str_repeat('dd(x);', 30000));
+
+        $result = (new UpgradeCheck)->scan($dir);
+
+        expect($result['skipped'])->toBe([
+            ['path' => 'resources/js/big.js', 'reason' => 'over 2 MB'],
+            ['path' => 'resources/js/bundle.js', 'reason' => 'looks minified'],
+        ])->and(upgradeAt($result, 'js-dd'))->toBe(['resources/js/app.js:3', 'resources/js/app.js:8', 'resources/views/components/widget.blade.php:15']);
+    });
+
+    it('scans atom\'s published views and lists them as a section; other vendor views are skipped', function () {
+        $dir = ($this->host)();
+        @mkdir($dir.'/resources/views/vendor/atom/button', 0777, true);
+        @mkdir($dir.'/resources/views/vendor/other', 0777, true);
+        file_put_contents($dir.'/resources/views/vendor/atom/button/index.blade.php', "<div>{{ \$x->created_at }}</div>\n");
+        file_put_contents($dir.'/resources/views/vendor/other/x.blade.php', "<div>{{ \$x->created_at }}</div>\n");
+
+        $result = (new UpgradeCheck)->scan($dir);
+
+        expect($result['published_views'])->toBe(['resources/views/vendor/atom/button/index.blade.php'])
+            ->and(upgradeAt($result, 'date-printed-bare'))->toContain('resources/views/vendor/atom/button/index.blade.php:1')
+            ->and(upgradeAt($result, 'date-printed-bare'))->not->toContain('resources/views/vendor/other/x.blade.php:1');
+
+        Artisan::call('atom:upgrade-check', ['--path' => $dir]);
+        expect(Artisan::output())->toContain('PUBLISHED ATOM VIEWS (1)');
+    });
+
+    it('prints a matching line verbatim: <info> in the host\'s source is not a console style', function () {
+        $dir = ($this->host)();
+        file_put_contents($dir.'/app/Tagged.php', "<?php\n\$d->toDateRangeString('<info>x</info> <error>y</error>');\n");
+
+        Artisan::call('atom:upgrade-check', ['--path' => $dir]);
+
+        expect(Artisan::output())->toContain("toDateRangeString('<info>x</info> <error>y</error>');");
+    });
+});
+
+describe('atom:upgrade-check: Date::use and the date checks', function () {
+    $covered = ['date-pretty', 'date-local', 'date-recent', 'date-range-string', 'carbon-typed'];
+
+    it('keeps the date checks at "breaks at runtime" without a Date::use call, and carbon-import at review always', function () use ($covered) {
+        $result = (new UpgradeCheck)->scan(upgradeFixture());
+
+        foreach ($covered as $id) {
+            expect($result['checks'][$id]['severity'])->toBe(UpgradeCheck::BREAKS, $id);
+        }
+
+        expect($result['checks']['carbon-import']['severity'])->toBe(UpgradeCheck::REVIEW)
+            ->and($result['checks']['date-use-line']['count'])->toBe(1)
+            ->and($result['date_use'])->toBeNull();
+    });
+
+    it('downgrades them to review, with a note, once a provider calls Date::use', function () use ($covered) {
+        $dir = ($this->host)();
+        $file = $dir.'/app/Providers/AppServiceProvider.php';
+        file_put_contents($file, str_replace('    {', "    {\n        \\Illuminate\\Support\\Facades\\Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);", file_get_contents($file)));
+
+        $result = (new UpgradeCheck)->scan($dir);
+
+        foreach ($covered as $id) {
+            expect($result['checks'][$id]['severity'])->toBe(UpgradeCheck::REVIEW, $id)
+                ->and($result['checks'][$id]['count'])->toBeGreaterThan(0, $id)
+                ->and($result['checks'][$id]['findings'][0]['note'])->toContain('covered by the Date::use line (app/Providers/AppServiceProvider.php)');
+        }
+
+        // what Date::use does not cover stays what it was
+        expect($result['checks']['macro-request']['severity'])->toBe(UpgradeCheck::BREAKS)
+            ->and($result['checks']['js-currency']['severity'])->toBe(UpgradeCheck::BREAKS)
+            ->and($result['checks']['carbon-import']['severity'])->toBe(UpgradeCheck::REVIEW)
+            ->and($result['checks']['date-use-line']['count'])->toBe(0)
+            ->and($result['date_use'])->toBe('app/Providers/AppServiceProvider.php')
+            ->and($result['summary']['by_severity'][UpgradeCheck::BREAKS])->toBeLessThan((new UpgradeCheck)->scan(upgradeFixture())['summary']['by_severity'][UpgradeCheck::BREAKS]);
+    });
+
+    it('finds the call in a module provider, in bootstrap/, and not in a comment or a test', function () {
+        $dir = ($this->host)();
+        @mkdir($dir.'/modules/Shop/Providers', 0777, true);
+        file_put_contents($dir.'/modules/Shop/Providers/ShopServiceProvider.php', "<?php\nclass ShopServiceProvider { function boot() { Date::use(X::class); } }\n");
+
+        expect((new UpgradeCheck)->scan($dir)['date_use'])->toBe('modules/Shop/Providers/ShopServiceProvider.php');
+
+        upgradeRemove($dir.'/modules');
+        @mkdir($dir.'/bootstrap', 0777, true);
+        file_put_contents($dir.'/bootstrap/app.php', "<?php\n// Date::use(X::class)\nreturn 1;\n");
+        expect((new UpgradeCheck)->scan($dir)['date_use'])->toBeNull();
+
+        file_put_contents($dir.'/bootstrap/app.php', "<?php\nDate::use(X::class);\n");
+        expect((new UpgradeCheck)->scan($dir)['date_use'])->toBe('bootstrap/app.php');
+
+        unlink($dir.'/bootstrap/app.php');
+        file_put_contents($dir.'/tests/Feature/ProviderTest.php', "<?php\nclass TestServiceProvider { function boot() { Date::use(X::class); } }\n");
+        expect((new UpgradeCheck)->scan($dir)['date_use'])->toBeNull();
+    });
+
+    it('says "no AppServiceProvider found" when there is none, rather than pointing at a directory', function () {
+        $dir = ($this->host)();
+        unlink($dir.'/app/Providers/AppServiceProvider.php');
+
+        $finding = (new UpgradeCheck)->scan($dir)['checks']['date-use-line']['findings'][0];
+
+        expect($finding)->toMatchArray(['file' => '', 'line' => 0, 'text' => 'no AppServiceProvider found']);
+
+        Artisan::call('atom:upgrade-check', ['--path' => $dir]);
+        expect(Artisan::output())->toContain('(app)  no AppServiceProvider found')->not->toContain('app/Providers:1');
+    });
+});
+
 describe('atom:upgrade-check: the docs', function () {
     it('is documented in the README, the Boost skill and CLAUDE.md', function () {
         $readme = file_get_contents(__DIR__.'/../../README.md');
         $skill = file_get_contents(__DIR__.'/../../resources/boost/skills/atom-components/SKILL.blade.php');
         $claude = file_get_contents(__DIR__.'/../../CLAUDE.md');
 
-        foreach (['atom:upgrade-check', '--json', '--all', '--output', '--path', 'Preparing for v4'] as $needle) {
+        foreach (['atom:upgrade-check', '--json', '--all', '--output', '--path', 'Preparing for v4', 'https://github.com/jiannius/atom/blob/v4/UPGRADE.md', 'treat the file like source code'] as $needle) {
             expect($readme)->toContain($needle);
         }
 

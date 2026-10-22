@@ -5,3 +5,4 @@ export function ok(rows, s, d) {
     d.toDateString()
     return `${rows.firstWhere('id', 1)} http://example.test/${s.slug()}`
 }
+const t = /'/.test(s) ? dd(1) : 0 // dd(2) is a comment

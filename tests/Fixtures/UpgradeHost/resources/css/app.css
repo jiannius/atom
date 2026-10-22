@@ -19,3 +19,11 @@ html {
 }
 
 /* html { font-size: 20px } in a comment is not a rule */
+
+.prose > * {
+    border-color: red;
+}
+
+.foo * {
+    border-color: blue;
+}
