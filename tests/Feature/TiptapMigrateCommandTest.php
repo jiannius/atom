@@ -899,3 +899,29 @@ describe('atom:tiptap-migrate: models and connections', function () {
         expect(migrateIsDocument(migrateBody($id)))->toBeFalse();
     });
 });
+
+describe('atom:tiptap-migrate: the docs', function () {
+    it('documents every option in the README and the Boost skill, and the workflow in UPGRADE', function () {
+        $options = collect(app(MigrateTiptapContent::class)->getDefinition()->getOptions())
+            ->keys()
+            ->reject(fn ($name) => in_array($name, ['help', 'quiet', 'verbose', 'version', 'ansi', 'no-ansi', 'no-interaction', 'env', 'dry', 'path', 'model', 'output']))
+            ->values();
+
+        expect($options->all())->toContain('force', 'accept', 'restore', 'compare', 'prune-backups', 'status', 'discard-edits');
+
+        $readme = file_get_contents(__DIR__.'/../../README.md');
+        $skill = file_get_contents(__DIR__.'/../../resources/boost/skills/atom-components/SKILL.blade.php');
+        $upgrade = file_get_contents(__DIR__.'/../../UPGRADE.md');
+
+        foreach ($options as $option) {
+            expect($readme)->toContain('--'.$option);
+            expect($skill)->toContain('--'.$option);
+        }
+
+        foreach (['atom:tiptap-migrate', '--force', '--compare', '--prune-backups', 'AsTiptapContent', 'AsEditorContent', '<atom:tiptap*>', 'text-base'] as $needle) {
+            expect($upgrade)->toContain($needle);
+        }
+
+        expect($readme)->not->toContain('## The `AsEditorContent` cast');
+    });
+});

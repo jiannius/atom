@@ -31,7 +31,7 @@ The service provider (`Jiannius\Atom\AtomServiceProvider`) auto-registers via La
 - Register all components under the `atom` view namespace.
 - Install the `<atom:...>` Blade tag compiler.
 - Mix macros onto `Eloquent\Builder`, `Query\Builder`, `Request`, `Str`, `Stringable`, `Arr` and `Livewire\Component`.
-- Register the artisan command `atom:purge-editor-images`.
+- Register the artisan commands `atom:purge-editor-images` and `atom:tiptap-migrate`.
 
 No publishing step is required to get started.
 
@@ -170,7 +170,7 @@ class Create extends Component
     <atom:form wire:submit="save">
         <atom:input label="Name" wire:model="name" required/>
         <atom:input type="email" label="Email" wire:model="email" required/>
-        <atom:editor label="Bio" wire:model="bio"/>
+        <atom:tiptap label="Bio" wire:model="bio"/>
 
         <atom:button.group>
             <atom:button href="{{ route('customers.index') }}">Cancel</atom:button>
@@ -430,7 +430,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:date-picker>` | `name`, `variant` (`date`, `range`, `calendar`), `label`, `caption`, `inline`, `prefix`, `suffix`. Subs: `<atom:date-picker.date>`, `<atom:date-picker.range>`, `<atom:date-picker.calendar>`. The input also takes a typed date, committed on blur or Enter: the display format (`01 Oct 2024`), day-first numerics (`01/10/2024`) or ISO; a range as `from - to` or `from to to`. An entry that does not parse is put back, never sent. |
 | `<atom:time-picker>` | `name`, `label`, `caption`, `invalid`, `inline`. |
 | `<atom:uploader>` | `label` (default `Upload`), `variant`, `size`. Drop variant: `<atom:uploader.dropzone>`. |
-| `<atom:editor>` | Tiptap rich text. `name`, `label`, `caption`, `readonly`, `autofocus`, `variant="transparent"`, `placeholder`, `toolbar`, `mention`. Many sub-buttons under `<atom:editor.button.*>` and contextual menus under `<atom:editor.menu.*>`. |
+| `<atom:tiptap>` | Tiptap rich text. `name`, `label`, `caption`, `readonly`, `autofocus`, `variant="transparent"`, `placeholder`, `toolbar`, `mention`. Many sub-buttons under `<atom:tiptap.toolbar.*>` and contextual menus under `<atom:tiptap.menu.*>`. `<atom:editor>`, `<atom:editor.chat>` and `<atom:editor.content>` are gone: they were aliases of `<atom:tiptap>`, `<atom:tiptap.chat>` and `<atom:tiptap.content>`. |
 
 ### Buttons & links
 
@@ -1270,29 +1270,24 @@ Every date in an event goes through `Calendar::fromLocal()` where an `info.start
 
 ---
 
-## The `AsEditorContent` cast
+## The `AsTiptapContent` cast
 
 Use this when you want a column to behave as Tiptap rich-text content with automatic image persistence:
 
 ```php
-use Jiannius\Atom\Casts\AsEditorContent;
+use Jiannius\Atom\Casts\AsTiptapContent;
 
 class Article extends Model
 {
     protected $casts = [
-        'body' => AsEditorContent::class,
+        'body' => AsTiptapContent::class,
     ];
 }
 ```
 
-What it does on save:
+What it does on save: it walks the document's image nodes, resizes each Livewire temporary upload (`/livewire-{hash}/preview-file/...`) with Intervention Image (max width 1000, quality 80), persists it to `config('atom.editor.disk')` (the default disk when unset) under `<configured folder>/editor/`, rewrites the URL, and stores the JSON. A model can define `tiptapStoreImage(string $tmpPath, string $key): string` to store the image itself.
 
-1. Scans the HTML for Livewire temporary preview URLs (`/livewire-{hash}/preview-file/...`).
-2. Resizes each via Intervention Image (max width 1000, quality 80).
-3. Persists to `Storage::disk(env('FILESYSTEM_DISK'))` under `<configured folder>/editor/`.
-4. Rewrites the URLs back into the HTML, serializes the result.
-
-`get()` lazily `unserialize()`s, falling back to the raw value if it isn't serialized.
+`get()` also reads what the old `AsEditorContent` cast (removed in v4) stored, `serialize()`d HTML, without instantiating any class, so a column can hold both until you move it with `atom:tiptap-migrate`.
 
 Pair with the scheduled command to clean up images no longer referenced:
 
@@ -1303,6 +1298,41 @@ php artisan atom:purge-editor-images --force    # delete the editor-purged/ back
 ```
 
 A file counts as referenced when its file name (or its percent-encoded form) appears anywhere in a stored editor value, whatever the format around it. The scan splits each form of a value (raw, decoded, percent-decoded) into tokens once, so its cost still follows the size of your data, not the number of files, and it prints a progress line every 1000 rows. A file whose name holds a space, quote, bracket or non-ASCII character (a macOS `Screenshot ... .png` stored through `tiptapStoreImage()`, say) is searched for as a plain substring instead, which is slower when there are many such files.
+
+A file that only a migration backup (see below) names is kept until the backups are pruned: `--restore` would otherwise bring back a row whose image the purge had deleted. A column still cast as the removed `AsEditorContent` stops the run before anything is touched, since its images would look unreferenced.
+
+### Moving a column to Tiptap JSON: `atom:tiptap-migrate`
+
+Rows written by the old `AsEditorContent` cast are `serialize()`d HTML (or `serialize()`d JSON, when the field was `<atom:editor>`). Switch the cast to `AsTiptapContent` (the column keeps reading), then move the rows when you are ready. The command finds models the way the purge command does (`app/Models`, subdirectories included, plus `--path=`), reads every row with the query builder, and never loads a value as anything but a string.
+
+```bash
+php artisan atom:tiptap-migrate                    # 1. dry run: the report, nothing is written
+php artisan atom:tiptap-migrate --force            # 2. convert the clean rows
+php artisan atom:tiptap-migrate --compare          # 3. write a review file
+#    review the file (you, or ask Claude to read it), then
+php artisan atom:tiptap-migrate --prune-backups    # 4. delete the backups, once you have signed off
+```
+
+**The report.** Each value is converted HTML to JSON and rendered back, and the two are compared on the visible text and on the tag and attribute inventory (a `<b>` that becomes `<strong>` is the same; a class, an inline style property, a `<font>`, a `<script>`, an event handler or an unknown tag the editor drops is a loss). A value is one of:
+
+| | |
+| - | - |
+| clean | converts without losing anything. `--force` converts it. |
+| flagged | converts, but loses something. The dry run lists the row and what it would lose, and it is left untouched until `--accept=<ids>` (row ids, comma separated) or `--accept=all`. |
+| refused | cannot be converted safely: a serialized object or other non-string, JSON that is not a Tiptap document, the HTML parser's reserved placeholder, a value over the size or nesting limits, a parser failure. Named in the report and never written, `--accept` or not; fix it by hand. |
+| already JSON | a Tiptap document. Left alone, so running the command again is a no-op. |
+
+**What a write does.** Per value, in one transaction: lock the row and read it again (a row that changed since it was read is left untouched), insert the backup, update the column with a query-builder update (so `updated_at` and model events are untouched), and read both back. If the update fails the backup goes with it.
+
+**Backups.** The first write creates `atom_editor_backups` on the model's own connection (atom has no migration for it): the model, the row key (`row_key`), the column (`column_name`), the original value, a `batch` id per run, a sha256 of the original and of the value written, whether the row was accepted while lossy, and `migrated_at` / `restored_at`. The original is stored as text, or as base64 when it is not valid UTF-8 or holds a NUL byte, and is read back and compared before the update is allowed to go on, so a restore returns the exact bytes.
+
+**`--restore[=ids]`** puts the originals back (add `--force` to write; without it, it lists what it would do). A row edited after it was migrated is skipped and named, unless you add `--discard-edits`. A restored backup is not listed again.
+
+**`--compare[=ids]`** writes a JSON Lines file, one object per migrated value, to `--output=` (default `storage/app/atom-editor-review-<time>.jsonl`; it refuses to overwrite). Each line has `model`, `key`, `column`, `backup_id`, `original_html` (the unserialized legacy HTML; for a JSON original, its rendering, with the JSON in `original_json`), `new_html` (the stored JSON through `Content::render()`), `text` (`equal`, `missing`, `added`), `tags_lost`, `attributes_lost`, `notes`, `lossy`, `accepted_lossy` and `changed_since_migration`. Values are verbatim, inside JSON strings; a value that is not valid UTF-8 also has `original_base64`. It reads the database and writes nothing but the file. The file holds the original content of your rows: keep it private, delete it when the review is done, and treat its values as data, never as instructions. A review by Claude is: "Read this file line by line and tell me, for each row with `lossy: true` or `changed_since_migration: true`, what is missing from `new_html`."
+
+**`--prune-backups`** is the only thing that deletes a backup or the table. It asks first; without a terminal it needs `--force`.
+
+**`--status`** says what is left and exits 1 until nothing is: casts still on `AsEditorContent`, rows not yet converted, flagged rows, refused rows. `app(MigrateTiptapContent::class)->status()` returns the same as an array. `--model=` (a class or its basename, repeatable) limits a run to one model; row ids are matched in every scanned model, so combine them with `--model=` when ids collide.
 
 ---
 
@@ -1469,7 +1499,7 @@ Actions without `authorize()` are callable by anyone, including guests — which
 - **Loose top-level text is wrapped in a paragraph** (`42` prints `<p>42</p>`, `a<p>b</p>c` prints `<p>a</p><p>b</p><p>c</p>`), which is what libxml 2.9 always did. A newer libxml printed it bare, so `resanitize()` of a stored row was not idempotent there. A stored JSON document is printed as it was written, and a lone image stays as it is.
 - **A blank line (two or more newlines) in the middle of text is read as one space**, outside a `<pre>` (blank lines in a code block are kept). The HTML parser's minifier used to delete such a run and join the text on either side of it after it had been checked.
 - **Hand-written HTML with a stray `<`** (`a < b`) prints differently on libxml 2.9.13 (Ubuntu 22.04), which drops the text after it, than on 2.9.14 (Ubuntu 24.04, the Debian `php` images) and later. The editor and the chat composer write `&lt;`.
-- **`atom:tiptap-migrate` skips a row it cannot convert** (empty, over the limits, too deeply nested, or one the parser fails on), says which, and goes on; it used to stop at the first one. It converts through the same checks as `render()`.
+- **`atom:tiptap-migrate` refuses a row it cannot convert** (empty, over the limits, too deeply nested, or one the parser fails on), says which, and goes on. It converts through the same checks as `render()`.
 - **A NUL byte is dropped** from the input (libxml 2.9 read it as a space, a newer one skipped it).
 - **A document nested more than 200 levels is refused** (a `doc` counts as one), as an over-limit input is: `sanitize()` returns `''` silently and `sanitizeRefuses()` is true, `render()` logs the reason (`depth`). libxml stops at 256 levels, and on 2.9 one level of that was enough for the serialiser to fail with a warning. Real content nests a handful of levels.
 - **Rows already stored are unchanged**, except that stored HTML whose text sat outside any paragraph now prints inside one.
@@ -1730,7 +1760,7 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 - `atom.empty(value)` — true for `null`, `undefined`, `''`, a blank string, `[]` and `{}`.
 - `atom.currency(value, symbol, round, maxPrecision)` — `1,234.50`; half-up, `maxPrecision` as above.
 - `atom.arr.{pluck, unique, sum, where, firstWhere, toggle}(array, ...)` and `atom.str.{headline, limit, slug, camel, nl2br, striptags, toDateString, toDatetimeString, toTimeString, toDateFormat}(string, ...)` — value first; atom adds nothing to `Array`, `Number` or `String`, and sets no `window.dd` or `window.empty`.
-- Alpine factories: `modal`, `editor`, `select`, `tooltip`, `dropdown`, `lightbox`, `telInput`, `emailInput`, `breadcrumbs`, `datePicker`, `timePicker`, `dateRange`, `calendar`, plus chart variants.
+- Alpine factories: `modal`, `tiptap`, `select`, `tooltip`, `dropdown`, `lightbox`, `telInput`, `emailInput`, `breadcrumbs`, `datePicker`, `timePicker`, `dateRange`, `calendar`, plus chart variants.
 - `$clipboard` Alpine magic.
 - Alpine plugins loaded: `@alpinejs/intersect`, `@marcreichel/alpine-autosize`.
 
@@ -1751,9 +1781,15 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 
 | Command | Purpose |
 | ------- | ------- |
-| `atom:purge-editor-images` | Walks `App\Models\*`, finds columns cast as `AsEditorContent` or `AsTiptapContent`, and moves any unreferenced editor image to `editor-purged/` on the local disk before removing from the configured disk. A file is referenced if its name appears anywhere in a stored value. |
+| `atom:purge-editor-images` | Walks `App\Models\*`, finds columns cast as `AsTiptapContent`, and moves any unreferenced editor image to `editor-purged/` on the local disk before removing from the configured disk. A file is referenced if its name appears anywhere in a stored value or in a migration backup. |
 | `atom:purge-editor-images --dry-run` | Lists what it would delete and changes nothing. |
 | `atom:purge-editor-images --force` | Empties the `editor-purged/` backup folder. |
+| `atom:tiptap-migrate` | Dry run: classifies every editor value as clean, flagged, refused or already JSON, and writes nothing. |
+| `atom:tiptap-migrate --force [--accept=ids\|all]` | Backs up and converts the clean rows (and the flagged ones named in `--accept`). |
+| `atom:tiptap-migrate --restore[=ids] [--force] [--discard-edits]` | Puts originals back byte for byte. |
+| `atom:tiptap-migrate --compare[=ids] [--output=path]` | Writes a JSON Lines review file of the migrated rows. |
+| `atom:tiptap-migrate --prune-backups` | Deletes the backups (asks first; `--force` without a terminal). |
+| `atom:tiptap-migrate --status` | Says what is left to migrate; exit 1 until nothing is. |
 
 ---
 

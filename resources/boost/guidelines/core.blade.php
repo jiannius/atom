@@ -4,7 +4,7 @@ Atom (`jiannius/atom`) is a Tailwind + Alpine + Livewire component library for L
 
 ### Component directory & usage snippets
 
-Every component ships with a canonical, verified usage example:
+Every component has a verified usage example:
 
 @verbatim
 - **Demo snippets:** `vendor/jiannius/atom/resources/views/docs/demos/<component>/*.blade.php` — each file is a tiny, copy-paste-ready Blade example (rendered and verified in `/atom/docs`, never stale). Read the relevant one before writing `<atom:...>` markup.
@@ -42,11 +42,9 @@ Never write `<x-atom::name>`, `<x-icon />`, or bespoke equivalents when an Atom 
 
 ### Livewire components
 
-Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEditor`, `WithRecaptcha`. `$this->toast()` and siblings are PHP-only (JS: `atom.toast()`).
+Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEditor`, `WithRecaptcha`. `$this->toast()` and siblings are PHP-only (JS: `atom.toast()`). `AsEditorContent` and `<atom:editor*>` are gone: use `AsTiptapContent`; `atom:tiptap-migrate` converts old rows.
 
 ### Keep the layout on Atom
-
-Views drift when they hand-roll what Atom already has.
 
 - Forms: `<atom:form.section>`, `<atom:form.grid>`, `<atom:form.modal>` and `<atom:form.actions>`, never bare `grid-cols-2`.
 - Panels, label/value pairs, tags, notices, status and empty lists: `<atom:card>`, `<atom:dd>`, `<atom:badge>`, `<atom:callout>`, `<atom:status>`, `<atom:empty>`, never hand-built boxes.
