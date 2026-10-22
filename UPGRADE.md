@@ -266,13 +266,18 @@ What stays: `Request::portal()`, `Str::namespace()`, `interval()` and `initials(
 | `dd(...)` | `console.log(...)` |
 | `rows.pluck('id')`, `.unique(attr)`, `.sum(attr)`, `.where(key, v)`, `.firstWhere(key, v)`, `.toggle(v)` | `atom.arr.pluck(rows, 'id')`, `atom.arr.unique(rows, attr)`, `atom.arr.sum(rows, attr)`, `atom.arr.where(rows, key, v)`, `atom.arr.firstWhere(rows, key, v)`, `atom.arr.toggle(list, v)` |
 | `s.headline()`, `.limit(n)`, `.slug()`, `.camel()`, `.nl2br()`, `.striptags()` | `atom.str.headline(s)`, `atom.str.limit(s, n)`, `atom.str.slug(s)`, `atom.str.camel(s)`, `atom.str.nl2br(s)`, `atom.str.striptags(s)` |
-| `s.toDateString()`, `.toDatetimeString()`, `.toTimeString()`, `.toDateFormat(format)`, `.fromNow()` | `atom.str.toDateString(s)`, `atom.str.toDatetimeString(s)`, `atom.str.toTimeString(s)`, `atom.str.toDateFormat(s, format)`, `atom.str.fromNow(s)` |
+| `s.toDateString()`, `.toDatetimeString()`, `.toTimeString()`, `.toDateFormat(format)` | `atom.str.toDateString(s)`, `atom.str.toDatetimeString(s)`, `atom.str.toTimeString(s)`, `atom.str.toDateFormat(s, format)` |
+| `s.fromNow()` | removed, no replacement (see below) |
 
-Search your JS and Blade (`x-text`, `x-bind`, `x-data`, `x-init`, `x-on`, `x-effect` and `<script>`) for `.currency(`, `.pluck(`, `.unique(`, `.sum(`, `.where(`, `.firstWhere(`, `.toggle(` on an array (a `classList.toggle()` is the browser's own), `.headline(`, `.limit(`, `.slug(`, `.camel(`, `.nl2br(`, `.striptags(`, `.toDateFormat(`, `.toDateString(`, `.toDatetimeString(`, `.toTimeString(`, `.fromNow(`, and for a bare `empty(` or `dd(` in JavaScript (a PHP `empty($x)` is unaffected). Notes:
+Search your JS and Blade (`x-text`, `x-bind`, `x-data`, `x-init`, `x-on`, `x-effect` and `<script>`) for `.currency(`, `.pluck(`, `.unique(`, `.sum(`, `.where(`, `.firstWhere(`, `.toggle(` on an array (a `classList.toggle()` is the browser's own), `.headline(`, `.limit(`, `.slug(`, `.camel(`, `.nl2br(`, `.striptags(`, `.toDateFormat(`, `.toDateString(`, `.toDatetimeString(`, `.toTimeString(`, `.fromNow(` (removed, see below), and for a bare `empty(` or `dd(` in JavaScript (a PHP `empty($x)` is unaffected). Notes:
 
-- `atom.arr.*` keeps the old rules: a value that is not an array comes back unchanged, and `atom.arr.toggle()` changes the array in place (so `atom.arr.toggle($wire.ids, 3)` still updates a Livewire array) and returns it.
-- `atom.str.*` takes a string. `atom.str.nl2br(null)` is `''`; the others throw on `null` as the methods did.
-- `atom.str.fromNow()` needs dayjs's `relativeTime` plugin, which atom has never loaded: it threw before and still does unless your bundle extends the shared dayjs.
+- Every helper behaves as its method did for every value the method could be called on. `atom.arr.*` returns a non-array unchanged, and `atom.arr.toggle()` changes the array in place (so `atom.arr.toggle($wire.ids, 3)` still updates a Livewire array) and returns it.
+- **`.fromNow()` is removed with no replacement.** It needs dayjs's `relativeTime` plugin, which atom has never loaded, so it always threw. If you want it, extend dayjs with `relativeTime` yourself and call `dayjs(value).fromNow()`.
+- **Only difference: a `null` or `undefined` value no longer throws.** A method cannot be called on `null` or `undefined`, so the old calls threw a `TypeError`; the functions take the value as an argument and answer instead:
+  - `atom.str.toDateString`, `toDatetimeString`, `toTimeString` and `toDateFormat` return `undefined` for `null` (as they do for any invalid date) and format the current moment for `undefined` (dayjs reads `undefined` as now);
+  - `atom.str.nl2br(null)` and `nl2br(undefined)` return `''`;
+  - `atom.str.camel`, `slug`, `headline`, `striptags` and `limit` still throw a `TypeError` on `null` and `undefined`;
+  - `atom.currency(null)` is `'0.00'` and `atom.currency(undefined)` is `'NaN'` (the number is `Number(value)`, and `Number(null)` is `0`); `atom.currency('abc')` is `'NaN'` too.
 - `atom.empty` is the function `window.empty` was: `null`, `undefined`, `''`, a blank string, `[]` and `{}` are empty; `0`, `false` and a `Date` are not.
 - Nothing in atom's own markup or scripts uses the old names any more. `tests/Feature/JsGlobalsTest.php` fails if one comes back.
 

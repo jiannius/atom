@@ -32,7 +32,7 @@ test('every replacement exists on atom', async ({ page }) => {
   expect(shape.empty).toBe('function')
   expect(shape.currency).toBe('function')
   expect(shape.arr).toEqual(['firstWhere', 'pluck', 'sum', 'toggle', 'unique', 'where'])
-  expect(shape.str).toEqual(['camel', 'fromNow', 'headline', 'limit', 'nl2br', 'slug', 'striptags', 'toDateFormat', 'toDateString', 'toDatetimeString', 'toTimeString'])
+  expect(shape.str).toEqual(['camel', 'headline', 'limit', 'nl2br', 'slug', 'striptags', 'toDateFormat', 'toDateString', 'toDatetimeString', 'toTimeString'])
 })
 
 test('atom.empty keeps the rules window.empty had', async ({ page }) => {
@@ -56,7 +56,7 @@ test('atom.currency formats like Number.prototype.currency did', async ({ page }
   expect(results).toEqual(['1,234.50', '0.065', '0.065', '10.19', 'MYR 10.10', 'RM 12.50'])
 })
 
-test('atom.arr matches the Array prototype helpers it replaces', async ({ page }) => {
+test('atom.arr keeps the behaviour the Array helpers had', async ({ page }) => {
   const rows = await page.evaluate(() => {
     const data = [{ id: 1, kind: 'a', n: '2' }, { id: 2, kind: 'b', n: 3 }, { id: 3, kind: 'a', n: 4 }, { id: 1, kind: 'a', n: '2' }]
     const list = [1, 2, 3]
@@ -99,7 +99,7 @@ test('atom.arr matches the Array prototype helpers it replaces', async ({ page }
   })
 })
 
-test('atom.str matches the String prototype helpers it replaces', async ({ page }) => {
+test('atom.str keeps the behaviour the String helpers had', async ({ page }) => {
   const out = await page.evaluate(() => ({
     headline: [atom.str.headline('order_status'), atom.str.headline('in-progress ITEM')],
     camel: [atom.str.camel('order_status'), atom.str.camel('Hello World-foo.bar')],
@@ -124,5 +124,27 @@ test('atom.str matches the String prototype helpers it replaces', async ({ page 
     nl2br: ['a<br />\nb<br />\r\nc', 'a<br>\nb', '', ''],
     striptags: ['Hi there', 'no tags'],
     date: ['01 Oct 2024', '01 Oct 2024 9:05 PM', '9:05 PM', '2024/10/01', null],
+  })
+})
+
+test('null and undefined no longer throw where a method call did (UPGRADE.md lists these)', async ({ page }) => {
+  const out = await page.evaluate(() => {
+    const throws = (fn) => { try { fn(); return false } catch (e) { return e instanceof TypeError } }
+
+    return {
+      dateNull: [atom.str.toDateString(null) ?? null, atom.str.toDateFormat(null, 'YYYY') ?? null],
+      dateUndefinedIsNow: atom.str.toDateFormat(undefined, 'YYYY') === String(new Date().getFullYear()),
+      nl2br: [atom.str.nl2br(null), atom.str.nl2br(undefined)],
+      stillThrow: ['camel', 'slug', 'headline', 'striptags'].map(name => [throws(() => atom.str[name](null)), throws(() => atom.str[name](undefined))]).flat().concat(throws(() => atom.str.limit(null, 3))),
+      currency: [atom.currency(null), atom.currency(undefined)],
+    }
+  })
+
+  expect(out).toEqual({
+    dateNull: [null, null],
+    dateUndefinedIsNow: true,
+    nl2br: ['', ''],
+    stillThrow: [true, true, true, true, true, true, true, true, true],
+    currency: ['0.00', 'NaN'],
   })
 })

@@ -1729,7 +1729,7 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 - `window.atom.action(name, params)` — POST to `/atom/action/{name}` (actions implementing `WebAction` only; see [Actions](#actions)).
 - `atom.empty(value)` — true for `null`, `undefined`, `''`, a blank string, `[]` and `{}`.
 - `atom.currency(value, symbol, round, maxPrecision)` — `1,234.50`; half-up, `maxPrecision` as above.
-- `atom.arr.{pluck, unique, sum, where, firstWhere, toggle}(array, ...)` and `atom.str.{headline, limit, slug, camel, nl2br, striptags, toDateString, toDatetimeString, toTimeString, toDateFormat, fromNow}(string, ...)` — value first; atom adds nothing to `Array`, `Number` or `String`, and sets no `window.dd` or `window.empty`.
+- `atom.arr.{pluck, unique, sum, where, firstWhere, toggle}(array, ...)` and `atom.str.{headline, limit, slug, camel, nl2br, striptags, toDateString, toDatetimeString, toTimeString, toDateFormat}(string, ...)` — value first; atom adds nothing to `Array`, `Number` or `String`, and sets no `window.dd` or `window.empty`.
 - Alpine factories: `modal`, `editor`, `select`, `tooltip`, `dropdown`, `lightbox`, `telInput`, `emailInput`, `breadcrumbs`, `datePicker`, `timePicker`, `dateRange`, `calendar`, plus chart variants.
 - `$clipboard` Alpine magic.
 - Alpine plugins loaded: `@alpinejs/intersect`, `@marcreichel/alpine-autosize`.

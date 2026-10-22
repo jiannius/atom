@@ -105,11 +105,6 @@ it('leaves no call to a removed global helper in a blade or an Alpine factory', 
     foreach ($files as $file) {
         $source = $file->getContents();
 
-        // helpers/str.js calls dayjs's own instance methods (`.fromNow()`) and helpers/arr.js defines the names
-        if (str_starts_with($file->getRelativePathname(), 'helpers/') && str_ends_with($file->getRelativePathname(), '.js')) {
-            continue;
-        }
-
         // `->headline()` and `::slug()` are PHP and never match: the pattern needs a dot straight before the name
         preg_match_all('/(?<!atom\.str)(?<!atom\.arr)(?<!\barr)(?<!\bstr)(?<!classList)\.('.$removed.')\s*\(/', $source, $dotted);
 
@@ -117,9 +112,18 @@ it('leaves no call to a removed global helper in a blade or an Alpine factory', 
             $offenders[] = $file->getRelativePathname().': '.$call;
         }
 
-        // a bare empty( / dd( that is JS: the argument is not a PHP variable
-        if (preg_match('/(?<![\w.$>])(empty|dd)\(\s*(?![$\s])/', withoutJsComments($source), $bare) && ! str_contains($source, 'import empty')) {
-            $offenders[] = $file->getRelativePathname().': '.$bare[0];
+        // a bare empty( / dd( that is JS: the argument is not a PHP variable. `empty(` is allowed only where the file
+        // imports it (it then resolves to the import); `dd(` is never allowed, whatever the file imports.
+        $importsEmpty = (bool) preg_match('/^\s*import\s+empty\s+from\s/m', $source);
+
+        preg_match_all('/(?<![\w.$>])(empty|dd)\(\s*(?![$\s])/', withoutJsComments($source), $bare, PREG_SET_ORDER);
+
+        foreach ($bare as $call) {
+            if ($call[1] === 'empty' && $importsEmpty) {
+                continue;
+            }
+
+            $offenders[] = $file->getRelativePathname().': '.$call[0];
         }
     }
 
