@@ -79,10 +79,15 @@ jobs:
           if-no-files-found: error
 
   e2e:
-    name: Playwright (Chromium)
+    name: Playwright (Chromium ${{ matrix.shard }}/4)
     needs: consumer
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # Each shard is its own runner with its own `testbench serve`, so the config's one worker per server stays.
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
 
@@ -119,14 +124,26 @@ jobs:
 
       - run: node_modules/.bin/playwright install --with-deps chromium
 
-      - run: node_modules/.bin/playwright test --project=chromium
+      - run: node_modules/.bin/playwright test --project=chromium --shard=${{ matrix.shard }}/4
 
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-results
+          name: playwright-results-${{ matrix.shard }}
           path: test-results/
           if-no-files-found: ignore
+
+  # One check for the four shards, under the name the single job had.
+  e2e-result:
+    name: Playwright (Chromium)
+    needs: e2e
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: |
+          echo "Playwright shards: ${{ needs.e2e.result }}"
+          test "${{ needs.e2e.result }}" = "success"
 
   dist:
     name: dist/ is up to date
