@@ -11,7 +11,7 @@ import dayjs from 'dayjs'
 // entry or an impossible date (`31/02/2024`) is null.
 //
 // Hand-rolled on purpose: dayjs's customParseFormat plugin would extend the ONE
-// dayjs instance the whole bundle shares, and the String prototype helpers call
+// dayjs instance the whole bundle shares, and the `atom.str` date helpers call
 // `dayjs(value, format)` expecting the format to be ignored (with the plugin, a
 // `...Z` string loses its zone and a date-only string turns invalid).
 const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']

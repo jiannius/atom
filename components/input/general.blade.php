@@ -76,7 +76,7 @@ $classes = Arr::toCssClasses([
                 }"
                 x-init="() => {
                     input = $el.closest('[data-atom-input]').querySelector('input')
-                    input.addEventListener('input', e => show = !empty(e.target.value))
+                    input.addEventListener('input', e => show = !atom.empty(e.target.value))
                 }"
                 x-show="show"
                 x-on:click.stop="() => {

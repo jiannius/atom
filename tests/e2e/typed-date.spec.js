@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import dayjs from 'dayjs'
 import { parseTypedDate, splitTypedRange } from '../../resources/js/helpers/typed-date.js'
 
-// The String prototype helpers (resources/js/prototypes/string.js) call
+// The date helpers of atom.str (resources/js/helpers/str.js) call
 // `dayjs(value, 'YYYY-MM-DD HH:mm:ss')` and rely on dayjs core IGNORING the format.
 // A parse plugin extended onto the shared instance would make a `...Z` string lose
 // its zone and a date-only string invalid, so the parser must not install one.

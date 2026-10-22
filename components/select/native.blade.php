@@ -197,7 +197,7 @@ data-atom-select-native>
             x-cloak
             x-data="{
                 get show () {
-                    return !empty(value)
+                    return !atom.empty(value)
                 },
             }"
             x-on:click.stop="value = multiple ? [] : null"

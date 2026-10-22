@@ -31,6 +31,8 @@ Helpers, on every component:
 - `$this->wirekey(...$args)`: stable `wire:key` based on args, or random ULID-based key when called with none.
 
 **PHP only, never `$wire.toast(...)`.** The helpers are macros, which Livewire never exposes to the browser (before v4 they were public trait methods and `$wire.toast(...)` worked). From JS use `atom.toast(...)`, `atom.alert(...)`, or dispatch `atom-toast-show`; for an action, `atom.action(...)` with the action opted into `WebAction`.
+
+**JS helpers live on `atom`, not on the built-ins.** atom adds nothing to `Array`, `Number` or `String` and sets no `window.dd` / `window.empty`: write `atom.currency(n, symbol, round, maxPrecision)`, `atom.empty(x)`, `atom.arr.pluck(rows, 'id')` (also `unique`, `sum`, `where`, `firstWhere`, `toggle`), `atom.str.headline(s)` (also `limit`, `slug`, `camel`, `nl2br`, `striptags`, `toDateString`, `toDatetimeString`, `toTimeString`, `toDateFormat`) and `console.log()`, never `n.currency()`, `empty(x)` or `dd()`.
 @endverbatim
 
 @verbatim

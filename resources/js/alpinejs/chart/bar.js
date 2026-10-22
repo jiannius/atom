@@ -1,3 +1,4 @@
+import arr from '../../helpers/arr'
 import { seriesColor, chrome, tooltipHtml } from './colors'
 
 export default (config) => {
@@ -21,7 +22,7 @@ export default (config) => {
                         toolbar: { show: false },
                     },
                     series: [{
-                        data: config.data.pluck('value'),
+                        data: arr.pluck(config.data, 'value'),
                     }],
                     plotOptions: {
                         bar: {
@@ -42,7 +43,7 @@ export default (config) => {
                     xaxis: {
                         axisTicks: { show: false },
                         axisBorder: { show: false },
-                        categories: config.data.pluck('label'),
+                        categories: arr.pluck(config.data, 'label'),
                     },
                     yaxis: {
                         show: false,

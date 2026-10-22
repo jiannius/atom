@@ -255,6 +255,34 @@ What stays: `Request::portal()`, `Str::namespace()`, `interval()` and `initials(
 
 `atom:upgrade` will add the `Date::use()` line, flag the date-method calls and the removed macros, and delete the `editor` attribute, when 4.0 ships. Until then, change them by hand.
 
+## JS globals
+
+**atom no longer adds anything to the page's built-ins, and a call to one of the old helpers fails in the browser, not at build time.** The `Array`, `Number` and `String` prototype helpers, `window.dd` and `window.empty` are gone. Each helper is a function on `window.atom` that takes the value as its first argument, with the same behaviour and options:
+
+| Before | After |
+|---|---|
+| `x.currency(symbol, round, maxPrecision)` | `atom.currency(x, symbol, round, maxPrecision)` |
+| `empty(x)` | `atom.empty(x)` |
+| `dd(...)` | `console.log(...)` |
+| `rows.pluck('id')`, `.unique(attr)`, `.sum(attr)`, `.where(key, v)`, `.firstWhere(key, v)`, `.toggle(v)` | `atom.arr.pluck(rows, 'id')`, `atom.arr.unique(rows, attr)`, `atom.arr.sum(rows, attr)`, `atom.arr.where(rows, key, v)`, `atom.arr.firstWhere(rows, key, v)`, `atom.arr.toggle(list, v)` |
+| `s.headline()`, `.limit(n)`, `.slug()`, `.camel()`, `.nl2br()`, `.striptags()` | `atom.str.headline(s)`, `atom.str.limit(s, n)`, `atom.str.slug(s)`, `atom.str.camel(s)`, `atom.str.nl2br(s)`, `atom.str.striptags(s)` |
+| `s.toDateString()`, `.toDatetimeString()`, `.toTimeString()`, `.toDateFormat(format)` | `atom.str.toDateString(s)`, `atom.str.toDatetimeString(s)`, `atom.str.toTimeString(s)`, `atom.str.toDateFormat(s, format)` |
+| `s.fromNow()` | removed, no replacement (see below) |
+
+Search your JS and Blade (`x-text`, `x-bind`, `x-data`, `x-init`, `x-on`, `x-effect` and `<script>`) for `.currency(`, `.pluck(`, `.unique(`, `.sum(`, `.where(`, `.firstWhere(`, `.toggle(` on an array (a `classList.toggle()` is the browser's own), `.headline(`, `.limit(`, `.slug(`, `.camel(`, `.nl2br(`, `.striptags(`, `.toDateFormat(`, `.toDateString(`, `.toDatetimeString(`, `.toTimeString(`, `.fromNow(` (removed, see below), and for a bare `empty(` or `dd(` in JavaScript (a PHP `empty($x)` is unaffected). Notes:
+
+- Every helper behaves as its method did for every value the method could be called on. `atom.arr.*` returns a non-array unchanged, and `atom.arr.toggle()` changes the array in place (so `atom.arr.toggle($wire.ids, 3)` still updates a Livewire array) and returns it.
+- **`.fromNow()` is removed with no replacement.** It needs dayjs's `relativeTime` plugin, which atom has never loaded, so it always threw. If you want it, extend dayjs with `relativeTime` yourself and call `dayjs(value).fromNow()`.
+- **Only difference: a `null` or `undefined` value no longer throws.** A method cannot be called on `null` or `undefined`, so the old calls threw a `TypeError`; the functions take the value as an argument and answer instead:
+  - `atom.str.toDateString`, `toDatetimeString`, `toTimeString` and `toDateFormat` return `undefined` for `null` (as they do for any invalid date) and format the current moment for `undefined` (dayjs reads `undefined` as now);
+  - `atom.str.nl2br(null)` and `nl2br(undefined)` return `''`;
+  - `atom.str.camel`, `slug`, `headline`, `striptags` and `limit` still throw a `TypeError` on `null` and `undefined`;
+  - `atom.currency(null)` is `'0.00'` and `atom.currency(undefined)` is `'NaN'` (the number is `Number(value)`, and `Number(null)` is `0`); `atom.currency('abc')` is `'NaN'` too.
+- `atom.empty` is the function `window.empty` was: `null`, `undefined`, `''`, a blank string, `[]` and `{}` are empty; `0`, `false` and a `Date` are not.
+- Nothing in atom's own markup or scripts uses the old names any more. `tests/Feature/JsGlobalsTest.php` fails if one comes back.
+
+`atom:upgrade` will only report: it lists every site that calls an old helper, and rewrites none of them, because rewriting an expression inside an Alpine attribute by regex is unsafe. Until then, change them by hand.
+
 ## What is not restyled
 
 Nothing. Every component, the editor's content, the calendar, the chart and the docs are on the tokens, and the guards (`RestyleGuardsTest`) hold every component file (one allowance: the shells' mobile scrim, `bg-black/20`): no raw palette name, no `dark:` colour pair, no shadow except `shadow-pop` on a raised layer, no `:focus` ring. Two things are left alone on purpose: `resources/css/editor.css`, the legacy editor's sheet that nothing in atom links (it goes with the legacy editor, V4-4d), and a host's own markup, which keeps whatever palette classes it wrote: the `zinc` and `gray` ramps are atom's warm neutral palette now, so they do not break.

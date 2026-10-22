@@ -1,3 +1,5 @@
+import empty from '../helpers/empty'
+
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;',
     '<': '&lt;',
