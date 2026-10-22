@@ -32,7 +32,7 @@ The service provider (`Jiannius\Atom\AtomServiceProvider`) auto-registers via La
 - Install the `<atom:...>` Blade tag compiler.
 - Swap Laravel's `Date` facade for `Jiannius\Atom\Services\Carbon`.
 - Mix macros onto `Eloquent\Builder`, `Query\Builder`, `ComponentAttributeBag`, `Request`, `Str`, `Stringable`, and `Arr`.
-- Register the artisan commands `atom:purge-editor-images` and `atom:tiptap-migrate`.
+- Register the artisan commands `atom:purge-editor-images`, `atom:tiptap-migrate` and `atom:upgrade-check`.
 
 No publishing step is required to get started.
 
@@ -1338,6 +1338,7 @@ Actions without `authorize()` are callable by anyone, including guests — which
 
 - **`atom:tiptap-migrate` is rewritten (v2), and a plain run no longer writes.** It is a dry run now; `--force` converts. Backups (`atom_editor_backups`), `--restore`, `--compare`, `--accept`, `--prune-backups` and `--status` are new. A deploy script that ran `php artisan atom:tiptap-migrate` must pass `--force`. See "Moving a column to Tiptap JSON" above. It also migrates a column still cast as `AsEditorContent` (3.x only: v4 removes the class).
 - **`atom:purge-editor-images` keeps every image a migration backup names** until `atom:tiptap-migrate --prune-backups`.
+- **`atom:upgrade-check` is new** and read only: it lists what moving to atom 4 will break or change in your app. See "Preparing for v4".
 
 ### Upgrading to 3.37.2
 
@@ -1627,7 +1628,15 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 
 ## Preparing for v4
 
-v4 is a breaking release (a restyle onto design tokens, `AtomComponent` split into traits, the `Date` facade swap and the prototype helpers removed, `AsEditorContent` and `<atom:editor*>` deleted). Prepare on 3.x, where each step is reversible:
+v4 is a breaking release (a restyle onto design tokens, `AtomComponent` split into traits, the `Date` facade swap and the prototype helpers removed, `AsEditorContent` and `<atom:editor*>` deleted). Prepare on 3.x, where each step is reversible.
+
+0. **See the size of it.** `php artisan atom:upgrade-check` reads the app (`app/`, `resources/`, `routes/`, `modules/`, `config/`, `database/` and `tests/`, which it reports apart) and writes nothing. It lists every break UPGRADE.md for v4 describes, by check, with `file:line` and counts, how bad each is (**breaks at runtime**, **visual change** or **review**) and whether the `atom:upgrade` codemod that ships with v4 will fix it (`auto`) or only report it. It also prints:
+   - for each component that uses `AtomComponent`, the traits it needs (`WithTable`, `WithBreadcrumbs`, `WithEditor`, `WithRecaptcha`, plus `WithPagination` and `WithFileUploads`), read from its view, the partials the view includes and its methods;
+   - the `<atom:...>` tags in use, counted per name, with the section of UPGRADE.md that restyled each (the list to pilot v4 against);
+   - the JS sites (prototype helpers, bare `empty(` and `dd(`), the `AsEditorContent` casts and `<atom:editor*>` tags;
+   - whether the atom section of your `CLAUDE.md` / `AGENTS.md` still matches what the installed version renders (`in sync`, `diverged` with a short summary of what differs, or `not found`); refresh it with `php artisan boost:install`.
+
+   `--json` prints the same result as JSON (what the codemod and other tooling read), `--all` lists every finding (the report shows the first 10 of each check), `--output=path` also writes what is printed to a file (the only thing the command ever writes) and `--path=` scans another directory. A finding is a candidate from a text scan, not a proof: `->local(` on something that is not a date counts, and a `recent()` query scope matches `->recent(`.
 
 1. **Move the editor columns to JSON.** Switch each `AsEditorContent` cast to `AsTiptapContent`, change the column to `longText`, then `php artisan atom:tiptap-migrate` (dry run), `--force`, `--compare`, `--prune-backups`; `--status` exits 0 when no row is left and says whether the app is ready for v4. See "Moving a column to Tiptap JSON" above. Do this before you require v4: the class is gone there, Laravel ignores a cast it cannot resolve, and the attribute silently reads as the raw `serialize()`d string.
 
@@ -1640,6 +1649,7 @@ v4 is a breaking release (a restyle onto design tokens, `AtomComponent` split in
 | `atom:purge-editor-images` | Walks `App\Models\*`, finds columns cast as `AsEditorContent` or `AsTiptapContent`, and moves any unreferenced editor image to `editor-purged/` on the local disk before removing from the configured disk. A file is referenced if its name appears anywhere in a stored value or in a migration backup. |
 | `atom:purge-editor-images --dry-run` | Lists what it would delete and changes nothing. |
 | `atom:purge-editor-images --force` | Empties the `editor-purged/` backup folder. |
+| `atom:upgrade-check [--json] [--all] [--output=path] [--path=dir]` | Read only: lists what moving to atom 4 will break or change (file:line, counts, severity, codemod verdict), the traits each `AtomComponent` user needs, the atom tags in use, and whether the atom section of `CLAUDE.md` / `AGENTS.md` is in sync. See "Preparing for v4". |
 | `atom:tiptap-migrate` | Dry run: classifies every editor value as clean, flagged, refused or already JSON, and writes nothing. |
 | `atom:tiptap-migrate --force [--accept=ids\|all]` | Backs up and converts the clean rows (and the flagged ones named in `--accept`). |
 | `atom:tiptap-migrate --restore[=ids] [--force] [--discard-edits]` | Puts originals back byte for byte. |
