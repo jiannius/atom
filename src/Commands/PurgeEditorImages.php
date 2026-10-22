@@ -6,13 +6,18 @@ use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Jiannius\Atom\Casts\AsEditorContent;
 use Jiannius\Atom\Casts\AsTiptapContent;
+use Jiannius\Atom\Commands\Concerns\DiscoversModels;
+use Jiannius\Atom\Services\EditorBackups;
 use Throwable;
 
 class PurgeEditorImages extends Command
 {
+    use DiscoversModels;
+
     /**
      * What splits a stored value into tokens: any run of characters that cannot
      * be in an ASCII name (letters, digits, and . _ - % +, which are what a
@@ -61,6 +66,11 @@ class PurgeEditorImages extends Command
     protected const URLDECODE_MAX_BYTES = 1048576;
 
     /**
+     * Backups are read this many at a time
+     */
+    protected const BACKUP_CHUNK = 200;
+
+    /**
      * Say how far a long scan has got every this many rows
      */
     protected const PROGRESS_EVERY = 1000;
@@ -71,15 +81,6 @@ class PurgeEditorImages extends Command
         {--grace=24 : Keep files modified within this many hours (0 disables), they may be about to be referenced}
         {--path=* : Also scan the models in this directory (repeatable, absolute or relative to base_path())}';
     protected $description = 'Purge unused editor images from the disk';
-
-    /**
-     * Everything that stopped a model, column, directory or disk from being
-     * read. The run is aborted before any file is touched when this is not
-     * empty: an image we could not look for is not an image nobody references.
-     *
-     * @var array<int, string>
-     */
-    protected array $problems = [];
 
     /**
      * The casts found on at least one model column, by name: 'legacy' for
@@ -95,6 +96,11 @@ class PurgeEditorImages extends Command
      * @var array<string, array<string, string>>
      */
     protected array $scanned = [];
+
+    /**
+     * How many backups of migrated values (atom_editor_backups) were read
+     */
+    protected int $scannedBackups = 0;
 
     /**
      * The needles with no delimiter character in them, needle => the file names
@@ -131,13 +137,6 @@ class PurgeEditorImages extends Command
     protected array $needleLengths = [];
 
     /**
-     * The file that declared each class found, for saying where a failure is.
-     *
-     * @var array<string, string>
-     */
-    protected array $classFiles = [];
-
-    /**
      * Execute the console command.
      */
     public function handle(): int
@@ -168,6 +167,7 @@ class PurgeEditorImages extends Command
         $this->problems = [];
         $this->castsInUse = [];
         $this->scanned = [];
+        $this->scannedBackups = 0;
 
         // list the files BEFORE reading the database: an image saved while the
         // scan runs is then not in the list, so it can never be called unreferenced
@@ -297,6 +297,10 @@ class PurgeEditorImages extends Command
 
         foreach ($this->scanned as $class => $columns) {
             $this->line('  '.$class.': '.collect($columns)->map(fn ($kind, $column) => $column.' ('.$kind.')')->join(', '));
+        }
+
+        if ($this->scannedBackups) {
+            $this->line('  '.$this->scannedBackups.' backup(s) of migrated values (a restore may need their images)');
         }
     }
 
@@ -640,6 +644,7 @@ class PurgeEditorImages extends Command
     {
         $images = collect();
         $reader = new AsTiptapContent;
+        $connections = [DB::connection()->getName() => null];
 
         foreach ($this->getModels() as $class) {
             try {
@@ -650,6 +655,24 @@ class PurgeEditorImages extends Command
                 }
 
                 $columns = $this->getEditorColumns($model);
+
+                // a backup keeps protecting its images whatever the model casts today, so every
+                // discovered model's connection is looked at, by its resolved name (the default is one).
+                // A connection this config does not define cannot hold backups this config wrote, so a
+                // model without an editor column on one is warned about and skipped; one with a column
+                // is still a problem, since its rows cannot be read.
+                try {
+                    $connections[$model->getConnection()->getName()] = $model->getConnectionName();
+                }
+                catch (\InvalidArgumentException $e) {
+                    if (! empty($columns)) {
+                        throw $e;
+                    }
+
+                    $this->warn($class.': '.EditorBackups::describe($e).' (no editor column, so it is skipped)');
+
+                    continue;
+                }
 
                 if (empty($columns)) {
                     continue;
@@ -666,19 +689,7 @@ class PurgeEditorImages extends Command
 
                     foreach (array_keys($columns) as $column) {
                         try {
-                            $raw = $row->getRawOriginal($column);
-                            $sources = $reader->imageSources($row, $column, $raw);
-
-                            foreach ($this->findNamesIn($raw, $reader->get($row, $column, $raw, [])) as $name) {
-                                $images->push($name);
-                            }
-
-                            foreach ($sources as $src) {
-                                $clean = preg_replace('/[?#].*$/', '', $src);
-
-                                $images->push(basename($clean));
-                                $images->push(basename(rawurldecode($clean)));
-                            }
+                            $this->collectImages($reader, $row, $column, $row->getRawOriginal($column), $images);
                         }
                         catch (Throwable $e) {
                             $this->problems[] = $class.'::'.$column.' (row '.($row->getKey() ?? '?').'): '.$e->getMessage();
@@ -691,7 +702,70 @@ class PurgeEditorImages extends Command
             }
         }
 
+        $this->collectBackupImages($reader, $connections, $images);
+
         return $images->filter()->unique()->values();
+    }
+
+    /**
+     * Add every file name one stored value references to $images: the substring
+     * backstop over the raw and the decoded value, and the URLs in it. Throws for
+     * a value that cannot be read, which the caller records as a problem.
+     */
+    protected function collectImages(AsTiptapContent $reader, Model $row, string $column, mixed $raw, Collection $images): void
+    {
+        $sources = $reader->imageSources($row, $column, $raw);
+
+        foreach ($this->findNamesIn($raw, $reader->get($row, $column, $raw, [])) as $name) {
+            $images->push($name);
+        }
+
+        foreach ($sources as $src) {
+            $clean = preg_replace('/[?#].*$/', '', $src);
+
+            $images->push(basename($clean));
+            $images->push(basename(rawurldecode($clean)));
+        }
+    }
+
+    /**
+     * atom:tiptap-migrate keeps the original of every value it converts in
+     * atom_editor_backups, and --restore puts it back: a file only a backup
+     * references is still wanted until the backups are pruned. Every backup is
+     * read, restored or not: the live rows are read first, so a restore that
+     * lands in between would otherwise let an image its row needs be deleted.
+     * A backup that cannot be read, or a backup table that cannot be queried, is
+     * a problem like an unreadable model, never "no images".
+     *
+     * @param  array<string, string|null>  $connections  the connections to look on, by resolved name
+     */
+    protected function collectBackupImages(AsTiptapContent $reader, array $connections, Collection $images): void
+    {
+        $holder = new class extends Model {};
+
+        foreach ($connections as $name) {
+            try {
+                $backups = EditorBackups::on($name);
+
+                if (! $backups->exists()) {
+                    continue;
+                }
+
+                foreach ($backups->connection()->table(EditorBackups::TABLE)->lazyById(self::BACKUP_CHUNK) as $backup) {
+                    $this->scannedBackups++;
+
+                    try {
+                        $this->collectImages($reader, $holder, 'backup', EditorBackups::original($backup), $images);
+                    }
+                    catch (Throwable $e) {
+                        $this->problems[] = 'backup #'.$backup->id.' ('.$backup->model.'#'.$backup->row_key.' '.$backup->column_name.'): '.EditorBackups::describe($e);
+                    }
+                }
+            }
+            catch (Throwable $e) {
+                $this->problems[] = 'editor backups on connection '.($name ?? 'default').': '.EditorBackups::describe($e);
+            }
+        }
     }
 
     /**
@@ -745,187 +819,6 @@ class PurgeEditorImages extends Command
         }
 
         return $columns;
-    }
-
-    /**
-     * Instantiate a model class. Returns null for something that is
-     * legitimately not a model (trait, interface, enum, abstract class) and
-     * throws for a class that cannot be loaded, since that could be a model we
-     * cannot see.
-     */
-    protected function resolveModel(string $class): ?Model
-    {
-        if (!class_exists($class)) {
-            if (trait_exists($class) || interface_exists($class)) {
-                return null;
-            }
-
-            throw new \RuntimeException('the class declared in '.($this->classFiles[$class] ?? 'its file').' could not be loaded (autoload)');
-        }
-
-        if (!is_subclass_of($class, Model::class)) {
-            return null;
-        }
-
-        if ((new \ReflectionClass($class))->isAbstract()) {
-            return null;
-        }
-
-        return app($class);
-    }
-
-    /**
-     * The directories to scan for models: app/Models plus any --path given
-     *
-     * @return array<int, string>
-     */
-    protected function getModelPaths(): array
-    {
-        $paths = [app_path('Models')];
-
-        foreach ((array) $this->option('path') as $path) {
-            if (trim((string) $path) === '') {
-                $this->problems[] = '--path: empty (it would scan the whole project)';
-                continue;
-            }
-
-            $paths[] = str_starts_with($path, DIRECTORY_SEPARATOR) ? $path : base_path($path);
-
-            if (!is_dir(last($paths))) {
-                $this->problems[] = '--path '.$path.': not a directory';
-            }
-        }
-
-        return array_values(array_unique($paths));
-    }
-
-    /**
-     * Get the classes declared in the PHP files under the model directories,
-     * subdirectories included. A file that declares no class, enum, trait or
-     * interface (a helpers file) is skipped. A directory or file that cannot be
-     * read is recorded in $problems.
-     */
-    public function getModels(): Collection
-    {
-        $models = [];
-
-        foreach ($this->getModelPaths() as $path) {
-            if (!is_dir($path)) {
-                continue;
-            }
-
-            try {
-                $files = new \RecursiveIteratorIterator(
-                    new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS)
-                );
-
-                foreach ($files as $file) {
-                    if (!$file->isFile() || $file->getExtension() !== 'php') {
-                        continue;
-                    }
-
-                    try {
-                        foreach ($this->getDeclaredClasses($file->getPathname()) as $class) {
-                            $models[] = $class;
-                            $this->classFiles[$class] = $file->getPathname();
-                        }
-                    }
-                    catch (Throwable $e) {
-                        $this->problems[] = $file->getPathname().': '.$e->getMessage();
-                    }
-                }
-            }
-            catch (Throwable $e) {
-                $this->problems[] = $path.': '.$e->getMessage();
-            }
-        }
-
-        $models = array_values(array_unique($models));
-        sort($models);
-
-        return collect($models);
-    }
-
-    /**
-     * The fully qualified name of every class, enum, trait and interface a PHP
-     * file declares (an abstract base and the model beside it, say), or an empty
-     * array when it declares none
-     *
-     * @return array<int, string>
-     */
-    protected function getDeclaredClasses(string $file): array
-    {
-        $source = file_get_contents($file);
-
-        if ($source === false) {
-            throw new \RuntimeException('could not be read');
-        }
-
-        $tokens = token_get_all($source);
-        $count = count($tokens);
-        $namespace = '';
-        $declared = [];
-        $declarations = [T_CLASS, T_INTERFACE, T_TRAIT, T_ENUM];
-
-        for ($i = 0; $i < $count; $i++) {
-            $token = $tokens[$i];
-
-            if (!is_array($token)) {
-                continue;
-            }
-
-            if ($token[0] === T_NAMESPACE) {
-                $namespace = '';
-
-                for ($j = $i + 1; $j < $count; $j++) {
-                    $next = $tokens[$j];
-
-                    if (is_array($next) && in_array($next[0], [T_STRING, T_NAME_QUALIFIED], true)) {
-                        $namespace .= $next[1];
-                    }
-                    elseif ($next === ';' || $next === '{') {
-                        break;
-                    }
-                }
-            }
-
-            if (!in_array($token[0], $declarations, true)) {
-                continue;
-            }
-
-            // Foo::class is not a declaration
-            $previous = $this->getSignificantToken($tokens, $i, -1);
-
-            if (is_array($previous) && $previous[0] === T_DOUBLE_COLON) {
-                continue;
-            }
-
-            // the name follows; `new class {` and `new class extends X` have none
-            $name = $this->getSignificantToken($tokens, $i, 1);
-
-            if (is_array($name) && $name[0] === T_STRING) {
-                $declared[] = ltrim($namespace.'\\'.$name[1], '\\');
-            }
-        }
-
-        return $declared;
-    }
-
-    /**
-     * The nearest token before ($step -1) or after ($step 1) an index that is
-     * not whitespace or a comment
-     *
-     * @param  array<int, array|string>  $tokens
-     */
-    protected function getSignificantToken(array $tokens, int $index, int $step): array|string|null
-    {
-        for ($i = $index + $step; isset($tokens[$i]); $i += $step) {
-            if (!is_array($tokens[$i]) || !in_array($tokens[$i][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
-                return $tokens[$i];
-            }
-        }
-
-        return null;
     }
 
     /**
