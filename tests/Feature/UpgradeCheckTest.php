@@ -126,7 +126,12 @@ describe('atom:upgrade-check: the findings', function () {
             'use-atom-component' => ['app/Livewire/Aliased.php:10', $php.':11', $profile.':7'],
             'wire-helper-browser' => [$widget.':21', $widget.':22'],
             // the $listeners entry, the getListeners() return array and the #[On] method: not the options() array
-            'wire-helper-listener' => ['app/Livewire/Listens.php:12', 'app/Livewire/Listens.php:12', 'app/Livewire/Listens.php:15', $php.':13'],
+            // one a line, whatever the shape: [..], array(..), array_merge(parent::getListeners(), [..]), $l + [..], #[On([..])], stacked attributes
+            'wire-helper-listener' => [
+                'app/Livewire/Listens.php:12', 'app/Livewire/Listens.php:15',
+                'app/Livewire/Listens2.php:11', 'app/Livewire/Listens2.php:17', 'app/Livewire/Listens2.php:25', 'app/Livewire/Listens2.php:30', 'app/Livewire/Listens2.php:34', 'app/Livewire/Listens2.php:57', 'app/Livewire/Listens2.php:65',
+                $php.':13',
+            ],
             'trait-hook-name' => [$php.':27'],
             'table-state-in-url' => ['app/Http/UrlTable.php:7'],
             'date-use-line' => ['app/Providers/AppServiceProvider.php:1'],
@@ -237,7 +242,7 @@ describe('atom:upgrade-check: the findings', function () {
     });
 
     it('reports test findings apart from the app ones', function () {
-        expect($this->result['scanned'])->toBe(['app' => 15, 'tests' => 1])
+        expect($this->result['scanned'])->toBe(['app' => 16, 'tests' => 1])
             ->and($this->result['checks']['date-pretty']['count'])->toBe(1)
             ->and($this->result['checks']['date-pretty']['tests_count'])->toBe(1)
             ->and($this->result['summary']['tests_findings'])->toBe(5);
@@ -627,7 +632,7 @@ describe('atom:upgrade-check: Date::use and the date checks', function () {
     it('finds the call in a module provider, in bootstrap/, and not in a comment or a test', function () {
         $dir = ($this->host)();
         @mkdir($dir.'/modules/Shop/Providers', 0777, true);
-        file_put_contents($dir.'/modules/Shop/Providers/ShopServiceProvider.php', "<?php\nclass ShopServiceProvider { function boot() { Date::use(X::class); } }\n");
+        file_put_contents($dir.'/modules/Shop/Providers/ShopServiceProvider.php', "<?php\nclass ShopServiceProvider { function boot() { Date::use(\\Jiannius\\Atom\\Services\\Carbon::class); } }\n");
 
         expect((new UpgradeCheck)->scan($dir)['date_use'])->toBe('modules/Shop/Providers/ShopServiceProvider.php');
 
@@ -636,12 +641,61 @@ describe('atom:upgrade-check: Date::use and the date checks', function () {
         file_put_contents($dir.'/bootstrap/app.php', "<?php\n// Date::use(X::class)\nreturn 1;\n");
         expect((new UpgradeCheck)->scan($dir)['date_use'])->toBeNull();
 
-        file_put_contents($dir.'/bootstrap/app.php', "<?php\nDate::use(X::class);\n");
+        file_put_contents($dir.'/bootstrap/app.php', "<?php\nDate::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n");
         expect((new UpgradeCheck)->scan($dir)['date_use'])->toBe('bootstrap/app.php');
 
         unlink($dir.'/bootstrap/app.php');
-        file_put_contents($dir.'/tests/Feature/ProviderTest.php', "<?php\nclass TestServiceProvider { function boot() { Date::use(X::class); } }\n");
+        file_put_contents($dir.'/tests/Feature/TestServiceProvider.php', "<?php\nclass TestServiceProvider { function boot() { Date::use(\\Jiannius\\Atom\\Services\\Carbon::class); } }\n");
         expect((new UpgradeCheck)->scan($dir)['date_use'])->toBeNull();
+    });
+
+    it('counts only a Date::use of atom\'s Carbon: not another date class, not another Carbon', function () {
+        $dir = ($this->host)();
+        $file = $dir.'/app/Providers/AppServiceProvider.php';
+        $write = fn (string $imports, string $call) => file_put_contents($file, "<?php\n".$imports."\nclass P { function boot() { ".$call." } }\n");
+        $date = fn () => (new UpgradeCheck)->scan($dir)['date_use'];
+
+        $write('use Carbon\CarbonImmutable;', 'Date::use(CarbonImmutable::class);');
+        expect($date())->toBeNull();
+
+        $write('use Illuminate\Support\Carbon;', 'Date::use(Carbon::class);');
+        expect($date())->toBeNull();
+
+        $write('', 'Date::use(\\Carbon\\Carbon::class);');
+        expect($date())->toBeNull();
+
+        $write('use Jiannius\Atom\Services\Carbon;', 'Date::use(Carbon::class);');
+        expect($date())->toBe('app/Providers/AppServiceProvider.php');
+
+        $write('use Jiannius\Atom\Services\Carbon as AtomCarbon;', '\\Illuminate\\Support\\Facades\\Date::use( AtomCarbon::class );');
+        expect($date())->toBe('app/Providers/AppServiceProvider.php');
+
+        $write('', 'Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);');
+        expect($date())->toBe('app/Providers/AppServiceProvider.php');
+
+        // an alias that is not atom's is not it, even when atom's is imported as another name
+        $write("use Jiannius\Atom\Services\Carbon as AtomCarbon;\nuse Carbon\CarbonImmutable as Carbon;", 'Date::use(Carbon::class);');
+        expect($date())->toBeNull();
+    });
+
+    it('looks in every file of app/Providers and every *ServiceProvider.php, but not in any other file', function () {
+        $dir = ($this->host)();
+        $call = "<?php\nclass D { function boot() { Date::use(\\Jiannius\\Atom\\Services\\Carbon::class); } }\n";
+
+        file_put_contents($dir.'/app/Http/Dates.php', $call);
+        expect((new UpgradeCheck)->scan($dir)['date_use'])->toBeNull();
+
+        file_put_contents($dir.'/app/Providers/Dates.php', $call);
+        expect((new UpgradeCheck)->scan($dir)['date_use'])->toBe('app/Providers/Dates.php');
+
+        unlink($dir.'/app/Providers/Dates.php');
+        @mkdir($dir.'/app/Providers/Support', 0777, true);
+        file_put_contents($dir.'/app/Providers/Support/Dates.php', $call);
+        expect((new UpgradeCheck)->scan($dir)['date_use'])->toBe('app/Providers/Support/Dates.php');
+
+        unlink($dir.'/app/Providers/Support/Dates.php');
+        file_put_contents($dir.'/app/Http/RouteServiceProvider.php', $call);
+        expect((new UpgradeCheck)->scan($dir)['date_use'])->toBe('app/Http/RouteServiceProvider.php');
     });
 
     it('says "no AppServiceProvider found" when there is none, rather than pointing at a directory', function () {

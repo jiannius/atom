@@ -309,7 +309,7 @@ class UpgradeCheck
             'date-use-line' => [
                 'title' => 'Add Date::use(Services\Carbon::class) to AppServiceProvider::boot(), or dates change class and string form',
                 'section' => 'PHP globals: dates and macros', 'severity' => static::BREAKS, 'codemod' => 'auto',
-                'detect' => 'no Date::use( call in app/Providers',
+                'detect' => 'no Date::use(<atom Carbon>::class) call in a *ServiceProvider.php, a file of app/Providers or bootstrap/*.php',
                 'kinds' => [], 'custom' => 'dateUseLine',
             ],
             'date-pretty' => [
@@ -507,10 +507,11 @@ class UpgradeCheck
                 if (basename($relative) === 'AppServiceProvider.php') {
                     $appProvider ??= $relative;
                 }
+            }
 
-                if (preg_match('/\bDate\s*::\s*use\s*\(/', $prepared['full'])) {
-                    $dateUse ??= $relative;
-                }
+            // any provider, and any file in app/Providers, may make the call
+            if ($kind === 'php' && $scope === 'app' && (str_ends_with($relative, 'ServiceProvider.php') || str_starts_with($relative, 'app/Providers/')) && $this->callsDateUse($prepared['full'])) {
+                $dateUse ??= $relative;
             }
 
             $starts = $this->lineStarts($source);
@@ -624,7 +625,7 @@ class UpgradeCheck
 
         // bootstrap/ is not scanned, but a provider can be registered there
         foreach (glob($root.'/bootstrap/*.php') ?: [] as $file) {
-            if (! is_link($file) && preg_match('/\bDate\s*::\s*use\s*\(/', $this->blankPhpComments((string) @file_get_contents($file)))) {
+            if (! is_link($file) && $this->callsDateUse($this->blankPhpComments((string) @file_get_contents($file)))) {
                 $dateUse ??= 'bootstrap/'.basename($file);
             }
         }
@@ -1426,30 +1427,36 @@ class UpgradeCheck
     protected function wireHelperListeners(string $kind, array $prepared, string $source): array
     {
         $text = $prepared['full'];
-        $helpers = implode('|', static::HELPERS);
-        $arrays = [];
         $found = [];
+        $arrays = [];
 
-        if (preg_match_all('/\$listeners\s*=\s*\[/', $text, $m, PREG_OFFSET_CAPTURE)) {
+        // $listeners = [...] and $listeners = array(...)
+        if (preg_match_all('/\$listeners\s*=\s*(?:\[|array\s*\()/i', $text, $m, PREG_OFFSET_CAPTURE)) {
             foreach ($m[0] as [$match, $at]) {
                 $arrays[] = $at + strlen($match) - 1;
             }
         }
 
+        // every array literal in a return of getListeners(): [...], array(...), array_merge(parent::getListeners(), [...]), $l + [...]
         if (preg_match_all('/function\s+getListeners\s*\([^)]*\)[^{;]*\{/', $text, $m, PREG_OFFSET_CAPTURE)) {
             foreach ($m[0] as [$match, $at]) {
                 $open = $at + strlen($match) - 1;
                 $close = $this->matchingDelimiter($text, $open) ?? strlen($text);
 
-                if (preg_match_all('/\breturn\s*\[/', substr($text, $open, $close - $open), $returns, PREG_OFFSET_CAPTURE)) {
+                if (preg_match_all('/\breturn\b/', substr($text, $open, $close - $open), $returns, PREG_OFFSET_CAPTURE)) {
                     foreach ($returns[0] as [$return, $rat]) {
-                        $arrays[] = $open + $rat + strlen($return) - 1;
+                        $from = $open + $rat + strlen($return);
+                        $end = $this->statementEnd($text, $from, $close);
+
+                        foreach ($this->arrayLiterals($text, $from, $end) as $literal) {
+                            $arrays[] = $literal;
+                        }
                     }
                 }
             }
         }
 
-        foreach ($arrays as $open) {
+        foreach (array_unique($arrays) as $open) {
             $close = $this->matchingDelimiter($text, $open) ?? strlen($text);
             $inner = substr($text, $open, $close - $open + 1);
 
@@ -1468,23 +1475,134 @@ class UpgradeCheck
                 }
 
                 $isValue = str_ends_with($before, '=>');
-                $isListItem = (str_ends_with($before, '[') || str_ends_with($before, ',')) && ($after === '' || $after[0] === ',' || $after[0] === ']');
+                $isListItem = (str_ends_with($before, '[') || str_ends_with($before, ',') || str_ends_with($before, '(')) && ($after === '' || $after[0] === ',' || $after[0] === ']' || $after[0] === ')');
 
                 if (($isValue || $isListItem) && in_array($string[2][0], static::HELPERS, true)) {
-                    $found[] = [$open + $start, null];
+                    $found[] = $open + $start;
                 }
             }
         }
 
-        if (preg_match_all('/#\[On\([^\]]*\]\s*(?:public\s+|protected\s+)?function\s+(?:'.$helpers.')\s*\(/s', $text, $m, PREG_OFFSET_CAPTURE)) {
-            foreach ($m[0] as [$match, $at]) {
-                $found[] = [$at, null];
+        // #[On(...)] on a method named like a helper, alone or stacked with other attributes
+        $position = 0;
+
+        while (preg_match('/#\[/', $text, $m, PREG_OFFSET_CAPTURE, $position)) {
+            $groups = [];
+            $cursor = $m[0][1];
+
+            while (substr($text, $cursor, 2) === '#[') {
+                $close = $this->matchingDelimiter($text, $cursor + 1);
+
+                if ($close === null) {
+                    break;
+                }
+
+                $groups[] = [$cursor, substr($text, $cursor, $close - $cursor + 1)];
+                $cursor = $close + 1;
+
+                while ($cursor < strlen($text) && ctype_space($text[$cursor])) {
+                    $cursor++;
+                }
+            }
+
+            $position = max($cursor, $m[0][1] + 2);
+
+            if (! preg_match('/\G(?:(?:public|protected|private|final|static|abstract)\s+)*function\s+&?\s*(?:'.implode('|', static::HELPERS).')\s*\(/', $text, $method, 0, $cursor)) {
+                continue;
+            }
+
+            foreach ($groups as [$at, $group]) {
+                if (preg_match('/(?<![\w])On\s*\(/', $group)) {
+                    $found[] = $at;
+
+                    break;
+                }
             }
         }
 
-        usort($found, fn ($a, $b) => $a[0] <=> $b[0]);
+        // one finding a line
+        $lines = [];
 
-        return $found;
+        foreach ($found as $offset) {
+            $lines[substr_count($text, "\n", 0, $offset)] ??= $offset;
+        }
+
+        ksort($lines);
+
+        return array_map(fn ($offset) => [$offset, null], array_values($lines));
+    }
+
+    /**
+     * Where the statement that starts at $from ends: the first `;` outside any bracket
+     */
+    protected function statementEnd(string $text, int $from, int $limit): int
+    {
+        $depth = 0;
+
+        for ($i = $from; $i < $limit; $i++) {
+            $c = $text[$i];
+
+            if ($c === '"' || $c === "'") {
+                $i++;
+
+                while ($i < $limit && $text[$i] !== $c) {
+                    $i += $text[$i] === '\\' ? 2 : 1;
+                }
+
+                continue;
+            }
+
+            if (str_contains('([{', $c)) {
+                $depth++;
+            } elseif (str_contains(')]}', $c)) {
+                $depth--;
+            } elseif ($c === ';' && $depth <= 0) {
+                return $i;
+            }
+        }
+
+        return $limit;
+    }
+
+    /**
+     * The offsets of the array literals (`[` or `array(`) in a stretch of code, not
+     * the ones nested in another or an index (`$a[0]`)
+     *
+     * @return array<int, int>
+     */
+    protected function arrayLiterals(string $text, int $from, int $to): array
+    {
+        $literals = [];
+
+        for ($i = $from; $i < $to; $i++) {
+            $c = $text[$i];
+
+            if ($c === '"' || $c === "'") {
+                $i++;
+
+                while ($i < $to && $text[$i] !== $c) {
+                    $i += $text[$i] === '\\' ? 2 : 1;
+                }
+
+                continue;
+            }
+
+            $isLiteral = false;
+
+            if ($c === '[') {
+                $before = rtrim(substr($text, $from, $i - $from));
+                $isLiteral = $before === '' || ! preg_match('/[\w\]\)\}]$/', $before) || preg_match('/\breturn$/', $before);
+            } elseif ($c === '(' && preg_match('/\barray\s*$/i', substr($text, max($from, $i - 12), $i - max($from, $i - 12)))) {
+                $isLiteral = true;
+            }
+
+            if ($isLiteral) {
+                $literals[] = $i;
+                $i = $this->matchingDelimiter($text, $i) ?? $to;
+            }
+        }
+
+        return $literals;
     }
 
     /**
@@ -1608,6 +1726,45 @@ class UpgradeCheck
         }
 
         return $found;
+    }
+
+    /**
+     * Whether (comment-free) PHP calls Date::use() with atom's Carbon: its
+     * `Jiannius\Atom\Services\Carbon::class` in full, or `Carbon::class` (or an
+     * alias) imported from that namespace. `Date::use(CarbonImmutable::class)` is
+     * a different date class and does not give back pretty(), local() and the rest.
+     */
+    protected function callsDateUse(string $php): bool
+    {
+        if (! preg_match_all('/\bDate\s*::\s*use\s*\(/', $php, $calls, PREG_OFFSET_CAPTURE)) {
+            return false;
+        }
+
+        $names = [];
+
+        if (preg_match_all('/^[ \t]*use\s+\\\\?Jiannius\\\\Atom\\\\Services\\\\Carbon(?:\s+as\s+(\w+))?\s*;/m', $php, $imports, PREG_SET_ORDER)) {
+            foreach ($imports as $import) {
+                $names[] = $import[1] ?? 'Carbon';
+            }
+        }
+
+        foreach ($calls[0] as [$call, $at]) {
+            $open = $at + strlen($call) - 1;
+            $close = $this->matchingDelimiter($php, $open);
+            $argument = preg_replace('/\s+/', '', substr($php, $open + 1, ($close ?? $open + 200) - $open - 1));
+
+            if (preg_match('/^\\\\?Jiannius\\\\Atom\\\\Services\\\\Carbon::class$/', $argument)) {
+                return true;
+            }
+
+            foreach ($names as $name) {
+                if ($argument === $name.'::class') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
