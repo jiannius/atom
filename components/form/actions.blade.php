@@ -35,7 +35,7 @@ $stickyBar = $sticky && ! $bar;
     'bottom-0 z-10 flex-wrap gap-x-7 gap-y-3 sticky isolate' => $bar,
     'before:absolute before:inset-0 before:-z-10 before:bg-surface/95 before:backdrop-blur-sm after:absolute after:inset-x-0 after:top-0 after:-z-10 after:h-px after:bg-border' => $bar,
     'ms-[calc(var(--atom-gutter-s,0px)*-1)] me-[calc(var(--atom-gutter-e,0px)*-1)] ps-[var(--atom-gutter-s,1rem)] pe-[var(--atom-gutter-e,1rem)] mb-[calc(var(--atom-page-pb,0px)*-1)] pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]' => $bar,
-    'sticky -bottom-6 z-10 bg-surface -mx-6 px-6 pt-4 pb-6 -mb-6 border-t' => $stickyBar,
+    'sticky -bottom-6 z-10 bg-surface -mx-6 px-6 pt-4 pb-6 -mb-6 border-t mt-auto' => $stickyBar,
 ]) }} data-atom-form-actions @if ($bar) data-atom-save-bar @endif>
     @if ($hasStart)
         <div {{ $start->attributes->class('flex min-w-0 flex-wrap items-baseline gap-x-5 gap-y-1 tabular-nums') }} data-atom-form-actions-start>

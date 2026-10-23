@@ -13,7 +13,7 @@ $long = str_repeat('x', 400);
     </atom:timeline>
 
     <atom:timeline kind="step" data-testid="wrap-step">
-        <atom:timeline.item title="{{ $long }}" state="current" status="Running" time="{{ $long }}" wire:key="s1">{{ $long }}</atom:timeline.item>
+        <atom:timeline.item title="{{ $long }}" state="current" status="{{ $long }}" time="{{ $long }}" wire:key="s1">{{ $long }}</atom:timeline.item>
     </atom:timeline>
 
     <atom:timeline kind="path" data-testid="wrap-path">

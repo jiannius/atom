@@ -61,6 +61,18 @@ $classes = Arr::toCssClasses([
     '[&[data-atom-modal-slide-bottom]]:min-w-full',
     '[&[data-atom-modal-slide-bottom]]:min-h-100',
     '[&[data-atom-modal-slide-bottom]]:border-t',
+
+    /* An open slide-over is a full-height column, so a form in it takes the whole height and its pinned bar (form.actions
+       `sticky`, `mt-auto`) sits at the foot of the panel whatever the content's height, and still sticks when the content scrolls. */
+    '[&[data-atom-modal-slide][open]]:flex',
+    '[&[data-atom-modal-slide][open]]:flex-col',
+    '[&[data-atom-modal-slide][open]>form]:flex-1',
+    '[&[data-atom-modal-slide-left][open]]:flex',
+    '[&[data-atom-modal-slide-left][open]]:flex-col',
+    '[&[data-atom-modal-slide-left][open]>form]:flex-1',
+    '[&[data-atom-modal-slide-bottom][open]]:flex',
+    '[&[data-atom-modal-slide-bottom][open]]:flex-col',
+    '[&[data-atom-modal-slide-bottom][open]>form]:flex-1',
     '[&[data-atom-modal-slide-bottom]]:border-x-0',
     '[&[data-atom-modal-slide-bottom]]:border-b-0',
     '[&[data-atom-modal-slide-bottom]]:overflow-auto',

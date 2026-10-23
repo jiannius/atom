@@ -57,7 +57,9 @@ $barEmpty = ! $dark
         isHidden: false,
         screenLg: window.innerWidth >= 1024
     }"
-    x-resize.document="screenLg = window.innerWidth >= 1024"
+    {{-- the window's own resize event, not x-resize.document: that one is a ResizeObserver whose handler changes the page's layout (the
+         sidebar leaves the flow at 1024px), which the browser reports as "ResizeObserver loop completed with undelivered notifications" --}}
+    x-on:resize.window="screenLg = window.innerWidth >= 1024"
     x-init="() => {
         $el.classList.add('-translate-x-full', 'rtl:translate-x-full')
         $el.removeAttribute('data-mobile-cloak')

@@ -137,3 +137,26 @@ for (const tw of ['floor', 'latest']) {
     expect(Math.abs(path - row)).toBeLessThan(1)
   })
 }
+
+// A long status pill gives way (it truncates, with its text in a title): the time and the chevron stay in the step's row.
+for (const tw of ['floor', 'latest']) {
+  for (const width of [390, 1440]) {
+    test(`a long status keeps the step's time and chevron in its row at ${width}px, ${tw} consumer build`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await open(page, { path: 'timeline-wrap', tw })
+
+      const row = await page.getByTestId('wrap-step').locator('[data-atom-timeline-toggle]').boundingBox()
+      const end = await page.getByTestId('wrap-step').locator('[data-atom-timeline-end]').boundingBox()
+      const chevron = await page.getByTestId('wrap-step').locator('[data-atom-timeline-chevron]').boundingBox()
+      const status = page.getByTestId('wrap-step').locator('[data-atom-timeline-status]')
+
+      expect(end.x + end.width).toBeLessThanOrEqual(row.x + row.width + 1)
+      expect(chevron.x + chevron.width).toBeLessThanOrEqual(row.x + row.width + 1)
+      expect(chevron.width).toBeGreaterThan(8)
+      // the pill stays inside the row, beside the title
+      const pill = await status.boundingBox()
+      expect(pill.x + pill.width).toBeLessThanOrEqual(end.x + 1)
+      await expect(status).toHaveAttribute('title', /x{50}/)
+    })
+  }
+}

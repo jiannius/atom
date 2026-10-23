@@ -269,7 +269,7 @@ describe('escaping', function () {
     it('prints a step title, status and time as text', function () use ($evil, $escaped) {
         $html = renderBlade('<atom:timeline kind="step"><atom:timeline.item :title="$e" :status="$e" :time="$e" /></atom:timeline>', ['e' => $evil]);
 
-        expect(domQuery($html, '//img'))->toBeEmpty()->and(substr_count($html, $escaped))->toBe(3);
+        expect(domQuery($html, '//img'))->toBeEmpty()->and(substr_count($html, $escaped))->toBe(4); // the title, the status (in the pill and in its title attribute) and the time
     });
 
     it('prints a message speaker, time and body as text, keeping its line breaks', function () use ($evil, $escaped) {
@@ -390,5 +390,41 @@ describe('long text', function () {
                     ->and(domClasses($found[0]))->toContain('[overflow-wrap:anywhere]');
             }
         }
+    });
+});
+
+describe('a nested timeline', function () {
+    it('draws its own kind, not the outer one\'s, in a step\'s body', function () {
+        // on one line: a template with line breaks inside the slot happens not to show the fault
+        $html = renderBlade('<atom:timeline kind="step" label="Outer"><atom:timeline.item title="Build" state="current"><atom:timeline label="Inner"><atom:timeline.item title="Compiled" body="the assets" tone="success" /><atom:timeline.item title="Linked" /></atom:timeline></atom:timeline.item></atom:timeline>');
+
+        $inner = domQuery($html, '//*[@data-atom-timeline][@data-kind="event"]');
+
+        expect($inner)->toHaveCount(1)
+            // the inner items are events (a dot in a tone), not numbered steps
+            ->and(domQuery($html, '//*[@data-kind="event"]//li[@data-tone]'))->toHaveCount(2)
+            ->and(domQuery($html, '//*[@data-kind="event"]//li[@data-state]'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-kind="event"]//*[@data-atom-timeline-marker]'))->toBeEmpty()
+            // and the outer one is still a step
+            ->and(domQuery($html, '//*[@data-kind="step"]/ol/li[@data-state="current"]'))->toHaveCount(1);
+    });
+
+    it('draws its own kind when the outer one is a path or a message too, and an explicit kind still wins', function (string $outer) {
+        $html = renderBlade('<atom:timeline kind="'.$outer.'"><atom:timeline.item title="A" body="b">'
+            .'<atom:timeline><atom:timeline.item title="Inner" /></atom:timeline>'
+            .'<atom:timeline kind="step"><atom:timeline.item title="Numbered" state="done" /></atom:timeline>'
+            .'</atom:timeline.item></atom:timeline>');
+
+        expect(domQuery($html, '//*[@data-kind="event"]//li[@data-tone]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-kind="step"]//li[@data-state="done"]'))->toHaveCount(1);
+    })->with(['step', 'path', 'message']);
+
+    it('does not inherit collapsible either', function () {
+        $html = renderBlade('<atom:timeline kind="step" :collapsible="false"><atom:timeline.item title="Outer" state="current">'
+            .'<atom:timeline kind="step"><atom:timeline.item title="Inner" state="current">Body</atom:timeline.item></atom:timeline>'
+            .'</atom:timeline.item></atom:timeline>');
+
+        // the outer step is not foldable; the inner one is (its own default)
+        expect(domQuery($html, '//li[.//*[@data-atom-timeline-title][normalize-space(.)="Inner"]]//*[@data-atom-timeline-toggle]'))->toHaveCount(1);
     });
 });

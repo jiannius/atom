@@ -182,15 +182,18 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
             @else
                 <div class="flex min-w-0 items-center gap-2">
             @endif
+                    {{-- the title and the status are the side that gives way: each truncates, so the time and the chevron stay in the row --}}
                     <span @class(['min-w-0 truncate font-medium', 'text-fg-subtle' => $state === 'pending', 'text-fg' => $state !== 'pending']) data-atom-timeline-title>{{ $text($title) }}</span>
 
                     @if ($text($status) !== '')
-                        <atom:status :tone="$stateTone" :running="$state === 'current'" :label="$text($status)" />
+                        <span class="flex min-w-0 shrink" title="{{ $text($status) }}" data-atom-timeline-status>
+                            <atom:status :tone="$stateTone" :running="$state === 'current'" :label="$text($status)" />
+                        </span>
                     @endif
 
                     {{-- the time and the chevron are one group at the far end, so the chevron is in the same column on every step --}}
                     @if ($timeText !== '' || $foldable)
-                        <span class="ms-auto flex min-w-0 max-w-[60%] items-center gap-2" data-atom-timeline-end>
+                        <span class="ms-auto flex min-w-0 max-w-[45%] shrink-0 items-center gap-2" data-atom-timeline-end>
                             @if ($timeText !== '')
                                 <span class="min-w-0 text-xs tabular-nums text-fg-subtle [overflow-wrap:anywhere]" data-atom-timeline-time>{{ $timeText }}</span>
                             @endif
