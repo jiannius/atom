@@ -6,6 +6,7 @@
     'multiple' => false,
     'searchable' => false,
     'clearable' => true,
+    'add' => false,
 ])
 
 @php
@@ -23,6 +24,15 @@ $classes = Arr::toCssClasses([
     'hover:bg-surface-sunken',
     $icon ? 'pl-8' : 'pl-2.5',
 ]);
+
+/* The add-filter pill: a 26px dashed pill with the label muted and a plus. It is not a control with a value in it: the
+   chosen value is the chip's, so a single select hides the pill while it has one (a multiple one stays, to add more). */
+if ($add) {
+    $classes = Arr::toCssClasses([
+        'inline-flex h-[26px] items-center gap-1 appearance-none rounded-pill border border-dashed border-control-border bg-transparent px-2.5 text-xs text-fg-muted',
+        'hover:bg-surface-sunken hover:text-fg',
+    ]);
+}
 
 $optionClasses = Arr::toCssClasses([
     'flex items-center gap-2 w-full min-h-control py-1 px-2 my-0.5 first:mt-0 last:mb-0 rounded-nav',
@@ -54,6 +64,7 @@ x-on:keydown.home.prevent.stop="home()"
 x-on:keydown.end.prevent.stop="end()"
 x-on:keydown.escape.stop=""
 class="group/select"
+@if ($add && ! $multiple) x-show="isEmpty" @endif
 @if ($filterKey)
 x-init="
     const emit = () => $dispatch('table-filter:set', {
@@ -88,6 +99,10 @@ x-on:keyup.space.prevent=""
             data-atom-select-combobox
         @endif
         {{ $attributes->class($classes)->only('class') }}>
+            @if ($add)
+                <atom:icon.add class="size-3.5" />
+                <span data-atom-select-add-label>{{ t($label) }}</span>
+            @else
             @if ($icon)
                 <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pl-2.5 left-0">
                     <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4" />
@@ -130,6 +145,7 @@ x-on:keyup.space.prevent=""
                         <atom:icon.close class="size-4" />
                     </div>
                 </template>
+            @endif
             @endif
         </button>
 

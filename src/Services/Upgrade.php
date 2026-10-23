@@ -1260,7 +1260,7 @@ class Upgrade
             $accent = $this->css->accent($this->lf($text));
             $lines[] = $accent
                 ? '`'.$relative.':'.$accent['line'].'` sets `--color-accent: '.$accent['value'].';`. Check it is your brand colour. Do not set `accent-foreground` unless you must.'
-                : '`'.$relative.'` sets no `--color-accent`, so the accent is near-black (`#1c1b18`), which is barely visible as a fill in dark mode. Set your brand colour in `@theme`. v3\'s `primary` and `accent` are not copied unless `primary` was your own colour.';
+                : '`'.$relative.'` sets no `--color-accent`, so the accent is atom\'s default: near-black (`#1c1b18`) in light, near-white (`#ecebe8`) in dark. Set your brand colour in `@theme`. v3\'s `primary` and `accent` are not copied unless `primary` was your own colour.';
         }
 
         if ($entries === 0) {

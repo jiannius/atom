@@ -53,6 +53,38 @@ class Docs
     ];
 
     /**
+     * The Vite entries the docs pages load: the host's own stylesheet, so the utilities atom's pages use exist when they are
+     * viewed inside a host app. `config('atom.docs.vite')` names them (default `resources/css/app.css`; an empty list loads
+     * none). An entry is loaded only when Laravel's own Vite can serve it: a dev server is running (its hot file, wherever the
+     * host put it) or the entry is in the build's manifest (in the host's build directory). Without one, as in the package's own
+     * test rig, nothing is loaded and the page is exactly as it was.
+     *
+     * @return array<int, string>
+     */
+    public function vite() : array
+    {
+        $entries = array_values(array_filter((array) config('atom.docs.vite', ['resources/css/app.css']), 'is_string'));
+
+        if (! $entries) {
+            return [];
+        }
+
+        $vite = app(\Illuminate\Foundation\Vite::class);
+
+        return array_values(array_filter($entries, function ($entry) use ($vite) {
+            try {
+                // asks the manifest (or answers with the dev server's address) the way @vite will
+                $vite->asset($entry);
+
+                return true;
+            } catch (\Illuminate\Foundation\ViteException|\Illuminate\Foundation\ViteManifestNotFoundException) {
+                // no manifest, or the entry is not in it: the host has no build for it
+                return false;
+            }
+        }));
+    }
+
+    /**
      * All top-level components, sorted by name
      */
     public function components() : Collection

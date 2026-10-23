@@ -6,7 +6,7 @@
 {{-- A record's sections as link tabs, with counts, straight under the page header. Each tab is
      `['label' => ..., 'href' => ..., 'count' => ..., 'current' => true]`. The current one carries aria-current="page"
      (and the underline); a tab with no href, or one safe_url() refuses, is drawn as plain text, never a link, and still
-     carries it when current. A row that does not fit scrolls sideways. The -mt-1.5 pulls the tabs up under the header,
+     carries it when current. A row that does not fit scrolls sideways: the current tab is scrolled into view when it appears, and an edge with more tabs past it fades (the `pageTabs` Alpine factory writes data-fade-start and data-fade-end; atom.css masks them). The -mt-1.5 pulls the tabs up under the header,
      so it assumes they sit inside <atom:page> (the 22px gap becomes the sample's 16px); elsewhere pass `class="mt-0"`. --}}
 @php
 $items = collect($tabs)->map(fn ($tab) => [
@@ -17,9 +17,9 @@ $items = collect($tabs)->map(fn ($tab) => [
 ]);
 @endphp
 
-<nav {{ $attributes->class('-mt-1.5') }} aria-label="{{ $label ? t($label) : t('Sections') }}" data-atom-page-tabs>
+<nav {{ $attributes->class('-mt-1.5') }} x-data="pageTabs" aria-label="{{ $label ? t($label) : t('Sections') }}" data-atom-page-tabs>
     {{-- pb-px: the current tab's -mb-px underline lands in the ul's padding box, which the overflow clip keeps, not on its border, which it cuts to 1px --}}
-    <ul class="m-0 flex list-none gap-0.5 overflow-x-auto overflow-y-hidden border-b p-0 pb-px">
+    <ul x-ref="list" class="m-0 flex list-none gap-0.5 overflow-x-auto overflow-y-hidden border-b p-0 pb-px">
         @foreach ($items as $tab)
             @php
             $classes = Arr::toCssClasses([

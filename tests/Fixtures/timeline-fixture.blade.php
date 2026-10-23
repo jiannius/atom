@@ -16,6 +16,14 @@
         <atom:timeline.item title="Check" state="failed" status="Timed out" wire:key="s4">The site did not answer in time.</atom:timeline.item>
     </atom:timeline>
 
+    <atom:timeline kind="path" label="Job stages" data-testid="path">
+        <atom:timeline.item title="Opened" state="done" time="08:54" actor="Ana" wire:key="p1" />
+        <atom:timeline.item title="In progress" state="current" time="1h 12m" actor="Ben" :tone="request()->query('tone')" wire:key="p2" />
+        <atom:timeline.item title="Checked" state="pending" actor="Cleo" wire:key="p3" />
+        <atom:timeline.item title="Invoiced" state="failed" time="Tue" actor="Dev" wire:key="p4" />
+        <atom:timeline.item title="Paid" state="pending" wire:key="p5" />
+    </atom:timeline>
+
     <atom:timeline kind="message" data-testid="messages">
         @foreach ($messages as $i => $message)
             <atom:timeline.item :side="$message['side']" :speaker="$message['speaker']" :body="$message['body']" time="10:0{{ $i }}" wire:key="m{{ $i }}" />

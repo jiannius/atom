@@ -11,7 +11,7 @@ describe('timeline', function () {
             ->and($list[0]->getAttribute('aria-label'))->toBe($name)
             ->and(domQuery($html, '//ol/li[@data-atom-timeline-item]'))->toHaveCount(2)
             ->and(domQuery($html, '//*[@data-atom-timeline]')[0]->getAttribute('data-kind'))->toBe($kind);
-    })->with([['event', 'Activity'], ['step', 'Steps'], ['message', 'Messages']]);
+    })->with([['event', 'Activity'], ['step', 'Steps'], ['path', 'Progress'], ['message', 'Messages']]);
 
     it('is an event timeline by default, and falls back to it for an unknown kind', function () {
         expect(domQuery(renderBlade('<atom:timeline />'), '//*[@data-atom-timeline]')[0]->getAttribute('data-kind'))->toBe('event')
@@ -247,7 +247,7 @@ describe('message', function () {
     it('prints a message at the reading size, in a bubble that cannot outgrow the column', function () {
         $bubble = domQuery(renderBlade('<atom:timeline kind="message"><atom:timeline.item body="x" /></atom:timeline>'), '//*[@data-atom-timeline-bubble]')[0];
 
-        expect(domClasses($bubble))->toContain('text-base', 'max-w-[85%]', 'break-words');
+        expect(domClasses($bubble))->toContain('text-base', 'max-w-[85%]', '[overflow-wrap:anywhere]');
     });
 
     it('treats any side but end as the start', function () {
@@ -269,7 +269,7 @@ describe('escaping', function () {
     it('prints a step title, status and time as text', function () use ($evil, $escaped) {
         $html = renderBlade('<atom:timeline kind="step"><atom:timeline.item :title="$e" :status="$e" :time="$e" /></atom:timeline>', ['e' => $evil]);
 
-        expect(domQuery($html, '//img'))->toBeEmpty()->and(substr_count($html, $escaped))->toBe(3);
+        expect(domQuery($html, '//img'))->toBeEmpty()->and(substr_count($html, $escaped))->toBe(4); // the title, the status (in the pill and in its title attribute) and the time
     });
 
     it('prints a message speaker, time and body as text, keeping its line breaks', function () use ($evil, $escaped) {
@@ -294,5 +294,168 @@ describe('escaping', function () {
 
     it('prints the label of the list as text', function () use ($evil) {
         expect(domQuery(renderBlade('<atom:timeline :label="$e" />', ['e' => $evil]), '//img'))->toBeEmpty();
+    });
+});
+
+
+describe('path', function () {
+    it('is one segment per item in a bordered strip that stacks until its own box is wide enough', function () {
+        $html = renderBlade('<atom:timeline kind="path"><atom:timeline.item title="Opened" state="done" /><atom:timeline.item title="Paid" /></atom:timeline>');
+
+        expect(domClasses(domQuery($html, '//*[@data-atom-timeline]')[0]))->toContain('@container', 'w-full')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-timeline]/ol')[0]))->toContain('grid', 'rounded-panel', 'border', '@2xl:grid-flow-col', '@2xl:auto-cols-[minmax(0,1fr)]')
+            ->and(domQuery($html, '//ol/li[@data-atom-timeline-item]'))->toHaveCount(2);
+    });
+
+    it('does not make the other kinds a container', function (string $kind) {
+        expect(domClasses(domQuery(renderBlade('<atom:timeline kind="'.$kind.'" />'), '//*[@data-atom-timeline]')[0]))->not->toContain('@container');
+    })->with(['event', 'step', 'message']);
+
+    it('draws a title, a time and a person, and marks the state in words and in the tint', function () {
+        $html = renderBlade('<atom:timeline kind="path">
+            <atom:timeline.item title="Opened" state="done" time="08:54" actor="Ana" />
+            <atom:timeline.item title="In progress" state="current" time="1h 12m" actor="Ben" />
+            <atom:timeline.item title="Invoiced" state="failed" />
+            <atom:timeline.item title="Paid" />
+        </atom:timeline>');
+        $items = domQuery($html, '//li[@data-atom-timeline-item]');
+
+        expect(array_map(fn ($li) => $li->getAttribute('data-state'), $items))->toBe(['done', 'current', 'failed', 'pending'])
+            ->and(trim(domQuery($html, '//li[1]//*[@data-atom-timeline-title]')[0]->textContent))->toBe('Opened')
+            ->and(preg_replace('/\s+/', ' ', trim(domQuery($html, '//li[1]//*[@data-atom-timeline-meta]')[0]->textContent)))->toBe('08:54 · Ana')
+            ->and(preg_replace('/\s+/', ' ', trim(domQuery($html, '//li[2]//*[@data-atom-timeline-meta]')[0]->textContent)))->toBe('1h 12m · Ben')
+            // only the current segment is tinted and carries aria-current
+            ->and(domQuery($html, '//li[@aria-current="step"]'))->toHaveCount(1)
+            ->and(domClasses($items[1]))->toContain('bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))]')
+            ->and(implode(' ', domClasses($items[0])))->not->toContain('color-mix')
+            // a segment with no time and no person prints no meta line, and never a dash
+            ->and(domQuery($html, '//li[4]//*[@data-atom-timeline-meta]'))->toBeEmpty()
+            ->and($items[3]->textContent)->not->toContain('—')
+            ->and(domQuery($html, '//li[1]//*[@data-atom-timeline-marker]//*[@class="sr-only"]')[0]->textContent)->toBe('Done')
+            ->and(domQuery($html, '//li[2]//*[@data-atom-timeline-marker]//*[@class="sr-only"]')[0]->textContent)->toBe('Current')
+            ->and(domQuery($html, '//li[3]//*[@data-atom-timeline-marker]//*[@class="sr-only"]')[0]->textContent)->toBe('Failed')
+            ->and(domQuery($html, '//li[4]//*[@data-atom-timeline-marker]//*[@class="sr-only"]')[0]->textContent)->toBe('Pending');
+    });
+
+    it('tints the current segment in the status\'s tone, and in a light wash of the accent without one', function (?string $tone, string $bg, string $ring, string $dot) {
+        $attr = $tone ? ' tone="'.$tone.'"' : '';
+        $html = renderBlade('<atom:timeline kind="path"><atom:timeline.item title="A" state="done" /><atom:timeline.item title="B" state="current"'.$attr.' /><atom:timeline.item title="C"'.$attr.' /></atom:timeline>');
+        $items = domQuery($html, '//li');
+
+        expect(domClasses($items[1]))->toContain($bg)
+            ->and(domClasses(domQuery($html, '//li[2]//*[@data-atom-timeline-marker]')[0]))->toContain('border-2', $ring)
+            ->and(domClasses(domQuery($html, '//li[2]//*[@data-atom-timeline-marker]/span[@aria-hidden]')[0]))->toContain($dot)
+            // the tone is the current segment's: a done or a pending one stays plain
+            ->and(implode(' ', domClasses($items[0])))->not->toContain('bg-')
+            ->and(implode(' ', domClasses($items[2])))->not->toContain('bg-');
+    })->with([
+        'none' => [null, 'bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))]', 'border-accent-ink', 'bg-accent-ink'],
+        'neutral' => ['neutral', 'bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))]', 'border-accent-ink', 'bg-accent-ink'],
+        'info' => ['info', 'bg-info-bg', 'border-info-fg', 'bg-info-fg'],
+        'warning' => ['warning', 'bg-warning-bg', 'border-warning-fg', 'bg-warning-fg'],
+        'danger' => ['danger', 'bg-danger-bg', 'border-danger-fg', 'bg-danger-fg'],
+        'success' => ['success', 'bg-success-bg', 'border-success-fg', 'bg-success-fg'],
+    ]);
+
+    it('falls back to pending for an unknown state, and is not foldable', function () {
+        $html = renderBlade('<atom:timeline kind="path"><atom:timeline.item title="A" state="nope">Body</atom:timeline.item></atom:timeline>');
+
+        expect(domQuery($html, '//li')[0]->getAttribute('data-state'))->toBe('pending')
+            ->and(domQuery($html, '//*[@data-atom-timeline-toggle]'))->toBeEmpty()
+            ->and($html)->not->toContain('x-data');
+    });
+
+    it('prints a DateTimeInterface time in a <time> element', function () {
+        $html = renderBlade('<atom:timeline kind="path"><atom:timeline.item title="A" :time="new DateTimeImmutable(\'2026-10-02 09:00:00\')" /></atom:timeline>');
+
+        expect(domQuery($html, '//li//time[@datetime]'))->toHaveCount(1);
+    });
+});
+
+
+describe('long text', function () {
+    it('breaks an unbroken string anywhere, in every kind, so a narrow box never grows', function () {
+        $long = str_repeat('x', 400);
+        $html = renderBlade('
+            <atom:timeline><atom:timeline.item title="'.$long.'" body="'.$long.'" actor="'.$long.'" time="'.$long.'"><x-slot:detail>'.$long.'</x-slot:detail></atom:timeline.item></atom:timeline>
+            <atom:timeline kind="step"><atom:timeline.item title="A" state="current">'.$long.'</atom:timeline.item></atom:timeline>
+            <atom:timeline kind="path"><atom:timeline.item title="A" actor="'.$long.'">'.$long.'</atom:timeline.item></atom:timeline>
+            <atom:timeline kind="message"><atom:timeline.item speaker="'.$long.'" body="'.$long.'" /></atom:timeline>');
+
+        foreach (['event' => ['title', 'body', 'meta', 'detail'], 'step' => ['body'], 'path' => ['meta', 'body'], 'message' => ['bubble']] as $kind => $parts) {
+            foreach ($parts as $part) {
+                $found = domQuery($html, '//*[@data-kind="'.$kind.'"]//*[@data-atom-timeline-'.$part.']');
+
+                expect($found)->not->toBeEmpty("$kind $part")
+                    ->and(domClasses($found[0]))->toContain('[overflow-wrap:anywhere]');
+            }
+        }
+    });
+});
+
+describe('a nested timeline', function () {
+    it('draws its own kind, not the outer one\'s, in a step\'s body', function () {
+        // on one line: a template with line breaks inside the slot happens not to show the fault
+        $html = renderBlade('<atom:timeline kind="step" label="Outer"><atom:timeline.item title="Build" state="current"><atom:timeline label="Inner"><atom:timeline.item title="Compiled" body="the assets" tone="success" /><atom:timeline.item title="Linked" /></atom:timeline></atom:timeline.item></atom:timeline>');
+
+        $inner = domQuery($html, '//*[@data-atom-timeline][@data-kind="event"]');
+
+        expect($inner)->toHaveCount(1)
+            // the inner items are events (a dot in a tone), not numbered steps
+            ->and(domQuery($html, '//*[@data-kind="event"]//li[@data-tone]'))->toHaveCount(2)
+            ->and(domQuery($html, '//*[@data-kind="event"]//li[@data-state]'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-kind="event"]//*[@data-atom-timeline-marker]'))->toBeEmpty()
+            // and the outer one is still a step
+            ->and(domQuery($html, '//*[@data-kind="step"]/ol/li[@data-state="current"]'))->toHaveCount(1);
+    });
+
+    it('draws its own kind when the outer one is a path or a message too, and an explicit kind still wins', function (string $outer) {
+        $html = renderBlade('<atom:timeline kind="'.$outer.'"><atom:timeline.item title="A" body="b">'
+            .'<atom:timeline><atom:timeline.item title="Inner" /></atom:timeline>'
+            .'<atom:timeline kind="step"><atom:timeline.item title="Numbered" state="done" /></atom:timeline>'
+            .'</atom:timeline.item></atom:timeline>');
+
+        expect(domQuery($html, '//*[@data-kind="event"]//li[@data-tone]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-kind="step"]//li[@data-state="done"]'))->toHaveCount(1);
+    })->with(['step', 'path', 'message']);
+
+    it('does not inherit collapsible either', function () {
+        $html = renderBlade('<atom:timeline kind="step" :collapsible="false"><atom:timeline.item title="Outer" state="current">'
+            .'<atom:timeline kind="step"><atom:timeline.item title="Inner" state="current">Body</atom:timeline.item></atom:timeline>'
+            .'</atom:timeline.item></atom:timeline>');
+
+        // the outer step is not foldable; the inner one is (its own default)
+        expect(domQuery($html, '//li[.//*[@data-atom-timeline-title][normalize-space(.)="Inner"]]//*[@data-atom-timeline-toggle]'))->toHaveCount(1);
+    });
+});
+
+// A host wrapper that spreads its attributes onto the tag: what the caller passes must reach the timeline, not the tag's defaults.
+describe('a timeline in a host wrapper', function () {
+    beforeEach(fn () => \Illuminate\Support\Facades\Blade::anonymousComponentPath(__DIR__.'/../Fixtures/AnonComponents'));
+
+    it('takes the kind the wrapper was called with', function (string $kind, string $itemAttribute) {
+        $html = renderBlade('<x-timeline-wrapper kind="'.$kind.'" />');
+
+        expect(domQuery($html, '//*[@data-atom-timeline]')[0]->getAttribute('data-kind'))->toBe($kind)
+            ->and(domQuery($html, '//li['.$itemAttribute.']'))->toHaveCount(1);
+    })->with([
+        'step' => ['step', '@data-state="current"'],
+        'path' => ['path', '@aria-current="step"'],
+        'message' => ['message', '@data-side="start"'],
+    ]);
+
+    it('is an event timeline when the wrapper was given no kind', function () {
+        $html = renderBlade('<x-timeline-wrapper />');
+
+        expect(domQuery($html, '//*[@data-atom-timeline]')[0]->getAttribute('data-kind'))->toBe('event')
+            ->and(domQuery($html, '//li[@data-tone]'))->toHaveCount(1);
+    });
+
+    it('takes collapsible from the wrapper too', function () {
+        $folded = renderBlade('<x-timeline-wrapper kind="step" />');
+        $open = renderBlade('<x-timeline-wrapper kind="step" :collapsible="false" />');
+
+        expect(domQuery($folded, '//*[@data-atom-timeline-toggle]'))->toHaveCount(1)
+            ->and(domQuery($open, '//*[@data-atom-timeline-toggle]'))->toBeEmpty();
     });
 });

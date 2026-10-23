@@ -14,11 +14,15 @@
        fields are one column. In a real page write `<atom:form.modal name="new-customer" cols="1">` with the sections inside; the
        modal's own form calls the component's `submit()` method (there is no `wire:submit` to pass). For the 448px width, use
        the plain composition shown here.
-     - The submit is the one primary action of the slide-over; there is no Cancel button, the close button and Escape do that.
+     - The pinned bar is the page save bar's shape: the status text ("Unsaved changes", "Saved") at the start (the `start` slot) and the
+       submit at the end. The submit is the one primary action of the slide-over; there is no Cancel button, the close button and
+       Escape do that.
 
      Open it as ?open=1 to have the slide-over open on load. --}}
 @php
 $styles = $styles ?? [];
+// a host's own stylesheet when it has one (config atom.docs.vite), so the page is styled inside the host; none in the test rig
+$vite = $vite ?? app(\Jiannius\Atom\Services\Docs::class)->vite();
 $shell = ($shell ?? 'sidebar') === 'header' ? 'header' : 'sidebar';
 
 $customers = [
@@ -31,7 +35,7 @@ $customers = [
 $open = request()->query('open') === '1';
 @endphp
 
-<x-dynamic-component :component="'atom::layouts.'.$shell" title="Slide-over form" :vite="[]" :styles="$styles" :dark="$dark ?? true">
+<x-dynamic-component :component="'atom::layouts.'.$shell" title="Slide-over form" :vite="$vite" :styles="$styles" :dark="$dark ?? true">
     <x-slot:brand>
         <a href="?page=dashboard" @class([
             'flex items-center gap-[9px] px-2 pb-3 pt-1.5' => $shell === 'sidebar',
@@ -45,7 +49,7 @@ $open = request()->query('open') === '1';
     </x-slot>
 
     <x-slot:nav>
-        @include('atom::docs.patterns.nav')
+        @include('atom::docs.patterns.nav', ['navCurrent' => 'customers'])
     </x-slot>
 
     <x-slot:dropdown>
@@ -109,11 +113,12 @@ $open = request()->query('open') === '1';
                 </div>
 
                 <atom:form.actions sticky>
+                    <x-slot:start>
+                        <span class="text-xs text-fg-subtle" x-show="changed && !saved" x-cloak>Unsaved changes</span>
+                        <span class="text-xs text-success-fg" x-show="saved" x-cloak data-testid="slide-over-saved">Saved</span>
+                    </x-slot:start>
+
                     <atom:button type="submit" data-testid="slide-over-submit">Save customer</atom:button>
-                    <div class="flex items-center gap-3 text-xs">
-                        <span class="text-fg-subtle" x-show="changed && !saved" x-cloak>Unsaved changes</span>
-                        <span class="text-success-fg" x-show="saved" x-cloak data-testid="slide-over-saved">Saved</span>
-                    </div>
                 </atom:form.actions>
             </atom:form>
         </atom:modal>

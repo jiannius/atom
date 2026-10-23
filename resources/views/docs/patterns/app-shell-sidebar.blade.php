@@ -2,15 +2,21 @@
      layout tag differs. Use it for an app with many modules, or a user who sees many of them. --}}
 @php
 $styles = $styles ?? [];
+// a host's own stylesheet when it has one (config atom.docs.vite), so the page is styled inside the host; none in the test rig
+$vite = $vite ?? app(\Jiannius\Atom\Services\Docs::class)->vite();
 @endphp
 
-<atom:layouts.sidebar title="App shell (sidebar)" :vite="[]" :styles="$styles" :dark="$dark ?? true">
+<atom:layouts.sidebar title="App shell (sidebar)" :vite="$vite" :styles="$styles" :dark="$dark ?? true">
     <x-slot:brand>
+        {{-- a brand with a subline (the company or the branch) is host markup: no component for it --}}
         <a href="?page=dashboard" class="flex items-center gap-[9px] px-2 pb-3 pt-1.5">
-            <div class="flex size-[26px] items-center justify-center rounded-control bg-accent text-accent-foreground">
+            <div class="flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground">
                 <atom:icon.blocks class="size-4"/>
             </div>
-            <span class="truncate text-sm font-semibold">Fieldwork</span>
+            <span class="grid min-w-0 leading-tight">
+                <span class="truncate text-sm font-semibold">Fieldwork</span>
+                <span class="truncate text-xs text-fg-subtle" data-testid="brand-subline">Pro plan · MYR</span>
+            </span>
         </a>
     </x-slot>
 
@@ -19,7 +25,12 @@ $styles = $styles ?? [];
     </x-slot>
 
     <x-slot:search>
-        <atom:input icon="search" placeholder="Search" aria-label="Search"/>
+        {{-- the shortcut hint is host markup too: a <atom:kbd> laid over the end of the field, which has room for it (the input
+             takes `pr-8`; widen it with a class if the hint is wider). The shortcut itself is yours to bind, or use <atom:command>. --}}
+        <div class="relative" data-testid="shell-search">
+            <atom:input icon="search" placeholder="Search" aria-label="Search" class="pr-12!"/>
+            <atom:kbd keys="cmd+k" class="pointer-events-none absolute end-2 top-1/2 -translate-y-1/2"/>
+        </div>
     </x-slot>
 
     <x-slot:nav>
@@ -36,8 +47,9 @@ $styles = $styles ?? [];
         @include('atom::docs.patterns.crumbs')
     </x-slot>
 
+    {{-- the shell's `actions` slot is for a secondary action (or nothing): the page's primary is its header's `primary` slot --}}
     <x-slot:actions>
-        <atom:button variant="primary" icon="add">New invoice</atom:button>
+        <atom:button icon="download">Export</atom:button>
     </x-slot>
 
     <x-slot:dropdown>

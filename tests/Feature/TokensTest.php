@@ -255,8 +255,14 @@ describe('contrast', function () {
             ->and(tokenContrast($threshold, $dark))->toBeGreaterThanOrEqual(4.5);
     });
 
-    it('falls back to a black accent for an app that has not chosen one', function () {
-        expect(tokenCss())->toContain('--color-accent: #1c1b18;');
+    it('falls back to a black accent in light and a near-white one in dark for an app that has not chosen one', function () {
+        $css = tokenCss();
+
+        // the theme token is a reference, so a host's own value replaces it and never flips
+        expect($css)->toContain('--color-accent: var(--atom-accent-default);')
+            ->and($css)->not->toContain('--color-accent: #1c1b18;')
+            ->and($css)->toContain('--atom-accent-default: #1c1b18;')
+            ->and($css)->toMatch('/@supports \(color: light-dark\(red, blue\)\)\s*\{\s*:root\s*\{\s*--atom-accent-default:\s*light-dark\(#1c1b18, #ecebe8\);/');
     });
 
     it('derives the accent foreground, hover, soft and ink from --color-accent, all of them host-overridable', function () {

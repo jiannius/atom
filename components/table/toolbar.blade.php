@@ -13,13 +13,15 @@
      The header slot is an Alpine template: text the server renders into it is not refreshed by a re-render, so a count or
      a total belongs below the table.
      In the table's `header` slot the table draws the strip around it (a frameless table's hairline and padding). Placed
-     anywhere else, in a panel above a table, pass `strip` to draw its own: `border-b px-3 py-2.5`. --}}
+     anywhere else, in a panel above a table, pass `strip` to draw its own: `border-b px-3 py-2.5`.
+     On a phone the start group takes the full row, unless there is an `end` group (or `trashed`): then the start group has a 12rem floor: a narrow end group (an icon-only button,
+     with `max-sm:sr-only` on its label) shares the first row, a wide one wraps to a row of its own, and the search is never squeezed under 12rem. --}}
 @php
 $hasEnd = isset($end) && $end->isNotEmpty();
 @endphp
 
 <div {{ $attributes->class(['flex min-w-0 grow basis-full flex-wrap items-start gap-2', 'border-b px-3 py-2.5' => $strip]) }} data-atom-table-toolbar>
-    <div class="flex min-w-0 grow basis-full flex-wrap items-start gap-2 sm:basis-auto [&_[data-atom-table-search]]:w-full sm:[&_[data-atom-table-search]]:w-60" data-atom-table-toolbar-start>
+    <div @class(['flex min-w-0 grow flex-wrap items-start gap-2 sm:basis-auto [&_[data-atom-table-search]]:w-full sm:[&_[data-atom-table-search]]:w-60', 'basis-full' => ! ($hasEnd || $trashed), 'basis-48' => $hasEnd || $trashed]) data-atom-table-toolbar-start>
         {{ $slot }}
     </div>
 

@@ -108,16 +108,26 @@ for (const tw of ['floor', 'latest']) {
       })
 
       test('the crumbs sit 8px above the title; the current one is marked and the earlier ones are links', async ({ page }) => {
-        await record(page, '', { tw })
+        // the form page keeps the header's own `crumbs` prop (the record and document pages use the shell's slot)
+        await open(page, '/atom/e2e/shell-form', { tw })
 
         const crumbs = page.locator('[data-atom-page-crumbs]')
         const crumbBox = await box(crumbs)
         const titleRow = await box(title(page).locator('..'))
 
         expect(titleRow.y - crumbBox.bottom).toBe(8)
-        await expect(crumbs.locator('[aria-current="page"]')).toHaveText('WO-1042')
+        await expect(crumbs.locator('[aria-current="page"]')).toHaveText('New invoice')
         await expect(crumbs.locator('a')).toHaveCount(1)
-        expect(await crumbs.locator('a').getAttribute('href')).toBe('?page=jobs')
+        expect(await crumbs.locator('a').getAttribute('href')).toBe('list-page')
+      })
+
+      test('the record page takes its crumbs from the shell, so its title is the one heading', async ({ page }) => {
+        await record(page, '', { tw })
+
+        await expect(page.locator('[data-atom-page-crumbs]')).toHaveCount(0)
+        await expect(page.getByTestId('record-crumbs')).toContainText('WO-1042')
+        await expect(page.getByTestId('record-crumbs').locator('a')).toHaveAttribute('href', '?page=jobs')
+        await expect(page.getByRole('button', { name: 'Next job' })).toBeVisible()
       })
 
       test('the actions are 6px apart on the right, and the primary one is the last', async ({ page }) => {
@@ -150,6 +160,7 @@ for (const tw of ['floor', 'latest']) {
 
         const p = await styles(page.locator('[data-atom-page]'), ['padding-top', 'padding-left', 'padding-right', 'padding-bottom', 'row-gap', 'max-width'])
         const head = await box(header(page))
+        const stages = await box(page.getByTestId('record-stages'))
         const stats = await box(page.locator('[data-atom-stat-group]'))
         const tabs = await box(page.locator('[data-atom-page-tabs]'))
         const main = await styles(page.locator('[data-atom-main]'), ['padding-top', 'padding-left'])
@@ -158,7 +169,9 @@ for (const tw of ['floor', 'latest']) {
         expect([p['padding-top'], p['padding-left'], p['padding-right'], p['padding-bottom']]).toEqual(['26px', '28px', '28px', '120px'])
         expect(p['row-gap']).toBe('22px')
         expect(p['max-width']).toBe('1240px')
-        expect(stats.y - head.bottom).toBe(22)
+        // the stage path sits under the header, and the stats under it, each at the page's gap
+        expect(stages.y - head.bottom).toBe(22)
+        expect(stats.y - stages.bottom).toBe(22)
         // the tabs are pulled 6px up to the stats' 22px gap (the sample's -6px): 16px
         expect(tabs.y - stats.bottom).toBe(16)
         // main itself stays unpadded: the page does it
@@ -184,7 +197,7 @@ for (const tw of ['floor', 'latest']) {
       test('the primary action follows the status, and so does the status word', async ({ page }) => {
         for (const [status, word, action] of [
           ['draft', 'Draft', 'Schedule job'],
-          ['in-progress', 'In progress', 'Mark as done'],
+          ['in-progress', 'In progress · 1h 12m', 'Mark as done'],
           ['blocked', 'Waiting for parts', 'Order parts'],
           ['done', 'Done', 'Create invoice'],
         ]) {
@@ -408,8 +421,8 @@ for (const tw of ['floor', 'latest']) {
         }, png.toString('base64'))
 
         expect(dark.filter(Boolean).length).toBe(2)
-        // the two dark rows are the lowest of the tab, one row above the hairline's
-        expect(dark.slice(4, 6)).toEqual([true, true])
+        // the two dark rows are one underline (adjacent), whichever pixel row the page's fractional height puts it on
+        expect(dark[dark.indexOf(true) + 1]).toBe(true)
       })
 
       test('a current tab that is not a link keeps its underline and aria-current', async ({ page }) => {
@@ -548,12 +561,23 @@ test.describe('empty', () => {
   test('no animation at all under prefers-reduced-motion: reduce', async ({ page }) => {
     await open(page, '/atom/e2e/page-parts', { rm: 'reduce' })
 
-    for (const testid of ['empty-first-use', 'empty-no-results', 'empty-error']) {
+    for (const testid of ['empty-first-use', 'empty-no-results', 'empty-error', 'empty-done']) {
       const count = await strokes(page, testid).evaluateAll((els) => els.reduce((n, el) => n + el.getAnimations().length, 0))
       expect(count, testid).toBe(0)
     }
 
     expect((await styles(strokes(page, 'empty-first-use').first(), ['stroke-dasharray']))['stroke-dasharray']).toBe('none')
+  })
+
+  test('a cleared queue draws its success-toned check in, says All caught up and has no next step', async ({ page }) => {
+    await open(page, '/atom/e2e/page-parts', { rm: 'no-preference' })
+
+    const done = page.getByTestId('empty-done')
+
+    await expect(done).toContainText('All caught up')
+    await expect(done.locator('[data-atom-empty-action]')).toHaveCount(0)
+    // it draws in like the others: its strokes carry the animation, and a pathLength of 1
+    expect(await done.locator('[data-atom-empty-icon] path').evaluateAll((els) => els.every((el) => el.getAttribute('pathLength') === '1' && el.getAnimations().length > 0))).toBe(true)
   })
 
   test('the sm state never animates, even under no-preference', async ({ page }) => {
@@ -580,6 +604,8 @@ test.describe('empty', () => {
     expect(await colour('empty-first-use')).toBe(await probe('var(--atom-accent-ink)'))
     expect(await colour('empty-no-results')).toBe(await probe('var(--atom-fg-subtle)'))
     expect(await colour('empty-error')).toBe(await probe('var(--atom-fg-subtle)'))
+    // a cleared queue is a success: the success ink
+    expect(await colour('empty-done')).toBe(await probe('var(--atom-success-fg)'))
 
     // the stroke follows the colour
     expect((await styles(strokes(page, 'empty-first-use').first(), ['stroke']))['stroke']).toBe(await probe('var(--atom-accent-ink)'))

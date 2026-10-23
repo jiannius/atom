@@ -9,6 +9,11 @@ description="kind=step is a numbered spine for a process (a run, an onboarding).
 view="atom::docs.demos.timeline.step"/>
 
 <atom:docs.example
+title="Path"
+description="kind=path is a horizontal path of stages for a record that moves through them: one segment per item, each done, current, pending or failed, with a title and a muted line of the time and the person (actor). The current segment is tinted. It stacks as a column when its own box is narrower than 42rem, so on a phone and in a narrow column. Use it under a record's header, with the status matching the current segment."
+view="atom::docs.demos.timeline.path"/>
+
+<atom:docs.example
 title="Messages"
 description="kind=message is a conversation between two speakers: the other one at the start, yours (side=end) at the end, at the 14px reading size. The composer slot is the last row."
 view="atom::docs.demos.timeline.message"/>

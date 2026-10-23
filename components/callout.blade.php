@@ -7,6 +7,8 @@
 ])
 
 @php
+$hasActions = isset($actions) && $actions->isNotEmpty();
+
 $icon ??= match ($variant) {
     'info' => 'info',
     'warning' => 'warning',
@@ -18,6 +20,7 @@ $icon ??= match ($variant) {
 /* A tone's tint and a hairline of its ink; the heading takes the tone's ink and the text stays fg, so the body reads at full
    contrast. An unknown variant is the neutral tint. */
 $tone = match ($variant) {
+    'accent' => 'accent',
     'info' => 'info',
     'success' => 'success',
     'warning' => 'warning',
@@ -29,6 +32,7 @@ $classes = Arr::toCssClasses([
     '[:where(&)]:relative [:where(&)]:w-full rounded-panel border px-4 py-3 text-fg',
     'pe-11' => $closeable,
     match ($tone) {
+        'accent' => 'bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))] border-border border-s-4 border-s-accent-ink [&_[data-atom-icon]]:text-accent-ink [&_[data-atom-callout-heading]]:text-accent-ink',
         'info' => 'bg-info-bg border-info-fg/20 [&_[data-atom-icon]]:text-info-fg [&_[data-atom-callout-heading]]:text-info-fg',
         'success' => 'bg-success-bg border-success-fg/20 [&_[data-atom-icon]]:text-success-fg [&_[data-atom-callout-heading]]:text-success-fg',
         'warning' => 'bg-warning-bg border-warning-fg/20 [&_[data-atom-icon]]:text-warning-fg [&_[data-atom-callout-heading]]:text-warning-fg',
@@ -57,6 +61,13 @@ $classes = Arr::toCssClasses([
                 {{ $slot }}
             @elseif ($content)
                 {{ t($content) }}
+            @endif
+
+            {{-- a decision box: the buttons under the text, the one the reader is meant to press last (and primary) --}}
+            @if ($hasActions)
+                <div {{ $actions->attributes->class('mt-2 flex flex-wrap items-center gap-2') }} data-atom-callout-actions>
+                    {{ $actions }}
+                </div>
             @endif
         </div>
     </div>

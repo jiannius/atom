@@ -114,6 +114,18 @@ describe('cells and headers', function () {
     });
 });
 
+describe('toolbar on a phone', function () {
+    it('gives the start group the full row, unless an end group (or trashed) shares it', function () {
+        $alone = domClasses(domQuery(renderBlade('<atom:table.toolbar>x</atom:table.toolbar>'), '//*[@data-atom-table-toolbar-start]')[0]);
+        $shared = domClasses(domQuery(renderBlade('<atom:table.toolbar>x<x-slot:end><button>E</button></x-slot:end></atom:table.toolbar>'), '//*[@data-atom-table-toolbar-start]')[0]);
+        $trashed = domClasses(domQuery(renderBlade('<atom:table.toolbar trashed>x</atom:table.toolbar>'), '//*[@data-atom-table-toolbar-start]')[0]);
+
+        expect($alone)->toContain('basis-full')->not->toContain('basis-48')
+            ->and($shared)->toContain('basis-48')->not->toContain('basis-full')->not->toContain('basis-0')
+            ->and($trashed)->toContain('basis-48')->not->toContain('basis-full')->not->toContain('basis-0');
+    });
+});
+
 describe('toolbar', function () {
     it('lays the controls out, with the end group on the far side', function () {
         $html = renderBlade('<atom:table.toolbar><input id="q"><x-slot:end><button id="n" type="button">Export</button></x-slot:end></atom:table.toolbar>');

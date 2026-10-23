@@ -2,10 +2,11 @@
     'time' => false,
     'invalid' => false,
     'placeholder' => 'Select date range',
+    'add' => false,
 ])
 
 @php
-$filterKey = $attributes->wire('model')->value();
+$filterKey = $attributes->wire('model')->value() ?: $attributes->get('data-filter-key');
 
 /* The field recipe (see input/general); two 16px icons (clear, calendar) sit at the end. */
 $classes = Arr::toCssClasses([
@@ -17,6 +18,13 @@ $classes = Arr::toCssClasses([
     $invalid ? 'border-danger-fg' : 'border-control-border',
     'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
 ]);
+
+/* The add-filter pill: the same button as the select filter's, a 26px dashed pill that reads "+ Label" until a range is set. It
+   is a button (there is nothing to type in it), so the range is set from the calendar. */
+$pillClasses = Arr::toCssClasses([
+    'inline-flex h-[26px] items-center gap-1 appearance-none rounded-pill border border-dashed border-control-border bg-transparent px-2.5 text-xs text-fg-muted',
+    'hover:bg-surface-sunken hover:text-fg',
+]);
 @endphp
 
 <div
@@ -24,10 +32,11 @@ wire:ignore
 x-data="dateRange({ time: @js($time) })"
 x-modelable="dateRangeValue"
 class="group/date-range relative"
+@if ($add) x-show="!dateRangeValue" @endif
 data-atom-date-range
 @if ($filterKey)
 x-init="
-    const emit = () => $dispatch('table-filter:set', { key: @js($filterKey), label: @js(t($placeholder)), display: dateRangeValue ? dateRangeString : null });
+    const emit = () => $dispatch('table-filter:set', { key: @js($filterKey), label: @js(t($placeholder)), display: dateRangeValue ? dateRangeString : null, operator: @js(t('is')) });
     $nextTick(emit);
     $watch('dateRangeValue', () => { $nextTick(emit); $dispatch('table-filter:changed') });
 "
@@ -35,6 +44,12 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
 @endif
 {{ $attributes->except(['class', 'placeholder']) }}>
     <atom:dropdown x-on:open="setCalendarDates(); setCalendarRange();" locked>
+        @if ($add)
+        <button type="button" aria-haspopup="dialog" {{ $attributes->class($pillClasses)->only('class') }} data-atom-dropdown-trigger data-atom-date-range-add>
+            <atom:icon.add class="size-3.5" />
+            <span>{{ t($placeholder) }}</span>
+        </button>
+        @else
         {{-- A div, not a button: the input is typed into, and a button may not hold one. --}}
         <div class="relative w-full" data-atom-dropdown-trigger>
             <input
@@ -61,6 +76,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
                 </button>
             </div>
         </div>
+        @endif
 
         <atom:menu class="max-w-full" popover>
             <div class="w-sm md:w-[740px] overflow-auto flex divide-x divide-border">

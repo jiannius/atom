@@ -188,3 +188,21 @@ describe('save bar', function () {
         expect($primaries)->toHaveCount(1)->and($primaries[0]->getAttribute('type'))->toBe('submit');
     });
 });
+
+describe('form.section danger', function () {
+    it('is the danger zone: the heading in the danger ink and the fields in a box with a danger hairline', function () {
+        $html = renderBlade('<atom:form.section variant="danger" heading="Archive this site" subheading="It stops serving traffic."><button>Archive</button></atom:form.section>');
+
+        expect(domQuery($html, '//section')[0]->getAttribute('data-variant'))->toBe('danger')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-form-section-heading]')[0]))->toContain('text-danger-fg')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-form-section-body]')[0]))->toContain('rounded-panel', 'border', 'border-danger-fg/30', 'p-4');
+    });
+
+    it('is the plain section without it, and for any other value', function (?string $variant) {
+        $html = renderBlade('<atom:form.section :variant="$variant" heading="Details"><input></atom:form.section>', ['variant' => $variant]);
+
+        expect(domQuery($html, '//section')[0]->hasAttribute('data-variant'))->toBeFalse()
+            ->and(domClasses(domQuery($html, '//*[@data-atom-form-section-heading]')[0]))->not->toContain('text-danger-fg')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-form-section-body]')[0]))->not->toContain('border');
+    })->with([null, 'nope', 'warning']);
+});

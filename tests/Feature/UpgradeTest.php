@@ -1034,6 +1034,16 @@ describe('atom:upgrade: a rewrite it cannot be sure of is declined, not guessed'
             ->and(file_get_contents($dir.'/app/Livewire/Mixed.php'))->toContain('    use WithTable, Paginates;');
     });
 
+    it('keeps WithPagination for a table that only draws <atom:table>, and says it may be unneeded', function () {
+        $dir = upgradeShapeHost('php-table-only');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/app/Livewire/TableOnly.php'))->toContain('use WithTable, WithPagination;')
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('WithPagination (only <atom:table> in the view: it may be unneeded when the table never paginates)');
+    });
+
     it('declines a file with several classes in it', function () {
         $dir = upgradeShapeHost('php-several');
         $this->hosts[] = $dir;

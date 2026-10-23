@@ -10,8 +10,31 @@ use Illuminate\View\Compilers\ComponentTagCompiler;
  */
 class TagCompiler extends ComponentTagCompiler
 {
+    /**
+     * Props a component's children read with `@aware`, written out on the tag when the caller gave none. Laravel's `@aware` reads
+     * only what a parent was PASSED, never its `@props` defaults, so a child of a nested component with no such prop would read the
+     * OUTER component's: an event timeline inside a step's body drew every line as a numbered step. Naming the default on the tag
+     * gives the nested one its own. Name => [prop => PHP expression].
+     *
+     * @var array<string, array<string, string>>
+     */
+    protected const AWARE_DEFAULTS = [
+        'atom::timeline' => ['kind' => "'event'", 'collapsible' => 'true'],
+    ];
+
     public function componentString(string $component, array $attributes)
     {
+        $bag = $attributes['attributes'] ?? null;
+
+        foreach (static::AWARE_DEFAULTS[$component] ?? [] as $prop => $default) {
+            // A tag that spreads an attribute bag (`<atom:timeline {{ $attributes }}>`, inside a host wrapper) may be handed the prop by
+            // its caller, and the compiled data puts a written-out prop BEFORE the bag, so a constant would win over the caller's value:
+            // read the bag first, the default only when it has none.
+            $attributes[$prop] ??= $bag === null
+                ? $default
+                : "((({$bag}) instanceof \\Illuminate\\View\\ComponentAttributeBag) ? ({$bag})->get('{$prop}') : null) ?? {$default}";
+        }
+
         return parent::componentString($component, $attributes);
     }
 

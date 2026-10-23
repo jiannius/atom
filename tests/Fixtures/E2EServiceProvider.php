@@ -76,6 +76,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/navlist-persist', fn () => view('atom::e2e.navlist-persist'));
         Route::middleware('web')->get('/atom/e2e/sticky-selection', fn () => view('atom::e2e.sticky-selection'));
         Route::middleware('web')->get('/atom/e2e/table-filters-more', fn () => view('atom::e2e.table-filters-more'));
+        Route::middleware('web')->get('/atom/e2e/table-filters-inline', fn () => view('atom::e2e.table-filters-inline'));
         Route::middleware('web')->get('/atom/e2e/table-loading', fn () => view('atom::e2e.table-loading'));
         Route::middleware('web')->get('/atom/e2e/table-layout', fn () => view('atom::e2e.table-layout'));
         Route::middleware('web')->get('/atom/e2e/table-search-chip', fn () => view('atom::e2e.table-search-chip'));
@@ -114,6 +115,11 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/table-wide-page', fn () => view('atom::e2e.table-wide-page'));
         Route::middleware('web')->get('/atom/e2e/table-views', fn () => view('atom::e2e.table-views'));
         Route::middleware('web')->get('/atom/e2e/timeline', fn () => view('atom::e2e.timeline'));
+        Route::middleware('web')->get('/atom/e2e/form-extras', fn () => view('atom::e2e.form-extras'));
+        Route::middleware('web')->get('/atom/e2e/tabs-overflow', fn () => view('atom::e2e.tabs-overflow'));
+        Route::middleware('web')->get('/atom/e2e/table-toolbar-end', fn () => view('atom::e2e.table-toolbar-end'));
+        Route::middleware('web')->get('/atom/e2e/slide-over-short', fn () => view('atom::e2e.slide-over-short'));
+        Route::middleware('web')->get('/atom/e2e/timeline-wrap', fn () => view('atom::e2e.timeline-wrap'));
         Route::middleware('web')->get('/atom/e2e/slide-over-form', fn () => view('atom::e2e.slide-over-form'));
         Route::middleware('web')->get('/atom/e2e/page-width', fn () => view('atom::e2e.page-width'));
         Route::middleware('web')->get('/atom/e2e/page-header-slide', fn () => view('atom::e2e.page-header-slide'));

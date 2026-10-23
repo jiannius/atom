@@ -74,8 +74,10 @@
     --color-gray-900: #1c1b19;
     --color-gray-950: #151412;
 
-    /* The accent: a host sets --color-accent; the rest follow from it unless the host overrides one. Black is the fallback for an app that has not chosen one. */
-    --color-accent: #1c1b18;
+    /* The accent: a host sets --color-accent; the rest follow from it unless the host overrides one. The fallback for an app that
+       has not chosen one is near-black in light and near-white in dark (--atom-accent-default, base layer below): a black fill
+       would vanish on the dark canvas. A host's own --color-accent replaces the reference, so it is the same in both themes. */
+    --color-accent: var(--atom-accent-default);
     /* The derived accent colours are read from --atom-accent-* roles (base layer below), where the relative-colour
        maths and its fallback for older browsers live. A host that sets one of these in its own @theme replaces the
        role reference with its value, so the fallback never touches an override. */
@@ -155,6 +157,10 @@
         --atom-fg-subtle: #6f6b62;
         --atom-focus: var(--atom-accent-ink);
 
+        /* The accent an app that sets none gets: light-dark() is read where it is used, so a nested .dark subtree
+           (color-scheme: dark) flips it too. A browser without light-dark() keeps the near-black below. */
+        --atom-accent-default: #1c1b18;
+
         --atom-neutral-bg: #eeece7;
         --atom-neutral-fg: #57534b;
         --atom-info-bg: #e4ebfa;
@@ -224,6 +230,12 @@
         --atom-accent-hover: color-mix(in oklab, var(--color-accent), color(from var(--color-accent-foreground) srgb-linear calc(1 - r) calc(1 - g) calc(1 - b)) 10%);
     }
 
+    @supports (color: light-dark(red, blue)) {
+        :root {
+            --atom-accent-default: light-dark(#1c1b18, #ecebe8);
+        }
+    }
+
     /* A browser without CSS relative colour (Chrome and Edge before 119, Safari before 16.4, Firefox before 128)
        drops every property that reads a colour above, which would leave an accent label unreadable and the focus
        ring gone. Plain colours stand in: white on the accent, the accent itself for hover and ink, and a blue ring
@@ -239,7 +251,23 @@
         :root {
             --atom-accent-foreground: #fff;
             --atom-accent-hover: var(--color-accent);
+            /* the label here is always white, so the default accent stays near-black in dark too (a near-white fill would get a
+               white label); an accent the host sets is not touched */
+            --atom-accent-default: #1c1b18;
         }
+    }
+
+    /* The default accent's light-dark() reads the element's USED color-scheme. A host's own unlayered `html { color-scheme: light dark }`
+       beats the layered rule above and, on an OS in dark mode, would turn the accent near-white on atom's light canvas. While atom is
+       light (no .dark) the page is light, and while it is dark (.dark on <html>) the page is dark: `!important` in a layer beats a host's
+       ordinary unlayered declaration. atom owns the root's color-scheme. */
+    :root:not(.dark) {
+        color-scheme: light !important;
+    }
+
+    /* and the same the other way: atom is dark when <html> has .dark, whatever the OS and the host's color-scheme say */
+    :root.dark {
+        color-scheme: dark !important;
     }
 
     /* ----------------------------------------------------------------------------------------------

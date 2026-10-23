@@ -20,11 +20,15 @@
      step:    `title`, `time` (a duration or a date, at the end, before the chevron that is down when closed and up when open), `state` (done, current, pending or failed), `status` (a label
               beside the title, in the state's tone; `current` pulses it), and the slot as the body, which folds away when the
               timeline is collapsible. `open` sets the starting state: a current or failed step starts open, others closed.
+     path:    `title`, `state` (done, current, pending or failed), `time` and `actor` (a muted line under the title: the time, then who), and
+              the slot as one more muted line. The current segment is tinted, and carries aria-current="step". `tone` (info, success,
+              warning or danger) tints the CURRENT segment and its marker in the status's tone, so the path matches the record's status; without
+              one (or neutral, or accent) it is a light wash of the accent.
      message: `speaker`, `time`, `side` (`start` for the other person, `end` for you) and `body` or the slot.
      Every string prints as text: the host's own markup goes in a slot, and then the host owns escaping it. A `time` may be a
      DateTimeInterface (printed in a <time> element, in the viewer's timezone) or a string. A calendar date with no time goes in as a `Y-m-d` string: as a DateTimeInterface a midnight-UTC date would show as, say, 8:00 am. Titles, actors and bodies are data, so they are not translated. --}}
 @php
-$kind = in_array($kind, ['event', 'step', 'message'], true) ? $kind : 'event';
+$kind = in_array($kind, ['event', 'step', 'path', 'message'], true) ? $kind : 'event';
 $tone = in_array($tone, ['neutral', 'info', 'success', 'warning', 'danger', 'accent'], true) ? $tone : 'neutral';
 $state = in_array($state, ['done', 'current', 'pending', 'failed'], true) ? $state : 'pending';
 $side = $side === 'end' ? 'end' : 'start';
@@ -53,10 +57,75 @@ $foldable = $kind === 'step' && $collapsible && $hasSlot;
 $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px before:bg-border-strong last:before:hidden';
 @endphp
 
-@if ($kind === 'message')
+@if ($kind === 'path')
+    @php
+    $pathTone = in_array($tone, ['info', 'success', 'warning', 'danger'], true) ? $tone : 'accent';
+    $pathMeta = array_values(array_filter([$timeText, $text($actor)], fn ($part) => $part !== ''));
+    @endphp
+
+    <li {{ $attributes->class([
+        'flex min-w-0 flex-col gap-0.5 border-t px-4 py-3 first:border-t-0 @2xl:border-t-0 @2xl:border-s @2xl:first:border-s-0',
+        'bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))]' => $state === 'current' && $pathTone === 'accent',
+        'bg-info-bg' => $state === 'current' && $pathTone === 'info',
+        'bg-success-bg' => $state === 'current' && $pathTone === 'success',
+        'bg-warning-bg' => $state === 'current' && $pathTone === 'warning',
+        'bg-danger-bg' => $state === 'current' && $pathTone === 'danger',
+    ]) }} @if ($state === 'current') aria-current="step" @endif data-atom-timeline-item data-state="{{ $state }}">
+        <div class="flex min-w-0 items-center gap-2">
+            <span @class([
+                'flex size-4 shrink-0 items-center justify-center rounded-full',
+                'border border-fg-subtle' => $state === 'pending',
+                'border-2' => $state === 'current',
+                'border-accent-ink' => $state === 'current' && $pathTone === 'accent',
+                'border-info-fg' => $state === 'current' && $pathTone === 'info',
+                'border-success-fg' => $state === 'current' && $pathTone === 'success',
+                'border-warning-fg' => $state === 'current' && $pathTone === 'warning',
+                'border-danger-fg' => $state === 'current' && $pathTone === 'danger',
+                'bg-success-fg text-surface' => $state === 'done',
+                'bg-danger-fg text-surface' => $state === 'failed',
+            ]) data-atom-timeline-marker>
+                @if ($state === 'done')
+                    <atom:icon.check class="size-3" />
+                    <span class="sr-only">{{ t('Done') }}</span>
+                @elseif ($state === 'failed')
+                    <atom:icon.close class="size-3" />
+                    <span class="sr-only">{{ t('Failed') }}</span>
+                @elseif ($state === 'current')
+                    <span aria-hidden="true" @class(['size-1.5 rounded-full', 'bg-accent-ink' => $pathTone === 'accent', 'bg-info-fg' => $pathTone === 'info', 'bg-success-fg' => $pathTone === 'success', 'bg-warning-fg' => $pathTone === 'warning', 'bg-danger-fg' => $pathTone === 'danger'])></span>
+                    <span class="sr-only">{{ t('Current') }}</span>
+                @else
+                    <span class="sr-only">{{ t('Pending') }}</span>
+                @endif
+            </span>
+
+            <span @class(['min-w-0 truncate font-medium leading-5', 'text-fg-muted' => $state === 'pending', 'text-fg' => $state !== 'pending']) data-atom-timeline-title>{{ $text($title) }}</span>
+        </div>
+
+        @if ($pathMeta)
+            <div class="min-w-0 ps-6 text-xs leading-[18px] tabular-nums [overflow-wrap:anywhere] {{ $state === 'current' ? 'text-fg-muted' : 'text-fg-subtle' }}" data-atom-timeline-meta>
+                @if ($timeText !== '')
+                    @if ($timeAttr)
+                        <time datetime="{{ $timeAttr }}">{{ $timeText }}</time>
+                    @else
+                        <span>{{ $timeText }}</span>
+                    @endif
+                @endif
+
+                @if ($text($actor) !== '')
+                    @if ($timeText !== '')<span aria-hidden="true"> · </span>@endif
+                    <span data-atom-timeline-actor>{{ $text($actor) }}</span>
+                @endif
+            </div>
+        @endif
+
+        @if ($hasSlot)
+            <div class="min-w-0 ps-6 text-xs leading-[18px] text-fg-muted [overflow-wrap:anywhere]" data-atom-timeline-body>{{ $slot }}</div>
+        @endif
+    </li>
+@elseif ($kind === 'message')
     <li {{ $attributes->class(['flex min-w-0 flex-col gap-1', 'items-end' => $side === 'end']) }} data-atom-timeline-item data-side="{{ $side }}">
         @if ($text($speaker) !== '' || $timeText !== '')
-            <div class="flex flex-wrap items-baseline gap-x-2 text-xs text-fg-subtle" data-atom-timeline-meta>
+            <div class="flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs text-fg-subtle [overflow-wrap:anywhere]" data-atom-timeline-meta>
                 @if ($text($speaker) !== '')
                     <span class="font-medium text-fg-muted" data-atom-timeline-speaker>{{ $text($speaker) }}</span>
                 @endif
@@ -72,7 +141,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
         @endif
 
         <div @class([
-            'max-w-[85%] min-w-0 break-words rounded-panel px-3.5 py-2.5 text-base text-fg',
+            'max-w-[85%] min-w-0 [overflow-wrap:anywhere] rounded-panel px-3.5 py-2.5 text-base text-fg',
             'bg-neutral-bg' => $side === 'start',
             'bg-accent-soft' => $side === 'end',
         ]) data-atom-timeline-bubble>
@@ -113,17 +182,20 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
             @else
                 <div class="flex min-w-0 items-center gap-2">
             @endif
+                    {{-- the title and the status are the side that gives way: each truncates, so the time and the chevron stay in the row --}}
                     <span @class(['min-w-0 truncate font-medium', 'text-fg-subtle' => $state === 'pending', 'text-fg' => $state !== 'pending']) data-atom-timeline-title>{{ $text($title) }}</span>
 
                     @if ($text($status) !== '')
-                        <atom:status :tone="$stateTone" :running="$state === 'current'" :label="$text($status)" />
+                        <span class="flex min-w-0 shrink" title="{{ $text($status) }}" data-atom-timeline-status>
+                            <atom:status :tone="$stateTone" :running="$state === 'current'" :label="$text($status)" />
+                        </span>
                     @endif
 
                     {{-- the time and the chevron are one group at the far end, so the chevron is in the same column on every step --}}
                     @if ($timeText !== '' || $foldable)
-                        <span class="ms-auto flex shrink-0 items-center gap-2" data-atom-timeline-end>
+                        <span class="ms-auto flex min-w-0 max-w-[45%] shrink-0 items-center gap-2" data-atom-timeline-end>
                             @if ($timeText !== '')
-                                <span class="text-xs tabular-nums text-fg-subtle" data-atom-timeline-time>{{ $timeText }}</span>
+                                <span class="min-w-0 text-xs tabular-nums text-fg-subtle [overflow-wrap:anywhere]" data-atom-timeline-time>{{ $timeText }}</span>
                             @endif
 
                             @if ($foldable)
@@ -138,7 +210,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
             @endif
 
             @if ($hasSlot)
-                <div @class(['mt-1.5 text-sm text-fg-muted']) @if ($foldable) x-show="open" @if (! $startOpen) x-cloak @endif @endif data-atom-timeline-body>
+                <div @class(['mt-1.5 min-w-0 text-sm text-fg-muted [overflow-wrap:anywhere]']) @if ($foldable) x-show="open" @if (! $startOpen) x-cloak @endif @endif data-atom-timeline-body>
                     {{ $slot }}
                 </div>
             @endif
@@ -162,13 +234,13 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
         <div class="min-w-0">
             <div class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 @if ($text($title) !== '')
-                    <b class="font-medium text-fg" data-atom-timeline-title>{{ $text($title) }}</b>
+                    <b class="min-w-0 font-medium text-fg [overflow-wrap:anywhere]" data-atom-timeline-title>{{ $text($title) }}</b>
                 @endif
 
                 @if ($hasSlot)
-                    <span class="min-w-0 break-words text-fg-muted">{{ $slot }}</span>
+                    <span class="min-w-0 text-fg-muted [overflow-wrap:anywhere]">{{ $slot }}</span>
                 @elseif ($text($body) !== '')
-                    <span class="min-w-0 break-words text-fg-muted" data-atom-timeline-body>{{ $text($body) }}</span>
+                    <span class="min-w-0 text-fg-muted [overflow-wrap:anywhere]" data-atom-timeline-body>{{ $text($body) }}</span>
                 @endif
 
                 @if ($text($status) !== '')
@@ -177,7 +249,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
             </div>
 
             @if ($text($actor) !== '' || $timeText !== '')
-                <div class="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-xs text-fg-subtle" data-atom-timeline-meta>
+                <div class="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs text-fg-subtle [overflow-wrap:anywhere]" data-atom-timeline-meta>
                     @if ($text($actor) !== '')
                         <span data-atom-timeline-actor>{{ $text($actor) }}</span>
                     @endif
@@ -199,7 +271,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
                     <atom:icon.down class="size-3.5 shrink-0" x-bind:class="open && 'rotate-180'" />
                 </button>
 
-                <div class="mt-1.5 rounded-control border bg-surface-sunken px-3 py-2 text-sm text-fg-muted" x-show="open" x-cloak data-atom-timeline-detail>
+                <div class="mt-1.5 rounded-control border bg-surface-sunken px-3 py-2 text-sm text-fg-muted [overflow-wrap:anywhere]" x-show="open" x-cloak data-atom-timeline-detail>
                     {{ $detail }}
                 </div>
             @endif

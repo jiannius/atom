@@ -276,12 +276,71 @@ for (const tw of ['floor', 'latest']) {
       })
     }
 
-    test('with no accent chosen the fallback is black, with a white foreground', async ({ page }) => {
+    test('with no accent chosen the fallback is black in light, with a white foreground', async ({ page }) => {
       await open(page, { tw })
 
       expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(28, 27, 24)')
       expect(await contrastBetween(page, await colorOf(page, 'accent-button', 'color'), 'rgb(255, 255, 255)')).toBeCloseTo(1, 1)
     })
+
+    test('with no accent chosen the fallback is near-white in dark, with a near-black foreground', async ({ page }) => {
+      await open(page, { tw, dark: true })
+
+      expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(236, 235, 232)')
+      expect(await contrastBetween(page, await colorOf(page, 'accent-button', 'color'), 'rgb(0, 0, 0)')).toBeLessThan(1.2)
+    })
+
+    // the default accent has to be seen in both themes: the fill against the canvas at 3:1 (a graphic), its label at 4.5:1,
+    // and the hover, the ink and the soft tone pair keep their numbers too
+    for (const dark of [false, true]) {
+      test(`the default accent is visible, and its label readable, in ${dark ? 'dark' : 'light'}`, async ({ page }) => {
+        await open(page, { tw, dark })
+
+        const canvas = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+        const fill = await colorOf(page, 'accent-button', 'backgroundColor')
+        const label = await colorOf(page, 'accent-button', 'color')
+
+        expect(await contrastBetween(page, fill, canvas), 'the primary button against the canvas').toBeGreaterThanOrEqual(3)
+        expect(await contrastBetween(page, label, fill), 'its label').toBeGreaterThanOrEqual(4.5)
+        expect(await contrastBetween(page, label, await colorOf(page, 'accent-hover', 'backgroundColor')), 'its label on hover').toBeGreaterThanOrEqual(4.5)
+        expect(await contrastBetween(page, await colorOf(page, 'accent-ink', 'color'), canvas), 'accent text on the canvas').toBeGreaterThanOrEqual(4.5)
+        expect(await contrastBetween(page, await colorOf(page, 'tone-accent', 'color'), await colorOf(page, 'tone-accent', 'backgroundColor')), 'the soft tone pair').toBeGreaterThanOrEqual(4.5)
+      })
+    }
+
+    test('a dark island in a light page flips the default accent too, and a light page is untouched by it', async ({ page }) => {
+      await open(page, { tw })
+
+      const pageFill = await colorOf(page, 'accent-button', 'backgroundColor')
+      const islandInk = await colorOf(page, 'island-ink', 'color')
+
+      expect(pageFill).toBe('rgb(28, 27, 24)')
+      // the island reads the dark canvas, so its accent text is the light end of the ramp and its button the near-white fill
+      const islandBg = await colorOf(page, 'island', 'backgroundColor')
+
+      expect(await contrastBetween(page, islandInk, islandBg)).toBeGreaterThanOrEqual(4.5)
+      expect(await colorOf(page, 'island-accent-button', 'backgroundColor')).toBe('rgb(236, 235, 232)')
+      expect(await contrastBetween(page, await colorOf(page, 'island-accent-button', 'backgroundColor'), islandBg)).toBeGreaterThanOrEqual(3)
+      expect(await contrastBetween(page, await colorOf(page, 'island-accent-button', 'color'), await colorOf(page, 'island-accent-button', 'backgroundColor'))).toBeGreaterThanOrEqual(4.5)
+    })
+
+    // a host that sets its own accent is the same colour in both themes: the default flips, a choice never does
+    for (const accent of ['#4c55c9', '#1c1b18', '#e8632b']) {
+      test(`a host accent ${accent} is unchanged between light and dark`, async ({ page }) => {
+        const read = async (dark) => {
+          await open(page, { tw, dark })
+          await page.evaluate((a) => document.documentElement.style.setProperty('--color-accent', a), accent)
+
+          return { fill: await colorOf(page, 'accent-button', 'backgroundColor'), label: await colorOf(page, 'accent-button', 'color') }
+        }
+
+        const light = await read(false)
+        const dark = await read(true)
+
+        expect(dark.fill).toBe(light.fill)
+        expect(dark.label).toBe(light.label)
+      })
+    }
 
     test('the accent is the host colour, and the host can override any derived token', async ({ page }) => {
       await open(page, { tw })
@@ -322,6 +381,57 @@ for (const tw of ['floor', 'latest']) {
         expect(await contrastBetween(page, ring['outline-color'], canvas)).toBeGreaterThanOrEqual(3)
       })
     }
+
+    // a browser with light-dark() but no relative colour (Firefox 120 to 127): the label is always white, so the default accent must not be near-white
+    for (const dark of [false, true]) {
+      test(`without relative colour the default accent keeps a readable label, in ${dark ? 'dark' : 'light'}`, async ({ page }) => {
+        await open(page, { tw, dark })
+        await page.addStyleTag({ content: `@layer base {${fallbackRules()}}` })
+
+        const fill = await colorOf(page, 'accent-button', 'backgroundColor')
+        const label = await colorOf(page, 'accent-button', 'color')
+
+        expect(fill).toBe('rgb(28, 27, 24)')
+        expect(label).toBe('rgb(255, 255, 255)')
+        expect(await contrastBetween(page, label, fill)).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+
+    test('without relative colour a host accent is untouched by the default', async ({ page }) => {
+      await open(page, { tw, dark: true })
+      await page.evaluate(() => document.documentElement.style.setProperty('--color-accent', '#4c55c9'))
+      await page.addStyleTag({ content: `@layer base {${fallbackRules()}}` })
+
+      expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(76, 85, 201)')
+      expect(await colorOf(page, 'accent-button', 'color')).toBe('rgb(255, 255, 255)')
+    })
+
+    // a host's own `html { color-scheme: light dark }` is unlayered and beats atom's layered rule; on an OS in dark mode it must not
+    // turn the default accent near-white on atom's light canvas
+    test('a host color-scheme of "light dark" does not flip the default accent while atom is light', async ({ page }) => {
+      await open(page, { tw })
+      await page.emulateMedia({ colorScheme: 'dark' })
+      await page.addStyleTag({ content: 'html { color-scheme: light dark }' })
+
+      expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(false)
+      expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(28, 27, 24)')
+      expect(await contrastBetween(page, await colorOf(page, 'accent-button', 'backgroundColor'), await page.evaluate(() => getComputedStyle(document.body).backgroundColor))).toBeGreaterThanOrEqual(3)
+    })
+
+    // the other way: atom is dark (`.dark` on <html>) on an OS that is LIGHT, with the host's `color-scheme: light dark`: without the rule
+    // light-dark() follows the OS, and the default-accent primary is near-black on atom's dark canvas
+    test('a host color-scheme of "light dark" does not turn the dark accent off while atom is dark, on a light OS', async ({ page }) => {
+      // a page that did not ask for dark (so <atom:html> prints no color-scheme of its own), on which the host adds `.dark` itself
+      await open(page, { tw })
+      await page.emulateMedia({ colorScheme: 'light' })
+      await page.evaluate(() => document.documentElement.classList.add('dark'))
+      await page.addStyleTag({ content: 'html { color-scheme: light dark }' })
+
+      expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true)
+      expect(await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)).toBe(false)
+      expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(236, 235, 232)')
+      expect(await contrastBetween(page, await colorOf(page, 'accent-button', 'backgroundColor'), await page.evaluate(() => getComputedStyle(document.body).backgroundColor))).toBeGreaterThanOrEqual(3)
+    })
 
     test('a host can still override a derived accent colour after the fallback has been applied', async ({ page }) => {
       await open(page, { tw })

@@ -18,18 +18,50 @@ $square ??= $slot->isEmpty();
 
 $el = $as ??= $href ? 'a' : 'button';
 
+/* An item is current when the PATH of its href is the path of the request. A query string, a fragment and a trailing slash do not
+   matter, and the host of an absolute href is not compared with APP_URL as a string: an href that names a host counts only when
+   that host is the request's or APP_URL's (the port is ignored), so an app served from another domain than APP_URL still
+   marks its item while an external link (`https://github.com/orders` on /orders) never does. APP_URL's own path prefix is
+   stripped, nothing else of it. An href with no host and no path (`?tab=x`, `#top`, none) is never current on its own: pass :current; one that names this app's host and no path (`url('/')`) is the home page. A scheme other than http or https (`mailto:`, `tel:`) is never current.
+   A `*` in the path is a pattern, as it always was. */
 $isCurrent = function () use ($href, $current) {
     if (is_bool($current)) return $current;
 
-    $hrefToCheck = str($href)->startsWith(trim(config('app.url'))) ? (string) str($href)->after(trim(config('app.url'), '/')) : $href;
-    $hrefToCheck = $hrefToCheck === '' ? '/' : $hrefToCheck;
-    $hrefToCheck = $hrefToCheck === '/' ? '/' : trim($hrefToCheck, '/');
+    $parts = parse_url(trim((string) $href));
 
-    if (!$hrefToCheck) return false;
+    if (! is_array($parts)) return false;
+
+    // mailto:, tel: and the like are not pages of this app
+    if (isset($parts['scheme']) && ! in_array(strtolower($parts['scheme']), ['http', 'https'], true)) return false;
+
+    $host = strtolower((string) ($parts['host'] ?? ''));
+
+    if ($host !== '') {
+        $appHost = strtolower((string) parse_url(trim((string) config('app.url')), PHP_URL_HOST));
+
+        if ($host !== strtolower(request()->getHost()) && $host !== $appHost) return false;
+    }
+
+    $path = (string) ($parts['path'] ?? '');
+
+    // an app installed under a path (APP_URL=https://host/sub) is read from that path
+    $prefix = trim((string) parse_url(trim((string) config('app.url')), PHP_URL_PATH), '/');
+
+    if ($prefix !== '' && ($path === '/'.$prefix || str_starts_with($path, '/'.$prefix.'/'))) {
+        $path = substr($path, strlen($prefix) + 1);
+    }
+
+    $path = trim($path, '/');
+
+    // an href with no host and no path (`?tab=x`, `#top`, none) is not the home page; one that names this app's host and no path
+    // (`route('home')`, `url('/')`: `http://localhost`) is, as is '/' (which reads as an empty path after the trim and the prefix)
+    if ($path === '' && $host === '' && ($parts['path'] ?? '') === '') return false;
+
+    $path = $path === '' ? '/' : $path;
 
     return app('livewire')?->isLivewireRequest()
-        ? str()->is($hrefToCheck, app('livewire')->originalPath())
-        : request()->is($hrefToCheck);
+        ? str()->is($path, app('livewire')->originalPath())
+        : request()->is($path);
 };
 
 $active = $isCurrent();

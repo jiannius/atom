@@ -187,3 +187,28 @@ describe('input label association', function () {
             ->and($html)->not->toContain('for="atom-input-');
     });
 });
+
+describe('the "(optional)" note in a label', function () {
+    beforeEach(fn () => view()->share('errors', new \Illuminate\Support\ViewErrorBag));
+
+    it('is muted and regular weight, with the words still in the label', function (string $label) {
+        $html = renderBlade('<atom:input name="x" label="'.$label.'" />');
+        $note = domQuery($html, '//*[@data-atom-label-optional]');
+
+        expect($note)->toHaveCount(1)
+            ->and($note[0]->textContent)->toBe('(optional)')
+            ->and(domClasses($note[0]))->toContain('text-fg-muted', 'font-normal')
+            // the name a screen reader reads is the label as the host wrote it
+            ->and(preg_replace('/\s+/', ' ', trim(domQuery($html, '//label')[0]->textContent)))->toBe($label);
+    })->with(['Reference (optional)', 'Note to customer (optional)']);
+
+    it('leaves a label without the note, or made only of it, as it was', function (string $label) {
+        expect(domQuery(renderBlade('<atom:input name="x" label="'.$label.'" />'), '//*[@data-atom-label-optional]'))->toBeEmpty();
+    })->with(['Reference', '(optional)', 'Optional extras', 'Reference (optional) here', 'Reference (required)']);
+
+    it('keeps a label that is HTML the host chose, unmuted', function () {
+        $html = renderBlade('<atom:input name="x" :label="new \Illuminate\Support\HtmlString(\'<em>Ref</em>\')" />');
+
+        expect(domQuery($html, '//label//em'))->toHaveCount(1)->and(domQuery($html, '//*[@data-atom-label-optional]'))->toBeEmpty();
+    });
+});
