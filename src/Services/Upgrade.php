@@ -157,7 +157,8 @@ class Upgrade
                     'css-skeleton-theme' => 'declarations that are the skeleton\'s were left: they are removed only from a Tailwind entry file that has atom\'s `@source` lines or import',
                     'css-border-color-rule' => 'a `*` rule that sets border-color was left: only the skeleton\'s shape (a grey with currentColor) is removed',
                 ] as $id => $reason) {
-                    $found = array_values(array_filter($scan['checks'][$id]['findings'], fn ($finding) => $finding['file'] === $relative && $finding['scope'] === 'app'));
+                    $explained = array_column(array_filter($residue, fn ($note) => $note['file'] === $relative), 'line');
+                    $found = array_values(array_filter($scan['checks'][$id]['findings'], fn ($finding) => $finding['file'] === $relative && $finding['scope'] === 'app' && ! ($id === 'css-skeleton-theme' && in_array($finding['line'], $explained, true))));
 
                     if ($found) {
                         $declined[] = ['file' => $relative, 'line' => $found[0]['line'], 'reason' => $reason.' ('.count($found).' in this file)'];
@@ -406,7 +407,7 @@ class Upgrade
             return $text;
         }
 
-        if ($class['name'] !== null && in_array($class['name'], $scan['extended_classes'] ?? [], true)) {
+        if ($class['name'] !== null && in_array(strtolower($class['name']), array_map('strtolower', $scan['extended_classes'] ?? []), true)) {
             $decline('another class extends '.$class['name'].', so the traits it needs cannot be told from this class alone: add them by hand');
 
             return $text;
@@ -435,12 +436,8 @@ class Upgrade
             }
         }
 
-        // the file without its imports: a short name written anywhere in what is left is one a new import would take over
-        $bare = $text;
-
-        foreach (array_reverse($structure['statements']) as $statement) {
-            $bare = substr($bare, 0, $statement['start']).substr($bare, $statement['end']);
-        }
+        // a short name written in code (not in a comment or a string) outside the imports is one a new import would take over
+        $names_in_code = UpgradePhp::codeNames($text, $structure['statements']);
 
         $written = [];
         $needed = [];
@@ -457,7 +454,7 @@ class Upgrade
 
             if ($known !== null && strcasecmp($known, $fqn) === 0) {
                 $written[] = $trait;
-            } elseif ($known !== null || preg_match('/(?<![\w\\\\$])'.preg_quote($trait, '/').'(?![\w])/i', $bare)) {
+            } elseif ($known !== null || isset($names_in_code[strtolower($trait)])) {
                 // another class owns the short name here (an import, or the host's own trait of that name): the full name
                 $written[] = '\\'.$fqn;
             } else {
@@ -556,10 +553,10 @@ class Upgrade
             }
 
             $source = substr($text, $statement['start'], $statement['end'] - $statement['start']);
-            $alias = preg_match('/\bas\s+(\w+)/i', $source, $m) ? $m[1] : 'AtomComponent';
+            $alias = preg_match('/\bas\s+(\w+)/i', $source, $m) ? $m[1] : substr(strrchr('\\'.$statement['fqns'][0], '\\'), 1);
             $rest = substr($text, 0, $statement['start']).substr($text, $statement['end']);
 
-            if (! preg_match('/(?<![\w\\\\])'.preg_quote($alias, '/').'(?![\w])/', $rest)) {
+            if (! preg_match('/(?<![\w\\\\])'.preg_quote($alias, '/').'(?![\w])/i', $rest)) {
                 $text = $this->removeStatement($text, $statement['start'], $statement['end']);
             }
         }
@@ -813,6 +810,10 @@ class Upgrade
             if ($exists && (@stat($path)['nlink'] ?? 1) > 1) {
                 throw new \RuntimeException('Cannot write '.$relative.' (it has other hard links; writing it in place would change them too): nothing was changed.');
             }
+
+            if ($file['before'] !== null && (string) @file_get_contents($path) !== $file['before']) {
+                throw new \RuntimeException('Cannot write '.$relative.' (it changed since the plan was made): nothing was changed. Run again.');
+            }
         }
 
         $written = [];
@@ -860,10 +861,15 @@ class Upgrade
             if ($length !== strlen($after)) {
                 rewind($handle);
                 ftruncate($handle, 0);
-                fwrite($handle, $current);
+                $restored = fwrite($handle, $current);
                 fflush($handle);
+                rewind($handle);
 
-                throw new \RuntimeException('the write came up short, and the original was put back');
+                if ($restored === strlen($current) && (string) stream_get_contents($handle) === $current) {
+                    throw new \RuntimeException('the write came up short, and the original was put back');
+                }
+
+                throw new \RuntimeException('the write came up short and the original could not be put back: this file is now in an unknown state, check it');
             }
         } finally {
             flock($handle, LOCK_UN);

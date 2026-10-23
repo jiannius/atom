@@ -1196,7 +1196,8 @@ describe('atom:upgrade: the smaller guards', function () {
         upgradeCodemodRun($dir);
 
         expect(file_get_contents($dir.'/resources/css/commented.css'))->toBe("@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@theme {\n    --color-zinc-50: #fafafa; /* keep */\n}\n")
-            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('`resources/css/commented.css:5`: @theme sets --color-zinc-50: #fafafa');
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('`resources/css/commented.css:5`: @theme sets --color-zinc-50: #fafafa')
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->not->toContain('declarations that are the skeleton\'s were left');
     });
 
     it('reads the accent out of @theme inline, and does not rewrite that block', function () {
@@ -1375,12 +1376,14 @@ describe('atom:upgrade: writing', function () {
             ->and(upgradeCodemodTree($other))->toBe($before);
     });
 
-    it('stops and reports when a file changed after the plan was made', function () {
+    it('stops with nothing written when a file changed after the plan was made', function () {
         $dir = ($this->host)();
         $upgrade = new Upgrade;
         $plan = $upgrade->plan($dir);
         $files = array_keys($plan['changes']);
-        file_put_contents($dir.'/'.$files[1], file_get_contents($dir.'/'.$files[1])."\n// edited meanwhile\n");
+        $edited = file_get_contents($dir.'/'.$files[1])."\n// edited meanwhile\n";
+        file_put_contents($dir.'/'.$files[1], $edited);
+        $first = file_get_contents($dir.'/'.$files[0]);
 
         try {
             $upgrade->apply($plan, 'todo');
@@ -1389,9 +1392,38 @@ describe('atom:upgrade: writing', function () {
             $message = $e->getMessage();
         }
 
-        expect($message)->toContain('Could not write '.$files[1].' (it changed since the plan was made')
-            ->and($message)->toContain('Written: '.$files[0].'.')
-            ->and($message)->toContain('Not written: '.$files[1]);
+        expect($message)->toContain('Cannot write '.$files[1].' (it changed since the plan was made): nothing was changed')
+            ->and(file_get_contents($dir.'/'.$files[0]))->toBe($first)
+            ->and(file_get_contents($dir.'/'.$files[1]))->toBe($edited);
+    });
+
+    it('still catches a file that changes between the check and its write, and reports the partial write', function () {
+        $dir = ($this->host)();
+        $upgrade = new class extends Upgrade
+        {
+            public int $writes = 0;
+
+            protected function write(string $path, ?string $before, string $after): void
+            {
+                if (++$this->writes === 2) {
+                    file_put_contents($path, $before."\n// raced\n");
+                }
+
+                parent::write($path, $before, $after);
+            }
+        };
+        $plan = $upgrade->plan($dir);
+        $files = array_keys($plan['changes']);
+
+        try {
+            $upgrade->apply($plan, 'todo');
+            $message = '';
+        } catch (RuntimeException $e) {
+            $message = $e->getMessage();
+        }
+
+        expect($message)->toContain('Could not write '.$files[1].' (it changed since the plan was made: run again)')
+            ->and($message)->toContain('Written: '.$files[0].'.');
     });
 });
 
@@ -1527,5 +1559,53 @@ describe('atom:upgrade: round two', function () {
 
         expect(file_get_contents($dir.'/resources/css/two.css'))->toBe($before)
             ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('`resources/css/two.css:2`: not changed, a `@source` line naming jiannius/atom was left: the codemod removes only atom\'s own three paths');
+    });
+});
+
+describe('atom:upgrade: round three', function () {
+    it('reads names the way PHP does, whatever their case', function () {
+        $dir = upgradeShapeHost('php-lowercase');
+        $this->hosts[] = $dir;
+
+        expect(array_column((new UpgradeCheck)->scan($dir)['components'], 'file'))->toBe(['app/Livewire/Lower.php', 'app/Livewire/Upper.php']);
+
+        upgradeCodemodRun($dir);
+
+        $lower = file_get_contents($dir.'/app/Livewire/Lower.php');
+        $upper = file_get_contents($dir.'/app/Livewire/Upper.php');
+
+        expect($lower)->toContain('    use WithTable, WithPagination;')
+            ->and(stripos($lower, 'atomcomponent'))->toBeFalse()
+            ->and($upper)->toContain('    use WithTable, WithPagination;')
+            ->and(stripos($upper, 'atomcomponent'))->toBeFalse();
+    });
+
+    it('resolves namespace\\Foo into the file\'s own namespace', function () {
+        expect(UpgradePhp::resolve('namespace\\Foo\\Bar', [], 'App\\Livewire'))->toBe('App\\Livewire\\Foo\\Bar')
+            ->and(UpgradePhp::resolve('NAMESPACE\\Foo', [], ''))->toBe('Foo');
+    });
+
+    it('does not take a name in a comment or a string for one the file uses', function () {
+        $dir = upgradeShapeHost('php-comment-name');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        $file = file_get_contents($dir.'/app/Livewire/Commented.php');
+
+        expect($file)->toContain('    use WithTable, WithPagination;')
+            ->and($file)->toContain("use Jiannius\\Atom\\Traits\\WithTable;\n")
+            ->and($file)->not->toContain('\\Jiannius\\Atom\\Traits\\WithTable,');
+    });
+
+    it('declines a file with several namespace statements', function () {
+        $dir = upgradeShapeHost('php-two-namespaces');
+        $this->hosts[] = $dir;
+        $before = file_get_contents($dir.'/app/Livewire/Two.php');
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/app/Livewire/Two.php'))->toBe($before)
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('it has several namespace statements');
     });
 });

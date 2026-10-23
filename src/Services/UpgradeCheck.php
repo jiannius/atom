@@ -555,7 +555,7 @@ class UpgradeCheck
             $lines = null;
 
             // a trait called AtomComponent that is the host's own, not atom's: not rewritten, and said so
-            if (($kind === 'php' || $kind === 'blade') && str_contains($source, 'AtomComponent')) {
+            if (($kind === 'php' || $kind === 'blade') && stripos($source, 'AtomComponent') !== false) {
                 foreach (static::hostAtomComponentUses($source) as $use) {
                     $hostTraits[] = ['file' => $relative, 'line' => $this->lineAt($starts, $use['offset']), 'scope' => $scope, 'name' => $use['resolved']];
                 }
@@ -1786,7 +1786,7 @@ class UpgradeCheck
      */
     protected static function componentUses(string $source, ?array $structure, bool $host): array
     {
-        if (! str_contains($source, 'AtomComponent')) {
+        if (stripos($source, 'AtomComponent') === false) {
             return [];
         }
 

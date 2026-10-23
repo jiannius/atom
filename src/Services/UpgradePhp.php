@@ -42,6 +42,7 @@ class UpgradePhp
         $paren = 0;
         $pending = null;
         $namespacePending = false;
+        $namespaces = 0;
 
         for ($i = 0; $i < $count; $i++) {
             $token = $tokens[$i];
@@ -55,7 +56,13 @@ class UpgradePhp
                     $namespacePending = true;
 
                     if (is_array($tokens[$next])) {
+                        $namespaces++;
                         $result['namespace'] = $tokens[$next][1];
+
+                        if ($namespaces > 1) {
+                            $result['ok'] = false;
+                            $result['reason'] ??= 'several namespace statements';
+                        }
                     }
                 }
 
@@ -240,6 +247,44 @@ class UpgradePhp
     }
 
     /**
+     * The first segment of every name written in code (not in a comment or a string), lowercased, outside the
+     * given ranges (the import statements)
+     *
+     * @param  array<int, array{start: int, end: int}>  $skip
+     * @return array<string, true>
+     */
+    public static function codeNames(string $source, array $skip = []): array
+    {
+        $names = [];
+        $at = 0;
+
+        try {
+            $tokens = token_get_all($source);
+        } catch (Throwable) {
+            return [];
+        }
+
+        foreach ($tokens as $token) {
+            $text = is_array($token) ? $token[1] : $token;
+            $inside = false;
+
+            foreach ($skip as $range) {
+                if ($at >= $range['start'] && $at < $range['end']) {
+                    $inside = true;
+                }
+            }
+
+            if (! $inside && is_array($token) && in_array($token[0], [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, T_NAME_RELATIVE], true)) {
+                $names[strtolower(explode('\\', ltrim($text, '\\'))[0])] = true;
+            }
+
+            $at += strlen($text);
+        }
+
+        return $names;
+    }
+
+    /**
      * The index of the next token that is not whitespace or a comment (null when there is none)
      *
      * @param  array<int, mixed>  $tokens
@@ -419,6 +464,11 @@ class UpgradePhp
     {
         if (str_starts_with($name, '\\')) {
             return ltrim($name, '\\');
+        }
+
+        // `namespace\Foo` is Foo in the file's own namespace
+        if (stripos($name, 'namespace\\') === 0) {
+            return ($namespace !== '' ? $namespace.'\\' : '').substr($name, 10);
         }
 
         $head = explode('\\', $name)[0];
