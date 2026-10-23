@@ -522,11 +522,16 @@ class UpgradeCss
         $body = substr($blank, $from, $length);
         $found = [];
 
-        if (! preg_match_all('/(?<![\w-])(--[A-Za-z0-9_-]+)[ \t]*:[ \t]*([^;{}]+?)[ \t]*;/', $body, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+        // a value may hold a string, and a string may hold a `;` or something that looks like a declaration
+        if (! preg_match_all('/(?<![\w-])(--[A-Za-z0-9_-]+)[ \t]*:[ \t]*((?:[^;{}"\']|"(?:\\\\.|[^"\\\\])*"|\'(?:\\\\.|[^\'\\\\])*\')+?)[ \t]*;/', $body, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
             return [];
         }
 
         foreach ($matches as $m) {
+            if ($this->insideString(substr($blank, 0, $from + $m[0][1]))) {
+                continue;
+            }
+
             $at = $from + $m[0][1];
             $end = $at + strlen($m[0][0]);
             $prefix = substr($structure, $from, $at - $from);
@@ -551,6 +556,30 @@ class UpgradeCss
         }
 
         return $found;
+    }
+
+    /**
+     * Whether the end of a text is inside a string literal (comments already blanked)
+     */
+    protected function insideString(string $before): bool
+    {
+        $quote = null;
+
+        for ($i = 0, $n = strlen($before); $i < $n; $i++) {
+            $c = $before[$i];
+
+            if ($quote !== null) {
+                if ($c === '\\') {
+                    $i++;
+                } elseif ($c === $quote || $c === "\n") {
+                    $quote = null;
+                }
+            } elseif ($c === '"' || $c === "'") {
+                $quote = $c;
+            }
+        }
+
+        return $quote !== null;
     }
 
     /**
@@ -774,8 +803,8 @@ class UpgradeCss
             $stop++;
         }
 
-        // only the indent is before it: it goes with the declaration (a brace after it keeps its own column)
-        $from = $before ? $lineStart : $start;
+        // the indent before it stays for what is left on the line, unless that is a closing brace (which keeps its own column)
+        $from = $before && str_starts_with(substr($css, $stop, 1), '}') ? $lineStart : $start;
 
         return substr($css, 0, $from).substr($css, $stop);
     }

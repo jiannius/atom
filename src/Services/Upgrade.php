@@ -147,6 +147,23 @@ class Upgrade
             foreach ($this->css->residue($this->lf($texts[$relative])) as $note) {
                 $residue[] = ['file' => $relative, 'line' => $note['line'], 'text' => $note['text']];
             }
+
+            // what the scan still finds in this file that the codemod's shapes do not cover, with the reason
+            $already = array_filter($declined, fn ($item) => $item['file'] === $relative);
+
+            if (! $already) {
+                foreach ([
+                    'css-atom-source' => 'a `@source` line naming jiannius/atom was left: the codemod removes only atom\'s own three paths (components, resources, src/Actions), one to a line, from a file with a plain `@import \'tailwindcss\'`',
+                    'css-skeleton-theme' => 'declarations that are the skeleton\'s were left: they are removed only from a Tailwind entry file that has atom\'s `@source` lines or import',
+                    'css-border-color-rule' => 'a `*` rule that sets border-color was left: only the skeleton\'s shape (a grey with currentColor) is removed',
+                ] as $id => $reason) {
+                    $found = array_values(array_filter($scan['checks'][$id]['findings'], fn ($finding) => $finding['file'] === $relative && $finding['scope'] === 'app'));
+
+                    if ($found) {
+                        $declined[] = ['file' => $relative, 'line' => $found[0]['line'], 'reason' => $reason.' ('.count($found).' in this file)'];
+                    }
+                }
+            }
         }
 
         // 2. use AtomComponent
@@ -173,6 +190,13 @@ class Upgrade
             if ($result !== $text) {
                 $touch($relative, 'traits', $result);
                 array_push($applied, ...$notes);
+            }
+        }
+
+        // a trait called AtomComponent that is the host's own is not atom's: it is not rewritten, and the host checks it
+        foreach ($scan['host_atom_components'] ?? [] as $host) {
+            if ($host['scope'] === 'app') {
+                $declined[] = ['file' => $host['file'], 'line' => $host['line'], 'reason' => '`use AtomComponent` is a host trait named AtomComponent ('.$host['name'].'), not atom\'s: check whether it wraps atom\'s (the `use \\Jiannius\\Atom\\Traits\\AtomComponent` inside it is what needs changing)'];
             }
         }
 
@@ -395,22 +419,50 @@ class Upgrade
         }
 
         $imports = $structure['imports'];
+        $namespace = $structure['namespace'];
         $names = array_values(array_diff($component['traits'], $component['also_present']));
+
+        // what the class already uses, by the name it resolves to
+        $existing = [];
+
+        foreach ($structure['classes'][$use['class']]['uses'] as $other) {
+            foreach ($other['elements'] as $at => $element) {
+                if ($other['offset'] === $use['offset'] && $at === $use['match']) {
+                    continue;
+                }
+
+                $existing[strtolower(UpgradePhp::resolve($element, $imports, $namespace))] = true;
+            }
+        }
+
+        // the file without its imports: a short name written anywhere in what is left is one a new import would take over
+        $bare = $text;
+
+        foreach (array_reverse($structure['statements']) as $statement) {
+            $bare = substr($bare, 0, $statement['start']).substr($bare, $statement['end']);
+        }
+
         $written = [];
         $needed = [];
 
         foreach ($names as $trait) {
             $fqn = static::TRAIT_NAMESPACES[$trait].'\\'.$trait;
+
+            // already in the class (this exact trait): nothing to add, and never twice
+            if (isset($existing[strtolower($fqn)])) {
+                continue;
+            }
+
             $known = $imports[strtolower($trait)] ?? null;
 
-            if ($known !== null && strcasecmp($known, $fqn) !== 0) {
+            if ($known !== null && strcasecmp($known, $fqn) === 0) {
+                $written[] = $trait;
+            } elseif ($known !== null || preg_match('/(?<![\w\\\\$])'.preg_quote($trait, '/').'(?![\w])/i', $bare)) {
+                // another class owns the short name here (an import, or the host's own trait of that name): the full name
                 $written[] = '\\'.$fqn;
             } else {
                 $written[] = $trait;
-
-                if ($known === null) {
-                    $needed[] = $fqn;
-                }
+                $needed[] = $fqn;
             }
         }
 
@@ -461,20 +513,33 @@ class Upgrade
         $lineStart = $lineStart === false ? 0 : $lineStart + 1;
         $lineEnd = strpos($text, "\n", $end);
         $lineEnd = $lineEnd === false ? strlen($text) : $lineEnd + 1;
+        $before = trim(substr($text, $lineStart, $start - $lineStart)) === '';
+        $after = trim(substr($text, $end, $lineEnd - $end)) === '';
 
-        if (trim(substr($text, $lineStart, $start - $lineStart)) !== '' || trim(substr($text, $end, $lineEnd - $end)) !== '') {
-            return substr($text, 0, $start).substr($text, $end);
+        if ($before && $after) {
+            $head = substr($text, 0, $lineStart);
+            $tail = substr($text, $lineEnd);
+
+            // the blank line that followed the statement goes too when it sat right under a brace
+            if (str_ends_with(rtrim($head, " \t\n"), '{') && preg_match('/^[ \t]*\n/', $tail, $blank)) {
+                $tail = substr($tail, strlen($blank[0]));
+            }
+
+            return $head.$tail;
         }
 
-        $before = substr($text, 0, $lineStart);
-        $after = substr($text, $lineEnd);
-
-        // the blank line that followed the statement goes too when it sat right under a brace
-        if (str_ends_with(rtrim($before, " \t\n"), '{') && preg_match('/^[ \t]*\n/', $after, $blank)) {
-            $after = substr($after, strlen($blank[0]));
+        // other code is on the line: take the statement and the spaces around it that would be left over
+        if ($after) {
+            return rtrim(substr($text, 0, $start), " \t").substr($text, $end);
         }
 
-        return $before.$after;
+        $stop = $end;
+
+        while (isset($text[$stop]) && ($text[$stop] === ' ' || $text[$stop] === "\t")) {
+            $stop++;
+        }
+
+        return substr($text, 0, $start).substr($text, $stop);
     }
 
     /**
@@ -716,38 +781,45 @@ class Upgrade
 
     /**
      * Write every changed file, then the TODO. Everything that can be checked is checked before the first file is
-     * touched (each file and its directory writable, no symlink), and each file is written to a temporary file in
-     * its own directory and renamed over the original, so a file is never half written. If a write fails anyway,
-     * the exception says which files were written and which were not.
+     * touched (each file writable, not a symlink or a directory, not hard linked elsewhere). A file is written IN
+     * PLACE, under a lock, after its content is found to be what the plan was made from: a temporary file and a
+     * rename would give the host's file a new owner (a run as root makes root-owned files), and drop its ACL,
+     * extended attributes and hard links. If a write fails, or a file changed since the plan, the exception says
+     * which files were written and which were not.
      *
      * @param  array<string, mixed>  $plan
      */
     public function apply(array $plan, ?string $todo = null): void
     {
         $root = $plan['root'];
-        $files = array_map(fn ($change) => $change['after'], $plan['changes']);
+        $files = array_map(fn ($change) => ['before' => $change['before'], 'after' => $change['after']], $plan['changes']);
 
         if ($todo !== null) {
-            $files[static::TODO] = $todo;
+            $files[static::TODO] = ['before' => null, 'after' => $todo];
         }
 
-        foreach ($files as $relative => $content) {
+        foreach ($files as $relative => $file) {
             $path = $root.'/'.$relative;
+            $exists = file_exists($path);
 
-            if (is_link($path) || is_dir($path) || ! is_writable(dirname($path)) || (file_exists($path) && ! is_writable($path))) {
+            if (is_link($path) || is_dir($path) || ($exists && ! is_writable($path)) || (! $exists && ! is_writable(dirname($path)))) {
                 throw new \RuntimeException('Cannot write '.$relative.' (a symlink, a directory, or read-only, or its directory is): nothing was changed.');
             }
 
-            if (isset($plan['changes'][$relative]) && ! is_file($path)) {
+            if ($file['before'] !== null && ! is_file($path)) {
                 throw new \RuntimeException('Cannot write '.$relative.' (it is gone): nothing was changed.');
+            }
+
+            if ($exists && (@stat($path)['nlink'] ?? 1) > 1) {
+                throw new \RuntimeException('Cannot write '.$relative.' (it has other hard links; writing it in place would change them too): nothing was changed.');
             }
         }
 
         $written = [];
 
-        foreach ($files as $relative => $content) {
+        foreach ($files as $relative => $file) {
             try {
-                $this->write($root.'/'.$relative, $content);
+                $this->write($root.'/'.$relative, $file['before'], $file['after']);
                 $written[] = $relative;
             } catch (\Throwable $e) {
                 $left = array_values(array_diff(array_keys($files), $written));
@@ -758,26 +830,44 @@ class Upgrade
     }
 
     /**
-     * One file, through a temporary file beside it and a rename, keeping its permissions
+     * One file, in place: locked, checked against what the plan read, truncated and written, with the original put
+     * back if the write comes up short. $before is null for a file with no earlier content to compare (the TODO).
      */
-    protected function write(string $path, string $content): void
+    protected function write(string $path, ?string $before, string $after): void
     {
-        $temporary = dirname($path).'/.atom-upgrade-'.bin2hex(random_bytes(6)).'.tmp';
+        $handle = @fopen($path, 'c+');
 
-        if (@file_put_contents($temporary, $content) === false) {
-            @unlink($temporary);
-
-            throw new \RuntimeException('the temporary file could not be written');
+        if ($handle === false) {
+            throw new \RuntimeException('it could not be opened');
         }
 
-        if (file_exists($path)) {
-            @chmod($temporary, fileperms($path) & 0777);
-        }
+        try {
+            if (! flock($handle, LOCK_EX)) {
+                throw new \RuntimeException('it could not be locked');
+            }
 
-        if (! @rename($temporary, $path)) {
-            @unlink($temporary);
+            $current = (string) stream_get_contents($handle);
 
-            throw new \RuntimeException('the file could not be replaced');
+            if ($before !== null && $current !== $before) {
+                throw new \RuntimeException('it changed since the plan was made: run again');
+            }
+
+            rewind($handle);
+            ftruncate($handle, 0);
+            $length = fwrite($handle, $after);
+            fflush($handle);
+
+            if ($length !== strlen($after)) {
+                rewind($handle);
+                ftruncate($handle, 0);
+                fwrite($handle, $current);
+                fflush($handle);
+
+                throw new \RuntimeException('the write came up short, and the original was put back');
+            }
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
         }
     }
 

@@ -16,11 +16,11 @@ use Throwable;
 class UpgradePhp
 {
     /**
-     * @return array{ok: bool, reason: string|null, braced: bool, imports: array<string, string>, statements: array<int, array{start: int, end: int, simple: bool, fqns: array<int, string>}>, classes: array<int, array<string, mixed>>}
+     * @return array{ok: bool, reason: string|null, braced: bool, namespace: string, imports: array<string, string>, statements: array<int, array{start: int, end: int, simple: bool, fqns: array<int, string>}>, classes: array<int, array<string, mixed>>}
      */
     public static function structure(string $source): array
     {
-        $result = ['ok' => true, 'reason' => null, 'braced' => false, 'imports' => [], 'statements' => [], 'classes' => []];
+        $result = ['ok' => true, 'reason' => null, 'braced' => false, 'namespace' => '', 'imports' => [], 'statements' => [], 'classes' => []];
 
         try {
             $tokens = token_get_all($source);
@@ -53,6 +53,10 @@ class UpgradePhp
 
                 if ($next !== null && ($tokens[$next] === '{' || (is_array($tokens[$next]) && in_array($tokens[$next][0], [T_STRING, T_NAME_QUALIFIED], true)))) {
                     $namespacePending = true;
+
+                    if (is_array($tokens[$next])) {
+                        $result['namespace'] = $tokens[$next][1];
+                    }
                 }
 
                 continue;
@@ -196,12 +200,7 @@ class UpgradePhp
                 }
 
                 if ($top === null || $top['type'] === 'namespace') {
-                    $last = static::importStatement($tokens, $offsets, $i, $result);
-                    $i = $last;
-
-                    if (! $result['ok']) {
-                        return $result;
-                    }
+                    $i = static::importStatement($tokens, $offsets, $i, $result);
                 }
 
                 continue;
@@ -345,8 +344,8 @@ class UpgradePhp
         $end = $offsets[min($j, $count - 1)] + strlen(is_array($last) ? $last[1] : $last);
         $text = trim(preg_replace('/\s+/', ' ', $text));
         $fail = function () use (&$result, $text) {
+            $result['reason'] ??= 'an import it cannot read (`use '.mb_substr($text, 0, 60).'`)';
             $result['ok'] = false;
-            $result['reason'] = 'an import it cannot read (`use '.mb_substr($text, 0, 60).'`)';
         };
 
         if (preg_match('/^(function|const)\s/', $text)) {
@@ -364,13 +363,18 @@ class UpgradePhp
                     continue;
                 }
 
-                if (! preg_match('/^([\w\\\\]+)(?:\s+as\s+(\w+))?$/i', $item, $m)) {
+                if (! preg_match('/^(?:(function|const)\s+)?([\w\\\\]+)(?:\s+as\s+(\w+))?$/i', $item, $m)) {
                     $fail();
 
                     return $j;
                 }
 
-                $fqns[] = [$group[1].'\\'.$m[1], $m[2] ?? null];
+                // a function or a constant in a mixed group is not a class name
+                if ($m[1] !== '') {
+                    continue;
+                }
+
+                $fqns[] = [$group[1].'\\'.$m[2], $m[3] ?? null];
             }
         } else {
             $items = explode(',', $text);
@@ -388,7 +392,9 @@ class UpgradePhp
         }
 
         if (! $fqns) {
-            $fail();
+            if (empty($group)) {
+                $fail();
+            }
 
             return $j;
         }
@@ -404,22 +410,23 @@ class UpgradePhp
     }
 
     /**
-     * Resolve a name as written in the file to a class name, through its imports (no leading backslash)
+     * Resolve a name as written in the file to a class name: through its imports, else into the file's namespace
+     * (no leading backslash)
      *
      * @param  array<string, string>  $imports
      */
-    public static function resolve(string $name, array $imports): string
+    public static function resolve(string $name, array $imports, string $namespace = ''): string
     {
         if (str_starts_with($name, '\\')) {
             return ltrim($name, '\\');
         }
 
-        $head = strtolower(explode('\\', $name)[0]);
+        $head = explode('\\', $name)[0];
 
-        if (isset($imports[$head])) {
-            return $imports[$head].(str_contains($name, '\\') ? substr($name, strlen(explode('\\', $name)[0])) : '');
+        if (isset($imports[strtolower($head)])) {
+            return $imports[strtolower($head)].substr($name, strlen($head));
         }
 
-        return $name;
+        return ($namespace !== '' ? $namespace.'\\' : '').$name;
     }
 }

@@ -347,7 +347,7 @@ describe('atom:upgrade-check: the command', function () {
         Artisan::call('atom:upgrade-check', ['--path' => upgradeFixture(), '--json' => true]);
         $json = json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR);
 
-        expect(array_keys($json))->toBe(['root', 'guide', 'atom_version', 'scanned', 'checks', 'components', 'tags', 'published_views', 'css_files', 'extended_classes', 'skipped', 'date_use', 'guideline', 'summary'])
+        expect(array_keys($json))->toBe(['root', 'guide', 'atom_version', 'scanned', 'checks', 'components', 'tags', 'published_views', 'css_files', 'extended_classes', 'host_atom_components', 'skipped', 'date_use', 'guideline', 'summary'])
             ->and($json['guide'])->toBe('vendor/jiannius/atom/UPGRADE.md')
             ->and(array_keys($json['checks']['date-pretty']))->toBe(['id', 'title', 'section', 'severity', 'codemod', 'detect', 'count', 'tests_count', 'findings'])
             ->and($json['checks']['date-pretty']['findings'][0])->toBe(['file' => 'app/Livewire/Orders.php', 'line' => 38, 'text' => '$a = $order->placed_at->pretty();', 'scope' => 'app'])

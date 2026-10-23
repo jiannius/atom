@@ -7,6 +7,7 @@ use Jiannius\Atom\Commands\MigrateTiptapContent;
 use Jiannius\Atom\Services\Upgrade;
 use Jiannius\Atom\Services\UpgradeCheck;
 use Jiannius\Atom\Services\UpgradeCss;
+use Jiannius\Atom\Services\UpgradePhp;
 
 /**
  * atom:upgrade rewrites what text can fix and reports the rest. These tests run it on
@@ -879,8 +880,11 @@ describe('atom:upgrade: the guide', function () {
         $readme = file_get_contents(__DIR__.'/../../README.md');
 
         expect($skill)->not->toMatch('/V4-\d[a-z]?\b/')
-            ->and($skill)->toContain('a chart\'s height goes on a wrapper')
-            ->and($readme)->toContain('put the height on a wrapper')
+            ->and($skill)->toContain('a chart\'s height goes on a wrapper that the chart fills')
+            ->and($readme)->toContain('<div class="h-48"><atom:chart class="h-full" .../></div>')
+            ->and($skill)->toContain('<atom:chart class="h-full" .../></div>')
+            ->and(file_get_contents(__DIR__.'/../../UPGRADE.md'))->toContain('<atom:chart class="h-full" .../></div>')
+            ->and(file_get_contents(__DIR__.'/../../resources/views/docs/demos/chart/trend.blade.php'))->toContain('class="h-full"')
             ->and($readme)->not->toContain('override with a `h-*` class')
             ->and(file_get_contents(__DIR__.'/../../resources/views/docs/demos/chart/trend.blade.php'))->not->toContain('class="h-24"/>');
     });
@@ -1319,13 +1323,13 @@ describe('atom:upgrade: writing', function () {
         {
             public int $writes = 0;
 
-            protected function write(string $path, string $content): void
+            protected function write(string $path, ?string $before, string $after): void
             {
                 if (++$this->writes === 3) {
                     throw new RuntimeException('disk full');
                 }
 
-                parent::write($path, $content);
+                parent::write($path, $before, $after);
             }
         };
         $plan = $upgrade->plan($dir);
@@ -1344,7 +1348,184 @@ describe('atom:upgrade: writing', function () {
             ->and($message)->toContain('ATOM-UPGRADE-TODO.md')
             ->and(file_get_contents($dir.'/'.$files[0]))->toBe($plan['changes'][$files[0]]['after'])
             ->and(file_get_contents($dir.'/'.$files[2]))->toBe($plan['changes'][$files[2]]['before'])
-            ->and(decoct(fileperms($dir.'/app/Livewire/Orders.php') & 0777))->toBe('640')
-            ->and(glob($dir.'/app/Livewire/.atom-upgrade-*'))->toBe([]);
+            ->and(decoct(fileperms($dir.'/app/Livewire/Orders.php') & 0777))->toBe('640');
+    });
+
+    it('writes in place, so the file keeps its inode (owner, ACL, attributes), and refuses a file with another hard link', function () {
+        $dir = ($this->host)();
+        $path = $dir.'/app/Livewire/Orders.php';
+        $inode = fileinode($path);
+
+        (new Upgrade)->apply((new Upgrade)->plan($dir));
+
+        clearstatcache();
+
+        expect(fileinode($path))->toBe($inode)
+            ->and(file_get_contents($path))->toContain('use WithTable, WithBreadcrumbs');
+
+        $other = upgradeCodemodHost();
+        $this->hosts[] = $other;
+        link($other.'/app/Livewire/Orders.php', $other.'/linked.php');
+        $before = upgradeCodemodTree($other);
+
+        [$code, $output] = upgradeCodemodRun($other);
+
+        expect($code)->not->toBe(0)
+            ->and($output)->toContain('has other hard links')
+            ->and(upgradeCodemodTree($other))->toBe($before);
+    });
+
+    it('stops and reports when a file changed after the plan was made', function () {
+        $dir = ($this->host)();
+        $upgrade = new Upgrade;
+        $plan = $upgrade->plan($dir);
+        $files = array_keys($plan['changes']);
+        file_put_contents($dir.'/'.$files[1], file_get_contents($dir.'/'.$files[1])."\n// edited meanwhile\n");
+
+        try {
+            $upgrade->apply($plan, 'todo');
+            $message = '';
+        } catch (RuntimeException $e) {
+            $message = $e->getMessage();
+        }
+
+        expect($message)->toContain('Could not write '.$files[1].' (it changed since the plan was made')
+            ->and($message)->toContain('Written: '.$files[0].'.')
+            ->and($message)->toContain('Not written: '.$files[1]);
+    });
+});
+
+describe('atom:upgrade: round two', function () {
+    it('does not take a host trait called AtomComponent for atom\'s, and says so', function () {
+        $dir = upgradeShapeHost('php-host-trait');
+        $this->hosts[] = $dir;
+        $before = upgradeCodemodTree($dir);
+        $scan = (new UpgradeCheck)->scan($dir);
+
+        // not atom users: only the host traits themselves (which use atom's) are
+        expect(array_column($scan['components'], 'file'))->toBe(['app/Livewire/AtomComponent.php', 'app/Traits/AtomComponent.php'])
+            ->and(array_map(fn ($host) => $host['file'].' '.$host['name'], $scan['host_atom_components']))->toBe(['app/Livewire/Imported.php App\\Traits\\AtomComponent', 'app/Livewire/Local.php App\\Livewire\\AtomComponent']);
+
+        upgradeCodemodRun($dir);
+
+        $after = upgradeCodemodTree($dir);
+        unset($after['ATOM-UPGRADE-TODO.md']);
+        $todo = file_get_contents($dir.'/ATOM-UPGRADE-TODO.md');
+
+        expect($after)->toBe($before)
+            ->and($todo)->toContain('`app/Livewire/Imported.php:10`: not changed, `use AtomComponent` is a host trait named AtomComponent (App\Traits\AtomComponent), not atom\'s')
+            ->and($todo)->toContain('`app/Livewire/Local.php:9`: not changed, `use AtomComponent` is a host trait named AtomComponent (App\Livewire\AtomComponent), not atom\'s')
+            ->and($todo)->toContain('it is a trait');
+    });
+
+    it('does not let a new import take over a trait the file already means by that name, or list a trait twice', function () {
+        $dir = upgradeShapeHost('php-shadow');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        $shadowed = file_get_contents($dir.'/app/Livewire/Shadowed.php');
+
+        expect($shadowed)->toContain('    use \\Jiannius\\Atom\\Traits\\WithTable, WithPagination, WithTable;')
+            ->and($shadowed)->not->toContain("use Jiannius\\Atom\\Traits\\WithTable;\n")
+            ->and($shadowed)->toContain("use Livewire\\WithPagination;\n")
+            ->and(file_get_contents($dir.'/app/Livewire/Dup.php'))->toContain('    use WithPagination, WithTable;');
+    });
+
+    it('finds a component whose import it cannot read, and declines it with the reason', function () {
+        $source = "<?php\n\nnamespace App\\Livewire;\n\nuse App\\Foo as;\nuse Jiannius\\Atom\\Traits\\AtomComponent;\n\nclass Broken\n{\n    use AtomComponent;\n}\n";
+        $structure = UpgradePhp::structure($source);
+
+        expect($structure['ok'])->toBeFalse()
+            ->and($structure['classes'])->toHaveCount(1)
+            ->and(UpgradeCheck::atomComponentUses($source, $structure))->toHaveCount(1);
+
+        $dir = upgradeShapeHost();
+        $this->hosts[] = $dir;
+        mkdir($dir.'/app/Livewire', 0777, true);
+        file_put_contents($dir.'/app/Livewire/Broken.php', $source);
+
+        $scan = (new UpgradeCheck)->scan($dir);
+
+        expect(array_column($scan['components'], 'file'))->toBe(['app/Livewire/Broken.php']);
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/app/Livewire/Broken.php'))->toBe($source)
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('`app/Livewire/Broken.php:10`: not changed, it has an import it cannot read');
+    });
+
+    it('reads a function in a mixed group as no class, and rewrites the component beside it', function () {
+        $dir = upgradeShapeHost('php-mixed-group');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        $mixed = file_get_contents($dir.'/app/Livewire/Mixed.php');
+
+        expect($mixed)->toContain("use App\\Support\\{function helper, Foo};\n")
+            ->and($mixed)->toContain('    use WithTable, WithPagination;');
+    });
+
+    it('reads the traits a view needs from a tag in an HTML comment too, since Blade compiles it', function () {
+        $dir = upgradeShapeHost('blade-comment-table');
+        $this->hosts[] = $dir;
+
+        $scan = (new UpgradeCheck)->scan($dir);
+
+        expect($scan['components'][0]['traits'])->toContain('WithTable', 'WithEditor');
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/resources/views/livewire/page.blade.php'))->toContain('    use WithTable, WithEditor, WithPagination;');
+    });
+
+    it('does not cut a declaration out of the inside of a string', function () {
+        $dir = upgradeShapeHost('css-string');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/resources/css/app.css'))->toBe("@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@theme {\n    --font-display: \"Weird; --color-zinc-50: #fafafa; x\", serif;\n}\n");
+    });
+
+    it('renames a tag after @@verbatim, which Blade escapes and so compiles', function () {
+        $dir = upgradeShapeHost('blade-escaped-verbatim');
+        $this->hosts[] = $dir;
+
+        expect(array_map(fn ($f) => $f['line'], (new UpgradeCheck)->scan($dir)['checks']['editor-tag']['findings']))->toBe([2]);
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/resources/views/v.blade.php'))->toBe("@@verbatim\n<atom:tiptap wire:model=\"a\"/>\n@endverbatim\n");
+    });
+
+    it('keeps the indent of what is left on a line when a declaration is cut from it', function () {
+        $dir = upgradeShapeHost('css-shared-line');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/resources/css/app.css'))->toBe("@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@theme {\n    --color-brand: #f00;\n}\n");
+    });
+
+    it('leaves no space behind when it removes one import from a line of two', function () {
+        $dir = upgradeShapeHost('php-import-line');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/app/Livewire/Inline.php'))->toContain("namespace App\\Livewire;\n\nuse Livewire\\Component;\n\nclass Inline");
+    });
+
+    it('says why it left a stylesheet whose @source lines it does not recognise', function () {
+        $dir = upgradeShapeHost('css-skipped');
+        $this->hosts[] = $dir;
+        $before = file_get_contents($dir.'/resources/css/two.css');
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/resources/css/two.css'))->toBe($before)
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('`resources/css/two.css:2`: not changed, a `@source` line naming jiannius/atom was left: the codemod removes only atom\'s own three paths');
     });
 });

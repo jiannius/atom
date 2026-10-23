@@ -1,0 +1,2 @@
+@import 'tailwindcss';
+@source '../../vendor/jiannius/atom/components/**/*.blade.php'; @source '../../vendor/jiannius/atom/resources/**/*.blade.php';
