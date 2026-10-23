@@ -995,7 +995,10 @@ describe('pattern page details', function () {
     it('draws no hand-rolled radius on the pattern pages', function (string $page) {
         $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/docs/patterns/'.$page.'.blade.php');
 
-        expect($source)->not->toMatch('/\brounded-(?:sm|md|lg|xl|2xl)\b/');
+        // (the document's paper is the one exception: a printed page has its own 6px corners, as the approved sample does)
+        $allowed = $page === 'document-page' ? ['rounded-md bg-[#fffefc]'] : [];
+
+        expect(str_replace($allowed, '', $source))->not->toMatch('/\brounded-(?:sm|md|lg|xl|2xl)\b/');
     })->with(['record-page', 'list-page', 'document-page', 'form-page', 'slide-over-form', 'page', 'app-shell-sidebar', 'app-shell-header']);
 
     it('shows a customer with a name of its own in the header, not "Customer Customer A"', function () {

@@ -128,7 +128,7 @@ $money = fn (float $amount) => number_format($amount, 2);
         </atom:page.header>
 
         <div class="grid items-start gap-6 min-[1080px]:grid-cols-[minmax(0,1fr)_320px]">
-            <article class="grid min-w-0 gap-7 rounded-control bg-[#fffefc] px-5 py-6 text-[12.5px] text-[#1d1c19] shadow-[0_0_0_1px_rgba(45,32,8,0.08),0_2px_10px_rgba(45,32,8,0.05)] sm:px-12 sm:pb-10 sm:pt-11" aria-label="Invoice document" data-testid="paper">
+            <article class="grid min-w-0 gap-7 rounded-md bg-[#fffefc] px-5 py-6 text-[12.5px] text-[#1d1c19] shadow-[0_0_0_1px_rgba(45,32,8,0.08),0_2px_10px_rgba(45,32,8,0.05)] sm:px-12 sm:pb-10 sm:pt-11" aria-label="Invoice document" data-testid="paper">
                 <div class="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
                     <div class="flex items-center gap-2.5">
                         <div class="flex size-[26px] items-center justify-center rounded-control bg-[#1d1c19] text-[#fffefc]"><atom:icon.blocks class="size-4"/></div>

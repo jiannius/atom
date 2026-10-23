@@ -338,14 +338,15 @@ for (const tw of ['floor', 'latest']) {
         await expect(page.locator('[data-atom-table] tbody tr').first().locator('[data-atom-status]')).toBeInViewport()
       })
 
-      test('the views scroll inside their own strip and the toolbar wraps: the search fills the row', async ({ page }) => {
+      test('the views scroll inside their own strip and the toolbar wraps: the search fills the row beside the icon-only Export', async ({ page }) => {
         await list(page)
 
         const search = await box(page.locator('[data-atom-table-toolbar] [data-atom-table-search]'))
+        const exporter = await box(page.getByTestId('list-panel').getByRole('button', { name: 'Export' }))
         const panel = await box(page.getByTestId('list-panel'))
 
-        // full width of the panel less its 12px strip padding
-        expect(Math.abs(search.width - (panel.width - 2 - 24))).toBeLessThan(2)
+        // the whole row of the panel less its 12px strip padding: the search, an 8px gap and the Export icon
+        expect(Math.abs(search.width + 8 + exporter.width - (panel.width - 2 - 24))).toBeLessThan(2)
         expect(await noSideScroll(page)).toBe(true)
       })
     })

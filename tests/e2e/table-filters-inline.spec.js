@@ -25,10 +25,11 @@ for (const tw of ['floor', 'latest']) {
       const pill = await centre(page.getByRole('combobox', { name: 'Customer' }))
       const chip = await centre(chips(page).first())
 
-      // one row: the pills and the chip are centred on the search box, and the chip comes after the controls
+      // one row: the pills and the chip are centred on the search box, and the active chip LEADS the dashed pills
       expect(Math.abs(pill.y - search.y)).toBeLessThan(3)
       expect(Math.abs(chip.y - search.y)).toBeLessThan(3)
-      expect(chip.x).toBeGreaterThan(pill.right)
+      expect(chip.right).toBeLessThan(pill.x)
+      expect(chip.x).toBeGreaterThan(search.right)
     })
 
     test('the add pill is dashed, and steps aside for its chip, which brings it back when removed', async ({ page }) => {
