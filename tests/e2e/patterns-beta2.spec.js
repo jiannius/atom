@@ -83,6 +83,40 @@ for (const tw of ['floor', 'latest']) {
       await expect(chip).toHaveCount(0)
     })
 
+    test('list page at 390px: search and Export share a row, the active chip leads the add pills, and the amount is on screen', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 900 })
+      await open(page, { path: 'shell-list', tw })
+
+      const panel = page.getByTestId('list-panel')
+      const search = await rect(panel.locator('[data-atom-table-search]'))
+      const exportButton = await rect(panel.getByRole('button', { name: 'Export' }))
+      const chip = await rect(panel.locator('[data-atom-table-filter-chip]'))
+      const firstPill = await rect(panel.getByRole('combobox', { name: 'Customer' }))
+
+      expect(Math.abs((exportButton.y + exportButton.height / 2) - (search.y + search.height / 2))).toBeLessThan(3)
+      expect(exportButton.x).toBeGreaterThan(search.right)
+      // the active filter comes first, the dashed pills after it (on the same row, or a later one)
+      expect(chip.y < firstPill.y || chip.x < firstPill.x).toBe(true)
+      expect(chip.y).toBeLessThanOrEqual(firstPill.y)
+
+      await expect(panel.locator('thead th', { hasText: 'Issued' })).toBeHidden()
+      await expect(panel.locator('thead th', { hasText: 'Due' })).toBeHidden()
+
+      const amount = await rect(panel.locator('thead th', { hasText: 'Amount (RM)' }))
+      expect(amount.right).toBeLessThanOrEqual(390)
+      expect(await noSidewaysScroll(page)).toBe(true)
+    })
+
+    test('list page at 1440px keeps the dates and the labelled Export', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await open(page, { path: 'shell-list', tw })
+
+      const panel = page.getByTestId('list-panel')
+
+      await expect(panel.locator('thead th', { hasText: 'Issued' })).toBeVisible()
+      await expect(panel.getByRole('button', { name: 'Export' })).toContainText('Export')
+    })
+
     test('list page: a row\'s checkbox ticks without opening the row, and the header primary is the only accent button', async ({ page }) => {
       await open(page, { path: 'shell-list', tw })
 

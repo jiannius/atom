@@ -4,7 +4,7 @@
     'chips' => 'below',
 ])
 
-{{-- `chips="inline"` puts each active filter after the controls in the one wrapping row, as a sentence pill ("Issued is
+{{-- `chips="inline"` puts each active filter ahead of the controls, in the one wrapping row,, as a sentence pill ("Issued is
      1 Apr 2026 to 30 Apr 2026", with a name, a muted operator and the value) that its x removes. A control can name its own
      operator in the event's `operator` detail (default `is`; the search says `:`, which reads "Search: foo").
      Pair it with `add` on a select filter or a date range, which draws the control as a dashed "+ Customer" pill that
@@ -39,6 +39,19 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
          same wrapping row, straight after the last one. A grow wrapper around the
          slot used to push it to the far end of the bar, where it read as a table
          action sitting with Export rather than as the last filter. --}}
+    @if ($inline)
+        <template x-for="chip in active" x-bind:key="chip.key" hidden>
+            <div class="inline-flex h-[26px] items-center gap-1.5 rounded-pill bg-neutral-bg ps-2.5 pe-1.5 text-xs text-fg" data-atom-table-filter-chip>
+                <span class="font-medium" x-text="chip.label"></span>
+                <span class="text-fg-muted" x-text="chip.operator" x-bind:class="chip.operator === ':' && '-ms-1.5'"></span>
+                <span x-text="chip.display"></span>
+                <button type="button" x-on:click="clear(chip.key)" x-bind:aria-label="@js(t('Remove filter')) + ': ' + chip.label" class="flex size-4 items-center justify-center rounded-pill text-fg-muted transition-colors hover:text-fg">
+                    <atom:icon.close class="size-3.5" />
+                </button>
+            </div>
+        </template>
+    @endif
+
     <div @class(['flex flex-wrap items-center gap-3' => ! $inline, 'contents' => $inline])>
         {{ $slot }}
 
@@ -85,17 +98,6 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
     @endif
 
     @if ($inline)
-        <template x-for="chip in active" x-bind:key="chip.key" hidden>
-            <div class="inline-flex h-[26px] items-center gap-1.5 rounded-pill bg-neutral-bg ps-2.5 pe-1.5 text-xs text-fg" data-atom-table-filter-chip>
-                <span class="font-medium" x-text="chip.label"></span>
-                <span class="text-fg-muted" x-text="chip.operator" x-bind:class="chip.operator === ':' && '-ms-1.5'"></span>
-                <span x-text="chip.display"></span>
-                <button type="button" x-on:click="clear(chip.key)" x-bind:aria-label="@js(t('Remove filter')) + ': ' + chip.label" class="flex size-4 items-center justify-center rounded-pill text-fg-muted transition-colors hover:text-fg">
-                    <atom:icon.close class="size-3.5" />
-                </button>
-            </div>
-        </template>
-
         <atom:button variant="ghost" size="sm" x-show="active.length" x-cloak x-on:click="clearAll()">{{ t('Clear all') }}</atom:button>
     @else
         <div x-show="active.length" x-cloak class="flex flex-wrap items-center gap-2">

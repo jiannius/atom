@@ -137,7 +137,7 @@ $money = fn (float $amount) => number_format($amount, 2);
                 </atom:table.filters>
 
                 <x-slot:end>
-                    <atom:button variant="ghost" icon="download">Export</atom:button>
+                    <atom:button variant="ghost" icon="download" aria-label="Export"><span class="max-sm:sr-only">Export</span></atom:button>
                 </x-slot:end>
             </atom:table.toolbar>
 
@@ -149,8 +149,9 @@ $money = fn (float $amount) => number_format($amount, 2);
                     <atom:table.column class="w-10"><atom:table.checkbox x-data="{ on: false }" x-on:click="on = ! on" x-bind:data-checked="on || null" role="checkbox" aria-label="Select all" tabindex="0"/></atom:table.column>
                     <atom:table.column>Number</atom:table.column>
                     <atom:table.column>Customer</atom:table.column>
-                    <atom:table.column>Issued</atom:table.column>
-                    <atom:table.column>Due</atom:table.column>
+                    {{-- the dates are for a wider screen: on a phone the amount and the status stay in reach --}}
+                    <atom:table.column class="max-sm:hidden">Issued</atom:table.column>
+                    <atom:table.column class="max-sm:hidden">Due</atom:table.column>
                     <atom:table.column numeric>Amount (RM)</atom:table.column>
                     <atom:table.column>Status</atom:table.column>
                 </x-slot:columns>
@@ -160,12 +161,12 @@ $money = fn (float $amount) => number_format($amount, 2);
                         <atom:table.row href="document-page">
                             <atom:table.cell class="w-10" x-on:click.stop><atom:table.checkbox x-data="{ on: false }" x-on:click="on = ! on" x-bind:data-checked="on || null" role="checkbox" :aria-label="'Select '.$number" tabindex="0"/></atom:table.cell>
                             <atom:table.cell><span class="font-id">{{ $number }}</span></atom:table.cell>
-                            <atom:table.cell class="max-w-64">
+                            <atom:table.cell class="max-w-36 sm:max-w-64">
                                 <div class="truncate font-medium">{{ $customer }}</div>
                                 <div class="mt-0.5 truncate text-xs text-fg-subtle">{{ $what }}</div>
                             </atom:table.cell>
-                            <atom:table.cell>{{ $issued }}</atom:table.cell>
-                            <atom:table.cell :muted="$state !== 'overdue'" :class="$state === 'overdue' ? 'text-danger-fg!' : ''">{{ $due }}</atom:table.cell>
+                            <atom:table.cell class="max-sm:hidden">{{ $issued }}</atom:table.cell>
+                            <atom:table.cell :muted="$state !== 'overdue'" :class="($state === 'overdue' ? 'text-danger-fg! ' : '').'max-sm:hidden'">{{ $due }}</atom:table.cell>
                             <atom:table.cell numeric>
                                 {{ $money($amount) }}
                                 @if ($owed > 0 && $owed < $amount)

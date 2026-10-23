@@ -113,6 +113,8 @@ describe('inline chips', function () {
             ->and(domClasses(domQuery($html, '//*[@data-atom-table-filters]/div[1]')[0]))->toContain('contents')
             // the chips are the bar's direct children, with no row of their own, and Clear all follows them
             ->and(domQuery($html, '//*[@data-atom-table-filters]/template'))->toHaveCount(1)
+            // the active filters LEAD the row: the chips come before the controls that are not set
+            ->and(domQuery($html, '//*[@data-atom-table-filters]/template/following-sibling::div[1][contains(@class, "contents")]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-atom-table-filters]/div[@x-show="active.length"]'))->toBeEmpty()
             ->and(domQuery($html, '//*[@data-atom-table-filters]/button[@x-show="active.length"]'))->toHaveCount(1);
     });
