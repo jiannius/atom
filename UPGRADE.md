@@ -4,6 +4,8 @@ Each change that breaks a host is listed once, under the release that made it. T
 
 **Read "PHP globals: dates and macros" first:** every date in your app changes type and string form unless you add one line, and nothing throws for the string change.
 
+**Size the move first:** `php artisan atom:upgrade-check` (3.38 and later, and v4) reads your app and lists every break below with `file:line`, a severity, and whether the `atom:upgrade` codemod will fix it. It writes nothing. `--json` is what the codemod reads. See the README, "Moving an app to v4".
+
 ## Installing a pre-release
 
 Pin an exact version: `composer require jiannius/atom:4.0.0-alpha.1`. Composer accepts an exact pre-release version even under `"minimum-stability": "stable"`, so `composer.json` needs no other change. A range is different: `^4.0` alone never picks the alpha; `^4.0@alpha` does, or a lower `minimum-stability`.

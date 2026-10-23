@@ -1,0 +1,29 @@
+@import 'tailwindcss';
+@source '../../vendor/jiannius/atom/resources/**/*.blade.php';
+
+@font-face {
+    font-family: 'Inter';
+    src: url('/fonts/inter.woff2');
+}
+
+html {
+    font-size: 14px;
+}
+
+@layer base {
+    *,
+    ::after,
+    ::before {
+        border-color: var(--color-gray-200, currentColor);
+    }
+}
+
+/* html { font-size: 20px } in a comment is not a rule */
+
+.prose > * {
+    border-color: red;
+}
+
+.foo * {
+    border-color: blue;
+}

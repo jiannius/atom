@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Jiannius\Atom\Commands\MigrateTiptapContent;
 use Jiannius\Atom\Commands\PurgeEditorImages;
+use Jiannius\Atom\Commands\UpgradeCheck;
 use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\TagCompiler;
 
@@ -319,6 +320,7 @@ class AtomServiceProvider extends ServiceProvider
         $this->commands([
             PurgeEditorImages::class,
             MigrateTiptapContent::class,
+            UpgradeCheck::class,
         ]);
     }
 }
