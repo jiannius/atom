@@ -15,7 +15,7 @@ $vite = $vite ?? app(\Jiannius\Atom\Services\Docs::class)->vite();
             </div>
             <span class="grid min-w-0 leading-tight">
                 <span class="truncate text-sm font-semibold">Fieldwork</span>
-                <span class="truncate text-xs text-fg-subtle" data-testid="brand-subline">Acme Studio · MYR</span>
+                <span class="truncate text-xs text-fg-subtle" data-testid="brand-subline">Pro plan · MYR</span>
             </span>
         </a>
     </x-slot>

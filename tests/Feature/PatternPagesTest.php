@@ -77,7 +77,7 @@ describe('pattern pages', function () {
     it('shows a brand with a subline and a shortcut hint on the sidebar\'s search, as host markup', function () {
         $html = view('atom::docs.patterns.app-shell-sidebar')->render();
 
-        expect(trim(domQuery($html, '//*[@data-testid="brand-subline"]')[0]->textContent))->toContain('Acme Studio')
+        expect(trim(domQuery($html, '//*[@data-testid="brand-subline"]')[0]->textContent))->toContain('Pro plan')
             ->and(domQuery($html, '//*[@data-atom-shell-search]//*[@data-testid="shell-search"]//input'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-testid="shell-search"]//kbd'))->not->toBeEmpty()
             ->and(domQuery($html, '//*[@data-testid="shell-search"]')[0]->textContent)->toContain('⌘');
@@ -639,7 +639,9 @@ describe('form page pattern', function () {
 
         expect(domQuery($html, '//main//*[@data-atom-page]//form[@data-atom-form]'))->toHaveCount(1)
             ->and(domQuery($html, '//form/*[@data-atom-form-section]'))->toHaveCount(4)
-            ->and(domQuery($html, '//form/*[@data-atom-form-section][@data-layout="aside"]'))->toHaveCount(4)
+            ->and(domQuery($html, '//form/*[@data-atom-form-section][@data-layout="aside"]'))->toHaveCount(3)
+            // the line items are a wide editor: stacked, with the table across the whole column
+            ->and(domQuery($html, '//form/*[@data-atom-form-section][@data-layout="stacked"][.//*[@data-testid="form-lines"]]'))->toHaveCount(1)
             ->and(domQuery($html, '//form/*[@data-atom-save-bar]'))->toHaveCount(1)
             // the bar is the last thing in the form
             ->and(domQuery($html, '//form/*[@data-atom-save-bar]/following-sibling::*'))->toBeEmpty()
@@ -654,10 +656,10 @@ describe('form page pattern', function () {
 
     it('falls back to aside for any other layout, or an array', function () {
         request()->query->set('layout', ['stacked']);
-        expect(domQuery(view('atom::docs.patterns.form-page')->render(), '//form/*[@data-atom-form-section][@data-layout="aside"]'))->toHaveCount(4);
+        expect(domQuery(view('atom::docs.patterns.form-page')->render(), '//form/*[@data-atom-form-section][@data-layout="aside"]'))->toHaveCount(3);
 
         request()->query->set('layout', 'nope');
-        expect(domQuery(view('atom::docs.patterns.form-page')->render(), '//form/*[@data-atom-form-section][@data-layout="aside"]'))->toHaveCount(4);
+        expect(domQuery(view('atom::docs.patterns.form-page')->render(), '//form/*[@data-atom-form-section][@data-layout="aside"]'))->toHaveCount(3);
     });
 
     it('has one primary action, the submit in the save bar, and totals at the start of the bar', function () {
@@ -918,5 +920,87 @@ describe('the pattern pages mark the right nav item', function () {
 
         expect(domQuery($html, '//nav[@data-atom-navlist]//a[@href="?page=jobs"]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-testid="record-crumbs"]//a[@href="?page=jobs"]'))->toHaveCount(1);
+    });
+});
+
+// Consistency of the invented data and small details across the pattern pages.
+describe('pattern page details', function () {
+    it('draws the list page\'s totals strip from the very rows it lists', function () {
+        $html = view('atom::docs.patterns.list-page')->render();
+        $stat = fn (int $n) => preg_replace('/\s+/', ' ', trim(domQuery($html, '//*[@data-atom-stat-group]/*[@data-atom-stat]['.$n.']')[0]->textContent));
+
+        // the sent invoices that still owe: 1,300 + 2,000 + 750 + 150
+        expect($stat(1))->toContain('4,200.00')->toContain('4 unpaid invoices')
+            ->and($stat(2))->toContain('900.00')->toContain('2 invoices')
+            ->and($stat(3))->toContain('3,300.00')->toContain('2 invoices')
+            ->and($stat(4))->toContain('1');
+
+        // and the Unpaid view lists exactly those four
+        request()->query->set('view', 'unpaid');
+        expect(domQuery(view('atom::docs.patterns.list-page')->render(), '//*[@data-atom-table]//tbody/tr'))->toHaveCount(4);
+    });
+
+    it('shows no open task, and a Done stage with a time and a person, on a done job', function () {
+        request()->query->set('status', 'done');
+
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(trim(domQuery($html, '//*[@data-atom-stat-group]/*[@data-atom-stat][4]')[0]->textContent))->toContain('0')
+            ->and(domQuery($html, '//*[@data-testid="record-lines"]//*[@data-atom-status][contains(., "Open")]'))->toBeEmpty();
+    });
+
+    it('does not claim parts the Parts tab does not have', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(preg_replace('/\s+/', ' ', trim(domQuery($html, '//*[@data-atom-stat-group]/*[@data-atom-stat][2]')[0]->textContent)))->toContain('0.00')->not->toContain('7 parts');
+    });
+
+    it('opens the whole history from "All changes", not the error state', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+        $href = domQuery($html, '//*[@data-testid="record-activity"]//a[contains(., "All changes")]')[0]->getAttribute('href');
+
+        expect($href)->toBe('?tab=activity&view=all');
+
+        request()->query->set('tab', 'activity');
+        request()->query->set('view', 'all');
+        $all = view('atom::docs.patterns.record-page')->render();
+
+        expect(domQuery($all, '//*[@data-atom-empty]'))->toBeEmpty()
+            ->and(domQuery($all, '//*[@data-testid="record-history"]//*[@data-atom-timeline]/ol/li'))->toHaveCount(6);
+    });
+
+    it('uses the neutral tone for a sent invoice on the shell pages, as the list page does', function () {
+        $html = view('atom::docs.patterns.app-shell-sidebar')->render();
+        $sent = domQuery($html, '//main//tbody//*[@data-atom-status][contains(., "Sent")]');
+
+        expect($sent)->toHaveCount(1)
+            ->and($sent[0]->getAttribute('data-tone'))->toBe('neutral');
+    });
+
+    it('keeps the form page\'s payment terms and tax selects alike, with no per-render x-data', function () {
+        $html = view('atom::docs.patterns.form-page')->render();
+
+        // no clear x on a required field: both kinds of select say so
+        $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/docs/patterns/form-page.blade.php');
+
+        expect($source)->toMatch('/label="Payment terms"[^>]*:clearable="false"/')
+            ->and($source)->toMatch('/aria-label="Tax"[^>]*:clearable="false"/');
+
+        foreach (domQuery($html, '//*[@data-testid="form-lines"]//td[@x-data]') as $cell) {
+            expect($cell->getAttribute('x-data'))->toBe('{ tax: null }')
+                ->and($cell->getAttribute('data-tax'))->toBeIn(['none', 'sst-8']);
+        }
+    });
+
+    it('draws no hand-rolled radius on the pattern pages', function (string $page) {
+        $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/docs/patterns/'.$page.'.blade.php');
+
+        expect($source)->not->toMatch('/\brounded-(?:sm|md|lg|xl|2xl)\b/');
+    })->with(['record-page', 'list-page', 'document-page', 'form-page', 'slide-over-form', 'page', 'app-shell-sidebar', 'app-shell-header']);
+
+    it('shows a customer with a name of its own in the header, not "Customer Customer A"', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(domQuery($html, '//*[@data-atom-page-meta]')[0]->textContent)->not->toContain('Customer Customer A');
     });
 });

@@ -57,6 +57,14 @@ $view = is_string($view) && array_key_exists($view, $views) ? $view : 'all';
 $counts = array_map(fn ($filter) => count(array_filter($invoices, $filter)), $views);
 
 $rows = array_values(array_filter($invoices, $views[$view]));
+
+// the totals strip is read from the same rows: what is still owed on the sent invoices, the overdue ones, and those falling due soon
+$unpaid = array_values(array_filter($invoices, $views['unpaid']));
+$overdue = array_values(array_filter($invoices, $views['overdue']));
+$dueSoon = array_values(array_filter($invoices, fn ($row) => $row[7] === 'sent'));
+$outstanding = array_sum(array_column($unpaid, 6));
+$overdueOwed = array_sum(array_column($overdue, 6));
+$dueSoonOwed = array_sum(array_column($dueSoon, 6));
 $total = array_sum(array_column($rows, 5));
 
 $tones = ['paid' => 'success', 'overdue' => 'danger', 'sent' => 'neutral', 'draft' => 'neutral'];
@@ -101,10 +109,10 @@ $money = fn (float $amount) => number_format($amount, 2);
         </atom:page.header>
 
         <atom:stat.group>
-            <atom:stat label="Outstanding" prefix="RM" value="12,480.00" breakdown="7 unpaid invoices" href="?view=unpaid"/>
-            <atom:stat label="Overdue" prefix="RM" value="3,200.00" tone="danger" breakdown="2 invoices, oldest 78 days" href="?view=overdue"/>
-            <atom:stat label="Due in the next 30 days" prefix="RM" value="5,400.00" breakdown="3 invoices" href="?view=unpaid"/>
-            <atom:stat label="Drafts" value="1" breakdown="not sent yet" href="?view=draft"/>
+            <atom:stat label="Outstanding" prefix="RM" :value="$money($outstanding)" :breakdown="count($unpaid).' unpaid invoices'" href="?view=unpaid"/>
+            <atom:stat label="Overdue" prefix="RM" :value="$money($overdueOwed)" tone="danger" :breakdown="count($overdue).' invoices, oldest 25 days'" href="?view=overdue"/>
+            <atom:stat label="Due in the next 30 days" prefix="RM" :value="$money($dueSoonOwed)" :breakdown="count($dueSoon).' invoices'" href="?view=unpaid"/>
+            <atom:stat label="Drafts" :value="(string) $counts['draft']" breakdown="not sent yet" href="?view=draft"/>
         </atom:stat.group>
 
         <div class="min-w-0 overflow-hidden rounded-panel border bg-surface" data-testid="list-panel">

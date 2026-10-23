@@ -13,6 +13,7 @@
      - Money is tabular and right-aligned, the currency named once in the heading or the column ("Amount (RM)"). Line items are
        EDITABLE: a frameless table whose cells hold inputs (the item, then the quantity and the unit price as right-aligned tabular
        inputs, a tax `<atom:select>` and a ghost remove x), with "Add line" and "Add from products" under it. The amount is read-only.
+     - A section with a wide editor in it (the line items) is `layout="stacked"` whatever the rest are, so the table has the whole column.
      - A date is `<atom:date-picker>` and a choice from a short list (payment terms) is `<atom:select>`; a text input is for text.
        "(optional)" at the end of a label is muted by the field itself.
      - Errors: with `<atom:form>` (not `:error-toast="false"`) a failed save shows one summary at the top of the form and the message
@@ -72,8 +73,8 @@ $money = fn (float $amount) => number_format($amount, 2);
 
         <atom:form x-data="{ saved: false, issued: '2026-10-15', due: '2026-11-14', terms: 'net-30' }" x-on:submit.prevent="saved = true" :error-toast="false">
             <atom:form.section :layout="$layout" heading="Customer" subheading="Who you are billing. Their tax ID goes on the invoice.">
-                <div class="flex items-center gap-3 rounded-lg border bg-surface px-3.5 py-3 @md:col-span-2">
-                    <div class="flex size-[34px] shrink-0 items-center justify-center rounded-lg bg-warning-bg text-sm font-semibold text-warning-fg">CA</div>
+                <div class="flex items-center gap-3 rounded-panel border bg-surface px-3.5 py-3 @md:col-span-2">
+                    <div class="flex size-[34px] shrink-0 items-center justify-center rounded-control bg-warning-bg text-sm font-semibold text-warning-fg">CA</div>
                     <div class="grid min-w-0 gap-px">
                         <b class="truncate font-medium">Customer A Sdn Bhd</b>
                         <span class="font-id text-fg-subtle">TIN C0000000000</span>
@@ -85,16 +86,17 @@ $money = fn (float $amount) => number_format($amount, 2);
 
             <atom:form.section :layout="$layout" heading="Details" subheading="Dates and terms printed on the invoice.">
                 <atom:date-picker label="Issue date" x-model="issued"/>
-                <atom:select label="Payment terms" x-model="terms" :options="[
+                <atom:date-picker label="Due date" x-model="due" caption="30 days after the issue date"/>
+                <atom:select label="Payment terms" x-model="terms" :clearable="false" :options="[
                     ['value' => 'net-14', 'label' => 'Net 14'],
                     ['value' => 'net-30', 'label' => 'Net 30'],
                     ['value' => 'net-60', 'label' => 'Net 60'],
                 ]"/>
-                <atom:date-picker label="Due date" x-model="due" caption="30 days after the issue date"/>
                 <atom:input label="Reference (optional)" value="Quote Q-0231, phase 2"/>
             </atom:form.section>
 
-            <atom:form.section :layout="$layout" heading="Items" subheading="Amounts in Malaysian Ringgit. Service tax is set per line.">
+            {{-- the line items are a wide editor: this section is always `stacked` (heading above, the table across the whole column), whatever the page's layout --}}
+            <atom:form.section layout="stacked" heading="Items" subheading="Amounts in Malaysian Ringgit. Service tax is set per line.">
                 <div class="min-w-0 @md:col-span-2">
                     <atom:table frameless :empty="false" data-testid="form-lines">
                         <x-slot:columns>
@@ -112,7 +114,8 @@ $money = fn (float $amount) => number_format($amount, 2);
                                     <atom:table.cell class="min-w-44"><atom:input :value="$name" aria-label="Item"/></atom:table.cell>
                                     <atom:table.cell numeric class="min-w-16"><atom:input type="number" :value="$quantity" class="text-right tabular-nums" aria-label="Quantity"/></atom:table.cell>
                                     <atom:table.cell numeric class="min-w-28"><atom:input :value="$money($price)" class="text-right tabular-nums" aria-label="Unit price"/></atom:table.cell>
-                                    <atom:table.cell class="min-w-36" x-data="{ tax: '{{ $index === 2 ? 'sst-8' : 'none' }}' }">
+                                    {{-- a real page: <atom:select wire:model="lines.{{ $index }}.tax"/>. Here the row's own Alpine state, seeded from data-tax so x-data stays a constant --}}
+                                    <atom:table.cell class="min-w-36" x-data="{ tax: null }" x-init="tax = $el.dataset.tax" data-tax="{{ $index === 2 ? 'sst-8' : 'none' }}">
                                         <atom:select aria-label="Tax" x-model="tax" :clearable="false" :options="[
                                             ['value' => 'none', 'label' => 'No tax'],
                                             ['value' => 'sst-8', 'label' => 'Tax 8%'],

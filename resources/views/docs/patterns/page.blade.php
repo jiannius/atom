@@ -12,7 +12,7 @@ $rows = [
     ['INV-0410', 'Customer C', 'Sent', '2,115.50'],
     ['INV-0409', 'Customer D', 'Draft', '320.00'],
 ];
-$tones = ['Paid' => 'success', 'Overdue' => 'danger', 'Sent' => 'info', 'Draft' => 'neutral'];
+$tones = ['Paid' => 'success', 'Overdue' => 'danger', 'Sent' => 'neutral', 'Draft' => 'neutral'];
 @endphp
 
 <atom:page data-testid="pattern-page">

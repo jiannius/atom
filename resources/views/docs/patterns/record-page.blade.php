@@ -56,12 +56,15 @@ $stages = [
 $tab = request()->query('tab', 'overview');
 $tab = is_string($tab) && in_array($tab, ['overview', 'tasks', 'parts', 'activity', 'files', 'log', 'messages'], true) ? $tab : 'overview';
 
+// a done job has no open task left
+$closing = $status === 'done' ? 'Done' : 'Open';
 $tasks = [
     ['T-1', 'Isolate the pump', 'Done', 'Ana', '2.0'],
     ['T-2', 'Replace the seal kit', 'Done', 'Ben', '3.5'],
-    ['T-3', 'Pressure test', 'Open', 'Ana', '1.5'],
-    ['T-4', 'Sign-off with the customer', 'Open', 'Ben', '0.5'],
+    ['T-3', 'Pressure test', $closing, 'Ana', '1.5'],
+    ['T-4', 'Sign-off with the customer', $closing, 'Ben', '0.5'],
 ];
+$openTasks = count(array_filter($tasks, fn ($task) => $task[2] !== 'Done'));
 $hours = array_sum(array_column($tasks, 4));
 
 // the facts of the rail; a field with no value is filtered out, so it is never printed as a dash
@@ -125,7 +128,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
         <atom:page.header
         title="Work order WO-1042"
         :facts="[
-            ['label' => 'Customer', 'value' => 'Customer A'],
+            ['label' => 'Customer', 'value' => 'Lakeside Foods'],
             ['label' => 'Site', 'value' => 'Unit 7, Harbour Park'],
             ['label' => 'Due', 'value' => '29 Jul'],
             ['label' => 'Ref', 'value' => 'PO-88213', 'mono' => true],
@@ -165,9 +168,9 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
 
         <atom:stat.group>
             <atom:stat label="Labour hours" value="7.5" breakdown="of 10 quoted" delta="-2.5" inverse/>
-            <atom:stat label="Parts cost" prefix="RM" value="1,280.00" breakdown="7 parts" delta="+6%" inverse/>
+            <atom:stat label="Parts cost" prefix="RM" value="0.00" breakdown="none added yet"/>
             <atom:stat label="Quoted" prefix="RM" value="4,200.00" breakdown="approved 3 Oct"/>
-            <atom:stat label="Open tasks" value="2" href="?tab=tasks" breakdown="of 4"/>
+            <atom:stat label="Open tasks" :value="(string) $openTasks" href="?tab=tasks" breakdown="of 4"/>
         </atom:stat.group>
 
         <atom:page.tabs label="Job sections" :tabs="[
@@ -188,6 +191,20 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                         <atom:button size="sm" icon="add">Add part</atom:button>
                     </x-slot:action>
                 </atom:empty>
+            </atom:card>
+        @elseif ($tab === 'activity' && request()->query('view') === 'all')
+            {{-- "All changes" from the rail: the whole history, newest first --}}
+            <atom:card data-testid="record-history">
+                <h2 class="m-0 mb-3 text-sm font-semibold">All changes</h2>
+
+                <atom:timeline label="Work order history" class="max-w-xl">
+                    <atom:timeline.item wire:key="h-1" title="T-3 Pressure test" body="added to the job" actor="Ana" time="Today, 09:20" tone="info"/>
+                    <atom:timeline.item wire:key="h-2" title="T-2 Replace the seal kit" body="marked done" actor="Ben" time="Today, 08:41" tone="success"/>
+                    <atom:timeline.item wire:key="h-3" title="T-1 Isolate the pump" body="marked done" actor="Ana" time="Yesterday, 17:05" tone="success"/>
+                    <atom:timeline.item wire:key="h-4" title="Seal kit" body="put on back order" actor="Ana" time="Yesterday, 16:30" tone="warning"/>
+                    <atom:timeline.item wire:key="h-5" title="Due date" body="set to 29 Jul" actor="Ben" time="Yesterday, 16:12"/>
+                    <atom:timeline.item wire:key="h-6" title="WO-1042" body="opened from quote Q-0231" actor="Ana" time="Yesterday, 16:02"/>
+                </atom:timeline>
             </atom:card>
         @elseif ($tab === 'activity')
             {{-- an error: it could not load; the next step is to try again --}}
@@ -225,9 +242,9 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                 <h2 class="m-0 mb-3 text-sm font-semibold">Customer thread</h2>
 
                 <atom:timeline kind="message" label="Customer thread" class="max-w-xl">
-                    <atom:timeline.item wire:key="msg-1" speaker="Mira (Customer A)" time="09:02" body="Can someone confirm the pressure test is still on for Tuesday?"/>
+                    <atom:timeline.item wire:key="msg-1" speaker="Mira (Lakeside Foods)" time="09:02" body="Can someone confirm the pressure test is still on for Tuesday?"/>
                     <atom:timeline.item wire:key="msg-2" speaker="You" side="end" time="09:10" body="Yes. We are waiting on one seal kit and will confirm the time by end of day."/>
-                    <atom:timeline.item wire:key="msg-3" speaker="Mira (Customer A)" time="09:14" body="Thanks, that works."/>
+                    <atom:timeline.item wire:key="msg-3" speaker="Mira (Lakeside Foods)" time="09:14" body="Thanks, that works."/>
 
                     <x-slot:composer>
                         <form x-data x-on:submit.prevent class="flex items-start gap-2">
@@ -310,7 +327,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                         <atom:card class="grid gap-3">
                             <h3 class="m-0 text-xs font-medium text-fg-subtle">Customer</h3>
                             <atom:dd.group>
-                                <atom:dd label="Name">Customer A Sdn Bhd</atom:dd>
+                                <atom:dd label="Name">Lakeside Foods Sdn Bhd</atom:dd>
                                 <atom:dd label="Contact">Mira Tan</atom:dd>
                                 <atom:dd label="Phone">012-345 6789</atom:dd>
                             </atom:dd.group>
@@ -349,7 +366,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                         <atom:card class="grid gap-3" data-testid="record-activity">
                             <div class="flex items-baseline justify-between gap-3">
                                 <h3 class="m-0 text-xs font-medium text-fg-subtle">Activity</h3>
-                                <atom:link href="?tab=activity" class="text-xs">All changes</atom:link>
+                                <atom:link href="?tab=activity&view=all" class="text-xs">All changes</atom:link>
                             </div>
 
                             <atom:timeline label="Work order activity">
