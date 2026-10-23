@@ -166,7 +166,8 @@ for (const tw of ['floor', 'latest']) {
       test('a two-line cell (a name and a 12px line under it) keeps its padding off the row borders', async ({ page }) => {
         await list(page)
 
-        const cell = page.locator('[data-atom-table] tbody tr').first().locator('td').nth(1)
+        // the first column is the checkbox
+        const cell = page.locator('[data-atom-table] tbody tr').first().locator('td').nth(2)
         const text = await textBox(cell.locator('> div').first())
         const sub = await textBox(cell.locator('> div').nth(1))
         const outer = await box(cell)
@@ -186,7 +187,7 @@ for (const tw of ['floor', 'latest']) {
         await list(page)
 
         const th = page.locator('[data-atom-table] thead th', { hasText: 'Amount (RM)' })
-        const cells = page.locator('[data-atom-table] tbody tr td:nth-child(5)')
+        const cells = page.locator('[data-atom-table] tbody tr td:nth-child(6)')
         const s = await styles(cells.first(), ['text-align', 'font-variant-numeric'])
         const head = await textBox(th.locator('> div'))
         const right = []

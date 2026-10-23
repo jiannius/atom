@@ -5,9 +5,14 @@
     'dismissible' => true,
     'escapable' => true,
     'closeable' => true,
+    'method' => 'submit',
 ])
 
+{{-- `submit` is the Save button's LABEL; `method` names the component method the form calls (default `submit`), and is also the
+     method whose run the button's loading state follows. A name that is not a plain method name falls back to `submit`. --}}
 @php
+$method = is_string($method) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $method) ? $method : 'submit';
+
 $width = match ((string) $cols) {
     'auto', '2' => 'max-w-2xl',
     '3' => 'max-w-4xl',
@@ -16,7 +21,7 @@ $width = match ((string) $cols) {
 @endphp
 
 <atom:modal :name="$name" :dismissible="$dismissible" :escapable="$escapable" :closeable="$closeable" {{ $attributes->class($width) }}>
-    <atom:form>
+    <atom:form wire:submit="{{ $method }}">
         <atom:form.grid :cols="$cols">
             {{ $slot }}
         </atom:form.grid>

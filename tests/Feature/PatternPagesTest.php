@@ -775,3 +775,73 @@ describe('one primary action, V4-2c', function () {
         expect($primaries(view('atom::docs.patterns.slide-over-form')->render()))->toHaveCount(2);
     });
 });
+
+// The docs inside a host: its own stylesheet is loaded when it has a Vite build for it, so the utilities atom's pages use exist.
+describe('docs vite entries', function () {
+    beforeEach(function () {
+        $this->public = sys_get_temp_dir().'/atom-docs-vite-'.uniqid();
+        mkdir($this->public.'/build', 0777, true);
+        app()->usePublicPath($this->public);
+    });
+
+    afterEach(function () {
+        foreach (['/hot', '/build/manifest.json'] as $file) {
+            @unlink($this->public.$file);
+        }
+
+        @rmdir($this->public.'/build');
+        @rmdir($this->public);
+    });
+
+    it('loads nothing without a Vite build, as in the package\'s own rig', function () {
+        expect((new Docs)->vite())->toBe([]);
+    });
+
+    it('loads the host\'s stylesheet once its manifest names it', function () {
+        file_put_contents($this->public.'/build/manifest.json', json_encode(['resources/css/app.css' => ['file' => 'assets/app.css'], 'resources/js/app.js' => ['file' => 'assets/app.js']]));
+
+        expect((new Docs)->vite())->toBe(['resources/css/app.css']);
+    });
+
+    it('skips an entry the manifest lacks, and a manifest that is not JSON', function () {
+        file_put_contents($this->public.'/build/manifest.json', json_encode(['resources/js/app.js' => ['file' => 'assets/app.js']]));
+        expect((new Docs)->vite())->toBe([]);
+
+        file_put_contents($this->public.'/build/manifest.json', 'not json');
+        expect((new Docs)->vite())->toBe([]);
+    });
+
+    it('loads the entries while a dev server is running', function () {
+        file_put_contents($this->public.'/hot', 'http://localhost:5173');
+
+        expect((new Docs)->vite())->toBe(['resources/css/app.css']);
+    });
+
+    it('takes the entries from config, an empty list turns it off', function () {
+        file_put_contents($this->public.'/hot', 'http://localhost:5173');
+
+        config(['atom.docs.vite' => ['resources/css/app.css', 'resources/css/extra.css']]);
+        expect((new Docs)->vite())->toBe(['resources/css/app.css', 'resources/css/extra.css']);
+
+        config(['atom.docs.vite' => []]);
+        expect((new Docs)->vite())->toBe([]);
+
+        config(['atom.docs.vite' => ['resources/css/app.css', 42, null]]);
+        expect((new Docs)->vite())->toBe(['resources/css/app.css']);
+    });
+
+    it('is the stylesheet the docs layout and the pattern pages ask for', function () {
+        file_put_contents($this->public.'/hot', 'http://localhost:5173');
+        registerDocsRoutes();
+
+        // the layout and a pattern page carry a Vite tag for the entry, which the dev server's hot file answers
+        expect(renderBlade('<atom:docs.layout>x</atom:docs.layout>'))->toContain('resources/css/app.css')
+            ->and(view('atom::docs.patterns.list-page')->render())->toContain('resources/css/app.css');
+    });
+
+    it('scans the docs and the patterns for utilities, so a host build contains them', function () {
+        $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/atom.tailwind.css');
+
+        expect($css)->toMatch('#@source "\.\./views/\{docs,mail\}/\*\*/\*\.blade\.php";#');
+    });
+});

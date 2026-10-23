@@ -21,6 +21,8 @@
      Open it as ?open=1 to have the slide-over open on load. --}}
 @php
 $styles = $styles ?? [];
+// a host's own stylesheet when it has one (config atom.docs.vite), so the page is styled inside the host; none in the test rig
+$vite = $vite ?? app(\Jiannius\Atom\Services\Docs::class)->vite();
 $shell = ($shell ?? 'sidebar') === 'header' ? 'header' : 'sidebar';
 
 $customers = [
@@ -33,7 +35,7 @@ $customers = [
 $open = request()->query('open') === '1';
 @endphp
 
-<x-dynamic-component :component="'atom::layouts.'.$shell" title="Slide-over form" :vite="[]" :styles="$styles" :dark="$dark ?? true">
+<x-dynamic-component :component="'atom::layouts.'.$shell" title="Slide-over form" :vite="$vite" :styles="$styles" :dark="$dark ?? true">
     <x-slot:brand>
         <a href="?page=dashboard" @class([
             'flex items-center gap-[9px] px-2 pb-3 pt-1.5' => $shell === 'sidebar',

@@ -342,3 +342,29 @@ describe('table, the rest of its parts', function () {
         expect($html)->toContain('motion-safe:animate-pulse')->not->toMatch('/(?<!motion-safe:)animate-pulse/');
     });
 });
+
+describe('callout accent and actions', function () {
+    it('is the accent tint, with the accent ink for the heading and the icon', function () {
+        $html = renderBlade('<atom:callout variant="accent" heading="Decide" content="x" />');
+        $classes = domClasses(domQuery($html, '//*[@x-data]')[0]);
+
+        expect($classes)->toContain('bg-accent-soft', 'border-accent-ink/25', '[&_[data-atom-icon]]:text-accent-ink', '[&_[data-atom-callout-heading]]:text-accent-ink');
+    });
+
+    it('draws the actions slot as a row of buttons under the text, and nothing without it', function () {
+        $with = renderBlade('<atom:callout variant="accent" heading="Decide" content="Body"><x-slot:actions><atom:button size="sm">Send back</atom:button><atom:button size="sm" variant="primary">Apply</atom:button></x-slot:actions></atom:callout>');
+        $without = renderBlade('<atom:callout variant="accent" heading="Decide" content="Body" />');
+
+        expect(domQuery($with, '//*[@data-atom-callout-actions]//*[@data-atom-button]'))->toHaveCount(2)
+            ->and(domClasses(domQuery($with, '//*[@data-atom-callout-actions]')[0]))->toContain('flex', 'flex-wrap')
+            // the row follows the body, inside the text column
+            ->and(domQuery($with, '//*[@data-atom-callout-heading]/following-sibling::*[@data-atom-callout-actions]'))->toHaveCount(1)
+            ->and(domQuery($without, '//*[@data-atom-callout-actions]'))->toBeEmpty();
+    });
+
+    it('takes the actions in any tone', function (string $variant) {
+        $html = renderBlade('<atom:callout variant="'.$variant.'" heading="h"><x-slot:actions><atom:button size="sm">Go</atom:button></x-slot:actions></atom:callout>');
+
+        expect(domQuery($html, '//*[@data-atom-callout-actions]//*[@data-atom-button]'))->toHaveCount(1);
+    })->with(['info', 'success', 'warning', 'danger', 'accent']);
+});

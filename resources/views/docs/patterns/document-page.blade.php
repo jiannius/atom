@@ -19,6 +19,8 @@
        rendered in a @foreach (or an @if that changes) carry a `wire:key`, as here: their folded state is Alpine's. --}}
 @php
 $styles = $styles ?? [];
+// a host's own stylesheet when it has one (config atom.docs.vite), so the page is styled inside the host; none in the test rig
+$vite = $vite ?? app(\Jiannius\Atom\Services\Docs::class)->vite();
 $shell = ($shell ?? 'sidebar') === 'header' ? 'header' : 'sidebar';
 
 $status = request()->query('status', 'overdue');
@@ -46,7 +48,7 @@ $balance = $total - $received;
 $money = fn (float $amount) => number_format($amount, 2);
 @endphp
 
-<x-dynamic-component :component="'atom::layouts.'.$shell" title="Document page" :vite="[]" :styles="$styles" :dark="$dark ?? true">
+<x-dynamic-component :component="'atom::layouts.'.$shell" title="Document page" :vite="$vite" :styles="$styles" :dark="$dark ?? true">
     <x-slot:brand>
         <a href="?page=dashboard" @class([
             'flex items-center gap-[9px] px-2 pb-3 pt-1.5' => $shell === 'sidebar',

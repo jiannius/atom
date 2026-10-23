@@ -7,17 +7,19 @@
     'subheading' => null,
 ])
 
-{{-- Three kinds, each with a next step in the `action` slot: `first-use` (nothing created yet: the accent, and a button
+{{-- Four kinds, each with a next step in the `action` slot (a `done` queue needs none): `first-use` (nothing created yet: the accent, and a button
      that creates the first one), `no-results` (the default: a search or filter found nothing: say how to widen it) and
-     `error` (it failed to load: say how to try again). `icon`, `heading` and `subheading` override a kind's own; a
+     `error` (it failed to load: say how to try again) and `done` (a work queue that is cleared: a success-toned check, "All caught
+     up"; there is nothing to do, so no action is needed). `icon`, `heading` and `subheading` override a kind's own; a
      default slot replaces the heading and subheading. The large state draws its icon in once (CSS keyframes in atom.css,
      which skip prefers-reduced-motion); `size="sm"` and `subtle` never animate. --}}
 @php
-$kind = in_array($kind, ['first-use', 'no-results', 'error'], true) ? $kind : 'no-results';
+$kind = in_array($kind, ['first-use', 'no-results', 'error', 'done'], true) ? $kind : 'no-results';
 
 [$kindIcon, $kindHeading, $kindSubheading] = match ($kind) {
     'first-use' => ['sparkles', 'Nothing here yet', 'Add the first one to get started.'],
     'error' => ['warning', 'Something went wrong', 'It could not be loaded. Try again in a moment.'],
+    'done' => ['check-circle', 'All caught up', 'Nothing is waiting for you.'],
     default => ['inbox', 'No Results', 'We could not find anything.'],
 };
 
@@ -39,7 +41,7 @@ $hasAction = isset($action) && $action->isNotEmpty();
 @elseif ($size === 'sm')
     <div {{ $attributes->class('flex items-center justify-center w-full') }} data-atom-empty data-kind="{{ $kind }}">
         <div class="flex justify-center gap-3 py-5">
-            <div class="flex shrink-0 justify-center text-fg-subtle">
+            <div @class(['flex shrink-0 justify-center', 'text-success-fg' => $kind === 'done', 'text-fg-subtle' => $kind !== 'done'])>
                 <x-dynamic-component :component="'atom::icon.'.$icon" class="size-10" />
             </div>
 
@@ -66,7 +68,7 @@ $hasAction = isset($action) && $action->isNotEmpty();
     @endphp
 
     <div {{ $attributes->class('flex flex-col items-center justify-center gap-3 px-4 py-10 text-center') }} data-atom-empty data-kind="{{ $kind }}">
-        <div @class(['text-accent-ink' => $kind === 'first-use', 'text-fg-subtle' => $kind !== 'first-use']) data-atom-empty-icon>
+        <div @class(['text-accent-ink' => $kind === 'first-use', 'text-success-fg' => $kind === 'done', 'text-fg-subtle' => ! in_array($kind, ['first-use', 'done'], true)]) data-atom-empty-icon>
             {!! $svg !!}
         </div>
 

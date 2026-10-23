@@ -45,6 +45,10 @@ $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ?
         </atom:empty>
     </div>
 
+    <div class="rounded-panel border bg-surface" data-testid="empty-done">
+        <atom:empty kind="done"/>
+    </div>
+
     <div class="rounded-panel border bg-surface" data-testid="empty-sm">
         <atom:empty size="sm" kind="first-use"/>
     </div>

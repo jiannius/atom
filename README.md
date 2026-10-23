@@ -92,6 +92,14 @@ The package's own JS/CSS bundle is served from `/atom/{file}` (immutable, hashed
 
 With the package installed and `APP_ENV=local`, visit **`/atom/docs`** in your app for a browsable directory of every component: live previews, copyable code snippets, auto-generated prop tables, and searchable icon/logo galleries. The routes are not registered outside the local environment.
 
+**Styled inside your app.** The docs and the pattern pages are plain Tailwind markup, so they need your Tailwind build to contain the utilities they use. They load your Vite stylesheet when you have one: `config('atom.docs.vite')` (default `['resources/css/app.css']`) names the entries, and an entry is loaded only when Vite can serve it, that is a dev server is running (`public/hot`) or the entry is in `public/build/manifest.json`; otherwise nothing is loaded, as before. Set it to `[]` to load none. `atom.tailwind.css` already scans `resources/views/docs/` for utilities (its `@source` line), so your build includes them with no line of your own. Add the key to your own `config/atom.php`:
+
+```php
+return [
+    'docs' => ['vite' => ['resources/css/app.css']],
+];
+```
+
 ### Service provider entry points (reference)
 
 If something feels magic, the answer is almost always in `src/AtomServiceProvider.php` (boot order: routes → migrations → translations → views → components → tag compiler → date facade swap → macros → asset routes → `/atom/action/{name}` POST endpoint).

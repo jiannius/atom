@@ -93,6 +93,12 @@ $pager = fn (int $page) => new \Illuminate\Pagination\LengthAwarePaginator(colle
         </div>
 
         <div class="grid gap-3" data-testid="callouts">
+            <atom:callout variant="accent" heading="Staged change is ready for your decision" content="Ana staged 3 edits to this record." data-testid="callout-accent">
+                <x-slot:actions>
+                    <atom:button size="sm" data-testid="callout-accent-secondary">Send back</atom:button>
+                    <atom:button size="sm" variant="primary" data-testid="callout-accent-primary">Apply changes</atom:button>
+                </x-slot:actions>
+            </atom:callout>
             <atom:callout variant="info" heading="Heads up" content="A new version is available." data-testid="callout-info"/>
             <atom:callout variant="success" heading="Saved" content="Your changes have been saved." data-testid="callout-success"/>
             <atom:callout variant="warning" heading="Careful" content="This affects your billing." data-testid="callout-warning"/>

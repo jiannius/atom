@@ -2,9 +2,11 @@
      layout tag differs. Use it for an app with about six or fewer sections, or a user who can open one or two. --}}
 @php
 $styles = $styles ?? [];
+// a host's own stylesheet when it has one (config atom.docs.vite), so the page is styled inside the host; none in the test rig
+$vite = $vite ?? app(\Jiannius\Atom\Services\Docs::class)->vite();
 @endphp
 
-<atom:layouts.header title="App shell (top nav)" :vite="[]" :styles="$styles" :dark="$dark ?? true">
+<atom:layouts.header title="App shell (top nav)" :vite="$vite" :styles="$styles" :dark="$dark ?? true">
     <x-slot:brand>
         <a href="?page=dashboard" class="flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight">
             <div class="flex size-[22px] items-center justify-center rounded-nav bg-accent text-accent-foreground">

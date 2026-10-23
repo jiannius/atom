@@ -86,11 +86,11 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
                 @endif
             </span>
 
-            <span @class(['min-w-0 truncate font-medium', 'text-fg-muted' => $state === 'pending', 'text-fg' => $state !== 'pending']) data-atom-timeline-title>{{ $text($title) }}</span>
+            <span @class(['min-w-0 truncate font-medium leading-5', 'text-fg-muted' => $state === 'pending', 'text-fg' => $state !== 'pending']) data-atom-timeline-title>{{ $text($title) }}</span>
         </div>
 
         @if ($pathMeta)
-            <div class="min-w-0 ps-6 text-xs tabular-nums [overflow-wrap:anywhere] {{ $state === 'current' ? 'text-fg-muted' : 'text-fg-subtle' }}" data-atom-timeline-meta>
+            <div class="min-w-0 ps-6 text-xs leading-[18px] tabular-nums [overflow-wrap:anywhere] {{ $state === 'current' ? 'text-fg-muted' : 'text-fg-subtle' }}" data-atom-timeline-meta>
                 @if ($timeText !== '')
                     @if ($timeAttr)
                         <time datetime="{{ $timeAttr }}">{{ $timeText }}</time>
@@ -107,7 +107,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
         @endif
 
         @if ($hasSlot)
-            <div class="min-w-0 ps-6 text-xs text-fg-muted [overflow-wrap:anywhere]" data-atom-timeline-body>{{ $slot }}</div>
+            <div class="min-w-0 ps-6 text-xs leading-[18px] text-fg-muted [overflow-wrap:anywhere]" data-atom-timeline-body>{{ $slot }}</div>
         @endif
     </li>
 @elseif ($kind === 'message')

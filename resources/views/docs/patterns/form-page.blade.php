@@ -23,6 +23,8 @@
      `<atom:form wire:submit="save">`. --}}
 @php
 $styles = $styles ?? [];
+// a host's own stylesheet when it has one (config atom.docs.vite), so the page is styled inside the host; none in the test rig
+$vite = $vite ?? app(\Jiannius\Atom\Services\Docs::class)->vite();
 $shell = ($shell ?? 'sidebar') === 'header' ? 'header' : 'sidebar';
 
 $layout = request()->query('layout', 'aside');
@@ -39,7 +41,7 @@ $tax = round(12 * 95.00 * 0.08, 2);
 $money = fn (float $amount) => number_format($amount, 2);
 @endphp
 
-<x-dynamic-component :component="'atom::layouts.'.$shell" title="Form page" :vite="[]" :styles="$styles" :dark="$dark ?? true">
+<x-dynamic-component :component="'atom::layouts.'.$shell" title="Form page" :vite="$vite" :styles="$styles" :dark="$dark ?? true">
     <x-slot:brand>
         <a href="?page=dashboard" @class([
             'flex items-center gap-[9px] px-2 pb-3 pt-1.5' => $shell === 'sidebar',

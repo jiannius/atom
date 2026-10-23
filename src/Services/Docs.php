@@ -53,6 +53,37 @@ class Docs
     ];
 
     /**
+     * The Vite entries the docs pages load: the host's own stylesheet, so the utilities atom's pages use exist when they are
+     * viewed inside a host app. `config('atom.docs.vite')` names them (default `resources/css/app.css`; an empty list loads
+     * none). An entry is loaded only when the host has a Vite build for it (a dev server running, or the entry in the build's
+     * manifest): without one, as in the package's own test rig, nothing is loaded and the page is exactly as it was.
+     *
+     * @return array<int, string>
+     */
+    public function vite() : array
+    {
+        $entries = array_values(array_filter((array) config('atom.docs.vite', ['resources/css/app.css']), 'is_string'));
+
+        if (! $entries) {
+            return [];
+        }
+
+        if (is_file(public_path('hot'))) {
+            return $entries;
+        }
+
+        $manifest = public_path('build/manifest.json');
+
+        if (! is_file($manifest)) {
+            return [];
+        }
+
+        $built = json_decode((string) file_get_contents($manifest), true);
+
+        return is_array($built) ? array_values(array_filter($entries, fn ($entry) => array_key_exists($entry, $built))) : [];
+    }
+
+    /**
      * All top-level components, sorted by name
      */
     public function components() : Collection

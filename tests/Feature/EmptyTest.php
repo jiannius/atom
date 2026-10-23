@@ -128,3 +128,34 @@ describe('empty', function () {
         expect(domQuery($html, '//*[@data-atom-empty]//i[@id="act"]'))->toHaveCount(1);
     })->with(['sm' => ['size="sm"'], 'subtle' => ['subtle']]);
 });
+
+describe('empty done', function () {
+    it('is a cleared queue: a success-toned check, All caught up, and no action needed', function () {
+        $html = renderBlade('<atom:empty kind="done" />');
+        $root = domQuery($html, '//*[@data-atom-empty]')[0];
+
+        expect($root->getAttribute('data-kind'))->toBe('done')
+            ->and($root->textContent)->toContain('All caught up')->toContain('Nothing is waiting for you.')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-empty-icon]')[0]))->toContain('text-success-fg')
+            ->and(domQuery($html, '//*[@data-atom-empty-action]'))->toBeEmpty()
+            // drawn in like the others: every shape of the icon carries pathLength
+            ->and($html)->toContain('pathLength="1"');
+    });
+
+    it('takes a heading, a subheading and an action like the other kinds', function () {
+        $html = renderBlade('<atom:empty kind="done" heading="Inbox zero" subheading="Go and have a coffee."><x-slot:action><a id="next" href="/x">Review history</a></x-slot:action></atom:empty>');
+
+        expect($html)->toContain('Inbox zero')->toContain('Go and have a coffee.')
+            ->and(domQuery($html, '//*[@data-atom-empty-action]//a[@id="next"]'))->toHaveCount(1);
+    });
+
+    it('is success-toned in the small size too, and does not animate there', function () {
+        $html = renderBlade('<atom:empty kind="done" size="sm" />');
+
+        expect($html)->toContain('text-success-fg')->toContain('size-10')->not->toContain('data-atom-empty-icon')->not->toContain('pathLength');
+    });
+
+    it('is in the docs demo of the kinds', function () {
+        expect(view('atom::docs.demos.empty.kinds')->render())->toContain('data-kind="done"');
+    });
+});

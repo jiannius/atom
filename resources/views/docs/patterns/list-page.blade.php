@@ -26,6 +26,8 @@
      Open it as ?view=all|unpaid|overdue|paid|draft to see the views filter the rows. --}}
 @php
 $styles = $styles ?? [];
+// a host's own stylesheet when it has one (config atom.docs.vite), so the page is styled inside the host; none in the test rig
+$vite = $vite ?? app(\Jiannius\Atom\Services\Docs::class)->vite();
 $shell = ($shell ?? 'sidebar') === 'header' ? 'header' : 'sidebar';
 
 // number, customer, what it is for, issued, due, total, still owed, state, label
@@ -61,7 +63,7 @@ $tones = ['paid' => 'success', 'overdue' => 'danger', 'sent' => 'neutral', 'draf
 $money = fn (float $amount) => number_format($amount, 2);
 @endphp
 
-<x-dynamic-component :component="'atom::layouts.'.$shell" title="List page" :vite="[]" :styles="$styles" :dark="$dark ?? true">
+<x-dynamic-component :component="'atom::layouts.'.$shell" title="List page" :vite="$vite" :styles="$styles" :dark="$dark ?? true">
     <x-slot:brand>
         <a href="?page=dashboard" @class([
             'flex items-center gap-[9px] px-2 pb-3 pt-1.5' => $shell === 'sidebar',

@@ -262,6 +262,34 @@ describe('form.actions', function () {
     });
 });
 
+describe('form.modal method', function () {
+    beforeEach(fn () => view()->share('errors', new \Illuminate\Support\ViewErrorBag));
+
+    it('calls submit() by default, and the method it is given otherwise', function () {
+        $default = renderBlade('<atom:form.modal name="a"><input name="x"/></atom:form.modal>');
+        $named = renderBlade('<atom:form.modal name="a" method="saveDomain"><input name="x"/></atom:form.modal>');
+
+        expect(domQuery($default, '//form[@*[name()="wire:submit"]="submit"]'))->toHaveCount(1)
+            ->and(domQuery($named, '//form[@*[name()="wire:submit"]="saveDomain"]'))->toHaveCount(1)
+            ->and(domQuery($named, '//form[@*[name()="wire:submit"]="submit"]'))->toBeEmpty()
+            // the loading state follows the method that runs
+            ->and(domQuery($named, '//form[@*[name()="wire:target"]="saveDomain"]'))->toHaveCount(1);
+    });
+
+    it('keeps the Save label in `submit`, and does not leak method onto the modal', function () {
+        $html = renderBlade('<atom:form.modal name="a" submit="Publish" method="publish"><input name="x"/></atom:form.modal>');
+
+        expect(domQuery($html, '//button[@type="submit"]')[0]->textContent)->toContain('Publish')
+            ->and(domQuery($html, '//*[@method="publish"]'))->toBeEmpty();
+    });
+
+    it('falls back to submit for anything that is not a plain method name', function (string $method) {
+        $html = renderBlade('<atom:form.modal name="a" :method="$method"><input name="x"/></atom:form.modal>', ['method' => $method]);
+
+        expect(domQuery($html, '//form[@*[name()="wire:submit"]="submit"]'))->toHaveCount(1);
+    })->with(['save()', 'a b', '1x', 'x;alert(1)', '']);
+});
+
 describe('form.modal', function () {
     beforeEach(fn () => view()->share('errors', new ViewErrorBag));
 

@@ -115,6 +115,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/table-wide-page', fn () => view('atom::e2e.table-wide-page'));
         Route::middleware('web')->get('/atom/e2e/table-views', fn () => view('atom::e2e.table-views'));
         Route::middleware('web')->get('/atom/e2e/timeline', fn () => view('atom::e2e.timeline'));
+        Route::middleware('web')->get('/atom/e2e/form-extras', fn () => view('atom::e2e.form-extras'));
+        Route::middleware('web')->get('/atom/e2e/tabs-overflow', fn () => view('atom::e2e.tabs-overflow'));
         Route::middleware('web')->get('/atom/e2e/timeline-wrap', fn () => view('atom::e2e.timeline-wrap'));
         Route::middleware('web')->get('/atom/e2e/slide-over-form', fn () => view('atom::e2e.slide-over-form'));
         Route::middleware('web')->get('/atom/e2e/page-width', fn () => view('atom::e2e.page-width'));

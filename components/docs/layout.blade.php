@@ -2,9 +2,14 @@
     'title' => null,
 ])
 
+@php
+// the host's own stylesheet when it has one (config atom.docs.vite), so the docs are styled inside a host; none in the test rig
+$vite = app(\Jiannius\Atom\Services\Docs::class)->vite();
+@endphp
+
 {{-- `dark` is opt-in now, and the docs are where components get reviewed in
      both themes — so this one asks for it explicitly. --}}
-<atom:layouts.sidebar :title="trim(($title ? $title.' — ' : '').'Atom Docs')" :vite="[]" dark>
+<atom:layouts.sidebar :title="trim(($title ? $title.' — ' : '').'Atom Docs')" :vite="$vite" dark>
     <x-slot:brand>
         <a href="{{ route('atom.docs') }}" class="me-5 flex items-center gap-2 px-1">
             <div class="flex aspect-square size-8 items-center justify-center rounded-nav bg-accent text-accent-foreground">

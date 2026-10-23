@@ -1427,6 +1427,15 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
     display: none;
 }
 
+/* A record's tab strip scrolls sideways when it must and never vertically. The utilities on the list (`overflow-x-auto
+   overflow-y-hidden`) say the same, but a host build that lacks `overflow-y-hidden` would leave the y axis `visible`, which the
+   browser computes to `auto` beside `overflow-x: auto`: a vertical scrollbar thumb inside the strip, wherever the 1px the underline
+   overlaps is counted. So the axis is pinned here too, outside any Tailwind build. */
+[data-atom-page-tabs] > ul {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
 /* empty: the icon's strokes draw in once, about a second. The component gives every shape pathLength="1", so a dash of
    1 is the whole stroke. Only the large empty state carries the marker (not `sm`), and not under prefers-reduced-motion.
    The dash is dropped at the very end, so an icon that somehow had no pathLength is not left dashed. */
