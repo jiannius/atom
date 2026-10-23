@@ -358,8 +358,10 @@ describe('record page pattern', function () {
 
         expect(domQuery($html, '//*[@data-atom-shell-crumbs]//*[@data-testid="record-crumbs"]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-atom-page-crumbs]'))->toBeEmpty()
-            ->and(domQuery($html, '//*[@data-atom-shell-actions]//button[@aria-label="Previous job"]'))->toHaveCount(1)
-            ->and(domQuery($html, '//*[@data-atom-shell-actions]//button[@aria-label="Next job"]'))->toHaveCount(1)
+            // previous and next: the sidebar's bar has them on its right, the top nav beside the crumbs (its right side is the account)
+            ->and(domQuery($html, '//*[@data-atom-shell-'.($shell === 'header' ? 'crumbs' : 'actions').']//button[@aria-label="Previous job"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-'.($shell === 'header' ? 'crumbs' : 'actions').']//button[@aria-label="Next job"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//button[@aria-label="Next job"]'))->toHaveCount(1)
             // the nav is the partial the shells share
             ->and(domQuery($html, '//nav[@data-atom-navlist]//a[@href="?page=invoices"]'))->not->toBeEmpty();
     })->with(['sidebar', 'header']);

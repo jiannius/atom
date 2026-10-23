@@ -71,12 +71,22 @@ $money = fn (float $amount) => number_format($amount, 2);
             <atom:icon.right class="size-3.5"/>
             <span class="font-id font-medium text-fg">INV-0412</span>
         </div>
+
+        @if ($shell === 'header')
+            <span class="ms-2 flex items-center">
+                <atom:button variant="ghost" size="sm" icon="up" aria-label="Previous invoice"/>
+                <atom:button variant="ghost" size="sm" icon="down" aria-label="Next invoice"/>
+            </span>
+        @endif
     </x-slot>
 
+    {{-- previous and next: in the sidebar shell the bar's own right side, in the top-nav shell beside the crumbs (its right side is the account) --}}
+    @if ($shell === 'sidebar')
     <x-slot:actions>
         <atom:button variant="ghost" size="sm" icon="up" aria-label="Previous invoice"/>
         <atom:button variant="ghost" size="sm" icon="down" aria-label="Next invoice"/>
     </x-slot>
+    @endif
 
     <x-slot:dropdown>
         <atom:menu.item icon="settings">Account settings</atom:menu.item>

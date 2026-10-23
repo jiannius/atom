@@ -99,12 +99,22 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
             <atom:icon.right class="size-3.5"/>
             <span class="font-id font-medium text-fg">WO-1042</span>
         </div>
+
+        @if ($shell === 'header')
+            <span class="ms-2 flex items-center">
+                <atom:button variant="ghost" size="sm" icon="up" aria-label="Previous job"/>
+                <atom:button variant="ghost" size="sm" icon="down" aria-label="Next job"/>
+            </span>
+        @endif
     </x-slot>
 
+    {{-- previous and next: in the sidebar shell the bar's own right side, in the top-nav shell beside the crumbs (its right side is the account) --}}
+    @if ($shell === 'sidebar')
     <x-slot:actions>
         <atom:button variant="ghost" size="sm" icon="up" aria-label="Previous job"/>
         <atom:button variant="ghost" size="sm" icon="down" aria-label="Next job"/>
     </x-slot>
+    @endif
 
     <x-slot:dropdown>
         <atom:menu.item icon="settings">Account settings</atom:menu.item>
