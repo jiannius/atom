@@ -293,8 +293,7 @@ A component takes only the state it uses, each from its own trait in `Jiannius\A
 | Trait | Brings | Use it for |
 | --- | --- | --- |
 | `WithTable` | `$_table` (sort, checkboxes, select-all, max rows, show-trashed), the table methods, the `raw:` sort gate | `<atom:table>` and `toTable()` sorting, see [Table selection](#table-selection) |
-| `WithBreadcrumbs` | `$_breadcrumbs`, built on mount from your optional `breadcrumbs($crumbs)` method | `<atom:navlist.item>` | `href`, `icon`, `count`, `badge`, `current`. An item is current when the **path** of its `href` is the request's path: the host (an absolute URL on another domain than `APP_URL` still matches), a query string, a fragment and a trailing slash are ignored, a `*` in the path is a pattern (`/invoices/*`), and an `href` with no path (`?tab=x`, `#top`, none) is never current. `:current="true|false"` overrides it. |
-| `<atom:breadcrumbs>` |
+| `WithBreadcrumbs` | `$_breadcrumbs`, built on mount from your optional `breadcrumbs($crumbs)` method | `<atom:breadcrumbs>` |
 | `WithEditor` | `$_editor.images` and Livewire's `WithFileUploads` | `<atom:tiptap>` with image upload |
 | `WithRecaptcha` | `$_recaptcha` and `verifyRecaptcha()` | `<atom:form recaptcha>` |
 
@@ -531,6 +530,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:menu>` | `popover`. Child: `<atom:menu.item>`. |
 | `<atom:navlist>` | Nav container, drawn as a column in `layouts.sidebar` and as bar items in `layouts.header` (a group becomes a dropdown there). Children: `<atom:navlist.item>`, `<atom:navlist.group>`, `<atom:navlist.badge>`. Items carry `aria-current="page"` when current. |
 | `<atom:navlist.group>` | `heading`, `expandable`, `expanded` (default `true`), `hiddenIfEmpty` (default `true`), `persistKey`. See [Remembering collapsed groups](#remembering-collapsed-groups). |
+| `<atom:navlist.item>` | `href`, `icon`, `count`, `badge`, `current`. An item is current when the **path** of its `href` is the request's path: a query string, a fragment and a trailing slash are ignored, and a `*` in the path is a pattern (`/invoices/*`). An absolute `href` counts only when its host is the request's or `APP_URL`'s (the port is ignored), so a nav served from another domain than `APP_URL` still marks its item and an external link (`https://github.com/orders`) never does; `APP_URL`'s own path prefix is stripped. An `href` with no path (`?tab=x`, `#top`, none) is never current. `:current="true|false"` overrides it. |
 | `<atom:breadcrumbs>` | `heading` (default `true`). Reads `$_breadcrumbs` populated by your `breadcrumbs()` method. Wrap it in `@persist('breadcrumbs')` so the trail survives `wire:navigate`: without it each page starts a fresh trail from its own declared crumbs, so pushed crumbs don't accumulate and a crumb (or Back) returns to the bare URL, without the query string (filters, page) you left it with. |
 | `<atom:calendar>` | Month, week and day calendar with a toolbar. `wire:model` binds the anchor date (`Y-m-d`); with none it is static. Props: `items` (an array, or `fn ($from, $to) => ...` for the visible window), `views`, `view`, `week-start`, `weekend`, `max`, `time-format`, `date-format`, `selectable`, `draggable`, `resizable`, `slot-duration`, `scroll-time`, `now-indicator`, `month`, `name`. Events: `calendar-select`, `calendar-item-move`, `calendar-item-resize`, `calendar-item-click`. See [Calendar](#calendar). |
 | `<atom:separator>` | `align` (`left`, `center`, `right`). Slot becomes the label. |

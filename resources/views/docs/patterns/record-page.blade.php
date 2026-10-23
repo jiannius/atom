@@ -90,7 +90,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
     </x-slot>
 
     <x-slot:nav>
-        @include('atom::docs.patterns.nav')
+        @include('atom::docs.patterns.nav', ['navCurrent' => 'jobs'])
     </x-slot>
 
     <x-slot:crumbs>

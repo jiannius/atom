@@ -1,14 +1,17 @@
 {{-- The nav slot both app shells share. It is plain navlist markup and knows nothing about the shell it sits in: the
      sidebar draws it as a column, the top nav as bar items, and the group below as a dropdown. The host decides what
-     each user sees (wrap an item in @can as usual) and which shell holds it. --}}
+     each user sees (wrap an item in @can as usual) and which shell holds it. The page that includes it says which item is
+     current (`@include('atom::docs.patterns.nav', ['navCurrent' => 'jobs'])`); without one it reads ?page= (the shell pages), and
+     falls back to Invoices. A real nav does not need this: an item is current when its href's path is the request's path. --}}
 @php
-$page = request()->query('page', 'invoices');
+$page = $navCurrent ?? request()->query('page', 'invoices');
 $page = is_string($page) ? $page : 'invoices';
 @endphp
 
 <atom:navlist>
     <atom:navlist.item href="?page=dashboard" icon="dashboard" count="3" :current="$page === 'dashboard'">Dashboard</atom:navlist.item>
     <atom:navlist.item href="?page=invoices" icon="document" :current="$page === 'invoices'">Invoices</atom:navlist.item>
+    <atom:navlist.item href="?page=jobs" icon="list-check" :current="$page === 'jobs'">Jobs</atom:navlist.item>
     <atom:navlist.item href="?page=customers" icon="users" :current="$page === 'customers'">Customers</atom:navlist.item>
 
     <atom:navlist.group heading="Reports">

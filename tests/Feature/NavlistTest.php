@@ -249,11 +249,11 @@ describe('navlist.item', function () {
     });
 });
 
-// The current item is read from the PATH of its href, whatever host it names and whatever the request's host is.
+// The current item is read from the PATH of its href; an href that names another host never counts.
 describe('navlist current item', function () {
-    $current = function (string $url, string $href): bool {
+    $current = function (string $url, string $href, string $appUrl = 'http://app.test'): bool {
         app()->instance('request', \Illuminate\Http\Request::create($url));
-        config(['app.url' => 'http://app.test']);
+        config(['app.url' => $appUrl]);
 
         $html = Blade::render('<atom:navlist.item href="'.$href.'">Item</atom:navlist.item>');
 
@@ -266,13 +266,47 @@ describe('navlist current item', function () {
             ->and($current('http://app.test/', '/'))->toBeTrue();
     });
 
-    it('does not depend on the host the app is served from', function () use ($current) {
-        // the request comes in on another host than APP_URL, with an absolute href on either
+    it('follows the host the app is really served from, not only APP_URL', function () use ($current) {
+        // the request comes in on another domain than APP_URL: a relative href, and an absolute one on the request's own host, count
         expect($current('http://other.example/invoices', '/invoices'))->toBeTrue()
-            ->and($current('http://other.example/invoices', 'http://app.test/invoices'))->toBeTrue()
             ->and($current('http://other.example/invoices', 'https://other.example/invoices'))->toBeTrue()
-            ->and($current('http://other.example/invoices', 'https://elsewhere.example/invoices'))->toBeTrue()
+            ->and($current('http://other.example/invoices', 'http://app.test/invoices'))->toBeTrue()
             ->and($current('http://other.example/invoices', 'https://other.example/customers'))->toBeFalse();
+    });
+
+    it('never marks an external link, whatever its path', function () use ($current) {
+        expect($current('http://app.test/orders', 'https://github.com/orders'))->toBeFalse()
+            ->and($current('http://app.test/', 'https://docs.example.com/'))->toBeFalse()
+            ->and($current('http://other.example/invoices', 'https://elsewhere.example/invoices'))->toBeFalse()
+            // a look-alike host is a different host
+            ->and($current('http://app.test/orders', 'https://app.test.evil.example/orders'))->toBeFalse()
+            ->and($current('http://app.test/orders', '//github.com/orders'))->toBeFalse();
+    });
+
+    it('ignores the port when it compares hosts', function () use ($current) {
+        expect($current('http://127.0.0.1:8000/invoices', 'http://127.0.0.1:8000/invoices'))->toBeTrue()
+            ->and($current('http://127.0.0.1:8000/invoices', 'http://127.0.0.1/invoices'))->toBeTrue()
+            // APP_URL without the port, the request on :8000
+            ->and($current('http://127.0.0.1:8000/invoices', 'http://localhost/invoices', 'http://localhost'))->toBeTrue()
+            ->and($current('http://127.0.0.1:8000/invoices', 'http://localhost:9000/invoices', 'http://localhost'))->toBeTrue()
+            ->and($current('http://127.0.0.1:8000/invoices', 'http://localhost/customers', 'http://localhost'))->toBeFalse();
+    });
+
+    it('reads an app installed under a path from that path', function () use ($current) {
+        // APP_URL=http://app.test/sub: the request path is relative to the install
+        // (a real install gives a request path without the install's own path, which is what these requests are)
+        expect($current('http://app.test/invoices', 'http://app.test/sub/invoices', 'http://app.test/sub'))->toBeTrue()
+            ->and($current('http://app.test/invoices', '/sub/invoices', 'http://app.test/sub'))->toBeTrue()
+            ->and($current('http://app.test/invoices', 'http://app.test/sub/customers', 'http://app.test/sub'))->toBeFalse()
+            // only the path prefix is stripped: a sibling that starts with the same letters is not the install
+            ->and($current('http://app.test/invoices', '/subscriptions', 'http://app.test/sub'))->toBeFalse();
+    });
+
+    it('is an exact match under a locale prefix', function () use ($current) {
+        expect($current('http://app.test/en/invoices', '/en/invoices'))->toBeTrue()
+            ->and($current('http://app.test/en/invoices', '/ms/invoices'))->toBeFalse()
+            ->and($current('http://app.test/en/invoices', '/invoices'))->toBeFalse()
+            ->and($current('http://app.test/en', '/en'))->toBeTrue();
     });
 
     it('ignores a trailing slash and a query string, on the href and on the request', function () use ($current) {

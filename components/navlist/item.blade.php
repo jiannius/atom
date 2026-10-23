@@ -18,30 +18,42 @@ $square ??= $slot->isEmpty();
 
 $el = $as ??= $href ? 'a' : 'button';
 
-/* An item is current when the PATH of its href is the path of the request: the host in an absolute href is not compared, so
-   an app served from another host than APP_URL still marks its item, and a query string or a trailing slash does not
-   matter. An href with no path (`?tab=x`, `#top`, none at all) is never current on its own: pass :current. A `*` in the path
-   is a pattern, as it always was. */
+/* An item is current when the PATH of its href is the path of the request. A query string, a fragment and a trailing slash do not
+   matter, and the host of an absolute href is not compared with APP_URL as a string: an href that names a host counts only when
+   that host is the request's or APP_URL's (the port is ignored), so an app served from another domain than APP_URL still
+   marks its item while an external link (`https://github.com/orders` on /orders) never does. APP_URL's own path prefix is
+   stripped, nothing else of it. An href with no path (`?tab=x`, `#top`, none) is never current on its own: pass :current.
+   A `*` in the path is a pattern, as it always was. */
 $isCurrent = function () use ($href, $current) {
     if (is_bool($current)) return $current;
 
-    $appUrl = trim((string) config('app.url'));
-    $target = (string) $href;
+    $parts = parse_url(trim((string) $href));
 
-    // an href under APP_URL is read relative to it, so an app installed in a sub-directory keeps working
-    if ($appUrl !== '' && str($target)->startsWith($appUrl)) {
-        $target = (string) str($target)->after(rtrim($appUrl, '/'));
+    if (! is_array($parts)) return false;
 
-        if ($target === '' || in_array($target[0], ['?', '#'], true)) $target = '/'.$target;
+    $host = strtolower((string) ($parts['host'] ?? ''));
+
+    if ($host !== '') {
+        $appHost = strtolower((string) parse_url(trim((string) config('app.url')), PHP_URL_HOST));
+
+        if ($host !== strtolower(request()->getHost()) && $host !== $appHost) return false;
     }
 
-    $path = parse_url($target, PHP_URL_PATH);
+    $path = (string) ($parts['path'] ?? '');
 
-    if (! is_string($path) || $path === '') return false;
+    // an app installed under a path (APP_URL=https://host/sub) is read from that path
+    $prefix = trim((string) parse_url(trim((string) config('app.url')), PHP_URL_PATH), '/');
 
-    $path = $path === '/' ? '/' : trim($path, '/');
+    if ($prefix !== '' && ($path === '/'.$prefix || str_starts_with($path, '/'.$prefix.'/'))) {
+        $path = substr($path, strlen($prefix) + 1);
+    }
 
-    if ($path === '') return false;
+    $path = trim($path, '/');
+
+    // no path at all is not the home page ('/' is, and reads as an empty path after the prefix)
+    if ($path === '' && ($parts['path'] ?? '') === '') return false;
+
+    $path = $path === '' ? '/' : $path;
 
     return app('livewire')?->isLivewireRequest()
         ? str()->is($path, app('livewire')->originalPath())

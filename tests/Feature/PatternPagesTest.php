@@ -845,3 +845,29 @@ describe('docs vite entries', function () {
         expect($css)->toMatch('#@source "\.\./views/\{docs,mail\}/\*\*/\*\.blade\.php";#');
     });
 });
+
+// One item of the shared nav is current on a pattern page, and it is the one for that page.
+describe('the pattern pages mark the right nav item', function () {
+    it('has exactly one current item, the one for the page', function (string $page, string $current) {
+        $html = view('atom::docs.patterns.'.$page)->render();
+        $items = domQuery($html, '//*[@data-atom-navlist-item][@aria-current="page"]');
+
+        expect($items)->toHaveCount(1)
+            ->and($items[0]->getAttribute('href'))->toBe('?page='.$current);
+    })->with([
+        ['record-page', 'jobs'],
+        ['slide-over-form', 'customers'],
+        ['list-page', 'invoices'],
+        ['document-page', 'invoices'],
+        ['form-page', 'invoices'],
+        ['app-shell-sidebar', 'invoices'],
+        ['app-shell-header', 'invoices'],
+    ]);
+
+    it('has a Jobs item for the work order page, and its crumb links there', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(domQuery($html, '//nav[@data-atom-navlist]//a[@href="?page=jobs"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="record-crumbs"]//a[@href="?page=jobs"]'))->toHaveCount(1);
+    });
+});

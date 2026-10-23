@@ -49,7 +49,7 @@ $open = request()->query('open') === '1';
     </x-slot>
 
     <x-slot:nav>
-        @include('atom::docs.patterns.nav')
+        @include('atom::docs.patterns.nav', ['navCurrent' => 'customers'])
     </x-slot>
 
     <x-slot:dropdown>
