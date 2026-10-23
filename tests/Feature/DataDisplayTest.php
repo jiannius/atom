@@ -348,7 +348,7 @@ describe('callout accent and actions', function () {
         $html = renderBlade('<atom:callout variant="accent" heading="Decide" content="x" />');
         $classes = domClasses(domQuery($html, '//*[@x-data]')[0]);
 
-        expect($classes)->toContain('bg-accent-soft', 'border-accent-ink/25', '[&_[data-atom-icon]]:text-accent-ink', '[&_[data-atom-callout-heading]]:text-accent-ink');
+        expect($classes)->toContain('bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))]', 'border-s-4', 'border-s-accent-ink', '[&_[data-atom-icon]]:text-accent-ink', '[&_[data-atom-callout-heading]]:text-accent-ink');
     });
 
     it('draws the actions slot as a row of buttons under the text, and nothing without it', function () {

@@ -382,6 +382,49 @@ for (const tw of ['floor', 'latest']) {
       })
     }
 
+    // a browser with light-dark() but no relative colour (Firefox 120 to 127): the label is always white, so the default accent must not be near-white
+    for (const dark of [false, true]) {
+      test(`without relative colour the default accent keeps a readable label, in ${dark ? 'dark' : 'light'}`, async ({ page }) => {
+        await open(page, { tw, dark })
+        await page.addStyleTag({ content: `@layer base {${fallbackRules()}}` })
+
+        const fill = await colorOf(page, 'accent-button', 'backgroundColor')
+        const label = await colorOf(page, 'accent-button', 'color')
+
+        expect(fill).toBe('rgb(28, 27, 24)')
+        expect(label).toBe('rgb(255, 255, 255)')
+        expect(await contrastBetween(page, label, fill)).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+
+    test('without relative colour a host accent is untouched by the default', async ({ page }) => {
+      await open(page, { tw, dark: true })
+      await page.evaluate(() => document.documentElement.style.setProperty('--color-accent', '#4c55c9'))
+      await page.addStyleTag({ content: `@layer base {${fallbackRules()}}` })
+
+      expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(76, 85, 201)')
+      expect(await colorOf(page, 'accent-button', 'color')).toBe('rgb(255, 255, 255)')
+    })
+
+    // a host's own `html { color-scheme: light dark }` is unlayered and beats atom's layered rule; on an OS in dark mode it must not
+    // turn the default accent near-white on atom's light canvas
+    test('a host color-scheme of "light dark" does not flip the default accent while atom is light', async ({ page }) => {
+      await open(page, { tw })
+      await page.emulateMedia({ colorScheme: 'dark' })
+      await page.addStyleTag({ content: 'html { color-scheme: light dark }' })
+
+      expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(false)
+      expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(28, 27, 24)')
+      expect(await contrastBetween(page, await colorOf(page, 'accent-button', 'backgroundColor'), await page.evaluate(() => getComputedStyle(document.body).backgroundColor))).toBeGreaterThanOrEqual(3)
+    })
+
+    test('a host color-scheme does not stop the dark accent either, when atom is dark', async ({ page }) => {
+      await open(page, { tw, dark: true })
+      await page.addStyleTag({ content: 'html { color-scheme: light dark }' })
+
+      expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(236, 235, 232)')
+    })
+
     test('a host can still override a derived accent colour after the fallback has been applied', async ({ page }) => {
       await open(page, { tw })
       await page.addStyleTag({ content: `@layer base {${fallbackRules()}}` })

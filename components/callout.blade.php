@@ -32,7 +32,7 @@ $classes = Arr::toCssClasses([
     '[:where(&)]:relative [:where(&)]:w-full rounded-panel border px-4 py-3 text-fg',
     'pe-11' => $closeable,
     match ($tone) {
-        'accent' => 'bg-accent-soft border-accent-ink/25 [&_[data-atom-icon]]:text-accent-ink [&_[data-atom-callout-heading]]:text-accent-ink',
+        'accent' => 'bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))] border-border border-s-4 border-s-accent-ink [&_[data-atom-icon]]:text-accent-ink [&_[data-atom-callout-heading]]:text-accent-ink',
         'info' => 'bg-info-bg border-info-fg/20 [&_[data-atom-icon]]:text-info-fg [&_[data-atom-callout-heading]]:text-info-fg',
         'success' => 'bg-success-bg border-success-fg/20 [&_[data-atom-icon]]:text-success-fg [&_[data-atom-callout-heading]]:text-success-fg',
         'warning' => 'bg-warning-bg border-warning-fg/20 [&_[data-atom-icon]]:text-warning-fg [&_[data-atom-callout-heading]]:text-warning-fg',

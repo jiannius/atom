@@ -251,7 +251,17 @@
         :root {
             --atom-accent-foreground: #fff;
             --atom-accent-hover: var(--color-accent);
+            /* the label here is always white, so the default accent stays near-black in dark too (a near-white fill would get a
+               white label); an accent the host sets is not touched */
+            --atom-accent-default: #1c1b18;
         }
+    }
+
+    /* The default accent's light-dark() reads the element's USED color-scheme. A host's own unlayered `html { color-scheme: light dark }`
+       beats the layered rule above and, on an OS in dark mode, would turn the accent near-white on atom's light canvas. While atom is
+       light (no .dark) the page is light: `!important` in a layer beats a host's ordinary unlayered declaration. */
+    :root:not(.dark) {
+        color-scheme: light !important;
     }
 
     /* ----------------------------------------------------------------------------------------------
