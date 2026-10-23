@@ -1,0 +1,58 @@
+@import 'tailwindcss';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../vendor/jiannius/atom/components/**/*.blade.php';
+@source '../../vendor/jiannius/atom/resources/**/*.blade.php';
+@source '../../vendor/jiannius/atom/src/Actions/*.php';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-primary: var(--color-zinc-900);
+    --color-primary-content: var(--color-zinc-50);
+    --color-primary-foreground: var(--color-zinc-50);
+
+    --color-zinc-50: #fafafa;
+    --color-zinc-100: #f5f5f5;
+    --color-zinc-200: #e5e5e5;
+    --color-zinc-300: #d4d4d4;
+    --color-zinc-400: #a3a3a3;
+    --color-zinc-500: #737373;
+    --color-zinc-600: #525252;
+    --color-zinc-700: #404040;
+    --color-zinc-800: #262626;
+    --color-zinc-900: #171717;
+    --color-zinc-950: #0a0a0a;
+
+    --color-muted: var(--color-zinc-500);
+    --color-muted-foreground: var(--color-zinc-400);
+
+    --color-accent: var(--color-yellow-500);
+    --color-accent-content: var(--color-yellow-500);
+    --color-accent-foreground: var(--color-white);
+}
+
+@layer theme {
+    .dark {
+        --color-primary: var(--color-zinc-50);
+        --color-primary-content: var(--color-zinc-900);
+        --color-primary-foreground: var(--color-zinc-900);
+
+        --color-accent: var(--color-yellow-500);
+        --color-accent-content: var(--color-yellow-500);
+        --color-accent-foreground: var(--color-white);
+    }
+}
+
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+}

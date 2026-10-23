@@ -124,6 +124,19 @@ class UpgradeCheck
     protected array $skipped = [];
 
     /**
+     * Files read from memory instead of the disk during a scan, by path from the root
+     * (the codemod scans what a run would leave behind without writing it)
+     *
+     * @var array<string, string>
+     */
+    protected array $overlay = [];
+
+    /**
+     * The directory being scanned
+     */
+    protected string $root = '';
+
+    /**
      * @param  string|null  $guidelinePath  the guideline to compare a host's copy with (default: this package's)
      */
     public function __construct(protected ?string $guidelinePath = null) {}
@@ -150,14 +163,20 @@ class UpgradeCheck
             // tokens and CSS
             'css-atom-source' => [
                 'title' => 'Delete the atom @source lines (atom.tailwind.css scans atom itself)',
-                'section' => 'Tokens', 'severity' => static::VISUAL, 'codemod' => 'report',
-                'detect' => '@source line naming jiannius/atom in a CSS file',
+                'section' => 'Tokens', 'severity' => static::VISUAL, 'codemod' => 'auto',
+                'detect' => '@source line naming jiannius/atom in a CSS file (the codemod removes atom\'s own three paths from a Tailwind entry file and adds atom\'s import)',
                 'kinds' => ['css'], 'pattern' => '/@source\s+[\'"][^\'"\n]*jiannius\/atom[^\'"\n]*[\'"]/',
+            ],
+            'css-skeleton-theme' => [
+                'title' => 'Delete the theme block copied from skeleton-project (atom.tailwind.css defines these tokens)',
+                'section' => 'Tokens', 'severity' => static::VISUAL, 'codemod' => 'auto',
+                'detect' => 'a declaration in @theme or `@layer theme { .dark }` whose name and value are the skeleton\'s (the font, primary, the zinc remap, muted, accent)',
+                'kinds' => ['css'], 'custom' => 'skeletonTheme',
             ],
             'css-border-color-rule' => [
                 'title' => 'Delete the copied border-color base rule (atom sets its own)',
-                'section' => 'Tokens', 'severity' => static::VISUAL, 'codemod' => 'report',
-                'detect' => 'a CSS rule whose selector is `*` (or `*, ::after, ::before`, at the start of a rule) that sets border-color',
+                'section' => 'Tokens', 'severity' => static::VISUAL, 'codemod' => 'auto',
+                'detect' => 'a CSS rule whose selector is `*` (or `*, ::after, ::before`, at the start of a rule) that sets border-color; the codemod removes the skeleton\'s shape (a grey with currentColor)',
                 'kinds' => ['css'], 'pattern' => '/(?:^|[;{}])\s*\K\*\s*(?:,[^{}]*::?(?:after|before)[^{}]*)?\{[^{}]*border-color\s*:/',
             ],
             'css-root-font-size' => [
@@ -464,13 +483,17 @@ class UpgradeCheck
     }
 
     /**
-     * Scan a host directory. Reads only.
+     * Scan a host directory. Reads only. $overlay holds file contents, by path
+     * from the root, that stand in for what is on disk.
      *
+     * @param  array<string, string>  $overlay
      * @return array<string, mixed>
      */
-    public function scan(string $root): array
+    public function scan(string $root, array $overlay = []): array
     {
         $root = rtrim(realpath($root) ?: $root, DIRECTORY_SEPARATOR);
+        $this->root = $root;
+        $this->overlay = $overlay;
         $checks = static::checks();
         $findings = array_fill_keys(array_keys($checks), []);
         $tags = [];
@@ -478,12 +501,13 @@ class UpgradeCheck
         $localScopes = [];
         $scanned = ['app' => 0, 'tests' => 0];
         $published = [];
+        $cssFiles = [];
         $dateUse = null;
         $appProvider = null;
         $this->skipped = [];
 
         foreach ($this->discover($root) as [$path, $relative, $scope, $kind]) {
-            $source = @file_get_contents($path);
+            $source = $this->read($path);
 
             if ($source === false || $source === '') {
                 continue;
@@ -498,6 +522,10 @@ class UpgradeCheck
 
             $scanned[$scope]++;
             $prepared = $this->prepare($kind, $source);
+
+            if ($kind === 'css' && $scope === 'app') {
+                $cssFiles[] = $relative;
+            }
 
             if (str_starts_with($relative, 'resources/views/vendor/atom/')) {
                 $published[] = $relative;
@@ -625,7 +653,7 @@ class UpgradeCheck
 
         // bootstrap/ is not scanned, but a provider can be registered there
         foreach (glob($root.'/bootstrap/*.php') ?: [] as $file) {
-            if (! is_link($file) && $this->callsDateUse($this->blankPhpComments((string) @file_get_contents($file)))) {
+            if (! is_link($file) && $this->callsDateUse($this->blankPhpComments((string) $this->read($file)))) {
                 $dateUse ??= 'bootstrap/'.basename($file);
             }
         }
@@ -664,6 +692,7 @@ class UpgradeCheck
             'components' => $components,
             'tags' => $this->tagReport($tags),
             'published_views' => $published,
+            'css_files' => $cssFiles,
             'skipped' => $this->skipped,
             'date_use' => $dateUse,
             'guideline' => $this->guideline($root),
@@ -690,6 +719,16 @@ class UpgradeCheck
     }
 
     /**
+     * A file's text: the overlay's when it has one, else the disk's
+     */
+    protected function read(string $path): string|false
+    {
+        $relative = str_replace(DIRECTORY_SEPARATOR, '/', ltrim(substr($path, strlen($this->root)), DIRECTORY_SEPARATOR));
+
+        return $this->overlay[$relative] ?? @file_get_contents($path);
+    }
+
+    /**
      * The installed atom version, when Composer can say
      */
     protected function installedVersion(): ?string
@@ -701,6 +740,15 @@ class UpgradeCheck
         } catch (Throwable) {
             return null;
         }
+    }
+
+    /**
+     * A file's text with its comments blanked (same length, so offsets hold), the
+     * way the checks read it
+     */
+    public function commentFree(string $kind, string $source): string
+    {
+        return $this->prepare($kind, $source)['full'];
     }
 
     /**
@@ -1194,11 +1242,12 @@ class UpgradeCheck
     }
 
     /**
-     * Every `<atom:name ...>` and `<x-atom::name ...>` in a Blade file, with its attributes
+     * Every `<atom:name ...>` and `<x-atom::name ...>` in a Blade file, with its
+     * attributes, where they start in the file and where each one sits in them
      *
-     * @return array<int, array{name: string, offset: int, attributes: array<string, string|true>}>
+     * @return array<int, array{name: string, offset: int, attributes: array<string, string|true>, attributes_at: int, spans: array<string, array{0: int, 1: int}>}>
      */
-    protected function parseTags(string $blade): array
+    public function parseTags(string $blade): array
     {
         if (! preg_match_all('/<(?:x-atom::|atom:)([a-z][a-z0-9\-]*(?:\.[a-z0-9\-]+)*)/i', $blade, $found, PREG_OFFSET_CAPTURE)) {
             return [];
@@ -1208,11 +1257,14 @@ class UpgradeCheck
 
         foreach ($found[1] as $i => [$name, $at]) {
             $offset = $found[0][$i][1];
+            $spans = [];
 
             $tags[] = [
                 'name' => strtolower($name),
                 'offset' => $offset,
-                'attributes' => $this->parseAttributes($this->readAttributes($blade, $at + strlen($name))),
+                'attributes' => $this->parseAttributes($this->readAttributes($blade, $at + strlen($name)), $spans),
+                'attributes_at' => $at + strlen($name),
+                'spans' => $spans,
             ];
         }
 
@@ -1256,9 +1308,10 @@ class UpgradeCheck
      * Name to value (true for a bare attribute). A `{{ }}` anywhere in a value
      * leaves the value as is, so it is never mistaken for a static one.
      *
+     * @param  array<string, array{0: int, 1: int}>  $spans  filled with each attribute's start and end in $text
      * @return array<string, string|true>
      */
-    protected function parseAttributes(string $text): array
+    protected function parseAttributes(string $text, array &$spans = []): array
     {
         $attributes = [];
         $n = strlen($text);
@@ -1300,6 +1353,7 @@ class UpgradeCheck
 
             if (($text[$i] ?? '') !== '=') {
                 $attributes[$name] = true;
+                $spans[$name] = [$start, $start + strlen($name)];
 
                 continue;
             }
@@ -1329,6 +1383,7 @@ class UpgradeCheck
 
                 $attributes[$name] = substr($text, $from, $i - $from);
                 $i++;
+                $spans[$name] = [$start, min($i, $n)];
 
                 continue;
             }
@@ -1340,6 +1395,7 @@ class UpgradeCheck
             }
 
             $attributes[$name] = substr($text, $from, $i - $from);
+            $spans[$name] = [$start, $i];
         }
 
         return $attributes;
@@ -1653,6 +1709,19 @@ class UpgradeCheck
      */
     protected function atomComponentSites(string $kind, array $prepared, string $source): array
     {
+        return array_map(fn (array $use) => [$use['offset'], null], static::atomComponentUses($source));
+    }
+
+    /**
+     * Each class-body `use` statement that names AtomComponent (or an alias the
+     * file gave it): where it starts, where it ends (after its `;`), the traits
+     * it lists, which of them is AtomComponent and whether it carries a `{ ... }`
+     * block of conflict rules (which refer to AtomComponent's methods).
+     *
+     * @return array<int, array{offset: int, end: int, elements: array<int, string>, match: int, adapted: bool}>
+     */
+    public static function atomComponentUses(string $source): array
+    {
         if (! str_contains($source, 'AtomComponent')) {
             return [];
         }
@@ -1663,7 +1732,7 @@ class UpgradeCheck
             return [];
         }
 
-        $sites = [];
+        $uses = [];
         $aliases = ['AtomComponent'];
         $depth = 0;
         $offset = 0;
@@ -1679,9 +1748,15 @@ class UpgradeCheck
                 $depth--;
             } elseif (is_array($token) && $token[0] === T_USE) {
                 $names = '';
+                $length = 0;
 
-                for ($j = $i + 1; $j < $count && $tokens[$j] !== ';' && $tokens[$j] !== '{'; $j++) {
-                    $names .= is_array($tokens[$j]) ? $tokens[$j][1] : $tokens[$j];
+                for ($j = $i; $j < $count && $tokens[$j] !== ';' && $tokens[$j] !== '{'; $j++) {
+                    $part = is_array($tokens[$j]) ? $tokens[$j][1] : $tokens[$j];
+                    $length += strlen($part);
+
+                    if ($j > $i) {
+                        $names .= $part;
+                    }
                 }
 
                 if ($depth === 0) {
@@ -1691,14 +1766,43 @@ class UpgradeCheck
                     }
                 } elseif (preg_match('/(?:^|[\s,\\\\])(?:'.implode('|', array_map('preg_quote', $aliases)).')\s*(?:,|$)/', trim($names).',')) {
                     // a closure's `use (` follows a parenthesis and is not a trait
-                    $sites[] = [$offset, null];
+                    $elements = array_map('trim', explode(',', $names));
+                    $match = null;
+
+                    foreach ($elements as $index => $element) {
+                        if (preg_match('/(?:^|\\\\)(?:'.implode('|', array_map('preg_quote', $aliases)).')$/', $element)) {
+                            $match = $index;
+
+                            break;
+                        }
+                    }
+
+                    $uses[] = [
+                        'offset' => $offset,
+                        'end' => $offset + $length + (($tokens[$j] ?? null) === ';' ? 1 : 0),
+                        'elements' => $elements,
+                        'match' => $match ?? 0,
+                        'adapted' => ($tokens[$j] ?? null) === '{',
+                    ];
                 }
             }
 
             $offset += strlen($text);
         }
 
-        return $sites;
+        return $uses;
+    }
+
+    /**
+     * The `@theme` and `.dark` declarations of a CSS file that are exactly the
+     * ones skeleton-project ships
+     *
+     * @param  array{full: string, markup: string}  $prepared
+     * @return array<int, array{0: int, 1: string|null}>
+     */
+    protected function skeletonTheme(string $kind, array $prepared, string $source): array
+    {
+        return array_map(fn (array $found) => [$found[0], $found[1].' is the skeleton value'], (new UpgradeCss)->skeletonDeclarations($source));
     }
 
     /**
@@ -1810,7 +1914,7 @@ class UpgradeCheck
             $partials = [];
 
             foreach ($views as $view) {
-                $markup .= "\n".$this->prepare('blade', (string) file_get_contents($view))['full'];
+                $markup .= "\n".$this->prepare('blade', (string) $this->read($view))['full'];
             }
 
             foreach ($this->partialsOf($viewRoots, $markup, 2) as $partial) {
@@ -1995,7 +2099,7 @@ class UpgradeCheck
             }
 
             $seen[$path] = true;
-            $text = $this->prepare('blade', (string) file_get_contents($path))['full'];
+            $text = $this->prepare('blade', (string) $this->read($path))['full'];
             $found[] = ['path' => $path, 'text' => $text];
 
             foreach ($this->partialsOf($viewRoots, $text, $depth - 1, $seen) as $inner) {
