@@ -80,6 +80,8 @@ Recommended: frameless tables inside panels; `numeric` on money columns; `form.s
 
 **A view change clears a bulk selection, and does not reset the page.** `table.views` tells the table, as a filter does, so ticked rows are dropped when the view changes. Reset the page where you reset it for any filter (`updatedFilters()` calling `$this->resetPage()`); atom's filters do not do it for you.
 
+**Additions after the first beta.** `<atom:timeline kind="path">`, a horizontal path of stages (done, current, pending, failed, each with a title, a time and a person) that stacks as a column in a narrow box; `chips="inline"` on `<atom:table.filters>` (the active filters as sentence pills after the controls) and `add` on a select filter or a date range (a dashed "+ Customer" pill that steps aside for its chip), none of which changes a bar that does not use them (the default is still the chips on a row of their own); and an `(optional)` at the end of a field label now prints in the muted tone at the regular weight (the words and the field's accessible name are unchanged).
+
 **An item in a `@foreach` needs a `wire:key`** in `<atom:timeline>` (its folded state is Alpine's), and a `DateTimeInterface` `time` shows in the viewer's timezone.
 
 **The toolbar belongs in the table's `header` slot, and counts do not.** In `<x-slot:header>` the table draws the strip around the toolbar and swaps it for the bulk-action bar while rows are ticked. The slot is an Alpine template, so text the server renders into it is not refreshed by a re-render (this was always so for the `header` slot): put a count or a total below the table. A toolbar placed elsewhere takes `strip`.

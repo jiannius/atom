@@ -20,11 +20,13 @@
      step:    `title`, `time` (a duration or a date, at the end, before the chevron that is down when closed and up when open), `state` (done, current, pending or failed), `status` (a label
               beside the title, in the state's tone; `current` pulses it), and the slot as the body, which folds away when the
               timeline is collapsible. `open` sets the starting state: a current or failed step starts open, others closed.
+     path:    `title`, `state` (done, current, pending or failed), `time` and `actor` (a muted line under the title: the time, then who), and
+              the slot as one more muted line. The current segment is tinted, and carries aria-current="step".
      message: `speaker`, `time`, `side` (`start` for the other person, `end` for you) and `body` or the slot.
      Every string prints as text: the host's own markup goes in a slot, and then the host owns escaping it. A `time` may be a
      DateTimeInterface (printed in a <time> element, in the viewer's timezone) or a string. A calendar date with no time goes in as a `Y-m-d` string: as a DateTimeInterface a midnight-UTC date would show as, say, 8:00 am. Titles, actors and bodies are data, so they are not translated. --}}
 @php
-$kind = in_array($kind, ['event', 'step', 'message'], true) ? $kind : 'event';
+$kind = in_array($kind, ['event', 'step', 'path', 'message'], true) ? $kind : 'event';
 $tone = in_array($tone, ['neutral', 'info', 'success', 'warning', 'danger', 'accent'], true) ? $tone : 'neutral';
 $state = in_array($state, ['done', 'current', 'pending', 'failed'], true) ? $state : 'pending';
 $side = $side === 'end' ? 'end' : 'start';
@@ -53,7 +55,62 @@ $foldable = $kind === 'step' && $collapsible && $hasSlot;
 $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px before:bg-border-strong last:before:hidden';
 @endphp
 
-@if ($kind === 'message')
+@if ($kind === 'path')
+    @php
+    $pathMeta = array_values(array_filter([$timeText, $text($actor)], fn ($part) => $part !== ''));
+    @endphp
+
+    <li {{ $attributes->class([
+        'flex min-w-0 flex-col gap-0.5 border-t px-4 py-3 first:border-t-0 @2xl:border-t-0 @2xl:border-s @2xl:first:border-s-0',
+        'bg-accent-soft' => $state === 'current',
+    ]) }} @if ($state === 'current') aria-current="step" @endif data-atom-timeline-item data-state="{{ $state }}">
+        <div class="flex min-w-0 items-center gap-2">
+            <span @class([
+                'flex size-4 shrink-0 items-center justify-center rounded-full',
+                'border border-fg-subtle' => $state === 'pending',
+                'border-2 border-accent-ink' => $state === 'current',
+                'bg-success-fg text-surface' => $state === 'done',
+                'bg-danger-fg text-surface' => $state === 'failed',
+            ]) data-atom-timeline-marker>
+                @if ($state === 'done')
+                    <atom:icon.check class="size-3" />
+                    <span class="sr-only">{{ t('Done') }}</span>
+                @elseif ($state === 'failed')
+                    <atom:icon.close class="size-3" />
+                    <span class="sr-only">{{ t('Failed') }}</span>
+                @elseif ($state === 'current')
+                    <span aria-hidden="true" class="size-1.5 rounded-full bg-accent-ink"></span>
+                    <span class="sr-only">{{ t('Current') }}</span>
+                @else
+                    <span class="sr-only">{{ t('Pending') }}</span>
+                @endif
+            </span>
+
+            <span @class(['min-w-0 truncate font-medium', 'text-fg-muted' => $state === 'pending', 'text-fg' => $state !== 'pending']) data-atom-timeline-title>{{ $text($title) }}</span>
+        </div>
+
+        @if ($pathMeta)
+            <div class="ps-6 text-xs tabular-nums {{ $state === 'current' ? 'text-fg-muted' : 'text-fg-subtle' }}" data-atom-timeline-meta>
+                @if ($timeText !== '')
+                    @if ($timeAttr)
+                        <time datetime="{{ $timeAttr }}">{{ $timeText }}</time>
+                    @else
+                        <span>{{ $timeText }}</span>
+                    @endif
+                @endif
+
+                @if ($text($actor) !== '')
+                    @if ($timeText !== '')<span aria-hidden="true"> · </span>@endif
+                    <span data-atom-timeline-actor>{{ $text($actor) }}</span>
+                @endif
+            </div>
+        @endif
+
+        @if ($hasSlot)
+            <div class="ps-6 text-xs text-fg-muted" data-atom-timeline-body>{{ $slot }}</div>
+        @endif
+    </li>
+@elseif ($kind === 'message')
     <li {{ $attributes->class(['flex min-w-0 flex-col gap-1', 'items-end' => $side === 'end']) }} data-atom-timeline-item data-side="{{ $side }}">
         @if ($text($speaker) !== '' || $timeText !== '')
             <div class="flex flex-wrap items-baseline gap-x-2 text-xs text-fg-subtle" data-atom-timeline-meta>

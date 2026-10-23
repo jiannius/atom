@@ -1,4 +1,19 @@
 <div x-data class="space-y-8">
+    {{-- chips="inline": each active filter is a sentence pill after the controls, in the same wrapping row. `add` draws a select
+         or a date range as a dashed "+ Customer" pill that steps aside for its chip. --}}
+    <atom:table.filters chips="inline">
+        <atom:table.search placeholder="Search" />
+        <atom:select variant="filter" add wire:model="filters.customer" label="Customer" :options="[
+            ['value' => 'a', 'label' => 'Customer A'],
+            ['value' => 'b', 'label' => 'Customer B'],
+        ]" />
+        <atom:select variant="filter" add wire:model="filters.state" label="Status" :options="[
+            ['value' => 'paid', 'label' => 'Paid'],
+            ['value' => 'overdue', 'label' => 'Overdue'],
+        ]" />
+        <atom:date-picker variant="range" add wire:model="filters.issued" placeholder="Issued" />
+    </atom:table.filters>
+
     <atom:table.filters>
         <atom:table.search placeholder="Search" />
         <atom:select variant="filter" wire:model="filters.status" label="Status" :options="[

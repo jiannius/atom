@@ -62,7 +62,7 @@ x-data="{
     report (value) {
         value = String(value ?? '').trim()
 
-        this.$dispatch('table-filter:set', { key: @js($filterKey), label: @js($chipLabel), display: value === '' ? null : value })
+        this.$dispatch('table-filter:set', { key: @js($filterKey), label: @js($chipLabel), operator: ':', display: value === '' ? null : value })
     },
     emit () {
         // $el is whichever element is calling (the input on Enter, the wrapper otherwise)
