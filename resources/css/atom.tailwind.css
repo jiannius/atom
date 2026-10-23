@@ -259,9 +259,15 @@
 
     /* The default accent's light-dark() reads the element's USED color-scheme. A host's own unlayered `html { color-scheme: light dark }`
        beats the layered rule above and, on an OS in dark mode, would turn the accent near-white on atom's light canvas. While atom is
-       light (no .dark) the page is light: `!important` in a layer beats a host's ordinary unlayered declaration. */
+       light (no .dark) the page is light, and while it is dark (.dark on <html>) the page is dark: `!important` in a layer beats a host's
+       ordinary unlayered declaration. atom owns the root's color-scheme. */
     :root:not(.dark) {
         color-scheme: light !important;
+    }
+
+    /* and the same the other way: atom is dark when <html> has .dark, whatever the OS and the host's color-scheme say */
+    :root.dark {
+        color-scheme: dark !important;
     }
 
     /* ----------------------------------------------------------------------------------------------

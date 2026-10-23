@@ -4,7 +4,7 @@
     'chips' => 'below',
 ])
 
-{{-- `chips="inline"` puts each active filter ahead of the controls, in the one wrapping row,, as a sentence pill ("Issued is
+{{-- `chips="inline"` puts each active filter ahead of the controls, in the one wrapping row (after a `<atom:table.search>` that sits in the slot: the search keeps the first place),, as a sentence pill ("Issued is
      1 Apr 2026 to 30 Apr 2026", with a name, a muted operator and the value) that its x removes. A control can name its own
      operator in the event's `operator` detail (default `is`; the search says `:`, which reads "Search: foo").
      Pair it with `add` on a select filter or a date range, which draws the control as a dashed "+ Customer" pill that
@@ -32,7 +32,7 @@ x-data="{
     clearAll() { Object.keys(this.chips).forEach(k => this.clear(k)) },
 }"
 x-on:table-filter:set.window="set($event.detail.key, $event.detail.label, $event.detail.display, $event.detail.operator)"
-{{ $attributes->class($inline ? 'flex min-h-control min-w-0 grow flex-wrap items-center gap-2' : 'grow space-y-3') }}
+{{ $attributes->class($inline ? 'flex min-h-control min-w-0 grow flex-wrap items-center gap-2 [&>.contents>*]:order-2 [&>.contents>[data-atom-table-search]]:order-0' : 'grow space-y-3') }}
 data-atom-table-filters
 data-chips="{{ $inline ? 'inline' : 'below' }}">
     {{-- the overflow button is a filter control like the rest, so it sits in the
@@ -41,7 +41,7 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
          action sitting with Export rather than as the last filter. --}}
     @if ($inline)
         <template x-for="chip in active" x-bind:key="chip.key" hidden>
-            <div class="inline-flex h-[26px] items-center gap-1.5 rounded-pill bg-neutral-bg ps-2.5 pe-1.5 text-xs text-fg" data-atom-table-filter-chip>
+            <div class="order-1 inline-flex h-[26px] items-center gap-1.5 rounded-pill bg-neutral-bg ps-2.5 pe-1.5 text-xs text-fg" data-atom-table-filter-chip>
                 <span class="font-medium" x-text="chip.label"></span>
                 <span class="text-fg-muted" x-text="chip.operator" x-bind:class="chip.operator === ':' && '-ms-1.5'"></span>
                 <span x-text="chip.display"></span>
@@ -98,7 +98,7 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
     @endif
 
     @if ($inline)
-        <atom:button variant="ghost" size="sm" x-show="active.length" x-cloak x-on:click="clearAll()">{{ t('Clear all') }}</atom:button>
+        <atom:button variant="ghost" size="sm" class="order-3" x-show="active.length" x-cloak x-on:click="clearAll()">{{ t('Clear all') }}</atom:button>
     @else
         <div x-show="active.length" x-cloak class="flex flex-wrap items-center gap-2">
             <template x-for="chip in active" x-bind:key="chip.key" hidden>

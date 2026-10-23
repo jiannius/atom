@@ -156,6 +156,17 @@ for (const tw of ['floor', 'latest']) {
 
         expect(narrow).toEqual([])
 
+        // the item is the wide column: at desktop width its input is at least twice the quantity's (the others keep a preferred width)
+        if (width === 1440) {
+          const row = page.getByTestId('form-lines').locator('tbody tr').first()
+          const itemWidth = await row.locator('td').nth(0).locator('input').evaluate((el) => el.getBoundingClientRect().width)
+          const qtyWidth = await row.locator('td').nth(1).locator('input').evaluate((el) => el.getBoundingClientRect().width)
+          const priceWidth = await row.locator('td').nth(2).locator('input').evaluate((el) => el.getBoundingClientRect().width)
+
+          expect(itemWidth, `item ${itemWidth}, qty ${qtyWidth}`).toBeGreaterThanOrEqual(qtyWidth * 2)
+          expect(itemWidth).toBeGreaterThanOrEqual(priceWidth * 1.5)
+        }
+
         // and the line items table scrolls inside its panel, not the page
         expect(await noSidewaysScroll(page)).toBe(true)
       })

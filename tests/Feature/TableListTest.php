@@ -120,9 +120,9 @@ describe('toolbar on a phone', function () {
         $shared = domClasses(domQuery(renderBlade('<atom:table.toolbar>x<x-slot:end><button>E</button></x-slot:end></atom:table.toolbar>'), '//*[@data-atom-table-toolbar-start]')[0]);
         $trashed = domClasses(domQuery(renderBlade('<atom:table.toolbar trashed>x</atom:table.toolbar>'), '//*[@data-atom-table-toolbar-start]')[0]);
 
-        expect($alone)->toContain('basis-full')->not->toContain('basis-0')
-            ->and($shared)->toContain('basis-0')->not->toContain('basis-full')
-            ->and($trashed)->toContain('basis-0')->not->toContain('basis-full');
+        expect($alone)->toContain('basis-full')->not->toContain('basis-48')
+            ->and($shared)->toContain('basis-48')->not->toContain('basis-full')->not->toContain('basis-0')
+            ->and($trashed)->toContain('basis-48')->not->toContain('basis-full')->not->toContain('basis-0');
     });
 });
 

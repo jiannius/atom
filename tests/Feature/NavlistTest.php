@@ -335,7 +335,31 @@ describe('navlist current item', function () {
             ->and(domQuery($denied, '//a[@aria-current]'))->toHaveCount(0);
     });
 
-    it('is never current for an href with no path, or none at all', function (string $href) use ($current) {
+    it('marks the home item for the URL Laravel gives, which has no path', function () use ($current) {
+        // route('home') and url('/') are `http://localhost`: a host that is the app's, and no path, is "/"
+        expect($current('http://app.test/', 'http://app.test'))->toBeTrue()
+            ->and($current('http://app.test/', 'http://app.test/'))->toBeTrue()
+            ->and($current('http://app.test/', 'http://app.test?ref=nav'))->toBeTrue()
+            ->and($current('http://127.0.0.1:8000/', 'http://localhost', 'http://localhost'))->toBeTrue()
+            ->and($current('http://other.example/', 'http://other.example'))->toBeTrue()
+            // only on the home page, and never for another host
+            ->and($current('http://app.test/invoices', 'http://app.test'))->toBeFalse()
+            ->and($current('http://app.test/', 'https://docs.example.com'))->toBeFalse();
+
+        // and through the helpers a host really writes
+        app()->instance('request', \Illuminate\Http\Request::create('http://localhost/'));
+        config(['app.url' => 'http://localhost']);
+
+        $home = Blade::render('<atom:navlist.item :href="$href">Home</atom:navlist.item>', ['href' => url('/')]);
+
+        expect(domQuery($home, '//a[@aria-current="page"]'))->toHaveCount(1);
+    });
+
+    it('is never current for a scheme that is not a page: mailto, tel', function (string $href) use ($current) {
+        expect($current('http://app.test/orders', $href))->toBeFalse();
+    })->with(['mailto:orders', 'mailto:orders@example.test', 'tel:orders', 'sms:orders']);
+
+    it('is never current for an href with no host and no path, or none at all', function (string $href) use ($current) {
         expect($current('http://app.test/', $href))->toBeFalse();
     })->with(['?page=invoices', '#top', '']);
 });

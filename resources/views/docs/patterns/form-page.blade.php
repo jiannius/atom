@@ -111,11 +111,11 @@ $money = fn (float $amount) => number_format($amount, 2);
                         <x-slot:rows>
                             @foreach ($lines as $index => [$name, $quantity, $price])
                                 <atom:table.row>
-                                    <atom:table.cell class="min-w-44"><atom:input :value="$name" aria-label="Item"/></atom:table.cell>
-                                    <atom:table.cell numeric class="min-w-16"><atom:input type="number" :value="$quantity" class="text-right tabular-nums" aria-label="Quantity"/></atom:table.cell>
-                                    <atom:table.cell numeric class="min-w-28"><atom:input :value="$money($price)" class="text-right tabular-nums" aria-label="Unit price"/></atom:table.cell>
+                                    <atom:table.cell class="w-full min-w-44"><atom:input :value="$name" aria-label="Item"/></atom:table.cell>
+                                    <atom:table.cell numeric class="w-20 min-w-16"><atom:input type="number" :value="$quantity" class="text-right tabular-nums" aria-label="Quantity"/></atom:table.cell>
+                                    <atom:table.cell numeric class="w-32 min-w-28"><atom:input :value="$money($price)" class="text-right tabular-nums" aria-label="Unit price"/></atom:table.cell>
                                     {{-- a real page: <atom:select wire:model="lines.{{ $index }}.tax"/>. Here the row's own Alpine state, seeded from data-tax so x-data stays a constant --}}
-                                    <atom:table.cell class="min-w-36" x-data="{ tax: null }" x-init="tax = $el.dataset.tax" data-tax="{{ $index === 2 ? 'sst-8' : 'none' }}">
+                                    <atom:table.cell class="w-36 min-w-36" x-data="{ tax: null }" x-init="tax = $el.dataset.tax" data-tax="{{ $index === 2 ? 'sst-8' : 'none' }}">
                                         <atom:select aria-label="Tax" x-model="tax" :clearable="false" :options="[
                                             ['value' => 'none', 'label' => 'No tax'],
                                             ['value' => 'sst-8', 'label' => 'Tax 8%'],

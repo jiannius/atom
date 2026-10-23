@@ -9,7 +9,7 @@ $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ?
 <style>:root { --color-accent: {{ $accent }}; }</style>
 @endif
 
-<div x-data="{ filters: { customer: null, state: 'overdue', issued: null, multi: [] } }" class="grid gap-8 p-6">
+<div x-data="{ filters: { customer: null, state: 'overdue', issued: null, multi: [], region: null } }" class="grid gap-8 p-6">
     <div data-testid="inline" class="rounded-panel border bg-surface p-3">
         <atom:table.toolbar>
             <atom:table.search data-filter-key="filters.search" placeholder="Search number or customer" />
@@ -30,6 +30,16 @@ $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ?
                 ]" />
             </atom:table.filters>
         </atom:table.toolbar>
+    </div>
+
+    {{-- the search INSIDE the filters (the other placement): it still comes first --}}
+    <div data-testid="inline-inside" class="rounded-panel border bg-surface p-3">
+        <atom:table.filters chips="inline">
+            <atom:table.search data-filter-key="filters.q" placeholder="Search inside"/>
+            <atom:select variant="filter" add x-model="filters.region" data-filter-key="filters.region" label="Region" :options="[
+                ['value' => 'n', 'label' => 'North'],
+            ]" />
+        </atom:table.filters>
     </div>
 </div>
 

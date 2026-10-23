@@ -119,6 +119,18 @@ describe('inline chips', function () {
             ->and(domQuery($html, '//*[@data-atom-table-filters]/button[@x-show="active.length"]'))->toHaveCount(1);
     });
 
+    it('keeps a search that sits inside the filters first, with the chips and Clear all ordered after it', function () {
+        $html = renderBlade('<atom:table.filters chips="inline"><atom:table.search data-filter-key="filters.q" placeholder="Find"/></atom:table.filters>');
+        $bar = domQuery($html, '//*[@data-atom-table-filters]')[0];
+        $chip = domQuery($html, '//template//*[@data-atom-table-filter-chip]')[0];
+
+        // the controls are ordered after the chips, a search in the slot before them, and Clear all last
+        expect(domClasses($bar))->toContain('[&>.contents>*]:order-2', '[&>.contents>[data-atom-table-search]]:order-0')
+            ->and(domClasses($chip))->toContain('order-1')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-table-filters]/button[@x-show="active.length"]')[0]))->toContain('order-3')
+            ->and(domQuery($html, '//*[@data-atom-table-filters]/div[contains(@class, "contents")]/*[@data-atom-table-search]'))->toHaveCount(1);
+    });
+
     it('prints a chip as a name, a muted operator and the value, with a named x', function () {
         $html = renderBlade('<atom:table.filters chips="inline">CONTROL</atom:table.filters>');
         $chip = domQuery($html, '//template//*[@data-atom-table-filter-chip]')[0];

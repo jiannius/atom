@@ -418,11 +418,19 @@ for (const tw of ['floor', 'latest']) {
       expect(await contrastBetween(page, await colorOf(page, 'accent-button', 'backgroundColor'), await page.evaluate(() => getComputedStyle(document.body).backgroundColor))).toBeGreaterThanOrEqual(3)
     })
 
-    test('a host color-scheme does not stop the dark accent either, when atom is dark', async ({ page }) => {
-      await open(page, { tw, dark: true })
+    // the other way: atom is dark (`.dark` on <html>) on an OS that is LIGHT, with the host's `color-scheme: light dark`: without the rule
+    // light-dark() follows the OS, and the default-accent primary is near-black on atom's dark canvas
+    test('a host color-scheme of "light dark" does not turn the dark accent off while atom is dark, on a light OS', async ({ page }) => {
+      // a page that did not ask for dark (so <atom:html> prints no color-scheme of its own), on which the host adds `.dark` itself
+      await open(page, { tw })
+      await page.emulateMedia({ colorScheme: 'light' })
+      await page.evaluate(() => document.documentElement.classList.add('dark'))
       await page.addStyleTag({ content: 'html { color-scheme: light dark }' })
 
+      expect(await page.evaluate(() => document.documentElement.classList.contains('dark'))).toBe(true)
+      expect(await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches)).toBe(false)
       expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(236, 235, 232)')
+      expect(await contrastBetween(page, await colorOf(page, 'accent-button', 'backgroundColor'), await page.evaluate(() => getComputedStyle(document.body).backgroundColor))).toBeGreaterThanOrEqual(3)
     })
 
     test('a host can still override a derived accent colour after the fallback has been applied', async ({ page }) => {

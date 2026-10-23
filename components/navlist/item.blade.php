@@ -22,7 +22,7 @@ $el = $as ??= $href ? 'a' : 'button';
    matter, and the host of an absolute href is not compared with APP_URL as a string: an href that names a host counts only when
    that host is the request's or APP_URL's (the port is ignored), so an app served from another domain than APP_URL still
    marks its item while an external link (`https://github.com/orders` on /orders) never does. APP_URL's own path prefix is
-   stripped, nothing else of it. An href with no path (`?tab=x`, `#top`, none) is never current on its own: pass :current.
+   stripped, nothing else of it. An href with no host and no path (`?tab=x`, `#top`, none) is never current on its own: pass :current; one that names this app's host and no path (`url('/')`) is the home page. A scheme other than http or https (`mailto:`, `tel:`) is never current.
    A `*` in the path is a pattern, as it always was. */
 $isCurrent = function () use ($href, $current) {
     if (is_bool($current)) return $current;
@@ -30,6 +30,9 @@ $isCurrent = function () use ($href, $current) {
     $parts = parse_url(trim((string) $href));
 
     if (! is_array($parts)) return false;
+
+    // mailto:, tel: and the like are not pages of this app
+    if (isset($parts['scheme']) && ! in_array(strtolower($parts['scheme']), ['http', 'https'], true)) return false;
 
     $host = strtolower((string) ($parts['host'] ?? ''));
 
@@ -50,8 +53,9 @@ $isCurrent = function () use ($href, $current) {
 
     $path = trim($path, '/');
 
-    // no path at all is not the home page ('/' is, and reads as an empty path after the prefix)
-    if ($path === '' && ($parts['path'] ?? '') === '') return false;
+    // an href with no host and no path (`?tab=x`, `#top`, none) is not the home page; one that names this app's host and no path
+    // (`route('home')`, `url('/')`: `http://localhost`) is, as is '/' (which reads as an empty path after the trim and the prefix)
+    if ($path === '' && $host === '' && ($parts['path'] ?? '') === '') return false;
 
     $path = $path === '' ? '/' : $path;
 

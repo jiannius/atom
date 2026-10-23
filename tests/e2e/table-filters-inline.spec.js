@@ -22,7 +22,7 @@ for (const tw of ['floor', 'latest']) {
 
       const centre = (locator) => locator.evaluate((el) => { const r = el.getBoundingClientRect(); return { y: r.y + r.height / 2, x: r.x, right: r.right } })
       const search = await centre(page.locator('[data-testid="inline"] [data-atom-table-search]'))
-      const pill = await centre(page.getByRole('combobox', { name: 'Customer' }))
+      const pill = await centre(page.getByTestId('inline').getByRole('combobox', { name: 'Customer' }))
       const chip = await centre(chips(page).first())
 
       // one row: the pills and the chip are centred on the search box, and the active chip LEADS the dashed pills
@@ -32,10 +32,25 @@ for (const tw of ['floor', 'latest']) {
       expect(chip.x).toBeGreaterThan(search.right)
     })
 
+    test('a search INSIDE the filters keeps the first place: the chips and the pills come after it', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await open(page, { path: 'table-filters-inline', tw })
+
+      const inside = page.getByTestId('inline-inside')
+      const search = await inside.locator('[data-atom-table-search]').boundingBox()
+      const chip = await inside.locator('[data-atom-table-filter-chip]').first().boundingBox()
+      const pill = await inside.getByRole('combobox', { name: 'Region' }).boundingBox()
+
+      expect(chip.x).toBeGreaterThan(search.x + search.width)
+      expect(pill.x).toBeGreaterThan(chip.x + chip.width)
+      // in one row
+      expect(Math.abs((chip.y + chip.height / 2) - (search.y + search.height / 2))).toBeLessThan(4)
+    })
+
     test('the add pill is dashed, and steps aside for its chip, which brings it back when removed', async ({ page }) => {
       await open(page, { path: 'table-filters-inline', tw })
 
-      const pill = page.getByRole('combobox', { name: 'Customer' })
+      const pill = page.getByTestId('inline').getByRole('combobox', { name: 'Customer' })
 
       expect(await pill.evaluate((el) => getComputedStyle(el).borderTopStyle)).toBe('dashed')
       await expect(pill).toContainText('Customer')
@@ -76,10 +91,29 @@ for (const tw of ['floor', 'latest']) {
       await expect(pill).toBeVisible()
     })
 
+    test('a date range pill opens from the keyboard: Enter, then a preset by key, then Escape closes it', async ({ page }) => {
+      await open(page, { path: 'table-filters-inline', tw })
+
+      const pill = page.getByRole('button', { name: 'Issued', exact: true })
+      const preset = page.getByRole('menuitem', { name: 'Last 7 Days' })
+
+      await pill.focus()
+      await page.keyboard.press('Enter')
+      await expect(preset).toBeVisible()
+
+      await page.keyboard.press('Escape')
+      await expect(preset).toBeHidden()
+
+      // Space opens it too, as a button does
+      await pill.focus()
+      await page.keyboard.press('Space')
+      await expect(preset).toBeVisible()
+    })
+
     test('a multiple add pill stays, to add more values', async ({ page }) => {
       await open(page, { path: 'table-filters-inline', tw })
 
-      const pill = page.getByRole('combobox', { name: 'Tag' })
+      const pill = page.getByTestId('inline').getByRole('combobox', { name: 'Tag' })
       await pill.click()
       await page.locator('[data-atom-option]').filter({ hasText: 'Tag X' }).first().click()
 

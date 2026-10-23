@@ -18,7 +18,7 @@ for (const tw of ['floor', 'latest']) {
           expect(await sweepText(page, '[data-testid="path"]', TEXT, 8)).toEqual([])
 
           // the current segment in the status's tone reads too, whichever the tone
-          for (const tone of ['info', 'warning']) {
+          for (const tone of ['info', 'success', 'warning', 'danger']) {
             await page.goto(page.url().replace(/&tone=\w+/, '') + `&tone=${tone}`)
             expect(await sweepText(page, '[data-testid="path"]', TEXT, 8), tone).toEqual([])
 

@@ -77,7 +77,8 @@ class Docs
                 $vite->asset($entry);
 
                 return true;
-            } catch (\Throwable) {
+            } catch (\Illuminate\Foundation\ViteException|\Illuminate\Foundation\ViteManifestNotFoundException) {
+                // no manifest, or the entry is not in it: the host has no build for it
                 return false;
             }
         }));
