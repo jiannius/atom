@@ -21,7 +21,7 @@ $vite = $vite ?? app(\Jiannius\Atom\Services\Docs::class)->vite();
     </x-slot>
 
     <x-slot:context>
-        <atom:button block variant="ghost" icon-suffix="dropdown" class="justify-between!">Acme Studio</atom:button>
+        <atom:button block variant="ghost" icon-suffix="dropdown" class="justify-between!">Acme</atom:button>
     </x-slot>
 
     <x-slot:search>
