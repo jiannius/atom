@@ -197,7 +197,7 @@ DIFF));
         expect($output)->toContain(upgradeCodemodDiff(<<<'DIFF'
 --- a/app/Livewire/Aliased.php
 +++ b/app/Livewire/Aliased.php
-@@ -2,10 +2,8 @@
+@@ -2,13 +2,10 @@
 
  namespace App\Livewire;
 
@@ -207,7 +207,10 @@ DIFF));
  class Aliased extends Component
  {
 -    use Atom;
- }
+-
+     public function render()
+     {
+         return view('partials.blank');
 DIFF));
 
         // the Date::use line, first in boot(), with its import
@@ -871,6 +874,24 @@ describe('atom:upgrade: the guide', function () {
         expect($at)->toBe(collect($at)->sort()->values()->all())->and($at)->each->not->toBeFalse();
     });
 
+    it('keeps the internal milestone labels out of the public skill, and agrees with the chart about its height', function () {
+        $skill = file_get_contents(__DIR__.'/../../resources/boost/skills/atom-components/SKILL.blade.php');
+        $readme = file_get_contents(__DIR__.'/../../README.md');
+
+        expect($skill)->not->toMatch('/V4-\d[a-z]?\b/')
+            ->and($skill)->toContain('a chart\'s height goes on a wrapper')
+            ->and($readme)->toContain('put the height on a wrapper')
+            ->and($readme)->not->toContain('override with a `h-*` class')
+            ->and(file_get_contents(__DIR__.'/../../resources/views/docs/demos/chart/trend.blade.php'))->not->toContain('class="h-24"/>');
+    });
+
+    it('does not hand the atom:upgrade-check options to atom:upgrade in the skill', function () {
+        $skill = file_get_contents(__DIR__.'/../../resources/boost/skills/atom-components/SKILL.blade.php');
+
+        expect($skill)->toContain('`atom:upgrade-check` alone takes `--json`')
+            ->and($skill)->toContain('`atom:upgrade` takes `--dry-run` and `--path=`');
+    });
+
     it('is described in the README, the Boost skill and CLAUDE.md', function () {
         $readme = file_get_contents(__DIR__.'/../../README.md');
         $skill = file_get_contents(__DIR__.'/../../resources/boost/skills/atom-components/SKILL.blade.php');
@@ -882,5 +903,448 @@ describe('atom:upgrade: the guide', function () {
 
         expect($skill)->toContain('atom:upgrade --dry-run')->toContain('ATOM-UPGRADE-TODO.md');
         expect($claude)->toContain('atom:upgrade')->toContain('Upgrade::REWRITES')->toContain('UpgradeCheck::checks()');
+    });
+});
+
+/**
+ * A fresh copy of one or more shape trees (tests/Fixtures/UpgradeShapes/<name>), merged into one host
+ */
+function upgradeShapeHost(string ...$shapes): string
+{
+    $dir = sys_get_temp_dir().'/atom-upgrade-shape-'.bin2hex(random_bytes(6));
+    @mkdir($dir, 0777, true);
+
+    foreach ($shapes as $shape) {
+        $from = realpath(__DIR__.'/../Fixtures/UpgradeShapes/'.$shape);
+
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($from, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST) as $item) {
+            $target = $dir.'/'.substr($item->getPathname(), strlen($from) + 1);
+            $item->isDir() ? @mkdir($target, 0777, true) : copy($item->getPathname(), $target);
+        }
+    }
+
+    return $dir;
+}
+
+/**
+ * Whether the braces of a stylesheet balance, comments and strings aside
+ */
+function upgradeBalanced(string $css): bool
+{
+    $css = preg_replace('/([\'"])(?:\\\\.|(?!\1)[^\\\\\n])*\1|\/\*.*?\*\//s', '', $css);
+    $depth = 0;
+
+    foreach (str_split($css) as $c) {
+        $depth += $c === '{' ? 1 : ($c === '}' ? -1 : 0);
+
+        if ($depth < 0) {
+            return false;
+        }
+    }
+
+    return $depth === 0;
+}
+
+/**
+ * The PHP of a file (the leading block of a single-file Blade component), parsed: a ParseError fails the test
+ */
+function upgradeParses(string $path): bool
+{
+    $source = (string) file_get_contents($path);
+
+    if (str_ends_with($path, '.blade.php')) {
+        if (! str_starts_with(ltrim($source), '<?php') || ($end = strpos($source, '?>')) === false) {
+            return true;
+        }
+
+        $source = substr($source, 0, $end + 2);
+    }
+
+    try {
+        token_get_all($source, TOKEN_PARSE);
+
+        return true;
+    } catch (ParseError) {
+        return false;
+    }
+}
+
+describe('atom:upgrade: a rewrite it cannot be sure of is declined, not guessed', function () {
+    it('cuts only a declaration\'s own text when it shares its line with a brace', function () {
+        $dir = upgradeShapeHost('css-one-line');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/resources/css/one.css'))->toBe("@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n.btn { color: red; }\n")
+            ->and(file_get_contents($dir.'/resources/css/tail.css'))->toBe("@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@theme {\n    --color-brand: #e11d48;\n}\n\n.btn { color: red; }\n")
+            ->and(file_get_contents($dir.'/resources/css/pair.css'))->toBe("@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n@theme { --color-brand: #e11d48; }\n.btn { color: red; }\n");
+    });
+
+    it('does not take the rule before it, or the layer around it, when a rule shares its line', function () {
+        $dir = upgradeShapeHost('css-same-line');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/resources/css/app.css'))->toBe("@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n.keep { color: red; }\n.after { color: blue; }\n");
+    });
+
+    it('does not add an import a grouped or multiple import already makes', function () {
+        $dir = upgradeShapeHost('php-grouped');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        $grouped = file_get_contents($dir.'/app/Livewire/Grouped.php');
+
+        expect($grouped)->toContain("use Livewire\\{Component, WithPagination};\n")
+            ->and(substr_count($grouped, 'WithPagination'))->toBe(2)
+            ->and($grouped)->toContain("use Jiannius\\Atom\\Traits\\WithTable;\n")
+            ->and($grouped)->toContain('use WithTable, WithPagination;')
+            ->and(file_get_contents($dir.'/app/Livewire/Multi.php'))->toContain("use Livewire\\Component, Livewire\\WithPagination;\n")
+            ->and(substr_count(file_get_contents($dir.'/app/Livewire/Multi.php'), 'Livewire\\WithPagination'))->toBe(1)
+            ->and(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("use Illuminate\\Support\\Facades\\{DB, Date};\n")
+            ->and(substr_count(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'), 'Facades\\Date'))->toBe(0)
+            ->and(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("    {\n        Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n\n        DB::prohibit");
+    });
+
+    it('declines a file with a braced namespace', function () {
+        $dir = upgradeShapeHost('php-braced');
+        $this->hosts[] = $dir;
+        $before = file_get_contents($dir.'/app/Livewire/Braced.php');
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/app/Livewire/Braced.php'))->toBe($before)
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('`app/Livewire/Braced.php:10`: not changed, it uses a braced `namespace { }`');
+    });
+
+    it('counts a trait as present only when the class uses it, not when the file imports it', function () {
+        $dir = upgradeShapeHost('php-present');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/app/Livewire/ImportOnly.php'))->toContain('    use WithTable, WithPagination;')
+            ->and(file_get_contents($dir.'/app/Livewire/Mixed.php'))->toContain('    use WithTable, Paginates;');
+    });
+
+    it('declines a file with several classes in it', function () {
+        $dir = upgradeShapeHost('php-several');
+        $this->hosts[] = $dir;
+        $before = file_get_contents($dir.'/app/Livewire/Two.php');
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/app/Livewire/Two.php'))->toBe($before)
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('the file declares several classes');
+    });
+
+    it('keeps the line, and says why, for an abstract class, a trait, a parent class and a class it cannot read the view of', function () {
+        $dir = upgradeShapeHost('php-declined');
+        $this->hosts[] = $dir;
+        $before = upgradeCodemodTree($dir);
+
+        upgradeCodemodRun($dir);
+
+        $todo = file_get_contents($dir.'/ATOM-UPGRADE-TODO.md');
+        $after = upgradeCodemodTree($dir);
+        unset($after['ATOM-UPGRADE-TODO.md']);
+
+        expect($after)->toBe($before)
+            ->and($todo)->toContain('`app/Livewire/Base.php:10`: not changed, it is an abstract class')
+            ->and($todo)->toContain('`app/Livewire/Concerns/Shared.php:9`: not changed, it is a trait')
+            ->and($todo)->toContain('`app/Livewire/Parented.php:10`: not changed, another class extends Parented')
+            ->and($todo)->toContain('`app/Livewire/NoRender.php:10`: not changed, the traits cannot be inferred (no view() call found')
+            ->and($todo)->toContain('`app/Livewire/Missing.php:10`: not changed, the traits cannot be inferred (view livewire.nowhere not found');
+    });
+
+    it('finds the class of a single-file component that has an attribute between new and class', function () {
+        $dir = upgradeShapeHost('blade-attributes');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        $file = file_get_contents($dir.'/resources/views/livewire/sites.blade.php');
+
+        expect($file)->toContain("use Jiannius\\Atom\\Traits\\WithTable;\n")
+            ->and($file)->toContain("use Livewire\\WithPagination;\n")
+            ->and($file)->toContain('    use WithTable, WithPagination;')
+            ->and($file)->not->toContain('AtomComponent');
+    });
+
+    it('declines a use statement with a comment in its trait list', function () {
+        $dir = upgradeShapeHost('php-comment');
+        $this->hosts[] = $dir;
+        $before = file_get_contents($dir.'/app/Livewire/Commented.php');
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/app/Livewire/Commented.php'))->toBe($before)
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('the `use` statement has a comment in it');
+    });
+
+    it('puts Date::use in the provider\'s own boot(), not in a class nested in another method', function () {
+        $dir = upgradeShapeHost('php-nested-boot');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        $provider = file_get_contents($dir.'/app/Providers/AppServiceProvider.php');
+
+        expect($provider)->toContain("    public function boot(): void\n    {\n        Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n\n        //\n    }")
+            ->and(substr_count($provider, 'Date::use'))->toBe(1);
+    });
+
+    it('leaves the Blade under tests/ alone, and renames the app\'s', function () {
+        $dir = upgradeShapeHost('blade-scopes');
+        $this->hosts[] = $dir;
+        $test = file_get_contents($dir.'/tests/views/fixture.blade.php');
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/tests/views/fixture.blade.php'))->toBe($test)
+            ->and(file_get_contents($dir.'/resources/views/page.blade.php'))->toBe("<atom:html>\n    <atom:tiptap wire:model=\"body\" />\n</atom:html>\n");
+    });
+
+    it('renames a tag in an HTML comment, which Blade compiles, and none in a Blade comment or @verbatim', function () {
+        $dir = upgradeShapeHost('blade-comments');
+        $this->hosts[] = $dir;
+
+        // the scan agrees: the HTML comment's tag and the real one are findings, the @verbatim and Blade comment ones are not
+        expect(array_map(fn ($f) => $f['file'].':'.$f['line'], (new UpgradeCheck)->scan($dir)['checks']['editor-tag']['findings']))->toBe(['resources/views/c.blade.php:2', 'resources/views/c.blade.php:7']);
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/resources/views/c.blade.php'))->toBe("<div>\n<!-- old: <atom:tiptap wire:model=\"body\"/> -->\n@verbatim\n<atom:editor wire:model=\"doc\"/>\n@endverbatim\n{{-- <atom:editor wire:model=\"gone\"/> --}}\n<atom:tiptap wire:model=\"real\"/>\n</div>\n");
+    });
+
+    it('does not copy a primary that refers to the accent into the accent', function () {
+        $dir = upgradeShapeHost('css-brand-cycle');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        $css = file_get_contents($dir.'/resources/css/app.css');
+
+        expect($css)->not->toContain('--color-accent: var(--color-accent)')
+            ->and($css)->toContain('--color-primary: var(--color-accent);')
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('`--color-primary` refers to the accent');
+    });
+
+    it('leaves every file of every shape tree parsing, balanced, and unchanged by a second run', function (string $shape) {
+        $dir = $shape === 'UpgradeHost' ? ($this->host)() : upgradeShapeHost($shape);
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+        $after = upgradeCodemodTree($dir);
+
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)) as $file) {
+            $path = $file->getPathname();
+
+            if (str_ends_with($path, '.php')) {
+                expect(upgradeParses($path))->toBeTrue(substr($path, strlen($dir)));
+            }
+
+            if (str_ends_with($path, '.css')) {
+                expect(upgradeBalanced((string) file_get_contents($path)))->toBeTrue(substr($path, strlen($dir)));
+            }
+        }
+
+        [$code, $output] = upgradeCodemodRun($dir, dry: true);
+
+        expect($code)->toBe(0)->and($output)->not->toContain('--- a/');
+        upgradeCodemodRun($dir);
+        expect(upgradeCodemodTree($dir))->toBe($after);
+    })->with(fn () => array_merge(['UpgradeHost'], array_map('basename', glob(__DIR__.'/../Fixtures/UpgradeShapes/*', GLOB_ONLYDIR))));
+});
+
+describe('atom:upgrade: the smaller guards', function () {
+    it('puts atom\'s import on a line of its own when Tailwind\'s is the last line with no newline', function () {
+        $dir = upgradeShapeHost();
+        $this->hosts[] = $dir;
+        mkdir($dir.'/resources/css', 0777, true);
+        file_put_contents($dir.'/resources/css/order.css', "@source '../../vendor/jiannius/atom/components/**/*.blade.php';\n@import 'tailwindcss';");
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/resources/css/order.css'))->toBe("@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';");
+    });
+
+    it('reads a stylesheet that starts with a byte order mark, and keeps the mark', function () {
+        $dir = upgradeShapeHost();
+        $this->hosts[] = $dir;
+        mkdir($dir.'/resources/css', 0777, true);
+        file_put_contents($dir.'/resources/css/bom.css', "\xEF\xBB\xBF@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/components/**/*.blade.php';\n\n.a { color: red; }\n");
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/resources/css/bom.css'))->toBe("\xEF\xBB\xBF@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n.a { color: red; }\n");
+    });
+
+    it('leaves a declaration that has a comment on its line, and says so', function () {
+        $dir = upgradeShapeHost();
+        $this->hosts[] = $dir;
+        mkdir($dir.'/resources/css', 0777, true);
+        file_put_contents($dir.'/resources/css/commented.css', "@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/components/**/*.blade.php';\n\n@theme {\n    --color-zinc-50: #fafafa; /* keep */\n    --color-zinc-100: #f5f5f5;\n}\n");
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/resources/css/commented.css'))->toBe("@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@theme {\n    --color-zinc-50: #fafafa; /* keep */\n}\n")
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('`resources/css/commented.css:5`: @theme sets --color-zinc-50: #fafafa');
+    });
+
+    it('reads the accent out of @theme inline, and does not rewrite that block', function () {
+        $dir = upgradeShapeHost();
+        $this->hosts[] = $dir;
+        mkdir($dir.'/resources/css', 0777, true);
+        $css = "@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@theme inline {\n    --color-accent: #0d9488;\n    --color-zinc-50: #fafafa;\n}\n";
+        file_put_contents($dir.'/resources/css/inline.css', $css);
+
+        upgradeCodemodRun($dir);
+
+        $todo = file_get_contents($dir.'/ATOM-UPGRADE-TODO.md');
+
+        expect(file_get_contents($dir.'/resources/css/inline.css'))->toBe($css)
+            ->and($todo)->toContain('`resources/css/inline.css:5` sets `--color-accent: #0d9488;`')
+            ->and($todo)->not->toContain('sets no `--color-accent`')
+            ->and($todo)->toContain('@theme inline sets --color-zinc-50');
+    });
+
+    it('indents the Date::use line the way the provider does', function () {
+        $dir = upgradeShapeHost();
+        $this->hosts[] = $dir;
+        mkdir($dir.'/app/Providers', 0777, true);
+        file_put_contents($dir.'/app/Providers/AppServiceProvider.php', "<?php\n\nnamespace App\\Providers;\n\nuse Illuminate\\Support\\ServiceProvider;\n\nclass AppServiceProvider extends ServiceProvider\n{\n\tpublic function boot(): void\n\t{\n\t}\n}\n");
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("\t{\n\t\tDate::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n\t}");
+    });
+
+    it('sees an upload through $wire.upload(), a livewire-upload event or temporaryUrl(), and not through an import', function () {
+        $dir = upgradeShapeHost();
+        $this->hosts[] = $dir;
+        mkdir($dir.'/app/Livewire', 0777, true);
+        mkdir($dir.'/resources/views/livewire', 0777, true);
+
+        foreach (['wire' => '<button x-on:click="$wire.upload(\'photo\', file)">x</button>', 'event' => '<div x-on:livewire-upload-progress="p = $event.detail.progress">x</div>', 'plain' => '<div>x</div>'] as $name => $markup) {
+            $class = ucfirst($name);
+            file_put_contents($dir.'/app/Livewire/'.$class.'.php', "<?php\n\nnamespace App\\Livewire;\n\nuse Jiannius\\Atom\\Traits\\AtomComponent;\nuse Livewire\\Component;\nuse Livewire\\WithFileUploads;\n\nclass {$class} extends Component\n{\n    use AtomComponent;\n\n    public function render()\n    {\n        return view('livewire.{$name}');\n    }\n}\n");
+            file_put_contents($dir.'/resources/views/livewire/'.$name.'.blade.php', $markup."\n");
+        }
+
+        file_put_contents($dir.'/app/Livewire/Url.php', "<?php\n\nnamespace App\\Livewire;\n\nuse Jiannius\\Atom\\Traits\\AtomComponent;\nuse Livewire\\Component;\n\nclass Url extends Component\n{\n    use AtomComponent;\n\n    public function render()\n    {\n        \$u = \$this->photo->temporaryUrl();\n\n        return view('livewire.plain');\n    }\n}\n");
+
+        $components = collect((new UpgradeCheck)->scan($dir)['components'])->keyBy('file');
+
+        expect($components['app/Livewire/Wire.php']['traits'])->toBe(['WithFileUploads'])
+            ->and($components['app/Livewire/Event.php']['traits'])->toBe(['WithFileUploads'])
+            ->and($components['app/Livewire/Url.php']['traits'])->toBe(['WithFileUploads'])
+            ->and($components['app/Livewire/Plain.php']['traits'])->toBe([]);
+    });
+
+    it('does not say "nothing" while an automated finding is left, and lists it', function () {
+        $dir = upgradeShapeHost('php-declined');
+        $this->hosts[] = $dir;
+
+        upgradeCodemodRun($dir);
+
+        $left = substr(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'), strpos(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'), '## Left for you'));
+        $left = substr($left, 0, strpos($left, '## Accent'));
+
+        expect($left)->not->toContain('(nothing')
+            ->and($left)->toContain('- **use-atom-component**: 5 findings are still in the app');
+    });
+
+    it('says "1 theme declaration that was", not "were"', function () {
+        $dir = upgradeShapeHost();
+        $this->hosts[] = $dir;
+        mkdir($dir.'/resources/css', 0777, true);
+        file_put_contents($dir.'/resources/css/one.css', "@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/components/**/*.blade.php';\n\n@theme {\n    --color-zinc-50: #fafafa;\n}\n");
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('removed 1 atom `@source` line; removed 1 theme declaration that was the skeleton\'s');
+    });
+
+    it('lists a later run\'s rewrite of a file in place of the earlier line for it, not beside it', function () {
+        $dir = ($this->host)();
+
+        upgradeCodemodRun($dir);
+
+        // the host puts AtomComponent back, three lines further down
+        $orders = file_get_contents($dir.'/app/Livewire/Orders.php');
+        file_put_contents($dir.'/app/Livewire/Orders.php', str_replace('    protected $listeners', "    use \\Jiannius\\Atom\\Traits\\AtomComponent;\n\n    protected \$listeners", $orders));
+        upgradeCodemodRun($dir);
+
+        $todo = file_get_contents($dir.'/ATOM-UPGRADE-TODO.md');
+
+        expect(preg_match_all('/^- `app\/Livewire\/Orders\.php:\d+`: `use/m', $todo))->toBe(1);
+    });
+});
+
+describe('atom:upgrade: writing', function () {
+    it('checks every file and the TODO can be written before it writes the first one', function () {
+        $dir = ($this->host)();
+        mkdir($dir.'/ATOM-UPGRADE-TODO.md');
+        $before = upgradeCodemodTree($dir);
+
+        [$code, $output] = upgradeCodemodRun($dir);
+
+        expect($code)->not->toBe(0)
+            ->and($output)->toContain('Cannot write ATOM-UPGRADE-TODO.md')
+            ->and(upgradeCodemodTree($dir))->toBe($before);
+    });
+
+    it('refuses before writing anything when a file cannot be written', function () {
+        $dir = ($this->host)();
+        chmod($dir.'/app/Providers/AppServiceProvider.php', 0444);
+        $before = upgradeCodemodTree($dir);
+
+        [$code, $output] = upgradeCodemodRun($dir);
+
+        chmod($dir.'/app/Providers/AppServiceProvider.php', 0644);
+
+        expect($code)->not->toBe(0)
+            ->and($output)->toContain('Cannot write app/Providers/AppServiceProvider.php')
+            ->and(upgradeCodemodTree($dir))->toBe($before);
+    })->skip(fn () => function_exists('posix_geteuid') && posix_geteuid() === 0, 'root can write a read-only file');
+
+    it('says which files it wrote and which it did not when a write fails part way, and keeps modes', function () {
+        $dir = ($this->host)();
+        chmod($dir.'/app/Livewire/Orders.php', 0640);
+        $upgrade = new class extends Upgrade
+        {
+            public int $writes = 0;
+
+            protected function write(string $path, string $content): void
+            {
+                if (++$this->writes === 3) {
+                    throw new RuntimeException('disk full');
+                }
+
+                parent::write($path, $content);
+            }
+        };
+        $plan = $upgrade->plan($dir);
+        $files = array_keys($plan['changes']);
+
+        try {
+            $upgrade->apply($plan, 'todo');
+            $message = '';
+        } catch (RuntimeException $e) {
+            $message = $e->getMessage();
+        }
+
+        expect($message)->toContain('Could not write '.$files[2].' (disk full)')
+            ->and($message)->toContain('Written: '.$files[0].', '.$files[1].'.')
+            ->and($message)->toContain('Not written: '.$files[2])
+            ->and($message)->toContain('ATOM-UPGRADE-TODO.md')
+            ->and(file_get_contents($dir.'/'.$files[0]))->toBe($plan['changes'][$files[0]]['after'])
+            ->and(file_get_contents($dir.'/'.$files[2]))->toBe($plan['changes'][$files[2]]['before'])
+            ->and(decoct(fileperms($dir.'/app/Livewire/Orders.php') & 0777))->toBe('640')
+            ->and(glob($dir.'/app/Livewire/.atom-upgrade-*'))->toBe([]);
     });
 });

@@ -8,4 +8,9 @@ use Livewire\Component;
 class Aliased extends Component
 {
     use Atom;
+
+    public function render()
+    {
+        return view('partials.blank');
+    }
 }

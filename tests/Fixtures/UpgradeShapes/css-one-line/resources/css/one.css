@@ -1,0 +1,4 @@
+@import 'tailwindcss';
+@source '../../vendor/jiannius/atom/components/**/*.blade.php';
+@theme { --color-zinc-50: #fafafa; }
+.btn { color: red; }

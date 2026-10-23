@@ -73,6 +73,47 @@ class UpgradeCss
      */
     public function rewrite(string $css, string $file): array
     {
+        $bom = str_starts_with($css, "\xEF\xBB\xBF") ? "\xEF\xBB\xBF" : '';
+        $css = substr($css, strlen($bom));
+        $result = $this->rewriteText($css, $file);
+
+        // a rewrite that leaves the braces unbalanced is not made: the file is declined whole
+        if ($result['changed'] && ! $this->balanced($result['css'])) {
+            $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => 'the rewrite would leave the braces unbalanced; change the file by hand', 'brand' => null];
+        }
+
+        if ($result['changed'] && ! $this->balanced($css)) {
+            $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => 'its braces do not balance, so it is not safe to edit by tool', 'brand' => null];
+        }
+
+        $result['css'] = $bom.$result['css'];
+
+        return $result;
+    }
+
+    /**
+     * Whether the braces balance, comments and strings aside
+     */
+    public function balanced(string $css): bool
+    {
+        $depth = 0;
+
+        foreach (str_split($this->structure($css)) as $c) {
+            $depth += $c === '{' ? 1 : ($c === '}' ? -1 : 0);
+
+            if ($depth < 0) {
+                return false;
+            }
+        }
+
+        return $depth === 0;
+    }
+
+    /**
+     * @return array{css: string, changed: bool, removed: array<int, string>, added: array<int, string>, declined: string|null, brand: string|null}
+     */
+    protected function rewriteText(string $css, string $file): array
+    {
         $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => null, 'brand' => null];
         $import = $this->importLine($css);
         $sources = $this->atomSourceLines($css);
@@ -102,7 +143,8 @@ class UpgradeCss
             $at = $this->importLine($text);
             $quote = $at['quote'];
             $path = $this->relativeEntry($file);
-            $text = substr($text, 0, $at['end']).'@import '.$quote.$path.$quote.";\n".substr($text, $at['end']);
+            $break = $at['end'] > 0 && $text[$at['end'] - 1] !== "\n";
+            $text = substr($text, 0, $at['end']).($break ? "\n" : '').'@import '.$quote.$path.$quote.($break ? ';' : ";\n").substr($text, $at['end']);
             $result['added'][] = "@import '".$path."'";
         }
 
@@ -131,7 +173,7 @@ class UpgradeCss
             }
         }
 
-        if ($brand !== null && $accentCustom) {
+        if ($brand !== null && ($accentCustom || preg_match('/var\(\s*--color-(?:accent|primary)\b/', $brand))) {
             $brand = null;
         }
 
@@ -160,6 +202,8 @@ class UpgradeCss
      */
     public function residue(string $css): array
     {
+        $css = $this->withoutBom($css);
+
         if (! $this->hasEntryImport($css)) {
             return [];
         }
@@ -168,10 +212,16 @@ class UpgradeCss
         $starts = $this->lineStarts($css);
         $names = array_merge(array_keys(static::THEME), array_keys(static::DARK));
 
-        foreach ($this->rules($css, '/^@theme$/') as $theme) {
+        foreach ($this->rules($css, '/^@theme(?: (?:inline|static|default))*$/') as $theme) {
+            $plain = $theme['header'] === '@theme';
+
             foreach ($this->declarations($css, $theme) as $declaration) {
-                if (in_array($declaration['name'], $names, true) && $declaration['name'] !== '--color-accent') {
-                    $notes[] = ['line' => $this->lineOf($starts, $declaration['offset']), 'text' => '@theme sets '.$declaration['name'].': '.$declaration['value'].' (not the skeleton value, so left alone; atom defines this token now)'];
+                $line = $this->lineOf($starts, $declaration['offset']);
+
+                if ($plain && $declaration['name'] === '--color-primary' && preg_match('/var\(\s*--color-(?:accent|primary)\b/', $declaration['value'])) {
+                    $notes[] = ['line' => $line, 'text' => '`--color-primary` refers to the accent ('.$declaration['value'].'), so it was not copied as the accent: set `--color-accent` yourself'];
+                } elseif (in_array($declaration['name'], $names, true) && $declaration['name'] !== '--color-accent') {
+                    $notes[] = ['line' => $line, 'text' => $theme['header'].' sets '.$declaration['name'].': '.$declaration['value'].($plain ? ' (not the skeleton value, or on a line with a comment, so left alone; atom defines this token now)' : ' (the codemod does not rewrite `'.$theme['header'].'`; atom defines this token now)')];
                 }
             }
         }
@@ -179,7 +229,7 @@ class UpgradeCss
         foreach ($this->darkRules($css) as $dark) {
             foreach ($this->declarations($css, $dark) as $declaration) {
                 if (in_array($declaration['name'], $names, true)) {
-                    $notes[] = ['line' => $this->lineOf($starts, $declaration['offset']), 'text' => '.dark sets '.$declaration['name'].': '.$declaration['value'].' (not the skeleton value, so left alone; atom flips this token itself)'];
+                    $notes[] = ['line' => $this->lineOf($starts, $declaration['offset']), 'text' => '.dark sets '.$declaration['name'].': '.$declaration['value'].' (not the skeleton value, or on a line with a comment, so left alone; atom flips this token itself)'];
                 }
             }
         }
@@ -190,13 +240,15 @@ class UpgradeCss
     }
 
     /**
-     * The `--color-accent` an entry file sets in `@theme`, with its line, or null
+     * The `--color-accent` an entry file sets in `@theme` (any variant), with its line, or null
      *
      * @return array{value: string, line: int}|null
      */
     public function accent(string $css): ?array
     {
-        foreach ($this->rules($css, '/^@theme$/') as $theme) {
+        $css = $this->withoutBom($css);
+
+        foreach ($this->rules($css, '/^@theme(?: (?:inline|static|default))*$/') as $theme) {
             foreach ($this->declarations($css, $theme) as $declaration) {
                 if ($declaration['name'] === '--color-accent') {
                     return ['value' => $declaration['value'], 'line' => $this->lineOf($this->lineStarts($css), $declaration['offset'])];
@@ -212,6 +264,8 @@ class UpgradeCss
      */
     public function hasEntryImport(string $css): bool
     {
+        $css = $this->withoutBom($css);
+
         return (bool) preg_match('/^[ \t]*@import\s+[\'"][^\'"\n]*vendor\/jiannius\/atom\/resources\/css\/atom\.tailwind\.css[\'"]\s*;/m', $this->blankComments($css));
     }
 
@@ -222,6 +276,8 @@ class UpgradeCss
      */
     public function skeletonDeclarations(string $css): array
     {
+        $css = $this->withoutBom($css);
+
         if (! preg_match('/@theme|\.dark/', $css)) {
             return [];
         }
@@ -265,6 +321,11 @@ class UpgradeCss
         $depth = max(0, substr_count(str_replace('\\', '/', $file), '/'));
 
         return str_repeat('../', $depth).static::ENTRY;
+    }
+
+    protected function withoutBom(string $css): string
+    {
+        return str_starts_with($css, "\xEF\xBB\xBF") ? substr($css, 3) : $css;
     }
 
     /**
@@ -446,31 +507,47 @@ class UpgradeCss
     }
 
     /**
-     * The single-line `--name: value;` declarations of a rule's body
+     * The `--name: value;` declarations of a rule's body (at its own level, not in a nested rule), each with its own
+     * span; `clean` is false when its line carries a comment, which the rewrite then leaves alone
      *
      * @param  array{open: int, close: int}  $rule
-     * @return array<int, array{name: string, value: string, offset: int, start: int, end: int}>
+     * @return array<int, array{name: string, value: string, offset: int, start: int, end: int, clean: bool}>
      */
     protected function declarations(string $css, array $rule): array
     {
         $blank = $this->blankComments($css);
-        $found = [];
+        $structure = $this->structure($css);
         $from = $rule['open'] + 1;
-        $body = substr($blank, $from, $rule['close'] - $from);
-        $offset = 0;
+        $length = $rule['close'] - $from;
+        $body = substr($blank, $from, $length);
+        $found = [];
 
-        foreach (explode("\n", $body) as $line) {
-            if (preg_match('/^([ \t]*)(--[A-Za-z0-9_-]+)[ \t]*:[ \t]*([^;{}]+?)[ \t]*;[ \t]*$/', $line, $m, PREG_OFFSET_CAPTURE)) {
-                $found[] = [
-                    'name' => $m[2][0],
-                    'value' => $m[3][0],
-                    'offset' => $from + $offset + strlen($m[1][0]),
-                    'start' => $from + $offset,
-                    'end' => $from + $offset + strlen($line) + 1,
-                ];
+        if (! preg_match_all('/(?<![\w-])(--[A-Za-z0-9_-]+)[ \t]*:[ \t]*([^;{}]+?)[ \t]*;/', $body, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+            return [];
+        }
+
+        foreach ($matches as $m) {
+            $at = $from + $m[0][1];
+            $end = $at + strlen($m[0][0]);
+            $prefix = substr($structure, $from, $at - $from);
+
+            if (substr_count($prefix, '{') !== substr_count($prefix, '}')) {
+                continue;
             }
 
-            $offset += strlen($line) + 1;
+            $lineStart = strrpos(substr($css, 0, $at), "\n");
+            $lineStart = $lineStart === false ? 0 : $lineStart + 1;
+            $lineEnd = strpos($css, "\n", $end);
+            $lineEnd = $lineEnd === false ? strlen($css) : $lineEnd;
+
+            $found[] = [
+                'name' => $m[1][0],
+                'value' => $m[2][0],
+                'offset' => $at,
+                'start' => $at,
+                'end' => $end,
+                'clean' => substr($css, $lineStart, $lineEnd - $lineStart) === substr($blank, $lineStart, $lineEnd - $lineStart),
+            ];
         }
 
         return $found;
@@ -481,10 +558,8 @@ class UpgradeCss
      */
     protected function declaration(string $body, string $name): ?string
     {
-        foreach (explode("\n", $this->blankComments($body)) as $line) {
-            if (preg_match('/^[ \t]*'.preg_quote($name, '/').'[ \t]*:[ \t]*([^;{}]+?)[ \t]*;[ \t]*$/', $line, $m)) {
-                return trim($m[1]);
-            }
+        if (preg_match('/(?<![\w-])'.preg_quote($name, '/').'[ \t]*:[ \t]*([^;{}]+?)[ \t]*;/', $this->blankComments($body), $m)) {
+            return trim($m[1]);
         }
 
         return null;
@@ -577,7 +652,7 @@ class UpgradeCss
                 continue;
             }
 
-            if (isset($skeleton[$declaration['name']]) && $this->normalise($declaration['value']) === $this->normalise($skeleton[$declaration['name']])) {
+            if ($declaration['clean'] && isset($skeleton[$declaration['name']]) && $this->normalise($declaration['value']) === $this->normalise($skeleton[$declaration['name']])) {
                 $drop[] = $declaration;
             }
         }
@@ -587,7 +662,7 @@ class UpgradeCss
         }
 
         foreach (array_reverse($drop) as $declaration) {
-            $css = substr($css, 0, $declaration['start']).substr($css, $declaration['end']);
+            $css = $this->cut($css, $declaration['start'], $declaration['end']);
             $removed[] = $declaration['name'];
         }
 
@@ -658,25 +733,51 @@ class UpgradeCss
     }
 
     /**
-     * Take a rule out whole (its header line through its closing brace line)
+     * Take a rule out: its whole line(s) when nothing else is on them, else exactly its own text
      *
      * @param  array{start: int, close: int}  $rule
      */
     protected function removeRule(string $css, array $rule): string
     {
-        $start = strrpos(substr($css, 0, $rule['start']), "\n");
-        $start = $start === false ? 0 : $start + 1;
-        $end = $rule['close'] + 1;
+        return $this->cut($css, $rule['start'], $rule['close'] + 1, true);
+    }
 
-        if (isset($css[$end]) && $css[$end] === "\r") {
-            $end++;
+    /**
+     * Cut [start, end) out of a stylesheet. When nothing but whitespace shares the line(s), the whole line goes (and
+     * the blank line beside it, per join()); when the cut is the end of a line, the whitespace before it goes too;
+     * and when only the indent before it is left, the indent goes so a closing brace after it sits flush.
+     */
+    protected function cut(string $css, int $start, int $end, bool $rule = false): string
+    {
+        $lineStart = strrpos(substr($css, 0, $start), "\n");
+        $lineStart = $lineStart === false ? 0 : $lineStart + 1;
+        $lineEnd = strpos($css, "\n", $end);
+        $lineEnd = $lineEnd === false ? strlen($css) : $lineEnd;
+        $before = trim(substr($css, $lineStart, $start - $lineStart)) === '';
+        $after = trim(substr($css, $end, $lineEnd - $end)) === '';
+
+        if ($before && $after) {
+            if ($rule) {
+                return $this->join(substr($css, 0, $lineStart), substr($css, min(strlen($css), $lineEnd + 1)));
+            }
+
+            return substr($css, 0, $lineStart).substr($css, min(strlen($css), $lineEnd + 1));
         }
 
-        if (isset($css[$end]) && $css[$end] === "\n") {
-            $end++;
+        if ($after) {
+            return rtrim(substr($css, 0, $start), " \t").substr($css, $end);
         }
 
-        return $this->join(substr($css, 0, $start), substr($css, $end));
+        $stop = $end;
+
+        while (isset($css[$stop]) && ($css[$stop] === ' ' || $css[$stop] === "\t")) {
+            $stop++;
+        }
+
+        // only the indent is before it: it goes with the declaration (a brace after it keeps its own column)
+        $from = $before ? $lineStart : $start;
+
+        return substr($css, 0, $from).substr($css, $stop);
     }
 
     /**
@@ -748,11 +849,13 @@ class UpgradeCss
         }
 
         $declarations = $this->declarations($css, $theme);
-        $indent = $declarations ? str_repeat(' ', $this->indentWidth($css, $declarations[0]['start'])) : '    ';
+        $lineStart = $declarations ? strrpos(substr($css, 0, $declarations[0]['start']), "\n") : false;
+        $indent = $lineStart !== false ? substr($css, $lineStart + 1, $this->indentWidth($css, $lineStart + 1)) : '    ';
         $newline = strpos($css, "\n", $theme['open']);
 
+        // a block on one line: the declaration goes right after its brace
         if ($newline === false || $newline > $theme['close']) {
-            return $css;
+            return substr($css, 0, $theme['open'] + 1).' --color-accent: '.$value.';'.substr($css, $theme['open'] + 1);
         }
 
         return substr($css, 0, $newline + 1).$indent.'--color-accent: '.$value.";\n".substr($css, $newline + 1);

@@ -52,11 +52,7 @@ class Upgrade extends Command
         }
 
         try {
-            $codemod->apply($plan);
-
-            if ($existing !== $todo && @file_put_contents($todoPath, $todo) === false) {
-                throw new \RuntimeException('Could not write '.Codemod::TODO.'.');
-            }
+            $codemod->apply($plan, $existing === $todo ? null : $todo);
         } catch (Throwable $e) {
             $this->error($e->getMessage());
 

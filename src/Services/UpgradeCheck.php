@@ -502,6 +502,7 @@ class UpgradeCheck
         $scanned = ['app' => 0, 'tests' => 0];
         $published = [];
         $cssFiles = [];
+        $extended = [];
         $dateUse = null;
         $appProvider = null;
         $this->skipped = [];
@@ -525,6 +526,13 @@ class UpgradeCheck
 
             if ($kind === 'css' && $scope === 'app') {
                 $cssFiles[] = $relative;
+            }
+
+            // a class another class extends: what its `use` lines give reaches the child too
+            if ($kind === 'php' && str_contains($prepared['full'], 'extends') && preg_match_all('/\bextends\s+\\\\?(?:[\w\\\\]*\\\\)?(\w+)/', $prepared['full'], $parents)) {
+                foreach ($parents[1] as $parent) {
+                    $extended[$parent] = true;
+                }
             }
 
             if (str_starts_with($relative, 'resources/views/vendor/atom/')) {
@@ -567,7 +575,7 @@ class UpgradeCheck
             };
 
             // Blade tags: counted, and the tag checks read them
-            $bladeTags = $kind === 'blade' ? $this->parseTags($prepared['full']) : [];
+            $bladeTags = $kind === 'blade' ? $this->parseTags($prepared['tags']) : [];
 
             foreach ($bladeTags as $tag) {
                 $tags[$tag['name']] ??= ['count' => 0, 'files' => [], 'tests' => 0];
@@ -693,6 +701,7 @@ class UpgradeCheck
             'tags' => $this->tagReport($tags),
             'published_views' => $published,
             'css_files' => $cssFiles,
+            'extended_classes' => array_keys($extended),
             'skipped' => $this->skipped,
             'date_use' => $dateUse,
             'guideline' => $this->guideline($root),
@@ -749,6 +758,15 @@ class UpgradeCheck
     public function commentFree(string $kind, string $source): string
     {
         return $this->prepare($kind, $source)['full'];
+    }
+
+    /**
+     * A Blade file's text as its component tags are read: Blade comments and
+     * @verbatim blocks blanked, HTML comments not (Blade compiles a tag in one)
+     */
+    public function tagText(string $source): string
+    {
+        return $this->prepare('blade', $source)['tags'];
     }
 
     /**
@@ -923,51 +941,60 @@ class UpgradeCheck
      * every PHP region (`{{ }}`, `{!! !!}`, `@php`, `<?php`, a directive's
      * arguments) blanked too, which is where its JavaScript lives.
      *
-     * @return array{full: string, markup: string}
+     * @return array{full: string, markup: string, tags: string}
      */
     protected function prepare(string $kind, string $source): array
     {
         if ($kind === 'php') {
             $full = $this->blankPhpComments($source);
 
-            return ['full' => $full, 'markup' => $full];
+            return ['full' => $full, 'markup' => $full, 'tags' => $full];
         }
 
         if ($kind === 'js' || $kind === 'config') {
             $full = $this->blankJsComments($source);
 
-            return ['full' => $full, 'markup' => $full];
+            return ['full' => $full, 'markup' => $full, 'tags' => $full];
         }
 
         if ($kind === 'css') {
             $full = $this->blank($source, '/\/\*.*?\*\//s');
 
-            return ['full' => $full, 'markup' => $full];
+            return ['full' => $full, 'markup' => $full, 'tags' => $full];
         }
 
         // blade: PHP comments inside <?php regions, then Blade and HTML comments, then PHP comments in @php and {{ }}
-        $full = $this->blankPhpComments($source);
-        $full = $this->blank($full, '/\{\{--.*?--\}\}|<!--.*?-->/s');
-        $full = preg_replace_callback('/@php\b(?!\s*\()(.*?)@endphp|\{\{(?!--)(.*?)\}\}|\{!!(.*?)!!\}/s', function (array $m) {
-            $inner = $m[1] ?? '';
-            $inner = ($m[2] ?? '') !== '' ? $m[2] : $inner;
-            $inner = ($m[3] ?? '') !== '' ? $m[3] : $inner;
+        $php = $this->blankPhpComments($source);
+        $strip = function (string $comments) use ($php): string {
+            $text = $this->blank($php, $comments);
 
-            if ($inner === '' || (! str_contains($inner, '//') && ! str_contains($inner, '/*') && ! str_contains($inner, '#'))) {
-                return $m[0];
-            }
+            return preg_replace_callback('/@php\b(?!\s*\()(.*?)@endphp|\{\{(?!--)(.*?)\}\}|\{!!(.*?)!!\}/s', function (array $m) {
+                $inner = $m[1] ?? '';
+                $inner = ($m[2] ?? '') !== '' ? $m[2] : $inner;
+                $inner = ($m[3] ?? '') !== '' ? $m[3] : $inner;
 
-            $blanked = substr($this->blankPhpComments('<?php '.$inner), 6);
+                if ($inner === '' || (! str_contains($inner, '//') && ! str_contains($inner, '/*') && ! str_contains($inner, '#'))) {
+                    return $m[0];
+                }
 
-            return str_replace($inner, $blanked, $m[0]);
-        }, $full) ?? $full;
+                $blanked = substr($this->blankPhpComments('<?php '.$inner), 6);
+
+                return str_replace($inner, $blanked, $m[0]);
+            }, $text) ?? $text;
+        };
+
+        $full = $strip('/\{\{--.*?--\}\}|<!--.*?-->/s');
+
+        // Blade compiles a component tag inside an HTML comment, so the tags are read with only the Blade comments
+        // (and @verbatim blocks, which it leaves as text) blanked
+        $tags = $strip('/\{\{--.*?--\}\}|@verbatim.*?@endverbatim/s');
 
         $markup = $this->maskBladePhp($full);
 
         // a <script> block is JavaScript: its comments are not code
         $markup = preg_replace_callback('/(<script\b[^>]*>)(.*?)(<\/script>)/is', fn (array $m) => $m[1].$this->blankJsComments($m[2]).$m[3], $markup) ?? $markup;
 
-        return ['full' => $full, 'markup' => $markup];
+        return ['full' => $full, 'markup' => $markup, 'tags' => $tags];
     }
 
     /**
@@ -1715,80 +1742,77 @@ class UpgradeCheck
     /**
      * Each class-body `use` statement that names AtomComponent (or an alias the
      * file gave it): where it starts, where it ends (after its `;`), the traits
-     * it lists, which of them is AtomComponent and whether it carries a `{ ... }`
-     * block of conflict rules (which refer to AtomComponent's methods).
+     * it lists, which of them is AtomComponent (null when a comment hides it),
+     * whether it carries a `{ ... }` block of conflict rules, the class it sits
+     * in and which of Livewire's pagination, upload and url-filter traits that
+     * class already uses (through any of its own `use` statements, aliases
+     * resolved: an import at the top of the file is not a use).
      *
-     * @return array<int, array{offset: int, end: int, elements: array<int, string>, match: int, adapted: bool}>
+     * @return array<int, array{offset: int, end: int, elements: array<int, string>, match: int|null, adapted: bool, comments: bool, class: int, present: array<int, string>}>
      */
-    public static function atomComponentUses(string $source): array
+    public static function atomComponentUses(string $source, ?array $structure = null): array
     {
         if (! str_contains($source, 'AtomComponent')) {
             return [];
         }
 
-        try {
-            $tokens = token_get_all($source);
-        } catch (Throwable) {
-            return [];
+        $structure ??= UpgradePhp::structure($source);
+        $aliases = ['atomcomponent'];
+
+        foreach ($structure['imports'] as $short => $fqn) {
+            if (str_ends_with($fqn, '\\AtomComponent') || $fqn === 'AtomComponent') {
+                $aliases[] = $short;
+            }
         }
 
         $uses = [];
-        $aliases = ['AtomComponent'];
-        $depth = 0;
-        $offset = 0;
-        $count = count($tokens);
 
-        for ($i = 0; $i < $count; $i++) {
-            $token = $tokens[$i];
-            $text = is_array($token) ? $token[1] : $token;
+        foreach ($structure['classes'] as $index => $class) {
+            foreach ($class['uses'] as $use) {
+                $match = null;
 
-            if ($token === '{' || (is_array($token) && $token[0] === T_CURLY_OPEN) || (is_array($token) && $token[0] === T_DOLLAR_OPEN_CURLY_BRACES)) {
-                $depth++;
-            } elseif ($token === '}') {
-                $depth--;
-            } elseif (is_array($token) && $token[0] === T_USE) {
-                $names = '';
-                $length = 0;
+                foreach ($use['elements'] as $at => $element) {
+                    $bare = ltrim($element, '\\');
+                    $last = strtolower(substr(strrchr('\\'.$bare, '\\'), 1));
 
-                for ($j = $i; $j < $count && $tokens[$j] !== ';' && $tokens[$j] !== '{'; $j++) {
-                    $part = is_array($tokens[$j]) ? $tokens[$j][1] : $tokens[$j];
-                    $length += strlen($part);
+                    if (in_array(strtolower($bare), $aliases, true) || ($last === 'atomcomponent' && str_contains($bare, '\\'))) {
+                        $match = $at;
 
-                    if ($j > $i) {
-                        $names .= $part;
+                        break;
                     }
                 }
 
-                if ($depth === 0) {
-                    // `use ...\AtomComponent as Alias;` makes Alias the trait's name in this file
-                    if (preg_match('/AtomComponent\s+as\s+(\w+)/', $names, $alias)) {
-                        $aliases[] = $alias[1];
-                    }
-                } elseif (preg_match('/(?:^|[\s,\\\\])(?:'.implode('|', array_map('preg_quote', $aliases)).')\s*(?:,|$)/', trim($names).',')) {
-                    // a closure's `use (` follows a parenthesis and is not a trait
-                    $elements = array_map('trim', explode(',', $names));
-                    $match = null;
+                if ($match === null) {
+                    continue;
+                }
 
-                    foreach ($elements as $index => $element) {
-                        if (preg_match('/(?:^|\\\\)(?:'.implode('|', array_map('preg_quote', $aliases)).')$/', $element)) {
-                            $match = $index;
+                $present = [];
 
-                            break;
+                foreach ($class['uses'] as $other) {
+                    foreach ($other['elements'] as $element) {
+                        $resolved = UpgradePhp::resolve($element, $structure['imports']);
+                        $short = substr(strrchr('\\'.$resolved, '\\'), 1);
+
+                        if (in_array($short, ['WithPagination', 'WithFileUploads', 'WithUrlFilters'], true)) {
+                            $present[] = $short;
                         }
                     }
-
-                    $uses[] = [
-                        'offset' => $offset,
-                        'end' => $offset + $length + (($tokens[$j] ?? null) === ';' ? 1 : 0),
-                        'elements' => $elements,
-                        'match' => $match ?? 0,
-                        'adapted' => ($tokens[$j] ?? null) === '{',
-                    ];
                 }
-            }
 
-            $offset += strlen($text);
+                $uses[] = [
+                    'offset' => $use['offset'],
+                    'end' => $use['end'],
+                    'elements' => $use['elements'],
+                    'match' => $use['comments'] ? null : $match,
+                    'adapted' => $use['adapted'],
+                    'comments' => $use['comments'],
+                    'class' => $index,
+                    'present' => array_values(array_unique($present)),
+                ];
+            }
         }
+
+        usort($uses, fn ($a, $b) => $a['offset'] <=> $b['offset']);
 
         return $uses;
     }
@@ -1887,7 +1911,8 @@ class UpgradeCheck
 
         foreach ($candidates as $candidate) {
             $text = $candidate['prepared']['full'];
-            $sites = $this->atomComponentSites($candidate['kind'], $candidate['prepared'], $candidate['source']);
+            $structure = UpgradePhp::structure($candidate['source']);
+            $uses = static::atomComponentUses($candidate['source'], $structure);
             $starts = $this->lineStarts($candidate['source']);
             $views = [];
             $markup = $candidate['kind'] === 'blade' ? $text : '';
@@ -1923,19 +1948,21 @@ class UpgradeCheck
             }
 
             $evidence = $this->traitEvidence($text, $markup, $candidate['kind']);
-            $present = $this->traitsPresent($text);
 
-            foreach ($sites as [$offset]) {
+            foreach ($uses as $use) {
                 $needs = array_keys($evidence);
+                $class = $structure['classes'][$use['class']];
                 $components[] = [
                     'file' => $candidate['relative'],
-                    'line' => $this->lineAt($starts, $offset),
+                    'line' => $this->lineAt($starts, $use['offset']),
                     'scope' => $candidate['scope'],
                     'traits' => $this->orderTraits($needs),
-                    'also_present' => $present,
+                    'also_present' => $use['present'],
                     'evidence' => $evidence,
                     'partials' => $partials,
                     'notes' => $notes,
+                    'class' => ['name' => $class['name'], 'kind' => $class['kind'], 'abstract' => $class['abstract']],
+                    'classes_in_file' => count($structure['classes']),
                 ];
             }
         }
@@ -1943,24 +1970,6 @@ class UpgradeCheck
         usort($components, fn ($a, $b) => [$a['file'], $a['line']] <=> [$b['file'], $b['line']]);
 
         return $components;
-    }
-
-    /**
-     * The traits already in the class body besides AtomComponent
-     *
-     * @return array<int, string>
-     */
-    protected function traitsPresent(string $text): array
-    {
-        $present = [];
-
-        foreach (['WithPagination', 'WithFileUploads', 'WithUrlFilters'] as $trait) {
-            if (preg_match('/^\s*use\s+(?:[\w\\\\]+,\s*)*(?:\\\\?[\w\\\\]*\\\\)?'.$trait.'\b[^;]*;/m', $text) && preg_match('/\b'.$trait.'\b/', $text)) {
-                $present[] = $trait;
-            }
-        }
-
-        return $present;
     }
 
     /**
@@ -1996,7 +2005,7 @@ class UpgradeCheck
             $evidence['WithPagination'] = 'paginates (paginate(), toTable(), <atom:table> or <atom:pagination>)';
         }
 
-        if (! isset($evidence['WithEditor']) && ($tagged(['uploader', 'tiptap.chat', 'editor.chat']) || $tagged(['input'], fn ($a) => static::value($a, 'type') === 'file') || preg_match('/TemporaryUploadedFile|\bWithFileUploads\b/', $php) || preg_match('/<input\b[^>]*\btype\s*=\s*["\']file["\']/i', $markup))) {
+        if (! isset($evidence['WithEditor']) && ($tagged(['uploader', 'tiptap.chat', 'editor.chat']) || $tagged(['input'], fn ($a) => static::value($a, 'type') === 'file') || preg_match('/TemporaryUploadedFile|->\s*temporaryUrl\s*\(/', preg_replace('/^use\s[^;]*;/m', '', $php)) || preg_match('/\$wire\s*\.\s*upload\s*\(|livewire-upload-/', $markup) || preg_match('/<input\b[^>]*\btype\s*=\s*["\']file["\']/i', $markup))) {
             $evidence['WithFileUploads'] = 'an upload in the view';
         }
 

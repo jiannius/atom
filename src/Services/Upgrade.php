@@ -166,8 +166,8 @@ class Upgrade
             }
 
             $notes = [];
-            $result = $this->keepingEol($text, function (string $lf) use ($relative, $components, &$notes, &$declined) {
-                return $this->rewriteTraits($lf, $relative, $components[0], $declined, $notes);
+            $result = $this->keepingEol($text, function (string $lf) use ($relative, $components, $scan, &$notes, &$declined) {
+                return $this->rewriteTraits($lf, $relative, $components, $scan, $declined, $notes);
             });
 
             if ($result !== $text) {
@@ -188,8 +188,8 @@ class Upgrade
 
                 if ($text !== null) {
                     $reason = null;
-                    $result = $this->keepingEol($text, function (string $lf) use (&$reason) {
-                        return $this->addDateUse($lf, $reason);
+                    $result = $this->keepingEol($text, function (string $lf) use ($relative, &$reason) {
+                        return $this->addDateUse($lf, $relative, $reason);
                     });
 
                     if ($reason !== null) {
@@ -203,7 +203,7 @@ class Upgrade
         }
 
         // 4. <atom:editor*> tags and the editor prop
-        foreach (array_unique(array_column($scan['checks']['editor-tag']['findings'], 'file')) as $relative) {
+        foreach (array_unique(array_column(array_filter($scan['checks']['editor-tag']['findings'], fn ($finding) => $finding['scope'] === 'app'), 'file')) as $relative) {
             $text = $read($relative);
 
             if ($text === null) {
@@ -221,7 +221,7 @@ class Upgrade
             }
         }
 
-        foreach (array_unique(array_column($scan['checks']['html-editor-prop']['findings'], 'file')) as $relative) {
+        foreach (array_unique(array_column(array_filter($scan['checks']['html-editor-prop']['findings'], fn ($finding) => $finding['scope'] === 'app'), 'file')) as $relative) {
             $text = $read($relative);
 
             if ($text === null) {
@@ -296,7 +296,7 @@ class Upgrade
         }
 
         if ($theme) {
-            $parts[] = 'removed '.$theme.' theme declaration'.($theme === 1 ? '' : 's').' that were the skeleton\'s';
+            $parts[] = 'removed '.$theme.' theme declaration'.($theme === 1 ? ' that was' : 's that were').' the skeleton\'s';
         }
 
         if ($border) {
@@ -313,34 +313,102 @@ class Upgrade
     // ------------------------------------------------------------------ PHP: use AtomComponent
 
     /**
-     * `use AtomComponent;` to the traits the component needs, with the imports
+     * `use AtomComponent;` to the traits the component needs, with the imports.
+     * It rewrites only what it can attribute to one class with confidence and
+     * declines (leaves the file, says why) in every other case: several classes
+     * in the file, an abstract class, a trait, a class another class extends, a
+     * class whose view it could not read, a `use` it cannot rewrite exactly, an
+     * import it cannot read.
      *
-     * @param  array<string, mixed>  $component  an entry of the scan's `components`
+     * @param  array<int, array<string, mixed>>  $components  the scan's entries for this file
+     * @param  array<string, mixed>  $scan
      * @param  array<int, array{file: string, line: int, reason: string}>  $declined
      * @param  array<int, string>  $notes  filled with the lines for the TODO
      */
-    protected function rewriteTraits(string $text, string $relative, array $component, array &$declined, array &$notes): string
+    protected function rewriteTraits(string $text, string $relative, array $components, array $scan, array &$declined, array &$notes): string
     {
-        $uses = UpgradeCheck::atomComponentUses($text);
+        $original = $text;
+        $structure = UpgradePhp::structure($text);
+        $uses = UpgradeCheck::atomComponentUses($text, $structure);
 
         if (! $uses) {
             return $text;
         }
 
-        $imports = $this->imports($text);
+        $line = substr_count(substr($text, 0, $uses[0]['offset']), "\n") + 1;
+        $decline = function (string $reason, ?int $at = null) use (&$declined, $relative, $line) {
+            $declined[] = ['file' => $relative, 'line' => $at ?? $line, 'reason' => $reason];
+
+            return null;
+        };
+
+        if (! $structure['ok']) {
+            $decline('it has '.$structure['reason'].', so its imports cannot be edited safely: add the traits by hand');
+
+            return $text;
+        }
+
+        if ($structure['braced']) {
+            $decline('it uses a braced `namespace { }`, so its imports cannot be edited safely: add the traits by hand');
+
+            return $text;
+        }
+
+        if (count($structure['classes']) > 1) {
+            $decline('the file declares several classes and the traits are inferred from the whole file, not from one class: add them by hand');
+
+            return $text;
+        }
+
+        $use = $uses[0];
+        $class = $structure['classes'][$use['class']];
+        $component = $components[0];
+
+        if ($use['adapted']) {
+            $decline('the `use` statement has a `{ ... }` block of conflict rules that name AtomComponent\'s methods: change it by hand');
+
+            return $text;
+        }
+
+        if ($use['comments'] || $use['match'] === null) {
+            $decline('the `use` statement has a comment in it: change it by hand');
+
+            return $text;
+        }
+
+        if (in_array($class['kind'], ['trait', 'interface', 'enum'], true) || $class['abstract']) {
+            $decline('it is '.($class['abstract'] ? 'an abstract class' : 'a '.$class['kind']).', so the view that needs the traits is in a class that uses it: add the traits by hand');
+
+            return $text;
+        }
+
+        if ($class['name'] !== null && in_array($class['name'], $scan['extended_classes'] ?? [], true)) {
+            $decline('another class extends '.$class['name'].', so the traits it needs cannot be told from this class alone: add them by hand');
+
+            return $text;
+        }
+
+        if ($component['notes']) {
+            $decline('the traits cannot be inferred ('.implode('; ', $component['notes']).'): add them by hand');
+
+            return $text;
+        }
+
+        $imports = $structure['imports'];
         $names = array_values(array_diff($component['traits'], $component['also_present']));
         $written = [];
         $needed = [];
 
         foreach ($names as $trait) {
             $fqn = static::TRAIT_NAMESPACES[$trait].'\\'.$trait;
+            $known = $imports[strtolower($trait)] ?? null;
 
-            if (isset($imports[$trait]) && $imports[$trait] !== $fqn) {
+            if ($known !== null && strcasecmp($known, $fqn) !== 0) {
                 $written[] = '\\'.$fqn;
             } else {
                 $written[] = $trait;
 
-                if (! isset($imports[$trait])) {
+                if ($known === null) {
                     $needed[] = $fqn;
                 }
             }
@@ -352,63 +420,36 @@ class Upgrade
             $evidence[] = $trait.' ('.($component['evidence'][$trait] ?? 'needed by the class').')';
         }
 
-        $changed = false;
+        $elements = $use['elements'];
+        array_splice($elements, $use['match'], 1, $written);
+        $was = trim(substr($text, $use['offset'], $use['end'] - $use['offset']));
 
-        foreach (array_reverse($uses) as $use) {
-            $line = substr_count(substr($text, 0, $use['offset']), "\n") + 1;
-
-            if ($use['adapted']) {
-                $declined[] = ['file' => $relative, 'line' => $line, 'reason' => 'the `use` statement has a `{ ... }` block of conflict rules that name AtomComponent\'s methods: change it by hand'];
-
-                continue;
-            }
-
-            $elements = $use['elements'];
-            array_splice($elements, $use['match'], 1, $written);
-            $was = trim(substr($text, $use['offset'], $use['end'] - $use['offset']));
-
-            if ($elements === []) {
-                $text = $this->removeStatement($text, $use['offset'], $use['end']);
-                $now = null;
-            } else {
-                $statement = 'use '.implode(', ', $elements).';';
-                $text = substr($text, 0, $use['offset']).$statement.substr($text, $use['end']);
-                $now = $statement;
-            }
-
-            $changed = true;
-            $notes[] = '`'.$relative.':'.$line.'`: `'.preg_replace('/\s+/', ' ', $was).'` '.($now === null ? 'was removed: the component needs no trait it does not already use' : 'became `'.$now.'`').'. Check the traits: '.($evidence ? implode('; ', $evidence) : 'none needed').($component['notes'] ? '. Note: '.implode('; ', $component['notes']) : '');
-        }
-
-        if (! $changed) {
-            return $text;
+        if ($elements === []) {
+            $text = $this->removeStatement($text, $use['offset'], $use['end']);
+            $now = null;
+        } else {
+            $statement = 'use '.implode(', ', $elements).';';
+            $text = substr($text, 0, $use['offset']).$statement.substr($text, $use['end']);
+            $now = $statement;
         }
 
         $text = $this->dropAtomComponentImport($text);
 
         foreach ($needed as $fqn) {
-            $text = $this->addImport($text, $fqn);
+            $added = $this->addImport($text, $fqn);
+
+            if ($added === null) {
+                $decline('its imports are not each on a line of their own, so the new ones cannot be placed safely: add the traits by hand');
+
+                return $original;
+            }
+
+            $text = $added;
         }
+
+        $notes[] = '`'.$relative.':'.$line.'`: `'.preg_replace('/\s+/', ' ', $was).'` '.($now === null ? 'was removed: the component needs no trait it does not already use' : 'became `'.$now.'`').'. Check the traits: '.($evidence ? implode('; ', $evidence) : 'none needed');
 
         return $text;
-    }
-
-    /**
-     * The file's own `use X\Y;` imports at the top level, short name (or alias) to class
-     *
-     * @return array<string, string>
-     */
-    protected function imports(string $text): array
-    {
-        $imports = [];
-
-        if (preg_match_all('/^use\s+\\\\?([\w\\\\]+?)(?:\s+as\s+(\w+))?\s*;[ \t]*$/m', $text, $found, PREG_SET_ORDER)) {
-            foreach ($found as $m) {
-                $imports[$m[2] ?? substr(strrchr('\\'.$m[1], '\\'), 1)] = $m[1];
-            }
-        }
-
-        return $imports;
     }
 
     /**
@@ -437,20 +478,24 @@ class Upgrade
     }
 
     /**
-     * Remove `use Jiannius\Atom\Traits\AtomComponent;` once nothing in the file names it
+     * Remove `use Jiannius\Atom\Traits\AtomComponent;` once nothing in the file names it. An import that shares
+     * its statement with others (`use A, B;`, a group) is left: an unused import of a class that is gone is harmless.
      */
     protected function dropAtomComponentImport(string $text): string
     {
-        if (! preg_match_all('/^use\s+\\\\?Jiannius\\\\Atom\\\\Traits\\\\AtomComponent(?:\s+as\s+(\w+))?\s*;[ \t]*\n?/m', $text, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
-            return $text;
-        }
+        $structure = UpgradePhp::structure($text);
 
-        foreach (array_reverse($found) as $m) {
-            $alias = $m[1][0] ?? 'AtomComponent';
-            $rest = substr($text, 0, $m[0][1]).substr($text, $m[0][1] + strlen($m[0][0]));
+        foreach (array_reverse($structure['statements']) as $statement) {
+            if (! $statement['simple'] || strcasecmp($statement['fqns'][0], 'Jiannius\\Atom\\Traits\\AtomComponent') !== 0) {
+                continue;
+            }
+
+            $source = substr($text, $statement['start'], $statement['end'] - $statement['start']);
+            $alias = preg_match('/\bas\s+(\w+)/i', $source, $m) ? $m[1] : 'AtomComponent';
+            $rest = substr($text, 0, $statement['start']).substr($text, $statement['end']);
 
             if (! preg_match('/(?<![\w\\\\])'.preg_quote($alias, '/').'(?![\w])/', $rest)) {
-                $text = $rest;
+                $text = $this->removeStatement($text, $statement['start'], $statement['end']);
             }
         }
 
@@ -458,24 +503,58 @@ class Upgrade
     }
 
     /**
-     * Add `use X;` among the file's imports, in alphabetical place; or after the
-     * namespace line, or after the opening tag when there are none
+     * Add `use X;` among the file's imports, in alphabetical place among the single-line ones; null when it cannot
+     * be done without guessing (an import that shares its line with other code)
      */
-    protected function addImport(string $text, string $fqn): string
+    protected function addImport(string $text, string $fqn): ?string
     {
-        $line = 'use '.$fqn.";\n";
+        $structure = UpgradePhp::structure($text);
 
-        if (preg_match_all('/^use\s+\\\\?([\w\\\\]+?)(?:\s+as\s+\w+)?\s*;[ \t]*\n/m', $text, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
-            foreach ($found as $m) {
-                if (strcasecmp($m[1][0], $fqn) > 0) {
-                    return substr($text, 0, $m[0][1]).$line.substr($text, $m[0][1]);
+        if (! $structure['ok'] || $structure['braced']) {
+            return null;
+        }
+
+        $line = 'use '.$fqn.";\n";
+        $alone = function (array $statement) use ($text): bool {
+            $lineStart = strrpos(substr($text, 0, $statement['start']), "\n");
+            $lineStart = $lineStart === false ? 0 : $lineStart + 1;
+            $lineEnd = strpos($text, "\n", $statement['end']);
+            $lineEnd = $lineEnd === false ? strlen($text) : $lineEnd;
+
+            return trim(substr($text, $lineStart, $statement['start'] - $lineStart)) === '' && trim(substr($text, $statement['end'], $lineEnd - $statement['end'])) === '';
+        };
+
+        foreach ($structure['statements'] as $statement) {
+            if (! $alone($statement)) {
+                return null;
+            }
+        }
+
+        $lineStartOf = function (int $offset) use ($text): int {
+            $at = strrpos(substr($text, 0, $offset), "\n");
+
+            return $at === false ? 0 : $at + 1;
+        };
+        $lineEndOf = function (int $offset) use ($text): int {
+            $at = strpos($text, "\n", $offset);
+
+            return $at === false ? strlen($text) : $at + 1;
+        };
+
+        if ($structure['statements']) {
+            foreach ($structure['statements'] as $statement) {
+                if ($statement['simple'] && strcasecmp($statement['fqns'][0], $fqn) > 0) {
+                    $at = $lineStartOf($statement['start']);
+
+                    return substr($text, 0, $at).$line.substr($text, $at);
                 }
             }
 
-            $last = end($found);
-            $at = $last[0][1] + strlen($last[0][0]);
+            $last = end($structure['statements']);
+            $at = $lineEndOf($last['end']);
+            $prefix = $at > 0 && $text[$at - 1] !== "\n" ? "\n" : '';
 
-            return substr($text, 0, $at).$line.substr($text, $at);
+            return substr($text, 0, $at).$prefix.$line.substr($text, $at);
         }
 
         if (preg_match('/^namespace\s+[\w\\\\]+\s*;[ \t]*\n/m', $text, $m, PREG_OFFSET_CAPTURE)) {
@@ -490,15 +569,15 @@ class Upgrade
             return substr($text, 0, $at)."\n".$line.substr($text, $at);
         }
 
-        return $text;
+        return null;
     }
 
     // ------------------------------------------------------------------ PHP: Date::use
 
     /**
-     * Put the call first in boot(); $reason is set when it cannot be done
+     * Put the call first in the provider's own boot(); $reason is set when it cannot be done
      */
-    protected function addDateUse(string $text, ?string &$reason): string
+    protected function addDateUse(string $text, string $relative, ?string &$reason): string
     {
         $blank = $this->scanner->commentFree('php', $text);
 
@@ -508,13 +587,28 @@ class Upgrade
             return $text;
         }
 
-        if (! preg_match('/function\s+boot\s*\([^)]*\)\s*(?::\s*[\w\\\\?|]+)?\s*\{/', $blank, $m, PREG_OFFSET_CAPTURE)) {
-            $reason = 'it has no boot() method: add Date::use(\\Jiannius\\Atom\\Services\\Carbon::class); to the boot() of a service provider';
+        $original = $text;
+        $structure = UpgradePhp::structure($text);
+
+        if (! $structure['ok'] || $structure['braced']) {
+            $reason = $structure['braced'] ? 'it uses a braced `namespace { }`: add Date::use(\\Jiannius\\Atom\\Services\\Carbon::class); to the boot() by hand' : 'it has '.$structure['reason'].': add Date::use(\\Jiannius\\Atom\\Services\\Carbon::class); to the boot() by hand';
 
             return $text;
         }
 
-        $open = $m[0][1] + strlen($m[0][0]);
+        // boot() declared directly in the provider class, not in a class nested in another method
+        $stem = pathinfo($relative, PATHINFO_FILENAME);
+        $candidates = array_filter($structure['classes'], fn ($class) => $class['kind'] === 'class' && isset($class['methods']['boot']));
+        $named = array_filter($candidates, fn ($class) => $class['name'] === $stem);
+        $class = $named ? reset($named) : (count($candidates) === 1 ? reset($candidates) : null);
+
+        if ($class === null || $class['methods']['boot']['body'] === null) {
+            $reason = $candidates ? 'it declares boot() in more than one class: add Date::use(\\Jiannius\\Atom\\Services\\Carbon::class); to the right one by hand' : 'it has no boot() method: add Date::use(\\Jiannius\\Atom\\Services\\Carbon::class); to the boot() of a service provider';
+
+            return $text;
+        }
+
+        $open = $class['methods']['boot']['body'] + 1;
         $newline = strpos($text, "\n", $open);
 
         if ($newline === false || trim(substr($text, $open, $newline - $open)) !== '') {
@@ -523,19 +617,28 @@ class Upgrade
             return $text;
         }
 
-        $lineStart = strrpos(substr($text, 0, $m[0][1]), "\n");
+        $methodAt = $class['methods']['boot']['offset'];
+        $lineStart = strrpos(substr($text, 0, $methodAt), "\n");
         $lineStart = $lineStart === false ? 0 : $lineStart + 1;
         preg_match('/^[ \t]*/', substr($text, $lineStart), $indent);
+        $unit = str_contains($indent[0], "\t") || ($indent[0] === '' && preg_match('/^\t/m', $text)) ? "\t" : '    ';
 
-        $imports = $this->imports($text);
-        $short = ! isset($imports['Date']) || $imports['Date'] === 'Illuminate\\Support\\Facades\\Date';
+        $short = ! isset($structure['imports']['date']) || strcasecmp($structure['imports']['date'], 'Illuminate\\Support\\Facades\\Date') === 0;
         $call = ($short ? 'Date' : '\\Illuminate\\Support\\Facades\\Date').'::use(\\Jiannius\\Atom\\Services\\Carbon::class);';
         $next = ltrim(substr($text, $newline + 1));
-        $insert = $indent[0].'    '.$call."\n".(($next[0] ?? '}') === '}' ? '' : "\n");
+        $insert = $indent[0].$unit.$call."\n".(($next[0] ?? '}') === '}' ? '' : "\n");
         $text = substr($text, 0, $newline + 1).$insert.substr($text, $newline + 1);
 
-        if ($short && ! isset($imports['Date'])) {
-            $text = $this->addImport($text, 'Illuminate\\Support\\Facades\\Date');
+        if ($short && ! isset($structure['imports']['date'])) {
+            $added = $this->addImport($text, 'Illuminate\\Support\\Facades\\Date');
+
+            if ($added === null) {
+                $reason = 'its imports are not each on a line of their own: add `use Illuminate\\Support\\Facades\\Date;` and Date::use(\\Jiannius\\Atom\\Services\\Carbon::class); by hand';
+
+                return $original;
+            }
+
+            $text = $added;
         }
 
         return $text;
@@ -549,7 +652,7 @@ class Upgrade
      */
     protected function renameEditorTags(string $text, int &$count): string
     {
-        $blank = $this->scanner->commentFree('blade', $text);
+        $blank = $this->scanner->tagText($text);
 
         if (! preg_match_all('/<(\/?)(x-atom::|atom:)(editor)(?:\.chat|\.content)?(?![\w\-.])/i', $blank, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
             return $text;
@@ -569,7 +672,7 @@ class Upgrade
      */
     protected function dropEditorProp(string $text, int &$count): string
     {
-        $blank = $this->scanner->commentFree('blade', $text);
+        $blank = $this->scanner->tagText($text);
         $cuts = [];
 
         foreach ($this->scanner->parseTags($blank) as $tag) {
@@ -612,24 +715,69 @@ class Upgrade
     // ------------------------------------------------------------------ writing
 
     /**
-     * Write every changed file. Fails before writing anything when one cannot be written.
+     * Write every changed file, then the TODO. Everything that can be checked is checked before the first file is
+     * touched (each file and its directory writable, no symlink), and each file is written to a temporary file in
+     * its own directory and renamed over the original, so a file is never half written. If a write fails anyway,
+     * the exception says which files were written and which were not.
      *
      * @param  array<string, mixed>  $plan
      */
-    public function apply(array $plan): void
+    public function apply(array $plan, ?string $todo = null): void
     {
-        foreach (array_keys($plan['changes']) as $relative) {
-            $path = $plan['root'].'/'.$relative;
+        $root = $plan['root'];
+        $files = array_map(fn ($change) => $change['after'], $plan['changes']);
 
-            if (! is_file($path) || is_link($path) || ! is_writable($path)) {
-                throw new \RuntimeException('Cannot write '.$relative.' (missing, a symlink or read-only): nothing was changed.');
+        if ($todo !== null) {
+            $files[static::TODO] = $todo;
+        }
+
+        foreach ($files as $relative => $content) {
+            $path = $root.'/'.$relative;
+
+            if (is_link($path) || is_dir($path) || ! is_writable(dirname($path)) || (file_exists($path) && ! is_writable($path))) {
+                throw new \RuntimeException('Cannot write '.$relative.' (a symlink, a directory, or read-only, or its directory is): nothing was changed.');
+            }
+
+            if (isset($plan['changes'][$relative]) && ! is_file($path)) {
+                throw new \RuntimeException('Cannot write '.$relative.' (it is gone): nothing was changed.');
             }
         }
 
-        foreach ($plan['changes'] as $relative => $change) {
-            if (@file_put_contents($plan['root'].'/'.$relative, $change['after']) === false) {
-                throw new \RuntimeException('Could not write '.$relative.'.');
+        $written = [];
+
+        foreach ($files as $relative => $content) {
+            try {
+                $this->write($root.'/'.$relative, $content);
+                $written[] = $relative;
+            } catch (\Throwable $e) {
+                $left = array_values(array_diff(array_keys($files), $written));
+
+                throw new \RuntimeException('Could not write '.$relative.' ('.$e->getMessage().'). Written: '.($written ? implode(', ', $written) : 'none').'. Not written: '.implode(', ', $left).'.');
             }
+        }
+    }
+
+    /**
+     * One file, through a temporary file beside it and a rename, keeping its permissions
+     */
+    protected function write(string $path, string $content): void
+    {
+        $temporary = dirname($path).'/.atom-upgrade-'.bin2hex(random_bytes(6)).'.tmp';
+
+        if (@file_put_contents($temporary, $content) === false) {
+            @unlink($temporary);
+
+            throw new \RuntimeException('the temporary file could not be written');
+        }
+
+        if (file_exists($path)) {
+            @chmod($temporary, fileperms($path) & 0777);
+        }
+
+        if (! @rename($temporary, $path)) {
+            @unlink($temporary);
+
+            throw new \RuntimeException('the file could not be replaced');
         }
     }
 
@@ -868,8 +1016,15 @@ class Upgrade
         $out[] = '## Left for you by the codemod';
         $out[] = '';
         $declined = $plan['declined'];
+        $left = [];
 
-        if (! $declined && ! $plan['residue']) {
+        foreach ($scan['checks'] as $check) {
+            if ($check['codemod'] === 'auto' && $check['count']) {
+                $left[] = $check;
+            }
+        }
+
+        if (! $declined && ! $plan['residue'] && ! $left) {
             $out[] = '(nothing: every automated rewrite that applies was made)';
         }
 
@@ -879,6 +1034,10 @@ class Upgrade
 
         foreach ($plan['residue'] as $item) {
             $out[] = '- `'.$item['file'].':'.$item['line'].'`: '.$item['text'];
+        }
+
+        foreach ($left as $check) {
+            $out[] = '- **'.$check['id'].'**: '.$check['count'].' finding'.($check['count'] === 1 ? ' is' : 's are').' still in the app, for the reasons above or ones the codemod does not rewrite: listed below';
         }
 
         $out[] = '';
@@ -1046,6 +1205,29 @@ class Upgrade
      */
     protected function mergeApplied(array $old, array $new): array
     {
-        return array_values(array_unique([...$old, ...$new]));
+        $byKey = [];
+
+        foreach ([...$old, ...$new] as $line) {
+            $byKey[$this->appliedKey($line)] = $line;
+        }
+
+        return array_values($byKey);
+    }
+
+    /**
+     * A "Changed" line's identity: the file and the kind of rewrite, not the line number it was made at
+     */
+    protected function appliedKey(string $line): string
+    {
+        $file = preg_match('/^`([^`]+?)(?::\d+)?`:/', $line, $m) ? $m[1] : $line;
+        $kind = match (true) {
+            str_contains($line, '<atom:editor*>') => 'editor-tag',
+            str_contains($line, 'dead `editor`') => 'editor-prop',
+            str_contains($line, 'Date::use') && str_contains($line, 'boot()') => 'date-use',
+            str_contains($line, ' became `use ') || str_contains($line, ' was removed: the component') => 'traits',
+            default => 'css',
+        };
+
+        return $file.'|'.$kind;
     }
 }
