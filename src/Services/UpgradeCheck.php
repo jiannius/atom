@@ -378,7 +378,9 @@ class UpgradeCheck
                 'section' => 'PHP globals: dates and macros', 'severity' => static::BREAKS, 'codemod' => 'report',
                 'detect' => '->subdomain(, ->hostWithoutSubdomain(, ->isLivewireRequest( (not on app(\'livewire\'))',
                 'kinds' => ['php', 'blade'], 'pattern' => '/->\s*(?:subdomain|hostWithoutSubdomain|isLivewireRequest)\s*\(/',
-                'exclude' => fn (string $line) => str_contains($line, "app('livewire')") || str_contains($line, 'app("livewire")') || str_contains($line, 'Livewire::') || str_contains($line, 'app(Livewire'),
+                'exclude' => fn (string $line) => str_contains($line, "app('livewire')") || str_contains($line, 'app("livewire")') || str_contains($line, 'Livewire::') || str_contains($line, 'app(Livewire')
+                    // a model factory state (`SiteDomain::factory()->subdomain()`) is not the Request macro
+                    || (bool) preg_match('/\bfactory\s*\([^)]*\)\s*(?:->\s*\w+\s*\([^)]*\)\s*)*->\s*(?:subdomain|hostWithoutSubdomain|isLivewireRequest)\s*\(/', $line),
             ],
             'macro-str' => [
                 'title' => 'Str::dotpath() is removed',
@@ -2038,8 +2040,13 @@ class UpgradeCheck
             $evidence['WithRecaptcha'] = $tagged(['form']) ? '<atom:form recaptcha>' : 'verifyRecaptcha()';
         }
 
-        if (preg_match('/->\s*(?:paginate|simplePaginate|cursorPaginate|toPage|toTable)\s*\(|\b(?:resetPage|setPage|gotoPage|nextPage|previousPage)\s*\(/', $php) || $tagged(['table', 'pagination']) || str_contains($markup, '->links(')) {
-            $evidence['WithPagination'] = 'paginates (paginate(), toTable(), <atom:table> or <atom:pagination>)';
+        $paginates = preg_match('/->\s*(?:paginate|simplePaginate|cursorPaginate|toPage|toTable)\s*\(|\b(?:resetPage|setPage|gotoPage|nextPage|previousPage)\s*\(/', $php) || $tagged(['pagination']) || str_contains($markup, '->links(');
+
+        if ($paginates || $tagged(['table'])) {
+            // an <atom:table> alone is enough to keep the trait, but a table that never paginates does not need it: say so
+            $evidence['WithPagination'] = $paginates
+                ? 'paginates (paginate(), toTable(), <atom:table> or <atom:pagination>)'
+                : 'only <atom:table> in the view: it may be unneeded when the table never paginates';
         }
 
         if (! isset($evidence['WithEditor']) && ($tagged(['uploader', 'tiptap.chat', 'editor.chat']) || $tagged(['input'], fn ($a) => static::value($a, 'type') === 'file') || preg_match('/TemporaryUploadedFile|->\s*temporaryUrl\s*\(/', preg_replace('/^use\s[^;]*;/m', '', $php)) || preg_match('/\$wire\s*\.\s*upload\s*\(|livewire-upload-/', $markup) || preg_match('/<input\b[^>]*\btype\s*=\s*["\']file["\']/i', $markup))) {

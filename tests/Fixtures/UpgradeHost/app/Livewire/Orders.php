@@ -46,5 +46,6 @@ class Orders extends Component
         $h = $request->subdomain();
         $i = str('a.b')->dotpath();
         $j = Order::query()->tableHasColumn('x');
+        $k = SiteDomain::factory()->count(2)->subdomain()->create();
     }
 }
