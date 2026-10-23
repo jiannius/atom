@@ -116,6 +116,28 @@ function upgradeCodemodReady(bool $ready = true): array
         : ['legacy_casts' => ['App\\Models\\Article' => ['body']], 'rows' => [], 'unmigrated' => 3, 'flagged' => 1, 'refused' => 1, 'problems' => [], 'ready' => false];
 }
 
+/**
+ * UPGRADE.md by `## ` heading (backticks dropped), each with its text
+ *
+ * @return array<string, string>
+ */
+function upgradeGuideSections(): array
+{
+    $guide = (string) file_get_contents(__DIR__.'/../../UPGRADE.md');
+    $sections = [];
+
+    foreach (preg_split('/^## /m', $guide) as $index => $chunk) {
+        if ($index === 0) {
+            continue;
+        }
+
+        [$heading, $body] = explode("\n", $chunk, 2) + [1 => ''];
+        $sections[str_replace('`', '', trim($heading))] = $body;
+    }
+
+    return $sections;
+}
+
 beforeEach(function () {
     $this->hosts = [];
     $this->host = function (bool $skeleton = true) {
@@ -797,5 +819,68 @@ DIFF);
         expect($upgrade->unifiedDiff('a', "a\nb", "a\nc"))->toBe("--- a/a\n+++ b/a\n@@ -1,2 +1,2 @@\n a\n-b\n\\ No newline at end of file\n+c\n\\ No newline at end of file\n")
             ->and($upgrade->unifiedDiff('a', "a\n", "a\n"))->toBe('')
             ->and($upgrade->unifiedDiff('a', '', "x\n"))->toBe("--- a/a\n+++ b/a\n@@ -0,0 +1 @@\n+x\n");
+    });
+});
+
+describe('atom:upgrade: the guide', function () {
+    it('states, in every section, which entries atom:upgrade rewrites and which it reports, exactly as checks() says', function () {
+        $sections = upgradeGuideSections();
+        $expected = [];
+
+        foreach (UpgradeCheck::checks() as $id => $check) {
+            $expected[$check['section']][$check['codemod'] === 'auto' ? 'Automated' : 'Reported'][] = $id;
+        }
+
+        expect(array_keys($expected))->each->toBeIn(array_keys($sections));
+
+        foreach ($sections as $heading => $body) {
+            if (in_array($heading, ['Installing a pre-release', 'What is not restyled', 'The order'], true)) {
+                continue;
+            }
+
+            expect(preg_match('/\*\*atom:upgrade:\*\* Automated: ([^.]*)\. Reported: ([^.]*)\./', $body, $line))->toBe(1, 'no atom:upgrade line in "'.$heading.'"');
+
+            foreach (['Automated' => $line[1], 'Reported' => $line[2]] as $verdict => $text) {
+                preg_match_all('/`([a-z][a-z0-9-]+)`/', $text, $ids);
+
+                expect(collect($ids[1])->sort()->values()->all())->toBe(collect($expected[$heading][$verdict] ?? [])->sort()->values()->all(), $heading.' / '.$verdict);
+            }
+        }
+    });
+
+    it('no longer says the codemod is yet to come', function () {
+        $guide = (string) file_get_contents(__DIR__.'/../../UPGRADE.md');
+
+        expect($guide)->not->toContain('when 4.0 ships')
+            ->not->toContain('will rewrite')
+            ->not->toContain('will only report')
+            ->not->toContain('are written as the work lands')
+            ->not->toContain('V4-4d');
+    });
+
+    it('gives the ordered checklist, with every command a host runs', function () {
+        $order = upgradeGuideSections()['The order'];
+
+        foreach (['atom:upgrade-check', 'atom:tiptap-migrate', '--force', '--compare', '--status --for-v4', 'atom:upgrade --dry-run', 'php artisan atom:upgrade`', 'ATOM-UPGRADE-TODO.md'] as $needle) {
+            expect($order)->toContain($needle);
+        }
+
+        // the steps run in this order
+        $at = array_map(fn ($needle) => strpos($order, $needle), ['atom:upgrade-check', 'atom:tiptap-migrate', 'Require v4', 'atom:upgrade --dry-run', 'php artisan atom:upgrade`', 'Work through']);
+
+        expect($at)->toBe(collect($at)->sort()->values()->all())->and($at)->each->not->toBeFalse();
+    });
+
+    it('is described in the README, the Boost skill and CLAUDE.md', function () {
+        $readme = file_get_contents(__DIR__.'/../../README.md');
+        $skill = file_get_contents(__DIR__.'/../../resources/boost/skills/atom-components/SKILL.blade.php');
+        $claude = file_get_contents(__DIR__.'/../../CLAUDE.md');
+
+        foreach (['atom:upgrade --dry-run', 'ATOM-UPGRADE-TODO.md', 'refuses to write', 'atom:tiptap-migrate --status'] as $needle) {
+            expect($readme)->toContain($needle);
+        }
+
+        expect($skill)->toContain('atom:upgrade --dry-run')->toContain('ATOM-UPGRADE-TODO.md');
+        expect($claude)->toContain('atom:upgrade')->toContain('Upgrade::REWRITES')->toContain('UpgradeCheck::checks()');
     });
 });

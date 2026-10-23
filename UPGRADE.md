@@ -1,18 +1,26 @@
 # Upgrading to atom 4
 
-Each change that breaks a host is listed once, under the release that made it. The entries are written as the work lands; the codemod and the full checklist come with the 4.0 release.
+Each change that breaks a host is listed once, under the release that made it. Every section ends with an **atom:upgrade:** line that says which of its entries the codemod rewrites (**Automated**) and which it only lists in `ATOM-UPGRADE-TODO.md` (**Reported**), by the check id that `php artisan atom:upgrade-check` prints; the rest of a section is a change of look that no command acts on.
 
-**Read "PHP globals: dates and macros" first:** every date in your app changes type and string form unless you add one line, and nothing throws for the string change.
+**Read "PHP globals: dates and macros" first:** every date in your app changes type and string form unless you add one line, and nothing throws for the string change. `atom:upgrade` adds that line for you.
 
-**Size the move first:** `php artisan atom:upgrade-check` (3.38 and later, and v4) reads your app and lists every break below with `file:line`, a severity, and whether the `atom:upgrade` codemod will fix it. It writes nothing. `--json` is what the codemod reads. See the README, "Moving an app to v4".
+## The order
+
+1. **Size the move (on 3.38 or later).** `php artisan atom:upgrade-check` reads your app, writes nothing, and lists every break below with `file:line`, a severity and whether the codemod fixes it. See the README, "Moving an app to v4".
+2. **Move the editor columns to JSON, still on 3.x.** Switch each `AsEditorContent` cast to `AsTiptapContent`, then `php artisan atom:tiptap-migrate` (a dry run), `--force`, `--compare` (read the review file), `--prune-backups` once you have signed it off, and `php artisan atom:tiptap-migrate --status --for-v4` exits 0 when nothing is left. The steps are under "The legacy editor". Do this before step 3: the class is gone in v4.
+3. **Require v4.** See "Installing a pre-release" while v4 is one.
+4. **Preview the codemod.** `php artisan atom:upgrade --dry-run` prints a unified diff of every file it would change and the `ATOM-UPGRADE-TODO.md` it would write, and writes nothing. It ends with the gate: `atom:upgrade` refuses to write while `atom:tiptap-migrate --status` is not ready (a cast left on `AsEditorContent`, a row not migrated or flagged, or a status it cannot read, for instance with no database).
+5. **Apply it.** Commit your work first, run `php artisan atom:upgrade`, and read the diff. A second run changes nothing. `--path=` points it at another directory.
+6. **Work through `ATOM-UPGRADE-TODO.md`.** It lists, by section of this guide and with `file:line`, everything that is left: the sites it only reports (the JS globals, the `$wire` helpers, the date and macro calls, the classes you put on restyled components, your tests), what it declined to rewrite and why, the traits it chose and the evidence (text cannot see everything, so check them), and the accent colour. It is rewritten by every run.
+7. **Run your tests and look at the pages.** The look changed everywhere. Delete the TODO file when you are done.
 
 ## Installing a pre-release
 
-Pin an exact version: `composer require jiannius/atom:4.0.0-alpha.1`. Composer accepts an exact pre-release version even under `"minimum-stability": "stable"`, so `composer.json` needs no other change. A range is different: `^4.0` alone never picks the alpha; `^4.0@alpha` does, or a lower `minimum-stability`.
+Pin an exact version: `composer require jiannius/atom:4.0.0-alpha.N` (the number is on the releases page). Composer accepts an exact pre-release version even under `"minimum-stability": "stable"`, so `composer.json` needs no other change. A range is different: `^4.0` alone never picks the alpha; `^4.0@alpha` does, or a lower `minimum-stability`.
 
 ## Tokens
 
-**CSS integration.** Delete your atom `@source` lines and the theme block copied from skeleton-project (the font, `primary`, the zinc remap, `muted`, `accent`, the `border-color` base rule). Add `@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';` after `@import 'tailwindcss';`. Then set your brand colour as `--color-accent` in `@theme`, and do not set `accent-foreground` unless you must. A derived colour you do set goes in `@theme` too, not in a plain `:root` rule: `accent-soft` and `accent-ink` are inline tokens, which utilities read where they are used. Overriding `--color-accent-ink` changes the `accent-ink` utilities only: `accent-content` and the focus ring read atom's `--atom-accent-ink` role directly (so a nested `.dark` island keeps its own values), and a `--color-accent-ink` override does not reach them.
+**CSS integration.** (Automated for a Tailwind entry file in the skeleton-project shape.) Delete your atom `@source` lines and the theme block copied from skeleton-project (the font, `primary`, the zinc remap, `muted`, `accent`, the `border-color` base rule). Add `@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';` after `@import 'tailwindcss';`. Then set your brand colour as `--color-accent` in `@theme`, and do not set `accent-foreground` unless you must. A derived colour you do set goes in `@theme` too, not in a plain `:root` rule: `accent-soft` and `accent-ink` are inline tokens, which utilities read where they are used. Overriding `--color-accent-ink` changes the `accent-ink` utilities only: `accent-content` and the focus ring read atom's `--atom-accent-ink` role directly (so a nested `.dark` island keeps its own values), and a `--color-accent-ink` override does not reach them.
 
 **Root size.** The 14px root is gone; spacing utilities follow Tailwind (`p-6` is 24px, not 21px). Remove any `html { font-size }` override.
 
@@ -27,6 +35,8 @@ Pin an exact version: `composer require jiannius/atom:4.0.0-alpha.1`. Composer a
 **Remove the font you loaded for the old design.** atom serves Geist and Geist Mono itself: the files come from its own `/atom/{file}` route and `<atom:html>` (so every shell) preloads them. Delete the Vite font plugin (a Bunny or Google Fonts plugin, and its entry in `vite.config.js`) and any `@font-face` or `--font-sans` you wrote for the old font, or the page downloads a second font for nothing. Keep one only if you pass `fonts="inter"` (or another family) on purpose.
 
 **Delete the copied `border-color` base rule.** Tailwind 4 draws a border in `currentColor`, so apps copied a base rule that gives every element a grey default border, in different shapes (for example `border-color: var(--color-gray-200, currentColor)` on `*, ::after, ::before`, alone or inside `@layer base`). Delete whatever rule does that, whatever its colour or selector list. atom now sets the default border colour itself, on `*`, `::after`, `::before`, `::backdrop` and `::file-selector-button`, from its `--atom-border` role (so it follows light and dark), in a layer so your own rule still wins. A copy left in place wins, and every border that has no colour utility of its own draws in the copied colour, not atom's.
+
+**atom:upgrade:** Automated: `css-atom-source`, `css-skeleton-theme`, `css-border-color-rule`. Reported: `css-root-font-size`, `css-old-font`. In a Tailwind entry file with a plain `@import 'tailwindcss'` and atom's `@source` lines, the codemod removes atom's three `@source` lines, every declaration of the skeleton-project theme block whose value is the skeleton's (one you changed stays, and is listed) and the copied `border-color` base rule of the skeleton's shape, and adds `@import` of `atom.tailwind.css` after Tailwind's, with the path worked out from the file's own depth. If `--color-primary` is your own colour it is also set as `--color-accent` in `@theme` (your `primary` stays). The rest of the file is left byte for byte; a file that is not that shape is left alone and listed with the reason. The root size, density, browser and accent notes above are a change of look: the TODO states what `--color-accent` is.
 
 ## Shells
 
@@ -44,6 +54,8 @@ Pin an exact version: `composer require jiannius/atom:4.0.0-alpha.1`. Composer a
 
 **Choosing the shell is yours.** Atom does not switch on an item count: it renders the nav before it knows where the nav goes. Decide in your own app layout, for example `<x-dynamic-component :component="$user->modules()->count() <= 2 ? 'atom::layouts.header' : 'atom::layouts.sidebar'">`. The choice is per page load; a role does not change mid-session, so `wire:navigate` never crosses shells.
 
+**atom:upgrade:** Automated: none. Reported: `navlist-group-class`, `shell-dropdown-menu-wrap`. The restyled shells, `layouts.header`, the narrow-screen menu and "More" are a look change and a new component: nothing to run.
+
 ## Page components
 
 Replace copied `partials/section`, `breadcrumbs` and `heading` shells with `<atom:page>`. This is recommended, not required.
@@ -55,6 +67,8 @@ New, and additive: `<atom:page>`, `<atom:page.header>`, `<atom:page.tabs>`, `<at
 **`<atom:empty>` is reworked.** It takes `kind` (`first-use`, `no-results`, the default, or `error`) and an `action` slot for the next step. Nothing you pass today stops working: with no `kind` it still reads "No Results" with the inbox icon, and `icon`, `heading`, `subheading`, `size`, `subtle` and the default slot behave as before. What changes is the look (design tokens in place of the zinc palette, a 16px heading, centred text) and the large state's icon, which draws itself in once, in about a second; not at `size="sm"` or `subtle`, and not under `prefers-reduced-motion`. A class or test that matched `py-8` or `bg-zinc-100` on it needs updating.
 
 **Status.** A `badge` stays as it was. Use `<atom:status>` where a state is a word with a dot (`tone`: `neutral`, `info`, `success`, `warning`, `danger`, `accent`; `running` pulses the dot): it reads the role tokens, so it follows the theme and the accent without a `dark:` pair.
+
+**atom:upgrade:** Automated: none. Reported: none. The page components are additive and recommended, not required.
 
 ## Lists, forms and the timeline
 
@@ -75,6 +89,8 @@ Recommended: frameless tables inside panels; `numeric` on money columns; `form.s
 **What changes in a table you already have.** No prop is removed, but the look moves with the tokens. A header cell is a 12px label at weight 510 in the muted tone, no longer uppercase or letter-spaced; its padding matches the cell's, so the two line up. A cell is on the row tokens: `px-row py-row leading-row` (9px by 12px, a 13px line at 1.35 in compact density) with a floor height (`--atom-row-min-h`: 40px compact, 44 comfortable, 48 on a touch device), not the old `py-3 px-4`. A table that sat in rows of 20px text is therefore a few pixels shorter, and one with a two-line cell is no longer squeezed. The header row no longer has the grey fill (`bg-zinc-100`, transparent in dark): it is on the panel's surface, with a hairline under it. A sortable header's dotted underline sits at `underline-offset-4` (it was 5) and takes the foreground colour. The row-actions cell (`table.actions`) is on the row tokens too, not `py-3 px-4`. The framed card is `rounded-panel border bg-surface` with no shadow, and the row hover is a faint fill. The table root is `min-w-0 max-w-full`, so a wide table inside a grid or flex parent (`<atom:page>` is one) scrolls inside its own box instead of widening the page: remove a `min-w-0` or `overflow-x-auto` wrapper you added to work around that. A test or a style that matched `uppercase`, `py-3`, `bg-zinc-100` or `rounded-lg` on a table needs updating.
 
 **`form.actions sticky`** (the modal footer) now sits on the `surface` token (it was `bg-white dark:bg-zinc-900`, which are the same colours), is `z-10` (it was `z-1`), and its top border uses the border token (it was `border-zinc-100 dark:border-zinc-700`, a lighter line in light mode).
+
+**atom:upgrade:** Automated: none. Reported: none. Everything here is additive except the look changes, which no command acts on.
 
 ## Controls
 
@@ -101,6 +117,8 @@ Components use atom's tokens; remove overrides that patched the old look. Tag AP
 **Breaks a test.** A test or a style that matched `bg-primary`, `bg-white`, `shadow-xs`, `h-10`, `rounded-lg`, `size-4.5` or the focus classes on these components needs updating; the primary button is `bg-accent`.
 
 **Dark check.** The dark-mode contrast check covers the 3a components and variants the two dark-mode hosts render: button (primary, default, ghost with a colour, danger, link, delete, submit, the Google and Facebook variants, sizes xs, sm and default, icon-only), input (text, email with chips, number, password, tel, colour, file through the uploader, OTP, icon, prefix and suffix), select (native, listbox single, multiple and searchable, filter), date picker (date, range, with time), textarea (autoresize, read-only), checkbox (caption, align start, card group), radio (group, card), toggle and uploader. Each text role is measured against its own surface at 4.5:1, and the boundaries and rings that identify a control at 3:1, in dark and light and for three accents (`tests/e2e/controls-*.spec.js`). Not measured, and left token-driven: the slider and the rating (no host uses them) and the standalone time picker (reached through the date picker's time row). The box of a control holds 3:1 in dark: `--atom-control-border` is `#726e65` there (3.6:1 on the surface it sits on, measured on a text field, a select, a date trigger and the default button; 3.1 on a raised panel), so the box reads clearly. In light it stays the design's 17% hairline, 1.41:1: an accepted exception to the 3:1 of WCAG 1.4.11, recorded in the spec report. `border-strong` is unchanged (panels, chips, dividers); utilities `border-control-border` and `bg-control-border` exist. Checkbox, radio and toggle, which have nothing else to identify them, hold 3:1 in both themes.
+
+**atom:upgrade:** Automated: none. Reported: `button-implicit-icon`, `button-variant-undefined`, `button-variant-brand`, `button-variant-primary`, `button-size-prop`. The other entries are a look change.
 
 ## Data display
 
@@ -150,6 +168,8 @@ A name is read in lower case with its spaces trimmed. Two colours of one tone lo
 
 **Dark check.** The dark-mode contrast check covers the 3b components and variants the two dark-mode hosts render: table (sortable and right-aligned columns, a checkbox column, rows that link, a first-load skeleton), badge (`xs`, `sm` and default; a status enum or array; the names green, zinc, yellow, black, amber, gray, red, blue, purple and orange; a hex from a record), badge group, card (inset, subtle, divided, stats, chart), `dd` and `dd.group` in two columns, callout (warning, danger, info and success, with a heading and with its own icon), list and list item, avatar (`xs`, round) and avatar group, profile (`lg`), skeleton and placeholder bar. Each text role is measured against its own surface at 4.5:1 (an icon or a fill that carries meaning at 3:1) for three accents, one of them light, and the list, record and document pattern pages are read as pages in both themes. `kbd`, `progress` and the standalone pager are not rendered by those hosts; they are held to the same numbers anyway.
 
+**atom:upgrade:** Automated: none. Reported: `badge-color-name`. The other entries are a look change.
+
 ## Overlays and navigation
 
 Components use atom's tokens; remove overrides that patched the old look. Tag APIs are unchanged: no prop was added or removed. This batch is `modal` (centred, slide-over and bottom sheet), `alert` and `confirm` (which draw in a modal), `dropdown`, `menu` and `menu.item` (the shells' account menu and the panel of a context menu are one too), `tooltip`, `toast`, `command`, `context-menu`, `lightbox`, `tabs`, `breadcrumbs` and `accordion`.
@@ -182,6 +202,8 @@ Components use atom's tokens; remove overrides that patched the old look. Tag AP
 
 **Dark check.** The dark-mode contrast check covers the 3c components and variants the two dark-mode hosts render: modal (centred, inset, not dismissible, not closeable and as a slide-over), confirm (danger and delete), alert, toast (success, danger and warning), dropdown with a popover menu (items with an icon, a badge, danger and delete), tooltip (with and without its own content element), tabs (the line and the button variant), breadcrumbs and the lightbox. Each text role is measured against its own surface at 4.5:1 (an icon, a ring or an underline that carries meaning at 3:1), in dark and light, for three accents and at both Tailwind builds (`tests/e2e/layers-*.spec.js`). The command palette, the context menu and the accordion are not rendered by those hosts and are held to the same numbers anyway. A hairline is not a 3:1 boundary: a raised layer is told from what is behind it by its surface step, its hairline and its shadow, as the data display's panels are.
 
+**atom:upgrade:** Automated: none. Reported: none. Tag APIs are unchanged; the entries are a look change, and the TODO lists the restyled components your app uses.
+
 ## Text, editor, calendar, chart and the docs
 
 Components use atom's tokens; remove overrides that patched the old look. Tag APIs are unchanged: no prop was added or removed. This batch is `heading`, `subheading`, `caption`, `label`, `error`, `link`, `separator`, `sharer`, `copy`, `embed`, `whatsapp`, the editors (`tiptap`, `tiptap.chat`, `tiptap.content` and `editor`, which is the same component under its old name), `calendar`, `chart` and the `/atom/docs` chrome. With it every component carries the new design.
@@ -210,6 +232,8 @@ Components use atom's tokens; remove overrides that patched the old look. Tag AP
 
 **Dark check.** The dark-mode contrast check covers the 3d components and variants the two dark-mode hosts render: heading, subheading, caption, label and error (in a field), link (on the canvas, in a card and a sunken card, and in a callout of each tone), separator, the editor (the content with a heading of each level, a link, a mention, a quote, a list, a table, inline code and a code block; the toolbar's glyphs; the placeholder; the field frame), the chat composer, the calendar (month and week, items of every colour and of a hex, the selection, a pending item, the day list), `copy`, `sharer`, `embed` and `whatsapp`, and the docs pages as pages. Each text role is measured against its own surface at 4.5:1 (an icon, a line, a series or a ring that carries meaning at 3:1; the field frame in light is the design's hairline and is held to 1.3:1 like every field's), in dark and light, for three accents, one of them light, and at both Tailwind builds (`tests/e2e/content-*.spec.js`, and the calendar's own sweep of every state in `calendar-look.spec.js`, which now reads the consumer build and no longer loads Tailwind from a CDN). The chart (bar, area and a sparkline, their lines, labels and the stats card's indicator) is not rendered by those hosts and is held to the same numbers anyway.
 
+**atom:upgrade:** Automated: none. Reported: `chart-color-unknown`, `link-colour-override`. The other entries are a look change.
+
 ## Livewire traits
 
 **`AtomComponent` is deleted (no alias).** Replace `use AtomComponent;` with only the traits the component needs, from `Jiannius\Atom\Traits\`:
@@ -226,7 +250,7 @@ A component that renders `<atom:table>` (or a sortable column, a checkbox cell, 
 
 **Hook names follow the traits.** `mountAtomComponent`, `updatingAtomComponent` and `updatedAtomComponent` are now `mountWithBreadcrumbs`, `updatedWithTable` and `updatedWithEditor` (the table sort gate is no longer a hook). Only a component that overrode or called one of them by name needs a change. Do not name a property or a method after a trait hook (`withTable`, `withEditor`, `withBreadcrumbs`, `withRecaptcha`, `withUrlFilters`, `updatingWithTable` ...): Livewire calls a trait's hook for a property of the same name too, so a string-valued one runs the hook confusingly. The `raw:` table-sort gate does not depend on any of these names: it is a listener on Livewire's `update` event (registered to run before any of your `updating*` hooks) for components that use `WithTable`. Do not put `_table` in a component's `queryString` or `#[Url]`: a URL is read into the property before `mount()`, through no update event, so a `WithTable` component that does throws at mount. `WithUrlFilters` reserves the `page` query key only on a component that uses `WithPagination`, which is now the component's own choice.
 
-`atom:upgrade` will rewrite `use AtomComponent;` to the traits a component's markup and methods need, and print a review list for what it cannot see (a table rendered from a child partial, `breadcrumbs()` on a parent class, a `$wire.toast` call in JS), when 4.0 ships. Until then, change the traits by hand.
+**atom:upgrade:** Automated: `use-atom-component`. Reported: `wire-helper-browser`, `wire-helper-listener`, `trait-hook-name`, `table-state-in-url`. The codemod rewrites each `use AtomComponent;` in a class body (a single-file Blade component too; not in `tests/`) to the traits the component's view, the partials it includes and its methods call for, adds the `use` imports in alphabetical place and drops the old import. Traits already in the class are not repeated. It lists the traits it chose, with the evidence for each, in the TODO, because text cannot see everything: a table rendered from a partial three levels down, `breadcrumbs()` on a parent class, a trait a base class should carry. A `use AtomComponent { ... }` with conflict rules is left alone and listed.
 
 ## PHP globals: dates and macros
 
@@ -255,7 +279,7 @@ What stays: `Request::portal()`, `Str::namespace()`, `interval()` and `initials(
 
 **Two dead declarations are gone.** The `editor` prop of `<atom:html>` and the shells (`layouts.sidebar`, `layouts.header`) was never read, because `<atom:tiptap>` links its own stylesheet: delete it from your markup (left in, it lands as an `editor` attribute on `<body>`). The provider also no longer registers a `database/migrations` path, which the package never had.
 
-`atom:upgrade` will add the `Date::use()` line, flag the date-method calls and the removed macros, and delete the `editor` attribute, when 4.0 ships. Until then, change them by hand.
+**atom:upgrade:** Automated: `date-use-line`, `html-editor-prop`. Reported: `date-pretty`, `date-local`, `date-recent`, `date-range-string`, `date-printed-bare`, `carbon-import`, `carbon-typed`, `macro-request`, `macro-str`, `macro-builder`, `macro-attribute-bag`. The codemod adds `Date::use(\Jiannius\Atom\Services\Carbon::class);` as the first statement of `AppServiceProvider::boot()`, with the `Date` import, when no service provider, file of `app/Providers` or `bootstrap/*.php` calls it. With no `AppServiceProvider.php`, no `boot()`, or another `Date::use()` already there, it changes nothing and says why. It deletes the `editor` attribute of `<atom:html>` and the shells. The date and macro sites are reported with `file:line` (once the line exists the date ones are review items); the macro calls need a decision of yours.
 
 ## JS globals
 
@@ -283,7 +307,7 @@ Search your JS and Blade (`x-text`, `x-bind`, `x-data`, `x-init`, `x-on`, `x-eff
 - `atom.empty` is the function `window.empty` was: `null`, `undefined`, `''`, a blank string, `[]` and `{}` are empty; `0`, `false` and a `Date` are not.
 - Nothing in atom's own markup or scripts uses the old names any more. `tests/Feature/JsGlobalsTest.php` fails if one comes back.
 
-`atom:upgrade` will only report: it lists every site that calls an old helper, and rewrites none of them, because rewriting an expression inside an Alpine attribute by regex is unsafe. Until then, change them by hand.
+**atom:upgrade:** Automated: none. Reported: `js-currency`, `js-array-helper`, `js-string-helper`, `js-date-helper`, `js-from-now`, `js-empty`, `js-dd`. It lists every site that calls an old helper, in `.js` and `.ts` files and in the Alpine attributes and `<script>` blocks of Blade, and rewrites none of them: an expression inside an Alpine attribute is not safe to rewrite by regex. A match is a candidate (`.toDateString(` is also a native `Date` method).
 
 ## The legacy editor: `AsEditorContent` and `<atom:editor*>`
 
@@ -304,8 +328,14 @@ Then on v4: `<atom:editor*>` becomes `<atom:tiptap*>`, with the same props. A co
 
 **Static prose wrapped in `<atom:editor.content>` is re-parsed by the editor schema and loses its markup.** Use a plain element with the `text-base` reading role instead (`<div class="text-base">`).
 
-`atom:upgrade` will rename the tags to `<atom:tiptap*>`, report any cast still on `AsEditorContent`, and refuse to finish while a cast, an unmigrated row or a flagged row remains (it reads `atom:tiptap-migrate --status`), when 4.0 ships. Until then, change the tags by hand.
+**atom:upgrade:** Automated: `editor-tag`. Reported: `editor-cast`, `editor-content-static`. The codemod renames `<atom:editor>`, `<atom:editor.chat>` and `<atom:editor.content>` (opening, closing and self-closing, and the `<x-atom::editor*>` spelling) to `tiptap`, leaving Blade comments and other tags such as `<atom:editor-toolbar>` alone. It does not touch a cast, and it does not migrate data: it refuses to write at all while `php artisan atom:tiptap-migrate --status` is not ready (see "The order", step 4).
+
+## Breaks a test (every restyle section)
+
+Each restyled section above ends with a "Breaks a test" paragraph that names the classes and selectors the restyle changed. `atom:upgrade-check` reads `tests/` for those names (and for `dialog button`) and reports them apart from the app's findings; nothing rewrites a test.
+
+**atom:upgrade:** Automated: none. Reported: `test-old-classes`.
 
 ## What is not restyled
 
-Nothing. Every component, the editor's content, the calendar, the chart and the docs are on the tokens, and the guards (`RestyleGuardsTest`) hold every component file (one allowance: the shells' mobile scrim, `bg-black/20`): no raw palette name, no `dark:` colour pair, no shadow except `shadow-pop` on a raised layer, no `:focus` ring. Two things are left alone on purpose: `resources/css/editor.css`, the legacy editor's sheet that nothing in atom links (it goes with the legacy editor, V4-4d), and a host's own markup, which keeps whatever palette classes it wrote: the `zinc` and `gray` ramps are atom's warm neutral palette now, so they do not break.
+Nothing. Every component, the editor's content, the calendar, the chart and the docs are on the tokens, and the guards (`RestyleGuardsTest`) hold every component file (one allowance: the shells' mobile scrim, `bg-black/20`): no raw palette name, no `dark:` colour pair, no shadow except `shadow-pop` on a raised layer, no `:focus` ring. A host's own markup is left alone on purpose and keeps whatever palette classes it wrote: the `zinc` and `gray` ramps are atom's warm neutral palette now, so they do not break.
