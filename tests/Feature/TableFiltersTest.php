@@ -169,17 +169,22 @@ describe('the add-filter pill', function () {
             ->and(domQuery($html, '//*[@x-show="isEmpty"]'))->toBeEmpty();
     });
 
-    it('draws a date range as a dashed pill reading "+ Label" that hides once a range is set', function () {
+    it('draws a date range as the same dashed button pill, with a plus, that hides once a range is set', function () {
         $html = renderBlade('<atom:date-picker variant="range" add data-filter-key="filters.issued" placeholder="Issued" />');
-        $input = domQuery($html, '//input[@type="text"]')[0];
+        $pill = domQuery($html, '//button[@data-atom-date-range-add]');
 
-        expect($input->getAttribute('placeholder'))->toBe('+ Issued')
-            ->and(domClasses($input))->toContain('border-dashed', 'rounded-pill', 'h-[26px]')
+        expect($pill)->toHaveCount(1)
+            ->and(domClasses($pill[0]))->toContain('border-dashed', 'rounded-pill', 'h-[26px]', 'inline-flex')
+            ->and(preg_replace('/\s+/', ' ', trim($pill[0]->textContent)))->toBe('Issued')
+            ->and(domQuery($html, '//button[@data-atom-date-range-add]//*[@data-atom-icon]'))->toHaveCount(1)
+            // not an input with a typed "+": there is nothing to type in it, and no field-sizing to fall back from
+            ->and(domQuery($html, '//input'))->toBeEmpty()
+            ->and($html)->not->toContain('field-sizing')
             ->and(domQuery($html, '//*[@data-atom-date-range][@x-show="!dateRangeValue"]'))->toHaveCount(1)
-            // the clear and calendar icons are not drawn on the pill
             ->and(domQuery($html, '//button[@aria-label="Open calendar"]'))->toBeEmpty()
-            // and it registers its chip like any filter
-            ->and($html)->toContain('table-filter:set');
+            // it still registers its chip, and opens the same calendar menu
+            ->and($html)->toContain('table-filter:set')
+            ->and(domQuery($html, '//*[@data-atom-menu]'))->not->toBeEmpty();
     });
 
     it('is the plain range field without add', function () {

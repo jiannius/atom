@@ -52,6 +52,29 @@ for (const tw of ['floor', 'latest']) {
       await expect(pill).toBeVisible()
     })
 
+    test('a date range: set one from the calendar, the chip takes the pill\'s place, and its x brings the pill back', async ({ page }) => {
+      await open(page, { path: 'table-filters-inline', tw })
+
+      const pill = page.getByRole('button', { name: 'Issued', exact: true })
+
+      expect(await pill.evaluate((el) => [getComputedStyle(el).borderTopStyle, el.tagName])).toEqual(['dashed', 'BUTTON'])
+      await expect(pill).toContainText('Issued')
+
+      await pill.click()
+      await page.getByRole('menuitem', { name: 'Last 7 Days' }).click()
+
+      const chip = chips(page).filter({ hasText: 'Issued' })
+
+      await expect(chip).toHaveCount(1)
+      await expect(chip).toContainText('is')
+      await expect(pill).toBeHidden()
+
+      await chip.getByRole('button', { name: 'Remove filter: Issued' }).click()
+
+      await expect(chips(page).filter({ hasText: 'Issued' })).toHaveCount(0)
+      await expect(pill).toBeVisible()
+    })
+
     test('a multiple add pill stays, to add more values', async ({ page }) => {
       await open(page, { path: 'table-filters-inline', tw })
 

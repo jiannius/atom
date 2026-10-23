@@ -29,7 +29,7 @@ $name = $label ? t($label) : match ($kind) {
 };
 @endphp
 
-<div {{ $attributes->class(['min-w-0', '@container' => $kind === 'path']) }} data-atom-timeline data-kind="{{ $kind }}">
+<div {{ $attributes->class(['min-w-0', '@container w-full' => $kind === 'path']) }} data-atom-timeline data-kind="{{ $kind }}">
     <ol @class([
         'm-0 list-none p-0',
         'grid gap-4' => $kind === 'message',

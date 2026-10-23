@@ -531,7 +531,7 @@ describe('list page pattern', function () {
         expect(domQuery($html, $bar))->toHaveCount(1)
             // customer, status, issued: all three are add pills (a select's trigger, a date range's input)
             ->and(domQuery($html, $bar.'//button[@data-atom-select-combobox][contains(@class, "border-dashed")]'))->toHaveCount(2)
-            ->and(domQuery($html, $bar.'//input[contains(@class, "border-dashed")]'))->toHaveCount(1)
+            ->and(domQuery($html, $bar.'//button[@data-atom-date-range-add][contains(@class, "border-dashed")]'))->toHaveCount(1)
             // the issue date is the one that is set: the range reports it as a chip
             ->and($html)->toContain("'2026-04-01 to 2026-10-31'")
             ->and(domQuery($html, $bar.'//template//*[@data-atom-table-filter-chip]'))->toHaveCount(1);
@@ -795,17 +795,22 @@ describe('one primary action, V4-2c', function () {
 // The docs inside a host: its own stylesheet is loaded when it has a Vite build for it, so the utilities atom's pages use exist.
 describe('docs vite entries', function () {
     beforeEach(function () {
+        // Laravel's Vite caches a manifest by path, so every test has a public directory of its own
         $this->public = sys_get_temp_dir().'/atom-docs-vite-'.uniqid();
         mkdir($this->public.'/build', 0777, true);
         app()->usePublicPath($this->public);
+        app()->forgetInstance(\Illuminate\Foundation\Vite::class);
     });
 
     afterEach(function () {
-        foreach (['/hot', '/build/manifest.json'] as $file) {
-            @unlink($this->public.$file);
+        foreach (array_merge(glob($this->public.'/*') ?: [], glob($this->public.'/*/*') ?: []) as $file) {
+            is_file($file) && @unlink($file);
         }
 
-        @rmdir($this->public.'/build');
+        foreach (glob($this->public.'/*', GLOB_ONLYDIR) ?: [] as $dir) {
+            @rmdir($dir);
+        }
+
         @rmdir($this->public);
     });
 
@@ -821,9 +826,13 @@ describe('docs vite entries', function () {
 
     it('skips an entry the manifest lacks, and a manifest that is not JSON', function () {
         file_put_contents($this->public.'/build/manifest.json', json_encode(['resources/js/app.js' => ['file' => 'assets/app.js']]));
-        expect((new Docs)->vite())->toBe([]);
 
+        expect((new Docs)->vite())->toBe([]);
+    });
+
+    it('skips a manifest that is not JSON', function () {
         file_put_contents($this->public.'/build/manifest.json', 'not json');
+
         expect((new Docs)->vite())->toBe([]);
     });
 
@@ -831,6 +840,28 @@ describe('docs vite entries', function () {
         file_put_contents($this->public.'/hot', 'http://localhost:5173');
 
         expect((new Docs)->vite())->toBe(['resources/css/app.css']);
+    });
+
+    it('follows a host\'s own hot file and build directory, the way @vite does', function () {
+        mkdir($this->public.'/dist', 0777, true);
+        file_put_contents($this->public.'/dist/manifest.json', json_encode(['resources/css/app.css' => ['file' => 'assets/app.css']]));
+
+        // the default build directory has nothing: not loaded
+        expect((new Docs)->vite())->toBe([]);
+
+        try {
+            app(\Illuminate\Foundation\Vite::class)->useBuildDirectory('dist');
+
+            expect((new Docs)->vite())->toBe(['resources/css/app.css']);
+
+            // and a hot file somewhere else
+            file_put_contents($this->public.'/dev.hot', 'http://localhost:5173');
+            app(\Illuminate\Foundation\Vite::class)->useBuildDirectory('nowhere')->useHotFile($this->public.'/dev.hot');
+
+            expect((new Docs)->vite())->toBe(['resources/css/app.css']);
+        } finally {
+            app()->forgetInstance(\Illuminate\Foundation\Vite::class);
+        }
     });
 
     it('takes the entries from config, an empty list turns it off', function () {

@@ -19,14 +19,12 @@ $classes = Arr::toCssClasses([
     'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
 ]);
 
-/* The add-filter pill: the same input, drawn as a 26px dashed pill that reads "+ Label" until a range is set. */
-if ($add) {
-    $classes = Arr::toCssClasses([
-        'block h-[26px] w-auto field-sizing-content min-w-16 rounded-pill border border-dashed border-control-border bg-transparent px-2.5 text-xs text-fg cursor-pointer',
-        'placeholder:text-fg-muted hover:bg-surface-sunken',
-        'focus-visible:border-focus focus-visible:outline-offset-0',
-    ]);
-}
+/* The add-filter pill: the same button as the select filter's, a 26px dashed pill that reads "+ Label" until a range is set. It
+   is a button (there is nothing to type in it), so the range is set from the calendar. */
+$pillClasses = Arr::toCssClasses([
+    'inline-flex h-[26px] items-center gap-1 appearance-none rounded-pill border border-dashed border-control-border bg-transparent px-2.5 text-xs text-fg-muted',
+    'hover:bg-surface-sunken hover:text-fg',
+]);
 @endphp
 
 <div
@@ -46,6 +44,12 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
 @endif
 {{ $attributes->except(['class', 'placeholder']) }}>
     <atom:dropdown x-on:open="setCalendarDates(); setCalendarRange();" locked>
+        @if ($add)
+        <button type="button" aria-haspopup="dialog" {{ $attributes->class($pillClasses)->only('class') }} data-atom-dropdown-trigger data-atom-date-range-add>
+            <atom:icon.add class="size-3.5" />
+            <span>{{ t($placeholder) }}</span>
+        </button>
+        @else
         {{-- A div, not a button: the input is typed into, and a button may not hold one. --}}
         <div class="relative w-full" data-atom-dropdown-trigger>
             <input
@@ -57,9 +61,8 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
             x-on:keydown.down.prevent="show()"
             autocomplete="off"
             spellcheck="false"
-            {{ $attributes->class($classes)->merge(['placeholder' => ($add ? '+ ' : '').t($placeholder)])->only(['class', 'placeholder']) }}>
+            {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}>
 
-            @unless ($add)
             <div x-cloak class="z-1 absolute top-0 bottom-0 right-0 flex items-center gap-2 pr-2.5 text-fg-subtle">
                 <div x-show="dateRangeValue" x-on:click.stop="dateRangeValue = null; parse()" class="flex items-center justify-center h-full hover:text-fg">
                     <atom:icon.close class="size-4" />
@@ -72,8 +75,8 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
                     <atom:icon.calendar class="size-4" />
                 </button>
             </div>
-            @endunless
         </div>
+        @endif
 
         <atom:menu class="max-w-full" popover>
             <div class="w-sm md:w-[740px] overflow-auto flex divide-x divide-border">

@@ -287,7 +287,7 @@ describe('form.modal method', function () {
         $html = renderBlade('<atom:form.modal name="a" :method="$method"><input name="x"/></atom:form.modal>', ['method' => $method]);
 
         expect(domQuery($html, '//form[@*[name()="wire:submit"]="submit"]'))->toHaveCount(1);
-    })->with(['save()', 'a b', '1x', 'x;alert(1)', '']);
+    })->with(['save()', 'a b', '1x', 'x;alert(1)', '', "submit\n", "save\n", "save\n\n"]);
 });
 
 describe('form.modal', function () {

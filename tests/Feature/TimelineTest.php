@@ -302,7 +302,7 @@ describe('path', function () {
     it('is one segment per item in a bordered strip that stacks until its own box is wide enough', function () {
         $html = renderBlade('<atom:timeline kind="path"><atom:timeline.item title="Opened" state="done" /><atom:timeline.item title="Paid" /></atom:timeline>');
 
-        expect(domClasses(domQuery($html, '//*[@data-atom-timeline]')[0]))->toContain('@container')
+        expect(domClasses(domQuery($html, '//*[@data-atom-timeline]')[0]))->toContain('@container', 'w-full')
             ->and(domClasses(domQuery($html, '//*[@data-atom-timeline]/ol')[0]))->toContain('grid', 'rounded-panel', 'border', '@2xl:grid-flow-col', '@2xl:auto-cols-[minmax(0,1fr)]')
             ->and(domQuery($html, '//ol/li[@data-atom-timeline-item]'))->toHaveCount(2);
     });

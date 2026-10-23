@@ -76,7 +76,7 @@ for (const tw of ['floor', 'latest']) {
       await expect(chip).toContainText('is')
       expect(Math.abs((await rect(chip)).y + (await rect(chip)).height / 2 - (search.y + search.height / 2))).toBeLessThan(3)
 
-      const pill = page.getByRole('textbox', { name: /Issued/ })
+      const pill = page.getByRole('button', { name: 'Issued', exact: true })
       await expect(pill).toBeHidden()
       await chip.getByRole('button', { name: /Remove filter: Issued/ }).click()
       await expect(pill).toBeVisible()

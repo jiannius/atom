@@ -124,3 +124,16 @@ for (const tw of ['floor', 'latest']) {
     }
   })
 }
+
+for (const tw of ['floor', 'latest']) {
+  test(`a path in a flex row takes the row's width, ${tw} consumer build`, async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await open(page, { path: 'timeline-wrap', tw })
+
+    const row = await page.getByTestId('wrap-flex').evaluate((el) => el.getBoundingClientRect().width)
+    const path = await page.getByTestId('wrap-flex-path').evaluate((el) => el.getBoundingClientRect().width)
+
+    expect(path).toBeGreaterThan(200)
+    expect(Math.abs(path - row)).toBeLessThan(1)
+  })
+}

@@ -11,7 +11,7 @@
 {{-- `submit` is the Save button's LABEL; `method` names the component method the form calls (default `submit`), and is also the
      method whose run the button's loading state follows. A name that is not a plain method name falls back to `submit`. --}}
 @php
-$method = is_string($method) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $method) ? $method : 'submit';
+$method = is_string($method) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*\z/', $method) ? $method : 'submit';
 
 $width = match ((string) $cols) {
     'auto', '2' => 'max-w-2xl',

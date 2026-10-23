@@ -55,8 +55,9 @@ class Docs
     /**
      * The Vite entries the docs pages load: the host's own stylesheet, so the utilities atom's pages use exist when they are
      * viewed inside a host app. `config('atom.docs.vite')` names them (default `resources/css/app.css`; an empty list loads
-     * none). An entry is loaded only when the host has a Vite build for it (a dev server running, or the entry in the build's
-     * manifest): without one, as in the package's own test rig, nothing is loaded and the page is exactly as it was.
+     * none). An entry is loaded only when Laravel's own Vite can serve it: a dev server is running (its hot file, wherever the
+     * host put it) or the entry is in the build's manifest (in the host's build directory). Without one, as in the package's own
+     * test rig, nothing is loaded and the page is exactly as it was.
      *
      * @return array<int, string>
      */
@@ -68,19 +69,18 @@ class Docs
             return [];
         }
 
-        if (is_file(public_path('hot'))) {
-            return $entries;
-        }
+        $vite = app(\Illuminate\Foundation\Vite::class);
 
-        $manifest = public_path('build/manifest.json');
+        return array_values(array_filter($entries, function ($entry) use ($vite) {
+            try {
+                // asks the manifest (or answers with the dev server's address) the way @vite will
+                $vite->asset($entry);
 
-        if (! is_file($manifest)) {
-            return [];
-        }
-
-        $built = json_decode((string) file_get_contents($manifest), true);
-
-        return is_array($built) ? array_values(array_filter($entries, fn ($entry) => array_key_exists($entry, $built))) : [];
+                return true;
+            } catch (\Throwable) {
+                return false;
+            }
+        }));
     }
 
     /**

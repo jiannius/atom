@@ -21,6 +21,14 @@ $long = str_repeat('x', 400);
         <atom:timeline.item title="Next" state="current" actor="{{ $long }}" wire:key="p2"/>
     </atom:timeline>
 
+    {{-- a path as the child of a flex row: a container with no width of its own used to collapse to nothing --}}
+    <div class="flex" data-testid="wrap-flex">
+        <atom:timeline kind="path" class="min-w-0" data-testid="wrap-flex-path">
+            <atom:timeline.item title="One" state="done" wire:key="f1"/>
+            <atom:timeline.item title="Two" state="current" wire:key="f2"/>
+        </atom:timeline>
+    </div>
+
     <atom:timeline kind="message" data-testid="wrap-message">
         <atom:timeline.item speaker="{{ $long }}" time="{{ $long }}" body="{{ $long }}" wire:key="m1"/>
     </atom:timeline>
