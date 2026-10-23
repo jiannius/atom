@@ -18,7 +18,7 @@
 
     <atom:timeline kind="path" label="Job stages" data-testid="path">
         <atom:timeline.item title="Opened" state="done" time="08:54" actor="Ana" wire:key="p1" />
-        <atom:timeline.item title="In progress" state="current" time="1h 12m" actor="Ben" wire:key="p2" />
+        <atom:timeline.item title="In progress" state="current" time="1h 12m" actor="Ben" :tone="request()->query('tone')" wire:key="p2" />
         <atom:timeline.item title="Checked" state="pending" actor="Cleo" wire:key="p3" />
         <atom:timeline.item title="Invoiced" state="failed" time="Tue" actor="Dev" wire:key="p4" />
         <atom:timeline.item title="Paid" state="pending" wire:key="p5" />

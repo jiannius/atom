@@ -1436,6 +1436,20 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
     overflow-y: hidden;
 }
 
+/* The edges of a scrolling tab strip fade where more tabs are past them (the pageTabs factory marks the strip), so a strip that
+   scrolls says so. A mask, so it fits whatever the strip sits on. */
+[data-atom-page-tabs] > ul[data-fade-end] {
+    mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+}
+
+[data-atom-page-tabs] > ul[data-fade-start] {
+    mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent);
+}
+
+[data-atom-page-tabs] > ul[data-fade-start][data-fade-end] {
+    mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
+}
+
 /* empty: the icon's strokes draw in once, about a second. The component gives every shape pathLength="1", so a dash of
    1 is the whole stroke. Only the large empty state carries the marker (not `sm`), and not under prefers-reduced-motion.
    The dash is dropped at the very end, so an icon that somehow had no pathLength is not left dashed. */

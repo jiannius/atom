@@ -316,6 +316,22 @@ describe('record page pattern', function () {
         ['done', ['done', 'done', 'done', 'done']],
     ]);
 
+    it('tints the current stage in the status\'s tone', function (string $status, string $bg) {
+        request()->query->set('status', $status);
+
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(domClasses(domQuery($html, '//*[@data-kind="path"]//li[@aria-current="step"]')[0]))->toContain($bg);
+    })->with([['in-progress', 'bg-info-bg'], ['blocked', 'bg-warning-bg']]);
+
+    it('gives the Done stage of a done job its time and person', function () {
+        request()->query->set('status', 'done');
+
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(trim(domQuery($html, '//*[@data-kind="path"]//li[4]//*[@data-atom-timeline-meta]')[0]->textContent))->toContain('Today 11:20')->toContain('Ana');
+    });
+
     it('puts the record\'s lines in a panel with a heading row and a count, a frameless table of numeric hours and totals under it', function () {
         $html = view('atom::docs.patterns.record-page')->render();
         $panel = '//*[@data-testid="record-lines"]';

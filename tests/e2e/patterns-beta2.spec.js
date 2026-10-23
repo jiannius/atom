@@ -94,6 +94,76 @@ for (const tw of ['floor', 'latest']) {
       await expect(page.locator('[data-atom-page-actions] [data-atom-button].bg-accent')).toHaveCount(1)
     })
 
+    for (const width of [390, 1440]) {
+      test(`form page at ${width}px: every line input is at least as wide as its value, and the tax select shows its label`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await open(page, { path: 'shell-form', tw })
+        // Alpine has set the selects from their x-model
+        await expect(page.getByTestId('form-lines').locator('tbody tr select').first()).toHaveValue('none')
+
+        const narrow = await page.getByTestId('form-lines').locator('tbody tr').evaluateAll((rows) => {
+          const cv = document.createElement('canvas').getContext('2d')
+          const out = []
+
+          for (const row of rows) {
+            for (const el of row.querySelectorAll('input, select')) {
+              const s = getComputedStyle(el)
+              cv.font = `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`
+
+              const value = el.tagName === 'SELECT' ? (el.selectedOptions[0]?.textContent ?? '').trim() : el.value
+              const room = el.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight)
+
+              if (cv.measureText(value).width > room + 0.5) out.push(`${el.getAttribute('aria-label')} "${value}" needs ${Math.ceil(cv.measureText(value).width)}px, has ${Math.floor(room)}px`)
+            }
+          }
+
+          return out
+        })
+
+        expect(narrow).toEqual([])
+
+        // and the line items table scrolls inside its panel, not the page
+        expect(await noSidewaysScroll(page)).toBe(true)
+      })
+    }
+
+    test('record page at 390px: the current tab is scrolled into view, and the strip fades where more tabs are', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 900 })
+
+      const state = () => page.locator('[data-atom-page-tabs] ul').evaluate((ul) => {
+        const current = ul.querySelector('[aria-current="page"]').getBoundingClientRect()
+        const box = ul.getBoundingClientRect()
+
+        return { inside: current.left >= box.left - 0.5 && current.right <= box.right + 0.5, start: ul.hasAttribute('data-fade-start'), end: ul.hasAttribute('data-fade-end'), mask: getComputedStyle(ul).maskImage }
+      })
+
+      // the first tab: nothing before it, more after it
+      await open(page, { path: 'shell-record', tw })
+      await expect.poll(async () => (await state()).end).toBe(true)
+      expect(await state()).toMatchObject({ inside: true, start: false, end: true })
+      expect((await state()).mask).toContain('linear-gradient')
+
+      // the last tab was off-screen (x = 478 in a 358px strip): it is scrolled in, with the fade on the start side
+      await open(page, { path: 'shell-record', tw, extra: '&tab=messages' })
+      await expect.poll(async () => (await state()).start).toBe(true)
+      expect(await state()).toMatchObject({ inside: true, start: true, end: false })
+
+      // scrolling back brings the other edge's fade, and the page itself never moved
+      await page.locator('[data-atom-page-tabs] ul').evaluate((ul) => { ul.scrollLeft = 0 })
+      await expect.poll(async () => (await state()).end).toBe(true)
+      expect(await page.evaluate(() => window.scrollY)).toBe(0)
+    })
+
+    test('record page at 1440px: a strip that fits has no fade', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await open(page, { path: 'shell-record', tw })
+
+      const ul = page.locator('[data-atom-page-tabs] ul')
+
+      await expect(ul).not.toHaveAttribute('data-fade-end', /.*/)
+      await expect(ul).not.toHaveAttribute('data-fade-start', /.*/)
+    })
+
     test('form page: the line inputs are right-aligned figures, a remove is a ghost button and the (optional) is muted', async ({ page }) => {
       await open(page, { path: 'shell-form', tw })
 

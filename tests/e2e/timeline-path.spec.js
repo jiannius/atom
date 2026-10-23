@@ -17,6 +17,17 @@ for (const tw of ['floor', 'latest']) {
 
           expect(await sweepText(page, '[data-testid="path"]', TEXT, 8)).toEqual([])
 
+          // the current segment in the status's tone reads too, whichever the tone
+          for (const tone of ['info', 'warning']) {
+            await page.goto(page.url().replace(/&tone=\w+/, '') + `&tone=${tone}`)
+            expect(await sweepText(page, '[data-testid="path"]', TEXT, 8), tone).toEqual([])
+
+            const ring = await page.getByTestId('path').locator('[data-state="current"] [data-atom-timeline-marker]').evaluate(contrastOf, { what: 'border' })
+            expect(ring.ratio, `the ${tone} current marker: ${ring.colour} on ${ring.back}`).toBeGreaterThanOrEqual(GRAPHIC)
+          }
+
+          await page.goto(page.url().replace(/&tone=\w+/, ''))
+
           // a pending ring, and the filled done and failed discs, against the surface the segment sits on
           for (const [state, what] of [['pending', 'border'], ['done', 'fill'], ['failed', 'fill']]) {
             const marker = path(page).locator(`[data-state="${state}"] [data-atom-timeline-marker]`).first()

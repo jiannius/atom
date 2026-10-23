@@ -50,7 +50,7 @@ $stages = [
     ['Opened', '08:54', 'Ana'],
     ['Scheduled', 'Tue 09:00', 'Ben'],
     ['In progress', $status === 'blocked' ? 'Waiting for parts' : '1h 12m', 'Ana'],
-    ['Done', null, null],
+    ['Done', $status === 'done' ? 'Today 11:20' : null, $status === 'done' ? 'Ana' : null],
 ];
 
 $tab = request()->query('tab', 'overview');
@@ -149,7 +149,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                 $stageState = $status === 'done' || $index < $currentStage ? 'done' : ($index === $currentStage ? 'current' : 'pending');
                 @endphp
 
-                <atom:timeline.item wire:key="stage-{{ $index }}" :title="$stageName" :state="$stageState" :time="$stageState === 'pending' ? null : $stageTime" :actor="$stageState === 'pending' ? null : $stagePerson"/>
+                <atom:timeline.item wire:key="stage-{{ $index }}" :title="$stageName" :state="$stageState" :tone="$statusTone === 'neutral' ? null : $statusTone" :time="$stageState === 'pending' ? null : $stageTime" :actor="$stageState === 'pending' ? null : $stagePerson"/>
             @endforeach
         </atom:timeline>
 

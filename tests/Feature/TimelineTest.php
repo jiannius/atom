@@ -326,8 +326,8 @@ describe('path', function () {
             ->and(preg_replace('/\s+/', ' ', trim(domQuery($html, '//li[2]//*[@data-atom-timeline-meta]')[0]->textContent)))->toBe('1h 12m · Ben')
             // only the current segment is tinted and carries aria-current
             ->and(domQuery($html, '//li[@aria-current="step"]'))->toHaveCount(1)
-            ->and(domClasses($items[1]))->toContain('bg-accent-soft')
-            ->and(domClasses($items[0]))->not->toContain('bg-accent-soft')
+            ->and(domClasses($items[1]))->toContain('bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))]')
+            ->and(implode(' ', domClasses($items[0])))->not->toContain('color-mix')
             // a segment with no time and no person prints no meta line, and never a dash
             ->and(domQuery($html, '//li[4]//*[@data-atom-timeline-meta]'))->toBeEmpty()
             ->and($items[3]->textContent)->not->toContain('—')
@@ -336,6 +336,26 @@ describe('path', function () {
             ->and(domQuery($html, '//li[3]//*[@data-atom-timeline-marker]//*[@class="sr-only"]')[0]->textContent)->toBe('Failed')
             ->and(domQuery($html, '//li[4]//*[@data-atom-timeline-marker]//*[@class="sr-only"]')[0]->textContent)->toBe('Pending');
     });
+
+    it('tints the current segment in the status\'s tone, and in a light wash of the accent without one', function (?string $tone, string $bg, string $ring, string $dot) {
+        $attr = $tone ? ' tone="'.$tone.'"' : '';
+        $html = renderBlade('<atom:timeline kind="path"><atom:timeline.item title="A" state="done" /><atom:timeline.item title="B" state="current"'.$attr.' /><atom:timeline.item title="C"'.$attr.' /></atom:timeline>');
+        $items = domQuery($html, '//li');
+
+        expect(domClasses($items[1]))->toContain($bg)
+            ->and(domClasses(domQuery($html, '//li[2]//*[@data-atom-timeline-marker]')[0]))->toContain('border-2', $ring)
+            ->and(domClasses(domQuery($html, '//li[2]//*[@data-atom-timeline-marker]/span[@aria-hidden]')[0]))->toContain($dot)
+            // the tone is the current segment's: a done or a pending one stays plain
+            ->and(implode(' ', domClasses($items[0])))->not->toContain('bg-')
+            ->and(implode(' ', domClasses($items[2])))->not->toContain('bg-');
+    })->with([
+        'none' => [null, 'bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))]', 'border-accent-ink', 'bg-accent-ink'],
+        'neutral' => ['neutral', 'bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))]', 'border-accent-ink', 'bg-accent-ink'],
+        'info' => ['info', 'bg-info-bg', 'border-info-fg', 'bg-info-fg'],
+        'warning' => ['warning', 'bg-warning-bg', 'border-warning-fg', 'bg-warning-fg'],
+        'danger' => ['danger', 'bg-danger-bg', 'border-danger-fg', 'bg-danger-fg'],
+        'success' => ['success', 'bg-success-bg', 'border-success-fg', 'bg-success-fg'],
+    ]);
 
     it('falls back to pending for an unknown state, and is not foldable', function () {
         $html = renderBlade('<atom:timeline kind="path"><atom:timeline.item title="A" state="nope">Body</atom:timeline.item></atom:timeline>');

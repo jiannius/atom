@@ -21,7 +21,9 @@
               beside the title, in the state's tone; `current` pulses it), and the slot as the body, which folds away when the
               timeline is collapsible. `open` sets the starting state: a current or failed step starts open, others closed.
      path:    `title`, `state` (done, current, pending or failed), `time` and `actor` (a muted line under the title: the time, then who), and
-              the slot as one more muted line. The current segment is tinted, and carries aria-current="step".
+              the slot as one more muted line. The current segment is tinted, and carries aria-current="step". `tone` (info, success,
+              warning or danger) tints the CURRENT segment and its marker in the status's tone, so the path matches the record's status; without
+              one (or neutral, or accent) it is a light wash of the accent.
      message: `speaker`, `time`, `side` (`start` for the other person, `end` for you) and `body` or the slot.
      Every string prints as text: the host's own markup goes in a slot, and then the host owns escaping it. A `time` may be a
      DateTimeInterface (printed in a <time> element, in the viewer's timezone) or a string. A calendar date with no time goes in as a `Y-m-d` string: as a DateTimeInterface a midnight-UTC date would show as, say, 8:00 am. Titles, actors and bodies are data, so they are not translated. --}}
@@ -57,18 +59,28 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
 
 @if ($kind === 'path')
     @php
+    $pathTone = in_array($tone, ['info', 'success', 'warning', 'danger'], true) ? $tone : 'accent';
     $pathMeta = array_values(array_filter([$timeText, $text($actor)], fn ($part) => $part !== ''));
     @endphp
 
     <li {{ $attributes->class([
         'flex min-w-0 flex-col gap-0.5 border-t px-4 py-3 first:border-t-0 @2xl:border-t-0 @2xl:border-s @2xl:first:border-s-0',
-        'bg-accent-soft' => $state === 'current',
+        'bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))]' => $state === 'current' && $pathTone === 'accent',
+        'bg-info-bg' => $state === 'current' && $pathTone === 'info',
+        'bg-success-bg' => $state === 'current' && $pathTone === 'success',
+        'bg-warning-bg' => $state === 'current' && $pathTone === 'warning',
+        'bg-danger-bg' => $state === 'current' && $pathTone === 'danger',
     ]) }} @if ($state === 'current') aria-current="step" @endif data-atom-timeline-item data-state="{{ $state }}">
         <div class="flex min-w-0 items-center gap-2">
             <span @class([
                 'flex size-4 shrink-0 items-center justify-center rounded-full',
                 'border border-fg-subtle' => $state === 'pending',
-                'border-2 border-accent-ink' => $state === 'current',
+                'border-2' => $state === 'current',
+                'border-accent-ink' => $state === 'current' && $pathTone === 'accent',
+                'border-info-fg' => $state === 'current' && $pathTone === 'info',
+                'border-success-fg' => $state === 'current' && $pathTone === 'success',
+                'border-warning-fg' => $state === 'current' && $pathTone === 'warning',
+                'border-danger-fg' => $state === 'current' && $pathTone === 'danger',
                 'bg-success-fg text-surface' => $state === 'done',
                 'bg-danger-fg text-surface' => $state === 'failed',
             ]) data-atom-timeline-marker>
@@ -79,7 +91,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
                     <atom:icon.close class="size-3" />
                     <span class="sr-only">{{ t('Failed') }}</span>
                 @elseif ($state === 'current')
-                    <span aria-hidden="true" class="size-1.5 rounded-full bg-accent-ink"></span>
+                    <span aria-hidden="true" @class(['size-1.5 rounded-full', 'bg-accent-ink' => $pathTone === 'accent', 'bg-info-fg' => $pathTone === 'info', 'bg-success-fg' => $pathTone === 'success', 'bg-warning-fg' => $pathTone === 'warning', 'bg-danger-fg' => $pathTone === 'danger'])></span>
                     <span class="sr-only">{{ t('Current') }}</span>
                 @else
                     <span class="sr-only">{{ t('Pending') }}</span>
