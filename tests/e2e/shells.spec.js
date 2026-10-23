@@ -371,6 +371,18 @@ const underlined = (page) => page.evaluate(() => [...document.querySelectorAll('
 // the nav is priority-plus: what does not fit moves into "More", so the bar never overflows and no item is lost.
 for (const tw of ['floor', 'latest']) {
   test.describe(`header shell widths, ${tw} consumer build`, () => {
+    // The pattern nav has to fit the bar at 1280px with some room to spare, or a host's fonts a few percent wider than the ones atom
+    // ships (CI's Linux fallbacks, a Windows machine) tip its last group into "More". 0.5px of letter spacing is about 5%.
+    test('the pattern nav still fits the bar at 1280px with fonts 5% wider', async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 })
+      await open(page, 'header', { tw })
+      await page.addStyleTag({ content: '[data-atom-header-bar] * { letter-spacing: 0.5px !important }' })
+      await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+      await page.waitForTimeout(500)
+
+      await expect(page.locator('[data-atom-header-more]')).toBeHidden()
+    })
+
     for (const width of [768, 1024, 1100, 1280]) {
       test(`nothing in the bar overlaps at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 800 })
@@ -427,7 +439,7 @@ for (const tw of ['floor', 'latest']) {
 
       await page.locator('[data-atom-header-menu-button]').click()
       await expect(context).toBeVisible()
-      await expect(context.getByRole('button', { name: /Acme Studio/ })).toBeVisible()
+      await expect(context.getByRole('button', { name: /Acme/ })).toBeVisible()
       // it is inside the panel, above the first item, and printed once
       expect(await page.locator('[data-atom-header-nav] [data-atom-shell-context]').count()).toBe(1)
       expect(await page.locator('[data-atom-shell-context]').count()).toBe(1)
@@ -880,7 +892,8 @@ test.describe('one nav in both shells', () => {
   test('the same items and counts, in the same order', async ({ page }) => {
     const items = async (shell) => {
       await open(page, shell)
-      return page.locator('[data-atom-nav-shell] a[data-atom-navlist-item]').evaluateAll((els) => els.map((el) => ({
+      // the nav's own items: "More" holds copies of what does not fit, which are not items of the nav
+      return page.locator('[data-atom-nav-shell] a[data-atom-navlist-item]:not([data-atom-more-copy])').evaluateAll((els) => els.map((el) => ({
         href: el.getAttribute('href'),
         label: el.querySelector('[data-content]')?.textContent.trim(),
         count: el.querySelector('[data-atom-navlist-count]')?.textContent.trim() ?? null,
