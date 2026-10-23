@@ -178,7 +178,7 @@ it('documents the components that need a script, a flag or a colour the source d
         ->and($skill)->toContain('overflow="modal"')
         ->and($skill)->toContain('`updatedWithTable`')
         ->and($skill)->toContain('Colour with role tokens, never `zinc-*` or a `dark:` pair')
-        ->and($skill)->toContain('Controls (restyled in V4-3a)');
+        ->and($skill)->toContain('**Controls:** every text control');
 });
 
 // These are the rules an agent breaks without ever opening the skill: a public action, a select
@@ -568,7 +568,7 @@ it('teaches the data-display components and the badge colour names', function ()
     expect($guideline)->toContain('<atom:card>')
         ->and($guideline)->toContain('<atom:dd>')
         ->and($guideline)->toContain('<atom:badge>')
-        ->and($skill)->toContain('Data display (restyled in V4-3b)')
+        ->and($skill)->toContain('**Data display:** a panel')
         ->and($skill)->toContain('blue/sky/cyan/indigo info')
         ->and($skill)->toContain('yellow/amber/orange warning')
         ->and($skill)->toContain('purple/violet/fuchsia/pink accent')
@@ -602,7 +602,7 @@ it('keeps the skill\'s colour-name table the one Color::tone() draws', function 
 it('teaches the raised layer and the overlays\' tokens', function () {
     $skill = boostFile('skills/atom-components/SKILL.blade.php');
 
-    expect($skill)->toContain('Overlays and navigation (restyled in V4-3c)')
+    expect($skill)->toContain('**Overlays and navigation:** a modal')
         ->and($skill)->toContain('`shadow-pop` token')
         ->and($skill)->toContain('last tab stop')
         ->and($skill)->toContain('`bg-fg text-canvas`')
@@ -613,7 +613,7 @@ it('teaches the raised layer and the overlays\' tokens', function () {
 it('teaches the 3d tokens and no longer the dotted link', function () {
     $skill = boostFile('skills/atom-components/SKILL.blade.php');
 
-    expect($skill)->toContain('Text, editor, calendar and chart (restyled in V4-3d)')
+    expect($skill)->toContain('**Text, editor, calendar and chart:** headings')
         ->and($skill)->toContain('`text-accent-ink`')
         ->and($skill)->toContain('`orange` and `yellow` are both warning')
         ->and($skill)->not->toContain('dotted underline');

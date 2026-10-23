@@ -24,7 +24,7 @@
 
     <div class="mt-10">
         <atom:heading>Patterns</atom:heading>
-        <atom:caption class="mt-1">Whole screens built from atom's components. The Blade file is the example: copy it.</atom:caption>
+        <atom:caption class="mt-1">Whole screens built from atom's components. The Blade file is the example: copy it. <atom:link :href="route('atom.docs.patterns')">When to use which</atom:link>.</atom:caption>
 
         <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
             @foreach (\Jiannius\Atom\Services\Docs::PATTERNS as $name => $label)

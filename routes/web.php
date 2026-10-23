@@ -17,6 +17,11 @@ if (app()->environment('local')) {
             return view('atom::docs.index', ['docs' => app(Docs::class)]);
         })->name('atom.docs');
 
+        // The patterns overview: every pattern page with when to use it. Before the {component} route, which would take "patterns".
+        Route::get('/atom/docs/patterns', function () {
+            return view('atom::docs.patterns-index');
+        })->name('atom.docs.patterns');
+
         // Pattern pages: a whole screen in each app shell, from resources/views/docs/patterns/. They sign in a
         // stand-in user so the account menu has a name to show.
         Route::get('/atom/docs/patterns/{pattern}', function ($pattern) {

@@ -1,0 +1,7 @@
+@import 'tailwindcss';
+@source '../../vendor/jiannius/atom/components/**/*.blade.php';
+
+@layer base { * { border-color: var(--color-gray-200, currentColor); } }
+.keep { color: red; } * { border-color: var(--color-gray-200, currentColor); }
+@layer theme { .dark { --color-accent: var(--color-yellow-500); } }
+.after { color: blue; }

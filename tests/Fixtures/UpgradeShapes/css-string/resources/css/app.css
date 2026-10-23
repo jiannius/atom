@@ -1,0 +1,7 @@
+@import 'tailwindcss';
+@source '../../vendor/jiannius/atom/components/**/*.blade.php';
+
+@theme {
+    --font-display: "Weird; --color-zinc-50: #fafafa; x", serif;
+    --color-zinc-50: #fafafa;
+}

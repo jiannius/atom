@@ -1,0 +1,7 @@
+@import 'tailwindcss';
+@source '../../vendor/jiannius/atom/components/**/*.blade.php';
+
+@theme {
+    --color-primary: var(--color-accent);
+    --color-zinc-50: #fafafa;
+}
