@@ -14,7 +14,9 @@
        fields are one column. In a real page write `<atom:form.modal name="new-customer" cols="1">` with the sections inside; the
        modal's own form calls the component's `submit()` method (there is no `wire:submit` to pass). For the 448px width, use
        the plain composition shown here.
-     - The submit is the one primary action of the slide-over; there is no Cancel button, the close button and Escape do that.
+     - The pinned bar is the page save bar's shape: the status text ("Unsaved changes", "Saved") at the start (the `start` slot) and the
+       submit at the end. The submit is the one primary action of the slide-over; there is no Cancel button, the close button and
+       Escape do that.
 
      Open it as ?open=1 to have the slide-over open on load. --}}
 @php
@@ -109,11 +111,12 @@ $open = request()->query('open') === '1';
                 </div>
 
                 <atom:form.actions sticky>
+                    <x-slot:start>
+                        <span class="text-xs text-fg-subtle" x-show="changed && !saved" x-cloak>Unsaved changes</span>
+                        <span class="text-xs text-success-fg" x-show="saved" x-cloak data-testid="slide-over-saved">Saved</span>
+                    </x-slot:start>
+
                     <atom:button type="submit" data-testid="slide-over-submit">Save customer</atom:button>
-                    <div class="flex items-center gap-3 text-xs">
-                        <span class="text-fg-subtle" x-show="changed && !saved" x-cloak>Unsaved changes</span>
-                        <span class="text-success-fg" x-show="saved" x-cloak data-testid="slide-over-saved">Saved</span>
-                    </div>
                 </atom:form.actions>
             </atom:form>
         </atom:modal>

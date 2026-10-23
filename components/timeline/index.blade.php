@@ -34,7 +34,7 @@ $name = $label ? t($label) : match ($kind) {
         'm-0 list-none p-0',
         'grid gap-4' => $kind === 'message',
         '[counter-reset:atom-step]' => $kind === 'step',
-        'grid overflow-hidden rounded-panel border bg-surface @2xl:grid-flow-col @2xl:auto-cols-fr' => $kind === 'path',
+        'grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-panel border bg-surface @2xl:grid-flow-col @2xl:auto-cols-[minmax(0,1fr)] @2xl:grid-cols-none' => $kind === 'path',
     ]) aria-label="{{ $name }}" data-atom-timeline-list>
         {{ $slot }}
     </ol>

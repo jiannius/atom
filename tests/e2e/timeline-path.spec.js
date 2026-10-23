@@ -84,3 +84,32 @@ for (const tw of ['floor', 'latest']) {
     })
   })
 }
+
+// Long unbroken text (a URL, a hash, an id) must wrap inside a narrow box, in every kind, and the path too: a 400-character string used
+// to turn a 172px box several thousand pixels wide.
+for (const tw of ['floor', 'latest']) {
+  test.describe(`timeline long text, ${tw} consumer build`, () => {
+    for (const width of [390, 1440]) {
+      test(`nothing grows past its box at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await open(page, { path: 'timeline-wrap', tw })
+
+        // open the folded things, so their text is laid out too
+        for (const toggle of await page.locator('[data-atom-timeline-toggle]').all()) {
+          if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
+        }
+
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'the page does not scroll sideways').toBe(true)
+
+        for (const id of ['wrap-event', 'wrap-step', 'wrap-path', 'wrap-message']) {
+          const overflow = await page.getByTestId(id).evaluate((root) => {
+            const box = root.getBoundingClientRect()
+            return [...root.querySelectorAll('*')].filter((el) => !el.closest('.sr-only') && el.getBoundingClientRect().right > box.right + 1).map((el) => el.tagName + '.' + el.className.toString().slice(0, 40))
+          })
+
+          expect(overflow, `${id} has content wider than itself`).toEqual([])
+        }
+      })
+    }
+  })
+}

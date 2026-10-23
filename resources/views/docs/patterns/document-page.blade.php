@@ -4,13 +4,16 @@
 
      The rules this page follows:
      - The header carries the record's state (status pills beside the title) and ONE primary action, the one for the CURRENT state:
-       Overdue: Record payment; Draft: Send invoice; Paid: Download receipt. Open it as ?status=overdue|draft|paid.
+       Overdue: Record payment; Draft: Send invoice; Paid: Download receipt. Open it as ?status=overdue|draft|paid. An overdue
+       invoice also has a secondary "Send reminder" in `actions`.
+     - Crumbs are the shell's `crumbs` slot (with the previous and next document as ghost icon buttons in its `actions` slot), so the
+       document's own title is the one heading; the header's `crumbs` prop is the alternative where the shell has no slot to spare.
      - The paper is deliberately not themed: it is a document, so it keeps its own warm white and near-black in the dark theme
        too, and the 500 and 600 weights a printed page uses. It is plain markup, not <atom:table>: a document table has a
        dark rule under its header and no hover.
      - Money is tabular, right-aligned, with the currency named once ("Amount (RM)", "Total (RM)"); identifiers are monospace.
      - The rail is `<atom:card>`s, each headed by a 12px muted title; label and value pairs are `<atom:dd.group>`, a progress bar is
-       `<atom:progress>`. From 1080px it sits beside the document; below that it stacks under it.
+       `<atom:progress>` in the success tone (it is money received, not the accent). From 1080px it sits beside the document; below that it stacks under it.
      - The history is <atom:timeline>: a dot per event in the tone of what happened (danger for a reminder about money owed, success
        for a payment, accent for a send, neutral for a creation), the time under it, and a detail where there is one. Items
        rendered in a @foreach (or an @if that changes) carry a `wire:key`, as here: their folded state is Alpine's. --}}
@@ -60,6 +63,19 @@ $money = fn (float $amount) => number_format($amount, 2);
         @include('atom::docs.patterns.nav')
     </x-slot>
 
+    <x-slot:crumbs>
+        <div class="flex items-center gap-1.5 text-fg-subtle" data-testid="document-crumbs">
+            <a href="list-page" class="text-fg-muted hover:text-fg">Invoices</a>
+            <atom:icon.right class="size-3.5"/>
+            <span class="font-id font-medium text-fg">INV-0412</span>
+        </div>
+    </x-slot>
+
+    <x-slot:actions>
+        <atom:button variant="ghost" size="sm" icon="up" aria-label="Previous invoice"/>
+        <atom:button variant="ghost" size="sm" icon="down" aria-label="Next invoice"/>
+    </x-slot>
+
     <x-slot:dropdown>
         <atom:menu.item icon="settings">Account settings</atom:menu.item>
         <atom:menu.item icon="logout">Sign out</atom:menu.item>
@@ -68,7 +84,6 @@ $money = fn (float $amount) => number_format($amount, 2);
     <atom:page data-testid="document-page">
         <atom:page.header
         title="Invoice INV-0412"
-        :crumbs="[['label' => 'Invoices', 'href' => 'list-page'], ['label' => 'INV-0412']]"
         :facts="[
             ['label' => 'Bill to', 'value' => 'Customer A'],
             ['label' => 'Issued', 'value' => '2 Oct 2026'],
@@ -83,6 +98,9 @@ $money = fn (float $amount) => number_format($amount, 2);
             </x-slot:status>
 
             <x-slot:actions>
+                @if ($status === 'overdue')
+                    <atom:button icon="send" data-testid="document-reminder">Send reminder</atom:button>
+                @endif
                 <atom:button>Edit</atom:button>
                 <atom:button icon="download">PDF</atom:button>
             </x-slot:actions>
@@ -176,8 +194,8 @@ $money = fn (float $amount) => number_format($amount, 2);
                     <div @class(['text-[26px] font-semibold leading-[1.15] tracking-[-0.02em] tabular-nums', 'text-danger-fg' => $balance > 0 && $status === 'overdue', 'text-success-fg' => $balance <= 0]) data-testid="balance">
                         <small class="me-1 text-[13px] font-medium tracking-normal text-fg-subtle">RM</small>{{ $money($balance) }}
                     </div>
-                    <atom:progress :value="(int) round($received / $total * 100)" size="sm" :variant="$received >= $total ? 'success' : null" aria-label="Paid"/>
-                    <div class="text-xs tabular-nums text-fg-subtle">RM {{ $money($received) }} of {{ $money($total) }} received</div>
+                    <atom:progress :value="(int) round($received / $total * 100)" size="sm" variant="success" aria-label="Paid"/>
+                    <div class="text-xs tabular-nums text-fg-subtle">RM {{ $money($received) }} of {{ $money($total) }} received{{ $status === 'overdue' ? ' · 23 days past due' : '' }}</div>
                 </atom:card>
 
                 <atom:card class="grid gap-3">

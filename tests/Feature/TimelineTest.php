@@ -247,7 +247,7 @@ describe('message', function () {
     it('prints a message at the reading size, in a bubble that cannot outgrow the column', function () {
         $bubble = domQuery(renderBlade('<atom:timeline kind="message"><atom:timeline.item body="x" /></atom:timeline>'), '//*[@data-atom-timeline-bubble]')[0];
 
-        expect(domClasses($bubble))->toContain('text-base', 'max-w-[85%]', 'break-words');
+        expect(domClasses($bubble))->toContain('text-base', 'max-w-[85%]', '[overflow-wrap:anywhere]');
     });
 
     it('treats any side but end as the start', function () {
@@ -303,7 +303,7 @@ describe('path', function () {
         $html = renderBlade('<atom:timeline kind="path"><atom:timeline.item title="Opened" state="done" /><atom:timeline.item title="Paid" /></atom:timeline>');
 
         expect(domClasses(domQuery($html, '//*[@data-atom-timeline]')[0]))->toContain('@container')
-            ->and(domClasses(domQuery($html, '//*[@data-atom-timeline]/ol')[0]))->toContain('grid', 'rounded-panel', 'border', '@2xl:grid-flow-col', '@2xl:auto-cols-fr')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-timeline]/ol')[0]))->toContain('grid', 'rounded-panel', 'border', '@2xl:grid-flow-col', '@2xl:auto-cols-[minmax(0,1fr)]')
             ->and(domQuery($html, '//ol/li[@data-atom-timeline-item]'))->toHaveCount(2);
     });
 
@@ -349,5 +349,26 @@ describe('path', function () {
         $html = renderBlade('<atom:timeline kind="path"><atom:timeline.item title="A" :time="new DateTimeImmutable(\'2026-10-02 09:00:00\')" /></atom:timeline>');
 
         expect(domQuery($html, '//li//time[@datetime]'))->toHaveCount(1);
+    });
+});
+
+
+describe('long text', function () {
+    it('breaks an unbroken string anywhere, in every kind, so a narrow box never grows', function () {
+        $long = str_repeat('x', 400);
+        $html = renderBlade('
+            <atom:timeline><atom:timeline.item title="'.$long.'" body="'.$long.'" actor="'.$long.'" time="'.$long.'"><x-slot:detail>'.$long.'</x-slot:detail></atom:timeline.item></atom:timeline>
+            <atom:timeline kind="step"><atom:timeline.item title="A" state="current">'.$long.'</atom:timeline.item></atom:timeline>
+            <atom:timeline kind="path"><atom:timeline.item title="A" actor="'.$long.'">'.$long.'</atom:timeline.item></atom:timeline>
+            <atom:timeline kind="message"><atom:timeline.item speaker="'.$long.'" body="'.$long.'" /></atom:timeline>');
+
+        foreach (['event' => ['title', 'body', 'meta', 'detail'], 'step' => ['body'], 'path' => ['meta', 'body'], 'message' => ['bubble']] as $kind => $parts) {
+            foreach ($parts as $part) {
+                $found = domQuery($html, '//*[@data-kind="'.$kind.'"]//*[@data-atom-timeline-'.$part.']');
+
+                expect($found)->not->toBeEmpty("$kind $part")
+                    ->and(domClasses($found[0]))->toContain('[overflow-wrap:anywhere]');
+            }
+        }
     });
 });

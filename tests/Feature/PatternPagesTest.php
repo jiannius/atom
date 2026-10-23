@@ -53,8 +53,35 @@ describe('pattern pages', function () {
         expect(domQuery($html, '//*[@data-atom-shell-crumbs][contains(., "Invoices")]'))->not->toBeEmpty()
             ->and(domQuery($html, '//*[@data-atom-shell-context]//button'))->not->toBeEmpty()
             ->and(domQuery($html, '//*[@data-atom-shell-search]//input'))->not->toBeEmpty()
-            ->and(domQuery($html, '//main//*[@data-atom-table]//*[@data-atom-badge]'))->toHaveCount(4);
+            ->and(domQuery($html, '//main//*[@data-atom-table]//*[@data-atom-status]'))->toHaveCount(4);
     })->with(['app-shell-sidebar', 'app-shell-header']);
+
+    it('draws the shell pages\' content as the list page does: status, a frameless panel, numeric money, the primary in the header', function (string $name) {
+        $html = view('atom::docs.patterns.'.$name)->render();
+        $header = '//main//*[@data-atom-page]/header[@data-atom-page-header]';
+
+        expect(domQuery($html, '//main//*[@data-atom-badge]'))->toBeEmpty()
+            ->and(domQuery($html, '//main//*[@data-atom-table][@data-atom-table-frameless]'))->toHaveCount(1)
+            ->and(domClasses(domQuery($html, '//main//*[@data-atom-table]/..')[0]))->toContain('rounded-panel', 'overflow-hidden')
+            // money: numeric on the column and the cell, named once in the header
+            ->and(trim(domQuery($html, '//main//thead//th[contains(@class, "text-right")]')[0]->textContent))->toBe('Amount (RM)')
+            ->and(domQuery($html, '//main//tbody/tr/td[contains(@class, "tabular-nums")]'))->toHaveCount(4)
+            ->and(domQuery($html, '//main//tbody//td[contains(@class, "tabular-nums")][contains(@class, "text-right")]'))->toHaveCount(4)
+            // the page's one primary is the page header's, and the shell's actions slot holds only a secondary
+            ->and(domQuery($html, $header.'//*[@data-atom-page-actions]//*[@data-testid="shell-primary"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-actions]//*[@data-atom-button][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-shell-actions]//*[@data-atom-button]'))->not->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]'))->toHaveCount(1);
+    })->with(['app-shell-sidebar', 'app-shell-header']);
+
+    it('shows a brand with a subline and a shortcut hint on the sidebar\'s search, as host markup', function () {
+        $html = view('atom::docs.patterns.app-shell-sidebar')->render();
+
+        expect(trim(domQuery($html, '//*[@data-testid="brand-subline"]')[0]->textContent))->toContain('Acme Studio')
+            ->and(domQuery($html, '//*[@data-atom-shell-search]//*[@data-testid="shell-search"]//input'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="shell-search"]//kbd'))->not->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-testid="shell-search"]')[0]->textContent)->toContain('⌘');
+    });
 
     it('does not choke on a page query that is an array', function (string $name) {
         request()->query->set('page', ['x']);
@@ -192,7 +219,7 @@ describe('record page pattern', function () {
             ->and(domQuery($html, '//header[@data-atom-page-header]//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]'))->toHaveCount(1);
     })->with([
         ['draft', 'Draft', 'Schedule job'],
-        ['in-progress', 'In progress', 'Mark as done'],
+        ['in-progress', 'In progress · 1h 12m', 'Mark as done'],
         ['blocked', 'Waiting for parts', 'Order parts'],
         ['done', 'Done', 'Create invoice'],
     ]);
@@ -240,13 +267,115 @@ describe('record page pattern', function () {
             ->and(domQuery($html, '//*[@data-atom-table]//*[@data-atom-status]'))->toHaveCount(4);
     });
 
+    it('has a rail of cards beside the main column on the overview, with the facts grouped by subject and no dash for an empty field', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+        $rail = '//*[@data-testid="record-rail"]';
+
+        expect(domClasses(domQuery($html, $rail.'/..')[0]))->toContain('min-[1080px]:grid-cols-[minmax(0,1fr)_320px]')
+            ->and(domQuery($html, $rail.'/*[@data-atom-card]'))->toHaveCount(5)
+            ->and(array_map(fn ($h) => trim($h->textContent), domQuery($html, $rail.'/*[@data-atom-card]//h3')))->toBe(['Details', 'Customer', 'People', 'Linked records', 'Activity'])
+            ->and(domQuery($html, $rail.'//*[@data-atom-dd-group]/*[@data-atom-dd]'))->not->toBeEmpty()
+            // an empty field ("Cost centre", "Checked by") is left out, never printed as a dash
+            ->and($html)->not->toContain('Cost centre')->not->toContain('Checked by')
+            ->and(domQuery($html, $rail.'//dd[normalize-space(.) = "--" or normalize-space(.) = "—" or normalize-space(.) = ""]'))->toBeEmpty()
+            // people are an avatar, a name and an id in the mono style
+            ->and(domQuery($html, $rail.'//*[@data-atom-avatar]'))->toHaveCount(2)
+            ->and(domQuery($html, $rail.'//*[@data-atom-dd]//span[contains(@class, "font-id")]'))->not->toBeEmpty()
+            // linked records: mono ids and add links
+            ->and(domQuery($html, '//*[@data-testid="record-linked"]//dd//span[contains(@class, "font-id")]'))->toHaveCount(2)
+            ->and(domQuery($html, '//*[@data-testid="record-linked"]//a[contains(., "Quote")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="record-linked"]//a[contains(., "Purchase order")]'))->toHaveCount(1);
+    });
+
+    it('puts the activity timeline last in the rail, with a link to all changes', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+        $activity = '//*[@data-testid="record-rail"]/*[@data-atom-card][last()]';
+
+        expect(domQuery($html, $activity.'[@data-testid="record-activity"]'))->toHaveCount(1)
+            ->and(domQuery($html, $activity.'//*[@data-atom-timeline][@data-kind="event"]/ol/li'))->toHaveCount(4)
+            ->and(domQuery($html, $activity.'//*[@data-atom-timeline-title]'))->toHaveCount(4)
+            ->and(domQuery($html, $activity.'//a[contains(., "All changes")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="record-activity"]//li[@data-tone]'))->toHaveCount(4);
+    });
+
+    it('draws the stage path under the header, the current segment matching the status', function (string $status, array $states) {
+        request()->query->set('status', $status);
+
+        $html = view('atom::docs.patterns.record-page')->render();
+        $path = domQuery($html, '//*[@data-atom-page]/*[@data-atom-timeline][@data-kind="path"][@data-testid="record-stages"]');
+
+        expect($path)->toHaveCount(1)
+            // under the header, over the stats
+            ->and(domQuery($html, '//header[@data-atom-page-header]/following-sibling::*[@data-kind="path"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-kind="path"]/following-sibling::*[@data-atom-stat-group]'))->toHaveCount(1)
+            ->and(array_map(fn ($li) => $li->getAttribute('data-state'), domQuery($html, '//*[@data-kind="path"]/ol/li')))->toBe($states);
+    })->with([
+        ['draft', ['current', 'pending', 'pending', 'pending']],
+        ['in-progress', ['done', 'done', 'current', 'pending']],
+        ['blocked', ['done', 'done', 'current', 'pending']],
+        ['done', ['done', 'done', 'done', 'done']],
+    ]);
+
+    it('puts the record\'s lines in a panel with a heading row and a count, a frameless table of numeric hours and totals under it', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+        $panel = '//*[@data-testid="record-lines"]';
+
+        expect(trim(domQuery($html, $panel.'/div[1]//h2')[0]->textContent))->toContain('Tasks')->toContain('4 tasks')
+            ->and(domQuery($html, $panel.'/div[1]//a[contains(., "View all")]'))->toHaveCount(1)
+            ->and(domQuery($html, $panel.'//*[@data-atom-table][@data-atom-table-frameless]'))->toHaveCount(1)
+            ->and(domQuery($html, $panel.'//thead//th[contains(@class, "text-right")]'))->toHaveCount(1)
+            ->and(domQuery($html, $panel.'//tbody//td[contains(@class, "tabular-nums")][contains(@class, "text-right")]'))->toHaveCount(4)
+            ->and(domQuery($html, $panel.'//td[@align="right"]'))->toBeEmpty()
+            // the totals follow the table, and add up (2.0 + 3.5 + 1.5 + 0.5)
+            ->and(domQuery($html, $panel.'//*[@data-atom-table]/following-sibling::dl[@data-testid="record-totals"]'))->toHaveCount(1)
+            ->and(domQuery($html, $panel.'//dl')[0]->textContent)->toContain('7.5 h');
+    });
+
+    it('shows the description at the reading size', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(domClasses(domQuery($html, '//*[@data-testid="record-description"]//p')[0]))->toContain('text-base');
+    });
+
+    it('takes its crumbs from the shell\'s slot, with previous and next in the actions slot, and its nav from the shared partial', function (string $shell) {
+        $html = view('atom::docs.patterns.record-page', ['shell' => $shell])->render();
+
+        expect(domQuery($html, '//*[@data-atom-shell-crumbs]//*[@data-testid="record-crumbs"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-page-crumbs]'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-shell-actions]//button[@aria-label="Previous job"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-actions]//button[@aria-label="Next job"]'))->toHaveCount(1)
+            // the nav is the partial the shells share
+            ->and(domQuery($html, '//nav[@data-atom-navlist]//a[@href="?page=invoices"]'))->not->toBeEmpty();
+    })->with(['sidebar', 'header']);
+
+    it('shows a process log and a conversation on their own tabs', function () {
+        request()->query->set('tab', 'log');
+        $log = view('atom::docs.patterns.record-page')->render();
+
+        expect(domQuery($log, '//*[@data-testid="record-log"]//*[@data-atom-timeline][@data-kind="step"]/ol/li'))->toHaveCount(4);
+
+        request()->query->set('tab', 'messages');
+        $messages = view('atom::docs.patterns.record-page')->render();
+
+        expect(domQuery($messages, '//*[@data-testid="record-messages"]//*[@data-atom-timeline][@data-kind="message"]/ol/li'))->toHaveCount(3)
+            ->and(domQuery($messages, '//*[@data-testid="record-messages"]//*[@data-atom-timeline-composer]//form'))->toHaveCount(1);
+    });
+
+    it('draws each empty state in a card', function (string $tab) {
+        request()->query->set('tab', $tab);
+
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(domQuery($html, '//*[@data-atom-card][@data-atom-card-inset]/*[@data-atom-empty]'))->toHaveCount(1);
+    })->with(['parts', 'activity', 'files']);
+
     it('does not choke on a status or a tab that is an array or unknown', function () {
         request()->query->set('status', ['x']);
         request()->query->set('tab', ['y']);
 
         $html = view('atom::docs.patterns.record-page')->render();
 
-        expect(trim(domQuery($html, '//header//*[@data-atom-status]')[0]->textContent))->toBe('In progress');
+        expect(trim(domQuery($html, '//header//*[@data-atom-status]')[0]->textContent))->toBe('In progress · 1h 12m');
 
         request()->query->set('status', 'nope');
         request()->query->set('tab', 'nope');
@@ -302,7 +431,7 @@ describe('one primary action', function () {
         expect($found)->toHaveCount(1)
             ->and($found[0]->getAttribute('data-testid'))->toBe('record-primary');
     })->with(function () {
-        foreach (['overview', 'tasks', 'parts', 'activity', 'files'] as $tab) {
+        foreach (['overview', 'tasks', 'parts', 'activity', 'files', 'log', 'messages'] as $tab) {
             foreach (['draft', 'in-progress', 'blocked', 'done'] as $status) {
                 yield "$tab, $status" => [$tab, $status];
             }
@@ -373,7 +502,31 @@ describe('list page pattern', function () {
 
         expect(domQuery($html, '//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-atom-page-actions]//*[@data-testid="list-primary"]'))->toHaveCount(1)
-            ->and(domQuery($html, '//tbody//*[@data-atom-status]'))->toHaveCount(8);
+            // a status on every row, and the part-paid overdue invoice carries a second one
+            ->and(domQuery($html, '//tbody//*[@data-atom-status]'))->toHaveCount(9)
+            ->and(domQuery($html, '//tbody//tr[contains(., "INV-0409")]//*[@data-atom-status]'))->toHaveCount(2)
+            ->and(domQuery($html, '//*[@data-atom-page-actions]//button[contains(., "Import")]'))->toHaveCount(1);
+    });
+
+    it('has the filters as sentence pills in the toolbar, one of them active, and the others dashed add pills', function () {
+        $html = view('atom::docs.patterns.list-page')->render();
+        $bar = '//*[@data-testid="list-panel"]/*[@data-atom-table-toolbar]//*[@data-atom-table-filters][@data-chips="inline"]';
+
+        expect(domQuery($html, $bar))->toHaveCount(1)
+            // customer, status, issued: all three are add pills (a select's trigger, a date range's input)
+            ->and(domQuery($html, $bar.'//button[@data-atom-select-combobox][contains(@class, "border-dashed")]'))->toHaveCount(2)
+            ->and(domQuery($html, $bar.'//input[contains(@class, "border-dashed")]'))->toHaveCount(1)
+            // the issue date is the one that is set: the range reports it as a chip
+            ->and($html)->toContain("'2026-04-01 to 2026-10-31'")
+            ->and(domQuery($html, $bar.'//template//*[@data-atom-table-filter-chip]'))->toHaveCount(1);
+    });
+
+    it('has a checkbox column, with a box in the header and one on every row', function () {
+        $html = view('atom::docs.patterns.list-page')->render();
+
+        expect(domQuery($html, '//thead//th[1]//*[@data-atom-table-checkbox]'))->toHaveCount(1)
+            ->and(domQuery($html, '//tbody/tr/td[1]//*[@data-atom-table-checkbox]'))->toHaveCount(8)
+            ->and(domQuery($html, '//tbody/tr/td[2]//span[contains(@class, "font-id")]'))->toHaveCount(8);
     });
 
     it('does not choke on a view that is an array or unknown', function () {
@@ -394,6 +547,29 @@ describe('document page pattern', function () {
             ->and(domQuery($html, '//*[@data-testid="balance-box"]//*[@data-atom-progress]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-testid="history"]//*[@data-atom-timeline][@data-kind="event"]/ol/li'))->toHaveCount(4);
     });
+
+    it('uses the shell\'s crumbs slot, with previous and next in its actions slot, and a success-toned balance bar with the days past due', function () {
+        $html = view('atom::docs.patterns.document-page')->render();
+
+        expect(domQuery($html, '//*[@data-atom-shell-crumbs]//*[@data-testid="document-crumbs"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-page-crumbs]'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-shell-actions]//button[@aria-label="Next invoice"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="balance-box"]//*[@data-atom-progress]//*[@role="progressbar"]/div[contains(@class, "bg-success-fg")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="balance-box"]')[0]->textContent)->toContain('23 days past due');
+    });
+
+    it('offers a secondary Send reminder when the invoice is overdue, and not otherwise', function (string $status, int $count) {
+        request()->query->set('status', $status);
+
+        $html = view('atom::docs.patterns.document-page')->render();
+        $found = domQuery($html, '//*[@data-atom-page-actions]//*[@data-testid="document-reminder"]');
+
+        expect($found)->toHaveCount($count);
+
+        if ($count) {
+            expect(domClasses($found[0]))->not->toContain('bg-accent');
+        }
+    })->with([['overdue', 1], ['draft', 0], ['paid', 0]]);
 
     it('draws the rail as cards, with the details as a description list', function () {
         $html = view('atom::docs.patterns.document-page')->render();
@@ -477,11 +653,32 @@ describe('form page pattern', function () {
             ->and(domQuery($html, '//*[@data-testid="grand-total"]')[0]->textContent)->toContain('RM');
     });
 
-    it('lists the lines with money in numeric columns', function () {
+    it('lists the lines as editable rows with money in numeric columns', function () {
         $html = view('atom::docs.patterns.form-page')->render();
+        $rows = '//*[@data-testid="form-lines"]//tbody/tr';
 
         expect(domQuery($html, '//*[@data-atom-table-frameless]//thead//th[contains(@class, "text-right")]'))->toHaveCount(3)
-            ->and(domQuery($html, '//*[@data-atom-table-frameless]//tbody/tr'))->toHaveCount(3);
+            ->and(domQuery($html, $rows))->toHaveCount(3)
+            // an item input, a quantity and a unit price (right-aligned and tabular), a tax select and a ghost remove on every row
+            ->and(domQuery($html, $rows.'/td[1]//input'))->toHaveCount(3)
+            ->and(domQuery($html, $rows.'/td[2]//input[contains(@class, "text-right")][contains(@class, "tabular-nums")]'))->toHaveCount(3)
+            ->and(domQuery($html, $rows.'/td[3]//input[contains(@class, "text-right")][contains(@class, "tabular-nums")]'))->toHaveCount(3)
+            ->and(domQuery($html, $rows.'/td[4]//select'))->toHaveCount(3)
+            ->and(domQuery($html, $rows.'/td[6]//button[@aria-label="Remove line"]'))->toHaveCount(3)
+            // the amount is read-only text
+            ->and(domQuery($html, $rows.'/td[5]//input'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-testid="form-lines"]/following-sibling::div//button[contains(., "Add line")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="form-lines"]/following-sibling::div//button[contains(., "Add from products")]'))->toHaveCount(1);
+    });
+
+    it('picks dates with date pickers and the payment terms from a select, and mutes the (optional)', function () {
+        $html = view('atom::docs.patterns.form-page')->render();
+
+        expect(domQuery($html, '//*[@data-atom-date-picker][.//label[contains(., "Issue date")]] | //label[contains(., "Issue date")]'))->not->toBeEmpty()
+            ->and(domQuery($html, '//label[contains(., "Payment terms")]'))->not->toBeEmpty()
+            ->and(domQuery($html, '//select'))->not->toBeEmpty()
+            ->and(domQuery($html, '//input[@value="Net 30"]'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-label-optional]'))->toHaveCount(2);
     });
 
     it('draws in the top-nav shell too', function () {
@@ -500,6 +697,15 @@ describe('slide-over form pattern', function () {
             ->and(domClasses(domQuery($html, '//dialog//*[@data-atom-form-actions]')[0]))->toContain('sticky', '-bottom-6')
             ->and(domQuery($html, '//dialog//*[@data-atom-page-header]//h2'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-testid="slide-over-page"]//*[@data-atom-table]'))->toHaveCount(1);
+    });
+
+    it('puts the status text at the start of the pinned bar and the submit at the end', function () {
+        $html = view('atom::docs.patterns.slide-over-form')->render();
+        $bar = '//dialog//*[@data-atom-form-actions]';
+
+        expect(domQuery($html, $bar.'/*[1][@data-atom-form-actions-start]'))->toHaveCount(1)
+            ->and(domQuery($html, $bar.'/*[last()][@data-testid="slide-over-submit"]'))->toHaveCount(1)
+            ->and(domQuery($html, $bar.'/*[@data-atom-form-actions-start]//*[@data-testid="slide-over-saved"]'))->toHaveCount(1);
     });
 
     it('opens from the header primary, and on load with ?open=1', function () {

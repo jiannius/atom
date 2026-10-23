@@ -18,18 +18,34 @@ $square ??= $slot->isEmpty();
 
 $el = $as ??= $href ? 'a' : 'button';
 
+/* An item is current when the PATH of its href is the path of the request: the host in an absolute href is not compared, so
+   an app served from another host than APP_URL still marks its item, and a query string or a trailing slash does not
+   matter. An href with no path (`?tab=x`, `#top`, none at all) is never current on its own: pass :current. A `*` in the path
+   is a pattern, as it always was. */
 $isCurrent = function () use ($href, $current) {
     if (is_bool($current)) return $current;
 
-    $hrefToCheck = str($href)->startsWith(trim(config('app.url'))) ? (string) str($href)->after(trim(config('app.url'), '/')) : $href;
-    $hrefToCheck = $hrefToCheck === '' ? '/' : $hrefToCheck;
-    $hrefToCheck = $hrefToCheck === '/' ? '/' : trim($hrefToCheck, '/');
+    $appUrl = trim((string) config('app.url'));
+    $target = (string) $href;
 
-    if (!$hrefToCheck) return false;
+    // an href under APP_URL is read relative to it, so an app installed in a sub-directory keeps working
+    if ($appUrl !== '' && str($target)->startsWith($appUrl)) {
+        $target = (string) str($target)->after(rtrim($appUrl, '/'));
+
+        if ($target === '' || in_array($target[0], ['?', '#'], true)) $target = '/'.$target;
+    }
+
+    $path = parse_url($target, PHP_URL_PATH);
+
+    if (! is_string($path) || $path === '') return false;
+
+    $path = $path === '/' ? '/' : trim($path, '/');
+
+    if ($path === '') return false;
 
     return app('livewire')?->isLivewireRequest()
-        ? str()->is($hrefToCheck, app('livewire')->originalPath())
-        : request()->is($hrefToCheck);
+        ? str()->is($path, app('livewire')->originalPath())
+        : request()->is($path);
 };
 
 $active = $isCurrent();

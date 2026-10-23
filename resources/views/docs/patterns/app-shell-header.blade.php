@@ -36,8 +36,9 @@ $styles = $styles ?? [];
         @include('atom::docs.patterns.crumbs')
     </x-slot>
 
+    {{-- the shell's `actions` slot is for a secondary action (or nothing): the page's primary is its header's `primary` slot --}}
     <x-slot:actions>
-        <atom:button variant="primary" icon="add">New invoice</atom:button>
+        <atom:button icon="download">Export</atom:button>
     </x-slot>
 
     <x-slot:dropdown>

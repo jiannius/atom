@@ -10,7 +10,13 @@
        two across once their own box is wide enough; `class="@md:col-span-2"` makes one span the row.
      - The save bar is `<atom:form.actions bar>`, the LAST thing in the form. Its `start` slot is live totals (or "Unsaved changes");
        its buttons are Cancel (ghost), a secondary save, and the submit, which is the screen's ONE primary action.
-     - Money is tabular and right-aligned, the currency named once in the heading or the column ("Amount (RM)").
+     - Money is tabular and right-aligned, the currency named once in the heading or the column ("Amount (RM)"). Line items are
+       EDITABLE: a frameless table whose cells hold inputs (the item, then the quantity and the unit price as right-aligned tabular
+       inputs, a tax `<atom:select>` and a ghost remove x), with "Add line" and "Add from products" under it. The amount is read-only.
+     - A date is `<atom:date-picker>` and a choice from a short list (payment terms) is `<atom:select>`; a text input is for text.
+       "(optional)" at the end of a label is muted by the field itself.
+     - Errors: with `<atom:form>` (not `:error-toast="false"`) a failed save shows one summary at the top of the form and the message
+       under each field; this page turns the toast off only because it has no component to fail.
      - A section that saves on its own (a settings panel) is its own <atom:form> with a `footer` slot; do not mix that with a page save bar.
 
      This page has no Livewire component, so the form only prevents the browser's own submit. In a real page the form is
@@ -23,12 +29,12 @@ $layout = request()->query('layout', 'aside');
 $layout = $layout === 'stacked' ? 'stacked' : 'aside';
 
 $lines = [
-    ['Base module', 'Users, roles, branches and an audit trail', 1, 1000.00],
-    ['Bookings', 'Appointments and bay scheduling', 1, 2000.00],
-    ['Additional hours', 'Data migration from the old system', 12, 95.00],
+    ['Base module', 1, 1000.00],
+    ['Bookings', 1, 2000.00],
+    ['Additional hours', 12, 95.00],
 ];
 
-$subtotal = array_sum(array_map(fn ($line) => $line[2] * $line[3], $lines));
+$subtotal = array_sum(array_map(fn ($line) => $line[1] * $line[2], $lines));
 $tax = round(12 * 95.00 * 0.08, 2);
 $money = fn (float $amount) => number_format($amount, 2);
 @endphp
@@ -62,7 +68,7 @@ $money = fn (float $amount) => number_format($amount, 2);
             </x-slot:status>
         </atom:page.header>
 
-        <atom:form x-data="{ saved: false }" x-on:submit.prevent="saved = true" :error-toast="false">
+        <atom:form x-data="{ saved: false, issued: '2026-10-15', due: '2026-11-14', terms: 'net-30' }" x-on:submit.prevent="saved = true" :error-toast="false">
             <atom:form.section :layout="$layout" heading="Customer" subheading="Who you are billing. Their tax ID goes on the invoice.">
                 <div class="flex items-center gap-3 rounded-lg border bg-surface px-3.5 py-3 @md:col-span-2">
                     <div class="flex size-[34px] shrink-0 items-center justify-center rounded-lg bg-warning-bg text-sm font-semibold text-warning-fg">CA</div>
@@ -76,39 +82,50 @@ $money = fn (float $amount) => number_format($amount, 2);
             </atom:form.section>
 
             <atom:form.section :layout="$layout" heading="Details" subheading="Dates and terms printed on the invoice.">
-                <atom:input label="Issue date" value="15 Oct 2026"/>
-                <atom:input label="Payment terms" value="Net 30"/>
-                <atom:input label="Due date" value="14 Nov 2026" caption="30 days after the issue date"/>
+                <atom:date-picker label="Issue date" x-model="issued"/>
+                <atom:select label="Payment terms" x-model="terms" :options="[
+                    ['value' => 'net-14', 'label' => 'Net 14'],
+                    ['value' => 'net-30', 'label' => 'Net 30'],
+                    ['value' => 'net-60', 'label' => 'Net 60'],
+                ]"/>
+                <atom:date-picker label="Due date" x-model="due" caption="30 days after the issue date"/>
                 <atom:input label="Reference (optional)" value="Quote Q-0231, phase 2"/>
             </atom:form.section>
 
             <atom:form.section :layout="$layout" heading="Items" subheading="Amounts in Malaysian Ringgit. Service tax is set per line.">
                 <div class="min-w-0 @md:col-span-2">
-                    <atom:table frameless :empty="false">
+                    <atom:table frameless :empty="false" data-testid="form-lines">
                         <x-slot:columns>
                             <atom:table.column>Item</atom:table.column>
                             <atom:table.column numeric>Qty</atom:table.column>
                             <atom:table.column numeric>Unit price</atom:table.column>
+                            <atom:table.column>Tax</atom:table.column>
                             <atom:table.column numeric>Amount (RM)</atom:table.column>
+                            <atom:table.column class="w-10"><span class="sr-only">Remove</span></atom:table.column>
                         </x-slot:columns>
 
                         <x-slot:rows>
-                            @foreach ($lines as [$name, $note, $quantity, $price])
+                            @foreach ($lines as $index => [$name, $quantity, $price])
                                 <atom:table.row>
-                                    <atom:table.cell>
-                                        <div class="font-medium">{{ $name }}</div>
-                                        <div class="mt-0.5 text-xs text-fg-subtle">{{ $note }}</div>
+                                    <atom:table.cell class="min-w-48"><atom:input :value="$name" aria-label="Item"/></atom:table.cell>
+                                    <atom:table.cell numeric class="w-24"><atom:input type="number" :value="$quantity" class="text-right tabular-nums" aria-label="Quantity"/></atom:table.cell>
+                                    <atom:table.cell numeric class="w-36"><atom:input :value="$money($price)" class="text-right tabular-nums" aria-label="Unit price"/></atom:table.cell>
+                                    <atom:table.cell class="w-44" x-data="{ tax: '{{ $index === 2 ? 'sst-8' : 'none' }}' }">
+                                        <atom:select aria-label="Tax" x-model="tax" :clearable="false" :options="[
+                                            ['value' => 'none', 'label' => 'No tax'],
+                                            ['value' => 'sst-8', 'label' => 'Tax 8%'],
+                                        ]"/>
                                     </atom:table.cell>
-                                    <atom:table.cell numeric>{{ $quantity }}</atom:table.cell>
-                                    <atom:table.cell numeric>{{ $money($price) }}</atom:table.cell>
                                     <atom:table.cell numeric class="font-medium">{{ $money($quantity * $price) }}</atom:table.cell>
+                                    <atom:table.cell><atom:button variant="ghost" size="sm" icon="close" type="button" aria-label="Remove line"/></atom:table.cell>
                                 </atom:table.row>
                             @endforeach
                         </x-slot:rows>
                     </atom:table>
 
-                    <div class="mt-3 flex gap-2">
+                    <div class="mt-3 flex flex-wrap gap-2">
                         <atom:button size="sm" icon="add" type="button">Add line</atom:button>
+                        <atom:button size="sm" icon="add" type="button">Add from products</atom:button>
                     </div>
                 </div>
             </atom:form.section>

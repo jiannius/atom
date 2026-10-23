@@ -90,7 +90,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
         </div>
 
         @if ($pathMeta)
-            <div class="ps-6 text-xs tabular-nums {{ $state === 'current' ? 'text-fg-muted' : 'text-fg-subtle' }}" data-atom-timeline-meta>
+            <div class="min-w-0 ps-6 text-xs tabular-nums [overflow-wrap:anywhere] {{ $state === 'current' ? 'text-fg-muted' : 'text-fg-subtle' }}" data-atom-timeline-meta>
                 @if ($timeText !== '')
                     @if ($timeAttr)
                         <time datetime="{{ $timeAttr }}">{{ $timeText }}</time>
@@ -107,13 +107,13 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
         @endif
 
         @if ($hasSlot)
-            <div class="ps-6 text-xs text-fg-muted" data-atom-timeline-body>{{ $slot }}</div>
+            <div class="min-w-0 ps-6 text-xs text-fg-muted [overflow-wrap:anywhere]" data-atom-timeline-body>{{ $slot }}</div>
         @endif
     </li>
 @elseif ($kind === 'message')
     <li {{ $attributes->class(['flex min-w-0 flex-col gap-1', 'items-end' => $side === 'end']) }} data-atom-timeline-item data-side="{{ $side }}">
         @if ($text($speaker) !== '' || $timeText !== '')
-            <div class="flex flex-wrap items-baseline gap-x-2 text-xs text-fg-subtle" data-atom-timeline-meta>
+            <div class="flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs text-fg-subtle [overflow-wrap:anywhere]" data-atom-timeline-meta>
                 @if ($text($speaker) !== '')
                     <span class="font-medium text-fg-muted" data-atom-timeline-speaker>{{ $text($speaker) }}</span>
                 @endif
@@ -129,7 +129,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
         @endif
 
         <div @class([
-            'max-w-[85%] min-w-0 break-words rounded-panel px-3.5 py-2.5 text-base text-fg',
+            'max-w-[85%] min-w-0 [overflow-wrap:anywhere] rounded-panel px-3.5 py-2.5 text-base text-fg',
             'bg-neutral-bg' => $side === 'start',
             'bg-accent-soft' => $side === 'end',
         ]) data-atom-timeline-bubble>
@@ -178,9 +178,9 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
 
                     {{-- the time and the chevron are one group at the far end, so the chevron is in the same column on every step --}}
                     @if ($timeText !== '' || $foldable)
-                        <span class="ms-auto flex shrink-0 items-center gap-2" data-atom-timeline-end>
+                        <span class="ms-auto flex min-w-0 max-w-[60%] items-center gap-2" data-atom-timeline-end>
                             @if ($timeText !== '')
-                                <span class="text-xs tabular-nums text-fg-subtle" data-atom-timeline-time>{{ $timeText }}</span>
+                                <span class="min-w-0 text-xs tabular-nums text-fg-subtle [overflow-wrap:anywhere]" data-atom-timeline-time>{{ $timeText }}</span>
                             @endif
 
                             @if ($foldable)
@@ -195,7 +195,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
             @endif
 
             @if ($hasSlot)
-                <div @class(['mt-1.5 text-sm text-fg-muted']) @if ($foldable) x-show="open" @if (! $startOpen) x-cloak @endif @endif data-atom-timeline-body>
+                <div @class(['mt-1.5 min-w-0 text-sm text-fg-muted [overflow-wrap:anywhere]']) @if ($foldable) x-show="open" @if (! $startOpen) x-cloak @endif @endif data-atom-timeline-body>
                     {{ $slot }}
                 </div>
             @endif
@@ -219,13 +219,13 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
         <div class="min-w-0">
             <div class="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 @if ($text($title) !== '')
-                    <b class="font-medium text-fg" data-atom-timeline-title>{{ $text($title) }}</b>
+                    <b class="min-w-0 font-medium text-fg [overflow-wrap:anywhere]" data-atom-timeline-title>{{ $text($title) }}</b>
                 @endif
 
                 @if ($hasSlot)
-                    <span class="min-w-0 break-words text-fg-muted">{{ $slot }}</span>
+                    <span class="min-w-0 text-fg-muted [overflow-wrap:anywhere]">{{ $slot }}</span>
                 @elseif ($text($body) !== '')
-                    <span class="min-w-0 break-words text-fg-muted" data-atom-timeline-body>{{ $text($body) }}</span>
+                    <span class="min-w-0 text-fg-muted [overflow-wrap:anywhere]" data-atom-timeline-body>{{ $text($body) }}</span>
                 @endif
 
                 @if ($text($status) !== '')
@@ -234,7 +234,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
             </div>
 
             @if ($text($actor) !== '' || $timeText !== '')
-                <div class="mt-0.5 flex flex-wrap items-baseline gap-x-2 text-xs text-fg-subtle" data-atom-timeline-meta>
+                <div class="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs text-fg-subtle [overflow-wrap:anywhere]" data-atom-timeline-meta>
                     @if ($text($actor) !== '')
                         <span data-atom-timeline-actor>{{ $text($actor) }}</span>
                     @endif
@@ -256,7 +256,7 @@ $spine = 'relative before:absolute before:top-3.5 before:bottom-0 before:w-px be
                     <atom:icon.down class="size-3.5 shrink-0" x-bind:class="open && 'rotate-180'" />
                 </button>
 
-                <div class="mt-1.5 rounded-control border bg-surface-sunken px-3 py-2 text-sm text-fg-muted" x-show="open" x-cloak data-atom-timeline-detail>
+                <div class="mt-1.5 rounded-control border bg-surface-sunken px-3 py-2 text-sm text-fg-muted [overflow-wrap:anywhere]" x-show="open" x-cloak data-atom-timeline-detail>
                     {{ $detail }}
                 </div>
             @endif

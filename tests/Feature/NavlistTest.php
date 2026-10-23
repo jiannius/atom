@@ -248,3 +248,60 @@ describe('navlist.item', function () {
         expect($html)->toContain('h-control')->toContain('size-4')->toContain('rounded-nav');
     });
 });
+
+// The current item is read from the PATH of its href, whatever host it names and whatever the request's host is.
+describe('navlist current item', function () {
+    $current = function (string $url, string $href): bool {
+        app()->instance('request', \Illuminate\Http\Request::create($url));
+        config(['app.url' => 'http://app.test']);
+
+        $html = Blade::render('<atom:navlist.item href="'.$href.'">Item</atom:navlist.item>');
+
+        return count(domQuery($html, '//*[@data-atom-navlist-item][@aria-current="page"]')) === 1;
+    };
+
+    it('marks the item whose path is the request\'s path', function () use ($current) {
+        expect($current('http://app.test/invoices', '/invoices'))->toBeTrue()
+            ->and($current('http://app.test/invoices', '/customers'))->toBeFalse()
+            ->and($current('http://app.test/', '/'))->toBeTrue();
+    });
+
+    it('does not depend on the host the app is served from', function () use ($current) {
+        // the request comes in on another host than APP_URL, with an absolute href on either
+        expect($current('http://other.example/invoices', '/invoices'))->toBeTrue()
+            ->and($current('http://other.example/invoices', 'http://app.test/invoices'))->toBeTrue()
+            ->and($current('http://other.example/invoices', 'https://other.example/invoices'))->toBeTrue()
+            ->and($current('http://other.example/invoices', 'https://elsewhere.example/invoices'))->toBeTrue()
+            ->and($current('http://other.example/invoices', 'https://other.example/customers'))->toBeFalse();
+    });
+
+    it('ignores a trailing slash and a query string, on the href and on the request', function () use ($current) {
+        expect($current('http://app.test/invoices', '/invoices/'))->toBeTrue()
+            ->and($current('http://app.test/invoices/', '/invoices'))->toBeTrue()
+            ->and($current('http://app.test/invoices', '/invoices?status=paid'))->toBeTrue()
+            ->and($current('http://app.test/invoices?page=2', '/invoices'))->toBeTrue()
+            ->and($current('http://app.test/invoices', '/invoices#top'))->toBeTrue()
+            ->and($current('http://app.test/invoices', 'http://app.test/invoices/?a=1'))->toBeTrue();
+    });
+
+    it('stays an exact match: a parent path is not current for a deeper one, or the other way', function () use ($current) {
+        expect($current('http://app.test/invoices/12', '/invoices'))->toBeFalse()
+            ->and($current('http://app.test/invoices', '/invoices/12'))->toBeFalse();
+    });
+
+    it('keeps a pattern in the path working, and the explicit :current', function () use ($current) {
+        expect($current('http://app.test/invoices/12', '/invoices/*'))->toBeTrue();
+
+        app()->instance('request', \Illuminate\Http\Request::create('http://app.test/other'));
+
+        $forced = Blade::render('<atom:navlist.item href="/invoices" :current="true">A</atom:navlist.item>');
+        $denied = Blade::render('<atom:navlist.item href="/other" :current="false">A</atom:navlist.item>');
+
+        expect(domQuery($forced, '//a[@aria-current="page"]'))->toHaveCount(1)
+            ->and(domQuery($denied, '//a[@aria-current]'))->toHaveCount(0);
+    });
+
+    it('is never current for an href with no path, or none at all', function (string $href) use ($current) {
+        expect($current('http://app.test/', $href))->toBeFalse();
+    })->with(['?page=invoices', '#top', '']);
+});
