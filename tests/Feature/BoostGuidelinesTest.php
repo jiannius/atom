@@ -457,7 +457,7 @@ it('points the guideline at the page components and the skill at the record page
         ->and($skill)->toContain('docs/patterns/record-page.blade.php')
         ->and($skill)->toContain('One primary action per record status')
         ->and($skill)->toContain('Status tones')
-        ->and($skill)->toContain('Empty states, three kinds')
+        ->and($skill)->toContain('Empty states, four kinds')
         ->and($skill)->toContain('`first-use`')
         ->and($skill)->toContain('`no-results`')
         ->and($skill)->toContain('`error`')
