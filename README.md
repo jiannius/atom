@@ -551,7 +551,7 @@ The header's crumbs and the shell's `crumbs` slot are two places for the same th
 
 #### Lists, forms and the timeline
 
-Four pattern pages in `resources/views/docs/patterns/` (also at `/atom/docs/patterns/...` in a local app) show whole screens built from these parts: `list-page` (saved views, a toolbar and a frameless table in one panel), `document-page` (an invoice with lines, totals and a timeline), `form-page` (sections and the save bar) and `slide-over-form`. Copy the structure, not the data.
+Four pattern pages in `resources/views/docs/patterns/` (also at `/atom/docs/patterns/...` in a local app; `/atom/docs/patterns` is the index, with when to use each page) show whole screens built from these parts: `list-page` (saved views, a toolbar and a frameless table in one panel), `document-page` (an invoice with lines, totals and a timeline), `form-page` (sections and the save bar) and `slide-over-form`. Copy the structure, not the data.
 
 **A list is one panel.** The panel is yours (`rounded-panel border bg-surface overflow-hidden`); inside it go the saved views, the toolbar and a `frameless` table, separated by hairlines. A table with no panel around it keeps its own frame. A wide table scrolls sideways inside its panel, never the page.
 
@@ -664,7 +664,7 @@ The sidebar's top bar is not drawn from `lg` up when `crumbs`, `actions` and `da
 
 The default profile card reads `auth()->user()`: `avatar` (a URL; none, or a model that has no such attribute, gives initials), `name` and `email`. The initials come from the model's public `initials()` method if it returns a string; otherwise (no method, a protected `Attribute` accessor, another return type, a blank string) they are the first letters of the first two words of `name`, uppercase.
 
-`<main>` is unpadded in both: padding belongs to the page. See both shells as live pages, with one shared nav partial, under **Patterns** in `/atom/docs` (source: `resources/views/docs/patterns/`).
+`<main>` is unpadded in both: padding belongs to the page. See both shells as live pages, with one shared nav partial, under **Patterns** in `/atom/docs` (source: `resources/views/docs/patterns/`; the index at `/atom/docs/patterns` says when to use each page).
 
 #### Remembering collapsed groups
 

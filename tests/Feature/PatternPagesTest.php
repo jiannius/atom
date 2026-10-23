@@ -11,8 +11,9 @@ beforeEach(fn () => view()->share('errors', new ViewErrorBag));
  */
 function registerDocsRoutes(): void
 {
-    if (! Route::has('atom.docs.pattern')) {
+    if (! Route::has('atom.docs.patterns')) {
         Route::get('/atom/docs', fn () => '')->name('atom.docs');
+        Route::get('/atom/docs/patterns', fn () => '')->name('atom.docs.patterns');
         Route::get('/atom/docs/{component}', fn () => '')->name('atom.docs.show');
         Route::get('/atom/docs/patterns/{pattern}', fn () => '')->name('atom.docs.pattern');
         app('router')->getRoutes()->refreshNameLookups();
@@ -71,6 +72,75 @@ describe('pattern pages', function () {
     })->with(['app-shell-sidebar', 'app-shell-header']);
 });
 
+// The patterns overview: every page under docs/patterns, with when to use it.
+describe('patterns overview', function () {
+    it('accounts for every file in the patterns directory: a page, or a partial the shells share', function () {
+        $files = collect(scandir(dirname(__DIR__, 2).'/resources/views/docs/patterns'))
+            ->filter(fn ($file) => str_ends_with($file, '.blade.php'))
+            ->map(fn ($file) => str($file)->before('.blade.php')->toString())
+            ->sort()->values()->all();
+
+        expect($files)->toBe(collect([...array_keys(Docs::PATTERNS), ...array_keys(Docs::PATTERN_PARTIALS)])->sort()->values()->all())
+            ->and(array_keys(Docs::PATTERN_NOTES))->toBe(array_keys(Docs::PATTERNS));
+
+        foreach (Docs::PATTERN_NOTES as $name => $note) {
+            expect($note['use'])->toBeString()->not->toBeEmpty($name)
+                ->and($note['try'])->toStartWith('?', $name);
+        }
+    });
+
+    it('lists every pattern page with a link, when to use it and the file to read', function () {
+        registerDocsRoutes();
+
+        $html = view('atom::docs.patterns-index')->render();
+
+        foreach (Docs::PATTERNS as $name => $label) {
+            $card = domQuery($html, '//*[@data-testid="pattern-'.$name.'"]');
+
+            expect($card)->toHaveCount(1, $name)
+                ->and(domQuery($html, '//*[@data-testid="pattern-'.$name.'"]//a[contains(@href, "/atom/docs/patterns/'.$name.'")]'))->toHaveCount(1, $name)
+                ->and($card[0]->textContent)->toContain(Docs::PATTERN_NOTES[$name]['use'])
+                ->toContain('vendor/jiannius/atom/resources/views/docs/patterns/'.$name.'.blade.php');
+        }
+
+        foreach (array_keys(Docs::PATTERN_PARTIALS) as $name) {
+            expect($html)->toContain('docs/patterns/'.$name.'.blade.php');
+        }
+    });
+
+    it('is in the docs nav and on the docs index', function () {
+        registerDocsRoutes();
+
+        $nav = renderBlade('<atom:docs.layout>x</atom:docs.layout>');
+        $index = view('atom::docs.index', ['docs' => new Docs])->render();
+
+        // the overview's own url, not a pattern page's: the link ends there
+        $overview = 'a[substring(@href, string-length(@href) - 18) = "/atom/docs/patterns"]';
+
+        // once in the nav, and once in the index page's own text
+        expect(domQuery($nav, '//'.$overview))->toHaveCount(1)
+            ->and(domQuery($index, '//main//'.$overview))->toHaveCount(1);
+    });
+
+    it('is the guide the Boost skill points at, and the skill names every page it lists', function () {
+        $skill = file_get_contents(dirname(__DIR__, 2).'/resources/boost/skills/atom-components/SKILL.blade.php');
+        $patterns = substr($skill, strpos($skill, '### Patterns'), strpos($skill, '### Toast / Alert / Confirm') - strpos($skill, '### Patterns'));
+
+        expect($patterns)->toContain('/atom/docs/patterns');
+
+        foreach ([...array_keys(Docs::PATTERNS), ...array_keys(Docs::PATTERN_PARTIALS)] as $name) {
+            expect($patterns)->toContain('docs/patterns/'.$name.'.blade.php');
+        }
+
+        // and only pages that exist
+        preg_match_all('#docs/patterns/([a-z-]+)\.blade\.php#', $patterns, $found);
+
+        foreach (array_unique($found[1]) as $name) {
+            expect(file_exists(dirname(__DIR__, 2).'/resources/views/docs/patterns/'.$name.'.blade.php'))->toBeTrue($name);
+        }
+    });
+});
+
 describe('docs navigation', function () {
     it('lists the patterns under their own group', function () {
         registerDocsRoutes();
@@ -85,6 +155,7 @@ describe('docs navigation', function () {
             ->toContain('Document page')
             ->toContain('Form page')
             ->toContain('Slide-over form')
+            ->toContain('Overview')
             ->toContain('/atom/docs/patterns/app-shell-header');
     });
 });
