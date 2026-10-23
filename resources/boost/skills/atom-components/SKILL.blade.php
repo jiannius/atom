@@ -172,7 +172,7 @@ Rules the patterns follow (apply them to any new screen):
 
 **Numbers, text and the accent**
 - **Stats:** a strip of 3 to 5 under the header; label, value, small currency `prefix`, `breakdown`. A stat that is also a filter gets an `href`. Money is tabular (the stat does it; in a table use `tabular-nums`, and `align="right"`); identifiers (an order number, a reference) are monospace: `font-id`.
-- **Density and text:** the shells are compact (13px body, 28px controls), a bare page or auth is comfortable; long text and editors use `text-base` (14px) for reading. Set the brand as `--color-accent` once in `@theme`; do not hand-pick foreground or hover colours.
+- **Density and text:** the shells are compact (13px body, 28px controls), a bare page or auth is comfortable; long text and editors use `text-base` (14px) for reading. Set the brand as `--color-accent` once in `@theme`; do not hand-pick foreground or hover colours. With none set, the accent is near-black in light and near-white in dark (a primary button is visible in both), and a colour you set is the same in both themes.
 
 **Lists, documents and forms**
 - **Lists:** header, a totals strip, then one panel (views, toolbar, frameless table, a foot with the count and total). One primary: the header's "New ...". A status per row is `<atom:status>`: overdue is danger, a part payment info, waiting neutral, done success. Money is `numeric` with the currency in the header, identifiers `font-id`. On a phone the table scrolls inside the panel and the toolbar's search takes the row.

@@ -28,7 +28,7 @@ Pin an exact version: `composer require jiannius/atom:4.0.0-alpha.N` (the number
 
 **Browsers.** The derived accent colours (`accent-foreground`, `accent-hover`, `accent-ink`) and the focus ring use CSS relative colour: Chrome and Edge 119, Safari 16.4, Firefox 128. Below that floor atom falls back to plain colours: a white label on the accent, the accent itself for hover and for accent text, and a blue (`#3b82f6`) focus ring, so the focus ring stays visible and a dark accent keeps a readable label. A light accent does not: the label is always white, so on a light accent such as `#f5c518` it is about 1.6:1 and hard to read. Hover shows no change.
 
-**Accent fallback.** If your app does not set `--color-accent`, the accent is near-black (`#1c1b18`), which is barely visible as a fill in dark mode. A dark-mode app should set its own accent.
+**Accent fallback.** If your app does not set `--color-accent`, the accent is near-black (`#1c1b18`) in light and flips to a near-white (`#ecebe8`, with a near-black label) in dark, so a primary button is still seen on the dark canvas (3:1 against it, its label 4.5:1). The hover, the ink, the soft tone and the focus ring follow the flip, including inside a nested `.dark` island. The flip uses CSS `light-dark()` (Chrome and Edge 123, Safari 17.5, Firefox 120); an older browser keeps the near-black in both themes. An app that sets its own `--color-accent` is not affected: its colour is the same in both themes, and you can still set one accent per theme yourself.
 
 **Font.** Geist is the default. Pass `fonts="inter"` to `<atom:html>` to keep the old font, or `:fonts="false"` to load none and use the system fonts.
 

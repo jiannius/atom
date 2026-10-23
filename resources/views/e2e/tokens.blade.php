@@ -111,6 +111,7 @@ $roles = [
     <section class="dark rounded-panel bg-canvas p-3 text-fg" data-testid="island">
         <span class="bg-accent-soft text-accent-ink inline-flex h-[22px] items-center rounded-pill px-2 text-xs font-medium" data-testid="island-tone">Accent</span>
         <span class="text-sm font-medium text-accent-ink" data-testid="island-ink">Accent text</span>
+        <button type="button" class="h-control rounded-control bg-accent px-3 text-sm font-medium text-accent-foreground" data-testid="island-accent-button">Primary action</button>
         <button type="button" class="h-control rounded-control border border-border-strong bg-surface px-3 text-sm" data-testid="island-focus">Focus me</button>
     </section>
 </div>

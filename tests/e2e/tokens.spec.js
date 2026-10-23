@@ -276,12 +276,71 @@ for (const tw of ['floor', 'latest']) {
       })
     }
 
-    test('with no accent chosen the fallback is black, with a white foreground', async ({ page }) => {
+    test('with no accent chosen the fallback is black in light, with a white foreground', async ({ page }) => {
       await open(page, { tw })
 
       expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(28, 27, 24)')
       expect(await contrastBetween(page, await colorOf(page, 'accent-button', 'color'), 'rgb(255, 255, 255)')).toBeCloseTo(1, 1)
     })
+
+    test('with no accent chosen the fallback is near-white in dark, with a near-black foreground', async ({ page }) => {
+      await open(page, { tw, dark: true })
+
+      expect(await colorOf(page, 'accent-button', 'backgroundColor')).toBe('rgb(236, 235, 232)')
+      expect(await contrastBetween(page, await colorOf(page, 'accent-button', 'color'), 'rgb(0, 0, 0)')).toBeLessThan(1.2)
+    })
+
+    // the default accent has to be seen in both themes: the fill against the canvas at 3:1 (a graphic), its label at 4.5:1,
+    // and the hover, the ink and the soft tone pair keep their numbers too
+    for (const dark of [false, true]) {
+      test(`the default accent is visible, and its label readable, in ${dark ? 'dark' : 'light'}`, async ({ page }) => {
+        await open(page, { tw, dark })
+
+        const canvas = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+        const fill = await colorOf(page, 'accent-button', 'backgroundColor')
+        const label = await colorOf(page, 'accent-button', 'color')
+
+        expect(await contrastBetween(page, fill, canvas), 'the primary button against the canvas').toBeGreaterThanOrEqual(3)
+        expect(await contrastBetween(page, label, fill), 'its label').toBeGreaterThanOrEqual(4.5)
+        expect(await contrastBetween(page, label, await colorOf(page, 'accent-hover', 'backgroundColor')), 'its label on hover').toBeGreaterThanOrEqual(4.5)
+        expect(await contrastBetween(page, await colorOf(page, 'accent-ink', 'color'), canvas), 'accent text on the canvas').toBeGreaterThanOrEqual(4.5)
+        expect(await contrastBetween(page, await colorOf(page, 'tone-accent', 'color'), await colorOf(page, 'tone-accent', 'backgroundColor')), 'the soft tone pair').toBeGreaterThanOrEqual(4.5)
+      })
+    }
+
+    test('a dark island in a light page flips the default accent too, and a light page is untouched by it', async ({ page }) => {
+      await open(page, { tw })
+
+      const pageFill = await colorOf(page, 'accent-button', 'backgroundColor')
+      const islandInk = await colorOf(page, 'island-ink', 'color')
+
+      expect(pageFill).toBe('rgb(28, 27, 24)')
+      // the island reads the dark canvas, so its accent text is the light end of the ramp and its button the near-white fill
+      const islandBg = await colorOf(page, 'island', 'backgroundColor')
+
+      expect(await contrastBetween(page, islandInk, islandBg)).toBeGreaterThanOrEqual(4.5)
+      expect(await colorOf(page, 'island-accent-button', 'backgroundColor')).toBe('rgb(236, 235, 232)')
+      expect(await contrastBetween(page, await colorOf(page, 'island-accent-button', 'backgroundColor'), islandBg)).toBeGreaterThanOrEqual(3)
+      expect(await contrastBetween(page, await colorOf(page, 'island-accent-button', 'color'), await colorOf(page, 'island-accent-button', 'backgroundColor'))).toBeGreaterThanOrEqual(4.5)
+    })
+
+    // a host that sets its own accent is the same colour in both themes: the default flips, a choice never does
+    for (const accent of ['#4c55c9', '#1c1b18', '#e8632b']) {
+      test(`a host accent ${accent} is unchanged between light and dark`, async ({ page }) => {
+        const read = async (dark) => {
+          await open(page, { tw, dark })
+          await page.evaluate((a) => document.documentElement.style.setProperty('--color-accent', a), accent)
+
+          return { fill: await colorOf(page, 'accent-button', 'backgroundColor'), label: await colorOf(page, 'accent-button', 'color') }
+        }
+
+        const light = await read(false)
+        const dark = await read(true)
+
+        expect(dark.fill).toBe(light.fill)
+        expect(dark.label).toBe(light.label)
+      })
+    }
 
     test('the accent is the host colour, and the host can override any derived token', async ({ page }) => {
       await open(page, { tw })
