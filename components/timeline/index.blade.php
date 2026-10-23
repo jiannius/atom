@@ -16,7 +16,7 @@
      - `message`: a conversation between two speakers, the other one at the start and yours at the end, with an optional
        composer as the last row: put it in the `composer` slot. An `<atom:input>` (bare or labelled) that is a direct child of the
      composer's <form> fills the row beside the button.
-     The kind lives here, not on each item: a list is one kind. `label` names the list for a screen reader (the default
+     The kind lives here, not on each item: a list is one kind. A timeline nested in another one draws its own kind: the `<atom:timeline>` tag writes `kind` on itself (see TagCompiler), so with `<x-atom::timeline>` say `kind` on a nested one. `label` names the list for a screen reader (the default
      is Activity, Steps or Messages). Order is the host's: atom never sorts or fetches. --}}
 @php
 $kind = in_array($kind, ['event', 'step', 'path', 'message'], true) ? $kind : 'event';

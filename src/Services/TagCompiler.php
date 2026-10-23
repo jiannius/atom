@@ -24,8 +24,15 @@ class TagCompiler extends ComponentTagCompiler
 
     public function componentString(string $component, array $attributes)
     {
+        $bag = $attributes['attributes'] ?? null;
+
         foreach (static::AWARE_DEFAULTS[$component] ?? [] as $prop => $default) {
-            $attributes[$prop] ??= $default;
+            // A tag that spreads an attribute bag (`<atom:timeline {{ $attributes }}>`, inside a host wrapper) may be handed the prop by
+            // its caller, and the compiled data puts a written-out prop BEFORE the bag, so a constant would win over the caller's value:
+            // read the bag first, the default only when it has none.
+            $attributes[$prop] ??= $bag === null
+                ? $default
+                : "((({$bag}) instanceof \\Illuminate\\View\\ComponentAttributeBag) ? ({$bag})->get('{$prop}') : null) ?? {$default}";
         }
 
         return parent::componentString($component, $attributes);

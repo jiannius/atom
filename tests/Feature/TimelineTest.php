@@ -428,3 +428,34 @@ describe('a nested timeline', function () {
         expect(domQuery($html, '//li[.//*[@data-atom-timeline-title][normalize-space(.)="Inner"]]//*[@data-atom-timeline-toggle]'))->toHaveCount(1);
     });
 });
+
+// A host wrapper that spreads its attributes onto the tag: what the caller passes must reach the timeline, not the tag's defaults.
+describe('a timeline in a host wrapper', function () {
+    beforeEach(fn () => \Illuminate\Support\Facades\Blade::anonymousComponentPath(__DIR__.'/../Fixtures/AnonComponents'));
+
+    it('takes the kind the wrapper was called with', function (string $kind, string $itemAttribute) {
+        $html = renderBlade('<x-timeline-wrapper kind="'.$kind.'" />');
+
+        expect(domQuery($html, '//*[@data-atom-timeline]')[0]->getAttribute('data-kind'))->toBe($kind)
+            ->and(domQuery($html, '//li['.$itemAttribute.']'))->toHaveCount(1);
+    })->with([
+        'step' => ['step', '@data-state="current"'],
+        'path' => ['path', '@aria-current="step"'],
+        'message' => ['message', '@data-side="start"'],
+    ]);
+
+    it('is an event timeline when the wrapper was given no kind', function () {
+        $html = renderBlade('<x-timeline-wrapper />');
+
+        expect(domQuery($html, '//*[@data-atom-timeline]')[0]->getAttribute('data-kind'))->toBe('event')
+            ->and(domQuery($html, '//li[@data-tone]'))->toHaveCount(1);
+    });
+
+    it('takes collapsible from the wrapper too', function () {
+        $folded = renderBlade('<x-timeline-wrapper kind="step" />');
+        $open = renderBlade('<x-timeline-wrapper kind="step" :collapsible="false" />');
+
+        expect(domQuery($folded, '//*[@data-atom-timeline-toggle]'))->toHaveCount(1)
+            ->and(domQuery($open, '//*[@data-atom-timeline-toggle]'))->toBeEmpty();
+    });
+});
