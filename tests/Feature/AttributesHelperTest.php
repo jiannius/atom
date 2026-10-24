@@ -103,3 +103,48 @@ describe('in the components', function () {
             ->and($own)->not->toContain($id[1]);
     });
 });
+
+describe('hasWidth()', function () {
+    it('counts a w-* or max-w-* utility, under any variant or modifier, as a width', function (string $class) {
+        expect(Attributes::hasWidth(new ComponentAttributeBag(['class' => $class])))->toBeTrue();
+    })->with([
+        'plain' => 'w-96',
+        'a theme width' => 'w-md',
+        'a max width' => 'max-w-md',
+        'a fraction' => 'w-1/2',
+        'arbitrary' => 'w-[28rem]',
+        'a calc' => 'w-[calc(100%-2rem)]',
+        'a css variable' => 'w-(--x)',
+        'important first' => '!w-96',
+        'important last' => 'w-96!',
+        'a breakpoint' => 'md:w-96',
+        'a breakpoint max width' => 'sm:max-w-lg',
+        'a state' => 'hover:w-4',
+        'an arbitrary-value variant' => 'data-[state=open]:w-4',
+        'stacked variants' => 'dark:md:w-4',
+        'among others' => 'rounded-none p-4 w-96 bg-red-500',
+    ]);
+
+    it('does not count what is not a width for the box itself', function (?string $class) {
+        expect(Attributes::hasWidth(new ComponentAttributeBag($class === null ? [] : ['class' => $class])))->toBeFalse();
+    })->with([
+        'no class' => [null],
+        'empty' => [''],
+        'a min width' => ['min-w-0'],
+        'a min width under a variant' => ['md:min-w-96'],
+        'size' => ['size-96'],
+        'a height' => ['h-96'],
+        'a width for a child' => ['[&_svg]:w-4'],
+        'a width for a child under a variant' => ['sm:[&>img]:w-8'],
+        'the star variant' => ['*:w-4'],
+        'a word that merely contains it' => ['show-w-x'],
+    ]);
+
+    it('counts w-* only when the max width is left out', function () {
+        $max = new ComponentAttributeBag(['class' => 'max-w-lg']);
+        $both = new ComponentAttributeBag(['class' => 'max-w-lg md:w-96']);
+
+        expect(Attributes::hasWidth($max, false))->toBeFalse()
+            ->and(Attributes::hasWidth($both, false))->toBeTrue();
+    });
+});

@@ -27,6 +27,24 @@ class Attributes
     }
 
     /**
+     * Whether the `class` attribute sets a width of its own: a `w-*` or `max-w-*` utility under any variant
+     * (`md:w-96`, `!w-96`, `w-96!`, `data-[state=open]:w-4`). Not `min-w-*`, `size-*`, nor a width for a child
+     * (`[&_svg]:w-4`, `*:w-4`), which style something inside the box. `$includingMax = false` counts `w-*` only.
+     */
+    public static function hasWidth(ComponentAttributeBag $attributes, bool $includingMax = true) : bool
+    {
+        $pattern = '/^(?:(?![\[*])(?:[^\s:\[\]]|\[[^\]\s]*\])+:)*!?'.($includingMax ? '(?:max-)?' : '').'w-/';
+
+        foreach (preg_split('/\s+/', trim((string) $attributes->get('class'))) as $token) {
+            if (preg_match($pattern, $token)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * The modifier of the wire:model / x-model binding (`.live`, `.blur.debounce`), or
      * whether it holds the given one.
      */

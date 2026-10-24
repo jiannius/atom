@@ -8,15 +8,15 @@
     'method' => 'submit',
 ])
 
-{{-- A width the caller sets (`w-*` or `max-w-*`, under any variant, not `min-w-*`) replaces the one `cols` derives: a width class that
-     sits beside `max-w-xl` loses to it in Tailwind's rule order. `[&_svg]:w-4` and `*:w-4` style a child, so they are not a width for the dialog.
+{{-- A width the caller sets (`w-*` or `max-w-*`, under any variant, not `min-w-*`; see Attributes::hasWidth()) replaces the one `cols`
+     derives: a width class that sits beside `max-w-xl` loses to it in Tailwind's rule order. A width that only applies under a variant
+     (`md:w-96`) replaces it at every size, so give the base width too.
      `submit` is the Save button's LABEL; `method` names the component method the form calls (default `submit`), and is also the
      method whose run the button's loading state follows. A name that is not a plain method name falls back to `submit`. --}}
 @php
 $method = is_string($method) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*\z/', $method) ? $method : 'submit';
 
-$hasOwnWidth = collect(preg_split('/\s+/', trim((string) $attributes->get('class'))))
-    ->contains(fn ($token) => preg_match('/^(?:(?![\[*])(?:[^\s:\[\]]|\[[^\]\s]*\])+:)*!?(?:max-)?w-/', $token));
+$hasOwnWidth = \Jiannius\Atom\Services\Attributes::hasWidth($attributes);
 
 $width = $hasOwnWidth ? '' : match ((string) $cols) {
     'auto', '2' => 'max-w-2xl',

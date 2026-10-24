@@ -1,8 +1,9 @@
 @php
-// <atom:form.modal cols="1"> with a width class of the caller's, opened on load: ?class=fixed|max|none, ?tw=floor|latest, ?dark=1
+// <atom:form.modal cols="1"> with a width class of the caller's, opened on load: ?class=fixed|max|both|none, ?tw=floor|latest, ?dark=1
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
 $class = match (request()->query('class')) {
     'max' => 'max-w-md',
+    'both' => 'w-[28rem] max-w-lg',
     'none' => '',
     default => 'w-[28rem]',
 };

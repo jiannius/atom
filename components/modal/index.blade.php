@@ -14,13 +14,18 @@ $name ??= (app('livewire')->current() ?: null)?->getName();
 // A dialog is content-sized, so a caller's max-w-* only ever capped a width
 // nothing had set — <atom:modal class="max-w-screen-lg"> rendered at the
 // min-w-sm floor (336px), with no error to notice. A max-w-* is a statement of
-// intended width, so give it one to cap.
+// intended width, so give it one to cap. A w-* of the caller's own is that width
+// already (`w-[28rem] max-w-lg`): w-full would beat it in Tailwind's rule order.
+// Only a phone is then held to the viewport, since the max-w-* the caller wrote
+// replaces the max-w-full default that would have capped their width there.
 $hasMaxWidth = str($attributes->get('class'))->contains('max-w-');
+$hasOwnWidth = \Jiannius\Atom\Services\Attributes::hasWidth($attributes, false);
 
 $classes = Arr::toCssClasses([
     'group/modal',
     '[:where(&)]:max-w-full min-w-sm shadow-pop rounded-modal',
-    'w-full' => $hasMaxWidth,
+    'w-full' => $hasMaxWidth && ! $hasOwnWidth,
+    'max-sm:w-full' => $hasMaxWidth && $hasOwnWidth,
     'bg-surface-raised text-fg border border-border-strong transition-transform',
     $inset ? 'p-0' : 'p-6',
 
