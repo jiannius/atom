@@ -14,3 +14,14 @@ class FixtureComponent extends Livewire\Component
 {
     use AtomComponent;
 }
+
+it('draws the heading', function () {
+    expect($page->find('h1.font-medium'))->not->toBeNull();
+    expect($page->find('.subheading.font-medium'))->not->toBeNull();
+});
+
+it('weighs the heading', function () {
+    expect(headingHtml('lg'))->toContain('font-semibold')
+        ->and(headingHtml('sm'))->not->toContain('font-semibold');
+    expect($html)->not->toContain('font-semibold');
+});

@@ -47,7 +47,14 @@ class UpgradeCheck
     /**
      * Directory names skipped at any depth
      */
-    public const SKIP_DIRECTORIES = ['vendor', 'node_modules', '.git'];
+    public const SKIP_DIRECTORIES = ['node_modules', '.git'];
+
+    /**
+     * Composer's directory: skipped at the root and wherever it holds an install
+     * (an autoload.php or a composer/ directory). Any other directory with this
+     * name is the host's own code, such as a "vendor" (supplier) screen.
+     */
+    public const VENDOR_DIRECTORY = 'vendor';
 
     /**
      * Paths, from the root, skipped
@@ -460,6 +467,13 @@ class UpgradeCheck
                 'kinds' => ['php', 'js'], 'scope' => 'tests',
                 'pattern' => '/(?<![\w\-:.\/\[])(?:'.implode('|', array_map(fn ($class) => preg_quote($class, '/'), static::TEST_CLASSES)).')(?![\w\-\]])/',
             ],
+            'test-heading-weight' => [
+                'title' => 'A test that asserts a heading\'s weight needs updating: every heading is font-semibold in v4',
+                'section' => 'Breaks a test (every restyle section)', 'severity' => static::REVIEW, 'codemod' => 'report',
+                'detect' => 'tests/ lines naming font-semibold or font-medium and a heading (any word containing heading except subheading, <h1>..<h6> or h1..h6 as a selector); a finding a line. A line with the weight but no heading word (`expect($html)->not->toContain(\'font-semibold\')`) is not seen',
+                'kinds' => ['php', 'js'], 'scope' => 'tests',
+                'pattern' => '/^(?=[^\n]*(?<![\w\-])font-(?:semibold|medium)(?![\w\-]))(?=[^\n]*(?:(?<!sub)heading|(?<![\w\-])h[1-6](?![\w\-])))[^\n]*/mi',
+            ],
         ];
     }
 
@@ -799,8 +813,10 @@ class UpgradeCheck
 
     /**
      * Every regular file under a directory. A symlink (file or directory) is not
-     * followed, a directory that cannot be read is recorded, and `vendor/` is
-     * skipped at any depth except atom's own published views.
+     * followed, a directory that cannot be read is recorded, and Composer's
+     * `vendor/` is skipped (see isComposerVendor()), as is `node_modules/` and
+     * `.git/` at any depth. Only atom's own published views are read from
+     * `resources/views/vendor/`.
      *
      * @return array<int, string>
      */
@@ -835,7 +851,7 @@ class UpgradeCheck
                 // only atom's own published views live under resources/views/vendor that are read
                 $publishedViews = $relative === 'resources/views/vendor';
 
-                if ((! $publishedViews && in_array($name, static::SKIP_DIRECTORIES, true)) || in_array($relative, static::SKIP_PATHS, true)) {
+                if ((! $publishedViews && $this->isSkippedDirectory($relative, $name, $path)) || in_array($relative, static::SKIP_PATHS, true)) {
                     continue;
                 }
 
@@ -850,6 +866,21 @@ class UpgradeCheck
         }
 
         return $files;
+    }
+
+    /**
+     * Whether a directory is left unread: node_modules and .git at any depth,
+     * and Composer's vendor
+     */
+    protected function isSkippedDirectory(string $relative, string $name, string $path): bool
+    {
+        if (in_array($name, static::SKIP_DIRECTORIES, true)) {
+            return true;
+        }
+
+        // the root vendor/, or a nested one that holds a Composer install (modules/X/vendor); any other is the host's
+        return $name === static::VENDOR_DIRECTORY
+            && ($relative === static::VENDOR_DIRECTORY || is_file($path.DIRECTORY_SEPARATOR.'autoload.php') || is_dir($path.DIRECTORY_SEPARATOR.'composer'));
     }
 
     /**
