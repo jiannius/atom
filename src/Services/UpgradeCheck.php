@@ -47,7 +47,14 @@ class UpgradeCheck
     /**
      * Directory names skipped at any depth
      */
-    public const SKIP_DIRECTORIES = ['vendor', 'node_modules', '.git'];
+    public const SKIP_DIRECTORIES = ['node_modules', '.git'];
+
+    /**
+     * Composer's directory: skipped at the root and wherever it holds an install
+     * (an autoload.php or a composer/ directory). Any other directory with this
+     * name is the host's own code, such as a "vendor" (supplier) screen.
+     */
+    public const VENDOR_DIRECTORY = 'vendor';
 
     /**
      * Paths, from the root, skipped
@@ -460,6 +467,13 @@ class UpgradeCheck
                 'kinds' => ['php', 'js'], 'scope' => 'tests',
                 'pattern' => '/(?<![\w\-:.\/\[])(?:'.implode('|', array_map(fn ($class) => preg_quote($class, '/'), static::TEST_CLASSES)).')(?![\w\-\]])/',
             ],
+            'test-heading-weight' => [
+                'title' => 'A test that asserts a heading\'s weight needs updating: v4 draws every heading, xs and sm included, at font-semibold',
+                'section' => 'Breaks a test (every restyle section)', 'severity' => static::REVIEW, 'codemod' => 'report',
+                'detect' => 'tests/ lines naming a heading (any word containing heading except subheading, <h1>..<h6> or h1..h6 as a selector) and either font-medium, or font-semibold with a negation on the same line (->not, .not., DontSee, doesntContain, doesNotContain, NotContains, assertFalse, toBeFalse); a finding a line. `->not->toContain(\'font-medium\')` is flagged although it still passes (an accepted over-report). A positive font-semibold on a heading still holds (lg and xl were semibold already) and a line with the weight but no heading word (`expect($html)->not->toContain(\'font-semibold\')`) is not seen',
+                'kinds' => ['php', 'js'], 'scope' => 'tests',
+                'pattern' => '/^(?=[^\n]*(?:(?<!sub)heading|(?<![\w\-])h[1-6](?![\w\-])))(?:(?=[^\n]*(?<![\w\-])font-medium(?![\w\-]))|(?=[^\n]*(?<![\w\-])font-semibold(?![\w\-]))(?=[^\n]*(?:->not\b|\.not\.|dontsee|doesntcontain|doesnotcontain|notcontains|assertfalse|tobefalse)))[^\n]*/mi',
+            ],
         ];
     }
 
@@ -499,7 +513,7 @@ class UpgradeCheck
             $scanned[$scope]++;
             $prepared = $this->prepare($kind, $source);
 
-            if (str_starts_with($relative, 'resources/views/vendor/atom/')) {
+            if (preg_match('#(?:^|/)resources/views/vendor/atom/#', $relative)) {
                 $published[] = $relative;
             }
 
@@ -744,6 +758,7 @@ class UpgradeCheck
     {
         $seen = [];
         $roots = [];
+        $libraries = [];
 
         foreach (static::DIRECTORIES as $directory) {
             $path = $root.DIRECTORY_SEPARATOR.$directory;
@@ -776,6 +791,15 @@ class UpgradeCheck
 
                 $relative = str_replace(DIRECTORY_SEPARATOR, '/', ltrim(substr($file, strlen($root)), DIRECTORY_SEPARATOR));
 
+                if (in_array($kind, ['js', 'css'], true) && ($library = $this->vendorLibraryDirectory($relative)) !== null) {
+                    if (! isset($libraries[$library])) {
+                        $libraries[$library] = true;
+                        $this->skipped[] = ['path' => $library, 'reason' => 'third-party scripts or styles under resources/js|css/vendor'];
+                    }
+
+                    continue;
+                }
+
                 if (filesize($file) > static::MAX_BYTES) {
                     $this->skipped[] = ['path' => $relative, 'reason' => 'over '.(static::MAX_BYTES / 1048576).' MB'];
 
@@ -799,8 +823,10 @@ class UpgradeCheck
 
     /**
      * Every regular file under a directory. A symlink (file or directory) is not
-     * followed, a directory that cannot be read is recorded, and `vendor/` is
-     * skipped at any depth except atom's own published views.
+     * followed, a directory that cannot be read is recorded, and Composer's
+     * `vendor/` is skipped (see isSkippedDirectory()), as is `node_modules/` and
+     * `.git/` at any depth. Only atom's own published views are read from a
+     * `resources/views/vendor/` (the root one or a module's).
      *
      * @return array<int, string>
      */
@@ -832,14 +858,14 @@ class UpgradeCheck
             }
 
             if (is_dir($path)) {
-                // only atom's own published views live under resources/views/vendor that are read
-                $publishedViews = $relative === 'resources/views/vendor';
+                // only atom's own published views are read from a resources/views/vendor (the root one or a module's)
+                $publishedViews = $this->isPublishedViewsDirectory($relative);
 
-                if ((! $publishedViews && in_array($name, static::SKIP_DIRECTORIES, true)) || in_array($relative, static::SKIP_PATHS, true)) {
+                if ((! $publishedViews && $this->isSkippedDirectory($relative, $name, $path)) || in_array($relative, static::SKIP_PATHS, true)) {
                     continue;
                 }
 
-                if ($relativeDirectory === 'resources/views/vendor' && $name !== 'atom') {
+                if ($this->isPublishedViewsDirectory($relativeDirectory) && $name !== 'atom') {
                     continue;
                 }
 
@@ -850,6 +876,41 @@ class UpgradeCheck
         }
 
         return $files;
+    }
+
+    /**
+     * Laravel's published-vendor-views folder, at the root or in a module: not app code
+     */
+    protected function isPublishedViewsDirectory(string $relative): bool
+    {
+        return $relative === 'resources/views/vendor' || str_ends_with($relative, '/resources/views/vendor');
+    }
+
+    /**
+     * The `vendor` directory that holds third-party scripts or styles, when the
+     * file is under one: a direct child of resources/js or resources/css, at the
+     * root or in a module. Any other `vendor` directory (resources/js/pages/vendor)
+     * is the host's own code, and PHP and Blade are read wherever they are.
+     */
+    protected function vendorLibraryDirectory(string $relative): ?string
+    {
+        return preg_match('#^((?:.*/)?resources/(?:js|css)/vendor)/#', $relative, $m) ? $m[1] : null;
+    }
+
+    /**
+     * Whether a directory is left unread: node_modules and .git at any depth,
+     * and Composer's vendor
+     */
+    protected function isSkippedDirectory(string $relative, string $name, string $path): bool
+    {
+        if (in_array($name, static::SKIP_DIRECTORIES, true)) {
+            return true;
+        }
+
+        // the root vendor/ (defensive: the root is never walked today, only its app, resources... directories), or a
+        // nested one that holds a Composer install (modules/X/vendor); any other is the host's
+        return $name === static::VENDOR_DIRECTORY
+            && ($relative === static::VENDOR_DIRECTORY || is_file($path.DIRECTORY_SEPARATOR.'autoload.php') || is_dir($path.DIRECTORY_SEPARATOR.'composer'));
     }
 
     /**
