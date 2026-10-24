@@ -46,6 +46,33 @@ describe('frameless', function () {
             ->and($html)->toContain('border-b px-3 py-2.5');
     });
 
+    it('tints the bulk bar with the accent-soft token only when the slot says tone="accent"', function (bool $frameless) {
+        $bar = fn (string $slot, string $props = '') => domQuery(renderBlade('<atom:table :empty="false" '.$props.'>
+            <x-slot:checked'.$slot.'><span id="c">bulk</span></x-slot:checked>
+            <x-slot:rows><atom:table.row><atom:table.cell>x</atom:table.cell></atom:table.row></x-slot:rows>
+        </atom:table>'), '//*[@data-atom-table-checked]');
+
+        $props = $frameless ? 'frameless' : '';
+        [$tinted] = $bar(' tone="accent"', $props);
+        [$plain] = $bar('', $props);
+        [$other] = $bar(' tone="danger"', $props);
+
+        expect(domClasses($tinted))->toContain('bg-accent-soft')
+            ->and($tinted->getAttribute('data-tone'))->toBe('accent')
+            ->and(domClasses($plain))->not->toContain('bg-accent-soft')
+            ->and($plain->hasAttribute('data-tone'))->toBeFalse()
+            ->and(domClasses($other))->not->toContain('bg-accent-soft');
+
+        // the slot's own wrapper never gets `tone` as an HTML attribute, and keeps the rest of the slot's attributes
+        $html = renderBlade('<atom:table :empty="false">
+            <x-slot:checked tone="accent" data-x="1"><span>bulk</span></x-slot:checked>
+            <x-slot:rows><atom:table.row><atom:table.cell>x</atom:table.cell></atom:table.row></x-slot:rows>
+        </atom:table>');
+
+        expect(domQuery($html, '//*[@tone]'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-table-checked]//*[@data-x="1"]'))->toHaveCount(1);
+    })->with([[false], [true]]);
+
     it('lets the table shrink inside a grid or flex parent', function () {
         $root = domQuery(tableHtml('frameless'), '//*[@data-atom-table]')[0];
 
