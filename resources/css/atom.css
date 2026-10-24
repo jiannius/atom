@@ -1431,16 +1431,37 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
    overflow-y-hidden`) say the same, but a host build that lacks `overflow-y-hidden` would leave the y axis `visible`, which the
    browser computes to `auto` beside `overflow-x: auto`: a vertical scrollbar thumb inside the strip, wherever the 1px the underline
    overlaps is counted. So the axis is pinned here too, outside any Tailwind build.
-   The sideways scrollbar is hidden (Windows, or macOS with a mouse, would draw a 15px bar under the tabs): the edge fade below
-   is what tells the reader the strip scrolls. */
+   The sideways scrollbar follows the pointer: a mouse needs it (a plain wheel over the strip scrolls the page, so without a bar
+   the tabs past the edge cannot be reached), so it stays, slim (6px, or `thin` where only the standard property exists); a touch
+   screen has the swipe and the edge fade below, so there it is hidden. */
 [data-atom-page-tabs] > ul {
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: none;
 }
 
 [data-atom-page-tabs] > ul::-webkit-scrollbar {
-    display: none;
+    height: 6px;
+}
+
+[data-atom-page-tabs] > ul::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background-color: var(--atom-border-strong, currentColor);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    [data-atom-page-tabs] > ul {
+        scrollbar-width: thin;
+    }
+}
+
+@media (pointer: coarse) {
+    [data-atom-page-tabs] > ul {
+        scrollbar-width: none;
+    }
+
+    [data-atom-page-tabs] > ul::-webkit-scrollbar {
+        display: none;
+    }
 }
 
 /* The edges of a scrolling tab strip fade where more tabs are past them (the pageTabs factory marks the strip), so a strip that

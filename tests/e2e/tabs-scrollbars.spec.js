@@ -9,7 +9,7 @@ import { open } from './controls-helpers.js'
 test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } })
 
 /** The space a scrollbar takes in each strip and in the boxes around it, up to its section (the bar, not a border) */
-const gutters = (page) => page.evaluate(() => [...document.querySelectorAll('[data-atom-page-tabs]')].flatMap((nav, i) => {
+const gutters = (page, { coarse = false } = {}) => page.evaluate((coarse) => [...document.querySelectorAll('[data-atom-page-tabs]')].flatMap((nav, i) => {
   const found = []
   const stop = nav.closest('[data-testid^="where-"], [data-atom-page], main') ?? document.body
 
@@ -21,14 +21,19 @@ const gutters = (page) => page.evaluate(() => [...document.querySelectorAll('[da
     const name = `strip ${i}: ${el.tagName.toLowerCase()}.${String(el.className).slice(0, 30)}`
 
     if (vertical > 0) found.push(`${name} has a ${vertical}px vertical bar`)
-    if (isStrip && sideways > 0) found.push(`${name} has a ${sideways}px sideways bar`)
+    // a strip that overflows has a slim bar under a mouse (8px at most) and none under a touch screen; one that fits has none
+    const overflows = isStrip && el.scrollWidth > el.clientWidth
+
+    if (isStrip && coarse && sideways > 0) found.push(`${name} has a ${sideways}px sideways bar under a coarse pointer`)
+    if (isStrip && ! coarse && overflows && (sideways <= 0 || sideways > 8)) found.push(`${name} has a ${sideways}px sideways bar, expected a slim one (1 to 8px)`)
+    if (isStrip && ! coarse && ! overflows && sideways > 0) found.push(`${name} fits and still has a ${sideways}px sideways bar`)
     if (isStrip && el.scrollHeight > el.clientHeight + 1) found.push(`${name} scrolls vertically (${el.scrollHeight} > ${el.clientHeight})`)
     if (isStrip && s.overflowY !== 'hidden') found.push(`${name} overflow-y is ${s.overflowY}`)
     if (el === stop) break
   }
 
   return found
-}))
+}), coarse)
 
 const pages = {
   'the docs page.tabs demo': { goto: (page, dark) => page.goto(`/atom/docs/page${dark ? '?dark=1' : ''}`) },
@@ -45,7 +50,7 @@ test('the rig can see a scrollbar (negative control)', async ({ page }) => {
 for (const [name, { goto }] of Object.entries(pages)) {
   for (const dark of [false, true]) {
     for (const width of [390, 1440]) {
-      test(`${name}: no scrollbar on the strip, ${dark ? 'dark' : 'light'} at ${width}px`, async ({ page }) => {
+      test(`${name}: no vertical bar and a slim sideways one, ${dark ? 'dark' : 'light'} at ${width}px`, async ({ page }) => {
         await page.setViewportSize({ width, height: 900 })
         await page.emulateMedia({ colorScheme: dark ? 'dark' : 'light' })
         await goto(page, dark, 'latest')
@@ -57,6 +62,44 @@ for (const [name, { goto }] of Object.entries(pages)) {
     }
   }
 }
+
+test('under a mouse the overflowing strip keeps a slim sideways bar (1 to 8px)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 })
+  await open(page, { path: 'tabs-overflow' })
+
+  const bar = await page.getByTestId('page-tabs-bare').locator('ul').evaluate((el) => el.offsetHeight - el.clientHeight - parseFloat(getComputedStyle(el).borderBottomWidth))
+
+  expect(bar).toBeGreaterThan(0)
+  expect(bar).toBeLessThanOrEqual(8)
+})
+
+test.describe('under a coarse pointer (touch)', () => {
+  // hasTouch makes Chromium report `(pointer: coarse)`; scrollbars stay the real, space-taking kind
+  test.use({ hasTouch: true })
+
+  for (const [name, { goto }] of Object.entries(pages)) {
+    for (const width of [390, 1440]) {
+      test(`${name}: no scrollbar at all at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await goto(page, false, 'latest')
+        await page.evaluate(() => document.fonts.ready)
+
+        expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true)
+        expect(await gutters(page, { coarse: true })).toEqual([])
+      })
+    }
+  }
+
+  test('the strip is scrollbar-width: none, and still scrolls', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 })
+    await open(page, { path: 'tabs-overflow' })
+
+    const ul = page.getByTestId('page-tabs-bare').locator('ul')
+
+    expect(await ul.evaluate((el) => getComputedStyle(el).scrollbarWidth)).toBe('none')
+    expect(await ul.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true)
+  })
+})
 
 test.describe('cases that could still draw one', () => {
   const strip = (page) => page.getByTestId('page-tabs-bare').locator('ul')
