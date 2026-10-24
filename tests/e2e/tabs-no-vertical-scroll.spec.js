@@ -10,6 +10,7 @@ import { open } from './controls-helpers.js'
 // `auto` beside `overflow-x: auto`. Headless Chromium never shows a vertical thumb for it here, because the strip has no more content
 // than box, so the GEOMETRY check (scrollHeight against clientHeight) passes with or without the fix: it guards against a future
 // change that makes the strip taller than itself. Only the COMPUTED `overflowY` assertion fails without the rule in atom.css, so both stay.
+// tabs-scrollbars.spec.js launches Chromium with scrollbars shown and measures the bar itself.
 
 const verticalOverflow = (page) => page.evaluate(() => {
   const found = []

@@ -137,6 +137,17 @@ describe('modal', function () {
         expect($html)->toContain(')]:max-w-full')->not->toMatch($standaloneWFull);
     });
 
+    it('does not add w-full when the caller gives the width itself beside a max-w-*', function (string $class) use ($standaloneWFull) {
+        $html = renderBlade('<atom:modal name="m" class="'.$class.'">Body</atom:modal>');
+
+        // only a phone is held to the viewport (the caller's max-w-* replaced the max-w-full default)
+        expect($html)->not->toMatch($standaloneWFull)->toContain('max-sm:w-full');
+    })->with(['w-[28rem] max-w-lg', 'max-w-lg w-96', 'md:w-96 max-w-lg', '!w-96 max-w-lg']);
+
+    it('still adds w-full when the max-w-* stands alone or the other width is not the dialog\'s', function (string $class) use ($standaloneWFull) {
+        expect(renderBlade('<atom:modal name="m" class="'.$class.'">Body</atom:modal>'))->toMatch($standaloneWFull);
+    })->with(['max-w-lg', 'max-w-lg min-w-0', 'max-w-lg [&_img]:w-4', 'max-w-lg *:w-4']);
+
     it('sizes the form modal, whose width comes from cols', function () use ($standaloneWFull) {
         // form.modal sets max-w-2xl itself, so it needs the same treatment
         expect(renderBlade('<atom:form.modal name="m">F</atom:form.modal>'))->toMatch($standaloneWFull);
@@ -207,6 +218,46 @@ describe('form.modal', function () {
         expect(renderBlade('<atom:form.modal name="m">F</atom:form.modal>'))->toContain('max-w-2xl');
         expect(renderBlade('<atom:form.modal name="m" cols="3">F</atom:form.modal>'))->toContain('max-w-4xl');
         expect(renderBlade('<atom:form.modal name="m" cols="1">F</atom:form.modal>'))->toContain('max-w-xl');
+    });
+
+    /** The classes of the rendered dialog, as a list */
+    function formModalClasses(string $class): array
+    {
+        preg_match('/<dialog[^>]*\sclass="([^"]*)"/s', renderBlade('<atom:form.modal name="m" cols="1" class="'.$class.'">F</atom:form.modal>'), $m);
+
+        return preg_split('/\s+/', html_entity_decode($m[1] ?? ''));
+    }
+
+    it('lets a width class from the caller replace the one cols derives', function (string $class, bool $capped) {
+        $classes = formModalClasses($class);
+
+        expect($classes)->toContain($class)->not->toContain('max-w-xl');
+        // a fixed width stands alone; a max-w-* still gets the w-full it caps, as on <atom:modal>
+        $capped ? expect($classes)->toContain('w-full') : expect($classes)->not->toContain('w-full');
+    })->with([
+        'arbitrary width' => ['w-[28rem]', false],
+        'theme width' => ['w-md', false],
+        'smaller max width' => ['max-w-md', true],
+        'breakpoint max width' => ['sm:max-w-lg', true],
+    ]);
+
+    it('keeps the cols width when the caller sets none', function (string $class) {
+        expect(formModalClasses($class))->toContain('max-w-xl')->toContain('w-full');
+    })->with([
+        'no width' => ['rounded-none'],
+        'a min width' => ['min-w-0'],
+        'a width for a child' => ['[&_svg]:w-4'],
+        'a width for a child under a variant' => ['sm:[&>img]:w-8'],
+        'a star variant' => ['*:w-4'],
+    ]);
+
+    it('treats a width that only applies under a variant as the width at every size, so the base one is given too', function () {
+        expect(formModalClasses('md:w-96'))->not->toContain('max-w-xl')->toContain('md:w-96');
+        expect(formModalClasses('w-full md:w-96'))->not->toContain('max-w-xl')->toContain('w-full', 'md:w-96');
+    });
+
+    it('keeps the cols width when the caller gives no class at all', function () {
+        expect(renderBlade('<atom:form.modal name="m" cols="3">F</atom:form.modal>'))->toContain('max-w-4xl');
     });
 
     it('renders the delete slot next to the submit button', function () {
