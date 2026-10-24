@@ -44,6 +44,11 @@ description="frameless is for a table that sits in a panel your page already dra
 view="atom::docs.demos.table.frameless"/>
 
 <atom:docs.example
+title="Selected bar"
+description="While rows are ticked, the table's checked slot replaces the toolbar with a bar (the count, 'select all' and the host's bulk actions). It has no fill by default. Put tone='accent' on the slot (x-slot:checked tone='accent') to tint it with the accent-soft token and set its text in the accent ink, so the selected state stands out; any other tone is the plain bar. It works framed and frameless: framed, the bar is its own rounded strip above the panel; frameless, it is the panel's top strip. Both looks are drawn here with the table's own classes, because the real bar opens only from a Livewire page (WithTable keeps the ticked ids)."
+view="atom::docs.demos.table.checked"/>
+
+<atom:docs.example
 title="Numeric columns"
 description="numeric on a column and on its cells right-aligns the figures and makes them tabular, so a column of money lines up on the decimal point. Name the currency once, in the header (Amount (RM)), never in every cell. Identifiers (an invoice number) take the font-id class."
 view="atom::docs.demos.table.numeric"/>

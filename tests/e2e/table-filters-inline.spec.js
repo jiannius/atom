@@ -137,6 +137,25 @@ for (const tw of ['floor', 'latest']) {
       await expect(bar(page).getByRole('button', { name: 'Clear all' })).toBeHidden()
     })
 
+    // "More filters" is a filter control like the rest: with chips="inline" it sits AFTER the active chips, in every overflow mode
+    // (the modal's button sits inside the display:contents modal trigger, so it used to keep order 0 and lead the row)
+    for (const mode of ['card', 'modal', 'popover']) {
+      test(`overflow="${mode}": the More filters button comes after the active chip, on one line`, async ({ page }) => {
+        await page.setViewportSize({ width: 1440, height: 900 })
+        await open(page, { path: 'table-filters-inline', tw })
+
+        const row = page.getByTestId(`overflow-${mode}`)
+        const chip = row.locator('[data-atom-table-filter-chip]')
+        await expect(chip).toHaveCount(1)
+
+        const more = await row.getByRole('button', { name: 'More filters' }).first().boundingBox()
+        const last = await chip.last().boundingBox()
+
+        expect(more.x).toBeGreaterThan(last.x + last.width)
+        expect(Math.abs((more.y + more.height / 2) - (last.y + last.height / 2))).toBeLessThan(4)
+      })
+    }
+
     for (const dark of [false, true]) {
       for (const accent of [null, ...ACCENTS]) {
         test(`every text reads in ${dark ? 'dark' : 'light'} with ${accent ?? 'the default accent'}`, async ({ page }) => {
