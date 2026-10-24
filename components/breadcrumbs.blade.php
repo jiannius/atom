@@ -2,6 +2,10 @@
     'heading' => true,
 ])
 
+{{-- With exactly one crumb the trail prints it as a heading (`heading="false"` turns that off), unless the page prints its own
+     <atom:page.header>: then its title is the heading and this one would say it twice. breadcrumbs.js reads that on every
+     navigation (`hasPageHeader`), since the trail is persisted across wire:navigate. --}}
+
 <div
 x-data="breadcrumbs()"
 x-on:navigate-back.window="back()"
@@ -9,8 +13,8 @@ x-on:livewire:navigated.window="build()"
 x-on:livewire:navigate.window="getLatestHref($event)"
 data-atom-breadcrumbs>
     @if ($heading)
-        <template x-if="breadcrumbs.length === 1" hidden>
-            <atom:heading size="xl" x-text="breadcrumbs[0].title" class="font-bold"></atom:heading>
+        <template x-if="breadcrumbs.length === 1 && ! hasPageHeader" hidden>
+            <atom:heading size="xl" x-text="breadcrumbs[0].title"></atom:heading>
         </template>
     @endif
 
