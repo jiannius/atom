@@ -893,10 +893,11 @@ class Claims extends Component
         return ['tenant_id'];
     }
 
-    // optional: app-specific checks (a date that parses, a status that exists)
+    // optional: app-specific checks (a date that parses, a status that exists).
+    // "All" is both '' and null: clearing a select filter pill or a date-range pill sets null, not ''
     protected function isUrlFilterValid(string $key, mixed $value): bool
     {
-        return $key !== 'region' || in_array($value, ['MY', 'SG', ''], true);
+        return $key !== 'region' || in_array($value, ['MY', 'SG', '', null], true);
     }
 
     public function mount(): void
@@ -948,7 +949,7 @@ arrives, and the two paths fail differently on purpose:
   crafted link should open the listing, not break it.
   **Your own `mount()` runs before this clean-up**, so it sees the raw URL values: do not
   read `$this->filters` there to decide anything. Validate in `isUrlFilterValid()` instead (a
-  throw from it is refused, so `Carbon::parse($value)` is fine in it). A throw is refused and
+  throw from it is refused, so `Carbon::parse($value)` is fine in it). **Treat `null` and `''` alike as "All" there:** clearing a `<atom:select variant="filter">` pill or a date-range pill sets the value to `null` (a multi-select to `[]`), never `''`, and atom hands that `null` to your check. A check that only accepts `''` refuses the clear with a 403 and the filter sticks. A throw is refused and
   also logged as a warning (component, key, exception class and file:line, never the message or the
   value, both of which a visitor chose), at most once an hour per component, key and exception
   class (deduped through the cache), so a bug in your check (a `TypeError`) shows up in the logs.

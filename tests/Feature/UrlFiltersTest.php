@@ -11,6 +11,7 @@ use Jiannius\Atom\Tests\Fixtures\UrlFiltersCapsFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersItemFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersMountDefaultFixture;
+use Jiannius\Atom\Tests\Fixtures\UrlFiltersNullClearFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersPaginatedFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersStrayFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersThrowingFixture;
@@ -627,6 +628,31 @@ describe('the reach of filter() behind the allow-list', function () {
 
         expect($test->get('filters'))->toBe(['search' => 'pea']);
         expect(withLivewireContext($test->instance(), fn ($c) => $c->tableQuery()->pluck('name')->all()))->toBe(['pear']);
+    });
+});
+
+describe('clearing a filter pill', function () {
+    // A select variant="filter" pill and a date-range pill clear to null (a multi-select to []), not to ''.
+    it('is accepted for a key whose default is "", as it is for a null default', function () {
+        $test = urlFiltersMounted(['search' => 'ap']);
+
+        $test->set('filters.search', null)->assertOk();
+
+        expect($test->get('filters.search'))->toBeNull();
+        $test->set('filters.status', [])->assertOk();
+    });
+
+    it('reaches isUrlFilterValid() as null, so a host that only accepts "" refuses the clear', function () {
+        urlFiltersMounted(['region' => 'SG'])->set('filters.region', '')->assertOk();
+        urlFiltersMounted(['region' => 'SG'])->set('filters.region', null)->assertForbidden();
+    });
+
+    it('is accepted when the host reads null as "All"', function () {
+        $test = urlFiltersMounted(['region' => 'SG'], UrlFiltersNullClearFixture::class);
+
+        $test->set('filters.region', null)->assertOk();
+
+        expect($test->get('filters.region'))->toBeNull();
     });
 });
 
