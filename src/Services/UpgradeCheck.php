@@ -470,9 +470,9 @@ class UpgradeCheck
             'test-heading-weight' => [
                 'title' => 'A test that asserts a heading\'s weight needs updating: v4 draws every heading, xs and sm included, at font-semibold',
                 'section' => 'Breaks a test (every restyle section)', 'severity' => static::REVIEW, 'codemod' => 'report',
-                'detect' => 'tests/ lines naming a heading (any word containing heading except subheading, <h1>..<h6> or h1..h6 as a selector) and either font-medium, or font-semibold with a negation on the same line (not->, ->not, .not., assertDontSee, doesntContain, NotContains); a finding a line. A positive font-semibold on a heading still holds (lg and xl were semibold already) and a line with the weight but no heading word (`expect($html)->not->toContain(\'font-semibold\')`) is not seen',
+                'detect' => 'tests/ lines naming a heading (any word containing heading except subheading, <h1>..<h6> or h1..h6 as a selector) and either font-medium, or font-semibold with a negation on the same line (->not, .not., DontSee, doesntContain, doesNotContain, NotContains, assertFalse, toBeFalse); a finding a line. `->not->toContain(\'font-medium\')` is flagged although it still passes (an accepted over-report). A positive font-semibold on a heading still holds (lg and xl were semibold already) and a line with the weight but no heading word (`expect($html)->not->toContain(\'font-semibold\')`) is not seen',
                 'kinds' => ['php', 'js'], 'scope' => 'tests',
-                'pattern' => '/^(?=[^\n]*(?:(?<!sub)heading|(?<![\w\-])h[1-6](?![\w\-])))(?:(?=[^\n]*(?<![\w\-])font-medium(?![\w\-]))|(?=[^\n]*(?<![\w\-])font-semibold(?![\w\-]))(?=[^\n]*(?:not->|->not|\.not\.|dontsee|doesntcontain|notcontains)))[^\n]*/mi',
+                'pattern' => '/^(?=[^\n]*(?:(?<!sub)heading|(?<![\w\-])h[1-6](?![\w\-])))(?:(?=[^\n]*(?<![\w\-])font-medium(?![\w\-]))|(?=[^\n]*(?<![\w\-])font-semibold(?![\w\-]))(?=[^\n]*(?:->not\b|\.not\.|dontsee|doesntcontain|doesnotcontain|notcontains|assertfalse|tobefalse)))[^\n]*/mi',
             ],
         ];
     }
@@ -758,6 +758,7 @@ class UpgradeCheck
     {
         $seen = [];
         $roots = [];
+        $libraries = [];
 
         foreach (static::DIRECTORIES as $directory) {
             $path = $root.DIRECTORY_SEPARATOR.$directory;
@@ -790,8 +791,11 @@ class UpgradeCheck
 
                 $relative = str_replace(DIRECTORY_SEPARATOR, '/', ltrim(substr($file, strlen($root)), DIRECTORY_SEPARATOR));
 
-                if (in_array($kind, ['js', 'css'], true) && $this->isVendorLibrary($relative)) {
-                    $this->skipped[] = ['path' => $relative, 'reason' => 'a library under vendor/'];
+                if (in_array($kind, ['js', 'css'], true) && ($library = $this->vendorLibraryDirectory($relative)) !== null) {
+                    if (! isset($libraries[$library])) {
+                        $libraries[$library] = true;
+                        $this->skipped[] = ['path' => $library, 'reason' => 'third-party scripts or styles under resources/js|css/vendor'];
+                    }
 
                     continue;
                 }
@@ -883,15 +887,14 @@ class UpgradeCheck
     }
 
     /**
-     * A script or stylesheet inside a vendor directory that is being read (not
-     * Composer's): a bundled library, not the host's code. PHP and Blade there
-     * are still read, since that is where a supplier screen lives.
+     * The `vendor` directory that holds third-party scripts or styles, when the
+     * file is under one: a direct child of resources/js or resources/css, at the
+     * root or in a module. Any other `vendor` directory (resources/js/pages/vendor)
+     * is the host's own code, and PHP and Blade are read wherever they are.
      */
-    protected function isVendorLibrary(string $relative): bool
+    protected function vendorLibraryDirectory(string $relative): ?string
     {
-        $relative = preg_replace('#(?:^|/)resources/views/vendor/#', '/', $relative) ?? $relative;
-
-        return (bool) preg_match('#(?:^|/)vendor/#', $relative);
+        return preg_match('#^((?:.*/)?resources/(?:js|css)/vendor)/#', $relative, $m) ? $m[1] : null;
     }
 
     /**

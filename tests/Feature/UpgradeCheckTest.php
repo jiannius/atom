@@ -170,11 +170,12 @@ describe('atom:upgrade-check: the findings', function () {
             expect($this->result['checks'][$id]['count'])->toBe(count($at), $id);
         }
 
-        expect(upgradeAt($this->result, 'test-old-classes', 'tests'))->toBe(['tests/Feature/OrdersTest.php:8', 'tests/Feature/OrdersTest.php:8', 'tests/Feature/OrdersTest.php:10'])
+        expect(upgradeAt($this->result, 'test-old-classes', 'tests'))->toBe(['tests/Feature/OrdersTest.php:8', 'tests/Feature/OrdersTest.php:8', 'tests/Feature/OrdersTest.php:10', 'tests/Feature/OrdersTest.php:49'])
             // a heading line with font-medium (h1.font-medium, HEADING.font-medium) or with font-semibold and a negation
-            // (line 25: the headingHtml('sm') ->not; line 36: assertDontSeeHtml). Not line 24, a positive font-semibold on a heading (lg and xl
+            // (line 25: the headingHtml('sm') ->not; 36: assertDontSeeHtml; 42-46: doesNotContain, doesntContain, NotContains, assertFalse, toBeFalse; 49: ->not->toContain('font-medium'), flagged
+            // although it passes, an accepted over-report; the spec.js line: .not.). Not 47-48 (->notify, ->notes). Not line 24, a positive font-semibold on a heading (lg and xl
             // were semibold already); not 26 (no heading word); not .SUBHEADING.font-medium, sh1, h1x, font-medium-x, text-font-medium
-            ->and(upgradeAt($this->result, 'test-heading-weight', 'tests'))->toBe(['tests/Feature/OrdersTest.php:19', 'tests/Feature/OrdersTest.php:25', 'tests/Feature/OrdersTest.php:35', 'tests/Feature/OrdersTest.php:36'])
+            ->and(upgradeAt($this->result, 'test-heading-weight', 'tests'))->toBe([...array_map(fn ($line) => 'tests/Feature/OrdersTest.php:'.$line, [19, 25, 35, 36, 42, 43, 44, 45, 46, 49]), 'tests/e2e/heading.spec.js:2'])
             ->and(upgradeAt($this->result, 'date-pretty', 'tests'))->toBe(['tests/Feature/OrdersTest.php:9'])
             ->and(upgradeAt($this->result, 'use-atom-component', 'tests'))->toBe(['tests/Feature/OrdersTest.php:15']);
     });
@@ -250,10 +251,10 @@ describe('atom:upgrade-check: the findings', function () {
     });
 
     it('reports test findings apart from the app ones', function () {
-        expect($this->result['scanned'])->toBe(['app' => 18, 'tests' => 1])
+        expect($this->result['scanned'])->toBe(['app' => 18, 'tests' => 2])
             ->and($this->result['checks']['date-pretty']['count'])->toBe(1)
             ->and($this->result['checks']['date-pretty']['tests_count'])->toBe(1)
-            ->and($this->result['summary']['tests_findings'])->toBe(9);
+            ->and($this->result['summary']['tests_findings'])->toBe(17);
     });
 });
 
@@ -315,24 +316,45 @@ describe('atom:upgrade-check: what is scanned', function () {
         ]);
     });
 
-    it('does not read a script or stylesheet under a vendor directory, and says so; PHP and Blade there are read', function () {
+    it('skips third-party scripts and styles in resources/js|css/vendor, one entry a directory; any other vendor path is read', function () {
         $dir = ($this->host)();
 
-        foreach (['resources/js/vendor', 'resources/css/vendor', 'resources/views/livewire/app/vendor'] as $path) {
+        foreach ([
+            'resources/js/vendor/sub', 'resources/css/vendor', 'modules/Shop/resources/js/vendor', 'resources/js/pages/vendor',
+            'resources/js/vendors', 'resources/views/vendor/atom', 'resources/views/livewire/app/vendor',
+        ] as $path) {
             @mkdir($dir.'/'.$path, 0777, true);
         }
 
-        file_put_contents($dir.'/resources/js/vendor/lib.js', "const x = atom.currency(1);\n");
+        $call = "dd(1);\n";
+
+        foreach ([
+            'resources/js/vendor/lib.js', 'resources/js/vendor/sub/b.js', 'modules/Shop/resources/js/vendor/m.js',
+            'resources/js/pages/vendor/list.js', 'resources/js/vendor.js', 'resources/js/vendors/a.js', 'resources/views/vendor/atom/pub.js',
+        ] as $file) {
+            file_put_contents($dir.'/'.$file, $call);
+        }
+
         file_put_contents($dir.'/resources/css/vendor/lib.css', "html { font-size: 14px; }\n");
+        file_put_contents($dir.'/resources/js/vendor/Lib.php', "<?php\n\$d->pretty();\n");
         file_put_contents($dir.'/resources/views/livewire/app/vendor/Supplier.php', "<?php\n\$d->pretty();\n");
 
         $result = (new UpgradeCheck)->scan($dir);
+        $reason = 'third-party scripts or styles under resources/js|css/vendor';
 
-        expect($result['skipped'])->toContain(['path' => 'resources/js/vendor/lib.js', 'reason' => 'a library under vendor/'])
-            ->and($result['skipped'])->toContain(['path' => 'resources/css/vendor/lib.css', 'reason' => 'a library under vendor/'])
-            ->and(upgradeAt($result, 'js-currency'))->not->toContain('resources/js/vendor/lib.js:1')
+        // one entry per directory (lib.js and sub/b.js share resources/js/vendor), the module's and the stylesheet's own
+        expect(array_values(array_filter($result['skipped'], fn ($s) => $s['reason'] === $reason)))->toEqualCanonicalizing([
+            ['path' => 'resources/js/vendor', 'reason' => $reason],
+            ['path' => 'resources/css/vendor', 'reason' => $reason],
+            ['path' => 'modules/Shop/resources/js/vendor', 'reason' => $reason],
+        ]);
+
+        // read: resources/js/pages/vendor, vendor.js, vendors/, the published views, and PHP wherever it is
+        expect(array_values(array_diff(upgradeAt($result, 'js-dd'), upgradeAt((new UpgradeCheck)->scan(upgradeFixture()), 'js-dd'))))->toEqualCanonicalizing([
+            'resources/js/pages/vendor/list.js:1', 'resources/js/vendor.js:1', 'resources/js/vendors/a.js:1', 'resources/views/vendor/atom/pub.js:1',
+        ])
             ->and(upgradeAt($result, 'css-root-font-size'))->not->toContain('resources/css/vendor/lib.css:1')
-            ->and(upgradeAt($result, 'date-pretty'))->toContain('resources/views/livewire/app/vendor/Supplier.php:2');
+            ->and(upgradeAt($result, 'date-pretty'))->toContain('resources/js/vendor/Lib.php:2', 'resources/views/livewire/app/vendor/Supplier.php:2');
     });
 
     it('finds the AtomComponent users under a directory called vendor', function () {
