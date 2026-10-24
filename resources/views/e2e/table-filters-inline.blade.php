@@ -41,6 +41,22 @@ $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ?
             ]" />
         </atom:table.filters>
     </div>
+    {{-- the "More filters" button in each overflow mode, behind an active chip: it is the LAST control in the row --}}
+    @foreach (['card', 'modal', 'popover'] as $mode)
+        <div data-testid="overflow-{{ $mode }}" class="rounded-panel border bg-surface p-3">
+            <atom:table.filters chips="inline" :overflow="$mode === 'popover' ? null : $mode">
+                <atom:select variant="filter" add x-model="filters.state" data-filter-key="filters.state" label="Status" :options="[
+                    ['value' => 'paid', 'label' => 'Paid'],
+                    ['value' => 'overdue', 'label' => 'Overdue'],
+                ]" />
+                <x-slot:more>
+                    <atom:select variant="filter" add x-model="filters.region" data-filter-key="filters.region" label="Region" :options="[
+                        ['value' => 'n', 'label' => 'North'],
+                    ]" />
+                </x-slot:more>
+            </atom:table.filters>
+        </div>
+    @endforeach
 </div>
 
 @livewireScripts
