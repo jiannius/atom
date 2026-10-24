@@ -87,6 +87,18 @@ describe('callout', function () {
             ->toContain('show = false');
     });
 
+    it('draws a default icon per variant, the flag for the accent decision box, and an explicit icon wins', function () {
+        // the first stroke of each glyph's path
+        $announce = 'M10.34 15.84c-.688-.06';
+        $flag = 'M4 22V4a1 1 0 0 1 .4-.8';
+
+        expect(Blade::render('<atom:callout variant="accent" heading="Decide" />'))->toContain($flag)->not->toContain($announce);
+        expect(Blade::render('<atom:callout heading="Hi" />'))->toContain($announce)->not->toContain($flag);
+        expect(Blade::render('<atom:callout variant="accent" icon="sparkles" heading="Decide" />'))->not->toContain($flag)->toContain('M9.813 15.904');
+        // the other tones keep theirs
+        expect(Blade::render('<atom:callout variant="info" heading="Hi" />'))->not->toContain($flag);
+    });
+
     it('has no dismiss button by default', function () {
         $html = Blade::render('<atom:callout heading="Hi" />');
 

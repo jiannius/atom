@@ -13,6 +13,7 @@ $icon ??= match ($variant) {
     'info' => 'info',
     'warning' => 'warning',
     'success' => 'check-circle',
+    'accent' => 'flag',
     'danger', 'error' => 'error',
     default => 'announce',
 };
