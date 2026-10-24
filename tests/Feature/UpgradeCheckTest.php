@@ -171,9 +171,10 @@ describe('atom:upgrade-check: the findings', function () {
         }
 
         expect(upgradeAt($this->result, 'test-old-classes', 'tests'))->toBe(['tests/Feature/OrdersTest.php:8', 'tests/Feature/OrdersTest.php:8', 'tests/Feature/OrdersTest.php:10'])
-            // the weight on a heading line: h1.font-medium, and both lines of the headingHtml() chain; not .subheading.font-medium
-            // (subheading is not a heading) and not `expect($html)->not->toContain('font-semibold')` (no heading word on the line)
-            ->and(upgradeAt($this->result, 'test-heading-weight', 'tests'))->toBe(['tests/Feature/OrdersTest.php:19', 'tests/Feature/OrdersTest.php:24', 'tests/Feature/OrdersTest.php:25'])
+            // a heading line with font-medium (h1.font-medium, HEADING.font-medium) or with font-semibold and a negation
+            // (line 25: the headingHtml('sm') ->not; line 36: assertDontSeeHtml). Not line 24, a positive font-semibold on a heading (lg and xl
+            // were semibold already); not 26 (no heading word); not .SUBHEADING.font-medium, sh1, h1x, font-medium-x, text-font-medium
+            ->and(upgradeAt($this->result, 'test-heading-weight', 'tests'))->toBe(['tests/Feature/OrdersTest.php:19', 'tests/Feature/OrdersTest.php:25', 'tests/Feature/OrdersTest.php:35', 'tests/Feature/OrdersTest.php:36'])
             ->and(upgradeAt($this->result, 'date-pretty', 'tests'))->toBe(['tests/Feature/OrdersTest.php:9'])
             ->and(upgradeAt($this->result, 'use-atom-component', 'tests'))->toBe(['tests/Feature/OrdersTest.php:15']);
     });
@@ -249,10 +250,10 @@ describe('atom:upgrade-check: the findings', function () {
     });
 
     it('reports test findings apart from the app ones', function () {
-        expect($this->result['scanned'])->toBe(['app' => 17, 'tests' => 1])
+        expect($this->result['scanned'])->toBe(['app' => 18, 'tests' => 1])
             ->and($this->result['checks']['date-pretty']['count'])->toBe(1)
             ->and($this->result['checks']['date-pretty']['tests_count'])->toBe(1)
-            ->and($this->result['summary']['tests_findings'])->toBe(8);
+            ->and($this->result['summary']['tests_findings'])->toBe(9);
     });
 });
 
@@ -312,6 +313,26 @@ describe('atom:upgrade-check: what is scanned', function () {
             'modules/Shop/vendor/Supplier.php:2',
             'resources/views/livewire/app/vendor/Supplier.php:2',
         ]);
+    });
+
+    it('does not read a script or stylesheet under a vendor directory, and says so; PHP and Blade there are read', function () {
+        $dir = ($this->host)();
+
+        foreach (['resources/js/vendor', 'resources/css/vendor', 'resources/views/livewire/app/vendor'] as $path) {
+            @mkdir($dir.'/'.$path, 0777, true);
+        }
+
+        file_put_contents($dir.'/resources/js/vendor/lib.js', "const x = atom.currency(1);\n");
+        file_put_contents($dir.'/resources/css/vendor/lib.css', "html { font-size: 14px; }\n");
+        file_put_contents($dir.'/resources/views/livewire/app/vendor/Supplier.php', "<?php\n\$d->pretty();\n");
+
+        $result = (new UpgradeCheck)->scan($dir);
+
+        expect($result['skipped'])->toContain(['path' => 'resources/js/vendor/lib.js', 'reason' => 'a library under vendor/'])
+            ->and($result['skipped'])->toContain(['path' => 'resources/css/vendor/lib.css', 'reason' => 'a library under vendor/'])
+            ->and(upgradeAt($result, 'js-currency'))->not->toContain('resources/js/vendor/lib.js:1')
+            ->and(upgradeAt($result, 'css-root-font-size'))->not->toContain('resources/css/vendor/lib.css:1')
+            ->and(upgradeAt($result, 'date-pretty'))->toContain('resources/views/livewire/app/vendor/Supplier.php:2');
     });
 
     it('finds the AtomComponent users under a directory called vendor', function () {
@@ -637,6 +658,20 @@ describe('atom:upgrade-check: read only, and what it will not follow', function 
 
         Artisan::call('atom:upgrade-check', ['--path' => $dir]);
         expect(Artisan::output())->toContain('PUBLISHED ATOM VIEWS (1)');
+    });
+
+    it('treats a module\'s resources/views/vendor like the root one: only atom/ is read', function () {
+        $dir = ($this->host)();
+        @mkdir($dir.'/modules/Shop/resources/views/vendor/atom', 0777, true);
+        @mkdir($dir.'/modules/Shop/resources/views/vendor/pagination', 0777, true);
+        file_put_contents($dir.'/modules/Shop/resources/views/vendor/atom/b.blade.php', "<div>{{ \$x->created_at }}</div>\n");
+        file_put_contents($dir.'/modules/Shop/resources/views/vendor/pagination/a.blade.php', "<div>{{ \$x->created_at }}</div>\n");
+
+        $result = (new UpgradeCheck)->scan($dir);
+
+        expect($result['published_views'])->toBe(['modules/Shop/resources/views/vendor/atom/b.blade.php'])
+            ->and(upgradeAt($result, 'date-printed-bare'))->toContain('modules/Shop/resources/views/vendor/atom/b.blade.php:1')
+            ->and(upgradeAt($result, 'date-printed-bare'))->not->toContain('modules/Shop/resources/views/vendor/pagination/a.blade.php:1');
     });
 
     it('prints a matching line verbatim: <info> in the host\'s source is not a console style', function () {

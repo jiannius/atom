@@ -468,11 +468,11 @@ class UpgradeCheck
                 'pattern' => '/(?<![\w\-:.\/\[])(?:'.implode('|', array_map(fn ($class) => preg_quote($class, '/'), static::TEST_CLASSES)).')(?![\w\-\]])/',
             ],
             'test-heading-weight' => [
-                'title' => 'A test that asserts a heading\'s weight needs updating: every heading is font-semibold in v4',
+                'title' => 'A test that asserts a heading\'s weight needs updating: v4 draws every heading, xs and sm included, at font-semibold',
                 'section' => 'Breaks a test (every restyle section)', 'severity' => static::REVIEW, 'codemod' => 'report',
-                'detect' => 'tests/ lines naming font-semibold or font-medium and a heading (any word containing heading except subheading, <h1>..<h6> or h1..h6 as a selector); a finding a line. A line with the weight but no heading word (`expect($html)->not->toContain(\'font-semibold\')`) is not seen',
+                'detect' => 'tests/ lines naming a heading (any word containing heading except subheading, <h1>..<h6> or h1..h6 as a selector) and either font-medium, or font-semibold with a negation on the same line (not->, ->not, .not., assertDontSee, doesntContain, NotContains); a finding a line. A positive font-semibold on a heading still holds (lg and xl were semibold already) and a line with the weight but no heading word (`expect($html)->not->toContain(\'font-semibold\')`) is not seen',
                 'kinds' => ['php', 'js'], 'scope' => 'tests',
-                'pattern' => '/^(?=[^\n]*(?<![\w\-])font-(?:semibold|medium)(?![\w\-]))(?=[^\n]*(?:(?<!sub)heading|(?<![\w\-])h[1-6](?![\w\-])))[^\n]*/mi',
+                'pattern' => '/^(?=[^\n]*(?:(?<!sub)heading|(?<![\w\-])h[1-6](?![\w\-])))(?:(?=[^\n]*(?<![\w\-])font-medium(?![\w\-]))|(?=[^\n]*(?<![\w\-])font-semibold(?![\w\-]))(?=[^\n]*(?:not->|->not|\.not\.|dontsee|doesntcontain|notcontains)))[^\n]*/mi',
             ],
         ];
     }
@@ -513,7 +513,7 @@ class UpgradeCheck
             $scanned[$scope]++;
             $prepared = $this->prepare($kind, $source);
 
-            if (str_starts_with($relative, 'resources/views/vendor/atom/')) {
+            if (preg_match('#(?:^|/)resources/views/vendor/atom/#', $relative)) {
                 $published[] = $relative;
             }
 
@@ -790,6 +790,12 @@ class UpgradeCheck
 
                 $relative = str_replace(DIRECTORY_SEPARATOR, '/', ltrim(substr($file, strlen($root)), DIRECTORY_SEPARATOR));
 
+                if (in_array($kind, ['js', 'css'], true) && $this->isVendorLibrary($relative)) {
+                    $this->skipped[] = ['path' => $relative, 'reason' => 'a library under vendor/'];
+
+                    continue;
+                }
+
                 if (filesize($file) > static::MAX_BYTES) {
                     $this->skipped[] = ['path' => $relative, 'reason' => 'over '.(static::MAX_BYTES / 1048576).' MB'];
 
@@ -814,9 +820,9 @@ class UpgradeCheck
     /**
      * Every regular file under a directory. A symlink (file or directory) is not
      * followed, a directory that cannot be read is recorded, and Composer's
-     * `vendor/` is skipped (see isComposerVendor()), as is `node_modules/` and
-     * `.git/` at any depth. Only atom's own published views are read from
-     * `resources/views/vendor/`.
+     * `vendor/` is skipped (see isSkippedDirectory()), as is `node_modules/` and
+     * `.git/` at any depth. Only atom's own published views are read from a
+     * `resources/views/vendor/` (the root one or a module's).
      *
      * @return array<int, string>
      */
@@ -848,14 +854,14 @@ class UpgradeCheck
             }
 
             if (is_dir($path)) {
-                // only atom's own published views live under resources/views/vendor that are read
-                $publishedViews = $relative === 'resources/views/vendor';
+                // only atom's own published views are read from a resources/views/vendor (the root one or a module's)
+                $publishedViews = $this->isPublishedViewsDirectory($relative);
 
                 if ((! $publishedViews && $this->isSkippedDirectory($relative, $name, $path)) || in_array($relative, static::SKIP_PATHS, true)) {
                     continue;
                 }
 
-                if ($relativeDirectory === 'resources/views/vendor' && $name !== 'atom') {
+                if ($this->isPublishedViewsDirectory($relativeDirectory) && $name !== 'atom') {
                     continue;
                 }
 
@@ -869,6 +875,26 @@ class UpgradeCheck
     }
 
     /**
+     * Laravel's published-vendor-views folder, at the root or in a module: not app code
+     */
+    protected function isPublishedViewsDirectory(string $relative): bool
+    {
+        return $relative === 'resources/views/vendor' || str_ends_with($relative, '/resources/views/vendor');
+    }
+
+    /**
+     * A script or stylesheet inside a vendor directory that is being read (not
+     * Composer's): a bundled library, not the host's code. PHP and Blade there
+     * are still read, since that is where a supplier screen lives.
+     */
+    protected function isVendorLibrary(string $relative): bool
+    {
+        $relative = preg_replace('#(?:^|/)resources/views/vendor/#', '/', $relative) ?? $relative;
+
+        return (bool) preg_match('#(?:^|/)vendor/#', $relative);
+    }
+
+    /**
      * Whether a directory is left unread: node_modules and .git at any depth,
      * and Composer's vendor
      */
@@ -878,7 +904,8 @@ class UpgradeCheck
             return true;
         }
 
-        // the root vendor/, or a nested one that holds a Composer install (modules/X/vendor); any other is the host's
+        // the root vendor/ (defensive: the root is never walked today, only its app, resources... directories), or a
+        // nested one that holds a Composer install (modules/X/vendor); any other is the host's
         return $name === static::VENDOR_DIRECTORY
             && ($relative === static::VENDOR_DIRECTORY || is_file($path.DIRECTORY_SEPARATOR.'autoload.php') || is_dir($path.DIRECTORY_SEPARATOR.'composer'));
     }

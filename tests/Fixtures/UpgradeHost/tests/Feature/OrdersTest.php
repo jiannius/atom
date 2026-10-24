@@ -25,3 +25,15 @@ it('weighs the heading', function () {
         ->and(headingHtml('sm'))->not->toContain('font-semibold');
     expect($html)->not->toContain('font-semibold');
 });
+
+it('keeps the guards', function () {
+    expect($page->find('sh1.font-medium'))->not->toBeNull();
+    expect($page->find('h1x.font-medium'))->not->toBeNull();
+    expect($page->find('h2.font-medium-x'))->not->toBeNull();
+    expect($page->find('h2.text-font-medium'))->not->toBeNull();
+    expect($page->find('.SUBHEADING.font-medium'))->not->toBeNull();
+    expect($page->find('HEADING.font-medium'))->not->toBeNull();
+    $page->assertDontSeeHtml('heading font-semibold');
+    expect($page->find('h2.text-font-semibold'))->not->toBeNull();
+    expect($page->find('h2.font-semibold-x'))->not->toBeNull();
+});
