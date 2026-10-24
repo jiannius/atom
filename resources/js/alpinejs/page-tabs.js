@@ -6,7 +6,7 @@ import onMorphed from '../helpers/morphed'
 // The marks are written by hand, so a Livewire morph, which strips every attribute the server did not render, writes them again.
 // The tabs change width after the first paint (a web font arrives, a hidden strip is shown, a tab gains a count), so the current
 // tab is brought into view again whenever the strip or one of its tabs is resized, until the reader scrolls the strip themselves.
-const TOUCH = ['wheel', 'touchstart', 'pointerdown', 'keydown']
+const TOUCH = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin']
 
 export default () => ({
     init () {
@@ -22,9 +22,14 @@ export default () => ({
             this.list.toggleAttribute('data-fade-end', max > 1 && left < max - 1)
         }
 
-        // the reader's own gesture; not `scroll`, which the reveal fires itself
+        // the reader's own gesture; not `scroll`, which the reveal fires itself. A wheel counts only when it moves the strip
+        // sideways (deltaX, or shift): a vertical one is the page scrolling under the pointer. focusin is the keyboard (Tab into a tab)
         this.touched = false
-        this.touch = () => { this.touched = true }
+        this.touch = (event) => {
+            if (event.type === 'wheel' && event.deltaX === 0 && ! event.shiftKey) return
+
+            this.touched = true
+        }
         this.settle = () => {
             if (! this.touched) this.reveal()
 
