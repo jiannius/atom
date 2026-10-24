@@ -106,6 +106,7 @@ describe('atom:upgrade-check: the findings', function () {
         $profile = 'resources/views/livewire/profile.blade.php';
         $widget = 'resources/views/components/widget.blade.php';
         $php = 'app/Livewire/Orders.php';
+        $vendorScreen = 'resources/views/livewire/app/vendor/index.blade.php';
 
         $expected = [
             'css-atom-source' => ['resources/css/app.css:2'],
@@ -125,7 +126,8 @@ describe('atom:upgrade-check: the findings', function () {
             'badge-color-name' => [$orders.':11'],
             'chart-color-unknown' => [$orders.':14'],
             'link-colour-override' => [$orders.':16'],
-            'use-atom-component' => ['app/Livewire/Aliased.php:10', $php.':11', $profile.':7'],
+            // $vendorScreen is the host's own code in a directory called vendor: it is read
+            'use-atom-component' => ['app/Livewire/Aliased.php:10', $php.':11', $vendorScreen.':7', $profile.':7'],
             'wire-helper-browser' => [$widget.':21', $widget.':22'],
             // the $listeners entry, the getListeners() return array and the #[On] method: not the options() array
             // one a line, whatever the shape: [..], array(..), array_merge(parent::getListeners(), [..]), $l + [..], #[On([..])], stacked attributes
@@ -160,6 +162,7 @@ describe('atom:upgrade-check: the findings', function () {
             'editor-content-static' => [$profile.':17'],
             // it reads tests/ only: app/Http/Styles.php names bg-white and rounded-lg and is not a finding
             'test-old-classes' => [],
+            'test-heading-weight' => [],
         ];
 
         expect(array_keys($expected))->toEqualCanonicalizing(array_keys($this->result['checks']));
@@ -169,7 +172,12 @@ describe('atom:upgrade-check: the findings', function () {
             expect($this->result['checks'][$id]['count'])->toBe(count($at), $id);
         }
 
-        expect(upgradeAt($this->result, 'test-old-classes', 'tests'))->toBe(['tests/Feature/OrdersTest.php:8', 'tests/Feature/OrdersTest.php:8', 'tests/Feature/OrdersTest.php:10'])
+        expect(upgradeAt($this->result, 'test-old-classes', 'tests'))->toBe(['tests/Feature/OrdersTest.php:8', 'tests/Feature/OrdersTest.php:8', 'tests/Feature/OrdersTest.php:10', 'tests/Feature/OrdersTest.php:49'])
+            // a heading line with font-medium (h1.font-medium, HEADING.font-medium) or with font-semibold and a negation
+            // (line 25: the headingHtml('sm') ->not; 36: assertDontSeeHtml; 42-46: doesNotContain, doesntContain, NotContains, assertFalse, toBeFalse; 49: ->not->toContain('font-medium'), flagged
+            // although it passes, an accepted over-report; the spec.js line: .not.). Not 47-48 (->notify, ->notes). Not line 24, a positive font-semibold on a heading (lg and xl
+            // were semibold already); not 26 (no heading word); not .SUBHEADING.font-medium, sh1, h1x, font-medium-x, text-font-medium
+            ->and(upgradeAt($this->result, 'test-heading-weight', 'tests'))->toBe([...array_map(fn ($line) => 'tests/Feature/OrdersTest.php:'.$line, [19, 25, 35, 36, 42, 43, 44, 45, 46, 49]), 'tests/e2e/heading.spec.js:2'])
             ->and(upgradeAt($this->result, 'date-pretty', 'tests'))->toBe(['tests/Feature/OrdersTest.php:9'])
             ->and(upgradeAt($this->result, 'use-atom-component', 'tests'))->toBe(['tests/Feature/OrdersTest.php:15']);
     });
@@ -222,7 +230,8 @@ describe('atom:upgrade-check: the findings', function () {
     it('infers the traits each component needs from its view, its partials and its methods', function () {
         $components = collect($this->result['components'])->where('scope', 'app')->keyBy('file');
 
-        expect($components)->toHaveCount(3)
+        expect($components)->toHaveCount(4)
+            ->and($components['resources/views/livewire/app/vendor/index.blade.php']['traits'])->toBe([])
             ->and($components['app/Livewire/Aliased.php']['traits'])->toBe([])
             ->and($components['app/Livewire/Orders.php']['traits'])->toBe(['WithTable', 'WithBreadcrumbs', 'WithPagination', 'WithFileUploads'])
             ->and($components['app/Livewire/Orders.php']['partials'])->toBe(['resources/views/partials/extra.blade.php'])
@@ -244,18 +253,18 @@ describe('atom:upgrade-check: the findings', function () {
     });
 
     it('reports test findings apart from the app ones', function () {
-        expect($this->result['scanned'])->toBe(['app' => 17, 'tests' => 1])
+        expect($this->result['scanned'])->toBe(['app' => 19, 'tests' => 2])
             ->and($this->result['checks']['date-pretty']['count'])->toBe(1)
             ->and($this->result['checks']['date-pretty']['tests_count'])->toBe(1)
-            ->and($this->result['summary']['tests_findings'])->toBe(5);
+            ->and($this->result['summary']['tests_findings'])->toBe(17);
     });
 });
 
 describe('atom:upgrade-check: what is scanned', function () {
-    it('skips vendor, node_modules, storage and .git at any depth', function () {
+    it('skips node_modules, storage and .git at any depth', function () {
         $dir = ($this->host)();
 
-        foreach (['vendor/pkg', 'node_modules/pkg', 'storage/framework', 'resources/node_modules/pkg', 'app/vendor/pkg', '.git/hooks'] as $path) {
+        foreach (['node_modules/pkg', 'storage/framework', 'resources/node_modules/pkg', 'app/node_modules/pkg', '.git/hooks', 'app/.git/hooks'] as $path) {
             @mkdir($dir.'/'.$path, 0777, true);
             file_put_contents($dir.'/'.$path.'/leak.php', "<?php\n\$d->pretty();\n");
         }
@@ -263,6 +272,97 @@ describe('atom:upgrade-check: what is scanned', function () {
         $result = (new UpgradeCheck)->scan($dir);
 
         expect(upgradeAt($result, 'date-pretty'))->toBe(['app/Livewire/Orders.php:38']);
+    });
+
+    it('skips Composer\'s vendor: the root one and a nested one that holds an install', function () {
+        $dir = ($this->host)();
+
+        // the root vendor/ is not in the scanned directories at all; the nested ones are what walk() has to tell from the host's own
+        foreach ([
+            'vendor/pkg' => null,
+            'modules/Shop/vendor/pkg' => 'modules/Shop/vendor/autoload.php',
+            'modules/Blog/vendor/pkg' => 'modules/Blog/vendor/composer/installed.json',
+            'app/Support/vendor/pkg' => 'app/Support/vendor/autoload.php',
+        ] as $path => $marker) {
+            @mkdir($dir.'/'.$path, 0777, true);
+            file_put_contents($dir.'/'.$path.'/leak.php', "<?php\n\$d->pretty();\n");
+
+            if ($marker) {
+                @mkdir(dirname($dir.'/'.$marker), 0777, true);
+                file_put_contents($dir.'/'.$marker, "<?php\n");
+            }
+        }
+
+        $result = (new UpgradeCheck)->scan($dir);
+
+        expect(upgradeAt($result, 'date-pretty'))->toBe(['app/Livewire/Orders.php:38']);
+    });
+
+    it('reads a directory called vendor that is the host\'s own code', function () {
+        $dir = ($this->host)();
+
+        // a supplier screen, a controllers folder in either case, a module folder with no Composer install
+        foreach (['resources/views/livewire/app/vendor', 'app/vendor', 'app/Http/Controllers/Vendor', 'modules/Shop/vendor'] as $path) {
+            @mkdir($dir.'/'.$path, 0777, true);
+            file_put_contents($dir.'/'.$path.'/Supplier.php', "<?php\n\$d->pretty();\n");
+        }
+
+        $result = (new UpgradeCheck)->scan($dir);
+
+        expect(upgradeAt($result, 'date-pretty'))->toEqualCanonicalizing([
+            'app/Http/Controllers/Vendor/Supplier.php:2',
+            'app/Livewire/Orders.php:38',
+            'app/vendor/Supplier.php:2',
+            'modules/Shop/vendor/Supplier.php:2',
+            'resources/views/livewire/app/vendor/Supplier.php:2',
+        ]);
+    });
+
+    it('skips third-party scripts and styles in resources/js|css/vendor, one entry a directory; any other vendor path is read', function () {
+        $dir = ($this->host)();
+
+        foreach ([
+            'resources/js/vendor/sub', 'resources/css/vendor', 'modules/Shop/resources/js/vendor', 'resources/js/pages/vendor',
+            'resources/js/vendors', 'resources/views/vendor/atom', 'resources/views/livewire/app/vendor',
+        ] as $path) {
+            @mkdir($dir.'/'.$path, 0777, true);
+        }
+
+        $call = "dd(1);\n";
+
+        foreach ([
+            'resources/js/vendor/lib.js', 'resources/js/vendor/sub/b.js', 'modules/Shop/resources/js/vendor/m.js',
+            'resources/js/pages/vendor/list.js', 'resources/js/vendor.js', 'resources/js/vendors/a.js', 'resources/views/vendor/atom/pub.js',
+        ] as $file) {
+            file_put_contents($dir.'/'.$file, $call);
+        }
+
+        file_put_contents($dir.'/resources/css/vendor/lib.css', "html { font-size: 14px; }\n");
+        file_put_contents($dir.'/resources/js/vendor/Lib.php', "<?php\n\$d->pretty();\n");
+        file_put_contents($dir.'/resources/views/livewire/app/vendor/Supplier.php', "<?php\n\$d->pretty();\n");
+
+        $result = (new UpgradeCheck)->scan($dir);
+        $reason = 'third-party scripts or styles under resources/js|css/vendor';
+
+        // one entry per directory (lib.js and sub/b.js share resources/js/vendor), the module's and the stylesheet's own
+        expect(array_values(array_filter($result['skipped'], fn ($s) => $s['reason'] === $reason)))->toEqualCanonicalizing([
+            ['path' => 'resources/js/vendor', 'reason' => $reason],
+            ['path' => 'resources/css/vendor', 'reason' => $reason],
+            ['path' => 'modules/Shop/resources/js/vendor', 'reason' => $reason],
+        ]);
+
+        // read: resources/js/pages/vendor, vendor.js, vendors/, the published views, and PHP wherever it is
+        expect(array_values(array_diff(upgradeAt($result, 'js-dd'), upgradeAt((new UpgradeCheck)->scan(upgradeFixture()), 'js-dd'))))->toEqualCanonicalizing([
+            'resources/js/pages/vendor/list.js:1', 'resources/js/vendor.js:1', 'resources/js/vendors/a.js:1', 'resources/views/vendor/atom/pub.js:1',
+        ])
+            ->and(upgradeAt($result, 'css-root-font-size'))->not->toContain('resources/css/vendor/lib.css:1')
+            ->and(upgradeAt($result, 'date-pretty'))->toContain('resources/js/vendor/Lib.php:2', 'resources/views/livewire/app/vendor/Supplier.php:2');
+    });
+
+    it('finds the AtomComponent users under a directory called vendor', function () {
+        $components = collect((new UpgradeCheck)->scan(upgradeFixture())['components'])->pluck('file');
+
+        expect($components)->toContain('resources/views/livewire/app/vendor/index.blade.php');
     });
 
     it('reads modules and Modules once', function () {
@@ -582,6 +682,20 @@ describe('atom:upgrade-check: read only, and what it will not follow', function 
 
         Artisan::call('atom:upgrade-check', ['--path' => $dir]);
         expect(Artisan::output())->toContain('PUBLISHED ATOM VIEWS (1)');
+    });
+
+    it('treats a module\'s resources/views/vendor like the root one: only atom/ is read', function () {
+        $dir = ($this->host)();
+        @mkdir($dir.'/modules/Shop/resources/views/vendor/atom', 0777, true);
+        @mkdir($dir.'/modules/Shop/resources/views/vendor/pagination', 0777, true);
+        file_put_contents($dir.'/modules/Shop/resources/views/vendor/atom/b.blade.php', "<div>{{ \$x->created_at }}</div>\n");
+        file_put_contents($dir.'/modules/Shop/resources/views/vendor/pagination/a.blade.php', "<div>{{ \$x->created_at }}</div>\n");
+
+        $result = (new UpgradeCheck)->scan($dir);
+
+        expect($result['published_views'])->toBe(['modules/Shop/resources/views/vendor/atom/b.blade.php'])
+            ->and(upgradeAt($result, 'date-printed-bare'))->toContain('modules/Shop/resources/views/vendor/atom/b.blade.php:1')
+            ->and(upgradeAt($result, 'date-printed-bare'))->not->toContain('modules/Shop/resources/views/vendor/pagination/a.blade.php:1');
     });
 
     it('prints a matching line verbatim: <info> in the host\'s source is not a console style', function () {

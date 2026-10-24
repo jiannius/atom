@@ -338,9 +338,9 @@ Then on v4: `<atom:editor*>` becomes `<atom:tiptap*>`, with the same props. A co
 
 ## Breaks a test (every restyle section)
 
-Each restyled section above ends with a "Breaks a test" paragraph that names the classes and selectors the restyle changed. `atom:upgrade-check` reads `tests/` for those names (and for `dialog button`) and reports them apart from the app's findings; nothing rewrites a test.
+Each restyled section above ends with a "Breaks a test" paragraph that names the classes and selectors the restyle changed. `atom:upgrade-check` reads `tests/` for those names (and for `dialog button`) and reports them apart from the app's findings; nothing rewrites a test. A test line that names a heading with `font-medium`, or with `font-semibold` and a negation ("a small heading is not semibold"), is reported too: every heading is now semibold.
 
-**atom:upgrade:** Automated: none. Reported: `test-old-classes`.
+**atom:upgrade:** Automated: none. Reported: `test-old-classes`, `test-heading-weight`.
 
 ## What is not restyled
 
