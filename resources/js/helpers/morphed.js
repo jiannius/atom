@@ -14,7 +14,8 @@ const callbacks = new Set()
 let hooked = false
 
 const hook = () => {
-    if (hooked || typeof window.Livewire?.hook !== 'function') return
+    // no window when a factory that imports this is loaded by a node test
+    if (hooked || typeof window === 'undefined' || typeof window.Livewire?.hook !== 'function') return
 
     hooked = true
 
@@ -38,7 +39,7 @@ const hook = () => {
 
 // atom.js can run before or after Livewire boots
 hook()
-document.addEventListener('livewire:init', hook, { once: true })
+if (typeof document !== 'undefined') document.addEventListener('livewire:init', hook, { once: true })
 
 export default (callback) => {
     hook()

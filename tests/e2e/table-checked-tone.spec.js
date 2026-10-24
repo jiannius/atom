@@ -31,7 +31,9 @@ for (const tw of ['floor', 'latest']) {
         await expect(page.getByTestId('bulk-action')).toBeVisible()
 
         const box = await bar(page).evaluate((el) => { const s = getComputedStyle(el); return { top: s.borderTopLeftRadius, left: s.paddingLeft } })
-        expect(parseFloat(box.top)).toBeGreaterThan(0)
+        // framed: its own rounded strip; frameless: a square strip inside the host's panel, like the untinted one
+        if (frameless) expect(parseFloat(box.top)).toBe(0)
+        else expect(parseFloat(box.top)).toBeGreaterThan(0)
         expect(parseFloat(box.left)).toBeGreaterThanOrEqual(12)
       })
 

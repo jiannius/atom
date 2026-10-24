@@ -91,6 +91,23 @@ test.describe('the single-crumb heading and page.header', () => {
     await page.goto('/atom/e2e/breadcrumbs-header/new')
 
     await expect(header(page)).toHaveText('New page')
+    // wait for the trail to be built (one crumb), so the absence below is not just the trail not being there yet
+    await page.waitForFunction(() => {
+      const root = document.querySelector('[data-atom-breadcrumbs]')
+      return root && window.Alpine?.$data(root).breadcrumbs.length === 1
+    })
+    await expect(heading(page)).toHaveCount(0)
+  })
+
+  test('a page.header that a Livewire update renders later takes the heading away, with no navigation', async ({ page }) => {
+    await page.goto('/atom/e2e/breadcrumbs-header/late')
+
+    await expect(heading(page)).toHaveText('Late page')
+    await expect(header(page)).toHaveCount(0)
+
+    await page.locator('[data-load]').click()
+
+    await expect(header(page)).toHaveText('Late page')
     await expect(heading(page)).toHaveCount(0)
   })
 

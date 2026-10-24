@@ -15,7 +15,7 @@
 
     {{-- frameless: the bar is the top strip of the panel your page draws --}}
     <div class="overflow-hidden rounded-panel border bg-surface">
-        <div class="flex min-h-10 items-center gap-3 rounded-t-panel border-b bg-accent-soft px-3 py-2.5" data-tone="accent">
+        <div class="flex min-h-10 items-center gap-3 border-b bg-accent-soft px-3 py-2.5" data-tone="accent">
             <div class="flex shrink-0 items-center gap-2 text-sm font-medium text-accent-ink">
                 <atom:icon.double-check class="size-4"/>
                 <div>2 Selected</div>

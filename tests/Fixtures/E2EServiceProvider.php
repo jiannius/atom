@@ -89,7 +89,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-untrailed', fn () => view('atom::e2e.breadcrumbs-untrailed'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-back', fn () => view('atom::e2e.breadcrumbs-back'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-back/record', fn () => view('atom::e2e.breadcrumbs-back'));
-        Route::middleware('web')->get('/atom/e2e/breadcrumbs-header/{page}/{detail?}', fn () => view('atom::e2e.breadcrumbs-header'))->where('page', 'old|new|plain|deep');
+        Route::middleware('web')->get('/atom/e2e/breadcrumbs-header/{page}/{detail?}', fn () => view('atom::e2e.breadcrumbs-header'))->where('page', 'old|new|plain|deep|late');
         Route::middleware('web')->get('/atom/e2e/url-filters', fn () => view('atom::e2e.url-filters'));
         Route::middleware('web')->get('/atom/e2e/url-filters/record', fn () => view('atom::e2e.url-filters'));
         Route::middleware('web')->get('/atom/e2e/consumer-tailwind', fn () => view('atom::e2e.consumer-tailwind'));

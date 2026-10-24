@@ -51,7 +51,7 @@ $checkedAccent = isset($checked) && $checked->attributes->get('tone') === 'accen
 $checkedClasses = Arr::toCssClasses([
     'min-h-10 flex items-center gap-3',
     $stripClasses,
-    'bg-accent-soft rounded-t-panel' => $checkedAccent && $frameless,
+    'bg-accent-soft' => $checkedAccent && $frameless,
     'bg-accent-soft rounded-panel px-3.5 py-2' => $checkedAccent && ! $frameless,
 ]);
 $checkedMuted = $checkedAccent ? 'text-accent-ink' : 'text-fg-muted';
@@ -64,7 +64,7 @@ if (!$showSkeleton && !is_bool($empty)) {
 
 {{-- The checked bar is untinted by default. `<x-slot:checked tone="accent">` tints it with the accent-soft token and sets its text
      and icons in the accent ink, so the selected state stands out (any other tone is the default). Framed, the bar is its own
-     rounded strip; frameless it keeps its hairline strip padding and rounds the corners of the panel around it. --}}
+     rounded strip; frameless it is a square strip inside the panel you draw, with its hairline strip padding, like the untinted one. --}}
 <div
 {{ $attributes->merge(['x-data' => '{}'])->class(['group/table min-w-0 max-w-full', 'space-y-4' => ! $frameless]) }}
 x-on:table-filter:changed.window="{!! $onFilterChanged !!}"

@@ -1,3 +1,5 @@
+import onMorphed from '../helpers/morphed'
+
 export default (config) => {
     return {
         trails: [],
@@ -6,6 +8,22 @@ export default (config) => {
         // would repeat its title, so the template hides it. Read on every navigation, not in CSS: the trail is one persisted
         // element that is not inside the page, so a selector cannot reach from it to the page's header.
         hasPageHeader: false,
+
+        init () {
+            // A page.header can also appear after navigation, when a Livewire update renders it (an `@if ($record)`, a lazy
+            // component), so read it again after every morph. Kept on the element, so a re-run init() drops its earlier registration.
+            this.$root._atomBreadcrumbsStopMorph?.()
+            this.$root._atomBreadcrumbsStopMorph = onMorphed(() => this.readPageHeader())
+        },
+
+        destroy () {
+            this.$root._atomBreadcrumbsStopMorph?.()
+            this.$root._atomBreadcrumbsStopMorph = null
+        },
+
+        readPageHeader () {
+            this.hasPageHeader = !!document.body.querySelector('[data-atom-main] h1[data-atom-page-header-title]')
+        },
 
         get breadcrumbs () {
             // Return the trail from the last element up to and including the first element with home: true
@@ -41,7 +59,7 @@ export default (config) => {
 
         // build the breadcrumbs trail
         build () {
-            this.hasPageHeader = !!document.body.querySelector('[data-atom-main] h1[data-atom-page-header-title]')
+            this.readPageHeader()
 
             // retrieve the breadcrumbs data from the atom component
             // match on wire:id rather than position: the sidebar layout puts an
