@@ -1430,10 +1430,17 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
 /* A record's tab strip scrolls sideways when it must and never vertically. The utilities on the list (`overflow-x-auto
    overflow-y-hidden`) say the same, but a host build that lacks `overflow-y-hidden` would leave the y axis `visible`, which the
    browser computes to `auto` beside `overflow-x: auto`: a vertical scrollbar thumb inside the strip, wherever the 1px the underline
-   overlaps is counted. So the axis is pinned here too, outside any Tailwind build. */
+   overlaps is counted. So the axis is pinned here too, outside any Tailwind build.
+   The sideways scrollbar is hidden (Windows, or macOS with a mouse, would draw a 15px bar under the tabs): the edge fade below
+   is what tells the reader the strip scrolls. */
 [data-atom-page-tabs] > ul {
     overflow-x: auto;
     overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+[data-atom-page-tabs] > ul::-webkit-scrollbar {
+    display: none;
 }
 
 /* The edges of a scrolling tab strip fade where more tabs are past them (the pageTabs factory marks the strip), so a strip that
