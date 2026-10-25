@@ -945,6 +945,83 @@ describe('atom:tiptap-migrate: models and connections', function () {
 
         expect(migrateIsDocument(migrateBody($id)))->toBeFalse();
     });
+
+    it('names the missing class when a model cannot be loaded, and fails the v4 gate', function () {
+        $dir = realpath(__DIR__.'/../Fixtures/MigrateMissingParent');
+        $autoload = function (string $class) use ($dir) {
+            if ($class === 'App\\Models\\MissingParentModel') {
+                require_once $dir.'/MissingParentModel.php';
+            }
+        };
+
+        spl_autoload_register($autoload);
+
+        try {
+            $this->artisan('atom:tiptap-migrate', ['--status' => true, '--for-v4' => true, '--path' => [$dir]])
+                ->expectsOutputToContain('App\\Models\\MissingParentModel: Error: Class "Vendor\\NotInstalled\\Models\\Base" not found')
+                ->assertFailed();
+        }
+        finally {
+            spl_autoload_unregister($autoload);
+        }
+    });
+});
+
+describe('atom:tiptap-migrate: describing a failure', function () {
+    it('says what a missing class, interface, trait, enum, function or method is', function () {
+        expect(EditorBackups::describe(new \Error('Class "X" not found')))->toBe('Error: Class "X" not found');
+        expect(EditorBackups::describe(new \Error('Interface "X\\Y" not found')))->toBe('Error: Interface "X\\Y" not found');
+        expect(EditorBackups::describe(new \Error('Trait "X" not found')))->toBe('Error: Trait "X" not found');
+        expect(EditorBackups::describe(new \Error('Enum "X" not found')))->toBe('Error: Enum "X" not found');
+        expect(EditorBackups::describe(new \Error('Call to undefined method App\\Models\\Post::nope()')))->toBe('Error: Call to undefined method App\\Models\\Post::nope()');
+        expect(EditorBackups::describe(new \Error('Call to undefined function nope()')))->toBe('Error: Call to undefined function nope()');
+    });
+
+    it('says only the class of an Error that can quote a value', function () {
+        enum MigrateDescribeStatus: string
+        {
+            case Open = 'open';
+        }
+
+        try {
+            MigrateDescribeStatus::from('x@y.test');
+        }
+        catch (\ValueError $valueError) {
+        }
+
+        // PHP writes the value into this message unless zend.exception_ignore_args is on (it is on CI), so build it as a dev box does
+        $unhandled = new \UnhandledMatchError("Unhandled match case 'x@y.test'");
+
+        expect($valueError->getMessage())->toContain('x@y.test');
+        expect($unhandled->getMessage())->toContain('x@y.test');
+        expect(EditorBackups::describe($valueError))->toBe('ValueError');
+        expect(EditorBackups::describe($unhandled))->toBe('UnhandledMatchError');
+        expect(EditorBackups::describe(new \TypeError('f(): Argument #1 must be of type int')))->toBe('TypeError');
+        expect(EditorBackups::describe(new \Error('x@y.test')))->toBe('Error');
+        expect(EditorBackups::describe(new \Error("Class \"a\nforged line\" not found")))->toBe('Error');
+        expect(EditorBackups::describe(new \Error("Class \"X\" not found\n")))->toBe('Error');
+    });
+
+    it('caps a missing-symbol message and scrubs invalid UTF-8', function () {
+        $described = EditorBackups::describe(new \Error('Class "'.str_repeat('é', 500).'" not found'));
+
+        expect(mb_strlen($described))->toBe(300);
+        expect(mb_check_encoding(EditorBackups::describe(new \Error("Class \"bad \xFF byte\" not found")), 'UTF-8'))->toBeTrue();
+    });
+
+    it('still keeps SQL and bound values out of a database error', function () {
+        $e = new \Illuminate\Database\QueryException('default', 'select * from users where email = ?', ['secret@example.com'], new \PDOException('SQLSTATE[23000]: secret@example.com'));
+        $e->errorInfo = ['23000', 1062, 'Duplicate entry secret@example.com'];
+
+        $described = EditorBackups::describe($e);
+
+        expect($described)->toBe('QueryException (SQLSTATE 23000, driver code 1062)');
+        expect($described)->not->toContain('secret')->not->toContain('select');
+    });
+
+    it('still shows only the class of any other exception', function () {
+        expect(EditorBackups::describe(new \RuntimeException('secret value')))->toBe('RuntimeException');
+    });
 });
 
 describe('atom:tiptap-migrate: the docs', function () {

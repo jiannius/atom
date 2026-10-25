@@ -56,6 +56,13 @@ class UpgradeCss
     ];
 
     /**
+     * The skeleton declarations that are also a plausible brand choice (yellow-500). They are the skeleton's only in a file
+     * that does not have atom's import yet and still holds a clean skeleton declaration beside them that is not a
+     * `--color-primary*` or `--color-accent*` one (see `ownsAccent()`)
+     */
+    public const ACCENT_PAIR = ['--color-accent', '--color-accent-content'];
+
+    /**
      * What atom's own @source lines end with (after `vendor/jiannius/atom/`)
      */
     public const ATOM_SOURCES = ['components/**/*.blade.php', 'resources/**/*.blade.php', 'src/Actions/*.php'];
@@ -69,7 +76,7 @@ class UpgradeCss
      * The result of reading one file: the text after the rewrite, what was
      * removed or added (for the report), and why a file was left alone.
      *
-     * @return array{css: string, changed: bool, removed: array<int, string>, added: array<int, string>, declined: string|null, brand: string|null}
+     * @return array{css: string, changed: bool, removed: array<int, string>, added: array<int, string>, declined: string|null, brand: string|null, brand_skipped: array{line: int, name: string, value: string}|null}
      */
     public function rewrite(string $css, string $file): array
     {
@@ -79,11 +86,11 @@ class UpgradeCss
 
         // a rewrite that leaves the braces unbalanced is not made: the file is declined whole
         if ($result['changed'] && ! $this->balanced($result['css'])) {
-            $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => 'the rewrite would leave the braces unbalanced; change the file by hand', 'brand' => null];
+            $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => 'the rewrite would leave the braces unbalanced; change the file by hand', 'brand' => null, 'brand_skipped' => null];
         }
 
         if ($result['changed'] && ! $this->balanced($css)) {
-            $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => 'its braces do not balance, so it is not safe to edit by tool', 'brand' => null];
+            $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => 'its braces do not balance, so it is not safe to edit by tool', 'brand' => null, 'brand_skipped' => null];
         }
 
         $result['css'] = $bom.$result['css'];
@@ -110,11 +117,11 @@ class UpgradeCss
     }
 
     /**
-     * @return array{css: string, changed: bool, removed: array<int, string>, added: array<int, string>, declined: string|null, brand: string|null}
+     * @return array{css: string, changed: bool, removed: array<int, string>, added: array<int, string>, declined: string|null, brand: string|null, brand_skipped: array{line: int, name: string, value: string}|null}
      */
     protected function rewriteText(string $css, string $file): array
     {
-        $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => null, 'brand' => null];
+        $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => null, 'brand' => null, 'brand_skipped' => null];
         $import = $this->importLine($css);
         $sources = $this->atomSourceLines($css);
         $hasEntry = $this->hasEntryImport($css);
@@ -162,24 +169,34 @@ class UpgradeCss
             }
         }
 
-        // a brand colour is moved only when the accent is still the skeleton's (or absent)
-        $accentCustom = false;
+        // yellow-500 in a file that has atom's import, or with no clean skeleton declaration beside it, is the host's own accent: kept
+        $ownsAccent = $this->ownsAccent($css);
+        $themeSkeleton = static::THEME;
+        $darkSkeleton = static::DARK;
 
-        foreach ($themes as $theme) {
-            $value = $this->declaration($theme['body'], '--color-accent');
-
-            if ($value !== null && $this->normalise($value) !== $this->normalise(static::THEME['--color-accent'])) {
-                $accentCustom = true;
-            }
+        if ($ownsAccent) {
+            $themeSkeleton = array_diff_key($themeSkeleton, array_flip(static::ACCENT_PAIR));
+            $darkSkeleton = array_diff_key($darkSkeleton, array_flip(static::ACCENT_PAIR));
         }
 
-        if ($brand !== null && ($accentCustom || preg_match('/var\(\s*--color-(?:accent|primary)\b/', $brand))) {
+        // a brand colour that refers to the accent or to primary would point at itself
+        if ($brand !== null && preg_match('/var\(\s*--color-(?:accent|primary)\b/', $brand)) {
             $brand = null;
         }
 
-        $text = $this->stripDeclarations($text, '/^@theme$/', static::THEME, $keepPrimary, $result['removed']);
-        $text = $this->stripDarkDeclarations($text, $keepPrimary, $result['removed']);
+        $text = $this->stripDeclarations($text, '/^@theme$/', $themeSkeleton, $keepPrimary, $result['removed']);
+        $text = $this->stripDarkDeclarations($text, $darkSkeleton, $keepPrimary, $result['removed']);
         $text = $this->stripBorderRule($text, $result['removed']);
+
+        // a brand colour is moved only when no accent is left anywhere in the file: one that survived the strip (a kept
+        // yellow, a custom value, a line with a comment, in `@theme`, `.dark` or any other selector) is the host's, and a
+        // second `--color-accent` would leave light and dark, or the accent and its content colour, apart. The report says so.
+        $site = $brand !== null ? $this->accentSite($text) : null;
+
+        if ($site !== null) {
+            $result['brand_skipped'] = ['line' => $this->lineOf($this->lineStarts($text), $site[0]), 'name' => $site[1], 'value' => $brand];
+            $brand = null;
+        }
 
         if ($brand !== null) {
             $text = $this->addAccent($text, $brand);
@@ -212,6 +229,7 @@ class UpgradeCss
         $starts = $this->lineStarts($css);
         $names = array_merge(array_keys(static::THEME), array_keys(static::DARK));
 
+        // the file has atom's import (checked above), so a yellow accent pair at the skeleton's value is the host's own: no note for it
         foreach ($this->rules($css, '/^@theme(?: (?:inline|static|default))*$/') as $theme) {
             $plain = $theme['header'] === '@theme';
 
@@ -220,7 +238,7 @@ class UpgradeCss
 
                 if ($plain && $declaration['name'] === '--color-primary' && preg_match('/var\(\s*--color-(?:accent|primary)\b/', $declaration['value'])) {
                     $notes[] = ['line' => $line, 'text' => '`--color-primary` refers to the accent ('.$declaration['value'].'), so it was not copied as the accent: set `--color-accent` yourself'];
-                } elseif (in_array($declaration['name'], $names, true) && $declaration['name'] !== '--color-accent') {
+                } elseif (in_array($declaration['name'], $names, true) && $declaration['name'] !== '--color-accent' && ! ($plain && $this->isKeptAccent($declaration, static::THEME))) {
                     $notes[] = ['line' => $line, 'text' => $theme['header'].' sets '.$declaration['name'].': '.$declaration['value'].($plain ? ' (not the skeleton value, or on a line with a comment, so left alone; atom defines this token now)' : ' (the codemod does not rewrite `'.$theme['header'].'`; atom defines this token now)')];
                 }
             }
@@ -228,7 +246,7 @@ class UpgradeCss
 
         foreach ($this->darkRules($css) as $dark) {
             foreach ($this->declarations($css, $dark) as $declaration) {
-                if (in_array($declaration['name'], $names, true)) {
+                if (in_array($declaration['name'], $names, true) && ! $this->isKeptAccent($declaration, static::DARK)) {
                     $notes[] = ['line' => $this->lineOf($starts, $declaration['offset']), 'text' => '.dark sets '.$declaration['name'].': '.$declaration['value'].' (not the skeleton value, or on a line with a comment, so left alone; atom flips this token itself)'];
                 }
             }
@@ -237,6 +255,43 @@ class UpgradeCss
         usort($notes, fn ($a, $b) => $a['line'] <=> $b['line']);
 
         return $notes;
+    }
+
+    /**
+     * Whether a declaration is the accent pair at the skeleton's value, which the rewrite keeps when it stands alone
+     *
+     * @param  array{name: string, value: string}  $declaration
+     * @param  array<string, string>  $skeleton
+     */
+    protected function isKeptAccent(array $declaration, array $skeleton): bool
+    {
+        return in_array($declaration['name'], static::ACCENT_PAIR, true) && $this->normalise($declaration['value']) === $this->normalise($skeleton[$declaration['name']]);
+    }
+
+    /**
+     * Where the first `--color-accent` or `--color-accent-content` declaration is, in any rule (a string, a comment and an
+     * unquoted `url()` are not one), as [offset, name], or null
+     *
+     * @return array{0: int, 1: string}|null
+     */
+    protected function accentSite(string $css): ?array
+    {
+        $view = preg_replace_callback('/url\(([^)"\']*)\)/i', fn (array $m) => 'url('.preg_replace('/[^\n]/', ' ', $m[1]).')', $this->structure($css)) ?? $css;
+
+        return preg_match('/(?<![\w-])(--color-accent(?:-content)?)\s*:/', $view, $m, PREG_OFFSET_CAPTURE) ? [$m[1][1], $m[1][0]] : null;
+    }
+
+    /**
+     * The first accent declaration in any rule of an entry file, or null
+     *
+     * @return array{line: int, name: string}|null
+     */
+    public function accentLine(string $css): ?array
+    {
+        $css = $this->withoutBom($css);
+        $site = $this->accentSite($css);
+
+        return $site === null ? null : ['line' => $this->lineOf($this->lineStarts($css), $site[0]), 'name' => $site[1]];
     }
 
     /**
@@ -266,15 +321,74 @@ class UpgradeCss
     {
         $css = $this->withoutBom($css);
 
-        return (bool) preg_match('/^[ \t]*@import\s+[\'"][^\'"\n]*vendor\/jiannius\/atom\/resources\/css\/atom\.tailwind\.css[\'"]\s*;/m', $this->blankComments($css));
+        // `'path'` or `url('path')`, then whatever follows up to the `;` (`layer(base)`, `source(none)`, a media query) or the end of the
+        // file; `vendor` starts a path segment; a match inside a string (one continued over a line with `\`) is not an import
+        $blank = $this->blankComments($css);
+        $path = '(?:[^\'"()\n]*\/)?vendor\/jiannius\/atom\/resources\/css\/atom\.tailwind\.css';
+
+        if (! preg_match_all('/^[ \t]*@(?i:import)\s+(?:url\(\s*([\'"]?)'.$path.'\1\s*\)|([\'"])'.$path.'\2)[^;{}]*(?:;|\z)/m', $blank, $found, PREG_OFFSET_CAPTURE)) {
+            return false;
+        }
+
+        foreach ($found[0] as [, $offset]) {
+            if (! $this->insideString(substr($blank, 0, $offset))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
      * The `@theme` / `.dark` declarations in a file that are exactly the skeleton's, as [offset, name]
      *
+     * The accent pair is left out where `ownsAccent()` says the file's accent is the host's own.
+     *
      * @return array<int, array{0: int, 1: string}>
      */
     public function skeletonDeclarations(string $css): array
+    {
+        $found = $this->matchingDeclarations($css);
+        $owns = $this->ownsAccent($css, $found);
+
+        return array_values(array_map(
+            fn (array $declaration) => [$declaration[0], $declaration[1]],
+            array_filter($found, fn (array $declaration) => ! ($owns && in_array($declaration[1], static::ACCENT_PAIR, true))),
+        ));
+    }
+
+    /**
+     * Whether the file's `--color-accent` / `--color-accent-content` at the skeleton's value (yellow-500) are the host's own
+     * and stay. They are the skeleton's only when both hold: the file does not have atom's import yet (one that does has been
+     * through a run, or was set up for v4, so what it sets is a choice), and a clean declaration the rewrite would remove is
+     * beside them that is not a `--color-primary*` one (a kept primary leaves those behind) or an accent one.
+     *
+     * Call it on the file as it stands when the question is asked: the import of the file the run starts with.
+     *
+     * @param  array<int, array{0: int, 1: string, 2: bool}>|null  $found
+     */
+    public function ownsAccent(string $css, ?array $found = null): bool
+    {
+        if ($this->hasEntryImport($css)) {
+            return true;
+        }
+
+        foreach ($found ?? $this->matchingDeclarations($css) as [, $name, $clean]) {
+            if ($clean && ! str_starts_with($name, '--color-primary') && ! str_starts_with($name, '--color-accent')) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Every `@theme` / `.dark` declaration that has the skeleton's name and value, and whether its line is clean (the
+     * rewrite removes only a clean one)
+     *
+     * @return array<int, array{0: int, 1: string, 2: bool}>
+     */
+    protected function matchingDeclarations(string $css): array
     {
         $css = $this->withoutBom($css);
 
@@ -287,7 +401,7 @@ class UpgradeCss
         foreach ($this->rules($css, '/^@theme$/') as $theme) {
             foreach ($this->declarations($css, $theme) as $declaration) {
                 if (isset(static::THEME[$declaration['name']]) && $this->normalise($declaration['value']) === $this->normalise(static::THEME[$declaration['name']])) {
-                    $found[] = [$declaration['offset'], $declaration['name']];
+                    $found[] = [$declaration['offset'], $declaration['name'], $declaration['clean']];
                 }
             }
         }
@@ -295,7 +409,7 @@ class UpgradeCss
         foreach ($this->darkRules($css) as $dark) {
             foreach ($this->declarations($css, $dark) as $declaration) {
                 if (isset(static::DARK[$declaration['name']]) && $this->normalise($declaration['value']) === $this->normalise(static::DARK[$declaration['name']])) {
-                    $found[] = [$declaration['offset'], $declaration['name']];
+                    $found[] = [$declaration['offset'], $declaration['name'], $declaration['clean']];
                 }
             }
         }
@@ -629,9 +743,10 @@ class UpgradeCss
     /**
      * The same for `.dark` inside `@layer theme`, and the layer once it is empty
      *
+     * @param  array<string, string>  $skeleton
      * @param  array<int, string>  $removed
      */
-    protected function stripDarkDeclarations(string $css, bool $keepPrimary, array &$removed): string
+    protected function stripDarkDeclarations(string $css, array $skeleton, bool $keepPrimary, array &$removed): string
     {
         $guard = 0;
 
@@ -639,7 +754,7 @@ class UpgradeCss
             $next = null;
 
             foreach (array_reverse($this->darkRules($css)) as $dark) {
-                $candidate = $this->stripFromRule($css, $dark, static::DARK, $keepPrimary, $removed);
+                $candidate = $this->stripFromRule($css, $dark, $skeleton, $keepPrimary, $removed);
 
                 if ($candidate !== $css) {
                     $next = $candidate;

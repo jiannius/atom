@@ -1,6 +1,6 @@
 @php
 // The table's checked bar on the consumer's Tailwind: ?tw=floor|latest, ?dark=1, ?accent=%23rrggbb, and the fixture's own
-// ?frameless=1, ?tone=accent, ?sticky=1
+// ?frameless=1, ?tone=accent, ?sticky=1, ?buttons=3 (how many bulk actions)
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
 $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ? request()->query('accent') : null;
 @endphp

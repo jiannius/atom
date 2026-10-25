@@ -200,8 +200,10 @@ class EditorBackups
      * Say what failed without saying what the row held: a database error is its
      * class and SQLSTATE (its message carries the SQL and the bound values), one
      * of atom's own is its message (a fixed string), a LogicException (an
-     * unconfigured connection, say) its message, which has no row in it, anything
-     * else its class.
+     * unconfigured connection, say) its message, which has no row in it, a PHP
+     * Error that reports a missing class, interface, trait, enum, function or
+     * method its class and message, anything else its class (an Error can quote
+     * a value: an enum's ValueError, an UnhandledMatchError).
      * Capped, and safe to print or log.
      */
     public static function describe(Throwable $e): string
@@ -216,6 +218,10 @@ class EditorBackups
 
         if ($e instanceof EditorBackupException || $e instanceof \UnexpectedValueException || $e instanceof \LogicException) {
             return mb_substr(mb_scrub($e->getMessage(), 'UTF-8'), 0, 300);
+        }
+
+        if ($e instanceof \Error && preg_match('/^(?:Class|Interface|Trait|Enum) "[^"\r\n]*" not found$|^Call to undefined (?:method|function) \S+\(\)$/D', $e->getMessage())) {
+            return mb_substr(mb_scrub($class.': '.$e->getMessage(), 'UTF-8'), 0, 300);
         }
 
         return $class;
