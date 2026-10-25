@@ -516,6 +516,65 @@ CSS);
             ->and($result['brand'])->toBeNull();
     });
 
+    it('keeps a deliberate yellow accent beside a customised primary, run after run, and reports nothing for it', function () {
+        $dir = ($this->host)(false);
+        $v4 = "@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@theme {\n    --color-accent: var(--color-yellow-500);\n    --color-primary: #c0392b;\n    --color-primary-content: var(--color-zinc-50);\n    --color-primary-foreground: var(--color-zinc-50);\n}\n\n@layer theme {\n    .dark {\n        --color-primary: #e74c3c;\n        --color-primary-content: var(--color-zinc-900);\n        --color-primary-foreground: var(--color-zinc-900);\n    }\n}\n";
+        file_put_contents($dir.'/resources/css/red.css', $v4);
+
+        upgradeCodemodRun($dir);
+        upgradeCodemodRun($dir);
+
+        $lines = array_column(array_filter((new UpgradeCheck)->scan($dir)['checks']['css-skeleton-theme']['findings'], fn ($finding) => $finding['file'] === 'resources/css/red.css'), 'line');
+
+        // the accent is on line 5; what the report lists is the kept primary's leftovers, which atom defines now
+        expect(file_get_contents($dir.'/resources/css/red.css'))->toBe($v4)
+            ->and(array_filter(array_column((new UpgradeCss)->skeletonDeclarations($v4), 1), fn ($name) => str_starts_with($name, '--color-accent')))->toBe([])
+            ->and($lines)->not->toContain(5);
+    });
+
+    it('counts only a clean skeleton declaration as proof that the block is the skeleton\'s', function () {
+        $css = new UpgradeCss;
+        $head = "@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n@theme {\n";
+
+        // a commented line is not removed, so it is no anchor: the lone accent stays
+        $commented = $head."    --color-muted: var(--color-zinc-500); /* mine */\n    --color-accent: var(--color-yellow-500);\n}\n";
+        expect($css->rewrite($commented, 'resources/css/app.css')['css'])->toContain('--color-accent: var(--color-yellow-500);')->toContain('--color-muted')
+            ->and($css->ownsAccent($commented))->toBeTrue();
+
+        // the same line, clean: the accent goes with it
+        $clean = $head."    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500);\n}\n";
+        expect($css->rewrite($clean, 'resources/css/app.css')['css'])->not->toContain('--color-accent')->not->toContain('--color-muted')
+            ->and($css->ownsAccent($clean))->toBeFalse();
+
+        // a kept primary and accent-foreground are not proof either
+        $primary = $head."    --color-primary: #c0392b;\n    --color-primary-content: var(--color-zinc-50);\n    --color-accent: var(--color-yellow-500);\n    --color-accent-foreground: var(--color-white);\n}\n";
+        expect($css->ownsAccent($primary))->toBeTrue();
+
+        // a file that has atom's import has been through a run: whatever sits in it is the host's, a clean anchor or not
+        $v4 = "@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@theme {\n    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500);\n}\n";
+        expect($css->ownsAccent($v4))->toBeTrue()
+            ->and($css->rewrite($v4, 'resources/css/app.css')['css'])->toContain('--color-accent: var(--color-yellow-500);')->not->toContain('--color-muted')
+            ->and(array_column($css->skeletonDeclarations($v4), 1))->toBe(['--color-muted']);
+    });
+
+    it('adds no brand over a yellow accent that is kept only in .dark', function () {
+        $css = new UpgradeCss;
+        $dark = "@layer theme {\n    .dark {\n        --color-accent: var(--color-yellow-500);\n    }\n}\n";
+
+        // a v4 file, and a first run with only a customised primary and the dark accent
+        $v4 = "@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@theme {\n    --color-primary: #c0392b;\n}\n".$dark;
+        $first = "@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n@theme {\n    --color-primary: #c0392b;\n}\n".$dark;
+
+        foreach ([$v4, $first] as $input) {
+            $result = $css->rewrite($input, 'resources/css/app.css');
+
+            expect($result['brand'])->toBeNull()
+                ->and($result['css'])->toContain('.dark')->toContain('--color-accent: var(--color-yellow-500);')
+                ->and(substr_count($result['css'], '--color-accent:'))->toBe(1)
+                ->and($css->rewrite($result['css'], 'resources/css/app.css')['changed'])->toBeFalse();
+        }
+    });
+
     it('computes the import path from the file\'s own depth', function () {
         $css = new UpgradeCss;
 

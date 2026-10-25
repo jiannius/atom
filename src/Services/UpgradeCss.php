@@ -56,8 +56,9 @@ class UpgradeCss
     ];
 
     /**
-     * The skeleton declarations that are also a plausible brand choice (yellow-500): removed only while the rest of the
-     * skeleton block is still in the file
+     * The skeleton declarations that are also a plausible brand choice (yellow-500). They are the skeleton's only in a file
+     * that does not have atom's import yet and still holds a clean skeleton declaration beside them that is not a
+     * `--color-primary*` or `--color-accent*` one (see `ownsAccent()`)
      */
     public const ACCENT_PAIR = ['--color-accent', '--color-accent-content'];
 
@@ -168,8 +169,8 @@ class UpgradeCss
             }
         }
 
-        // yellow-500 with nothing else of the skeleton beside it is the host's own accent: kept
-        $ownsAccent = $this->ownsAccent($text);
+        // yellow-500 in a file that has atom's import, or with no clean skeleton declaration beside it, is the host's own accent: kept
+        $ownsAccent = $this->ownsAccent($css);
         $themeSkeleton = static::THEME;
         $darkSkeleton = static::DARK;
 
@@ -186,6 +187,15 @@ class UpgradeCss
 
             if ($value !== null && ($ownsAccent || $this->normalise($value) !== $this->normalise(static::THEME['--color-accent']))) {
                 $accentCustom = true;
+            }
+        }
+
+        // a kept accent that sits only in `.dark` is still the host's: a brand added to the light theme would leave the two apart
+        if ($ownsAccent) {
+            foreach ($this->darkRules($text) as $dark) {
+                if ($this->declaration($dark['body'], '--color-accent') !== null) {
+                    $accentCustom = true;
+                }
             }
         }
 
@@ -300,50 +310,51 @@ class UpgradeCss
     /**
      * The `@theme` / `.dark` declarations in a file that are exactly the skeleton's, as [offset, name]
      *
-     * The accent pair (see `ownsAccent()`) is the skeleton's only while something else of the skeleton is still in the file.
+     * The accent pair is left out where `ownsAccent()` says the file's accent is the host's own.
      *
      * @return array<int, array{0: int, 1: string}>
      */
     public function skeletonDeclarations(string $css): array
     {
         $found = $this->matchingDeclarations($css);
+        $owns = $this->ownsAccent($css, $found);
 
-        if ($this->hasAnchor($found)) {
-            return $found;
+        return array_values(array_map(
+            fn (array $declaration) => [$declaration[0], $declaration[1]],
+            array_filter($found, fn (array $declaration) => ! ($owns && in_array($declaration[1], static::ACCENT_PAIR, true))),
+        ));
+    }
+
+    /**
+     * Whether the file's `--color-accent` / `--color-accent-content` at the skeleton's value (yellow-500) are the host's own
+     * and stay. They are the skeleton's only when both hold: the file does not have atom's import yet (one that does has been
+     * through a run, or was set up for v4, so what it sets is a choice), and a clean declaration the rewrite would remove is
+     * beside them that is not a `--color-primary*` one (a kept primary leaves those behind) or an accent one.
+     *
+     * Call it on the file as it stands when the question is asked: the import of the file the run starts with.
+     *
+     * @param  array<int, array{0: int, 1: string, 2: bool}>|null  $found
+     */
+    public function ownsAccent(string $css, ?array $found = null): bool
+    {
+        if ($this->hasEntryImport($css)) {
+            return true;
         }
 
-        return array_values(array_filter($found, fn (array $declaration) => ! in_array($declaration[1], static::ACCENT_PAIR, true)));
-    }
-
-    /**
-     * Whether the file's `--color-accent` / `--color-accent-content` stay: they have the skeleton's value (yellow-500),
-     * but no other declaration of the skeleton is left beside them, so a host that chose yellow put them back
-     */
-    public function ownsAccent(string $css): bool
-    {
-        return ! $this->hasAnchor($this->matchingDeclarations($css));
-    }
-
-    /**
-     * Whether any matched declaration is not an accent one: the proof that the block is still the copied skeleton
-     *
-     * @param  array<int, array{0: int, 1: string}>  $found
-     */
-    protected function hasAnchor(array $found): bool
-    {
-        foreach ($found as $declaration) {
-            if (! str_starts_with($declaration[1], '--color-accent')) {
-                return true;
+        foreach ($found ?? $this->matchingDeclarations($css) as [, $name, $clean]) {
+            if ($clean && ! str_starts_with($name, '--color-primary') && ! str_starts_with($name, '--color-accent')) {
+                return false;
             }
         }
 
-        return false;
+        return true;
     }
 
     /**
-     * Every `@theme` / `.dark` declaration that has the skeleton's name and value
+     * Every `@theme` / `.dark` declaration that has the skeleton's name and value, and whether its line is clean (the
+     * rewrite removes only a clean one)
      *
-     * @return array<int, array{0: int, 1: string}>
+     * @return array<int, array{0: int, 1: string, 2: bool}>
      */
     protected function matchingDeclarations(string $css): array
     {
@@ -358,7 +369,7 @@ class UpgradeCss
         foreach ($this->rules($css, '/^@theme$/') as $theme) {
             foreach ($this->declarations($css, $theme) as $declaration) {
                 if (isset(static::THEME[$declaration['name']]) && $this->normalise($declaration['value']) === $this->normalise(static::THEME[$declaration['name']])) {
-                    $found[] = [$declaration['offset'], $declaration['name']];
+                    $found[] = [$declaration['offset'], $declaration['name'], $declaration['clean']];
                 }
             }
         }
@@ -366,7 +377,7 @@ class UpgradeCss
         foreach ($this->darkRules($css) as $dark) {
             foreach ($this->declarations($css, $dark) as $declaration) {
                 if (isset(static::DARK[$declaration['name']]) && $this->normalise($declaration['value']) === $this->normalise(static::DARK[$declaration['name']])) {
-                    $found[] = [$declaration['offset'], $declaration['name']];
+                    $found[] = [$declaration['offset'], $declaration['name'], $declaration['clean']];
                 }
             }
         }
