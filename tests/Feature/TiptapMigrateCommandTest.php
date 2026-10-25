@@ -1093,16 +1093,51 @@ describe('atom:tiptap-migrate: models and connections', function () {
 });
 
 describe('atom:tiptap-migrate: describing a failure', function () {
-    it('says what an engine Error says, because it names code and not data', function () {
+    it('says what a missing class, interface, trait, enum, function or method is', function () {
         expect(EditorBackups::describe(new \Error('Class "X" not found')))->toBe('Error: Class "X" not found');
-        expect(EditorBackups::describe(new \TypeError('f(): Argument #1 must be of type int')))->toBe('TypeError: f(): Argument #1 must be of type int');
+        expect(EditorBackups::describe(new \Error('Interface "X\\Y" not found')))->toBe('Error: Interface "X\\Y" not found');
+        expect(EditorBackups::describe(new \Error('Trait "X" not found')))->toBe('Error: Trait "X" not found');
+        expect(EditorBackups::describe(new \Error('Enum "X" not found')))->toBe('Error: Enum "X" not found');
+        expect(EditorBackups::describe(new \Error('Call to undefined method App\\Models\\Post::nope()')))->toBe('Error: Call to undefined method App\\Models\\Post::nope()');
+        expect(EditorBackups::describe(new \Error('Call to undefined function nope()')))->toBe('Error: Call to undefined function nope()');
     });
 
-    it('caps an engine Error message and scrubs invalid UTF-8', function () {
-        $described = EditorBackups::describe(new \Error(str_repeat('é', 500)));
+    it('says only the class of an Error that can quote a value', function () {
+        enum MigrateDescribeStatus: string
+        {
+            case Open = 'open';
+        }
+
+        try {
+            MigrateDescribeStatus::from('x@y.test');
+        }
+        catch (\ValueError $valueError) {
+        }
+
+        $unhandled = (function () {
+            try {
+                return match ('x@y.test') {
+                    'other' => 1,
+                };
+            }
+            catch (\UnhandledMatchError $e) {
+                return $e;
+            }
+        })();
+
+        expect($valueError->getMessage())->toContain('x@y.test');
+        expect($unhandled->getMessage())->toContain('x@y.test');
+        expect(EditorBackups::describe($valueError))->toBe('ValueError');
+        expect(EditorBackups::describe($unhandled))->toBe('UnhandledMatchError');
+        expect(EditorBackups::describe(new \TypeError('f(): Argument #1 must be of type int')))->toBe('TypeError');
+        expect(EditorBackups::describe(new \Error('x@y.test')))->toBe('Error');
+    });
+
+    it('caps a missing-symbol message and scrubs invalid UTF-8', function () {
+        $described = EditorBackups::describe(new \Error('Class "'.str_repeat('é', 500).'" not found'));
 
         expect(mb_strlen($described))->toBe(300);
-        expect(mb_check_encoding(EditorBackups::describe(new \Error("bad \xFF byte")), 'UTF-8'))->toBeTrue();
+        expect(mb_check_encoding(EditorBackups::describe(new \Error("Class \"bad \xFF byte\" not found")), 'UTF-8'))->toBeTrue();
     });
 
     it('still keeps SQL and bound values out of a database error', function () {

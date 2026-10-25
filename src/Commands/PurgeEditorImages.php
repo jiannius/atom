@@ -692,13 +692,13 @@ class PurgeEditorImages extends Command
                             $this->collectImages($reader, $row, $column, $row->getRawOriginal($column), $images);
                         }
                         catch (Throwable $e) {
-                            $this->problems[] = $class.'::'.$column.' (row '.($row->getKey() ?? '?').'): '.$e->getMessage();
+                            $this->problems[] = $class.'::'.$column.' (row '.($row->getKey() ?? '?').'): '.EditorBackups::describe($e);
                         }
                     }
                 }
             }
             catch (Throwable $e) {
-                $this->problems[] = $class.': '.$e->getMessage();
+                $this->problems[] = $class.': '.EditorBackups::describe($e);
             }
         }
 

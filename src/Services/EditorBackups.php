@@ -201,9 +201,9 @@ class EditorBackups
      * class and SQLSTATE (its message carries the SQL and the bound values), one
      * of atom's own is its message (a fixed string), a LogicException (an
      * unconfigured connection, say) its message, which has no row in it, a PHP
-     * engine Error (a class or trait not found, an undefined method, a TypeError)
-     * its class and message, which name code and not data, anything else its
-     * class.
+     * Error that reports a missing class, interface, trait, enum, function or
+     * method its class and message, anything else its class (an Error can quote
+     * a value: an enum's ValueError, an UnhandledMatchError).
      * Capped, and safe to print or log.
      */
     public static function describe(Throwable $e): string
@@ -220,7 +220,7 @@ class EditorBackups
             return mb_substr(mb_scrub($e->getMessage(), 'UTF-8'), 0, 300);
         }
 
-        if ($e instanceof \Error) {
+        if ($e instanceof \Error && preg_match('/^(?:Class|Interface|Trait|Enum) "[^"]*" not found$|^Call to undefined (?:method|function) \S+\(\)$/', $e->getMessage())) {
             return mb_substr(mb_scrub($class.': '.$e->getMessage(), 'UTF-8'), 0, 300);
         }
 
