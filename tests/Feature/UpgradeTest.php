@@ -649,6 +649,45 @@ CSS);
         expect($output)->toContain('`resources/css/scoped.css:9` sets `--color-accent`, so your `--color-primary: #c0392b` was not copied as the accent; set `--color-accent` in `@theme` if it is your brand.');
     });
 
+    it('prints the accent kept in `@theme` with its value, when it kept the brand out', function () {
+        $dir = ($this->host)(false);
+        file_put_contents($dir.'/resources/css/kept.css', "@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n@theme {\n    --color-primary: #c0392b;\n    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500); /* brand */\n}\n");
+
+        [, $output] = upgradeCodemodRun($dir, dry: true);
+
+        // it says what is there and that changing it is the step left; "set it" would say to do what is already done
+        expect($output)->toMatch('/`resources\/css\/kept\.css:\d+` sets `--color-accent: var\(--color-yellow-500\);`, so your `--color-primary: #c0392b` was not copied as the accent; change that value to your brand colour if it is not your brand\./')
+            ->not->toContain('set `--color-accent` in `@theme` if it is your brand');
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toMatch('/`resources\/css\/kept\.css:\d+` sets `--color-accent: var\(--color-yellow-500\);`, so your `--color-primary: #c0392b` was not copied as the accent; change that value to your brand colour/');
+    });
+
+    it('words a kept accent-content in `@theme` as what it is, with no `--color-accent` beside it', function (bool $withPrimary) {
+        $dir = ($this->host)(false);
+        $theme = $withPrimary
+            ? "@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n@theme {\n    --color-primary: #c0392b;\n    --color-accent-content: var(--color-yellow-500);\n}\n"
+            : "@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@theme {\n    --color-accent-content: var(--color-yellow-500);\n}\n";
+        file_put_contents($dir.'/resources/css/content.css', $theme);
+
+        upgradeCodemodRun($dir);
+
+        $todo = file_get_contents($dir.'/ATOM-UPGRADE-TODO.md');
+
+        expect($todo)->toMatch('/`resources\/css\/content\.css:\d+`: `@theme` sets `--color-accent-content` but no `--color-accent`/')
+            // `@theme` is where it is: "elsewhere" would be wrong
+            ->not->toContain('and `@theme` sets no `--color-accent`')
+            ->not->toContain('`resources/css/content.css` sets no `--color-accent`');
+
+        if ($withPrimary) {
+            expect($todo)->toContain('so your `--color-primary: #c0392b` was not copied as the accent; set `--color-accent` in `@theme` if it is your brand.');
+        }
+    })->with([
+        'with no brand to copy' => [false],
+        'beside a customised primary' => [true],
+    ]);
+
     it('takes an import in a string continued over a line for no import, and a path that only ends in vendor/ for none', function () {
         $css = new UpgradeCss;
         $escaped = "@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n.x::after {\n    content: \"see \\\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\";\n}\n";

@@ -1267,14 +1267,30 @@ class Upgrade
             $skipped = $plan['brand_skipped'][$relative] ?? null;
             $elsewhere = $this->css->accentLine($this->lf($text));
 
+            // an accent kept in `@theme` is the file's own: say what it is, since setting it there is already done
+            $content = $this->css->themeDeclaration($this->lf($text), '--color-accent-content');
+            $contentInTheme = ! $accent && $content && $elsewhere && $elsewhere['name'] === '--color-accent-content' && $elsewhere['line'] === $content['line'];
+
             if ($skipped) {
-                $lines[] = '`'.$relative.':'.$skipped['line'].'` sets `'.$skipped['name'].'`, so your `--color-primary: '.$skipped['value'].'` was not copied as the accent; set `--color-accent` in `@theme` if it is your brand. Do not set `accent-foreground` unless you must.';
+                $copied = 'so your `--color-primary: '.$skipped['value'].'` was not copied as the accent;';
+
+                if ($accent) {
+                    $lines[] = '`'.$relative.':'.$accent['line'].'` sets `--color-accent: '.$accent['value'].';`, '.$copied.' change that value to your brand colour if it is not your brand. Do not set `accent-foreground` unless you must.';
+                }
+                elseif ($contentInTheme) {
+                    $lines[] = '`'.$relative.':'.$content['line'].'`: `@theme` sets `--color-accent-content` but no `--color-accent`, '.$copied.' set `--color-accent` in `@theme` if it is your brand. Do not set `accent-foreground` unless you must.';
+                }
+                else {
+                    $lines[] = '`'.$relative.':'.$skipped['line'].'` sets `'.$skipped['name'].'`, '.$copied.' set `--color-accent` in `@theme` if it is your brand. Do not set `accent-foreground` unless you must.';
+                }
 
                 continue;
             }
 
             if (! $accent && $elsewhere) {
-                $lines[] = '`'.$relative.':'.$elsewhere['line'].'` sets `'.$elsewhere['name'].'`, and `@theme` sets no `--color-accent`. Check it is your brand colour, and set `--color-accent` in `@theme` if it should apply everywhere. Do not set `accent-foreground` unless you must.';
+                $lines[] = $contentInTheme
+                    ? '`'.$relative.':'.$elsewhere['line'].'`: `@theme` sets `--color-accent-content` but no `--color-accent`. Check it is your brand colour, and set `--color-accent` in `@theme` if it should apply everywhere. Do not set `accent-foreground` unless you must.'
+                    : '`'.$relative.':'.$elsewhere['line'].'` sets `'.$elsewhere['name'].'`, and `@theme` sets no `--color-accent`. Check it is your brand colour, and set `--color-accent` in `@theme` if it should apply everywhere. Do not set `accent-foreground` unless you must.';
 
                 continue;
             }
