@@ -179,33 +179,21 @@ class UpgradeCss
             $darkSkeleton = array_diff_key($darkSkeleton, array_flip(static::ACCENT_PAIR));
         }
 
-        // a brand colour is moved only when the accent is still the skeleton's (or absent)
-        $accentCustom = false;
-
-        foreach ($themes as $theme) {
-            $value = $this->declaration($theme['body'], '--color-accent');
-
-            if ($value !== null && ($ownsAccent || $this->normalise($value) !== $this->normalise(static::THEME['--color-accent']))) {
-                $accentCustom = true;
-            }
-        }
-
-        // a kept accent that sits only in `.dark` is still the host's: a brand added to the light theme would leave the two apart
-        if ($ownsAccent) {
-            foreach ($this->darkRules($text) as $dark) {
-                if ($this->declaration($dark['body'], '--color-accent') !== null) {
-                    $accentCustom = true;
-                }
-            }
-        }
-
-        if ($brand !== null && ($accentCustom || preg_match('/var\(\s*--color-(?:accent|primary)\b/', $brand))) {
+        // a brand colour that refers to the accent or to primary would point at itself
+        if ($brand !== null && preg_match('/var\(\s*--color-(?:accent|primary)\b/', $brand)) {
             $brand = null;
         }
 
         $text = $this->stripDeclarations($text, '/^@theme$/', $themeSkeleton, $keepPrimary, $result['removed']);
         $text = $this->stripDarkDeclarations($text, $darkSkeleton, $keepPrimary, $result['removed']);
         $text = $this->stripBorderRule($text, $result['removed']);
+
+        // a brand colour is moved only when no accent is left anywhere in the file: one that survived the strip (a kept
+        // yellow, a custom value, a line with a comment, in `@theme`, `.dark` or any other selector) is the host's, and a
+        // second `--color-accent` would leave light and dark, or the accent and its content colour, apart
+        if ($brand !== null && preg_match('/(?<![\w-])--color-accent(?:-content)?\s*:/', $this->blankComments($text))) {
+            $brand = null;
+        }
 
         if ($brand !== null) {
             $text = $this->addAccent($text, $brand);
@@ -237,8 +225,8 @@ class UpgradeCss
         $notes = [];
         $starts = $this->lineStarts($css);
         $names = array_merge(array_keys(static::THEME), array_keys(static::DARK));
-        $ownsAccent = $this->ownsAccent($css);
 
+        // the file has atom's import (checked above), so a yellow accent pair at the skeleton's value is the host's own: no note for it
         foreach ($this->rules($css, '/^@theme(?: (?:inline|static|default))*$/') as $theme) {
             $plain = $theme['header'] === '@theme';
 
@@ -247,7 +235,7 @@ class UpgradeCss
 
                 if ($plain && $declaration['name'] === '--color-primary' && preg_match('/var\(\s*--color-(?:accent|primary)\b/', $declaration['value'])) {
                     $notes[] = ['line' => $line, 'text' => '`--color-primary` refers to the accent ('.$declaration['value'].'), so it was not copied as the accent: set `--color-accent` yourself'];
-                } elseif (in_array($declaration['name'], $names, true) && $declaration['name'] !== '--color-accent' && ! ($ownsAccent && $plain && $this->isKeptAccent($declaration, static::THEME))) {
+                } elseif (in_array($declaration['name'], $names, true) && $declaration['name'] !== '--color-accent' && ! ($plain && $this->isKeptAccent($declaration, static::THEME))) {
                     $notes[] = ['line' => $line, 'text' => $theme['header'].' sets '.$declaration['name'].': '.$declaration['value'].($plain ? ' (not the skeleton value, or on a line with a comment, so left alone; atom defines this token now)' : ' (the codemod does not rewrite `'.$theme['header'].'`; atom defines this token now)')];
                 }
             }
@@ -255,7 +243,7 @@ class UpgradeCss
 
         foreach ($this->darkRules($css) as $dark) {
             foreach ($this->declarations($css, $dark) as $declaration) {
-                if (in_array($declaration['name'], $names, true) && ! ($ownsAccent && $this->isKeptAccent($declaration, static::DARK))) {
+                if (in_array($declaration['name'], $names, true) && ! $this->isKeptAccent($declaration, static::DARK)) {
                     $notes[] = ['line' => $this->lineOf($starts, $declaration['offset']), 'text' => '.dark sets '.$declaration['name'].': '.$declaration['value'].' (not the skeleton value, or on a line with a comment, so left alone; atom flips this token itself)'];
                 }
             }
@@ -304,7 +292,8 @@ class UpgradeCss
     {
         $css = $this->withoutBom($css);
 
-        return (bool) preg_match('/^[ \t]*@import\s+[\'"][^\'"\n]*vendor\/jiannius\/atom\/resources\/css\/atom\.tailwind\.css[\'"]\s*;/m', $this->blankComments($css));
+        // `'path'` or `url('path')`, then whatever follows up to the `;` (`layer(base)`, `source(none)`, a media query) or the end of the file
+        return (bool) preg_match('/^[ \t]*@import\s+(?:url\(\s*([\'"]?)[^\'"()\n]*vendor\/jiannius\/atom\/resources\/css\/atom\.tailwind\.css\1\s*\)|([\'"])[^\'"\n]*vendor\/jiannius\/atom\/resources\/css\/atom\.tailwind\.css\2)[^;{}]*(?:;|\z)/m', $this->blankComments($css));
     }
 
     /**

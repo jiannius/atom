@@ -575,6 +575,80 @@ CSS);
         }
     });
 
+    it('adds no brand colour while any accent is left in the file, wherever it sits', function (string $css, int $accents) {
+        $codemod = new UpgradeCss;
+        $head = "@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n";
+        $result = $codemod->rewrite($head.$css, 'resources/css/app.css');
+        $again = $codemod->rewrite($result['css'], 'resources/css/app.css');
+
+        expect($result['brand'])->toBeNull()
+            ->and($result['added'])->each->not->toContain('--color-accent: #c0392b')
+            ->and(preg_match_all('/(?<![\w-])--color-accent(?:-content)?\s*:/', $result['css']))->toBe($accents)
+            ->and($again['changed'])->toBeFalse();
+    })->with([
+        // a skeleton accent on a line with a comment is not removed, so it is the one accent: no second line above it
+        'a commented accent' => ["@theme {\n    --color-primary: #c0392b;\n    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500); /* brand */\n}\n", 1],
+        'a kept accent-content beside a customised primary' => ["@theme {\n    --color-primary: #c0392b;\n    --color-accent-content: var(--color-yellow-500);\n}\n", 1],
+        'a top-level .dark rule' => ["@theme {\n    --color-primary: #c0392b;\n}\n\n.dark {\n    --color-accent: var(--color-yellow-500);\n}\n", 1],
+        'a .dark rule with two selectors' => ["@theme {\n    --color-primary: #c0392b;\n}\n\n@layer theme {\n    .dark, [data-theme=dark] {\n        --color-accent: var(--color-yellow-500);\n    }\n}\n", 1],
+        'a custom accent in .dark of a first run' => ["@theme {\n    --color-primary: #c0392b;\n    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500);\n}\n\n@layer theme {\n    .dark {\n        --color-accent: #ff0;\n    }\n}\n", 1],
+        'a commented accent in .dark' => ["@theme {\n    --color-primary: #c0392b;\n    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500);\n}\n\n@layer theme {\n    .dark {\n        --color-accent: var(--color-yellow-500); /* keep */\n    }\n}\n", 1],
+        'a kept accent-content in .dark' => ["@theme {\n    --color-primary: #c0392b;\n}\n\n@layer theme {\n    .dark {\n        --color-accent-content: var(--color-yellow-500);\n    }\n}\n", 1],
+    ]);
+
+    it('still moves the brand when the skeleton accent is the only accent and goes with the rest', function () {
+        $result = (new UpgradeCss)->rewrite("@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n/* --color-accent: red; an old try, commented out */\n@theme {\n    --color-primary: #c0392b;\n    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500);\n    --color-accent-content: var(--color-yellow-500);\n}\n", 'resources/css/app.css');
+
+        expect($result['brand'])->toBe('#c0392b')
+            ->and(preg_match_all('/^[ \t]+--color-accent\s*:/m', $result['css']))->toBe(1)
+            ->and($result['css'])->toContain('--color-accent: #c0392b;')->not->toContain('yellow-500');
+    });
+
+    it('reads atom\'s import in the other spellings, and adds no second one', function (string $line) {
+        $css = new UpgradeCss;
+        $input = "@import 'tailwindcss';\n".$line."@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n@theme {\n    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500);\n}\n";
+        $result = $css->rewrite($input, 'resources/css/app.css');
+
+        expect($css->hasEntryImport($input))->toBeTrue()
+            ->and(substr_count($result['css'], 'atom.tailwind.css'))->toBe(1)
+            ->and($result['css'])->toContain('--color-accent: var(--color-yellow-500);')->not->toContain('--color-muted')
+            ->and($css->rewrite($result['css'], 'resources/css/app.css')['changed'])->toBeFalse();
+    })->with([
+        'url()' => ["@import url('../../vendor/jiannius/atom/resources/css/atom.tailwind.css');\n"],
+        'url() with double quotes' => ["@import url(\"../../vendor/jiannius/atom/resources/css/atom.tailwind.css\");\n"],
+        'url() without quotes' => ["@import url(../../vendor/jiannius/atom/resources/css/atom.tailwind.css);\n"],
+        'a layer()' => ["@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css' layer(base);\n"],
+        'a media query' => ["@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css' screen;\n"],
+    ]);
+
+    it('does not take atom\'s import from a comment or a string, and takes one with no `;` at the end of the file', function () {
+        $css = new UpgradeCss;
+        $path = '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';
+
+        expect($css->hasEntryImport("@import 'tailwindcss';\n/* @import '".$path."'; */\n"))->toBeFalse()
+            ->and($css->hasEntryImport("@import 'tailwindcss';\n/*\n@import url('".$path."');\n*/\n"))->toBeFalse()
+            ->and($css->hasEntryImport("@import 'tailwindcss';\n.x { content: \"@import '".$path."';\"; }\n"))->toBeFalse()
+            ->and($css->hasEntryImport("@import 'tailwindcss';\n@import '".$path."'"))->toBeTrue()
+            ->and($css->hasEntryImport("@import 'tailwindcss';\n@import '../other.css';\n"))->toBeFalse();
+    });
+
+    it('still notes a kept yellow accent-content in `@theme inline`, which the codemod does not rewrite', function () {
+        $v4 = "@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@theme inline {\n    --color-accent-content: var(--color-yellow-500);\n}\n";
+        $notes = (new UpgradeCss)->residue($v4);
+
+        expect($notes)->toHaveCount(1)
+            ->and($notes[0]['text'])->toContain('@theme inline sets --color-accent-content');
+    });
+
+    it('keeps a yellow accent-content in .dark of a v4 file, and says nothing about it', function () {
+        $css = new UpgradeCss;
+        $v4 = "@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n\n@layer theme {\n    .dark {\n        --color-accent-content: var(--color-yellow-500);\n    }\n}\n";
+
+        expect($css->rewrite($v4, 'resources/css/app.css')['css'])->toBe($v4)
+            ->and($css->residue($v4))->toBe([])
+            ->and($css->skeletonDeclarations($v4))->toBe([]);
+    });
+
     it('computes the import path from the file\'s own depth', function () {
         $css = new UpgradeCss;
 
