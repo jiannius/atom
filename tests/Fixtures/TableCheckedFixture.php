@@ -9,7 +9,7 @@ use Livewire\WithPagination;
 
 /**
  * Drives the E2E for the checked bar's `tone="accent"`: a table with one row ticked, so the bar is showing. The query string picks
- * the shape (`frameless`, `tone`, `sticky`), so one page covers the framed and the frameless bar, tinted and not, with every text
+ * the shape (`frameless`, `tone`, `sticky`, `buttons`: how many bulk actions the slot holds), so one page covers the framed and the frameless bar, tinted and not, with every text
  * role the bar can print (the count, "select all", "show selected", "clear selection") on screen.
  */
 class TableCheckedFixture extends Component
@@ -22,6 +22,8 @@ class TableCheckedFixture extends Component
     public ?string $tone = null;
 
     public bool $sticky = false;
+
+    public int $buttons = 1;
 
     /** @var array<int, array{id: int, name: string}> */
     public const ROWS = [
@@ -38,6 +40,7 @@ class TableCheckedFixture extends Component
         $this->frameless = request()->boolean('frameless');
         $this->tone = request()->query('tone') ?: null;
         $this->sticky = request()->boolean('sticky');
+        $this->buttons = max(1, min(5, request()->integer('buttons', 1)));
         $this->_table['checkboxes'] = [1];
     }
 

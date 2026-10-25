@@ -49,7 +49,7 @@ $stripClasses = $frameless ? 'border-b px-3 py-2.5' : '';
 
 $checkedAccent = isset($checked) && $checked->attributes->get('tone') === 'accent';
 $checkedClasses = Arr::toCssClasses([
-    'min-h-10 flex items-center gap-3',
+    'min-h-10 flex flex-wrap items-center gap-x-3 gap-y-2',
     $stripClasses,
     'bg-accent-soft' => $checkedAccent && $frameless,
     'bg-accent-soft rounded-panel px-3.5 py-2' => $checkedAccent && ! $frameless,
@@ -62,7 +62,8 @@ if (!$showSkeleton && !is_bool($empty)) {
 }
 @endphp
 
-{{-- The checked bar is untinted by default. `<x-slot:checked tone="accent">` tints it with the accent-soft token and sets its text
+{{-- The checked bar wraps (count first, then the actions) so a narrow screen shows every action instead of clipping them.
+     It is untinted by default. `<x-slot:checked tone="accent">` tints it with the accent-soft token and sets its text
      and icons in the accent ink, so the selected state stands out (any other tone is the default). Framed, the bar is its own
      rounded strip; frameless it is a square strip inside the panel you draw, with its hairline strip padding, like the untinted one. --}}
 <div
@@ -114,7 +115,7 @@ data-atom-table
                     </template>
                 @endif
 
-                <div {{ $checked->attributes->except('tone')->class('grow flex items-center gap-3') }}>
+                <div {{ $checked->attributes->except('tone')->class('grow flex flex-wrap items-center gap-x-3 gap-y-2') }}>
                     {{ $checked }}
                 </div>
             </div>

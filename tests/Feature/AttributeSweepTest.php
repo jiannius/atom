@@ -155,7 +155,7 @@ describe('B1: components that never printed the bag', function () {
         BLADE);
         $actions = domQuery($html, '//*[@id="bulk"]')[0];
 
-        expect(domClasses($actions))->toContain('justify-end', 'grow', 'flex', 'gap-3');
+        expect(domClasses($actions))->toContain('justify-end', 'grow', 'flex', 'flex-wrap', 'gap-x-3');
     });
 });
 
