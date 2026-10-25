@@ -301,11 +301,21 @@ class UpgradeCss
      */
     public function accent(string $css): ?array
     {
+        return $this->themeDeclaration($css, '--color-accent');
+    }
+
+    /**
+     * The first declaration of a custom property in the `@theme` rules of an entry file (any variant), with its line, or null
+     *
+     * @return array{value: string, line: int}|null
+     */
+    public function themeDeclaration(string $css, string $name): ?array
+    {
         $css = $this->withoutBom($css);
 
         foreach ($this->rules($css, '/^@theme(?: (?:inline|static|default))*$/') as $theme) {
             foreach ($this->declarations($css, $theme) as $declaration) {
-                if ($declaration['name'] === '--color-accent') {
+                if ($declaration['name'] === $name) {
                     return ['value' => $declaration['value'], 'line' => $this->lineOf($this->lineStarts($css), $declaration['offset'])];
                 }
             }

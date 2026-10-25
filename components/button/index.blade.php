@@ -52,7 +52,7 @@ $tone = match ($variant) {
 
 $classes = [
     'group/button relative items-center justify-center overflow-hidden',
-    $block ? 'flex w-full' : 'inline-flex',
+    $block ? 'flex w-full' : 'inline-flex max-w-full',
     'whitespace-nowrap font-medium transition-colors',
     'disabled:pointer-events-none disabled:cursor-default disabled:opacity-50',
     '[&.is-loading]:opacity-50 [&.is-loading]:pointer-events-none',
@@ -125,6 +125,13 @@ else {
 
 $classes = Arr::toCssClasses($classes);
 
+/* A plain-text label is wrapped in an element that can truncate: a bare text node is an anonymous flex item, which has no box
+   for `text-overflow` and cannot shrink, so a long label pushed the suffix icon out of view. A slot holding markup (a badge, a
+   kbd, an icon) keeps its children as flex items spaced by the gap, as before, so it is left as it is. `truncate` clips to the
+   span's box, which would cut the underline of a link button (and a descender) under a tight line height, so the span has 4px
+   of padding above and below and the same negative margin: room to draw in, and the layout of a button without it. */
+$label = !$slot->isEmpty() && !str_contains((string) $slot, '<');
+
 if (
     $href
     || (
@@ -193,12 +200,16 @@ if ($slot->isEmpty() && data_get($icon, 'start')) {
         <atom:icon.loading :class="data_get($icon, 'class')"/>
     </div>
 
-    <div class="inline-flex items-center justify-center gap-2 group-[.is-loading]/button:opacity-0 {{ $type === 'submit' ? 'group-[.is-loading]/form:opacity-0' : '' }}">
+    <div class="inline-flex min-w-0 max-w-full items-center gap-2 {{ $block ? 'w-full [justify-content:inherit]' : 'justify-center' }} group-[.is-loading]/button:opacity-0 {{ $type === 'submit' ? 'group-[.is-loading]/form:opacity-0' : '' }}">
         @if (data_get($icon, 'start'))
             <x-dynamic-component :component="'atom::icon.'.data_get($icon, 'start')" class="shrink-0 {{ data_get($icon, 'class') }}"/>
         @endif
 
-        {{ $slot }}
+        @if ($label)
+            <span class="-my-1 min-w-0 truncate py-1" data-atom-button-label>{{ $slot }}</span>
+        @else
+            {{ $slot }}
+        @endif
 
         @if (data_get($icon, 'end'))
             <x-dynamic-component :component="'atom::icon.'.data_get($icon, 'end')" class="shrink-0 -ml-0.5 {{ data_get($icon, 'class') }}"/>

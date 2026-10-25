@@ -223,7 +223,7 @@ test.describe('lightbox', () => {
 })
 
 test.describe('breadcrumbs', () => {
-  const crumbs = (page) => page.locator('[data-atom-breadcrumbs] ol a')
+  const crumbs = (page) => page.locator('[data-atom-breadcrumbs] [data-atom-crumb="crumb"] a')
 
   test('a hostile crumb renders without an href and does nothing on click', async ({ page }) => {
     const errors = []

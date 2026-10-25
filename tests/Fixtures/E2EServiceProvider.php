@@ -41,6 +41,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-breadcrumbs-untrailed', BreadcrumbsUntrailedFixture::class);
         Livewire::component('atom-e2e-breadcrumbs-back', BreadcrumbsBackFixture::class);
         Livewire::component('atom-e2e-breadcrumbs-header', BreadcrumbsHeaderFixture::class);
+        Livewire::component('atom-e2e-breadcrumbs-trail', BreadcrumbsTrailFixture::class);
         Livewire::component('atom-e2e-sticky-selection', StickySelectionFixture::class);
         Livewire::component('atom-e2e-table-checked', TableCheckedFixture::class);
         Livewire::component('atom-e2e-input-morph', InputMorphFixture::class);
@@ -90,9 +91,11 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-back', fn () => view('atom::e2e.breadcrumbs-back'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-back/record', fn () => view('atom::e2e.breadcrumbs-back'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs-header/{page}/{detail?}', fn () => view('atom::e2e.breadcrumbs-header'))->where('page', 'old|new|plain|deep|late');
+        Route::middleware('web')->get('/atom/e2e/breadcrumbs-trail/{page}', fn () => view('atom::e2e.breadcrumbs-trail'))->where('page', '[a-z-]+');
         Route::middleware('web')->get('/atom/e2e/url-filters', fn () => view('atom::e2e.url-filters'));
         Route::middleware('web')->get('/atom/e2e/url-filters/record', fn () => view('atom::e2e.url-filters'));
         Route::middleware('web')->get('/atom/e2e/consumer-tailwind', fn () => view('atom::e2e.consumer-tailwind'));
+        Route::middleware('web')->get('/atom/e2e/button-label', fn () => view('atom::e2e.button-label'));
         // The two shell pattern pages (resources/views/docs/patterns), on the consumer's Tailwind: ?tw=floor|latest, ?dark=1.
         // header-wide is the worst case for the bar: long labels, a count on each, a context switcher and a search field.
         foreach (['sidebar' => 'docs.patterns.app-shell-sidebar', 'header' => 'docs.patterns.app-shell-header', 'header-wide' => 'e2e.shell-header-wide', 'record' => 'docs.patterns.record-page', 'list' => 'docs.patterns.list-page', 'document' => 'docs.patterns.document-page', 'form' => 'docs.patterns.form-page', 'slide-over' => 'docs.patterns.slide-over-form'] as $shell => $pattern) {
