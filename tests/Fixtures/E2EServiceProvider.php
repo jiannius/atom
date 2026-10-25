@@ -55,6 +55,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-select-sibling-sync', SelectSiblingSyncFixture::class);
         Livewire::component('atom-e2e-safe-url-breadcrumbs', SafeUrlBreadcrumbsFixture::class);
         Livewire::component('atom-e2e-form-error-toast', FormErrorToastFixture::class);
+        Livewire::component('atom-e2e-form-toast-bar', FormToastBarFixture::class);
         Livewire::component('atom-e2e-url-filters', UrlFiltersFixture::class);
         Livewire::component('atom-e2e-shell-actions', ShellActionsFixture::class);
         Livewire::component('atom-e2e-page-header-slide', PageHeaderSlideFixture::class);
@@ -157,6 +158,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/safe-url', fn () => view('atom::e2e.safe-url'));
         Route::middleware('web')->get('/atom/e2e/safe-url-breadcrumbs', fn () => view('atom::e2e.safe-url-breadcrumbs'));
         Route::middleware('web')->get('/atom/e2e/form-error-toast', fn () => view('atom::e2e.form-error-toast'));
+        Route::middleware('web')->get('/atom/e2e/form-toast-bar', fn () => view('atom::e2e.form-toast-bar'));
         Route::middleware('web')->get('/atom/e2e/calendar', fn () => view('atom::e2e.calendar'));
         Route::middleware('web')->get('/atom/e2e/calendar-static', fn () => view('atom::e2e.calendar-static'));
         Route::middleware('web')->get('/atom/e2e/calendar-twin', fn () => view('atom::e2e.calendar-twin'));
