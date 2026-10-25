@@ -178,6 +178,39 @@ describe('button', function () {
     });
 });
 
+describe('button label', function () {
+    it('wraps a plain-text label in an element that can truncate, so a suffix icon stays in view', function () {
+        $html = renderBlade('<atom:button block icon-suffix="dropdown">Northwind Trading Company</atom:button>');
+        $label = domQuery($html, '//button[@data-atom-button]//span[@data-atom-button-label]');
+
+        expect($label)->toHaveCount(1)
+            ->and($label[0]->getAttribute('class'))->toContain('min-w-0')->toContain('truncate')
+            ->and(trim($label[0]->textContent))->toBe('Northwind Trading Company')
+            // the content row can shrink and, on a block button, takes the whole width and the button's own justification
+            ->and($html)->toContain('inline-flex min-w-0 max-w-full items-center gap-2 w-full [justify-content:inherit]');
+    });
+
+    it('lets a non-block button shrink to a narrow container', function () {
+        expect(renderBlade('<atom:button>Save</atom:button>'))
+            ->toContain('inline-flex max-w-full')
+            ->toContain('items-center gap-2 justify-center');
+    });
+
+    it('wraps no label for an icon-only button or for a slot holding markup', function () {
+        expect(domQuery(renderBlade('<atom:button icon="add"/>'), '//*[@data-atom-button-label]'))->toBeEmpty();
+        expect(domQuery(renderBlade('<atom:button><atom:badge>3</atom:badge> Inbox</atom:button>'), '//*[@data-atom-button-label]'))->toBeEmpty();
+    });
+
+    it('keeps the label wrapper for a link, a submit and a delete button', function (string $tag) {
+        expect(domQuery(renderBlade($tag), '//*[@data-atom-button]//*[@data-atom-button-label]'))->toHaveCount(1);
+    })->with([
+        'link' => '<atom:button href="/x">Open</atom:button>',
+        'submit' => '<atom:button type="submit">Save</atom:button>',
+        'delete' => '<atom:button type="delete">Delete</atom:button>',
+        'icon + label' => '<atom:button icon="add">New</atom:button>',
+    ]);
+});
+
 describe('button.group', function () {
     it('collapses adjacent button borders', function () {
         $html = renderBlade('<atom:button.group><atom:button>A</atom:button><atom:button>B</atom:button></atom:button.group>');
