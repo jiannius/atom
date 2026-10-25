@@ -61,8 +61,9 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
                     {{ t('More filters') }} <atom:icon.dropdown />
                 </atom:button>
             @elseif ($overflow === 'modal')
+                {{-- the trigger is display:contents too, so the button is the flex item two levels down: the container's order rule never reaches it, so it carries the same order-2 itself (harmless in the below layout, where it is last anyway) --}}
                 <atom:modal.trigger :name="$modalName">
-                    <atom:button variant="ghost" class="shrink-0">
+                    <atom:button variant="ghost" class="shrink-0 order-2">
                         {{ t('More filters') }} <atom:icon.dropdown />
                     </atom:button>
                 </atom:modal.trigger>

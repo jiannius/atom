@@ -47,12 +47,24 @@ $frameless = (bool) $frameless;
 
 $stripClasses = $frameless ? 'border-b px-3 py-2.5' : '';
 
+$checkedAccent = isset($checked) && $checked->attributes->get('tone') === 'accent';
+$checkedClasses = Arr::toCssClasses([
+    'min-h-10 flex items-center gap-3',
+    $stripClasses,
+    'bg-accent-soft' => $checkedAccent && $frameless,
+    'bg-accent-soft rounded-panel px-3.5 py-2' => $checkedAccent && ! $frameless,
+]);
+$checkedMuted = $checkedAccent ? 'text-accent-ink' : 'text-fg-muted';
+
 if (!$showSkeleton && !is_bool($empty)) {
     if ($paginate) $empty = !$paginate->total();
     else $empty = isset($rows) && !strip_tags($rows->toHtml());
 }
 @endphp
 
+{{-- The checked bar is untinted by default. `<x-slot:checked tone="accent">` tints it with the accent-soft token and sets its text
+     and icons in the accent ink, so the selected state stands out (any other tone is the default). Framed, the bar is its own
+     rounded strip; frameless it is a square strip inside the panel you draw, with its hairline strip padding, like the untinted one. --}}
 <div
 {{ $attributes->merge(['x-data' => '{}'])->class(['group/table min-w-0 max-w-full', 'space-y-4' => ! $frameless]) }}
 x-on:table-filter:changed.window="{!! $onFilterChanged !!}"
@@ -60,8 +72,8 @@ data-atom-table
 @if ($frameless) data-atom-table-frameless @endif>
     @if (isset($checked) && $checked->isNotEmpty())
         <template x-if="$wire._table.checkboxes.length || $wire._table.select_all" hidden>
-            <div class="{{ Arr::toCssClasses(['min-h-10 flex items-center gap-3', $stripClasses]) }}" data-atom-table-checked>
-                <div class="shrink-0 flex items-center gap-2 text-sm font-medium text-fg-muted">
+            <div class="{{ $checkedClasses }}" data-atom-table-checked @if ($checkedAccent) data-tone="accent" @endif>
+                <div class="shrink-0 flex items-center gap-2 text-sm font-medium {{ $checkedMuted }}">
                     <atom:icon.double-check class="size-4"/>
                     <div>
                         <span x-text="$wire._table.select_all ? {{ $total }} : $wire._table.checkboxes.length"></span> {{ t('atom::messages.selected') }}
@@ -77,7 +89,7 @@ data-atom-table
                     </template>
 
                     <template x-if="$wire._table.select_all" hidden>
-                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium text-fg-muted hover:underline">
+                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium {{ $checkedMuted }} hover:underline">
                             {{ t('atom::messages.deselect-all') }}
                         </button>
                     </template>
@@ -96,13 +108,13 @@ data-atom-table
                          filter, so the way out can't depend on finding the ticked
                          rows again. Hidden in select-all mode, which brings its own. --}}
                     <template x-if="!$wire._table.select_all" hidden>
-                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium text-fg-muted hover:underline" data-atom-table-clear-selection>
+                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium {{ $checkedMuted }} hover:underline" data-atom-table-clear-selection>
                             {{ t('atom::messages.clear-selection') }}
                         </button>
                     </template>
                 @endif
 
-                <div {{ $checked->attributes->class('grow flex items-center gap-3') }}>
+                <div {{ $checked->attributes->except('tone')->class('grow flex items-center gap-3') }}>
                     {{ $checked }}
                 </div>
             </div>
