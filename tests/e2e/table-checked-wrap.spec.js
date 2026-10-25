@@ -7,9 +7,9 @@ import { open } from './controls-helpers.js'
 
 const bar = (page) => page.locator('[data-atom-table-checked]')
 
-const show = async (page, { tw, width, frameless = false, tone = null }) => {
+const show = async (page, { tw, width, frameless = false, tone = null, gap = null }) => {
   await page.setViewportSize({ width, height: 900 })
-  await open(page, { path: 'table-checked', tw, extra: `&buttons=3${frameless ? '&frameless=1' : ''}${tone ? `&tone=${tone}` : ''}` })
+  await open(page, { path: 'table-checked', tw, extra: `&buttons=3${frameless ? '&frameless=1' : ''}${tone ? `&tone=${tone}` : ''}${gap === null ? '' : `&gap=${gap}`}` })
   await expect(bar(page)).toBeVisible()
   await expect(page.getByTestId('bulk-action')).toHaveCount(3)
 }
@@ -80,5 +80,27 @@ for (const tw of ['floor', 'latest']) {
       expect(fill.covers).toBe(true)
       expect(fill.radius).toBeGreaterThan(0)
     })
+
+    // the gap is atom's `gap-3` unless the host puts a larger one on `<x-slot:checked>`; that wins on both axes. (A smaller one, `gap-0`,
+    // does not: both are the same `gap` property and Tailwind writes the smaller value first, as it did before the bar wrapped.)
+    for (const [gap, expected] of [[null, 12], ['6', 24]]) {
+      test(`the actions' gap is ${expected}px both ways with ${gap === null ? 'no host gap class' : `a host gap-${gap}`}`, async ({ page }) => {
+        const gaps = () => page.getByTestId('bulk-action').evaluateAll((all) => {
+          const boxes = all.map((n) => n.getBoundingClientRect())
+
+          return {
+            column: boxes[1].left - boxes[0].right,
+            // the distance between the first line's buttons and a button on the line below, when they wrap
+            row: boxes.find((b) => b.top > boxes[0].bottom - 1)?.top - boxes[0].bottom,
+          }
+        })
+
+        await show(page, { tw, width: 1440, gap })
+        expect((await gaps()).column).toBeCloseTo(expected, 0)
+
+        await show(page, { tw, width: 390, gap })
+        expect((await gaps()).row).toBeCloseTo(expected, 0)
+      })
+    }
   })
 }

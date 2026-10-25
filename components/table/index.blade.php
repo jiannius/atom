@@ -49,7 +49,7 @@ $stripClasses = $frameless ? 'border-b px-3 py-2.5' : '';
 
 $checkedAccent = isset($checked) && $checked->attributes->get('tone') === 'accent';
 $checkedClasses = Arr::toCssClasses([
-    'min-h-10 flex flex-wrap items-center gap-x-3 gap-y-2',
+    'min-h-10 flex flex-wrap items-center gap-3',
     $stripClasses,
     'bg-accent-soft' => $checkedAccent && $frameless,
     'bg-accent-soft rounded-panel px-3.5 py-2' => $checkedAccent && ! $frameless,
@@ -115,7 +115,7 @@ data-atom-table
                     </template>
                 @endif
 
-                <div {{ $checked->attributes->except('tone')->class('grow flex flex-wrap items-center gap-x-3 gap-y-2') }}>
+                <div {{ $checked->attributes->except('tone')->class('grow flex flex-wrap items-center gap-3') }}>
                     {{ $checked }}
                 </div>
             </div>
