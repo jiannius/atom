@@ -167,6 +167,14 @@ button {
     grid-area: crumbs;
 }
 
+/* The trail in a shell's crumbs slot takes the room the slot has, however long its crumbs are: breadcrumbs.js measures that
+   room to decide how many middle crumbs to hide, so the trail (or the element that persists it across wire:navigate) must
+   neither grow with its content nor refuse to shrink below it. */
+[data-atom-shell-crumbs] > :is([x-persist], [data-atom-breadcrumbs]) {
+    flex: 1 1 0%;
+    min-width: 0;
+}
+
 /* layouts.header: one column, the bar (52px, sticky for the same reason) over a centred main. */
 *:has(>[data-atom-header-bar]) {
     grid-template-rows: 3.25rem 1fr auto;
