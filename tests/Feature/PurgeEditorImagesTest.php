@@ -189,7 +189,8 @@ describe('atom:purge-editor-images', function () {
         Schema::drop('purge_blog_notes');
 
         $this->artisan('atom:purge-editor-images')
-            ->expectsOutputToContain('PurgeBlogNote')
+            ->expectsOutputToContain('PurgeBlogNote: QueryException (SQLSTATE')
+            ->doesntExpectOutputToContain('purge_blog_notes')
             ->assertFailed();
 
         Storage::disk('tiptap_disk')->assertExists('tenant/editor/orphan.jpg');
