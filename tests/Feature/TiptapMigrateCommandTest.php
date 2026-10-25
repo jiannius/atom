@@ -1131,6 +1131,8 @@ describe('atom:tiptap-migrate: describing a failure', function () {
         expect(EditorBackups::describe($unhandled))->toBe('UnhandledMatchError');
         expect(EditorBackups::describe(new \TypeError('f(): Argument #1 must be of type int')))->toBe('TypeError');
         expect(EditorBackups::describe(new \Error('x@y.test')))->toBe('Error');
+        expect(EditorBackups::describe(new \Error("Class \"a\nforged line\" not found")))->toBe('Error');
+        expect(EditorBackups::describe(new \Error("Class \"X\" not found\n")))->toBe('Error');
     });
 
     it('caps a missing-symbol message and scrubs invalid UTF-8', function () {

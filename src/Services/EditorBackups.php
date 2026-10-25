@@ -220,7 +220,7 @@ class EditorBackups
             return mb_substr(mb_scrub($e->getMessage(), 'UTF-8'), 0, 300);
         }
 
-        if ($e instanceof \Error && preg_match('/^(?:Class|Interface|Trait|Enum) "[^"]*" not found$|^Call to undefined (?:method|function) \S+\(\)$/', $e->getMessage())) {
+        if ($e instanceof \Error && preg_match('/^(?:Class|Interface|Trait|Enum) "[^"\r\n]*" not found$|^Call to undefined (?:method|function) \S+\(\)$/D', $e->getMessage())) {
             return mb_substr(mb_scrub($class.': '.$e->getMessage(), 'UTF-8'), 0, 300);
         }
 
