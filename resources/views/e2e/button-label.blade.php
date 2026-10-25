@@ -31,6 +31,18 @@ $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->q
         <atom:button data-testid="inline-short">Save</atom:button>
     </div>
 
+    {{-- a link button underlines its label on hover: the label's overflow clip must leave room for it, at every size --}}
+    <div class="flex flex-col items-start gap-3 p-2" data-testid="links">
+        <atom:button variant="link" size="xs" data-testid="link-xs">Open the record</atom:button>
+        <atom:button variant="link" size="sm" data-testid="link-sm">Open the record</atom:button>
+        <atom:button variant="link" data-testid="link-base">Open the record</atom:button>
+        <atom:button variant="link" size="lg" data-testid="link-lg">Open the record</atom:button>
+        <atom:button size="xs" data-testid="plain-xs">Open the record</atom:button>
+        <atom:button size="sm" data-testid="plain-sm">Open the record</atom:button>
+        <atom:button data-testid="plain-base">Open the record</atom:button>
+        <atom:button size="lg" data-testid="plain-lg">Open the record</atom:button>
+    </div>
+
     {{-- shapes the wrapper must not change --}}
     <div class="flex w-[228px] items-center gap-2 border border-dashed p-0" data-testid="shapes">
         <atom:button icon="add" data-testid="icon-only"/>

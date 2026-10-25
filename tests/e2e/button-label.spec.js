@@ -36,7 +36,6 @@ for (const tw of ['floor', 'latest']) {
       expect(icon.left).toBeGreaterThanOrEqual(b.left)
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(() => window.innerWidth))
 
-      await page.screenshot({ path: `${process.env.B7_SHOTS ?? 'test-results'}/h1-long-${tw}.png`, clip: { x: 0, y: 0, width: 300, height: 400 } })
     })
 
     test('justify-between puts the label left and the icon at the right edge', async ({ page }) => {
@@ -77,6 +76,50 @@ for (const tw of ['floor', 'latest']) {
       const short = await box(page.getByTestId('inline-short'))
       expect(short.width).toBeLessThan(100)
     })
+
+    // the underline of a link button is drawn on the label, whose `truncate` clips to its box: the label has room above and below
+    // for it (and a matching negative margin, so the button's own height is the same as any other variant's)
+    for (const size of ['xs', 'sm', 'base', 'lg']) {
+      test(`a ${size} link button shows its whole underline, and is as tall as the same size of any other variant`, async ({ page }) => {
+        const link = page.getByTestId(`link-${size}`)
+        const label = link.locator('[data-atom-button-label]')
+
+        // a solid line is a row of ink the width of the text; a dotted one is half of it. A tight line height (a host's
+        // `leading-none`) puts the line below the label's own box, which is where it was clipped.
+        await link.evaluate((el) => {
+          el.style.textDecorationStyle = 'solid'
+          el.style.lineHeight = '1'
+        })
+        await link.hover()
+
+        const coverage = await page.evaluate(async ([png, width]) => {
+          const bitmap = await createImageBitmap(await (await fetch(`data:image/png;base64,${png}`)).blob())
+          const canvas = document.createElement('canvas')
+          canvas.width = bitmap.width
+          canvas.height = bitmap.height
+          const context = canvas.getContext('2d')
+          context.drawImage(bitmap, 0, 0)
+          const data = context.getImageData(0, 0, bitmap.width, bitmap.height).data
+          const background = data.slice(0, 3)
+          let best = 0
+
+          for (let y = 0; y < bitmap.height; y++) {
+            let ink = 0
+            for (let x = 0; x < bitmap.width; x++) {
+              const at = (y * bitmap.width + x) * 4
+              if (Math.abs(data[at] - background[0]) + Math.abs(data[at + 1] - background[1]) + Math.abs(data[at + 2] - background[2]) > 150) ink++
+            }
+            best = Math.max(best, ink / width)
+          }
+
+          return best
+        }, [(await link.screenshot()).toString('base64'), (await box(label)).width])
+
+        expect(coverage, 'a row of ink as wide as the label').toBeGreaterThan(0.85)
+
+        expect((await box(link)).height).toBe((await box(page.getByTestId(`plain-${size}`))).height)
+      })
+    }
 
     test('icon-only, icon + label and a slot holding markup keep their shape', async ({ page }) => {
       const iconOnly = await box(page.getByTestId('icon-only'))

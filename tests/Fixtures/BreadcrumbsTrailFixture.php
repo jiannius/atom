@@ -44,6 +44,26 @@ class BreadcrumbsTrailFixture extends Component
         $page = $this->page ?: (string) request()->segment(4);
         $url = fn (string $slug) => url('/atom/e2e/breadcrumbs-trail/'.$slug);
 
+        // a javascript: URL, as a host would build one from a record's user-supplied link: in the middle (it collapses into the
+        // "..." menu first), and as the parent (the phone's back link)
+        $hostile = 'javascript:window.__pwned = 1';
+
+        if ($page === 'hostile') {
+            return $trail->home('Dashboard', $url('dashboard'))
+                ->push('Hostile Crumb', $hostile)
+                ->push(self::DEEP['regions'], $url('regions'))
+                ->push(self::DEEP['asia-pacific'], $url('asia-pacific'))
+                ->push(self::DEEP['customers'], $url('customers'))
+                ->push(self::LONG, $url('hostile'));
+        }
+
+        if ($page === 'hostile-parent') {
+            return $trail->home('Dashboard', $url('dashboard'))
+                ->push(self::DEEP['sales'], $url('sales'))
+                ->push('Hostile Parent', $hostile)
+                ->push('Current Page', $url('hostile-parent'));
+        }
+
         if ($page === 'reports') {
             return $trail->home('Reports', $url('reports'));
         }

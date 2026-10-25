@@ -6,8 +6,6 @@ import { test, expect } from '@playwright/test'
 // eight, /long five with a very long last title, /reports one crumb. Sizes and structure, never text widths: a Linux fallback font (DejaVu)
 // changes the widths, not what is asserted.
 
-const SHOTS = process.env.B7_SHOTS ?? 'test-results'
-
 async function open (page, slug, { tw = 'latest', width = 1440, query = '' } = {}) {
   const css = await page.request.get(`/atom/e2e/consumer-css/${tw}`)
   expect(css.status(), 'run `node tests/consumer/build.mjs` first').toBe(200)
@@ -17,6 +15,13 @@ async function open (page, slug, { tw = 'latest', width = 1440, query = '' } = {
   await page.waitForFunction(() => window.Alpine !== undefined)
   await page.evaluate(() => document.fonts.ready)
 }
+
+// n animation frames: what a deferred fit() needs to have run, without a sleep
+const frames = (page, n = 6) => page.evaluate((count) => new Promise((resolve) => {
+  let left = count
+  const tick = () => (--left > 0 ? requestAnimationFrame(tick) : resolve())
+  requestAnimationFrame(tick)
+}), n)
 
 const root = (page) => page.locator('[data-atom-breadcrumbs]')
 const list = (page) => page.locator('[data-atom-crumb-list]')
@@ -64,9 +69,6 @@ for (const tw of ['floor', 'latest']) {
       await more(page).click()
       await expect(menu(page)).toBeVisible()
       expect(await menuTitles(page)).toEqual(fullTrail.slice(1, 1 + hidden))
-      // the panel fades in (300ms): wait for it, and the screenshot shows it
-      await expect.poll(() => menu(page).evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
-      await page.screenshot({ path: `${SHOTS}/h2-1440-menu-${tw}.png`, clip: { x: 0, y: 0, width: 1440, height: 260 } })
 
       // a menu item is a link to that crumb
       const first = menu(page).locator('[data-atom-menu-item]').first()
@@ -152,7 +154,6 @@ for (const tw of ['floor', 'latest']) {
       expect(url.pathname).toBe('/atom/e2e/breadcrumbs-trail/customers')
       expect(url.search).toBe('?tw=' + tw + '&status=open')
       expect(await barHeight(page)).toBe(48)
-      await page.screenshot({ path: `${SHOTS}/h2-390-back-${tw}.png`, clip: { x: 0, y: 0, width: 390, height: 120 } })
 
       // the shell's own "back" event goes the same way
       await page.evaluate(() => {
@@ -175,6 +176,13 @@ for (const tw of ['floor', 'latest']) {
       page.on('pageerror', (error) => errors.push(error.message))
       page.on('console', (message) => message.type() === 'error' && errors.push(message.text()))
 
+      // "ResizeObserver loop completed with undelivered notifications" is a window `error` event, which Playwright does not
+      // report as a pageerror: collect them from the start
+      await page.addInitScript(() => {
+        window.__windowErrors = []
+        window.addEventListener('error', (event) => window.__windowErrors.push(event.message))
+      })
+
       await open(page, 'invoice', { tw })
 
       // count what the list re-renders from here on
@@ -184,9 +192,10 @@ for (const tw of ['floor', 'latest']) {
       })
 
       const states = []
-      for (const width of [900, 390, 900, 1440]) {
+      const heights = []
+      for (const width of [900, 390, 900, 1440, 1100, 2600, 1100]) {
         await page.setViewportSize({ width, height: 800 })
-        await page.waitForTimeout(250)
+        await frames(page)
 
         if (width === 390) {
           await expect(page.locator('[data-atom-crumb-back]')).toBeVisible()
@@ -195,31 +204,29 @@ for (const tw of ['floor', 'latest']) {
         else {
           await expect(list(page)).toBeVisible()
           await expectOneLine(page)
+          heights.push((await list(page).boundingBox()).height)
         }
 
         states.push(await hiddenCount(page))
       }
 
-      // the same width gives the same answer: 900 on the way down and on the way up, and no growth at 1440
+      // the same width gives the same answer: 900 on the way down and on the way up, 1100 either side of 2600
       expect(states[0]).toBe(states[2])
+      expect(states[4]).toBe(states[6])
       expect(states[3]).toBeLessThanOrEqual(states[2])
+      expect(states[5]).toBe(0)
+      // the "..." control is taller than a crumb: the list keeps its height whether it shows or not
+      expect(new Set(heights).size, `list heights ${heights}`).toBe(1)
 
-      // settled: no more re-rendering while idle
+      // settled: nothing re-renders while idle (30 frames)
       const before = await page.evaluate(() => window.__mutations)
-      await page.waitForTimeout(500)
+      await frames(page, 30)
       expect(await page.evaluate(() => window.__mutations)).toBe(before)
-      // a handful of renders per resize, not a loop
-      expect(before).toBeLessThan(400)
+
       expect(errors).toEqual([])
-
-      await page.setViewportSize({ width: 900, height: 800 })
-      await page.waitForTimeout(250)
-      await page.screenshot({ path: `${SHOTS}/h2-900-${tw}.png`, clip: { x: 0, y: 0, width: 900, height: 120 } })
-    })
-
-    test('1440 screenshot', async ({ page }) => {
-      await open(page, 'northwind', { tw })
-      await page.screenshot({ path: `${SHOTS}/h2-1440-${tw}.png`, clip: { x: 0, y: 0, width: 1440, height: 120 } })
+      expect(await page.evaluate(() => window.__windowErrors), 'no window error, the ResizeObserver loop one included').toEqual([])
+      // a few dozen renders per resize, not a loop
+      expect(before).toBeLessThan(150 * states.length)
     })
 
     test('the trail survives wire:navigate: the same element, still collapsed to fit, reset by a new home', async ({ page }) => {
@@ -276,6 +283,61 @@ for (const tw of ['floor', 'latest']) {
       await expect(menu(page)).toBeVisible()
       await page.keyboard.press('Escape')
       await expect(more(page)).toBeFocused()
+    })
+
+    test('the top-nav shell: the page does not move when the trail collapses or comes back', async ({ page }) => {
+      const main = () => page.locator('[data-atom-main]').evaluate((el) => el.getBoundingClientRect().top)
+      const crumbs = () => page.locator('[data-atom-header-crumbs]').evaluate((el) => el.getBoundingClientRect().height)
+
+      // five crumbs that fit at 1440 and not at 700: the same page on either side of the threshold
+      await open(page, 'customers', { tw, width: 1440, query: '&shell=header' })
+      expect(await hiddenCount(page)).toBe(0)
+      const top = await main()
+      const row = await crumbs()
+
+      await page.setViewportSize({ width: 700, height: 800 })
+      await expect.poll(() => hiddenCount(page)).toBeGreaterThan(0)
+      expect(await main(), 'collapsed').toBe(top)
+      expect(await crumbs(), 'collapsed row').toBe(row)
+
+      await page.setViewportSize({ width: 1440, height: 800 })
+      await expect.poll(() => hiddenCount(page)).toBe(0)
+      expect(await main(), 'expanded again').toBe(top)
+
+      // and a trail that is collapsed from the start sits at the same place
+      await open(page, 'northwind', { tw, width: 1440, query: '&shell=header' })
+      expect(await hiddenCount(page)).toBeGreaterThan(0)
+      expect(await main(), 'collapsed from the start').toBe(top)
+    })
+
+    test('a hostile URL in the trail: the phone back link has no href and does nothing', async ({ page }) => {
+      await open(page, 'hostile-parent', { tw, width: 390 })
+
+      const back = page.locator('[data-atom-crumb-back]')
+      await expect(back).toContainText('Hostile Parent')
+      await expect(back).not.toHaveAttribute('href', /.*/)
+
+      const url = page.url()
+      await back.click()
+
+      expect(await page.evaluate(() => window.__pwned)).toBeUndefined()
+      expect(page.url()).toBe(url)
+    })
+
+    test('a hostile URL in the trail: its row in the "..." menu has no href and does nothing', async ({ page }) => {
+      await open(page, 'hostile', { tw, width: 1100 })
+      await expect.poll(() => hiddenCount(page)).toBeGreaterThan(0)
+
+      await more(page).click()
+      const row = menu(page).locator('[data-atom-menu-item]', { hasText: 'Hostile Crumb' })
+      await expect(row).toBeVisible()
+      await expect(row).not.toHaveAttribute('href', /.*/)
+
+      const url = page.url()
+      await row.click()
+
+      expect(await page.evaluate(() => window.__pwned)).toBeUndefined()
+      expect(page.url()).toBe(url)
     })
 
     test('a hidden crumb is not reachable by keyboard or screen reader, only through the menu', async ({ page }) => {

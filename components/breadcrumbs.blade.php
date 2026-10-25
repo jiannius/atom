@@ -30,18 +30,21 @@ data-atom-breadcrumbs>
 
     <template x-if="breadcrumbs.length > 1" hidden>
         <div class="w-full min-w-0">
-            {{-- a phone: the way up, with the parent's own address (its query string kept) --}}
+            {{-- a phone: the way up, with the parent's own address (its query string kept). The list and this link are both 24px
+                 (`min-h-6`) at least: the "..." control is 24px and the crumbs 16px, so without it the row grew by 8px the
+                 moment the list started to collapse, which moved the page under it (layouts.header has an auto-height row)
+                 and made the ResizeObserver report a loop. --}}
             <a
             x-bind:href="atom.safeUrl(parent.href)"
             x-bind:title="parent.title"
-            class="flex max-w-full items-center gap-1 rounded-nav text-sm font-medium leading-none text-fg-muted transition-colors hover:text-fg sm:hidden"
+            class="flex min-h-6 max-w-full items-center gap-1 rounded-nav text-sm font-medium leading-none text-fg-muted transition-colors hover:text-fg sm:hidden"
             wire:navigate
             data-atom-crumb-back>
                 <atom:icon.left class="size-4 shrink-0 text-fg-subtle"/>
                 <span class="truncate whitespace-nowrap" x-text="parent.title"></span>
             </a>
 
-            <ol {{ $attributes->class(['relative flex w-full min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden text-sm max-sm:hidden']) }} data-atom-crumb-list>
+            <ol {{ $attributes->class(['relative flex min-h-6 w-full min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden text-sm max-sm:hidden']) }} data-atom-crumb-list>
                 <template x-for="item in entries" x-bind:key="item.key">
                     <li
                     x-bind:class="{

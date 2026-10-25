@@ -127,7 +127,9 @@ $classes = Arr::toCssClasses($classes);
 
 /* A plain-text label is wrapped in an element that can truncate: a bare text node is an anonymous flex item, which has no box
    for `text-overflow` and cannot shrink, so a long label pushed the suffix icon out of view. A slot holding markup (a badge, a
-   kbd, an icon) keeps its children as flex items spaced by the gap, as before, so it is left as it is. */
+   kbd, an icon) keeps its children as flex items spaced by the gap, as before, so it is left as it is. `truncate` clips to the
+   span's box, which would cut the underline of a link button (and a descender) under a tight line height, so the span has 4px
+   of padding above and below and the same negative margin: room to draw in, and the layout of a button without it. */
 $label = !$slot->isEmpty() && !str_contains((string) $slot, '<');
 
 if (
@@ -204,7 +206,7 @@ if ($slot->isEmpty() && data_get($icon, 'start')) {
         @endif
 
         @if ($label)
-            <span class="min-w-0 truncate" data-atom-button-label>{{ $slot }}</span>
+            <span class="-my-1 min-w-0 truncate py-1" data-atom-button-label>{{ $slot }}</span>
         @else
             {{ $slot }}
         @endif

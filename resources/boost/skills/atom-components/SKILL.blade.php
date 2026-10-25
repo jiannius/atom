@@ -216,6 +216,8 @@ For confirm-before-action in Blade, use `<atom:confirm.trigger>`:
 
 @verbatim
 `<atom:button type="delete">` auto-wires a danger confirm dialog and dispatches `confirmed` → `$wire.delete()` by default. Override by setting your own `wire:click` or `x-on:click`.
+
+**Button labels.** A plain-text label truncates with an ellipsis when it is longer than its container and the start and end icons stay in view (a workspace switcher: `<atom:button block variant="ghost" icon-suffix="dropdown" class="justify-between!">`: the `!` is needed, a plain `justify-between` loses to the button's `justify-center`, and it puts the icon at the right edge). Markup in the slot (a badge, a kbd) is not truncated.
 @endverbatim
 
 ### Dropdown & menu

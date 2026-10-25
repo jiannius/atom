@@ -27,7 +27,13 @@ export default (config) => {
             this.$root._atomBreadcrumbsStopWatching?.()
 
             if (typeof ResizeObserver === 'function') {
-                let observer = new ResizeObserver(() => this.fit())
+                // Fitted in the next frame, not in the observer's own delivery: a fit that changes the list changes what is
+                // observed, and Chrome reports that as a window error ("ResizeObserver loop completed with undelivered notifications")
+                let frame = 0
+                let observer = new ResizeObserver(() => {
+                    cancelAnimationFrame(frame)
+                    frame = requestAnimationFrame(() => this.fit())
+                })
                 observer.observe(this.$root)
 
                 let fonts = document.fonts
@@ -40,6 +46,7 @@ export default (config) => {
                 sm?.addEventListener?.('change', refit)
 
                 this.$root._atomBreadcrumbsStopWatching = () => {
+                    cancelAnimationFrame(frame)
                     observer.disconnect()
                     fonts?.removeEventListener?.('loadingdone', refit)
                     sm?.removeEventListener?.('change', refit)
