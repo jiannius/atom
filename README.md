@@ -504,7 +504,7 @@ A suggested mapping when a heading *is* structural: `xl` → `level="1"` (only o
 | --- | ------------- |
 | `<atom:modal>` | `name` (required for `atom()->modal($name)` to find it), `inset`, `dismissible`, `closeable`. Trigger via `<atom:modal.trigger name="...">` or `$this->modal('name')->show()` from PHP. |
 | `<atom:alert>` | Window-bound. Triggered by `atom()->alert(...)`. Config keys: `heading`, `subheading`, `message`, `variant`, `button`, `onDismissed`. |
-| `<atom:toast>` | Window-bound. Triggered by `atom()->toast(...)`. Config keys: `message`, `variant` (`success`, `warning`, `danger`), `delay` (default 3000), `position` (`top`, `bottom`, `center`), `align`. |
+| `<atom:toast>` | Window-bound. Triggered by `atom()->toast(...)`. Config keys: `message`, `variant` (`success`, `warning`, `danger`), `delay` (default 3000), `position` (`top`, `bottom`, `center`), `align`. A bottom toast sits above a pinned save bar that is on screen (`form.actions bar`), so it never covers Save. |
 | `<atom:confirm>` | Window-bound. Triggered by `atom()->confirm(...)`. Supports `password`, `passphrase`, optional reason field. Wires `onAccepted` / `onRejected` to Livewire methods. |
 | `<atom:tooltip>` | `interactive`, `position` (`top`, `bottom`, `left`, `right`), `align` (`start`, `center`, `end`), `content`, `kbd`, `toggleable`. |
 | `<atom:dropdown>` | `position` (`bottom`, `top`), `align` (`start`, `end`), `locked`. |
