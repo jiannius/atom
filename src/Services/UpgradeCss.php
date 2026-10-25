@@ -76,7 +76,7 @@ class UpgradeCss
      * The result of reading one file: the text after the rewrite, what was
      * removed or added (for the report), and why a file was left alone.
      *
-     * @return array{css: string, changed: bool, removed: array<int, string>, added: array<int, string>, declined: string|null, brand: string|null}
+     * @return array{css: string, changed: bool, removed: array<int, string>, added: array<int, string>, declined: string|null, brand: string|null, brand_skipped: array{line: int, name: string, value: string}|null}
      */
     public function rewrite(string $css, string $file): array
     {
@@ -86,11 +86,11 @@ class UpgradeCss
 
         // a rewrite that leaves the braces unbalanced is not made: the file is declined whole
         if ($result['changed'] && ! $this->balanced($result['css'])) {
-            $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => 'the rewrite would leave the braces unbalanced; change the file by hand', 'brand' => null];
+            $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => 'the rewrite would leave the braces unbalanced; change the file by hand', 'brand' => null, 'brand_skipped' => null];
         }
 
         if ($result['changed'] && ! $this->balanced($css)) {
-            $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => 'its braces do not balance, so it is not safe to edit by tool', 'brand' => null];
+            $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => 'its braces do not balance, so it is not safe to edit by tool', 'brand' => null, 'brand_skipped' => null];
         }
 
         $result['css'] = $bom.$result['css'];
@@ -117,11 +117,11 @@ class UpgradeCss
     }
 
     /**
-     * @return array{css: string, changed: bool, removed: array<int, string>, added: array<int, string>, declined: string|null, brand: string|null}
+     * @return array{css: string, changed: bool, removed: array<int, string>, added: array<int, string>, declined: string|null, brand: string|null, brand_skipped: array{line: int, name: string, value: string}|null}
      */
     protected function rewriteText(string $css, string $file): array
     {
-        $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => null, 'brand' => null];
+        $result = ['css' => $css, 'changed' => false, 'removed' => [], 'added' => [], 'declined' => null, 'brand' => null, 'brand_skipped' => null];
         $import = $this->importLine($css);
         $sources = $this->atomSourceLines($css);
         $hasEntry = $this->hasEntryImport($css);
@@ -190,8 +190,11 @@ class UpgradeCss
 
         // a brand colour is moved only when no accent is left anywhere in the file: one that survived the strip (a kept
         // yellow, a custom value, a line with a comment, in `@theme`, `.dark` or any other selector) is the host's, and a
-        // second `--color-accent` would leave light and dark, or the accent and its content colour, apart
-        if ($brand !== null && preg_match('/(?<![\w-])--color-accent(?:-content)?\s*:/', $this->blankComments($text))) {
+        // second `--color-accent` would leave light and dark, or the accent and its content colour, apart. The report says so.
+        $site = $brand !== null ? $this->accentSite($text) : null;
+
+        if ($site !== null) {
+            $result['brand_skipped'] = ['line' => $this->lineOf($this->lineStarts($text), $site[0]), 'name' => $site[1], 'value' => $brand];
             $brand = null;
         }
 
@@ -266,6 +269,32 @@ class UpgradeCss
     }
 
     /**
+     * Where the first `--color-accent` or `--color-accent-content` declaration is, in any rule (a string, a comment and an
+     * unquoted `url()` are not one), as [offset, name], or null
+     *
+     * @return array{0: int, 1: string}|null
+     */
+    protected function accentSite(string $css): ?array
+    {
+        $view = preg_replace_callback('/url\(([^)"\']*)\)/i', fn (array $m) => 'url('.preg_replace('/[^\n]/', ' ', $m[1]).')', $this->structure($css)) ?? $css;
+
+        return preg_match('/(?<![\w-])(--color-accent(?:-content)?)\s*:/', $view, $m, PREG_OFFSET_CAPTURE) ? [$m[1][1], $m[1][0]] : null;
+    }
+
+    /**
+     * The first accent declaration in any rule of an entry file, or null
+     *
+     * @return array{line: int, name: string}|null
+     */
+    public function accentLine(string $css): ?array
+    {
+        $css = $this->withoutBom($css);
+        $site = $this->accentSite($css);
+
+        return $site === null ? null : ['line' => $this->lineOf($this->lineStarts($css), $site[0]), 'name' => $site[1]];
+    }
+
+    /**
      * The `--color-accent` an entry file sets in `@theme` (any variant), with its line, or null
      *
      * @return array{value: string, line: int}|null
@@ -292,8 +321,22 @@ class UpgradeCss
     {
         $css = $this->withoutBom($css);
 
-        // `'path'` or `url('path')`, then whatever follows up to the `;` (`layer(base)`, `source(none)`, a media query) or the end of the file
-        return (bool) preg_match('/^[ \t]*@import\s+(?:url\(\s*([\'"]?)[^\'"()\n]*vendor\/jiannius\/atom\/resources\/css\/atom\.tailwind\.css\1\s*\)|([\'"])[^\'"\n]*vendor\/jiannius\/atom\/resources\/css\/atom\.tailwind\.css\2)[^;{}]*(?:;|\z)/m', $this->blankComments($css));
+        // `'path'` or `url('path')`, then whatever follows up to the `;` (`layer(base)`, `source(none)`, a media query) or the end of the
+        // file; `vendor` starts a path segment; a match inside a string (one continued over a line with `\`) is not an import
+        $blank = $this->blankComments($css);
+        $path = '(?:[^\'"()\n]*\/)?vendor\/jiannius\/atom\/resources\/css\/atom\.tailwind\.css';
+
+        if (! preg_match_all('/^[ \t]*@(?i:import)\s+(?:url\(\s*([\'"]?)'.$path.'\1\s*\)|([\'"])'.$path.'\2)[^;{}]*(?:;|\z)/m', $blank, $found, PREG_OFFSET_CAPTURE)) {
+            return false;
+        }
+
+        foreach ($found[0] as [, $offset]) {
+            if (! $this->insideString(substr($blank, 0, $offset))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

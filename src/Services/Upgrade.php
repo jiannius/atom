@@ -69,7 +69,7 @@ class Upgrade
      * What a run would do: the new text of each file it changes, what it did (for
      * the TODO), what it declined, and the scan of the tree it would leave
      *
-     * @return array{root: string, changes: array<string, array{before: string, after: string, kinds: array<int, string>}>, applied: array<int, string>, declined: array<int, array{file: string, line: int, reason: string}>, residue: array<int, array{file: string, line: int, text: string}>, scan: array<string, mixed>, before: array<string, mixed>}
+     * @return array{root: string, changes: array<string, array{before: string, after: string, kinds: array<int, string>}>, applied: array<int, string>, declined: array<int, array{file: string, line: int, reason: string}>, residue: array<int, array{file: string, line: int, text: string}>, brand_skipped: array<string, array{line: int, name: string, value: string}>, scan: array<string, mixed>, before: array<string, mixed>}
      */
     public function plan(string $root): array
     {
@@ -84,6 +84,7 @@ class Upgrade
 
         return [
             'root' => $root,
+            'brand_skipped' => $first['brand_skipped'],
             'changes' => $first['changes'],
             'applied' => $first['applied'],
             'declined' => $second['declined'],
@@ -98,7 +99,7 @@ class Upgrade
      *
      * @param  array<string, mixed>  $scan
      * @param  array<string, string>  $overlay  relative path to text, for files an earlier pass already changed
-     * @return array{changes: array<string, array{before: string, after: string, kinds: array<int, string>}>, applied: array<int, string>, declined: array<int, array{file: string, line: int, reason: string}>, residue: array<int, array{file: string, line: int, text: string}>}
+     * @return array{changes: array<string, array{before: string, after: string, kinds: array<int, string>}>, applied: array<int, string>, declined: array<int, array{file: string, line: int, reason: string}>, residue: array<int, array{file: string, line: int, text: string}>, brand_skipped: array<string, array{line: int, name: string, value: string}>}
      */
     protected function analyse(string $root, array $scan, array $overlay): array
     {
@@ -108,6 +109,7 @@ class Upgrade
         $applied = [];
         $declined = [];
         $residue = [];
+        $brandSkipped = [];
 
         $read = function (string $relative) use ($root, &$texts, &$originals, $overlay): ?string {
             if (! array_key_exists($relative, $texts)) {
@@ -137,6 +139,10 @@ class Upgrade
 
             if ($details['declined'] !== null) {
                 $declined[] = ['file' => $relative, 'line' => 1, 'reason' => $details['declined']];
+            }
+
+            if ($details['brand_skipped'] !== null && $result !== $text) {
+                $brandSkipped[$relative] = $details['brand_skipped'];
             }
 
             if ($result !== $text) {
@@ -275,7 +281,7 @@ class Upgrade
         ksort($changes);
         usort($declined, fn ($a, $b) => [$a['file'], $a['line']] <=> [$b['file'], $b['line']]);
 
-        return compact('changes', 'applied', 'declined', 'residue');
+        return ['changes' => $changes, 'applied' => $applied, 'declined' => $declined, 'residue' => $residue, 'brand_skipped' => $brandSkipped];
     }
 
     /**
@@ -1258,6 +1264,21 @@ class Upgrade
 
             $entries++;
             $accent = $this->css->accent($this->lf($text));
+            $skipped = $plan['brand_skipped'][$relative] ?? null;
+            $elsewhere = $this->css->accentLine($this->lf($text));
+
+            if ($skipped) {
+                $lines[] = '`'.$relative.':'.$skipped['line'].'` sets `'.$skipped['name'].'`, so your `--color-primary: '.$skipped['value'].'` was not copied as the accent; set `--color-accent` in `@theme` if it is your brand. Do not set `accent-foreground` unless you must.';
+
+                continue;
+            }
+
+            if (! $accent && $elsewhere) {
+                $lines[] = '`'.$relative.':'.$elsewhere['line'].'` sets `'.$elsewhere['name'].'`, and `@theme` sets no `--color-accent`. Check it is your brand colour, and set `--color-accent` in `@theme` if it should apply everywhere. Do not set `accent-foreground` unless you must.';
+
+                continue;
+            }
+
             $lines[] = $accent
                 ? '`'.$relative.':'.$accent['line'].'` sets `--color-accent: '.$accent['value'].';`. Check it is your brand colour. Do not set `accent-foreground` unless you must.'
                 : '`'.$relative.'` sets no `--color-accent`, so the accent is atom\'s default: near-black (`#1c1b18`) in light, near-white (`#ecebe8`) in dark. Set your brand colour in `@theme`. v3\'s `primary` and `accent` are not copied unless `primary` was your own colour.';

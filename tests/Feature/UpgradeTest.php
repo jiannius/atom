@@ -604,6 +604,65 @@ CSS);
             ->and($result['css'])->toContain('--color-accent: #c0392b;')->not->toContain('yellow-500');
     });
 
+    it('still moves the brand when the only other mention of an accent is not a declaration', function (string $extra) {
+        $result = (new UpgradeCss)->rewrite("@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n@theme {\n    --color-primary: #c0392b;\n    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500);\n}\n".$extra, 'resources/css/app.css');
+
+        expect($result['brand'])->toBe('#c0392b')
+            ->and($result['brand_skipped'])->toBeNull()
+            ->and($result['css'])->toContain('--color-accent: #c0392b;')->not->toContain('yellow-500');
+    })->with([
+        'a string' => [".x::before { content: \"--color-accent: red\"; }\n"],
+        'an unquoted url()' => [".x { background: url(data:image/svg+xml;--color-accent:x); }\n"],
+        'an attribute selector' => ["[style*=\"--color-accent:\"] { outline: 1px solid; }\n"],
+        'another token that ends in the name' => [".x { --brand--color-accent: 1; --tw-color-accent: 1; }\n"],
+        'another token that starts with the name' => [".x { --color-accent-hover: red; }\n"],
+        'a use of the token as a value' => [".x { color: var(--color-accent); }\n"],
+    ]);
+
+    it('says why no brand was added, and does not claim the accent is unset', function () {
+        $dir = ($this->host)(false);
+        $css = "@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n@theme {\n    --color-primary: #c0392b;\n    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500);\n}\n\n.marketing {\n    --color-accent: #0af;\n}\n";
+        file_put_contents($dir.'/resources/css/scoped.css', $css);
+
+        $result = (new UpgradeCss)->rewrite($css, 'resources/css/scoped.css');
+
+        expect($result['brand'])->toBeNull()
+            ->and($result['brand_skipped'])->toBe(['line' => 9, 'name' => '--color-accent', 'value' => '#c0392b']);
+
+        foreach ([1, 2] as $run) {
+            upgradeCodemodRun($dir);
+            $todo = file_get_contents($dir.'/ATOM-UPGRADE-TODO.md');
+
+            expect($todo)->not->toContain('`resources/css/scoped.css` sets no `--color-accent`')
+                ->and($todo)->toContain('`resources/css/scoped.css:');
+        }
+
+        expect($todo)->toContain('sets `--color-accent`, and `@theme` sets no `--color-accent`');
+    });
+
+    it('names the surviving accent and the primary that was not copied, in the run that skipped it', function () {
+        $dir = ($this->host)(false);
+        file_put_contents($dir.'/resources/css/scoped.css', "@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n@theme {\n    --color-primary: #c0392b;\n    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500);\n}\n\n.marketing {\n    --color-accent: #0af;\n}\n");
+
+        [, $output] = upgradeCodemodRun($dir, dry: true);
+
+        expect($output)->toContain('`resources/css/scoped.css:9` sets `--color-accent`, so your `--color-primary: #c0392b` was not copied as the accent; set `--color-accent` in `@theme` if it is your brand.');
+    });
+
+    it('takes an import in a string continued over a line for no import, and a path that only ends in vendor/ for none', function () {
+        $css = new UpgradeCss;
+        $escaped = "@import 'tailwindcss';\n@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n.x::after {\n    content: \"see \\\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\";\n}\n";
+        $result = $css->rewrite($escaped, 'resources/css/app.css');
+
+        expect($css->hasEntryImport($escaped))->toBeFalse()
+            ->and($result['added'])->toBe(["@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css'"])
+            ->and($result['css'])->toContain("@import 'tailwindcss';\n@import '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n")
+            ->and($css->hasEntryImport("@import 'tailwindcss';\n@import '../../myvendor/jiannius/atom/resources/css/atom.tailwind.css';\n"))->toBeFalse()
+            ->and($css->hasEntryImport("@import 'tailwindcss';\n@import 'vendor/jiannius/atom/resources/css/atom.tailwind.css';\n"))->toBeTrue()
+            ->and($css->hasEntryImport("@import 'tailwindcss';\n@IMPORT '../../vendor/jiannius/atom/resources/css/atom.tailwind.css';\n"))->toBeTrue()
+            ->and($css->hasEntryImport("@import 'tailwindcss';\n@import url(vendor/jiannius/atom/resources/css/atom.tailwind.css);\n"))->toBeTrue();
+    });
+
     it('reads atom\'s import in the other spellings, and adds no second one', function (string $line) {
         $css = new UpgradeCss;
         $input = "@import 'tailwindcss';\n".$line."@source '../../vendor/jiannius/atom/resources/**/*.blade.php';\n\n@theme {\n    --color-muted: var(--color-zinc-500);\n    --color-accent: var(--color-yellow-500);\n}\n";
