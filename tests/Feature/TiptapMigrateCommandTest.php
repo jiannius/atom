@@ -1070,6 +1070,54 @@ describe('atom:tiptap-migrate: models and connections', function () {
 
         expect(migrateIsDocument(migrateBody($id)))->toBeFalse();
     });
+
+    it('names the missing class when a model cannot be loaded, and fails the v4 gate', function () {
+        $dir = realpath(__DIR__.'/../Fixtures/MigrateMissingParent');
+        $autoload = function (string $class) use ($dir) {
+            if ($class === 'App\\Models\\MissingParentModel') {
+                require_once $dir.'/MissingParentModel.php';
+            }
+        };
+
+        spl_autoload_register($autoload);
+
+        try {
+            $this->artisan('atom:tiptap-migrate', ['--status' => true, '--for-v4' => true, '--path' => [$dir]])
+                ->expectsOutputToContain('App\\Models\\MissingParentModel: Error: Class "Vendor\\NotInstalled\\Models\\Base" not found')
+                ->assertFailed();
+        }
+        finally {
+            spl_autoload_unregister($autoload);
+        }
+    });
+});
+
+describe('atom:tiptap-migrate: describing a failure', function () {
+    it('says what an engine Error says, because it names code and not data', function () {
+        expect(EditorBackups::describe(new \Error('Class "X" not found')))->toBe('Error: Class "X" not found');
+        expect(EditorBackups::describe(new \TypeError('f(): Argument #1 must be of type int')))->toBe('TypeError: f(): Argument #1 must be of type int');
+    });
+
+    it('caps an engine Error message and scrubs invalid UTF-8', function () {
+        $described = EditorBackups::describe(new \Error(str_repeat('é', 500)));
+
+        expect(mb_strlen($described))->toBe(300);
+        expect(mb_check_encoding(EditorBackups::describe(new \Error("bad \xFF byte")), 'UTF-8'))->toBeTrue();
+    });
+
+    it('still keeps SQL and bound values out of a database error', function () {
+        $e = new \Illuminate\Database\QueryException('default', 'select * from users where email = ?', ['secret@example.com'], new \PDOException('SQLSTATE[23000]: secret@example.com'));
+        $e->errorInfo = ['23000', 1062, 'Duplicate entry secret@example.com'];
+
+        $described = EditorBackups::describe($e);
+
+        expect($described)->toBe('QueryException (SQLSTATE 23000, driver code 1062)');
+        expect($described)->not->toContain('secret')->not->toContain('select');
+    });
+
+    it('still shows only the class of any other exception', function () {
+        expect(EditorBackups::describe(new \RuntimeException('secret value')))->toBe('RuntimeException');
+    });
 });
 
 describe('atom:tiptap-migrate: the docs', function () {
