@@ -25,7 +25,7 @@
      what that exposes, `-mb-6` absorbs the padding once the scroll reaches the end, and -mx-6/px-6 lets the
      background and the divider span the full width. --}}
 @php
-$hasStart = isset($start) && $start->isNotEmpty();
+$hasStart = isset($start) && $start->hasActualContent();
 $stickyBar = $sticky && ! $bar;
 @endphp
 

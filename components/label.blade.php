@@ -15,7 +15,7 @@ $classes = Arr::toCssClasses([
 ]);
 @endphp
 
-@if (isset($actions) && $actions->isNotEmpty())
+@if (isset($actions) && $actions->hasActualContent())
     <div class="group flex items-center gap-2 justify-between">
         <atom:label :attributes="$attributes">
             {{ $slot }}

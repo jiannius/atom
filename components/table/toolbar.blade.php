@@ -26,7 +26,7 @@
      wide end group wraps under the start group instead of squeezing the search. The row count is hidden on a phone (the pager shows the
      range there), so it never takes the room an icon-only end group shares with the search. --}}
 @php
-$hasEnd = isset($end) && $end->isNotEmpty();
+$hasEnd = isset($end) && $end->hasActualContent();
 $hasCount = (bool) $count;
 @endphp
 

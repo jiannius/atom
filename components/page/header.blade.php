@@ -14,7 +14,15 @@
      parent crumb holding record data must not contain one. `facts` is a list of strings or
      `['label' => ..., 'value' => ..., 'mono' => true]`. `title`, labels and values print as text. It is pure Blade and CSS, so it also renders in a
      modal or a slide-over (a form, never a whole record): pass `size="sm"` and `level="2"` there (the overflow trigger follows it, and so should the buttons you pass: default size on a page, `sm` there). Use the shell's own
-     `crumbs` slot OR `crumbs` here, not both. --}}
+     `crumbs` slot OR `crumbs` here, not both.
+     Where the actions go is decided by the header's own width, never by how long the title or the meta line is, so two pages of one
+     app lay out alike. The header is a container (`@container`); from 48rem (`@3xl`: 768px, the width where a title column of about
+     370px is left beside an action group of three buttons) the actions sit beside the title block, bottom-aligned, and the title
+     wraps inside its column; narrower, the title block takes the whole row (`basis-full`) and the actions are on a row of their own
+     below, at the start. `size="sm"` (a modal or a slide-over, always narrower than that) keeps the old rule: the actions share the
+     row when they fit and wrap when they do not.
+     A slot counts as content only if it holds more than comments and whitespace (hasActualContent), so a slot made of `@if`
+     blocks that all come out false in a Livewire view, which still prints its `<!--[if BLOCK]-->` markers, draws nothing. --}}
 @php
 $level = in_array((int) $level, [1, 2, 3], true) ? (int) $level : 1;
 $el = 'h'.$level;
@@ -30,12 +38,19 @@ $items = collect($facts)->map(fn ($fact) => is_scalar($fact)
     : ['label' => data_get($fact, 'label'), 'value' => data_get($fact, 'value'), 'mono' => (bool) data_get($fact, 'mono'), 'plain' => false]
 )->filter(fn ($fact) => filled($fact['value']))->values();
 
-$has = fn ($s) => isset($s) && $s->isNotEmpty();
+/* A slot counts only when it holds something other than comments and whitespace: in a Livewire component a slot made of `@if`
+   blocks that all come out false is still `<!--[if BLOCK]><![endif]-->` markers, which isNotEmpty() takes for content and
+   would draw an empty overflow button and a wrapper around nothing. */
+$has = fn ($s) => isset($s) && $s->hasActualContent();
 $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? null);
 @endphp
 
-<header {{ $attributes->class('flex flex-wrap items-end justify-between gap-x-6 gap-y-3.5') }} data-atom-page-header>
-    <div class="min-w-0 max-w-full grow">
+<header {{ $attributes->class([
+    'flex flex-wrap items-end justify-between gap-x-6 gap-y-3.5',
+    // a container: where the actions go is the header's own width, not how long the title or the meta line is
+    '@container w-full' => ! $small,
+]) }} data-atom-page-header>
+    <div @class(['min-w-0 max-w-full grow', 'basis-full @3xl:basis-0' => ! $small])>
         @if ($trail->isNotEmpty())
             <nav aria-label="{{ t('Breadcrumb') }}" class="mb-2" data-atom-page-crumbs>
                 <ol class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-fg-subtle">
@@ -99,7 +114,7 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
     </div>
 
     @if ($hasActions)
-        <div class="flex flex-wrap items-center gap-1.5" data-atom-page-actions>
+        <div @class(['flex flex-wrap items-center gap-1.5', 'max-w-full' => ! $small]) data-atom-page-actions>
             @if ($has($actions ?? null))
                 {{ $actions }}
             @endif

@@ -292,7 +292,7 @@ x-on:keyup.space.prevent=""
                 </template>
             </div>
 
-            @if (isset($actions) && $actions->isNotEmpty())
+            @if (isset($actions) && $actions->hasActualContent())
                 <div x-show="options.length || !loading" class="border-t border-border mt-1 pt-1">
                     {{ $actions }}
                 </div>
