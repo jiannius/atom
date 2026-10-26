@@ -21,6 +21,10 @@
      wraps inside its column; narrower, the title block takes the whole row (`basis-full`) and the actions are on a row of their own
      below, at the start. `size="sm"` (a modal or a slide-over, always narrower than that) keeps the old rule: the actions share the
      row when they fit and wrap when they do not.
+     A size container takes its width from its parent alone (its content cannot size it), so the default header needs a parent that gives
+     it one: a block does (the page column, the shells, <atom:page>). In a flex row put `flex-1 min-w-0` on it; in an `inline-block`, a
+     `w-fit` box or an `auto` grid column it collapses to nothing (the title wraps a letter a line), and in a content-sized modal it no
+     longer widens the dialog: a modal or slide-over takes `size="sm"`, which is not a container.
      A slot counts as content only if it holds more than comments and whitespace (hasActualContent), so a slot made of `@if`
      blocks that all come out false in a Livewire view, which still prints its `<!--[if BLOCK]-->` markers, draws nothing. --}}
 @php
