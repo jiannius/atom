@@ -12,11 +12,14 @@
      truncates the current page. It decides by measuring (see `fit()`): every crumb is always in the list, and a hidden one is
      taken out of the flow but kept measurable (`absolute invisible`), so the width of a crumb never depends on whether it shows.
 
+     When the trail prints nothing (no crumb, or one crumb above a page.header, or one with `heading="false"`) and it is all a shell's
+     bar holds, breadcrumbs.js marks the bar empty (`data-atom-header-empty`) so it is not drawn: see `syncHeader()`.
+
      A binding inside an x-for clone reads only its `item`: a field that moves with `labels` or the open state goes stale
      (CLAUDE.md, Calendar), so every flag the row needs is computed into `entries` in breadcrumbs.js. --}}
 
 <div
-x-data="breadcrumbs()"
+x-data="breadcrumbs({ heading: @js((bool) $heading) })"
 x-on:navigate-back.window="back()"
 x-on:livewire:navigated.window="build()"
 x-on:livewire:navigate.window="getLatestHref($event)"

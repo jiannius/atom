@@ -8,15 +8,22 @@
 ])
 
 @php
+/* A chip never grows the field: the field is min-h-control with 3px of padding above and below its 1px border, and the chip (and
+   the input beside it, h-control-xs) is the control height less those 8px, so one row of chips is as tall as the empty field at every
+   density and sits centred. Chips that do not fit wrap onto another row, and that row grows the field; a
+   chip wider than the field is capped at it and its text truncates (the full address is its title). The remove button's hit area (an ::after) reaches 3px past
+   the content box above and below, so it is 24px high at the compact density without growing the chip; the field's root is min-w-0
+   so a long chip cannot widen a grid or flex parent. */
 $classes = Arr::toCssClasses([
-    'min-h-control w-full py-0.5 no-spinner rounded-control border bg-surface text-sm text-fg',
-    'flex items-center gap-1.5 flex-wrap',
+    'min-h-control w-full py-[3px] no-spinner rounded-control border bg-surface text-sm text-fg',
+    'flex items-center gap-1 flex-wrap',
     $invalid ? 'has-[:focus-visible]:border-danger-fg' : 'has-[:focus-visible]:border-focus',
     'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
     $invalid ? 'border-danger-fg' : 'border-control-border',
     'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
     $icon ? 'pl-8' : 'pl-2.5',
-    $clearable ? 'pr-8' : 'pr-2.5',
+    /* pr-9: the clear button is 36px wide (16px icon, 10px each side), so a chip that fills the row ends where it starts */
+    $clearable ? 'pr-9' : 'pr-2.5',
 ]);
 @endphp
 
@@ -28,7 +35,7 @@ x-on:keydown.down.prevent="keyDown()"
 x-on:keydown.enter.stop.prevent="keyEnter()"
 x-on:keydown.space.stop.prevent="keyEnter()"
 x-on:keydown.;.prevent="keyEnter()"
-class="group/input relative w-full block"
+class="group/input relative w-full min-w-0 block"
 {{ $attributes->except(['id', 'type', 'name', 'class', 'placeholder', 'required', 'invalid', 'disabled', 'readonly']) }}
 data-atom-input-email>
     <atom:dropdown>
@@ -38,10 +45,10 @@ data-atom-input-email>
                 x-bind:class="validate(val.email)
                 ? 'bg-surface-sunken border-border-strong text-fg-muted'
                 : 'bg-danger-bg border-danger-fg text-danger-fg'"
-                class="shrink-0 rounded-nav border text-sm py-px pl-2 inline-flex items-center">
-                    <div x-text="`${val.name} <${val.email}>`"></div>
-                    <button type="button" x-on:click="remove(val.email)" x-bind:aria-label="`{{ t('Remove') }} ${val.email}`" class="shrink-0 flex items-center justify-center px-1.5">
-                        <atom:icon.close class="size-4" />
+                class="shrink-0 h-control-xs max-w-full min-w-0 rounded-nav border text-xs pl-2 inline-flex items-center">
+                    <div x-text="`${val.name} <${val.email}>`" x-bind:title="`${val.name} <${val.email}>`" class="min-w-0 truncate"></div>
+                    <button type="button" x-on:click="remove(val.email)" x-bind:aria-label="`{{ t('Remove') }} ${val.email}`" class="relative shrink-0 h-full flex items-center justify-center px-1.5 after:absolute after:inset-x-0 after:-inset-y-[3px]" data-atom-chip-remove>
+                        <atom:icon.close class="size-3.5" />
                     </button>
                 </div>
             </template>
@@ -50,7 +57,7 @@ data-atom-input-email>
             type="email"
             x-model="text"
             x-on:blur="text && keyEnter()"
-            class="flex-1 h-5 focus-visible:outline-none appearance-none bg-transparent placeholder:text-fg-subtle"
+            class="flex-1 h-control-xs focus-visible:outline-none appearance-none bg-transparent placeholder:text-fg-subtle"
             {{ $attributes->merge([
                 'invalid' => $invalid,
                 'placeholder' => t($placeholder),

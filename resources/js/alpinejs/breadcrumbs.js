@@ -13,6 +13,9 @@ export default (config) => {
         // oldest first. Decided by fit() from what the crumbs measure, never by a fixed count.
         hiddenCount: 0,
 
+        // whether build() has read a page yet: before it the trail is empty because nothing has loaded, not because there is nothing to show
+        built: false,
+
         init () {
             // A page.header can also appear after navigation, when a Livewire update renders it (an `@if ($record)`, a lazy
             // component), so read it again after every morph. Kept on the element, so a re-run init() drops its earlier registration.
@@ -20,6 +23,7 @@ export default (config) => {
             this.$root._atomBreadcrumbsStopMorph = onMorphed(() => {
                 this.readPageHeader()
                 this.fit()
+                this.syncHeader()
             })
 
             // The room the trail has changes with the window, the shell's bar and the web font, none of which is a Livewire
@@ -63,6 +67,44 @@ export default (config) => {
 
         readPageHeader () {
             this.hasPageHeader = !!document.body.querySelector('[data-atom-main] h1[data-atom-page-header-title]')
+        },
+
+        // whether the trail prints nothing at all: no crumb, or the single crumb's heading the page header makes redundant
+        // (or `heading="false"` turned off). Mirrors the two templates in breadcrumbs.blade.php.
+        get isEmpty () {
+            let count = this.breadcrumbs.length
+
+            return count === 0 || (count === 1 && (config?.heading === false || this.hasPageHeader))
+        },
+
+        // A shell's bar (layouts.sidebar, data-atom-header-crumbs-only) or crumbs row (layouts.header) that holds nothing but
+        // this trail is not drawn while the trail prints nothing. The layout starts that on the server for a trail of one crumb above
+        // a page.header (the page mounted before it rendered); this is the authority, and it takes the mark off again when its own
+        // answer is "not empty". Reads the DOM it is in, every time: the trail is persisted across wire:navigate, but the bar is the new
+        // page's, so it is marked again after every navigation. Until the trail has been built it leaves the server's mark alone
+        // (a bar that starts hidden would pop in on every page that has crumbs).
+        // A slot that holds anything besides the trail (or the element that persists it) is the host's, and is left alone.
+        // Atom::crumbsHoldOnlyTheTrail() (src/Atom.php) is this `alone` rule on the server: change one, change the other.
+        syncHeader () {
+            if (!this.built) return
+
+            let slot = this.$root?.closest?.('[data-atom-shell-crumbs]')
+            let target = slot?.closest('[data-atom-header-crumbs]') ?? slot?.closest('[data-atom-header][data-atom-header-crumbs-only]')
+
+            if (!slot || !target) return
+
+            // every node of the slot: comments and blank text are nothing, any other text is the host's own content, and an element
+            // is the trail or the element that persists it (whose only child element is the trail). Blank text is PHP's trim() set.
+            let alone = [...slot.childNodes].every((child) => {
+                if (child.nodeType === Node.COMMENT_NODE) return true
+                if (child.nodeType === Node.TEXT_NODE) return /^[ \t\n\r\0\x0B]*$/.test(child.textContent)
+                if (child.nodeType !== Node.ELEMENT_NODE) return false
+
+                return child === this.$root
+                    || (child.hasAttribute('x-persist') && child.children.length === 1 && child.firstElementChild === this.$root)
+            })
+
+            target.toggleAttribute('data-atom-header-empty', alone && this.isEmpty)
         },
 
         get breadcrumbs () {
@@ -202,10 +244,16 @@ export default (config) => {
             current.href = href
         },
 
-        // build the breadcrumbs trail
+        // read the page (its header, then its trail) and mark the shell's bar for what that leaves to show
         build () {
             this.readPageHeader()
+            this.buildTrail()
+            this.built = true
+            this.syncHeader()
+        },
 
+        // build the breadcrumbs trail
+        buildTrail () {
             // retrieve the breadcrumbs data from the atom component
             // match on wire:id rather than position: the sidebar layout puts an
             // sr-only <h1> in front of the Livewire root when the page has a title,

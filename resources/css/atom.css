@@ -242,6 +242,12 @@ dialog,
     }
 }
 
+/* layouts.header: the crumbs row is not drawn when the trail in it prints nothing (one crumb above a page.header, or none).
+   breadcrumbs.js marks it; without the row the page starts where it would with no crumbs slot at all. */
+[data-atom-header-crumbs][data-atom-header-empty] {
+    display: none;
+}
+
 /** Navigation shells. One <atom:navlist> markup serves layouts.sidebar and layouts.header: the sidebar is the
     look the components are written in; this block restyles the same elements as top-bar items inside
     [data-atom-nav-shell="header"] (the wrapper layouts.header puts around the nav slot).
@@ -668,6 +674,15 @@ dialog,
     to [popover] so an inline menu inside a dropdown is left alone. **/
 [data-atom-dropdown] [data-atom-menu][popover] {
     position: fixed;
+}
+
+/** Tooltip — a native [popover] too, and floating-ui places it in viewport coordinates, so it is fixed like the dropdown menu
+    above. A non-static position the component or a host's utility gave it (`relative`) is used as-is in the top layer and
+    resolves against the document, which draws the tooltip above its trigger by the page's scroll distance. **/
+[data-atom-tooltip-content][popover] {
+    position: fixed;
+    inset: auto;
+    margin: 0;
 }
 
 /** Page title — the sidebar layout's outline root. A real <h1> for assistive

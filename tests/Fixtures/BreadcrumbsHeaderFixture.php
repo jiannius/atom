@@ -14,11 +14,17 @@ class BreadcrumbsHeaderFixture extends Component
     public string $page = 'old';
 
     /**
+     * The query string the page was opened with, `?` included (?shell=header, ?actions=1), kept on the links between pages.
+     */
+    public string $carry = '';
+
+    /**
      * Keep the page the URL named: an update request is not on that URL.
      */
     public function mount(): void
     {
         $this->page = (string) request()->segment(4);
+        $this->carry = request()->getQueryString() ? '?'.request()->getQueryString() : '';
     }
 
     /**

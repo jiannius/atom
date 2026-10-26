@@ -667,6 +667,64 @@ describe('the shells\' slots', function () {
             ->and($has('', "<x-slot:crumbs>\nC\n</x-slot>"))->toBeFalse()
             ->and($has('', "<x-slot:actions>\nA\n</x-slot>"))->toBeFalse();
     });
+
+    it('marks a sidebar bar that holds only crumbs, for breadcrumbs.js to decide whether the trail prints anything', function () {
+        $only = fn (string $attrs, string $slots) => str_contains(
+            renderBlade('<atom:layouts.sidebar :vite="false" '.$attrs.">\n".$slots."\nx</atom:layouts.sidebar>"),
+            'data-atom-header-crumbs-only',
+        );
+
+        expect($only('', "<x-slot:crumbs>\nC\n</x-slot>"))->toBeTrue()
+            ->and($only('', ''))->toBeFalse()
+            ->and($only('dark', "<x-slot:crumbs>\nC\n</x-slot>"))->toBeFalse()
+            ->and($only('', "<x-slot:crumbs>\nC\n</x-slot><x-slot:actions>\nA\n</x-slot>"))->toBeFalse();
+    });
+});
+
+describe('a trail that prints nothing leaves out the empty bar on the first frame', function () {
+    // The page mounts before its layout renders, so WithBreadcrumbs has told the request how long its trail is.
+    $render = function (string $layout, ?int $crumbs, bool $pageHeader, bool $actions = false, bool $trail = true) {
+        request()->attributes->remove(\Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE);
+
+        if ($crumbs !== null) {
+            request()->attributes->set(\Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE, $crumbs);
+        }
+
+        return renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:crumbs>\n".($trail ? '<atom:breadcrumbs />' : 'Static')."\n</x-slot>\n"
+            .($actions ? "<x-slot:actions>\nA\n</x-slot>\n" : '')
+            .($pageHeader ? '<atom:page.header title="Invoices" />' : '<p>Body</p>')
+            .'</atom:'.$layout.'>');
+    };
+
+    // the node each shell leaves out: the sidebar's bar, the header shell's crumbs row
+    $node = fn (string $layout) => $layout === 'layouts.sidebar' ? '//header[@data-atom-header]' : '//*[@data-atom-header-crumbs]';
+    $empty = fn (string $html, string $layout) => count(domQuery($html, $node($layout).'[@data-atom-header-empty]')) === 1;
+
+    it('marks the bar empty for one crumb above a page.header', function (string $layout) use ($render, $empty) {
+        expect($empty($render($layout, 1, true), $layout))->toBeTrue();
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('does not for one crumb with no page.header, two crumbs, an unknown trail, or a slot that is not the trail', function (string $layout) use ($render, $empty) {
+        expect($empty($render($layout, 1, false), $layout))->toBeFalse()
+            ->and($empty($render($layout, 2, true), $layout))->toBeFalse()
+            ->and($empty($render($layout, 0, true), $layout))->toBeFalse()
+            ->and($empty($render($layout, null, true), $layout))->toBeFalse()
+            ->and($empty($render($layout, 1, true, trail: false), $layout))->toBeFalse();
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('keeps a sidebar bar that has actions', function () use ($render, $empty) {
+        expect($empty($render('layouts.sidebar', 1, true, actions: true), 'layouts.sidebar'))->toBeFalse();
+    });
+
+    it('is not fooled by an h1 that is not the page header\'s, or by a page header in the text', function (string $layout) use ($empty) {
+        request()->attributes->set(\Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE, 1);
+
+        $html = renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:crumbs>\n<atom:breadcrumbs />\n</x-slot>\n<h1>data-atom-page-header-title</h1><h2 data-atom-page-header-title>X</h2></atom:".$layout.'>');
+
+        expect($empty($html, $layout))->toBeFalse();
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    afterEach(fn () => request()->attributes->remove(\Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE));
 });
 
 describe('one nav slot in both shells', function () {
