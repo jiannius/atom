@@ -18,7 +18,7 @@
        bottom, as it does everywhere above it, instead of 120px up.
        The `start` slot is what sits at its start (live totals, "Unsaved changes"); the default slot is the buttons, at the end,
        full width on a phone. Put it last inside the page's form, and give the page its own bottom room (<atom:page> does).
-       The submit button is the screen's one primary action.
+       The submit button is the screen's one primary action. A bottom <atom:toast> sits above the bar while one is on screen (helpers/toast-lift.js).
      The bleed of `sticky` in a modal rests on the p-6 the modal draws: a sticky element is held inside its scroll
      container's CONTENT box, so `bottom-0` would park it a padding's height above the panel edge and a strip of
      scrolling content would stay visible underneath. `-bottom-6` moves the stop to the panel edge, `pb-6` refills

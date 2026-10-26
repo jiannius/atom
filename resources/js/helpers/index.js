@@ -11,6 +11,7 @@ import confirm from './confirm'
 import floatingui from './floatingui'
 import recaptcha from './recaptcha'
 import safeUrl from './safe-url'
+import toastLift from './toast-lift'
 
 export default {
     alert,
@@ -25,6 +26,7 @@ export default {
     floatingui,
     recaptcha,
     safeUrl,
+    toastLift,
 
     ajax: (url, headers = null) => new ajax(url, headers),
     json: (data) => JSON.stringify(data, null, 2),

@@ -10,6 +10,9 @@ $config = [
 
 {{-- atom-toast-close with a source (onClose) closes only a toast that was shown with that same
      source, so a form closing its own error toast can't take the app's own Saved toast with it.
+     A toast at the bottom is lifted above a pinned save bar (<atom:form.actions bar>) that is on screen, so it never covers the
+     Save button: helpers/toast-lift.js writes an inline margin-bottom on this root while it is open (and writes it again after
+     a Livewire morph, which strips it). The root therefore transitions opacity and scale only, so the lift follows the bar at once.
      With no source it closes whatever is open. role=status: the toast is a live region, so a
      screen reader announces a saved or failed message without it taking focus. --}}
 <div
@@ -17,6 +20,8 @@ role="status"
 aria-live="polite"
 x-data="{
     timer: null,
+    unlift: null,
+    open: false,
     config: {},
 
     showToast (e) {
@@ -26,9 +31,14 @@ x-data="{
         else this.config = { ...@js($config), ...e.detail }
 
         this.$nextTick(() => {
-            this.$root.showPopover()
-            this.$root.classList.add('scale-100')
-            this.$root.classList.add('opacity-100')
+            {{-- two shows in one tick queue two of these: the second replaces the first's timer and lift, which it must stop first --}}
+            clearTimeout(this.timer)
+            this.unlift?.()
+            this.unlift = null
+
+            if (! this.$root.matches(':popover-open')) this.$root.showPopover()
+            if (this.config.position === 'bottom') this.unlift = atom.toastLift(this.$root)
+            this.open = true
             if (this.config.delay) this.timer = setTimeout(() => this.closeToast(), this.config.delay)
         })
     },
@@ -36,9 +46,15 @@ x-data="{
     closeToast () {
         clearTimeout(this.timer)
 
+        this.unlift?.()
+        this.unlift = null
         this.$root.hidePopover()
-        this.$root.classList.remove('scale-100')
-        this.$root.classList.remove('opacity-100')
+        this.open = false
+    },
+
+    destroy () {
+        clearTimeout(this.timer)
+        this.unlift?.()
     },
 
     onClose (e) {
@@ -61,6 +77,7 @@ x-on:atom-toast-show.window="showToast"
 x-on:atom-toast-close.window="onClose"
 x-on:click="onClick"
 x-bind:class="{
+    'opacity-100 scale-100': open,
     'mt-auto': config.position === 'bottom',
     'my-auto': config.position === 'center',
     'ml-auto': config.align === 'right',
@@ -68,7 +85,7 @@ x-bind:class="{
     'mx-auto': config.align === 'center',
     'cursor-pointer': atom.safeUrl(config.navigate) || atom.safeUrl(config.url),
 }"
-class="p-6 bg-transparent opacity-0 scale-75 transition-all duration-100"
+class="p-6 bg-transparent opacity-0 scale-75 transition-[opacity,scale] duration-100"
 data-atom-toast
 popover="manual">
     {{-- A raised layer, like every overlay: the raised surface, the strong hairline, the one shadow token. The tone is the icon's
