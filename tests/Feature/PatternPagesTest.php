@@ -62,7 +62,7 @@ describe('pattern pages', function () {
 
         expect(domQuery($html, '//main//*[@data-atom-badge]'))->toBeEmpty()
             ->and(domQuery($html, '//main//*[@data-atom-table][@data-atom-table-frameless]'))->toHaveCount(1)
-            ->and(domClasses(domQuery($html, '//main//*[@data-atom-table]/..')[0]))->toContain('rounded-panel', 'overflow-hidden')
+            ->and(domClasses(domQuery($html, '//main//*[@data-atom-table]/..')[0]))->toContain('rounded-panel', 'overflow-clip')
             // money: numeric on the column and the cell, named once in the header
             ->and(trim(domQuery($html, '//main//thead//th[contains(@class, "text-right")]')[0]->textContent))->toBe('Amount (RM)')
             ->and(domQuery($html, '//main//tbody/tr/td[contains(@class, "tabular-nums")]'))->toHaveCount(4)

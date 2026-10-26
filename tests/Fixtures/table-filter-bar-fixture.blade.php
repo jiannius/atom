@@ -1,7 +1,7 @@
 <div>
     <button type="button" wire:click="bump" data-testid="bump">Bump {{ $ticks }}</button>
 
-    <atom:table :paginate="$plain ? null : $items" frameless :empty="false">
+    <atom:table :paginate="$plain ? null : $items" :frameless="$frameless" :empty="false" :sticky-pager="$stickyPager">
         <x-slot:header>
             <atom:table.toolbar :count="$count">
                 <atom:table.search wire:model.live.debounce.150ms="filters.search" placeholder="Search items" />
@@ -38,6 +38,11 @@
             <atom:table.column>Name</atom:table.column>
             <atom:table.column>Status</atom:table.column>
             <atom:table.column>Tag</atom:table.column>
+            @if ($wide)
+                @for ($i = 1; $i <= 12; $i++)
+                    <atom:table.column>Column {{ $i }}</atom:table.column>
+                @endfor
+            @endif
         </x-slot:columns>
 
         <x-slot:rows>
@@ -46,6 +51,11 @@
                     <atom:table.cell data-name="{{ $row['name'] }}">{{ $row['name'] }}</atom:table.cell>
                     <atom:table.cell>{{ $row['status'] }}</atom:table.cell>
                     <atom:table.cell>{{ $row['tag'] }}</atom:table.cell>
+                    @if ($wide)
+                        @for ($i = 1; $i <= 12; $i++)
+                            <atom:table.cell>A long value in column {{ $i }}</atom:table.cell>
+                        @endfor
+                    @endif
                 </atom:table.row>
             @endforeach
         </x-slot:rows>

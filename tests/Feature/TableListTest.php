@@ -13,7 +13,7 @@ function tableHtml(string $attributes = '', string $rows = '<atom:table.row><ato
 describe('frameless', function () {
     it('draws the table in its own panel by default', function () {
         $html = tableHtml();
-        $frame = domQuery($html, '//*[@data-atom-table]/div/div[contains(@class, "overflow-hidden")]');
+        $frame = domQuery($html, '//*[@data-atom-table]/div/div[contains(@class, "overflow-clip")]');
 
         expect($frame)->toHaveCount(1)
             ->and(domClasses($frame[0]))->toContain('border', 'bg-surface', 'rounded-panel')
@@ -150,6 +150,32 @@ describe('toolbar on a phone', function () {
         expect($alone)->toContain('basis-full')->not->toContain('basis-48')
             ->and($shared)->toContain('basis-48')->not->toContain('basis-full')->not->toContain('basis-0')
             ->and($trashed)->toContain('basis-48')->not->toContain('basis-full')->not->toContain('basis-0');
+    });
+});
+
+describe('the pinned pager', function () {
+    $paginator = fn () => new \Illuminate\Pagination\LengthAwarePaginator(collect(range(1, 50)), 128, 50, 1, ['path' => '/']);
+    $pager = fn (string $attributes = '') => domQuery(renderBlade('<atom:table :paginate="$p" :empty="false" '.$attributes.'><x-slot:rows>x</x-slot:rows></atom:table>', ['p' => (new \Illuminate\Pagination\LengthAwarePaginator(collect(range(1, 50)), 128, 50, 1, ['path' => '/']))]), '//nav')[0];
+
+    it('is pinned to the bottom of whatever scrolls: sticky, a raised surface with its own hairline above it', function () use ($pager) {
+        expect(domClasses($pager()))->toContain('sticky', 'bottom-0', 'z-10', '-mt-px', 'border-t', 'border-border', 'bg-surface/95', 'backdrop-blur-sm');
+    });
+
+    it('stays in flow on a page that has a save bar, where two pinned bars would cover each other', function () use ($pager) {
+        expect(domClasses($pager()))->toContain('[body:has([data-atom-save-bar])_&]:static');
+    });
+
+    it('is switched off with sticky-pager="false" on the table, or sticky="false" on the pagination', function () use ($pager) {
+        expect(domClasses($pager(':sticky-pager="false"')))->not->toContain('sticky')->not->toContain('backdrop-blur-sm')
+            ->and(domClasses(domQuery(renderBlade('<atom:table.pagination :paginate="$p" :sticky="false" />', ['p' => new \Illuminate\Pagination\LengthAwarePaginator(collect(range(1, 50)), 128, 50, 1, ['path' => '/'])]), '//nav')[0]))->not->toContain('sticky');
+    });
+
+    it('is the last thing in the table box, outside the sideways scroll box, and the box clips instead of hiding its overflow', function () use ($pager) {
+        $html = renderBlade('<atom:table :paginate="$p" :empty="false"><x-slot:rows>x</x-slot:rows></atom:table>', ['p' => new \Illuminate\Pagination\LengthAwarePaginator(collect(range(1, 50)), 128, 50, 1, ['path' => '/'])]);
+
+        expect(domQuery($html, '//*[@data-atom-table-scroll]//nav'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-table-scroll]/following-sibling::nav'))->toHaveCount(1)
+            ->and(domClasses(domQuery($html, '//*[@data-atom-table-scroll]/..')[0]))->toContain('overflow-clip')->not->toContain('overflow-hidden');
     });
 });
 

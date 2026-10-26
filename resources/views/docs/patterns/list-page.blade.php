@@ -3,8 +3,10 @@
      structure, not the data.
 
      The rules this page follows:
-     - The panel is the host's: `rounded-panel border bg-surface overflow-hidden`. Everything in it (views, toolbar, rows, footer)
-       is separated by hairlines, so the table is `frameless`; a table on its own, with no panel around it, stays framed.
+     - The panel is the host's: `rounded-panel border bg-surface overflow-clip`. Everything in it (views, toolbar, rows, footer)
+       is separated by hairlines, so the table is `frameless`; a table on its own, with no panel around it, stays framed. The panel
+       clips (`overflow-clip`) rather than hides: a hidden overflow makes the panel a scroll container, and the table's pager, which
+       is pinned to the bottom of the screen while the table runs past it, would stick to a panel that never scrolls.
      - ONE primary action: the header's "New invoice". The toolbar's buttons are plain, and so is the header's secondary "Import".
      - Filters are sentence pills after the search, in the toolbar (`<atom:table.filters chips="inline">`): an active one reads
        "Issued is 01 Apr 2026 to 31 Oct 2026" with an x, and a filter that is not set is a dashed "+ Customer" pill (`add` on a select
@@ -115,7 +117,7 @@ $money = fn (float $amount) => number_format($amount, 2);
             <atom:stat label="Drafts" :value="(string) $counts['draft']" breakdown="not sent yet" href="?view=draft"/>
         </atom:stat.group>
 
-        <div class="min-w-0 overflow-hidden rounded-panel border bg-surface" data-testid="list-panel">
+        <div class="min-w-0 overflow-clip rounded-panel border bg-surface" data-testid="list-panel">
             <atom:table.views label="Invoice views" :counts="$counts" :current="$view">
                 <atom:table.views.item value="all" label="All" href="?view=all"/>
                 <atom:table.views.item value="unpaid" label="Unpaid" href="?view=unpaid"/>
