@@ -72,25 +72,40 @@ test('links the trigger to its content via aria-describedby', async ({ page }) =
 // A tooltip is a top-layer popover that floating-ui places in viewport coordinates. A non-static `position` on it is
 // used as-is in the top layer and resolves against the document, so it was drawn above its trigger by the scroll distance.
 // Needs the consumer build (`node tests/consumer/build.mjs`), whose `relative` utility is what exposed it.
+// The page is scrolled to a stated distance BEFORE the hover and the trigger is in view there, so the hover scrolls nothing:
+// `scrollY` is asserted before and after, so the measurement really runs at that scroll.
+const CASES = [
+  // [trigger, the scroll the page is put at]
+  ['tip-top', 0],
+  ['tip-middle', 1000],
+  ['tip-middle', 1200],
+  ['tip-bottom', 2700],
+]
+
 for (const tw of ['floor', 'latest']) {
-  for (const scroll of [0, 740, 1233]) {
-    test(`a tooltip sits against its trigger, page scrolled ${scroll}px (${tw})`, async ({ page }) => {
+  for (const [id, scroll] of CASES) {
+    test(`a tooltip sits against its trigger: ${id}, page scrolled ${scroll}px (${tw})`, async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 720 })
       await page.goto(`/atom/e2e/tooltip-scroll?tw=${tw}`)
       await page.evaluate((y) => window.scrollTo(0, y), scroll)
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(r)))
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scroll)
 
-      const trigger = page.getByTestId('tip-trigger')
-      const content = page.locator('[data-atom-tooltip-content]')
+      const trigger = page.getByTestId(id)
+      const inView = await trigger.evaluate((el) => { const r = el.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight })
+      expect(inView, 'the trigger is in view, so the hover does not scroll').toBe(true)
 
       await trigger.hover()
-      await expect(content).toBeVisible()
+      await expect(page.locator(`[data-testid="${id.replace('tip-', 'tip-root-')}"] [data-atom-tooltip-content]`)).toBeVisible()
 
+      expect(await page.evaluate(() => window.scrollY), 'the page is still at the stated scroll when measured').toBe(scroll)
+
+      const tooltip = page.locator(`[data-testid="${id.replace('tip-', 'tip-root-')}"] [data-atom-tooltip-content]`)
       const box = await trigger.boundingBox()
-      const tip = await content.boundingBox()
+      const tip = await tooltip.boundingBox()
 
       expect(Math.abs(tip.y + tip.height - box.y), 'the tooltip ends just above its trigger').toBeLessThan(10)
       expect(Math.abs((tip.x + tip.width / 2) - (box.x + box.width / 2)), 'and is centred on it').toBeLessThan(2)
-      expect(await content.evaluate((el) => getComputedStyle(el).position)).toBe('fixed')
+      expect(await tooltip.evaluate((el) => getComputedStyle(el).position)).toBe('fixed')
     })
   }
 }
