@@ -9,7 +9,7 @@ $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ?
 <style>:root { --color-accent: {{ $accent }}; }</style>
 @endif
 
-<div x-data="{ filters: { customer: null, state: 'overdue', issued: null, multi: [], region: null } }" class="grid gap-8 p-6">
+<div x-data="{ filters: { customer: null, state: 'overdue', issued: null, multi: [], region: null, zone: 'e', bsingle: null, bmulti: [] } }" class="grid gap-8 p-6">
     <div data-testid="inline" class="rounded-panel border bg-surface p-3">
         <atom:table.toolbar>
             <atom:table.search data-filter-key="filters.search" placeholder="Search number or customer" />
@@ -36,11 +36,27 @@ $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ?
     <div data-testid="inline-inside" class="rounded-panel border bg-surface p-3">
         <atom:table.filters chips="inline">
             <atom:table.search data-filter-key="filters.q" placeholder="Search inside"/>
+            <atom:select variant="filter" add x-model="filters.zone" data-filter-key="filters.zone" label="Zone" :options="[
+                ['value' => 'e', 'label' => 'East'],
+            ]" />
             <atom:select variant="filter" add x-model="filters.region" data-filter-key="filters.region" label="Region" :options="[
                 ['value' => 'n', 'label' => 'North'],
             ]" />
         </atom:table.filters>
     </div>
+    {{-- chips="below" keeps its own chips on a row of their own, and an add pill that steps aside only for a single value --}}
+    <div data-testid="below" class="rounded-panel border bg-surface p-3">
+        <atom:table.filters>
+            <atom:select variant="filter" add x-model="filters.bsingle" data-filter-key="filters.bsingle" label="Kind" :options="[
+                ['value' => 'k1', 'label' => 'Kind One'],
+            ]" />
+            <atom:select variant="filter" add multiple x-model="filters.bmulti" data-filter-key="filters.bmulti" label="Group" :options="[
+                ['value' => 'g1', 'label' => 'Group One'],
+                ['value' => 'g2', 'label' => 'Group Two'],
+            ]" />
+        </atom:table.filters>
+    </div>
+
     {{-- the "More filters" button in each overflow mode, behind an active chip: it is the LAST control in the row --}}
     @foreach (['card', 'modal', 'popover'] as $mode)
         <div data-testid="overflow-{{ $mode }}" class="rounded-panel border bg-surface p-3">

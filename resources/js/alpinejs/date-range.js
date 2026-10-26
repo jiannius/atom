@@ -1,5 +1,6 @@
 import Pikaday from 'pikaday'
 import dayjs from 'dayjs'
+import { drawsOwnChip } from '../helpers/filter-chip'
 import { parseTypedDate, splitTypedRange } from '../helpers/typed-date'
 
 export default (config) => {
@@ -8,6 +9,12 @@ export default (config) => {
         endValue: null,
         startValue: null,
         dateRangeValue: null,
+        // an `add` range in an inline filter bar draws its own chip (helpers/filter-chip.js); set when it starts
+        selfChip: false,
+
+        get chipState () {
+            return this.selfChip && !!this.dateRangeValue
+        },
 
         get dateRangeString () {
             let start = config.time ? this.dateObjects[0]?.format('DD MMM YYYY hh:mm A') : this.dateObjects[0]?.format('DD MMM YYYY')
@@ -36,6 +43,8 @@ export default (config) => {
         },
 
         init () {
+            this.selfChip = !!config.add && drawsOwnChip(this.$root)
+
             this.parse()
 
             this.$nextTick(() => {
@@ -51,6 +60,13 @@ export default (config) => {
         parse () {
             this.startValue = this.dateObjects[0]?.toISOString()
             this.endValue = this.dateObjects[1]?.toISOString()
+        },
+
+        // The own chip's x: clear the range and put the focus on the add pill that comes back (it is the same button).
+        clearChip () {
+            this.dateRangeValue = null
+            this.parse()
+            this.$nextTick(() => this.$root.querySelector('[data-atom-filter-chip-body]')?.focus())
         },
 
         preset (name) {

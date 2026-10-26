@@ -26,11 +26,16 @@ $classes = Arr::toCssClasses([
 ]);
 
 /* The add-filter pill: a 26px dashed pill with the label muted and a plus. It is not a control with a value in it: the
-   chosen value is the chip's, so a single select hides the pill while it has one (a multiple one stays, to add more). */
+   chosen value is the chip's. In an `<atom:table.filters chips="inline">` bar the pill is also the chip: once there is a value
+   the same button reads "Label is Value" on the neutral fill (the `[&[data-chip]]:` rules; select.js `selfChip`), with an x
+   of its own beside it, and opens the same menu. Anywhere else the bar draws the chip, and a single select hides the pill while
+   it has a value (a multiple one stays, to add more). */
 if ($add) {
     $classes = Arr::toCssClasses([
         'inline-flex h-[26px] items-center gap-1 appearance-none rounded-pill border border-dashed border-control-border bg-transparent px-2.5 text-xs text-fg-muted',
         'hover:bg-surface-sunken hover:text-fg',
+        '[&[data-chip]]:gap-1.5 [&[data-chip]]:border-transparent [&[data-chip]]:bg-neutral-bg [&[data-chip]]:text-fg [&[data-chip]]:hover:bg-border-strong',
+        '[&[data-chip]]:rounded-e-none [&[data-chip]]:pe-2' => $clearable,
     ]);
 }
 
@@ -55,6 +60,12 @@ x-data="select({
     filters: @js($filters),
     multiple: @js($multiple),
     searchable: @js($searchable),
+    selected: @js(t('selected')),
+    @if ($add)
+    add: true,
+    label: @js(t($label)),
+    operator: @js($multiple ? t('is any of') : t('is')),
+    @endif
 })"
 x-modelable="selectValue"
 x-on:keydown.up.prevent.stop="keyUp()"
@@ -64,15 +75,16 @@ x-on:keydown.home.prevent.stop="home()"
 x-on:keydown.end.prevent.stop="end()"
 x-on:keydown.escape.stop=""
 class="group/select"
-@if ($add && ! $multiple) x-show="isEmpty" @endif
+@if ($add && ! $multiple) x-show="selfChip || isEmpty" @endif
+@if ($add) x-bind:data-atom-filter-active="chipState ? '' : null" @endif
 @if ($filterKey)
 x-init="
     const emit = () => $dispatch('table-filter:set', {
         key: @js($filterKey),
         label: @js(t($label)),
-        display: isEmpty ? null : (@js($multiple)
-            ? (selectedOptions.length > 1 ? selectedOptions.length + ' {{ t('selected') }}' : (selectedOptions[0]?.label ?? null))
-            : (selectedOptions?.label ?? null)),
+        display: filterDisplay,
+        self: selfChip,
+        @if ($multiple) operator: selfChip ? @js(t('is any of')) : undefined, @endif
     });
     $nextTick(emit);
     $watch('selectValue', () => { $nextTick(emit); $dispatch('table-filter:changed') });
@@ -80,7 +92,8 @@ x-init="
 x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clear()"
 @endif
 {{ $attributes->except('class') }}>
-    <atom:dropdown>
+    {{-- the dropdown root is the own chip while there is one (body + x), so it answers to the bar's chip selector --}}
+    <atom:dropdown :class="$add ? 'flex items-center' : ''" x-bind:data-atom-table-filter-chip="chipState ? '' : null">
         <button
         type="button"
         aria-haspopup="listbox"
@@ -92,16 +105,28 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                  without this it is announced as an unnamed combobox. A filter takes no
                  label prop from <atom:table.filters>, so there is no anchor to point at
                  and the name is given directly, as <atom:table.search> does. --}}
-            @if ($label) aria-label="{{ t($label) }}" @endif
+            @if ($label && $add)
+                x-bind:aria-label="chipState ? chipName : @js(t($label))"
+            @elseif ($label)
+                aria-label="{{ t($label) }}"
+            @endif
             x-bind:aria-controls="`${$id('atom-select')}-list`"
             x-on:keydown="typeAhead($event)"
 x-on:keyup.space.prevent=""
             data-atom-select-combobox
         @endif
+        @if ($add)
+            x-bind:data-chip="chipState ? '' : null"
+            data-atom-filter-chip-body
+        @endif
         {{ $attributes->class($classes)->only('class') }}>
             @if ($add)
-                <atom:icon.add class="size-3.5" />
-                <span data-atom-select-add-label>{{ t($label) }}</span>
+                <atom:icon.add class="size-3.5" x-show="!chipState" />
+                <span data-atom-select-add-label x-bind:class="chipState && 'font-medium'">{{ t($label) }}</span>
+                {{-- the own chip's parts: the name above, then the operator and the value, and the chevron that says it opens --}}
+                <span x-show="chipState" x-cloak x-text="chipOperator" class="text-fg-muted"></span>
+                <span x-show="chipState" x-cloak x-text="filterDisplay" class="max-w-56 truncate"></span>
+                <atom:icon.chevron-down x-show="chipState" x-cloak class="-ms-0.5 size-3 text-fg-muted" />
             @else
             @if ($icon)
                 <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pl-2.5 left-0">
@@ -148,6 +173,22 @@ x-on:keyup.space.prevent=""
             @endif
             @endif
         </button>
+
+        @if ($add && $clearable)
+            {{-- the own chip's x: a button of its own, split from the chip by a hairline. Enter on it must clear, not reach the
+                 select's Enter (which opens the list). The label is the bar chip's: "Remove filter: Customer". --}}
+            <button
+            type="button"
+            x-show="chipState"
+            x-cloak
+            x-on:click="clearChip()"
+            x-on:keydown.enter.stop=""
+            x-bind:aria-label="@js(t('Remove filter')) + ': ' + @js(t($label))"
+            class="inline-flex h-[26px] w-6 shrink-0 items-center justify-center rounded-e-pill border-s border-border-strong bg-neutral-bg text-fg-muted transition-colors hover:bg-border-strong hover:text-fg"
+            data-atom-filter-chip-clear>
+                <atom:icon.close class="size-3.5" />
+            </button>
+        @endif
 
         <atom:menu
         role="listbox"
@@ -213,7 +254,7 @@ x-on:keyup.space.prevent=""
                                     role="option"
                                     x-bind:aria-selected="isSelected(groupOption) ? 'true' : 'false'"
                                     x-bind:data-label="groupOption.label"
-                                    x-on:click="select(groupOption)"
+                                    x-on:click="select(groupOption); stayOpen && $event.stopPropagation()"
                                     x-bind:class="isSelected(groupOption) && 'bg-fg/10'"
                                     data-atom-option
                                     class="{{ $optionClasses }}">
@@ -232,7 +273,7 @@ x-on:keyup.space.prevent=""
                             role="option"
                             x-bind:aria-selected="isSelected(option) ? 'true' : 'false'"
                             x-bind:data-label="option.label"
-                            x-on:click="select(option)"
+                            x-on:click="select(option); stayOpen && $event.stopPropagation()"
                             x-bind:class="isSelected(option) && 'bg-fg/10'"
                             data-atom-option
                             class="{{ $optionClasses }}">

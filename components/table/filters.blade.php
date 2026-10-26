@@ -7,8 +7,12 @@
 {{-- `chips="inline"` puts each active filter ahead of the controls, in the one wrapping row (after a `<atom:table.search>` that sits in the slot: the search keeps the first place),, as a sentence pill ("Issued is
      1 Apr 2026 to 30 Apr 2026", with a name, a muted operator and the value) that its x removes. A control can name its own
      operator in the event's `operator` detail (default `is`; the search says `:`, which reads "Search: foo").
-     Pair it with `add` on a select filter or a date range, which draws the control as a dashed "+ Customer" pill that
-     steps aside for its chip once a value is set. --}}
+     Pair it with `add` on a select filter or a date range, which draws the control as a dashed "+ Customer" pill. Once a value
+     is set the pill is the chip: the control draws it itself (a button that opens its own menu, and an x beside it), and says so
+     in the event's `self` detail, so this bar skips its own copy of that chip, keeping it only for Clear all
+     and the controls that do not draw one (the search, a filter without `add`, anything in the "More filters" slot).
+     A control marks itself `data-atom-filter-active` while its chip is up, which orders it ahead of the bare pills like the
+     bar's own chips. The "More filters" slot is marked `data-atom-table-filters-more`, so a control can tell it sits there. --}}
 @php
 $inline = $chips === 'inline';
 
@@ -17,22 +21,25 @@ $inline = $chips === 'inline';
 // the enclosing Livewire component's name, so this suffixes it. current()
 // returns false (not null) when no component is on the stack.
 $modalName = ((app('livewire')->current() ?: null)?->getName() ?: 'atom').'-table-filters';
+
 @endphp
 
 <div
 x-data="{
     chips: {},
     expanded: false,
-    set(key, label, display, operator) {
+    set(event) {
+        const { key, label, display, operator, self } = event.detail
         const empty = display === null || display === '' || (Array.isArray(display) && display.length === 0)
-        if (empty) { delete this.chips[key] } else { this.chips[key] = { label, display, operator: operator ?? @js(t('is')) } }
+        if (empty) { delete this.chips[key] } else { this.chips[key] = { label, display, operator: operator ?? @js(t('is')), self: !!self } }
     },
-    get active() { return Object.entries(this.chips).map(([key, v]) => ({ key, label: v.label, display: v.display, operator: v.operator })) },
+    get active() { return Object.entries(this.chips).map(([key, v]) => ({ key, ...v })) },
+    get shown() { return this.active.filter(chip => !chip.self) },
     clear(key) { this.$dispatch('table-filter:do-clear', { key }) },
     clearAll() { Object.keys(this.chips).forEach(k => this.clear(k)) },
 }"
-x-on:table-filter:set.window="set($event.detail.key, $event.detail.label, $event.detail.display, $event.detail.operator)"
-{{ $attributes->class($inline ? 'flex min-h-control min-w-0 grow flex-wrap items-center gap-2 [&>.contents>*]:order-2 [&>.contents>[data-atom-table-search]]:order-0' : 'grow space-y-3') }}
+x-on:table-filter:set.window="set($event)"
+{{ $attributes->class($inline ? 'flex min-h-control min-w-0 grow flex-wrap items-center gap-2 [&>.contents>*]:order-2 [&>.contents>[data-atom-table-search]]:order-0 [&>.contents>[data-atom-filter-active]]:order-1' : 'grow space-y-3') }}
 data-atom-table-filters
 data-chips="{{ $inline ? 'inline' : 'below' }}">
     {{-- the overflow button is a filter control like the rest, so it sits in the
@@ -40,7 +47,7 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
          slot used to push it to the far end of the bar, where it read as a table
          action sitting with Export rather than as the last filter. --}}
     @if ($inline)
-        <template x-for="chip in active" x-bind:key="chip.key" hidden>
+        <template x-for="chip in shown" x-bind:key="chip.key" hidden>
             <div class="order-1 inline-flex h-[26px] items-center gap-1.5 rounded-pill bg-neutral-bg ps-2.5 pe-1.5 text-xs text-fg" data-atom-table-filter-chip>
                 <span class="font-medium" x-text="chip.label"></span>
                 <span class="text-fg-muted" x-text="chip.operator" x-bind:class="chip.operator === ':' && '-ms-1.5'"></span>
@@ -70,7 +77,7 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
             @else
                 <atom:dropdown class="shrink-0" locked>
                     <atom:button variant="ghost">{{ t('More filters') }} <atom:icon.dropdown /></atom:button>
-                    <atom:menu popover class="p-3 min-w-sm flex flex-wrap items-center gap-3">
+                    <atom:menu popover class="p-3 min-w-sm flex flex-wrap items-center gap-3" data-atom-table-filters-more>
                         {{ $more }}
                     </atom:menu>
                 </atom:dropdown>
@@ -79,7 +86,7 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
     </div>
 
     @if (isset($more) && $overflow === 'card')
-        <div x-show="expanded" x-cloak @class(['p-4 rounded-panel border bg-surface flex flex-wrap items-center gap-3', 'w-full' => $inline])>
+        <div x-show="expanded" x-cloak @class(['p-4 rounded-panel border bg-surface flex flex-wrap items-center gap-3', 'w-full' => $inline]) data-atom-table-filters-more>
             {{ $more }}
         </div>
     @endif
@@ -92,7 +99,7 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
         <atom:modal :name="$modalName" class="max-w-xl" aria-label="{{ t('More filters') }}">
             <atom:heading size="lg">{{ t('More filters') }}</atom:heading>
 
-            <atom:form.grid cols="1" class="mt-6">
+            <atom:form.grid cols="1" class="mt-6" data-atom-table-filters-more>
                 {{ $more }}
             </atom:form.grid>
         </atom:modal>

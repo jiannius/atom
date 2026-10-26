@@ -1,4 +1,5 @@
 import empty from '../helpers/empty'
+import { drawsOwnChip } from '../helpers/filter-chip'
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;',
@@ -30,6 +31,8 @@ export default (config) => {
         typeaheadTimer: null,
         callback: typeof config.options === 'string' ? config.options : null,
         selectValue: config.multiple ? [] : null,
+        // an `add` filter in an inline bar draws its own chip (helpers/filter-chip.js); set when the select starts
+        selfChip: false,
 
         get isEmpty () {
             return !this.selectedOptions || (Array.isArray(this.selectedOptions) && !this.selectedOptions.length)
@@ -44,6 +47,38 @@ export default (config) => {
             }).filter(Boolean)
 
             return Array.isArray(this.selectValue) ? options : options[0]
+        },
+
+        // The own chip is showing: an add filter, in an inline bar, that holds a value.
+        get chipState () {
+            return this.selfChip && !this.isEmpty
+        },
+
+        // A multiple list stays open while values are ticked, when the chip is the editor.
+        get stayOpen () {
+            return this.selfChip && !!config.multiple
+        },
+
+        get chipOperator () {
+            return config.operator
+        },
+
+        // The own chip's accessible name: "Customer is Customer B".
+        get chipName () {
+            return [config.label, this.chipOperator, this.filterDisplay].filter(Boolean).join(' ')
+        },
+
+        // What a table filter's chip says. The own chip names up to two values and counts from three; the bar's chip (and
+        // a control that does not draw its own) counts from two, as it always did.
+        get filterDisplay () {
+            if (this.isEmpty) return null
+
+            if (!config.multiple) return this.selectedOptions?.label ?? null
+
+            let labels = this.selectedOptions.map(option => option.label)
+            let count = this.selfChip ? 2 : 1
+
+            return labels.length > count ? labels.length + ' ' + (config.selected ?? 'selected') : (labels.join(', ') || null)
         },
 
         // We hold a value we cannot yet name — the options are lazy, so the label
@@ -73,6 +108,8 @@ export default (config) => {
         },
 
         init () {
+            this.selfChip = !!config.add && drawsOwnChip(this.$root)
+
             // The dropdown's open/close events are bound here rather than with
             // x-on in the blade: a Livewire morph can drop Alpine's directive
             // listeners while keeping this data object alive, which left the
@@ -134,6 +171,12 @@ export default (config) => {
         clear () {
             this.selectValue = config.multiple ? [] : null
             this.$dispatch('input', this.selectValue)
+        },
+
+        // The own chip's x: clear the value and put the focus on the add pill that comes back (it is the same button).
+        clearChip () {
+            this.clear()
+            this.$nextTick(() => this.$root.querySelector('[data-atom-filter-chip-body]')?.focus())
         },
 
         fetch () {

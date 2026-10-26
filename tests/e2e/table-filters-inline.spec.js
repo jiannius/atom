@@ -3,8 +3,9 @@ import { open } from './controls-helpers.js'
 import { sweepText, ACCENTS, TEXT } from './display-helpers.js'
 
 // <atom:table.filters chips="inline"> and the add-filter pill (`add` on a select filter or a date range), on the consumer's
-// Tailwind (`node tests/consumer/build.mjs`), floor and latest: the chip joins the controls' row as a sentence pill, the dashed pill steps
-// aside for it and comes back when the chip's x is pressed; every text role reads in both themes.
+// Tailwind (`node tests/consumer/build.mjs`), floor and latest: the chip joins the controls' row as a sentence pill, and is the
+// dashed pill itself (one button, which opens the filter's menu) until the chip's x is pressed; every text role reads in both themes.
+// The chip as an editor (menus, keyboard, a morph) is table-filter-chip.spec.js.
 
 const bar = (page) => page.locator('[data-testid="inline"] [data-atom-table-filters]')
 const chips = (page) => bar(page).locator('[data-atom-table-filter-chip]')
@@ -41,15 +42,17 @@ for (const tw of ['floor', 'latest']) {
       const chip = await inside.locator('[data-atom-table-filter-chip]').first().boundingBox()
       const pill = await inside.getByRole('combobox', { name: 'Region' }).boundingBox()
 
+      await expect(inside.locator('[data-atom-table-filter-chip]').first()).toContainText('Zone')
       expect(chip.x).toBeGreaterThan(search.x + search.width)
       expect(pill.x).toBeGreaterThan(chip.x + chip.width)
       // in one row
       expect(Math.abs((chip.y + chip.height / 2) - (search.y + search.height / 2))).toBeLessThan(4)
     })
 
-    test('the add pill is dashed, and steps aside for its chip, which brings it back when removed', async ({ page }) => {
+    test('the add pill is dashed, and is its own chip once a value is set: one button, with an x that turns it back', async ({ page }) => {
       await open(page, { path: 'table-filters-inline', tw })
 
+      const trigger = page.getByTestId('inline').locator('[data-atom-select-combobox]').filter({ hasText: 'Customer' })
       const pill = page.getByTestId('inline').getByRole('combobox', { name: 'Customer' })
 
       expect(await pill.evaluate((el) => getComputedStyle(el).borderTopStyle)).toBe('dashed')
@@ -58,20 +61,25 @@ for (const tw of ['floor', 'latest']) {
       await pill.click()
       await page.locator('[data-atom-option]').filter({ hasText: 'Customer B' }).first().click()
 
+      // the chip IS the pill's button (it steps aside by turning into the chip), and nothing else on screen is a Customer pill
       await expect(chips(page).filter({ hasText: 'Customer B' })).toHaveCount(1)
       await expect(chips(page).filter({ hasText: 'Customer B' })).toContainText('Customer')
-      await expect(pill).toBeHidden()
+      await expect(trigger).toHaveCount(1)
+      await expect(trigger).toBeVisible()
+      // the dashed outline is gone (its colour is transparent: the border keeps the 26px) and the neutral fill is in
+      expect(await trigger.evaluate((el) => [getComputedStyle(el).borderTopColor, getComputedStyle(el).backgroundColor !== 'rgba(0, 0, 0, 0)', el.hasAttribute('data-chip')])).toEqual(['rgba(0, 0, 0, 0)', true, true])
 
       await bar(page).getByRole('button', { name: 'Remove filter: Customer' }).click()
 
       await expect(chips(page).filter({ hasText: 'Customer B' })).toHaveCount(0)
-      await expect(pill).toBeVisible()
+      await expect(trigger).toBeFocused()
+      expect(await trigger.evaluate((el) => [getComputedStyle(el).borderTopStyle, el.hasAttribute('data-chip')])).toEqual(['dashed', false])
     })
 
-    test('a date range: set one from the calendar, the chip takes the pill\'s place, and its x brings the pill back', async ({ page }) => {
+    test('a date range: set one from the calendar, the same button becomes the chip, and its x turns it back', async ({ page }) => {
       await open(page, { path: 'table-filters-inline', tw })
 
-      const pill = page.getByRole('button', { name: 'Issued', exact: true })
+      const pill = page.getByTestId('inline').locator('[data-atom-date-range-add]')
 
       expect(await pill.evaluate((el) => [getComputedStyle(el).borderTopStyle, el.tagName])).toEqual(['dashed', 'BUTTON'])
       await expect(pill).toContainText('Issued')
@@ -83,12 +91,14 @@ for (const tw of ['floor', 'latest']) {
 
       await expect(chip).toHaveCount(1)
       await expect(chip).toContainText('is')
-      await expect(pill).toBeHidden()
+      await expect(pill).toBeVisible()
+      expect(await pill.evaluate((el) => el.hasAttribute('data-chip'))).toBe(true)
 
       await chip.getByRole('button', { name: 'Remove filter: Issued' }).click()
 
       await expect(chips(page).filter({ hasText: 'Issued' })).toHaveCount(0)
-      await expect(pill).toBeVisible()
+      await expect(pill).toBeFocused()
+      expect(await pill.evaluate((el) => [getComputedStyle(el).borderTopStyle, el.hasAttribute('data-chip')])).toEqual(['dashed', false])
     })
 
     test('a date range pill opens from the keyboard: Enter, then a preset by key, then Escape closes it', async ({ page }) => {
@@ -110,7 +120,7 @@ for (const tw of ['floor', 'latest']) {
       await expect(preset).toBeVisible()
     })
 
-    test('a multiple add pill stays, to add more values', async ({ page }) => {
+    test('a multiple add pill is its own chip too, and one control: no second pill beside it', async ({ page }) => {
       await open(page, { path: 'table-filters-inline', tw })
 
       const pill = page.getByTestId('inline').getByRole('combobox', { name: 'Tag' })
@@ -118,7 +128,36 @@ for (const tw of ['floor', 'latest']) {
       await page.locator('[data-atom-option]').filter({ hasText: 'Tag X' }).first().click()
 
       await expect(chips(page).filter({ hasText: 'Tag X' })).toHaveCount(1)
-      await expect(pill).toBeVisible()
+      await expect(chips(page).filter({ hasText: 'Tag X' })).toContainText('is any of')
+      await expect(page.getByTestId('inline').locator('[data-atom-select-combobox]').filter({ hasText: 'Tag' })).toHaveCount(1)
+    })
+
+    test('chips="below" is as it was: the bar draws the chip on its own row, a multiple pill stays, and counts from two', async ({ page }) => {
+      await open(page, { path: 'table-filters-inline', tw })
+
+      const below = page.getByTestId('below')
+      const single = below.getByRole('combobox', { name: 'Kind' })
+      const multi = below.getByRole('combobox', { name: 'Group' })
+
+      await single.click()
+      await page.locator('[data-atom-option]').filter({ hasText: 'Kind One' }).first().click()
+
+      // the pill steps aside (the chip is the bar's, below), and no control marks itself as holding a chip
+      await expect(single).toBeHidden()
+      await expect(below.locator('[data-atom-table-filter-chip]').filter({ hasText: 'Kind One' })).toHaveCount(1)
+      expect(await below.locator('[data-atom-filter-active], [data-chip]').count()).toBe(0)
+
+      await multi.click()
+      await page.locator('[data-atom-option]').filter({ hasText: 'Group One' }).first().click()
+
+      // a multiple select closes on a pick here, as it always did, and its pill stays
+      await expect(page.locator('[data-atom-option]').filter({ hasText: 'Group Two' })).toBeHidden()
+      await expect(multi).toBeVisible()
+      await multi.click()
+      await page.locator('[data-atom-option]').filter({ hasText: 'Group Two' }).first().click()
+
+      await expect(below.locator('[data-atom-table-filter-chip]').filter({ hasText: '2 selected' })).toHaveCount(1)
+      await expect(below.locator('[data-atom-table-filter-chip]').filter({ hasText: 'is any of' })).toHaveCount(0)
     })
 
     test('the search reads as "Search: foo" and Clear all empties every chip', async ({ page }) => {
