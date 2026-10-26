@@ -26,6 +26,14 @@ $initials = is_string($initials) || $initials instanceof \Stringable ? trim((str
 $initials = $user && blank($initials)
     ? str((string) $name)->squish()->initials()->take(2)->upper()->toString()
     : $initials;
+
+/* The page mounted before this layout rendered, so its trail length and page.header are known: one crumb above a page.header
+   prints nothing, and the crumbs row need not draw for the first frames. 0 and null are unknown; the browser stays the
+   authority (breadcrumbs.js syncHeader). */
+$trailEmpty = isset($crumbs)
+    && request()->attributes->get(\Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE) === 1
+    && str_contains((string) $crumbs, 'data-atom-breadcrumbs')
+    && preg_match('/<h1\b[^>]*\sdata-atom-page-header-title/', (string) $slot) === 1;
 @endphp
 
 {{-- The top-nav shell, for an app with about six or fewer sections. It takes the same props and slots as
@@ -203,7 +211,7 @@ $initials = $user && blank($initials)
     </header>
 
     @isset ($crumbs)
-        <div class="[grid-area:crumbs] mx-auto flex w-full max-w-[1248px] min-w-0 items-center ps-[max(1.5rem,env(safe-area-inset-left,0px))] pe-[max(1.5rem,env(safe-area-inset-right,0px))] pt-4 max-lg:ps-[max(1rem,env(safe-area-inset-left,0px))] max-lg:pe-[max(1rem,env(safe-area-inset-right,0px))]" data-atom-header-crumbs data-atom-shell-crumbs>
+        <div class="[grid-area:crumbs] mx-auto flex w-full max-w-[1248px] min-w-0 items-center ps-[max(1.5rem,env(safe-area-inset-left,0px))] pe-[max(1.5rem,env(safe-area-inset-right,0px))] pt-4 max-lg:ps-[max(1rem,env(safe-area-inset-left,0px))] max-lg:pe-[max(1rem,env(safe-area-inset-right,0px))]" @if ($trailEmpty) data-atom-header-empty @endif data-atom-header-crumbs data-atom-shell-crumbs>
             {{ $crumbs }}
         </div>
     @endisset

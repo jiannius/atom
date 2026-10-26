@@ -12,6 +12,11 @@ use Jiannius\Atom\Services\Sitemap;
 class Atom
 {
     /**
+     * The request attribute that holds how many crumbs the page's own trail declares (set by WithBreadcrumbs, read by the layouts).
+     */
+    public const CRUMB_COUNT_ATTRIBUTE = 'atom.breadcrumbs.count';
+
+    /**
      * Asset manager
      */
     public function asset()

@@ -78,10 +78,11 @@ export default (config) => {
         },
 
         // A shell's bar (layouts.sidebar, data-atom-header-crumbs-only) or crumbs row (layouts.header) that holds nothing but
-        // this trail is not drawn while the trail prints nothing: the server cannot know, since the persisted trail's markup is
-        // always there. Reads the DOM it is in, every time: the trail is persisted across wire:navigate, but the bar is the new
-        // page's, so it is marked again after every navigation. The first paint of a hard load is the server's: the bar is there
-        // until the trail has been built (a bar that starts hidden would pop in on every page that has crumbs).
+        // this trail is not drawn while the trail prints nothing. The layout starts that on the server for a trail of one crumb above
+        // a page.header (the page mounted before it rendered); this is the authority, and it takes the mark off again when its own
+        // answer is "not empty". Reads the DOM it is in, every time: the trail is persisted across wire:navigate, but the bar is the new
+        // page's, so it is marked again after every navigation. Until the trail has been built it leaves the server's mark alone
+        // (a bar that starts hidden would pop in on every page that has crumbs).
         // A slot that holds anything besides the trail (or the element that persists it) is the host's, and is left alone.
         syncHeader () {
             if (!this.built) return
