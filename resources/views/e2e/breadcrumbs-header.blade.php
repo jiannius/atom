@@ -1,13 +1,24 @@
 {{-- On the consumer Tailwind (`node tests/consumer/build.mjs`), so the shell lays out as a host's does. The v4 shell: the trail is @persist-ed in the `crumbs` slot, and a page may or may not print its own page.header.
-     /old and /plain have none, /new and /deep have one; /old and /new have one crumb, /plain and /deep two; the links between them are wire:navigate. --}}
-<atom:layouts.sidebar title="Crumbs" :vite="[]" :dark="false" :styles="['/atom/e2e/consumer-css/latest']">
+     /old and /plain have none, /new and /deep have one; /old and /new have one crumb, /plain and /deep two; the links between them are wire:navigate.
+     ?shell=header draws the top-nav shell (its crumbs are a row of their own under the bar), ?actions=1 gives the bar an `actions` slot. --}}
+@php
+$shell = request()->query('shell') === 'header' ? 'header' : 'sidebar';
+@endphp
+
+<x-dynamic-component :component="'atom::layouts.'.$shell" title="Crumbs" :vite="[]" :dark="false" :styles="['/atom/e2e/consumer-css/latest']">
     <x-slot:crumbs>
         @persist('breadcrumbs')
             <atom:breadcrumbs />
         @endpersist
     </x-slot:crumbs>
 
+    @if (request()->query('actions'))
+        <x-slot:actions>
+            <atom:button size="sm" data-testid="bar-action">Action</atom:button>
+        </x-slot:actions>
+    @endif
+
     <livewire:atom-e2e-breadcrumbs-header />
 
     @livewireScripts
-</atom:layouts.sidebar>
+</x-dynamic-component>

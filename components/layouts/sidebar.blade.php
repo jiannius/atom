@@ -9,7 +9,10 @@
 ])
 
 {{-- From lg up the top bar holds only crumbs, actions and the dark toggle (the menu button and the account are for
-     small screens), so with all three empty it is not drawn there ($barEmpty, data-atom-header-empty in atom.css). --}}
+     small screens), so with all three empty it is not drawn there ($barEmpty, data-atom-header-empty in atom.css).
+     A bar that holds only crumbs ($crumbsOnly, data-atom-header-crumbs-only) can only be known empty in the browser: the trail
+     is a persisted <atom:breadcrumbs> whose markup is always there, and it prints nothing for one crumb above a page.header or
+     for none. breadcrumbs.js turns data-atom-header-empty on and off on it. --}}
 {{-- A host's User model may have no public initials() method (or one that returns no usable string): the initials are then derived from the display name,
      and an avatar, name or email the model refuses to read (MissingAttributeException only) reads as null. --}}
 @php
@@ -31,6 +34,10 @@ $initials = $user && blank($initials)
 
 $barEmpty = ! $dark
     && ! (isset($crumbs) && filled(trim((string) $crumbs)))
+    && ! (isset($actions) && filled(trim((string) $actions)));
+
+$crumbsOnly = ! $barEmpty
+    && ! $dark
     && ! (isset($actions) && filled(trim((string) $actions)));
 @endphp
 
@@ -155,7 +162,7 @@ $barEmpty = ! $dark
 
     {{-- The top bar: 48px, sticky, crumbs on the left and actions on the right. atom.css lets it span the page's
          rows (a sticky grid item can only travel inside its own grid area), and the first row is its height. --}}
-    <header class="[grid-area:header] z-10 h-12 border-b border-border bg-canvas/88 backdrop-blur-md" @if ($barEmpty) data-atom-header-empty @endif data-atom-header>
+    <header class="[grid-area:header] z-10 h-12 border-b border-border bg-canvas/88 backdrop-blur-md" @if ($barEmpty) data-atom-header-empty @endif @if ($crumbsOnly) data-atom-header-crumbs-only @endif data-atom-header>
         <div class="flex h-full items-center gap-3 px-4 lg:px-7">
             {{-- toggle sidebar in small screen, only work in small screen --}}
             <button

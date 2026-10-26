@@ -669,7 +669,7 @@ The slots are the same, but a few land differently, because the two shells are l
 | `profile` | The **trigger's** content (name and email beside the avatar) at the foot of the sidebar; the menu's header in the top bar below `lg`. Optional: it replaces the default profile card, wherever that sits. | The menu's **header**, inside the dropdown. Optional, as in the sidebar. |
 | `profile` without `dropdown` | Plain content at the foot of the sidebar. | Plain content in the bar. |
 
-The sidebar's top bar is not drawn from `lg` up when `crumbs`, `actions` and `dark` are all empty (below `lg` it still holds the menu button and the account).
+The sidebar's top bar is not drawn from `lg` up when `crumbs`, `actions` and `dark` are all empty (below `lg` it still holds the menu button and the account). The same when the slot holds only a persisted `<atom:breadcrumbs>` and it prints nothing, which is one crumb on a page that has its own `<atom:page.header>` (or `:heading="false"`): `breadcrumbs.js` marks the bar empty, and `layouts.header` leaves out its crumbs row.
 
 The default profile card reads `auth()->user()`: `avatar` (a URL; none, or a model that has no such attribute, gives initials), `name` and `email`. The initials come from the model's public `initials()` method if it returns a string; otherwise (no method, a protected `Attribute` accessor, another return type, a blank string) they are the first letters of the first two words of `name`, uppercase.
 

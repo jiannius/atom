@@ -8,7 +8,7 @@ describe('breadcrumbs', function () {
 
         expect($html)
             ->toContain('data-atom-breadcrumbs')
-            ->toContain('breadcrumbs()')
+            ->toContain('breadcrumbs({ heading: true })')
             ->toContain('x-on:livewire:navigated.window="build()"')
             ->toContain('x-on:navigate-back.window="back()"');
     });

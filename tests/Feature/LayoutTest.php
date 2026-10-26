@@ -667,6 +667,18 @@ describe('the shells\' slots', function () {
             ->and($has('', "<x-slot:crumbs>\nC\n</x-slot>"))->toBeFalse()
             ->and($has('', "<x-slot:actions>\nA\n</x-slot>"))->toBeFalse();
     });
+
+    it('marks a sidebar bar that holds only crumbs, for breadcrumbs.js to decide whether the trail prints anything', function () {
+        $only = fn (string $attrs, string $slots) => str_contains(
+            renderBlade('<atom:layouts.sidebar :vite="false" '.$attrs.">\n".$slots."\nx</atom:layouts.sidebar>"),
+            'data-atom-header-crumbs-only',
+        );
+
+        expect($only('', "<x-slot:crumbs>\nC\n</x-slot>"))->toBeTrue()
+            ->and($only('', ''))->toBeFalse()
+            ->and($only('dark', "<x-slot:crumbs>\nC\n</x-slot>"))->toBeFalse()
+            ->and($only('', "<x-slot:crumbs>\nC\n</x-slot><x-slot:actions>\nA\n</x-slot>"))->toBeFalse();
+    });
 });
 
 describe('one nav slot in both shells', function () {
