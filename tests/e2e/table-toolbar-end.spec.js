@@ -92,3 +92,40 @@ for (const tw of ['floor', 'latest']) {
     })
   })
 }
+
+// The start group keeps a 12rem floor from sm up, measured in the toolbar's own box: in a narrow container (a sidebar column, a
+// slide-over, a modal) on a wide screen a wide end group wraps under the start group, where `min-w-0` alone let the search shrink to a
+// sliver beside it.
+for (const tw of ['floor', 'latest']) {
+  test.describe(`toolbar in a narrow container, ${tw} consumer build`, () => {
+    test('a 420px box on a 1200px screen: the search keeps 12rem and the wide end group wraps', async ({ page }) => {
+      await page.setViewportSize({ width: 1200, height: 900 })
+      await open(page, { path: 'table-toolbar-end', tw })
+
+      const box = page.getByTestId('toolbar-narrow-box')
+      const [b, s, e, q] = await Promise.all([
+        box.boundingBox(),
+        box.locator('[data-atom-table-toolbar-start]').boundingBox(),
+        box.locator('[data-atom-table-toolbar-end]').boundingBox(),
+        box.locator('[data-atom-table-search]').boundingBox(),
+      ])
+
+      expect(b.width).toBe(420)
+      expect(s.width).toBeGreaterThanOrEqual(192)
+      expect(q.width).toBeGreaterThanOrEqual(192)
+      // wrapped: under the start group, not squeezed beside it
+      expect(e.y).toBeGreaterThanOrEqual(s.y + s.height - 1)
+    })
+
+    test('the same toolbar in a wide box keeps its end group at the top, on the right', async ({ page }) => {
+      await page.setViewportSize({ width: 1200, height: 900 })
+      await open(page, { path: 'table-toolbar-end', tw })
+
+      const bar = page.getByTestId('toolbar-wide')
+      const [t, s, e] = await Promise.all([bar.locator('[data-atom-table-toolbar]').boundingBox(), bar.locator('[data-atom-table-toolbar-start]').boundingBox(), bar.locator('[data-atom-table-toolbar-end]').boundingBox()])
+
+      expect(Math.abs(e.y - s.y)).toBeLessThan(2)
+      expect(Math.abs((e.x + e.width) - (t.x + t.width - 12))).toBeLessThan(2)
+    })
+  })
+}

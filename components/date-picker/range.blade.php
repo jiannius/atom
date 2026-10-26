@@ -40,6 +40,7 @@ x-show="selfChip || !dateRangeValue"
 x-bind:data-atom-filter-active="chipState ? '' : null"
 @endif
 data-atom-date-range
+@if ($filterKey) data-atom-filter-key="{{ $filterKey }}" @endif
 @if ($filterKey)
 x-init="
     const emit = () => $dispatch('table-filter:set', { key: @js($filterKey), label: @js(t($placeholder)), display: dateRangeValue ? dateRangeString : null, operator: @js(t('is')), self: selfChip });

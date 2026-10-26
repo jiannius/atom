@@ -11,6 +11,17 @@ const body = (page, label) => bar(page).locator('[data-atom-filter-chip-body]').
 const chipOf = (page, label) => bar(page).locator('[data-atom-table-filter-chip]').filter({ hasText: label })
 const option = (page, text) => page.locator('[data-atom-option]').filter({ hasText: text }).first()
 const menuOf = (trigger) => trigger.locator('xpath=ancestor::*[@data-atom-dropdown][1]').locator('[data-atom-menu]')
+// Escape closes the open list, then the More filters menu; press it until the menu is closed (a press that lands while a list is still opening closes only that)
+const closeMore = async (page) => {
+  const more = page.locator('[data-atom-table-filters-more]')
+
+  for (let i = 0; i < 4 && await more.evaluate((el) => el.matches(':popover-open')); i++) {
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(150)
+  }
+
+  await expect.poll(() => more.evaluate((el) => el.matches(':popover-open'))).toBe(false)
+}
 const text = async (locator) => (await locator.innerText()).replace(/\s+/g, ' ').trim()
 
 for (const tw of ['floor', 'latest']) {
@@ -28,7 +39,7 @@ for (const tw of ['floor', 'latest']) {
 
       // one control: the add pill turned into the chip, and the menu stays open for the next pick
       await expect(chipOf(page, 'Tag A')).toHaveCount(1)
-      expect(await text(tag)).toBe('Tag is any of Tag A')
+      await expect.poll(() => text(tag)).toBe('Tag is any of Tag A')
       expect(await tag.evaluate((el) => el.hasAttribute('data-chip'))).toBe(true)
       await expect(option(page, 'Tag B')).toBeVisible()
 
@@ -234,6 +245,78 @@ for (const tw of ['floor', 'latest']) {
       // the bar's own chip (outside the slot, in the row), the add control stays the add control
       await expect(bar(page).locator(':scope > [data-atom-table-filter-chip]').filter({ hasText: 'Region' })).toHaveCount(1)
       expect(await region.evaluate((el) => el.hasAttribute('data-chip'))).toBe(false)
+    })
+
+    // A chip's x or Clear all removes the thing the focus was on: it must not fall to <body>.
+    test('a bar-drawn chip\'s x: the focus goes to the next chip, and with none left, to the search', async ({ page }) => {
+      const search = page.getByPlaceholder('Search items')
+
+      // Region lives in the More filters slot, so the bar draws its chip (and its control is out of sight in the closed menu)
+      await body(page, 'Status').click()
+      await option(page, 'Open').click()
+      await bar(page).getByRole('button', { name: 'More filters' }).click()
+      const region = bar(page).locator('[data-atom-table-filters-more] [data-atom-filter-chip-body]')
+      await region.click()
+      await menuOf(region).locator('[data-atom-option]').filter({ hasText: 'North' }).click()
+      await closeMore(page)
+
+      const regionChip = bar(page).locator(':scope > [data-atom-table-filter-chip]').filter({ hasText: 'Region' })
+      await expect(regionChip).toHaveCount(1)
+
+      await regionChip.getByRole('button', { name: 'Remove filter: Region' }).click()
+      await expect(regionChip).toHaveCount(0)
+      // the next chip: Status's own, whose body takes the focus
+      await expect(body(page, 'Status')).toBeFocused()
+
+      // clear the last one (its own x puts the focus on the pill it turns back into), then Region again alone
+      await bar(page).getByRole('button', { name: 'Remove filter: Status' }).click()
+      await expect(body(page, 'Status')).toBeFocused()
+
+      await bar(page).getByRole('button', { name: 'More filters' }).click()
+      await region.click()
+      await menuOf(region).locator('[data-atom-option]').filter({ hasText: 'South' }).click()
+      await closeMore(page)
+      await regionChip.getByRole('button', { name: 'Remove filter: Region' }).click()
+      await expect(regionChip).toHaveCount(0)
+      await expect(search).toBeFocused()
+    })
+
+    test('Clear all: the focus goes to the first control\'s pill', async ({ page }) => {
+      await body(page, 'Tag').click()
+      await option(page, 'Tag A').click()
+      await page.keyboard.press('Escape')
+      await body(page, 'Status').click()
+      await option(page, 'Open').click()
+
+      await bar(page).getByRole('button', { name: 'Clear all' }).click()
+
+      await expect(chipOf(page, 'Status')).toHaveCount(0)
+      await expect(body(page, 'Status')).toBeFocused()
+      expect(await body(page, 'Status').evaluate((el) => el.hasAttribute('data-chip'))).toBe(false)
+    })
+
+    test('Clear all with only the search active: the focus goes to the search', async ({ page }) => {
+      const search = page.getByPlaceholder('Search items')
+
+      await search.fill('Item 12')
+      await expect(page.locator('[data-atom-table-count]')).toHaveText('1–10 of 10')
+      await bar(page).getByRole('button', { name: 'Clear all' }).click()
+
+      await expect(search).toHaveValue('')
+      // the first control's pill is there, so that is where it goes; with none showing it would be the search
+      await expect(body(page, 'Status')).toBeFocused()
+    })
+
+    test('an inline filter that is not clearable still has its x on the chip', async ({ page }) => {
+      await open(page, { path: 'table-filters-inline', tw })
+      const pill = page.getByTestId('inline').locator('[data-atom-select-combobox]').filter({ hasText: 'Priority' })
+
+      await pill.click()
+      await page.locator('[data-atom-option]').filter({ hasText: 'High' }).first().click()
+      await expect(pill).toHaveAttribute('data-chip', '')
+      await page.getByTestId('inline').getByRole('button', { name: 'Remove filter: Priority' }).click()
+      await expect(pill).not.toHaveAttribute('data-chip', '')
+      await expect(pill).toBeFocused()
     })
   })
 }

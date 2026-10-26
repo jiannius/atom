@@ -9,7 +9,7 @@ $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ?
 <style>:root { --color-accent: {{ $accent }}; }</style>
 @endif
 
-<div x-data="{ filters: { customer: null, state: 'overdue', issued: null, multi: [], region: null, zone: 'e', bsingle: null, bmulti: [], region_card: null, region_modal: null, region_popover: null, zones_card: [], zones_modal: [], zones_popover: [] } }" class="grid gap-8 p-6">
+<div x-data="{ filters: { customer: null, state: 'overdue', issued: null, multi: [], region: null, zone: 'e', bsingle: null, priority: null, bmulti: [], region_card: null, region_modal: null, region_popover: null, zones_card: [], zones_modal: [], zones_popover: [] } }" class="grid gap-8 p-6">
     <div data-testid="inline" class="rounded-panel border bg-surface p-3">
         <atom:table.toolbar>
             <atom:table.search data-filter-key="filters.search" placeholder="Search number or customer" />
@@ -24,6 +24,11 @@ $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ?
                     ['value' => 'overdue', 'label' => 'Overdue'],
                 ]" />
                 <atom:date-picker variant="range" add x-model="filters.issued" data-filter-key="filters.issued" placeholder="Issued" />
+                {{-- not clearable: the chip still has its x, or no chip could clear it --}}
+                <atom:select variant="filter" add :clearable="false" x-model="filters.priority" data-filter-key="filters.priority" label="Priority" :options="[
+                    ['value' => 'high', 'label' => 'High'],
+                    ['value' => 'low', 'label' => 'Low'],
+                ]" />
                 <atom:select variant="filter" add multiple x-model="filters.multi" data-filter-key="filters.multi" label="Tag" :options="[
                     ['value' => 'x', 'label' => 'Tag X'],
                     ['value' => 'y', 'label' => 'Tag Y'],

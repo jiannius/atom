@@ -264,9 +264,17 @@ describe('the add-filter pill', function () {
             ->and(domQuery($html, '//button[@data-atom-filter-chip-body]')[0]->getAttribute('x-bind:aria-label'))->toContain('chipName');
     });
 
-    it('gives the chip no x when the select is not clearable', function () use ($select) {
-        expect(domQuery($select('add :clearable="false"'), '//button[@data-atom-filter-chip-clear]'))->toBeEmpty()
-            ->and(domClasses(domQuery($select('add :clearable="false"'), '//button[@data-atom-filter-chip-body]')[0]))->not->toContain('[&[data-chip]]:rounded-e-none');
+    it('gives the chip its x whether or not the select is clearable: the bar chip it replaces always had one, and without it no chip could clear the filter', function () use ($select) {
+        $html = $select('add :clearable="false"');
+
+        expect(domQuery($html, '//button[@data-atom-filter-chip-clear]'))->toHaveCount(1)
+            ->and(domClasses(domQuery($html, '//button[@data-atom-filter-chip-body]')[0]))->toContain('[&[data-chip]]:rounded-e-none');
+    });
+
+    it('marks each control with its key, for the focus a cleared chip hands back', function () use ($select) {
+        expect(domQuery($select('add'), '//*[@data-atom-filter-key="filters.customer"]'))->toHaveCount(1)
+            ->and(domQuery(renderBlade('<atom:date-picker variant="range" add data-filter-key="filters.issued" placeholder="Issued" />'), '//*[@data-atom-filter-key="filters.issued"]'))->toHaveCount(1)
+            ->and(domQuery(renderBlade('<atom:table.search data-filter-key="filters.q" placeholder="Find" />'), '//*[@data-atom-table-search][@data-atom-filter-key="filters.q"]'))->toHaveCount(1);
     });
 
     it('keeps a multiple chip menu open on a pick (the bar draws the chip when the select is not in an inline bar, and the menu closes there)', function () use ($select) {

@@ -29,7 +29,11 @@
                 </atom:table.filters>
 
                 <x-slot:end>
-                    <atom:button size="sm" variant="ghost" icon="download">Export</atom:button>
+                    @if ($iconEnd)
+                        <atom:button size="sm" variant="ghost" icon="download" aria-label="Export"><span class="max-sm:sr-only">Export</span></atom:button>
+                    @else
+                        <atom:button size="sm" variant="ghost" icon="download">Export</atom:button>
+                    @endif
                 </x-slot:end>
             </atom:table.toolbar>
         </x-slot:header>

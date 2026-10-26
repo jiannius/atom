@@ -48,8 +48,31 @@ x-data="{
     get active() { return Object.entries(this.chips).map(([key, v]) => ({ key, ...v })) },
     get shown() { return this.active.filter(chip => !chip.self) },
     get moreCount() { return this.active.filter(chip => chip.more).length },
-    clear(key) { this.$dispatch('table-filter:do-clear', { key }) },
-    clearAll() { Object.keys(this.chips).forEach(k => this.clear(k)) },
+    {{-- A chip's x, or Clear all, takes the thing the focus was on out of the page: the focus goes back where the user can keep
+         working, after the controls have cleared and the chip is gone (a frame later). Where it goes: the cleared control's own
+         button (the add pill it turns back into, or its trigger), if that control is in this bar and showing; else the next chip;
+         else the search. A control marks its root `data-atom-filter-key`. A closed "More filters" menu is laid out (its `flex`
+         class beats the browser's display:none), so what is inside a closed popover counts as out of sight. --}}
+    visible(el) { return !!el && el.getClientRects().length > 0 && el.checkVisibility?.() !== false && !el.closest('[popover]:not(:popover-open)') },
+    scope() { return this.$root.closest('[data-atom-table-toolbar]') ?? this.$root },
+    controls() { return [...this.scope().querySelectorAll('[data-atom-filter-key]:not([data-atom-table-search])')] },
+    reach(control) {
+        const el = control?.querySelector('[data-atom-filter-chip-body], [data-atom-select-combobox], input, button')
+
+        return this.visible(el) ? el : null
+    },
+    search() { return this.scope().querySelector('[data-atom-table-search] input') },
+    refocus(find) { requestAnimationFrame(() => this.$nextTick(() => find()?.focus())) },
+    clear(key) {
+        this.$dispatch('table-filter:do-clear', { key })
+        this.refocus(() => this.reach([...this.scope().querySelectorAll('[data-atom-filter-key]')].find(el => el.dataset.atomFilterKey === key))
+            ?? [...this.$root.querySelectorAll('[data-atom-table-filter-chip]')].filter(chip => chip.dataset.chipKey !== key).map(chip => chip.querySelector('button')).find(el => this.visible(el))
+            ?? this.search())
+    },
+    clearAll() {
+        Object.keys(this.chips).forEach(k => this.$dispatch('table-filter:do-clear', { key: k }))
+        this.refocus(() => this.controls().map(el => this.reach(el)).find(Boolean) ?? this.search())
+    },
 }"
 x-on:table-filter:set.window="set($event)"
 {{ $attributes->class($inline ? 'flex min-h-control min-w-0 grow flex-wrap items-center gap-2 [&>.contents>*]:order-2 [&>.contents>[data-atom-table-search]]:order-0 [&>.contents>[data-atom-filter-active]]:order-1' : 'grow space-y-3') }}
@@ -61,7 +84,7 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
          action sitting with Export rather than as the last filter. --}}
     @if ($inline)
         <template x-for="chip in shown" x-bind:key="chip.key" hidden>
-            <div class="order-1 inline-flex h-[26px] items-center gap-1.5 rounded-pill bg-neutral-bg ps-2.5 pe-1.5 text-xs text-fg" data-atom-table-filter-chip>
+            <div class="order-1 inline-flex h-[26px] items-center gap-1.5 rounded-pill bg-neutral-bg ps-2.5 pe-1.5 text-xs text-fg" x-bind:data-chip-key="chip.key" data-atom-table-filter-chip>
                 <span class="font-medium" x-text="chip.label"></span>
                 <span class="text-fg-muted" x-text="chip.operator" x-bind:class="chip.operator === ':' && '-ms-1.5'"></span>
                 <span x-text="chip.display"></span>

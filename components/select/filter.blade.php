@@ -28,14 +28,14 @@ $classes = Arr::toCssClasses([
 /* The add-filter pill: a 26px dashed pill with the label muted and a plus. It is not a control with a value in it: the
    chosen value is the chip's. In an `<atom:table.filters chips="inline">` bar the pill is also the chip: once there is a value
    the same button reads "Label is Value" on the neutral fill (the `[&[data-chip]]:` rules; select.js `selfChip`), with an x
-   of its own beside it, and opens the same menu. Anywhere else the bar draws the chip, and a single select hides the pill while
+   of its own beside it (drawn whether or not the select is `clearable`), and opens the same menu. Anywhere else the bar draws the chip, and a single select hides the pill while
    it has a value (a multiple one stays, to add more). */
 if ($add) {
     $classes = Arr::toCssClasses([
         'inline-flex h-[26px] items-center gap-1 appearance-none rounded-pill border border-dashed border-control-border bg-transparent px-2.5 text-xs text-fg-muted',
         'hover:bg-surface-sunken hover:text-fg',
         '[&[data-chip]]:gap-1.5 [&[data-chip]]:border-transparent [&[data-chip]]:bg-neutral-bg [&[data-chip]]:text-fg [&[data-chip]]:hover:bg-border-strong',
-        '[&[data-chip]]:rounded-e-none [&[data-chip]]:pe-2' => $clearable,
+        '[&[data-chip]]:rounded-e-none [&[data-chip]]:pe-2',
     ]);
 }
 
@@ -75,6 +75,7 @@ x-on:keydown.home.prevent.stop="home()"
 x-on:keydown.end.prevent.stop="end()"
 x-on:keydown.escape.stop=""
 class="group/select"
+@if ($filterKey) data-atom-filter-key="{{ $filterKey }}" @endif
 @if ($add && ! $multiple) x-show="selfChip || isEmpty" @endif
 @if ($add) x-bind:data-atom-filter-active="chipState ? '' : null" @endif
 @if ($filterKey)
@@ -174,9 +175,12 @@ x-on:keyup.space.prevent=""
             @endif
         </button>
 
-        @if ($add && $clearable)
+        @if ($add)
             {{-- the own chip's x: a button of its own, split from the chip by a hairline. Enter on it must clear, not reach the
-                 select's Enter (which opens the list). The label is the bar chip's: "Remove filter: Customer". --}}
+                 select's Enter (which opens the list). The label is the bar chip's: "Remove filter: Customer". It is drawn whether or
+                 not the select is `clearable`: the bar's own chip, which this one replaces, always had an x (and cleared the value),
+                 so `clearable`, which is the field-style x inside a plain select, has nothing left to say here. Hiding it would leave
+                 an inline filter that no chip can clear. --}}
             <button
             type="button"
             x-show="chipState"

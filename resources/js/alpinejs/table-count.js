@@ -7,14 +7,15 @@ import onMorphed from '../helpers/morphed'
 export default () => {
     return {
         text: '',
-        stopMorph: null,
 
         init() {
             this.read()
 
             // Livewire re-rendered the page: a filter, a search, a page or a rows-per-page change. Not tied to the morphed
-            // element: the source is somewhere else in the same table, and reading it again is cheap.
-            this.stopMorph = onMorphed(() => this.read())
+            // element: the source is somewhere else in the same table, and reading it again is cheap. The stop function is kept on
+            // the element, so a re-run init() (a morph that re-evaluates x-data) drops the previous registration, not stacks one.
+            this.$root._atomStopCount?.()
+            this.$root._atomStopCount = onMorphed(() => this.read())
         },
 
         read() {
@@ -24,7 +25,8 @@ export default () => {
         },
 
         destroy() {
-            this.stopMorph?.()
+            this.$root._atomStopCount?.()
+            this.$root._atomStopCount = null
         },
     }
 }

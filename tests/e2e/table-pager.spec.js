@@ -143,5 +143,75 @@ for (const tw of ['floor', 'latest']) {
       const b = await box(bar)
       expect(p.bottom).toBeLessThanOrEqual(b.top + 1)
     })
+
+    test('on a phone it stays in flow: 135px of an 800px screen is too much to pin', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 800 })
+      await open(page, { path: 'table-filter-bar', tw })
+      await expect(pager(page)).toBeAttached()
+
+      expect(await pager(page).evaluate((el) => getComputedStyle(el).position)).toBe('static')
+
+      await scrollTo(page, 900)
+      expect((await box(pager(page))).top).toBeGreaterThan(page.viewportSize().height)
+
+      // at the end of the table it is below the last row, where the page ends
+      await scrollTo(page, 100000)
+      const p = await box(pager(page))
+      expect(p.top).toBeGreaterThanOrEqual((await box(page.locator('[data-atom-table-rows] tr').last())).bottom - 1)
+    })
+
+    test('pinned, it clears the home indicator: the bottom padding is the larger of 0.5rem and the safe-area inset', async ({ page }) => {
+      await open(page, { path: 'table-filter-bar', tw })
+      await scrollTo(page, 900)
+
+      // no inset in a desktop browser, so the floor: 8px
+      expect(await pager(page).evaluate((el) => getComputedStyle(el).paddingBottom)).toBe('8px')
+    })
+
+    test('a bottom toast sits above a pinned pager, so it never covers the page buttons', async ({ page }) => {
+      await open(page, { path: 'table-filter-bar', tw })
+      await scrollTo(page, 900)
+      await expect(page.getByRole('button', { name: 'Go to page 2' })).toBeInViewport()
+
+      await page.evaluate(() => window.atom.toast({ message: 'Saved', delay: 600000 }))
+      const toast = page.locator('[data-atom-toast]')
+      await expect(toast).toHaveClass(/opacity-100/)
+      await page.waitForFunction(() => document.querySelector('[data-atom-toast]').getAnimations().length === 0)
+
+      const buttons = page.getByRole('button', { name: 'Go to page 2' })
+      await expect.poll(async () => {
+        const t = await box(page.locator('[data-atom-toast] > div'))
+        const p = await box(pager(page))
+
+        return t.bottom <= p.top + 1
+      }).toBe(true)
+
+      // and the page button is the topmost thing at its centre, not the toast
+      expect(await buttons.evaluate((el) => {
+        const r = el.getBoundingClientRect()
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+
+        return el === top || el.contains(top)
+      })).toBe(true)
+    })
+
+    test('a frameless table in a host panel that clips (overflow-clip) pins its pager', async ({ page }) => {
+      await open(page, { path: 'table-filter-bar', tw, extra: '&host=clip' })
+      await expect(pager(page)).toBeAttached()
+      await scrollTo(page, 900)
+
+      expect((await box(pager(page))).bottom).toBeLessThanOrEqual(page.viewportSize().height + 0.5)
+      await expect(page.getByRole('button', { name: 'Go to page 2' })).toBeInViewport()
+    })
+
+    test('and in one that hides its overflow (overflow-hidden) it cannot: that panel is the scroll container it sticks to', async ({ page }) => {
+      await open(page, { path: 'table-filter-bar', tw, extra: '&host=hidden' })
+      await expect(pager(page)).toBeAttached()
+      await scrollTo(page, 900)
+
+      // sticky, yet not at the screen's bottom: it rests against a box that never scrolls. This is why the patterns say overflow-clip.
+      expect(await pager(page).evaluate((el) => getComputedStyle(el).position)).toBe('sticky')
+      expect((await box(pager(page))).top).toBeGreaterThan(page.viewportSize().height)
+    })
   })
 }

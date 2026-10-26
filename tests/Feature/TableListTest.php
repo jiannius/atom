@@ -161,8 +161,13 @@ describe('the pinned pager', function () {
         expect(domClasses($pager()))->toContain('sticky', 'bottom-0', 'z-10', '-mt-px', 'border-t', 'border-border', 'bg-surface/95', 'backdrop-blur-sm');
     });
 
-    it('stays in flow on a page that has a save bar, where two pinned bars would cover each other', function () use ($pager) {
-        expect(domClasses($pager()))->toContain('[body:has([data-atom-save-bar])_&]:static');
+    it('stays in flow on a page that has a save bar, where two pinned bars would cover each other, and on a phone', function () use ($pager) {
+        expect(domClasses($pager()))->toContain('[body:has([data-atom-save-bar])_&]:static', 'max-sm:static');
+    });
+
+    it('clears the home indicator when pinned, and is a mark the toast lift looks for', function () use ($pager) {
+        expect(domClasses($pager()))->toContain('sm:pb-[max(0.5rem,env(safe-area-inset-bottom,0px))]')
+            ->and($pager()->hasAttribute('data-atom-table-pager'))->toBeTrue();
     });
 
     it('is switched off with sticky-pager="false" on the table, or sticky="false" on the pagination', function () use ($pager) {
@@ -186,7 +191,7 @@ describe('toolbar from sm up', function () {
         $end = domClasses(domQuery($html, '//*[@data-atom-table-toolbar-end]')[0]);
 
         // flex: 1 1 0 with min-width 0, so it wraps its chips inside itself instead of asking for a row of its own
-        expect($start)->toContain('grow', 'min-w-0', 'sm:basis-0')->not->toContain('sm:basis-auto')
+        expect($start)->toContain('grow', 'min-w-0', 'sm:basis-0', 'sm:min-w-48')->not->toContain('sm:basis-auto')
             ->and($end)->toContain('shrink-0', 'self-start', 'ms-auto', 'min-h-(--atom-control-h)');
     });
 });
@@ -216,6 +221,12 @@ describe('the row count', function () {
 
         expect($end->getAttribute('x-show'))->toBe('text')
             ->and(domClasses($end))->toContain('max-sm:hidden');
+    });
+
+    it('hides the count on a phone, so an icon-only end group keeps the search\'s row', function () {
+        $count = domQuery(renderBlade('<atom:table.toolbar>x<x-slot:end><button>E</button></x-slot:end></atom:table.toolbar>'), '//*[@data-atom-table-count]')[0];
+
+        expect(domClasses($count))->toContain('max-sm:hidden');
     });
 
     it('is left out with :count="false", and the end group is only what the host put there', function () {

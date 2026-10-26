@@ -27,6 +27,21 @@ $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->q
         </atom:table.toolbar>
     </div>
 
+    {{-- the wide end group in a 420px container (a sidebar column, a slide-over, a modal) on a wide screen: the 12rem floor of the start group
+         makes it wrap, where the box's own width, not the screen's, is what is left --}}
+    <div class="w-[420px] rounded-panel border bg-surface" data-testid="toolbar-narrow-box">
+        <atom:table.toolbar strip>
+            <atom:table.search placeholder="Search"/>
+            <atom:table.filters>
+                <atom:select variant="filter" data-filter-key="filters.status" label="Status" :options="[['value' => 'a', 'label' => 'Active']]"/>
+            </atom:table.filters>
+            <x-slot:end>
+                <atom:button variant="ghost">Show archived</atom:button>
+                <atom:button>Reconcile selected</atom:button>
+            </x-slot:end>
+        </atom:table.toolbar>
+    </div>
+
     {{-- eight active chips: more than one line of them, so the start group wraps inside itself and the end group stays at the top end --}}
     <div class="rounded-panel border bg-surface" data-testid="toolbar-many" x-data="{ f: { a: 'a1', b: 'b1', c: 'c1', d: 'd1', e: 'e1', f: 'f1', g: 'g1', h: 'h1' } }">
         <atom:table.toolbar strip>

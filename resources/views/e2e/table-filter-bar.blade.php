@@ -2,12 +2,15 @@
 // The filter bar, the toolbar and the pager over a real Livewire round trip, on the consumer's Tailwind: ?tw=floor|latest, ?dark=1.
 // ?count=0 turns the toolbar's count off, ?plain=1 renders the table with no paginator, ?rows=N cuts the data to N rows, ?wide=1 makes
 // the table wider than its box, ?sticky=0 is the table's sticky-pager=false, ?framed=1 draws the table in its own panel, ?modal=1 puts it in a dialog (opened by the button) and
-// ?bar=1 puts a page save bar after it, the other thing pinned to the bottom of the screen.
+// ?bar=1 puts a page save bar after it, the other thing pinned to the bottom of the screen, ?iconend=1 makes the toolbar's end group an
+// icon-only Export, and ?host=clip|hidden gives the panel around the (frameless) table `overflow-clip` or `overflow-hidden`.
+// A bottom toast (atom.toast) is on the page for the toast-lift spec.
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
 $params = [
     'count' => request()->query('count') !== '0',
     'plain' => request()->query('plain') === '1',
     'wide' => request()->query('wide') === '1',
+    'iconEnd' => request()->query('iconend') === '1',
     'frameless' => request()->query('framed') !== '1',
     'stickyPager' => request()->query('sticky') !== '0',
     'limit' => is_numeric(request()->query('rows')) ? (int) request()->query('rows') : null,
@@ -15,6 +18,8 @@ $params = [
 @endphp
 
 <atom:html title="E2E: Table Filter Bar" :vite="[]" :dark="request()->query('dark') === '1'" :styles="['/atom/e2e/consumer-css/'.$tw]">
+<atom:toast />
+
 <div class="p-6">
     @if (request()->query('modal') === '1')
         <atom:modal.trigger name="table-in-modal"><atom:button data-testid="open-modal">Open</atom:button></atom:modal.trigger>

@@ -1,7 +1,9 @@
 import onMorphed from './morphed'
 
 // A toast at the bottom of the screen must never sit on a pinned save bar (`<atom:form.actions bar>`,
-// [data-atom-save-bar]): the Save button would be unreachable until the toast is dismissed. The toast is a
+// [data-atom-save-bar]): the Save button would be unreachable until the toast is dismissed. The same goes for a table's pager
+// ([data-atom-table-pager]) while it is pinned to the bottom (or sits there at the end of the table): its page buttons are in the
+// toast's way exactly when it overlaps the strip the toast takes, which the overlap rule below already asks. The toast is a
 // popover in the top layer, so no z-index can help; it is lifted instead, by an inline margin-bottom that
 // leaves the bar's top edge below the toast's own padding.
 //
@@ -21,7 +23,7 @@ import onMorphed from './morphed'
 // (unless it is inside that modal) or under an [inert] ancestor, and only when it
 // is in the toast's way (it overlaps the strip the toast takes at the bottom): a bar half way up a short page
 // is not. The topmost of those decides. The lift never pushes the toast off the top of the screen.
-const BAR = '[data-atom-save-bar]'
+const BAR = '[data-atom-save-bar], [data-atom-table-pager]'
 
 const viewportHeight = () => document.documentElement.clientHeight
 

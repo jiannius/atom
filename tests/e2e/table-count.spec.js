@@ -110,5 +110,23 @@ for (const tw of ['floor', 'latest']) {
       await expect(bar.locator('[data-atom-table-count]')).toBeHidden()
       await expect(page.getByTestId('toolbar-trashed').locator('[data-atom-table-count]')).toBeHidden()
     })
+
+    for (const w of [360, 390]) {
+      test(`at ${w}px the count is hidden, so an icon-only end group shares the search's row`, async ({ page }) => {
+        await page.setViewportSize({ width: w, height: 800 })
+        await open(page, { path: 'table-filter-bar', tw, extra: '&iconend=1' })
+
+        // the count is there for the page (a sm-up toolbar shows it) and hidden on a phone, where the pager says the range
+        await expect(page.locator('[data-atom-table-count-source]')).toHaveAttribute('data-text', '1–50 of 128')
+        await expect(count(page)).toBeHidden()
+
+        const search = await page.locator('[data-atom-table-search]').boundingBox()
+        const end = await page.locator('[data-atom-table-toolbar-end]').boundingBox()
+
+        expect(end.x).toBeGreaterThan(search.x + search.width - 1)
+        expect(Math.abs((end.y + end.height / 2) - (search.y + search.height / 2))).toBeLessThan(6)
+        expect(search.width).toBeGreaterThanOrEqual(160)
+      })
+    }
   })
 }
