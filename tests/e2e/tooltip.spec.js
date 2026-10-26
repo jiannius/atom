@@ -68,3 +68,29 @@ test('links the trigger to its content via aria-describedby', async ({ page }) =
   expect(describedby).toBeTruthy()
   await expect(page.locator(`#${describedby}`)).toHaveAttribute('data-atom-tooltip-content', /.*/)
 })
+
+// A tooltip is a top-layer popover that floating-ui places in viewport coordinates. A non-static `position` on it is
+// used as-is in the top layer and resolves against the document, so it was drawn above its trigger by the scroll distance.
+// Needs the consumer build (`node tests/consumer/build.mjs`), whose `relative` utility is what exposed it.
+for (const tw of ['floor', 'latest']) {
+  for (const scroll of [0, 740, 1233]) {
+    test(`a tooltip sits against its trigger, page scrolled ${scroll}px (${tw})`, async ({ page }) => {
+      await page.goto(`/atom/e2e/tooltip-scroll?tw=${tw}`)
+      await page.evaluate((y) => window.scrollTo(0, y), scroll)
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(r)))
+
+      const trigger = page.getByTestId('tip-trigger')
+      const content = page.locator('[data-atom-tooltip-content]')
+
+      await trigger.hover()
+      await expect(content).toBeVisible()
+
+      const box = await trigger.boundingBox()
+      const tip = await content.boundingBox()
+
+      expect(Math.abs(tip.y + tip.height - box.y), 'the tooltip ends just above its trigger').toBeLessThan(10)
+      expect(Math.abs((tip.x + tip.width / 2) - (box.x + box.width / 2)), 'and is centred on it').toBeLessThan(2)
+      expect(await content.evaluate((el) => getComputedStyle(el).position)).toBe('fixed')
+    })
+  }
+}

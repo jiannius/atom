@@ -670,6 +670,15 @@ dialog,
     position: fixed;
 }
 
+/** Tooltip — a native [popover] too, and floating-ui places it in viewport coordinates, so it is fixed like the dropdown menu
+    above. A non-static position the component or a host's utility gave it (`relative`) is used as-is in the top layer and
+    resolves against the document, which draws the tooltip above its trigger by the page's scroll distance. **/
+[data-atom-tooltip-content][popover] {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+}
+
 /** Page title — the sidebar layout's outline root. A real <h1> for assistive
     tech, hidden visually because the title is already on screen via the
     breadcrumbs. Structural (Tailwind's own sr-only definition) so it cannot
