@@ -15,18 +15,20 @@
      In the table's `header` slot the table draws the strip around it (a frameless table's hairline and padding). Placed
      anywhere else, in a panel above a table, pass `strip` to draw its own: `border-b px-3 py-2.5`.
      On a phone the start group takes the full row, unless there is an `end` group (or `trashed`): then the start group has a 12rem floor: a narrow end group (an icon-only button,
-     with `max-sm:sr-only` on its label) shares the first row, a wide one wraps to a row of its own, and the search is never squeezed under 12rem. --}}
+     with `max-sm:sr-only` on its label) shares the first row, a wide one wraps to a row of its own, and the search is never squeezed under 12rem.
+     From `sm` up the start group takes only what the end group leaves (`flex: 1 1 0`, so it never asks for a row of its own) and wraps its
+     chips inside itself: the end group stays at the top end, on the first row, however many rows the filters take. --}}
 @php
 $hasEnd = isset($end) && $end->isNotEmpty();
 @endphp
 
 <div {{ $attributes->class(['flex min-w-0 grow basis-full flex-wrap items-start gap-2', 'border-b px-3 py-2.5' => $strip]) }} data-atom-table-toolbar>
-    <div @class(['flex min-w-0 grow flex-wrap items-start gap-2 sm:basis-auto [&_[data-atom-table-search]]:w-full sm:[&_[data-atom-table-search]]:w-60', 'basis-full' => ! ($hasEnd || $trashed), 'basis-48' => $hasEnd || $trashed]) data-atom-table-toolbar-start>
+    <div @class(['flex min-w-0 grow flex-wrap items-start gap-2 sm:basis-0 [&_[data-atom-table-search]]:w-full sm:[&_[data-atom-table-search]]:w-60', 'basis-full' => ! ($hasEnd || $trashed), 'basis-48' => $hasEnd || $trashed]) data-atom-table-toolbar-start>
         {{ $slot }}
     </div>
 
     @if ($hasEnd || $trashed)
-        <div class="ms-auto flex min-h-(--atom-control-h) shrink-0 flex-wrap items-center gap-2 text-xs text-fg-subtle" data-atom-table-toolbar-end>
+        <div class="ms-auto flex min-h-(--atom-control-h) shrink-0 flex-wrap items-center gap-2 self-start text-xs text-fg-subtle" data-atom-table-toolbar-end>
             @if ($hasEnd)
                 {{ $end }}
             @endif

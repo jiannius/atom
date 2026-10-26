@@ -153,6 +153,18 @@ describe('toolbar on a phone', function () {
     });
 });
 
+describe('toolbar from sm up', function () {
+    it('lets the start group take only what the end group leaves, and keeps the end group at the top end', function () {
+        $html = renderBlade('<atom:table.toolbar>x<x-slot:end><button>E</button></x-slot:end></atom:table.toolbar>');
+        $start = domClasses(domQuery($html, '//*[@data-atom-table-toolbar-start]')[0]);
+        $end = domClasses(domQuery($html, '//*[@data-atom-table-toolbar-end]')[0]);
+
+        // flex: 1 1 0 with min-width 0, so it wraps its chips inside itself instead of asking for a row of its own
+        expect($start)->toContain('grow', 'min-w-0', 'sm:basis-0')->not->toContain('sm:basis-auto')
+            ->and($end)->toContain('shrink-0', 'self-start', 'ms-auto', 'min-h-(--atom-control-h)');
+    });
+});
+
 describe('toolbar', function () {
     it('lays the controls out, with the end group on the far side', function () {
         $html = renderBlade('<atom:table.toolbar><input id="q"><x-slot:end><button id="n" type="button">Export</button></x-slot:end></atom:table.toolbar>');

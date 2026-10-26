@@ -43,3 +43,52 @@ for (const tw of ['floor', 'latest']) {
     })
   })
 }
+
+// From sm up the start group takes only the space the end group leaves and wraps its chips inside itself, so the end group (Export,
+// Archive) stays on the first row at the top end however many rows the filters take. It used to be `basis-auto`: once the chips ran
+// past one line the whole start group wrapped and pushed the end group onto a row of its own.
+for (const tw of ['floor', 'latest']) {
+  test.describe(`toolbar end group at the top end, ${tw} consumer build`, () => {
+    for (const w of [1440, 1024, 768]) {
+      test(`at ${w}px, with chips on two or more rows, the end group sits on the first row at the toolbar's end`, async ({ page }) => {
+        await page.setViewportSize({ width: w, height: 900 })
+        await open(page, { path: 'table-toolbar-end', tw })
+
+        const bar = page.getByTestId('toolbar-many')
+        const toolbar = bar.locator('[data-atom-table-toolbar]')
+        const start = bar.locator('[data-atom-table-toolbar-start]')
+        const end = bar.locator('[data-atom-table-toolbar-end]')
+        const search = bar.locator('[data-atom-table-search]')
+        const chips = bar.locator('[data-atom-table-filter-chip]')
+
+        await expect(chips).toHaveCount(8)
+
+        const [t, s, e, q] = await Promise.all([toolbar.boundingBox(), start.boundingBox(), end.boundingBox(), search.boundingBox()])
+        const rows = new Set((await chips.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top))))).size
+
+        // the chips took more than one line, so the start group is taller than the end group's one row
+        expect(rows).toBeGreaterThanOrEqual(2)
+        expect(s.height).toBeGreaterThan(e.height + 10)
+        // the end group is on the first row: its top is the search's top, and it is flush with the toolbar's end
+        expect(Math.abs(e.y - q.y)).toBeLessThan(2)
+        expect(Math.abs(e.y - s.y)).toBeLessThan(2)
+        expect(Math.abs((e.x + e.width) - (t.x + t.width - 12))).toBeLessThan(2)
+        // and the two groups do not overlap
+        expect(s.x + s.width).toBeLessThanOrEqual(e.x + 1)
+        // the search keeps its 240px
+        expect(q.width).toBe(240)
+      })
+    }
+
+    test('at 390px a wide end group still wraps under the start group, as it did', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 900 })
+      await open(page, { path: 'table-toolbar-end', tw })
+
+      const bar = page.getByTestId('toolbar-many')
+      const [s, e] = await Promise.all([bar.locator('[data-atom-table-toolbar-start]').boundingBox(), bar.locator('[data-atom-table-toolbar-end]').boundingBox()])
+
+      expect(e.y).toBeGreaterThanOrEqual(s.y + s.height - 1)
+      expect(await width(bar.locator('[data-atom-table-search]'))).toBeGreaterThanOrEqual(160)
+    })
+  })
+}
