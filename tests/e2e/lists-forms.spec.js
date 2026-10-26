@@ -120,7 +120,7 @@ for (const tw of ['floor', 'latest']) {
 
         expect(panel['border-top-width']).toBe('1px')
         expect(panel['border-top-left-radius']).toBe('10px')
-        expect(panel['overflow-x']).toBe('hidden')
+        expect(panel['overflow-x']).toBe('clip')
         expect(table['border-top-width']).toBe('0px')
         expect(table['border-top-left-radius']).toBe('0px')
         expect(table['box-shadow']).toBe('none')

@@ -1,6 +1,8 @@
 <div x-data class="space-y-8">
-    {{-- chips="inline": each active filter is a sentence pill after the controls, in the same wrapping row. `add` draws a select
-         or a date range as a dashed "+ Customer" pill that steps aside for its chip. --}}
+    {{-- chips="inline": each active filter is a sentence pill ahead of the controls that are not set, in the same wrapping row. `add`
+         draws a select or a date range as a dashed "+ Customer" pill that is also its own chip once it has a value: click the chip
+         to open the same menu, and its x clears it. A multiple select stays open while you tick, reads "is any of" and names two
+         values before it counts. The More filters button counts the active filters in its slot. --}}
     <atom:table.filters chips="inline">
         <atom:table.search placeholder="Search" />
         <atom:select variant="filter" add wire:model="filters.customer" label="Customer" :options="[
@@ -11,7 +13,19 @@
             ['value' => 'paid', 'label' => 'Paid'],
             ['value' => 'overdue', 'label' => 'Overdue'],
         ]" />
+        <atom:select variant="filter" add multiple wire:model="filters.tags" label="Tag" :options="[
+            ['value' => 'a', 'label' => 'Tag A'],
+            ['value' => 'b', 'label' => 'Tag B'],
+            ['value' => 'c', 'label' => 'Tag C'],
+        ]" />
         <atom:date-picker variant="range" add wire:model="filters.issued" placeholder="Issued" />
+
+        <x-slot:more>
+            <atom:select variant="filter" add wire:model="filters.region" label="Region" :options="[
+                ['value' => 'n', 'label' => 'North'],
+                ['value' => 's', 'label' => 'South'],
+            ]" />
+        </x-slot:more>
     </atom:table.filters>
 
     <atom:table.filters>

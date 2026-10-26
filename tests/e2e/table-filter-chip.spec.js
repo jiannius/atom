@@ -125,7 +125,11 @@ for (const tw of ['floor', 'latest']) {
       await status.focus()
       await page.keyboard.press('Enter')
       await expect(option(page, 'Open')).toBeVisible()
+      // the list resets its active option a tick after it opens: let that land before moving
+      await expect(status).toHaveAttribute('aria-expanded', 'true')
+      await page.waitForTimeout(150)
       await page.keyboard.press('ArrowDown')
+      await expect(option(page, 'Open')).toHaveAttribute('data-active', '')
       await page.keyboard.press('Enter')
       await expect.poll(() => text(status)).toBe('Status is Open')
       await expect(option(page, 'Closed')).toBeHidden()
