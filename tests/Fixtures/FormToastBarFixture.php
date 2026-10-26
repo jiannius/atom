@@ -52,6 +52,14 @@ class FormToastBarFixture extends Component
     }
 
     /**
+     * Take the toast that sits inside this component away, and bring it back.
+     */
+    public function toggleToast(): void
+    {
+        $this->toastInside = ! $this->toastInside;
+    }
+
+    /**
      * Render the fixture view.
      */
     public function render()

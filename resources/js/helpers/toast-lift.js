@@ -15,14 +15,31 @@ import onMorphed from './morphed'
 //   margin is an inline style, which a morph strips from the toast root, so the morph also puts it back.
 // Every trigger lands in one rAF, so the observers can never report a resize loop.
 //
-// A bar counts only when it is rendered and in the viewport (a closed modal's is display:none), and only when it
+// A bar counts only when it is rendered and in the viewport (a closed modal's is display:none), is not behind an open modal
+// (unless it is inside that modal) or under an [inert] ancestor, and only when it
 // is in the toast's way (it overlaps the strip the toast takes at the bottom): a bar half way up a short page
 // is not. The topmost of those decides. The lift never pushes the toast off the top of the screen.
 const BAR = '[data-atom-save-bar]'
 
 const viewportHeight = () => document.documentElement.clientHeight
 
+// the open modal dialogs: the page behind one cannot be reached, so a bar there is not in anyone's way
+const openModals = () => {
+    try {
+        return [...document.querySelectorAll('dialog:modal')]
+    }
+    catch (e) {
+        return [...document.querySelectorAll('dialog[open]')]
+    }
+}
+
 const visibleBars = () => [...document.querySelectorAll(BAR)].filter((bar) => {
+    if (bar.closest('[inert]')) return false
+
+    const modals = openModals()
+
+    if (modals.length && ! modals.some((modal) => modal.contains(bar))) return false
+
     if (bar.getClientRects().length === 0) return false
     if (typeof bar.checkVisibility === 'function' && ! bar.checkVisibility({ visibilityProperty: true })) return false
 

@@ -3,6 +3,8 @@
         <div class="flex gap-3">
             <button type="button" wire:click="touch" data-touch>Touch</button>
             <button type="button" wire:click="toggleBar" data-toggle-bar>Toggle bar</button>
+            <button type="button" wire:click="toggleToast" data-toggle-toast>Toggle toast</button>
+            <button type="button" x-on:click="atom.modal('over').show()" data-open-modal>Open modal</button>
             <span>Touches: <span data-touches>{{ $touches }}</span></span>
         </div>
 
@@ -26,6 +28,11 @@
             @endif
         </atom:form>
     </atom:page>
+
+    {{-- a modal over the page that holds the bar: the page behind it is out of reach --}}
+    <atom:modal name="over" class="w-[24rem]">
+        <div data-testid="over">A modal over the page</div>
+    </atom:modal>
 
     @if ($toastInside)
         <atom:toast />

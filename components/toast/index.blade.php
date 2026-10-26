@@ -21,6 +21,7 @@ aria-live="polite"
 x-data="{
     timer: null,
     unlift: null,
+    open: false,
     config: {},
 
     showToast (e) {
@@ -30,10 +31,14 @@ x-data="{
         else this.config = { ...@js($config), ...e.detail }
 
         this.$nextTick(() => {
-            this.$root.showPopover()
+            {{-- two shows in one tick queue two of these: the second replaces the first's timer and lift, which it must stop first --}}
+            clearTimeout(this.timer)
+            this.unlift?.()
+            this.unlift = null
+
+            if (! this.$root.matches(':popover-open')) this.$root.showPopover()
             if (this.config.position === 'bottom') this.unlift = atom.toastLift(this.$root)
-            this.$root.classList.add('scale-100')
-            this.$root.classList.add('opacity-100')
+            this.open = true
             if (this.config.delay) this.timer = setTimeout(() => this.closeToast(), this.config.delay)
         })
     },
@@ -44,8 +49,12 @@ x-data="{
         this.unlift?.()
         this.unlift = null
         this.$root.hidePopover()
-        this.$root.classList.remove('scale-100')
-        this.$root.classList.remove('opacity-100')
+        this.open = false
+    },
+
+    destroy () {
+        clearTimeout(this.timer)
+        this.unlift?.()
     },
 
     onClose (e) {
@@ -68,6 +77,7 @@ x-on:atom-toast-show.window="showToast"
 x-on:atom-toast-close.window="onClose"
 x-on:click="onClick"
 x-bind:class="{
+    'opacity-100 scale-100': open,
     'mt-auto': config.position === 'bottom',
     'my-auto': config.position === 'center',
     'ml-auto': config.align === 'right',

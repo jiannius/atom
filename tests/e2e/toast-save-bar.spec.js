@@ -178,9 +178,8 @@ for (const build of ['floor', 'latest']) {
         expect(Math.abs((await fromBottom(page)) - lifted)).toBeLessThan(1.5)
       })
 
-      // A toast rendered inside the component is morphed with it, and a morph strips the inline margin the lift wrote. (It also strips the
-      // classes the toast added with classList, which the toast's own open state has always lost this way; so this reads the margin and
-      // the popover, not the opacity.)
+      // A toast rendered inside the component is morphed with it. The morph strips the inline margin the lift wrote (written again by
+      // onMorphed) and every class JS added by hand, so the open state is a bound class: it has to come back too.
       test('a Livewire round trip keeps the lift (toast inside the component)', async ({ page }) => {
         await open(page, '?inside=1')
         await failSubmit(page)
@@ -194,6 +193,10 @@ for (const build of ['floor', 'latest']) {
           await expect(page.locator('[data-touches]')).toHaveText(String(n))
           await expect.poll(() => toast(page).evaluate((el) => el.style.marginBottom), { message: `round trip ${n}` }).toBe(lifted)
           expect(await toast(page).evaluate((el) => el.matches(':popover-open'))).toBe(true)
+          await expect(toast(page), `round trip ${n}: still shown`).toHaveClass(/opacity-100/)
+          await expect(toast(page)).toHaveClass(/scale-100/)
+          await settled(page)
+          expect(await toast(page).evaluate((el) => getComputedStyle(el).opacity), `round trip ${n}: opacity`).toBe('1')
         }
       })
 
@@ -251,6 +254,115 @@ for (const build of ['floor', 'latest']) {
 
         await expect(panel(page)).toBeVisible()
         expect((await rect(panel(page))).top).toBeGreaterThanOrEqual(0)
+      })
+
+        // what the page has live: timers set with a delay only this spec uses, and the capture-phase scroll listeners
+      const spy = (page) => page.addInitScript(() => {
+        const live = new Set()
+        const [set, clear] = [window.setTimeout.bind(window), window.clearTimeout.bind(window)]
+        const scrolls = new Set()
+        const [add, remove] = [window.addEventListener.bind(window), window.removeEventListener.bind(window)]
+        const captures = (o) => o === true || o?.capture === true
+
+        window.setTimeout = (fn, ms, ...rest) => {
+          const id = set(() => { live.delete(id); fn() }, ms, ...rest)
+
+          if (ms === 7777) live.add(id)
+
+          return id
+        }
+        window.clearTimeout = (id) => { live.delete(id); return clear(id) }
+        window.addEventListener = (type, fn, o) => { if (type === 'scroll' && captures(o)) scrolls.add(fn); return add(type, fn, o) }
+        window.removeEventListener = (type, fn, o) => { if (type === 'scroll' && captures(o)) scrolls.delete(fn); return remove(type, fn, o) }
+        window.__live = () => ({ timers: live.size, scrolls: scrolls.size })
+      })
+
+      const live = (page) => page.evaluate(() => window.__live())
+      const frames = (page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))))
+
+      test('two toasts shown in one tick leave one timer and one lift, and the next toast is not lifted by a leftover', async ({ page }) => {
+        await spy(page)
+        await open(page)
+
+        const idle = await live(page)
+
+        await page.evaluate(() => {
+          atom.toast({ message: 'first', delay: 7777 })
+          atom.toast({ message: 'second', delay: 7777 })
+        })
+        await expect(panel(page)).toContainText('second')
+        await expectClear(page, 'second')
+
+        const open2 = await live(page)
+
+        expect(open2.timers, 'one timer is live').toBe(1)
+        expect(open2.scrolls - idle.scrolls, 'one lift is watching').toBe(1)
+
+        await page.locator('[data-atom-toast] button[aria-label]').click()
+        await expect(panel(page)).toBeHidden()
+
+        const closed = await live(page)
+
+        expect(closed.timers).toBe(0)
+        expect(closed.scrolls).toBe(idle.scrolls)
+
+        // a toast in the centre, and a resize: a leftover watcher of the first one would lift it
+        await page.evaluate(() => atom.toast({ message: 'Middle', position: 'center', delay: 0 }))
+        await expect(panel(page)).toBeVisible()
+        await page.setViewportSize({ width: 1300, height: 900 })
+        await page.evaluate(() => dispatchEvent(new Event('resize')))
+        await frames(page)
+
+        expect(await toast(page).evaluate((el) => el.style.marginBottom)).toBe('')
+      })
+
+      for (const inside of [false, true]) {
+        test(`a toast that leaves the page stops its timer and its watcher (${inside ? 'swapped away with its component' : 'node removed'})`, async ({ page }) => {
+          await spy(page)
+          await open(page, inside ? '?inside=1' : '')
+
+          const idle = await live(page)
+
+          await page.evaluate(() => atom.toast({ message: 'Going', delay: 7777 }))
+          await expect(panel(page)).toContainText('Going')
+          await expectClear(page, 'open')
+
+          const shown = await live(page)
+
+          expect(shown.timers).toBe(1)
+          expect(shown.scrolls - idle.scrolls).toBe(1)
+
+          if (inside) await page.locator('[data-toggle-toast]').click()
+          else await toast(page).evaluate((el) => el.remove())
+
+          await expect(toast(page)).toHaveCount(0)
+          await expect.poll(() => live(page), { message: 'nothing left running' }).toEqual({ timers: 0, scrolls: idle.scrolls })
+
+          // and scrolling or resizing the page runs nothing on the removed root
+          await page.evaluate(() => { dispatchEvent(new Event('resize')); window.scrollTo(0, 50) })
+          await frames(page)
+          expect(await live(page)).toEqual({ timers: 0, scrolls: idle.scrolls })
+        })
+      }
+
+      test('a bar behind an open modal does not lift a toast', async ({ page }) => {
+        await open(page)
+        await page.evaluate(() => atom.modal('over').show())
+        await expect(page.getByTestId('over')).toBeVisible()
+        await page.evaluate(() => atom.toast({ message: 'Over the modal', delay: 0 }))
+
+        await expect(panel(page)).toBeVisible()
+        expect(await fromBottom(page)).toBeCloseTo(GAP, 0)
+        expect(await toast(page).evaluate((el) => el.style.marginBottom)).toBe('')
+      })
+
+      test('a bar under an [inert] ancestor does not lift a toast', async ({ page }) => {
+        await open(page)
+        await bar(page).evaluate((el) => el.parentElement.setAttribute('inert', ''))
+        await page.evaluate(() => atom.toast({ message: 'Inert', delay: 0 }))
+
+        await expect(panel(page)).toBeVisible()
+        expect(await fromBottom(page)).toBeCloseTo(GAP, 0)
       })
 
       test('closing the toast puts nothing behind', async ({ page }) => {
