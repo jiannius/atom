@@ -7,7 +7,7 @@ $options = [['value' => 'a', 'label' => 'Draft'], ['value' => 'b', 'label' => 'S
 @endphp
 
 <atom:html title="E2E: Chip fit" :vite="[]" :dark="false" :density="$density" fonts="geist" :styles="$tw ? ['/atom/e2e/consumer-css/'.$tw] : []">
-<div class="mx-auto grid max-w-2xl gap-6 p-8" x-data="{
+<div class="mx-auto grid max-w-2xl grid-cols-[minmax(0,1fr)] gap-6 p-8" x-data="{
     none: [],
     one: [{ name: 'Ada Lovelace', email: 'ada@example.com' }],
     bad: [{ name: 'nobody', email: 'nobody' }],
@@ -17,6 +17,7 @@ $options = [['value' => 'a', 'label' => 'Draft'], ['value' => 'b', 'label' => 'S
         { name: 'Alan Turing', email: 'alan@example.com' },
         { name: 'Edsger Dijkstra', email: 'edsger@example.com' },
     ],
+    long: [{ name: '{{ str_repeat('a', 138) }}@example.com', email: '{{ str_repeat('a', 138) }}@example.com' }],
     selNone: [],
     selOne: ['a'],
     selMany: ['a', 'b', 'c'],
@@ -24,6 +25,7 @@ $options = [['value' => 'a', 'label' => 'Draft'], ['value' => 'b', 'label' => 'S
     <div data-testid="email-none"><atom:input type="email" multiple x-model="none"/></div>
     <div data-testid="email-one"><atom:input type="email" multiple x-model="one"/></div>
     <div data-testid="email-bad"><atom:input type="email" multiple x-model="bad"/></div>
+    <div data-testid="email-long"><atom:input type="email" multiple x-model="long"/></div>
     <div data-testid="email-many"><atom:input type="email" multiple x-model="many"/></div>
 
     <div data-testid="select-none"><atom:select variant="listbox" multiple :options="$options" x-model="selNone"/></div>
