@@ -93,8 +93,16 @@ export default (config) => {
 
             if (!slot || !target) return
 
-            let alone = [...slot.children].every((child) => child === this.$root
-                || (child.hasAttribute('x-persist') && child.children.length === 1 && child.firstElementChild === this.$root))
+            // every node of the slot: comments and blank text are nothing, any other text is the host's own content, and an element
+            // is the trail or the element that persists it (whose only child element is the trail). Blank text is PHP's trim() set.
+            let alone = [...slot.childNodes].every((child) => {
+                if (child.nodeType === Node.COMMENT_NODE) return true
+                if (child.nodeType === Node.TEXT_NODE) return /^[ \t\n\r\0\x0B]*$/.test(child.textContent)
+                if (child.nodeType !== Node.ELEMENT_NODE) return false
+
+                return child === this.$root
+                    || (child.hasAttribute('x-persist') && child.children.length === 1 && child.firstElementChild === this.$root)
+            })
 
             target.toggleAttribute('data-atom-header-empty', alone && this.isEmpty)
         },

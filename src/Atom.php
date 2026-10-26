@@ -397,7 +397,8 @@ class Atom
      * one element that is the trail (data-atom-breadcrumbs) or the element that persists it (x-persist, whose only child
      * element is the trail). Anything else, a wrapper or a sibling included, is the host's own content. The layouts ask
      * it before they leave a bar out on the first frame, and it fails closed: a slot that cannot be parsed is not "alone".
-     * Keep it in step with syncHeader() in resources/js/alpinejs/breadcrumbs.js, which applies the same rule in the browser.
+     * Keep it in step with syncHeader() in resources/js/alpinejs/breadcrumbs.js, which applies the same rule in the browser
+     * (blank text is PHP's trim(): space, tab, newline, carriage return, NUL, vertical tab).
      */
     public function crumbsHoldOnlyTheTrail(mixed $crumbs): bool
     {
@@ -426,7 +427,8 @@ class Atom
             $holder = null;
 
             foreach ($body->childNodes as $node) {
-                if ($node->nodeType === XML_COMMENT_NODE || ($node->nodeType === XML_TEXT_NODE && trim($node->textContent) === '')) {
+                // a comment, a processing instruction (libxml 2.9 keeps `<?x>` as one; 2.14+ reads it as a comment) and blank text are nothing
+                if (in_array($node->nodeType, [XML_COMMENT_NODE, XML_PI_NODE], true) || ($node->nodeType === XML_TEXT_NODE && trim($node->textContent) === '')) {
                     continue;
                 }
 
@@ -457,7 +459,11 @@ class Atom
             return false;
         }
         finally {
-            libxml_clear_errors();
+            // a caller that was collecting libxml errors keeps what it had collected
+            if (! $previous) {
+                libxml_clear_errors();
+            }
+
             libxml_use_internal_errors($previous);
         }
     }

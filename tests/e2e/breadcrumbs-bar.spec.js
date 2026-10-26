@@ -220,7 +220,7 @@ for (const shell of ['sidebar', 'header']) {
 
     // A slot that holds more than the trail is the host's. The server applies the browser's rule (Atom::crumbsHoldOnlyTheTrail), so it
     // does not draw the bar empty and then put it back: the bar is there from the first frame, with no layout shift.
-    for (const [name, extra] of [['an element beside the trail', 'extra=1'], ['a wrapper around the trail', 'wrap=1']]) {
+    for (const [name, extra] of [['an element beside the trail', 'extra=1'], ['a wrapper around the trail', 'wrap=1'], ['a text node beside the trail', 'text=1']]) {
       test(`${name} counts as other content: the bar is drawn from the first frame, and stays`, async ({ page }) => {
         await page.addInitScript((selector) => {
           window.__bar = []
