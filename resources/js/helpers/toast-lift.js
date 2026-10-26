@@ -11,6 +11,8 @@ import onMorphed from './morphed'
 //   the bars and on <html>, plus `resize`;
 // - the bar's place (the page scrolls to its end and the bar takes the page's bottom room): `scroll`, in the
 //   capture phase so a scroller that is not the window counts too;
+// - a modal that opens or closes under the toast (a bar behind it stops or starts counting): atom's `opened` and the dialog's own
+//   `close`, which does not bubble and so is heard in the capture phase;
 // - a bar that comes or goes (a Livewire morph, a wire:navigate): onMorphed() and `livewire:navigated`. The
 //   margin is an inline style, which a morph strips from the toast root, so the morph also puts it back.
 // Every trigger lands in one rAF, so the observers can never report a resize loop.
@@ -107,6 +109,8 @@ export default (root) => {
     addEventListener('resize', schedule)
     addEventListener('scroll', schedule, { capture: true, passive: true })
     addEventListener('livewire:navigated', schedule)
+    addEventListener('close', schedule, { capture: true })
+    addEventListener('opened', schedule, { capture: true })
     resizes?.observe(document.documentElement)
     apply()
 
@@ -119,6 +123,8 @@ export default (root) => {
         removeEventListener('resize', schedule)
         removeEventListener('scroll', schedule, { capture: true })
         removeEventListener('livewire:navigated', schedule)
+        removeEventListener('close', schedule, { capture: true })
+        removeEventListener('opened', schedule, { capture: true })
         resizes?.disconnect()
         root.style.marginBottom = ''
     }
