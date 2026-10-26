@@ -9,7 +9,7 @@ $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ?
 <style>:root { --color-accent: {{ $accent }}; }</style>
 @endif
 
-<div x-data="{ filters: { customer: null, state: 'overdue', issued: null, multi: [], region: null, zone: 'e', bsingle: null, bmulti: [] } }" class="grid gap-8 p-6">
+<div x-data="{ filters: { customer: null, state: 'overdue', issued: null, multi: [], region: null, zone: 'e', bsingle: null, bmulti: [], region_card: null, region_modal: null, region_popover: null, zones_card: [], zones_modal: [], zones_popover: [] } }" class="grid gap-8 p-6">
     <div data-testid="inline" class="rounded-panel border bg-surface p-3">
         <atom:table.toolbar>
             <atom:table.search data-filter-key="filters.search" placeholder="Search number or customer" />
@@ -66,8 +66,12 @@ $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ?
                     ['value' => 'overdue', 'label' => 'Overdue'],
                 ]" />
                 <x-slot:more>
-                    <atom:select variant="filter" add x-model="filters.region" data-filter-key="filters.region" label="Region" :options="[
+                    <atom:select variant="filter" add x-model="filters.region_{{ $mode }}" data-filter-key="filters.region_{{ $mode }}" label="Region" :options="[
                         ['value' => 'n', 'label' => 'North'],
+                    ]" />
+                    <atom:select variant="filter" add multiple x-model="filters.zones_{{ $mode }}" data-filter-key="filters.zones_{{ $mode }}" label="Zones" :options="[
+                        ['value' => 'z1', 'label' => 'Zone 1'],
+                        ['value' => 'z2', 'label' => 'Zone 2'],
                     ]" />
                 </x-slot:more>
             </atom:table.filters>

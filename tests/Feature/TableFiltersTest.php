@@ -84,6 +84,60 @@ it('puts the overflow button in the filter row, right after the controls', funct
     'modal' => 'overflow="modal"',
 ]);
 
+// The More filters button: a pill of the add pills' size, a sliders icon before the label, a count after it.
+describe('the More filters button', function () {
+    $bar = fn (string $overflow = '') => renderBlade('<atom:table.filters '.$overflow.'>CONTROL<x-slot:more><div data-field>x</div></x-slot></atom:table.filters>');
+
+    it('is a 26px pill on the surface with a hairline (not dashed) in every overflow mode', function (string $overflow) use ($bar) {
+        $button = domQuery($bar($overflow), '//button[@data-atom-table-filters-more-button]');
+
+        expect($button)->toHaveCount(1)
+            ->and(domClasses($button[0]))->toContain('h-[26px]', 'text-xs', 'rounded-pill', 'border', 'bg-surface')
+            ->not->toContain('border-dashed');
+    })->with(['popover' => '', 'card' => 'overflow="card"', 'modal' => 'overflow="modal"']);
+
+    it('puts a sliders icon at size-3.5 before the label, and no up-down caret', function (string $overflow) use ($bar) {
+        $html = $bar($overflow);
+        $button = domQuery($html, '//button[@data-atom-table-filters-more-button]')[0];
+        $icons = domQuery($html, '//button[@data-atom-table-filters-more-button]//*[@data-atom-icon]');
+
+        expect($icons)->toHaveCount(1)
+            ->and(domClasses($icons[0]))->toContain('size-3.5')
+            ->and($icons[0]->getElementsByTagName('svg')[0]->getAttribute('class'))->toContain('lucide-sliders-horizontal')
+            ->and(preg_replace('/\s+/', ' ', trim($button->textContent)))->toBe('More filters')
+            // the icon is the first thing in the button
+            ->and(domQuery($html, '//button[@data-atom-table-filters-more-button]/*[1][@data-atom-icon]'))->toHaveCount(1);
+    })->with(['popover' => '', 'card' => 'overflow="card"', 'modal' => 'overflow="modal"']);
+
+    it('carries a count that is hidden until a filter in the slot is active', function (string $overflow) use ($bar) {
+        $count = domQuery($bar($overflow), '//button[@data-atom-table-filters-more-button]//*[@data-atom-table-filters-more-count]');
+
+        expect($count)->toHaveCount(1)
+            ->and($count[0]->getAttribute('x-show'))->toBe('moreCount')
+            ->and($count[0]->getAttribute('x-text'))->toBe('moreCount')
+            ->and(domClasses($count[0]))->toContain('bg-fg', 'text-canvas', 'text-[10px]', 'min-w-4', 'rounded-pill');
+    })->with(['popover' => '', 'card' => 'overflow="card"', 'modal' => 'overflow="modal"']);
+
+    it('marks the slot, in each mode, so a control and the count can tell it is in it', function (string $overflow) use ($bar) {
+        expect(domQuery($bar($overflow), '//*[@data-atom-table-filters-more]//*[@data-field]'))->toHaveCount(1);
+    })->with(['popover' => '', 'card' => 'overflow="card"', 'modal' => 'overflow="modal"']);
+
+    it('counts the chips whose control sits in the slot, from this bar only', function () use ($bar) {
+        $html = $bar();
+
+        expect($html)->toContain('get moreCount()')
+            ->and($html)->toContain("closest?.('[data-atom-table-filters-more]')")
+            ->and($html)->toContain('this.$root.contains(event.target)');
+    });
+
+    it('opens the card, and sets aria-expanded, from the same button', function () use ($bar) {
+        $button = domQuery($bar('overflow="card"'), '//button[@data-atom-table-filters-more-button]')[0];
+
+        expect($button->getAttribute('x-on:click'))->toBe('expanded = !expanded')
+            ->and($button->getAttribute('x-bind:aria-expanded'))->toContain('expanded');
+    });
+});
+
 it('does not register a select that has no wire:model', function () {
     view()->share('errors', new \Illuminate\Support\ViewErrorBag);
     $html = Blade::render('<atom:select variant="filter" label="Status" :options="[]" />');

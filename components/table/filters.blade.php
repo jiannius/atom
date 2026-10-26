@@ -9,10 +9,11 @@
      operator in the event's `operator` detail (default `is`; the search says `:`, which reads "Search: foo").
      Pair it with `add` on a select filter or a date range, which draws the control as a dashed "+ Customer" pill. Once a value
      is set the pill is the chip: the control draws it itself (a button that opens its own menu, and an x beside it), and says so
-     in the event's `self` detail, so this bar skips its own copy of that chip, keeping it only for Clear all
-     and the controls that do not draw one (the search, a filter without `add`, anything in the "More filters" slot).
+     in the event's `self` detail, so this bar skips its own copy of that chip, keeping it only for Clear all, the More filters
+     count and the controls that do not draw one (the search, a filter without `add`, anything in the "More filters" slot).
      A control marks itself `data-atom-filter-active` while its chip is up, which orders it ahead of the bare pills like the
-     bar's own chips. The "More filters" slot is marked `data-atom-table-filters-more`, so a control can tell it sits there. --}}
+     bar's own chips. The "More filters" slot is marked `data-atom-table-filters-more`; the count on that button is the
+     number of chips whose control sits in it. --}}
 @php
 $inline = $chips === 'inline';
 
@@ -22,6 +23,17 @@ $inline = $chips === 'inline';
 // returns false (not null) when no component is on the stack.
 $modalName = ((app('livewire')->current() ?: null)?->getName() ?: 'atom').'-table-filters';
 
+/* The More filters button is a pill like the add pills (26px, text-xs), on the surface with a hairline: it is not an add, so
+   it is not dashed. The count is the number of active filters whose control sits in the slot, and is gone at zero. */
+$moreButton = 'inline-flex h-[26px] shrink-0 items-center gap-1.5 appearance-none rounded-pill border border-control-border bg-surface px-2.5 text-xs text-fg hover:bg-surface-sunken';
+
+ob_start();
+@endphp
+<atom:icon.sliders-horizontal class="size-3.5 text-fg-muted" />
+<span>{{ t('More filters') }}</span>
+<span x-show="moreCount" x-cloak x-text="moreCount" class="inline-flex h-4 min-w-4 items-center justify-center rounded-pill bg-fg px-1 text-[10px] font-medium leading-none tabular-nums text-canvas" data-atom-table-filters-more-count></span>
+@php
+$moreButtonContent = new \Illuminate\Support\HtmlString(ob_get_clean());
 @endphp
 
 <div
@@ -31,10 +43,11 @@ x-data="{
     set(event) {
         const { key, label, display, operator, self } = event.detail
         const empty = display === null || display === '' || (Array.isArray(display) && display.length === 0)
-        if (empty) { delete this.chips[key] } else { this.chips[key] = { label, display, operator: operator ?? @js(t('is')), self: !!self } }
+        if (empty) { delete this.chips[key] } else { this.chips[key] = { label, display, operator: operator ?? @js(t('is')), self: !!self, more: !!event.target?.closest?.('[data-atom-table-filters-more]') && this.$root.contains(event.target) } }
     },
     get active() { return Object.entries(this.chips).map(([key, v]) => ({ key, ...v })) },
     get shown() { return this.active.filter(chip => !chip.self) },
+    get moreCount() { return this.active.filter(chip => chip.more).length },
     clear(key) { this.$dispatch('table-filter:do-clear', { key }) },
     clearAll() { Object.keys(this.chips).forEach(k => this.clear(k)) },
 }"
@@ -64,19 +77,21 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
 
         @isset($more)
             @if ($overflow === 'card')
-                <atom:button variant="ghost" class="shrink-0" x-on:click="expanded = !expanded">
-                    {{ t('More filters') }} <atom:icon.dropdown />
-                </atom:button>
+                <button type="button" class="{{ $moreButton }}" x-on:click="expanded = !expanded" x-bind:aria-expanded="expanded ? 'true' : 'false'" data-atom-table-filters-more-button>
+                    {{ $moreButtonContent }}
+                </button>
             @elseif ($overflow === 'modal')
                 {{-- the trigger is display:contents too, so the button is the flex item two levels down: the container's order rule never reaches it, so it carries the same order-2 itself (harmless in the below layout, where it is last anyway) --}}
                 <atom:modal.trigger :name="$modalName">
-                    <atom:button variant="ghost" class="shrink-0 order-2">
-                        {{ t('More filters') }} <atom:icon.dropdown />
-                    </atom:button>
+                    <button type="button" class="{{ $moreButton }} order-2" data-atom-table-filters-more-button>
+                        {{ $moreButtonContent }}
+                    </button>
                 </atom:modal.trigger>
             @else
                 <atom:dropdown class="shrink-0" locked>
-                    <atom:button variant="ghost">{{ t('More filters') }} <atom:icon.dropdown /></atom:button>
+                    <button type="button" class="{{ $moreButton }}" data-atom-table-filters-more-button>
+                        {{ $moreButtonContent }}
+                    </button>
                     <atom:menu popover class="p-3 min-w-sm flex flex-wrap items-center gap-3" data-atom-table-filters-more>
                         {{ $more }}
                     </atom:menu>
