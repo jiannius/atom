@@ -46,8 +46,8 @@ $crumbsOnly = ! $barEmpty
    frames. 0 and null are unknown (no breadcrumbs() method, or no home), and the browser stays the authority (syncHeader). */
 $trailEmpty = $crumbsOnly
     && request()->attributes->get(\Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE) === 1
-    && str_contains((string) $crumbs, 'data-atom-breadcrumbs')
-    && preg_match('/<h1\b[^>]*\sdata-atom-page-header-title/', (string) $slot) === 1;
+    && preg_match('/<h1\b[^>]*\sdata-atom-page-header-title/', (string) $slot) === 1
+    && app('atom')->crumbsHoldOnlyTheTrail($crumbs);
 @endphp
 
 {{-- layouts.header takes the same props and slots (brand, context, search, nav, navfoot, crumbs, actions, dropdown,

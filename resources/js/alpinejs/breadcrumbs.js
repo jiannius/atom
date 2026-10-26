@@ -84,6 +84,7 @@ export default (config) => {
         // page's, so it is marked again after every navigation. Until the trail has been built it leaves the server's mark alone
         // (a bar that starts hidden would pop in on every page that has crumbs).
         // A slot that holds anything besides the trail (or the element that persists it) is the host's, and is left alone.
+        // Atom::crumbsHoldOnlyTheTrail() (src/Atom.php) is this `alone` rule on the server: change one, change the other.
         syncHeader () {
             if (!this.built) return
 

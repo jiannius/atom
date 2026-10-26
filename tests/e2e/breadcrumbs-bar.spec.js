@@ -218,14 +218,32 @@ for (const shell of ['sidebar', 'header']) {
       await expect.poll(() => barHeight(page)).toBe(0)
     })
 
-    test('a wrapper or any other element in the slot counts as other content: the server starts the bar empty and the browser takes that back', async ({ page }) => {
-      await page.goto(url('new', q('extra=1')))
-      await trailBuilt(page, 1)
+    // A slot that holds more than the trail is the host's. The server applies the browser's rule (Atom::crumbsHoldOnlyTheTrail), so it
+    // does not draw the bar empty and then put it back: the bar is there from the first frame, with no layout shift.
+    for (const [name, extra] of [['an element beside the trail', 'extra=1'], ['a wrapper around the trail', 'wrap=1']]) {
+      test(`${name} counts as other content: the bar is drawn from the first frame, and stays`, async ({ page }) => {
+        await page.addInitScript((selector) => {
+          window.__bar = []
+          const sample = () => {
+            const el = document.querySelector(selector)
+            if (el) window.__bar.push(Math.round(el.getBoundingClientRect().height))
+            if (window.__bar.length < 90) requestAnimationFrame(sample)
+          }
+          requestAnimationFrame(sample)
+        }, shell === 'header' ? '[data-atom-header-crumbs]' : '[data-atom-header]')
 
-      await expect(page.getByTestId('crumbs-extra')).toBeVisible()
-      await expect(bar(page)).not.toHaveAttribute('data-atom-header-empty', '')
-      expect(await barHeight(page)).toBeGreaterThan(0)
-    })
+        await page.goto(url('new', q(extra)))
+        await expect.poll(() => page.evaluate(() => window.__bar.length)).toBeGreaterThan(30)
+
+        const frames = await page.evaluate(() => window.__bar)
+        expect(frames.every((height) => height > 0), `no frame without the bar: ${frames.slice(0, 12)}`).toBe(true)
+        expect(new Set(frames).size, `its height never changes (no layout shift): ${[...new Set(frames)]}`).toBe(1)
+
+        await trailBuilt(page, 1)
+        await expect(bar(page)).not.toHaveAttribute('data-atom-header-empty', '')
+        expect(Math.round(await barHeight(page))).toBe(frames[0])
+      })
+    }
 
     test('heading="false": one crumb prints nothing even with no page.header, and two crumbs still show', async ({ page }) => {
       await page.goto(url('old', q('heading=0')))

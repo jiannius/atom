@@ -110,3 +110,59 @@ describe('the trail length the layout reads', function () {
         expect(request()->attributes->has($key))->toBeFalse();
     });
 });
+
+describe('whether a crumbs slot holds only the trail (the server\'s copy of the browser\'s rule)', function () {
+    $only = fn (string $template) => app('atom')->crumbsHoldOnlyTheTrail(renderBlade($template));
+
+    it('is true for the persisted trail, bare or with whitespace and comments around it', function () use ($only) {
+        expect($only("@persist('breadcrumbs')<atom:breadcrumbs />@endpersist"))->toBeTrue()
+            ->and($only("\n  @persist('breadcrumbs')\n  <atom:breadcrumbs />\n  @endpersist\n"))->toBeTrue()
+            ->and($only('<atom:breadcrumbs />'))->toBeTrue()
+            ->and($only("{{-- a Blade comment --}}<!-- an HTML one -->\n<atom:breadcrumbs />\n"))->toBeTrue()
+            ->and($only('<atom:breadcrumbs :heading="false" />'))->toBeTrue();
+    });
+
+    it('is false for a wrapper, persisted or not', function () use ($only) {
+        expect($only('<div class="flex"><atom:breadcrumbs /></div>'))->toBeFalse()
+            ->and($only("@persist('breadcrumbs')<div><atom:breadcrumbs /></div>@endpersist"))->toBeFalse()
+            ->and($only("<div>@persist('breadcrumbs')<atom:breadcrumbs />@endpersist</div>"))->toBeFalse();
+    });
+
+    it('is false for anything beside the trail, in either order', function () use ($only) {
+        expect($only('<atom:breadcrumbs /><span>Extra</span>'))->toBeFalse()
+            ->and($only('<span>Extra</span><atom:breadcrumbs />'))->toBeFalse()
+            ->and($only("@persist('breadcrumbs')<atom:breadcrumbs />@endpersist<span>Extra</span>"))->toBeFalse()
+            ->and($only("<span>Extra</span>@persist('breadcrumbs')<atom:breadcrumbs />@endpersist"))->toBeFalse()
+            ->and($only("@persist('breadcrumbs')<atom:breadcrumbs /><span>Extra</span>@endpersist"))->toBeFalse()
+            ->and($only('<atom:breadcrumbs /><atom:breadcrumbs />'))->toBeFalse()
+            ->and($only('Home <atom:breadcrumbs />'))->toBeFalse();
+    });
+
+    it('is false for static text, an empty slot, a persist around nothing, and non-string input', function () use ($only) {
+        expect($only('Static text'))->toBeFalse()
+            ->and($only('<span>Static</span>'))->toBeFalse()
+            ->and($only(''))->toBeFalse()
+            ->and($only("  \n "))->toBeFalse()
+            ->and($only('<!-- nothing -->'))->toBeFalse()
+            ->and($only("@persist('breadcrumbs')@endpersist"))->toBeFalse()
+            ->and(app('atom')->crumbsHoldOnlyTheTrail(null))->toBeFalse()
+            ->and(app('atom')->crumbsHoldOnlyTheTrail(new \Illuminate\Support\HtmlString('<atom:breadcrumbs />')))->toBeFalse()
+            ->and(app('atom')->crumbsHoldOnlyTheTrail(new \Illuminate\Support\HtmlString(renderBlade('<atom:breadcrumbs />'))))->toBeTrue();
+    });
+
+    it('fails closed on malformed HTML and on a trail it cannot find', function () {
+        $atom = app('atom');
+
+        expect($atom->crumbsHoldOnlyTheTrail('<div data-atom-breadcrumbs'))->toBeFalse()
+            ->and($atom->crumbsHoldOnlyTheTrail('</div><span>x</span>'))->toBeFalse()
+            ->and($atom->crumbsHoldOnlyTheTrail("<div x-persist=\"a\"><div data-atom-breadcrumbs></div><b>"))->toBeFalse()
+            ->and($atom->crumbsHoldOnlyTheTrail('<<<>>><div'))->toBeFalse()
+            ->and($atom->crumbsHoldOnlyTheTrail("\xFF\xFE<div data-atom-breadcrumbs></div>"))->toBeFalse()
+            ->and($atom->crumbsHoldOnlyTheTrail('<div title="data-atom-breadcrumbs"></div>'))->toBeFalse();
+    });
+
+    it('reads UTF-8 in the trail as it is', function () use ($only) {
+        expect($only('<div data-atom-breadcrumbs data-title="Dépôt – 日本語"></div>'))->toBeTrue()
+            ->and($only('<div data-atom-breadcrumbs></div>日本語'))->toBeFalse();
+    });
+});

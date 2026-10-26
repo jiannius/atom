@@ -393,6 +393,76 @@ class Atom
     }
 
     /**
+     * Whether a shell's crumbs slot holds nothing but the trail: the top-level nodes are whitespace or comments, plus exactly
+     * one element that is the trail (data-atom-breadcrumbs) or the element that persists it (x-persist, whose only child
+     * element is the trail). Anything else, a wrapper or a sibling included, is the host's own content. The layouts ask
+     * it before they leave a bar out on the first frame, and it fails closed: a slot that cannot be parsed is not "alone".
+     * Keep it in step with syncHeader() in resources/js/alpinejs/breadcrumbs.js, which applies the same rule in the browser.
+     */
+    public function crumbsHoldOnlyTheTrail(mixed $crumbs): bool
+    {
+        $html = trim((string) $crumbs);
+
+        if ($html === '' || ! class_exists(\DOMDocument::class)) {
+            return false;
+        }
+
+        $previous = libxml_use_internal_errors(true);
+
+        try {
+            $document = new \DOMDocument();
+
+            // the XML declaration makes libxml read the string as UTF-8; its processing instruction sits outside <body>
+            if (! $document->loadHTML('<?xml encoding="UTF-8"><!DOCTYPE html><html><body>'.$html.'</body></html>', LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING)) {
+                return false;
+            }
+
+            $body = $document->getElementsByTagName('body')->item(0);
+
+            if (! $body) {
+                return false;
+            }
+
+            $holder = null;
+
+            foreach ($body->childNodes as $node) {
+                if ($node->nodeType === XML_COMMENT_NODE || ($node->nodeType === XML_TEXT_NODE && trim($node->textContent) === '')) {
+                    continue;
+                }
+
+                if ($node->nodeType !== XML_ELEMENT_NODE || $holder !== null) {
+                    return false;
+                }
+
+                $holder = $node;
+            }
+
+            if (! $holder) {
+                return false;
+            }
+
+            if ($holder->hasAttribute('data-atom-breadcrumbs')) {
+                return true;
+            }
+
+            if (! $holder->hasAttribute('x-persist')) {
+                return false;
+            }
+
+            $children = array_values(array_filter(iterator_to_array($holder->childNodes), fn ($node) => $node->nodeType === XML_ELEMENT_NODE));
+
+            return count($children) === 1 && $children[0]->hasAttribute('data-atom-breadcrumbs');
+        }
+        catch (\Throwable) {
+            return false;
+        }
+        finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+    }
+
+    /**
      * Send an email
      */
     public function mail(
