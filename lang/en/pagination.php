@@ -12,4 +12,5 @@ return [
     'page' => 'page',
     'showing-from-rows-to-rows' => 'Showing :from to :to of :total rows',
     'showing-rows-count' => 'Showing :count of :total rows',
+    'range' => ':from–:to of :total',
 ];

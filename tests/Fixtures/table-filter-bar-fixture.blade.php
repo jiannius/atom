@@ -1,9 +1,9 @@
 <div>
     <button type="button" wire:click="bump" data-testid="bump">Bump {{ $ticks }}</button>
 
-    <atom:table :paginate="$items" frameless>
+    <atom:table :paginate="$plain ? null : $items" frameless :empty="false">
         <x-slot:header>
-            <atom:table.toolbar>
+            <atom:table.toolbar :count="$count">
                 <atom:table.search wire:model.live.debounce.150ms="filters.search" placeholder="Search items" />
 
                 <atom:table.filters chips="inline">

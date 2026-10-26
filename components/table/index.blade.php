@@ -71,6 +71,13 @@ if (!$showSkeleton && !is_bool($empty)) {
 x-on:table-filter:changed.window="{!! $onFilterChanged !!}"
 data-atom-table
 @if ($frameless) data-atom-table-frameless @endif>
+    {{-- The row count the toolbar shows at its end ("1–50 of 128"). The toolbar is in the header slot, an Alpine template that a
+         re-render never refreshes, so the text is printed here, outside it, where a morph keeps it current, and the toolbar reads it
+         (resources/js/alpinejs/table-count.js). Nothing is printed without a paginator, or with no rows on it. --}}
+    @if ($paginate?->firstItem())
+        <span hidden data-atom-table-count-source data-text="{{ t('atom::pagination.range', ['from' => $paginate->firstItem(), 'to' => $paginate->lastItem(), 'total' => $paginate->total()]) }}"></span>
+    @endif
+
     @if (isset($checked) && $checked->isNotEmpty())
         <template x-if="$wire._table.checkboxes.length || $wire._table.select_all" hidden>
             <div class="{{ $checkedClasses }}" data-atom-table-checked @if ($checkedAccent) data-tone="accent" @endif>

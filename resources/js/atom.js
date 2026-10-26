@@ -22,6 +22,7 @@ import rating from './alpinejs/rating'
 import breadcrumbs from './alpinejs/breadcrumbs'
 import headerShell from './alpinejs/header-shell'
 import pageTabs from './alpinejs/page-tabs'
+import tableCount from './alpinejs/table-count'
 import calendar from './alpinejs/calendar'
 import chartBar from './alpinejs/chart/bar'
 import chartArea from './alpinejs/chart/area'
@@ -48,6 +49,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('breadcrumbs', breadcrumbs)
     Alpine.data('headerShell', headerShell)
     Alpine.data('pageTabs', pageTabs)
+    Alpine.data('tableCount', tableCount)
     Alpine.data('datePicker', datePicker)
     Alpine.data('timePicker', timePicker)
     Alpine.data('dateRange', dateRange)

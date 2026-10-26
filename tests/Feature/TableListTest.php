@@ -165,6 +165,59 @@ describe('toolbar from sm up', function () {
     });
 });
 
+describe('the row count', function () {
+    $paginator = fn () => new \Illuminate\Pagination\LengthAwarePaginator(collect(range(1, 50)), 128, 50, 1, ['path' => '/']);
+
+    it('leads the toolbar end group, ahead of the end slot, in tabular figures, and starts empty', function () {
+        $html = renderBlade('<atom:table.toolbar>x<x-slot:end><button id="n" type="button">Export</button></x-slot:end></atom:table.toolbar>');
+        $end = domQuery($html, '//*[@data-atom-table-toolbar-end]')[0];
+        $count = domQuery($html, '//*[@data-atom-table-toolbar-end]//*[@data-atom-table-count]');
+
+        expect($end->getAttribute('x-data'))->toBe('tableCount')
+            // the server writes no number into the toolbar: it is an Alpine template, so it would never refresh
+            ->and($count)->toHaveCount(1)
+            ->and(trim($count[0]->textContent))->toBe('')
+            ->and($count[0]->getAttribute('x-text'))->toBe('text')
+            ->and(domClasses($count[0]))->toContain('tabular-nums', 'text-xs', 'text-fg-muted')
+            ->and(domQuery($html, '//*[@data-atom-table-count]/following-sibling::button[@id="n"]'))->toHaveCount(1)
+            // with an end slot the group shows on a phone too
+            ->and(domClasses($end))->not->toContain('max-sm:hidden')
+            ->and($end->getAttribute('x-show'))->toBe('');
+    });
+
+    it('is a group of its own, shown only while there is a count and not on a phone, when nothing else is at the end', function () {
+        $end = domQuery(renderBlade('<atom:table.toolbar>x</atom:table.toolbar>'), '//*[@data-atom-table-toolbar-end]')[0];
+
+        expect($end->getAttribute('x-show'))->toBe('text')
+            ->and(domClasses($end))->toContain('max-sm:hidden');
+    });
+
+    it('is left out with :count="false", and the end group is only what the host put there', function () {
+        $html = renderBlade('<atom:table.toolbar :count="false">x<x-slot:end><button id="n" type="button">Export</button></x-slot:end></atom:table.toolbar>');
+
+        expect(domQuery($html, '//*[@data-atom-table-count]'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-table-toolbar-end]')[0]->hasAttribute('x-data'))->toBeFalse();
+    });
+
+    it('is printed by the table, outside the header template, from the paginator', function () use ($paginator) {
+        $html = renderBlade('<atom:table :paginate="$p" :empty="false"><x-slot:header><atom:table.toolbar>x</atom:table.toolbar></x-slot:header></atom:table>', ['p' => $paginator()]);
+        $source = domQuery($html, '//*[@data-atom-table]/span[@data-atom-table-count-source]');
+
+        expect($source)->toHaveCount(1)
+            ->and($source[0]->getAttribute('data-text'))->toBe('1–50 of 128')
+            ->and($source[0]->hasAttribute('hidden'))->toBeTrue()
+            // not inside the template the toolbar is in
+            ->and(domQuery($html, '//template//*[@data-atom-table-count-source]'))->toBeEmpty();
+    });
+
+    it('is not printed with no paginator, or with no rows on it', function () {
+        $empty = new \Illuminate\Pagination\LengthAwarePaginator(collect(), 0, 50, 1, ['path' => '/']);
+
+        expect(domQuery(renderBlade('<atom:table :empty="false">x</atom:table>'), '//*[@data-atom-table-count-source]'))->toBeEmpty()
+            ->and(domQuery(renderBlade('<atom:table :paginate="$p">x</atom:table>', ['p' => $empty]), '//*[@data-atom-table-count-source]'))->toBeEmpty();
+    });
+});
+
 describe('toolbar', function () {
     it('lays the controls out, with the end group on the far side', function () {
         $html = renderBlade('<atom:table.toolbar><input id="q"><x-slot:end><button id="n" type="button">Export</button></x-slot:end></atom:table.toolbar>');
@@ -175,7 +228,7 @@ describe('toolbar', function () {
     });
 
     it('has no end group when there is nothing for it', function () {
-        expect(domQuery(renderBlade('<atom:table.toolbar>x</atom:table.toolbar>'), '//*[@data-atom-table-toolbar-end]'))->toBeEmpty();
+        expect(domQuery(renderBlade('<atom:table.toolbar :count="false">x</atom:table.toolbar>'), '//*[@data-atom-table-toolbar-end]'))->toBeEmpty();
     });
 
     it('adds the archived toggle through trashed, and the voided one by name', function (mixed $value, string $label) {

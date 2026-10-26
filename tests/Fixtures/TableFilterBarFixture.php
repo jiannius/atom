@@ -16,7 +16,7 @@ use Livewire\WithPagination;
  *
  * 128 generated rows, filtered by status, tag and search; the issued range is held but does not filter. `bump()` changes
  * nothing the table shows, so a spec can force a morph while a chip menu is open. `limit` cuts the rows, for a table
- * of one page.
+ * of one page, `count` is the toolbar's prop and `plain` drops the paginator.
  */
 class TableFilterBarFixture extends Component
 {
@@ -34,6 +34,12 @@ class TableFilterBarFixture extends Component
 
     /** The rows are cut to this many when set, for the one-page case. */
     public ?int $limit = null;
+
+    /** The toolbar's `count` prop. */
+    public bool $count = true;
+
+    /** A table with no paginator, over the first page's rows. */
+    public bool $plain = false;
 
     /**
      * Fifty rows a page, as the spec of the row count reads ("1–50 of 128").
