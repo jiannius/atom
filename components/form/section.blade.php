@@ -24,7 +24,7 @@ $level = in_array((int) $level, [2, 3, 4], true) ? (int) $level : 2;
 $el = 'h'.$level;
 
 $hasText = filled($heading) || filled($subheading);
-$hasFooter = isset($footer) && $footer->isNotEmpty();
+$hasFooter = isset($footer) && $footer->hasActualContent();
 @endphp
 
 <section {{ $attributes->class('@container col-span-full min-w-0 border-t pt-6 first:border-t-0 first:pt-0') }} data-atom-form-section data-layout="{{ $layout }}" @if ($danger) data-variant="danger" @endif>

@@ -60,6 +60,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-shell-actions', ShellActionsFixture::class);
         Livewire::component('atom-e2e-page-header-slide', PageHeaderSlideFixture::class);
         Livewire::component('atom-e2e-table-views', TableViewsFixture::class);
+        Livewire::component('atom-e2e-table-filter-bar', TableFilterBarFixture::class);
         Livewire::component('atom-e2e-timeline', TimelineFixture::class);
         Livewire::component('atom-e2e-slide-over-form', SlideOverFormFixture::class);
         Livewire::component('atom-e2e-calendar', CalendarFixture::class);
@@ -81,6 +82,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/sticky-selection', fn () => view('atom::e2e.sticky-selection'));
         Route::middleware('web')->get('/atom/e2e/table-checked', fn () => view('atom::e2e.table-checked'));
         Route::middleware('web')->get('/atom/e2e/table-filters-more', fn () => view('atom::e2e.table-filters-more'));
+        Route::middleware('web')->get('/atom/e2e/table-filter-bar', fn () => view('atom::e2e.table-filter-bar'));
         Route::middleware('web')->get('/atom/e2e/table-filters-inline', fn () => view('atom::e2e.table-filters-inline'));
         Route::middleware('web')->get('/atom/e2e/table-loading', fn () => view('atom::e2e.table-loading'));
         Route::middleware('web')->get('/atom/e2e/table-layout', fn () => view('atom::e2e.table-layout'));
@@ -133,6 +135,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/timeline-wrap', fn () => view('atom::e2e.timeline-wrap'));
         Route::middleware('web')->get('/atom/e2e/slide-over-form', fn () => view('atom::e2e.slide-over-form'));
         Route::middleware('web')->get('/atom/e2e/page-width', fn () => view('atom::e2e.page-width'));
+        Route::middleware('web')->get('/atom/e2e/page-header-container', fn () => view('atom::e2e.page-header-container'));
         Route::middleware('web')->get('/atom/e2e/page-header-slide', fn () => view('atom::e2e.page-header-slide'));
         // status tones, stats and the empty states, on the consumer's Tailwind: ?tw=floor|latest, ?dark=1, ?accent=#rrggbb
         Route::middleware('web')->get('/atom/e2e/page-parts', fn () => view('atom::e2e.page-parts'));

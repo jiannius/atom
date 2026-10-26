@@ -258,7 +258,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
             <div @class(['grid items-start gap-6', 'min-[1080px]:grid-cols-[minmax(0,1fr)_320px]' => $tab === 'overview'])>
                 <div class="grid min-w-0 gap-6">
                     {{-- the panel of the record's lines, the same on the overview and on the Tasks tab --}}
-                    <div class="min-w-0 overflow-hidden rounded-panel border bg-surface" data-testid="record-lines">
+                    <div class="min-w-0 overflow-clip rounded-panel border bg-surface" data-testid="record-lines">
                         <div class="flex items-baseline justify-between gap-3 border-b px-3.5 py-2.5">
                             <h2 class="m-0 text-sm font-semibold">Tasks <span class="ms-1.5 text-xs font-normal text-fg-muted">{{ count($tasks) }} tasks</span></h2>
                             <atom:link href="?tab=tasks" class="text-xs">View all {{ count($tasks) }}</atom:link>

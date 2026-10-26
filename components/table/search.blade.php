@@ -83,6 +83,7 @@ x-on:table-filter:do-clear.window="
     }
 "
 @endif
+@if ($filterKey) data-atom-filter-key="{{ $filterKey }}" @endif
 data-atom-table-search>
     <atom:input
         icon="search"

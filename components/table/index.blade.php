@@ -7,6 +7,7 @@
     'selectAll' => false,
     'stickySelection' => false,
     'frameless' => false,
+    'stickyPager' => true,
 ])
 
 @php
@@ -71,6 +72,13 @@ if (!$showSkeleton && !is_bool($empty)) {
 x-on:table-filter:changed.window="{!! $onFilterChanged !!}"
 data-atom-table
 @if ($frameless) data-atom-table-frameless @endif>
+    {{-- The row count the toolbar shows at its end ("1–50 of 128"). The toolbar is in the header slot, an Alpine template that a
+         re-render never refreshes, so the text is printed here, outside it, where a morph keeps it current, and the toolbar reads it
+         (resources/js/alpinejs/table-count.js). Nothing is printed without a paginator, or with no rows on it. --}}
+    @if ($paginate?->firstItem())
+        <span hidden data-atom-table-count-source data-text="{{ t('atom::pagination.range', ['from' => $paginate->firstItem(), 'to' => $paginate->lastItem(), 'total' => $paginate->total()]) }}"></span>
+    @endif
+
     @if (isset($checked) && $checked->isNotEmpty())
         <template x-if="$wire._table.checkboxes.length || $wire._table.select_all" hidden>
             <div class="{{ $checkedClasses }}" data-atom-table-checked @if ($checkedAccent) data-tone="accent" @endif>
@@ -140,10 +148,14 @@ data-atom-table
         </template>
     @endif
     
+    {{-- The pager is the last child of this box, which is why the box clips (`overflow-clip`) instead of hiding its overflow: `overflow-hidden`
+         makes it a scroll container, and a sticky pager inside would stick to a box that never scrolls instead of to the page. The
+         scroll box below is the only scroller, and the pager sits outside it, so a wide table still scrolls sideways under a pager that
+         stays put. --}}
     <div class="relative min-w-0">
         <div @class([
             'min-w-0 divide-y divide-border',
-            'overflow-hidden rounded-panel border bg-surface' => ! $frameless,
+            'overflow-clip rounded-panel border bg-surface' => ! $frameless,
         ])>
             {{-- the scroll box: a wide table scrolls sideways in here, never the page (min-w-0 on every ancestor up to the root,
                  or a grid or flex parent such as <atom:page> grows to the table's width instead) --}}
@@ -184,16 +196,17 @@ data-atom-table
             </div>
 
             @if ($paginate?->hasPages())
-                <atom:table.pagination :paginate="$paginate" :max-rows="$maxRows" />
+                <atom:table.pagination :paginate="$paginate" :max-rows="$maxRows" :sticky="$stickyPager" />
             @endif
         </div>
 
         {{-- The overlay is a sibling of the card, not a child of the table's scroll
              box, because the spinner inside it is sticky: sticky tracks the nearest
-             scroll container, and both `overflow-hidden` (the card, for its rounded
-             corners) and `overflow-x-auto` (the table, for wide columns) are scroll
-             containers whose height never exceeds their content — so from inside
-             either one the spinner has nothing to stick to and never moves.
+             scroll container, and `overflow-x-auto` (the table, for wide columns) is
+             one whose height never exceeds its content — so from inside it the
+             spinner has nothing to stick to and never moves. (The card clips its
+             rounded corners with `overflow-clip`, which is not a scroll container,
+             so the pager can stick to the page.)
 
              A consequence worth knowing: the veil now covers the pagination bar,
              which it did not when it lived inside the scroll box. Prev/next and

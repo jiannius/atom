@@ -1,6 +1,7 @@
 @props([
     'paginate' => null,
     'maxRows' => [50, 100, 200, 400],
+    'sticky' => true,
 ])
 
 @php
@@ -21,7 +22,17 @@ $cellCurrent = $cell.' cursor-default border border-border-strong bg-neutral-bg 
     'role' => 'navigation',
     'aria-label' => t('atom::pagination.navigation'),
     'x-on:paginate' => "document.querySelector('body').scrollIntoView()",
-])->class('py-2 px-4 flex flex-wrap items-center justify-between gap-3 tabular-nums') }}>
+    'data-atom-table-pager' => true,
+])->class([
+    'py-2 px-4 flex flex-wrap items-center justify-between gap-3 tabular-nums',
+    // pinned to the bottom of whatever scrolls (the page, a modal) while the table runs past it, in place at its end: a raised
+    // surface with a hairline of its own above it (the box's divide-y draws its hairline under the rows above, which scrolls away),
+    // pulled up a pixel over that one so at rest it is still one line. A page that has a save bar (also pinned to the bottom, and
+    // the screen's one primary action) keeps it in flow: two pinned bars at one edge would cover each other. So does a phone, where
+    // 135px of an 800px screen is too much to give a pager (it shows the range itself, and the toolbar's count is hidden there).
+    // Pinned, it clears the home indicator (the safe-area inset) and is a mark the toast lift looks for (helpers/toast-lift.js).
+    'sticky bottom-0 z-10 -mt-px border-t border-border bg-surface/95 backdrop-blur-sm sm:pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] max-sm:static [body:has([data-atom-save-bar])_&]:static' => $sticky,
+]) }}>
     <div class="py-2 text-xs text-fg-muted">
         @if ($paginate->firstItem())
             {!! t('atom::pagination.showing-from-rows-to-rows', [

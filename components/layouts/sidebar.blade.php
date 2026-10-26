@@ -33,13 +33,17 @@ $initials = $user && blank($initials)
     ? str((string) $name)->squish()->initials()->take(2)->upper()->toString()
     : $initials;
 
+/* A slot counts only when it holds more than comments and whitespace: a Livewire view's `@if` blocks that all come out false
+   still print `<!--[if BLOCK]-->` markers, which a string test takes for content (an empty bar drawn). A slot not passed is '' here. */
+$present = fn ($slot) => $slot instanceof \Illuminate\View\ComponentSlot ? $slot->hasActualContent() : filled(trim((string) $slot));
+
 $barEmpty = ! $dark
-    && ! (isset($crumbs) && filled(trim((string) $crumbs)))
-    && ! (isset($actions) && filled(trim((string) $actions)));
+    && ! (isset($crumbs) && $present($crumbs))
+    && ! (isset($actions) && $present($actions));
 
 $crumbsOnly = ! $barEmpty
     && ! $dark
-    && ! (isset($actions) && filled(trim((string) $actions)));
+    && ! (isset($actions) && $present($actions));
 
 /* The page mounted before this layout rendered (a full-page component, or a component in the slot), so its trail length and its
    page.header are known: a trail of one crumb above a page.header prints nothing, and the bar need not draw for the first

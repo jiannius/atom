@@ -84,6 +84,60 @@ it('puts the overflow button in the filter row, right after the controls', funct
     'modal' => 'overflow="modal"',
 ]);
 
+// The More filters button: a pill of the add pills' size, a sliders icon before the label, a count after it.
+describe('the More filters button', function () {
+    $bar = fn (string $overflow = '') => renderBlade('<atom:table.filters '.$overflow.'>CONTROL<x-slot:more><div data-field>x</div></x-slot></atom:table.filters>');
+
+    it('is a 26px pill on the surface with a hairline (not dashed) in every overflow mode', function (string $overflow) use ($bar) {
+        $button = domQuery($bar($overflow), '//button[@data-atom-table-filters-more-button]');
+
+        expect($button)->toHaveCount(1)
+            ->and(domClasses($button[0]))->toContain('h-[26px]', 'text-xs', 'rounded-pill', 'border', 'bg-surface')
+            ->not->toContain('border-dashed');
+    })->with(['popover' => '', 'card' => 'overflow="card"', 'modal' => 'overflow="modal"']);
+
+    it('puts a sliders icon at size-3.5 before the label, and no up-down caret', function (string $overflow) use ($bar) {
+        $html = $bar($overflow);
+        $button = domQuery($html, '//button[@data-atom-table-filters-more-button]')[0];
+        $icons = domQuery($html, '//button[@data-atom-table-filters-more-button]//*[@data-atom-icon]');
+
+        expect($icons)->toHaveCount(1)
+            ->and(domClasses($icons[0]))->toContain('size-3.5')
+            ->and($icons[0]->getElementsByTagName('svg')[0]->getAttribute('class'))->toContain('lucide-sliders-horizontal')
+            ->and(preg_replace('/\s+/', ' ', trim($button->textContent)))->toBe('More filters')
+            // the icon is the first thing in the button
+            ->and(domQuery($html, '//button[@data-atom-table-filters-more-button]/*[1][@data-atom-icon]'))->toHaveCount(1);
+    })->with(['popover' => '', 'card' => 'overflow="card"', 'modal' => 'overflow="modal"']);
+
+    it('carries a count that is hidden until a filter in the slot is active', function (string $overflow) use ($bar) {
+        $count = domQuery($bar($overflow), '//button[@data-atom-table-filters-more-button]//*[@data-atom-table-filters-more-count]');
+
+        expect($count)->toHaveCount(1)
+            ->and($count[0]->getAttribute('x-show'))->toBe('moreCount')
+            ->and($count[0]->getAttribute('x-text'))->toBe('moreCount')
+            ->and(domClasses($count[0]))->toContain('bg-fg', 'text-canvas', 'text-[10px]', 'min-w-4', 'rounded-pill');
+    })->with(['popover' => '', 'card' => 'overflow="card"', 'modal' => 'overflow="modal"']);
+
+    it('marks the slot, in each mode, so a control and the count can tell it is in it', function (string $overflow) use ($bar) {
+        expect(domQuery($bar($overflow), '//*[@data-atom-table-filters-more]//*[@data-field]'))->toHaveCount(1);
+    })->with(['popover' => '', 'card' => 'overflow="card"', 'modal' => 'overflow="modal"']);
+
+    it('counts the chips whose control sits in the slot, from this bar only', function () use ($bar) {
+        $html = $bar();
+
+        expect($html)->toContain('get moreCount()')
+            ->and($html)->toContain("closest?.('[data-atom-table-filters-more]')")
+            ->and($html)->toContain('this.$root.contains(event.target)');
+    });
+
+    it('opens the card, and sets aria-expanded, from the same button', function () use ($bar) {
+        $button = domQuery($bar('overflow="card"'), '//button[@data-atom-table-filters-more-button]')[0];
+
+        expect($button->getAttribute('x-on:click'))->toBe('expanded = !expanded')
+            ->and($button->getAttribute('x-bind:aria-expanded'))->toContain('expanded');
+    });
+});
+
 it('does not register a select that has no wire:model', function () {
     view()->share('errors', new \Illuminate\Support\ViewErrorBag);
     $html = Blade::render('<atom:select variant="filter" label="Status" :options="[]" />');
@@ -168,11 +222,63 @@ describe('the add-filter pill', function () {
             ->and(domQuery($html, '//button[@data-atom-select-combobox]//*[@data-atom-icon]'))->not->toBeEmpty()
             // no chevron and no chosen-value chip inside the pill: the table filter's chip carries the value
             ->and(domQuery($html, '//button[@data-atom-select-combobox]//template'))->toBeEmpty()
-            ->and(domQuery($html, '//*[@x-show="isEmpty"]'))->toHaveCount(1);
+            // it hides while it has a value unless it draws its own chip (select.js `selfChip`, known only in the browser)
+            ->and(domQuery($html, '//*[@x-show="selfChip || isEmpty"]'))->toHaveCount(1);
     });
 
     it('keeps a multiple add pill on screen, to add more values', function () use ($select) {
-        expect(domQuery($select('add multiple'), '//*[@x-show="isEmpty"]'))->toBeEmpty();
+        expect(domQuery($select('add multiple'), '//*[@x-show="selfChip || isEmpty"]'))->toBeEmpty()
+            ->and(domQuery($select('add multiple'), '//*[@x-show="isEmpty"]'))->toBeEmpty();
+    });
+
+    it('is also the chip, one button: the name, a muted operator, the value and a chevron, with an x beside it', function () use ($select) {
+        $html = $select('add');
+        $body = domQuery($html, '//button[@data-atom-filter-chip-body]');
+        $x = domQuery($html, '//button[@data-atom-filter-chip-clear]');
+
+        expect($body)->toHaveCount(1)
+            // the pill and the chip are one trigger: the dropdown's own, first in the root
+            ->and(domQuery($html, '//*[@data-atom-dropdown]/button[1][@data-atom-filter-chip-body]'))->toHaveCount(1)
+            ->and($body[0]->getAttribute('x-bind:data-chip'))->toContain('chipState')
+            ->and($body[0]->getAttribute('aria-haspopup'))->toBe('listbox')
+            // the chip look is a set of data-chip overrides on the pill, so the SSR button is the pill
+            ->and(domClasses($body[0]))->toContain('border-dashed', '[&[data-chip]]:bg-neutral-bg', '[&[data-chip]]:rounded-e-none')
+            ->and(domQuery($html, '//button[@data-atom-filter-chip-body]//*[@x-text="chipOperator"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//button[@data-atom-filter-chip-body]//*[@x-text="filterDisplay"]'))->toHaveCount(1)
+            // a chevron at size-3, muted
+            ->and(domClasses(domQuery($html, '//button[@data-atom-filter-chip-body]//*[@data-atom-icon][last()]')[0]))->toContain('size-3', 'text-fg-muted')
+            ->and($x)->toHaveCount(1)
+            ->and($x[0]->getAttribute('x-bind:aria-label'))->toContain('Remove filter')
+            // Enter on the x clears; the select's Enter would open the list
+            ->and($x[0]->getAttribute('x-on:keydown.enter.stop'))->not->toBeNull()
+            // the x sits after the body, outside the menu
+            ->and(domQuery($html, '//button[@data-atom-filter-chip-body]/following-sibling::button[@data-atom-filter-chip-clear]'))->toHaveCount(1)
+            // the control marks itself while its chip is up, which the bar orders on
+            ->and(domQuery($html, '//*[@*[name()="x-bind:data-atom-filter-active"]]'))->toHaveCount(1);
+    });
+
+    it('names the operator for a multiple select, and gives the chip its own accessible name', function () use ($select) {
+        $html = $select('add multiple');
+
+        expect($html)->toContain('is any of')
+            ->and(domQuery($html, '//button[@data-atom-filter-chip-body]')[0]->getAttribute('x-bind:aria-label'))->toContain('chipName');
+    });
+
+    it('gives the chip its x whether or not the select is clearable: the bar chip it replaces always had one, and without it no chip could clear the filter', function () use ($select) {
+        $html = $select('add :clearable="false"');
+
+        expect(domQuery($html, '//button[@data-atom-filter-chip-clear]'))->toHaveCount(1)
+            ->and(domClasses(domQuery($html, '//button[@data-atom-filter-chip-body]')[0]))->toContain('[&[data-chip]]:rounded-e-none');
+    });
+
+    it('marks each control with its key, for the focus a cleared chip hands back', function () use ($select) {
+        expect(domQuery($select('add'), '//*[@data-atom-filter-key="filters.customer"]'))->toHaveCount(1)
+            ->and(domQuery(renderBlade('<atom:date-picker variant="range" add data-filter-key="filters.issued" placeholder="Issued" />'), '//*[@data-atom-filter-key="filters.issued"]'))->toHaveCount(1)
+            ->and(domQuery(renderBlade('<atom:table.search data-filter-key="filters.q" placeholder="Find" />'), '//*[@data-atom-table-search][@data-atom-filter-key="filters.q"]'))->toHaveCount(1);
+    });
+
+    it('keeps a multiple chip menu open on a pick (the bar draws the chip when the select is not in an inline bar, and the menu closes there)', function () use ($select) {
+        expect($select('add multiple'))->toContain('stayOpen && $event.stopPropagation()');
     });
 
     it('is the plain bordered filter control without add', function () use ($select) {
@@ -189,12 +295,15 @@ describe('the add-filter pill', function () {
 
         expect($pill)->toHaveCount(1)
             ->and(domClasses($pill[0]))->toContain('border-dashed', 'rounded-pill', 'h-[26px]', 'inline-flex')
-            ->and(preg_replace('/\s+/', ' ', trim($pill[0]->textContent)))->toBe('Issued')
-            ->and(domQuery($html, '//button[@data-atom-date-range-add]//*[@data-atom-icon]'))->toHaveCount(1)
+            // the name, then the operator and the value (hidden until the range is set), and an x of its own
+            ->and(preg_replace('/\s+/', ' ', trim($pill[0]->textContent)))->toBe('Issued is')
+            ->and(domQuery($html, '//button[@data-atom-date-range-add]/following-sibling::button[@data-atom-filter-chip-clear]'))->toHaveCount(1)
+            ->and($pill[0]->getAttribute('x-bind:data-chip'))->toContain('chipState')
+            ->and(domQuery($html, '//button[@data-atom-date-range-add]//*[@data-atom-icon]'))->toHaveCount(2)
             // not an input with a typed "+": there is nothing to type in it, and no field-sizing to fall back from
             ->and(domQuery($html, '//input'))->toBeEmpty()
             ->and($html)->not->toContain('field-sizing')
-            ->and(domQuery($html, '//*[@data-atom-date-range][@x-show="!dateRangeValue"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-date-range][@x-show="selfChip || !dateRangeValue"]'))->toHaveCount(1)
             ->and(domQuery($html, '//button[@aria-label="Open calendar"]'))->toBeEmpty()
             // it still registers its chip, and opens the same calendar menu
             ->and($html)->toContain('table-filter:set')

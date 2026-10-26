@@ -7,7 +7,7 @@
 ])
 
 @php
-$hasActions = isset($actions) && $actions->isNotEmpty();
+$hasActions = isset($actions) && $actions->hasActualContent();
 
 $icon ??= match ($variant) {
     'info' => 'info',

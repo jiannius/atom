@@ -29,7 +29,7 @@ $tones = ['Paid' => 'success', 'Overdue' => 'danger', 'Sent' => 'neutral', 'Draf
 
     {{-- A table with no Livewire component behind it: static rows, no sorting or pagination. In a real page the rows come
          from a component (see the table docs). --}}
-    <div class="min-w-0 overflow-hidden rounded-panel border bg-surface">
+    <div class="min-w-0 overflow-clip rounded-panel border bg-surface">
         <atom:table frameless :empty="false">
             <x-slot:columns>
                 <atom:table.column>Number</atom:table.column>
