@@ -141,6 +141,10 @@ for (const tw of ['floor', 'latest']) {
 
         expect([s['column-gap'], s['row-gap']]).toEqual(['6px', '6px'])
         expect(more.right).toBeLessThan(primary.x)
+        // the overflow trigger is the same size as the buttons beside it (the control's own on a page, not an `sm` one)
+        expect(more.height, 'the ellipsis is as tall as the primary button').toBe(primary.height)
+        expect(more.width, 'and a square of that height').toBe(more.height)
+        expect(more.height, 'the control token, 28px at the compact density').toBe(28)
         // the primary action ends at the page's right edge (less its gutter)
         expect(Math.abs(primary.right - (content.right - 28))).toBeLessThan(1)
       })
@@ -689,6 +693,13 @@ test.describe('page.header in a slide-over, through a Livewire morph', () => {
     const meta = dialog.locator('[data-atom-page-meta]')
     const menu = dialog.locator('[data-atom-menu]')
     const trigger = dialog.getByRole('button', { name: 'More actions' })
+
+    // in a slide-over the header is `sm`, and so is its overflow trigger: as tall as the sm button beside it
+    const triggerBox = await trigger.evaluate((el) => el.getBoundingClientRect().height)
+    const primaryBox = await dialog.getByTestId('bump').evaluate((el) => el.getBoundingClientRect().height)
+    expect(triggerBox).toBe(primaryBox)
+    const control = await dialog.evaluate((el) => parseFloat(getComputedStyle(el).getPropertyValue('--atom-control-h')))
+    expect(triggerBox, 'sm: 4px under the control token').toBe(control - 4)
 
     // opens, and an item runs its Livewire action
     await trigger.click()

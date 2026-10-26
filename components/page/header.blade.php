@@ -13,7 +13,7 @@
      current page, printed as the record's own text; every other label goes through t(), which splits on a pipe, so a
      parent crumb holding record data must not contain one. `facts` is a list of strings or
      `['label' => ..., 'value' => ..., 'mono' => true]`. `title`, labels and values print as text. It is pure Blade and CSS, so it also renders in a
-     modal or a slide-over (a form, never a whole record): pass `size="sm"` and `level="2"` there. Use the shell's own
+     modal or a slide-over (a form, never a whole record): pass `size="sm"` and `level="2"` there (the overflow trigger follows it, and so should the buttons you pass: default size on a page, `sm` there). Use the shell's own
      `crumbs` slot OR `crumbs` here, not both. --}}
 @php
 $level = in_array((int) $level, [1, 2, 3], true) ? (int) $level : 1;
@@ -106,7 +106,8 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
 
             @if ($has($menu ?? null))
                 <atom:dropdown position="bottom" align="end">
-                    <atom:button size="sm" icon="more" :aria-label="t('More actions')" />
+                    {{-- the trigger is the size of the header's other buttons: the control's own on a page, `sm` in a modal or slide-over --}}
+                    <atom:button :size="$small ? 'sm' : null" icon="more" :aria-label="t('More actions')" />
 
                     <atom:menu class="w-[220px]" popover>
                         {{ $menu }}

@@ -138,6 +138,16 @@ describe('page.header', function () use ($evil) {
             ->and(domQuery($html, '//*[@data-atom-dropdown]//*[@data-atom-menu][@popover]'))->toHaveCount(1);
     });
 
+    it('sizes the overflow trigger like the header: the control\'s own on a page, sm in a modal or a slide-over', function () {
+        $trigger = fn (string $attrs) => domClasses(domQuery(
+            renderBlade('<atom:page.header title="T" '.$attrs.'><x-slot:menu><atom:menu.item>Delete</atom:menu.item></x-slot:menu></atom:page.header>'),
+            '//button[@aria-label="More actions"]',
+        )[0]);
+
+        expect($trigger(''))->toContain('h-control')->not->toContain('h-control-sm')
+            ->and($trigger('level="2" size="sm"'))->toContain('h-control-sm')->not->toContain('h-control');
+    });
+
     it('has no action row and no menu when it is given none', function () {
         $html = renderBlade('<atom:page.header title="T" />');
 

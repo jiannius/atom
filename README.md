@@ -546,7 +546,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 <atom:page>
     <atom:page.header title="Work order WO-1042" :crumbs="[['label' => 'Jobs', 'href' => route('jobs')], ['label' => 'WO-1042']]">
         <x-slot:status><atom:status tone="info" running label="In progress" /></x-slot:status>
-        <x-slot:primary><atom:button size="sm" variant="primary">Mark as done</atom:button></x-slot:primary>
+        <x-slot:primary><atom:button variant="primary">Mark as done</atom:button></x-slot:primary>
     </atom:page.header>
 
     <atom:stat.group>
