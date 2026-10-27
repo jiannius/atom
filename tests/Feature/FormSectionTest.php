@@ -155,21 +155,30 @@ describe('save bar', function () {
             ->and($label[0]->textContent)->toBe('Unsaved changes')
             ->and($label[0]->getAttribute('x-show'))->toBe('dirty')
             ->and($label[0]->hasAttribute('x-cloak'))->toBeTrue()
-            // after what the start slot holds, inside the formDirty scope the group is
-            ->and(domQuery($on, '//*[@data-atom-form-actions-start][@x-data="formDirty"]'))->toHaveCount(1)
+            // after what the start slot holds; the formDirty scope is the label's own, not the group's that holds the host's slot
+            ->and($label[0]->getAttribute('x-data'))->toBe('formDirty')
+            ->and(domQuery($on, '//*[@data-atom-form-actions-start][@x-data]'))->toBeEmpty()
             ->and(domQuery($on, '//*[@data-atom-form-actions-start]')[0]->textContent)->toContain('Total')
             ->and(domQuery($on, '//*[@data-atom-form-actions-start]/*[last()]')[0]->hasAttribute('data-atom-form-dirty'))->toBeTrue();
     });
 
-    it('draws the label with no start slot too, and the group is hidden with it, and translates it', function () {
+    it('draws the label with no start slot too, as the bar\'s own start with no group around it, and translates it', function () {
         app('translator')->setLoaded(['*' => ['*' => ['en' => ['Unsaved changes' => 'Perubahan belum disimpan']]]]);
 
         $html = renderBlade('<atom:form.actions bar dirty />');
-        $group = domQuery($html, '//*[@data-atom-form-actions-start]');
+        $label = domQuery($html, '//*[@data-atom-save-bar]/*[@data-atom-form-dirty]');
 
-        expect($group)->toHaveCount(1)
-            ->and($group[0]->getAttribute('x-show'))->toBe('dirty')
-            ->and(domQuery($html, '//*[@data-atom-form-dirty]')[0]->textContent)->toBe('Perubahan belum disimpan');
+        expect($label)->toHaveCount(1)
+            ->and($label[0]->getAttribute('x-show'))->toBe('dirty')
+            ->and($label[0]->getAttribute('x-data'))->toBe('formDirty')
+            ->and(domQuery($html, '//*[@data-atom-form-actions-start]'))->toBeEmpty()
+            ->and($label[0]->textContent)->toBe('Perubahan belum disimpan');
+    });
+
+    it('starts a dialog from no page bottom room, so a bar inside one is not pulled out of it', function () {
+        $dialog = domQuery(renderBlade('<atom:modal name="m">x</atom:modal>'), '//dialog')[0];
+
+        expect(domClasses($dialog))->toContain('[--atom-page-pb:0px]');
     });
 
     it('ignores `dirty` outside a page save bar', function () {

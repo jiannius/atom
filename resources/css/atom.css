@@ -1410,9 +1410,12 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
 
 /* page: <atom:page> pads the page; the shell's <main> does not. In the top-nav shell the page's gutter is the bar's
    (24px) and its default column the bar's (1248px, --atom-page-max), so a centred page's content starts where the bar's and the
-   crumbs' do. A `narrow` page sets its own cap and stays a centred form column. */
-[data-atom-header-bar] ~ [data-atom-main] [data-atom-page] {
-    --atom-page-max: 1248px;
+   crumbs' do. It sits in `@layer base`, so a utility of the host's on the page (`[--atom-page-max:1100px]`) wins. A `narrow` page sets
+   its own cap and stays a centred form column. */
+@layer base {
+    [data-atom-header-bar] ~ [data-atom-main] [data-atom-page] {
+        --atom-page-max: 1248px;
+    }
 }
 
 @media (min-width: 64rem) {

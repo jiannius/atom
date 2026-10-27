@@ -8,7 +8,7 @@ $dirty = request()->query('dirty') !== '0';
 <atom:html title="E2E: unsaved changes" :vite="[]" :styles="['/atom/e2e/consumer-css/'.$tw]" :dark="request()->query('dark') === '1'">
 @if ($plain)
     <atom:page data-testid="page">
-        <atom:form x-on:submit.prevent data-form="plain">
+        <atom:form x-data x-on:submit.prevent data-form="plain">
             <atom:input label="Name" name="name" value="Acme" data-probe="name" />
             <atom:select label="Region" variant="listbox" x-data="{ region: null }" x-model="region" data-select="region" :options="[
                 ['value' => 'north', 'label' => 'North'],

@@ -64,6 +64,17 @@ for (const tw of ['floor', 'latest']) {
           expect(Math.abs(head.x - brand.x)).toBeLessThanOrEqual(1)
         })
 
+        test('a utility of the host\'s on the page (`[--atom-page-max:1000px]`) beats the top-nav shell\'s own cap', async ({ page }) => {
+          for (const shell of ['header', 'sidebar']) {
+            await open(page, `/atom/e2e/save-bar-context?shell=${shell}&max=1000`, tw)
+
+            const g = await gaps(page, '[data-testid="page"]')
+
+            expect(Math.round(g.width), shell).toBe(1000)
+            expect(Math.abs(g.left - g.right), shell).toBeLessThanOrEqual(1)
+          }
+        })
+
         test('what is inside the page stays on its column: header, tabs, and a table with its toolbar and pager', async ({ page }) => {
           for (const url of ['/atom/e2e/shell-record', '/atom/e2e/shell-list']) {
             await open(page, url, tw)

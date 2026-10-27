@@ -1,17 +1,25 @@
-import { errorKeys } from '../helpers/form-errors'
+import onMorphed from '../helpers/morphed'
+import { errorKeys, targets } from '../helpers/form-errors'
 
 // The "Unsaved changes" label of a page save bar (<atom:form.actions bar dirty>): shown while the enclosing <form> holds changes that
-// were not saved. Two signals, either one is enough:
-// - the form's own `input` and `change` events, which bubble. A native control fires them, and so do the atom controls that set a
-//   value by hand: the select, the date picker and the editor `$dispatch('input', ...)`. This is the whole signal of a plain form
-//   (no Livewire). A control that sets its value without an event (the time picker, the date range, a rating, removing an email
-//   chip) is only seen through the next signal, which needs Livewire.
-// - on a Livewire form, the form's own `wire:model` values against what they were when the form loaded or was last saved. Not
-//   `wire:dirty`: that compares the whole component's state against the server's, so a `.live` field (which the server has after
-//   150ms) or a property the form does not own would move it, and it goes quiet after ANY round trip, saved or not.
+// were not saved. The scope is the label's own (`x-data="formDirty"` on the span, so nothing of the host's `start` slot reads or is
+// shadowed by these properties). Two signals:
+// - a Livewire form's own `wire:model` values against what they were when the form loaded or was last saved (the signature). Not
+//   `wire:dirty`: that compares the whole component's state against the server's, so a `.live` field (which the server has after 150ms)
+//   or a property the form does not own would move it, and it goes quiet after ANY round trip, saved or not. Typing a character and
+//   deleting it is clean again; a control that only fires an event (a lazy editor's blur, a date typed and escaped) changes nothing.
+// - the form's bubbling `input` and `change` events, for a control that is NOT bound with wire:model: the whole signal of a plain form
+//   (no Livewire), and of an unbound control on a Livewire one. The select, the date picker and the editor `$dispatch('input', ...)`.
+//   A control that sets its value without an event (the time picker, the date range, a rating, removing an email chip) is only seen
+//   through the first signal, which needs Livewire. An event from inside a <dialog> that does not hold the form (a modal that sits in
+//   the form) is not the form's.
 //
-// It clears on a `reset`, on the `submit` of a plain form, and on the first Livewire response after a submit of a form of this
-// component that leaves none of its fields in error. A save that fails validation leaves the label up.
+// It clears on a `reset`, on the `submit` of a plain form, and in the success path of the Livewire action the form submits (the
+// action named in its wire:target, from a control of this form): when that response leaves none of the form's fields in error. A
+// request that fails (offline, 5xx, cancelled) or a save that fails validation leaves the label up, and no other request clears it.
+//
+// The `wire:model` keys are read again on a clear and after every morph (a repeater row added or removed changes them), and the
+// baseline is taken only on a clear, so a row that comes or goes is a change.
 //
 // The factory is a constant (`x-data="formDirty"`, no per-render value) and keeps its state across a morph.
 
@@ -30,8 +38,21 @@ const modelKeys = (form) => {
     return [...keys]
 }
 
+/**
+ * Whether a control (or an ancestor of it, up to the form) is bound with wire:model, so its value is the signature's to judge.
+ */
+const bound = (el, form) => {
+    for (let node = el; node && node !== form; node = node.parentElement) {
+        for (const attribute of node.attributes ?? []) {
+            if (attribute.name.startsWith('wire:model')) return true
+        }
+    }
+
+    return false
+}
+
 export default () => ({
-    // a field was typed in or picked since the form loaded, or was last saved
+    // an unbound control was typed in or picked since the form loaded, or was last saved
     touched: false,
     // the form's wire:model values differ from the baseline
     differs: false,
@@ -39,7 +60,6 @@ export default () => ({
     root: null,
     keys: [],
     baseline: null,
-    saving: false,
     stops: [],
 
     init () {
@@ -54,28 +74,38 @@ export default () => ({
             this.stops.push(() => this.form.removeEventListener(type, callback))
         }
 
-        on('input', () => this.touched = true)
-        on('change', () => this.touched = true)
+        const changed = (e) => {
+            const dialog = e.target?.closest?.('dialog')
+
+            if (dialog && ! dialog.contains(this.form)) return
+            if (bound(e.target, this.form)) return
+
+            this.touched = true
+        }
+
+        on('input', changed)
+        on('change', changed)
         on('reset', () => setTimeout(() => this.clear()))
-        on('submit', () => this.submitted())
 
-        if (this.root) {
-            // after every control has settled its value (a picker normalises what it is given), not before
-            this.$nextTick(() => this.$nextTick(() => {
-                this.keys = modelKeys(this.form)
-                this.baseline = this.signature
-                this.$watch('signature', () => this.differs = this.signature !== this.baseline)
-            }))
+        if (! this.root) {
+            on('submit', () => this.clear())
 
-            if (typeof window.Livewire?.hook === 'function') {
-                const stop = window.Livewire.hook('commit', ({ component, succeed }) => {
-                    if (component.el !== this.root) return
+            return
+        }
 
-                    succeed(() => setTimeout(() => this.landed(component)))
-                })
+        // after every control has settled its value (a picker normalises what it is given), not before
+        this.$nextTick(() => this.$nextTick(() => {
+            this.keys = modelKeys(this.form)
+            this.baseline = this.signature
+            this.$watch('signature', () => this.differs = this.signature !== this.baseline)
+        }))
 
-                if (typeof stop === 'function') this.stops.push(stop)
-            }
+        this.stops.push(onMorphed(() => this.read()))
+
+        if (typeof window.Livewire?.interceptAction === 'function') {
+            const stop = window.Livewire.interceptAction((context) => this.intercept(context))
+
+            if (typeof stop === 'function') this.stops.push(stop)
         }
     },
 
@@ -88,36 +118,57 @@ export default () => ({
         return this.touched || this.differs
     },
 
-    // the values of the form's wire:model fields, as one string
+    // the values of the form's wire:model fields, as one string; nothing, null and '' are one value (an editor writes '' for an empty
+    // document, a field that was typed in and cleared is '' where it was null)
     get signature () {
         if (! this.root) return ''
 
-        return JSON.stringify(this.keys.map((key) => this.$wire.$get(key)))
+        return JSON.stringify(this.keys.map((key) => this.$wire.$get(key) ?? ''))
     },
 
-    submitted () {
-        // a Livewire form is saved when the response lands; any other form has left the page or handled the submit itself
-        if (this.root) this.saving = true
-        else this.clear()
+    // the wire:model keys as they are now (a morph can add or remove fields); the baseline stays
+    read () {
+        if (! this.form?.isConnected || this.baseline === null) return
+
+        const keys = modelKeys(this.form)
+
+        if (keys.join('\n') !== this.keys.join('\n')) this.keys = keys
     },
 
-    // a response of this form's component: the one after a submit that left no field in error is the save
-    landed (component) {
-        if (! this.saving) return
+    // the action this form submits: named in its wire:target, started by a control of this form (or by no one: `$wire.save()`)
+    intercept ({ action, onSuccess, onFinish }) {
+        if (! this.form?.isConnected || action.component.el !== this.root) return
+        if (! targets(this.form).includes(action.name)) return
 
-        this.saving = false
+        const origin = action.origin?.el
 
-        try {
-            if (errorKeys(this.form, component).length === 0) this.clear()
-        }
-        catch (e) {
-            console.warn('[atom] form dirty failed', e)
-        }
+        if (origin && ! this.form.contains(origin)) return
+
+        let succeeded = false
+
+        onSuccess(() => succeeded = true)
+
+        // after the response is merged and morphed, so the form's errors are this response's; also runs when the request failed
+        onFinish(() => {
+            if (! succeeded) return
+
+            try {
+                if (errorKeys(this.form, action.component).length === 0) this.clear()
+            }
+            catch (e) {
+                console.warn('[atom] form dirty failed', e)
+            }
+        })
     },
 
     clear () {
         this.touched = false
-        this.baseline = this.signature
+
+        if (this.root && this.form?.isConnected) {
+            this.keys = modelKeys(this.form)
+            this.baseline = this.signature
+        }
+
         this.differs = false
     },
 })

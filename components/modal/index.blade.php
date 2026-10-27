@@ -23,6 +23,8 @@ $hasOwnWidth = \Jiannius\Atom\Services\Attributes::hasWidth($attributes, false);
 
 $classes = Arr::toCssClasses([
     'group/modal',
+    // a page's bottom room (--atom-page-pb) is for a save bar at the foot of the screen: a bar inside a dialog starts from none
+    '[--atom-page-pb:0px]',
     '[:where(&)]:max-w-full min-w-sm shadow-pop rounded-modal',
     'w-full' => $hasMaxWidth && ! $hasOwnWidth,
     'max-sm:w-full' => $hasMaxWidth && $hasOwnWidth,

@@ -193,6 +193,24 @@ for (const tw of ['floor', 'latest']) {
       })
     })
 
+    test.describe('inside a modal that sits in a page', () => {
+      test.use({ viewport: { width: 1280, height: 800 } })
+
+      test('a bar there does not inherit the page\'s bottom room: its negative margin would pull it out of the dialog', async ({ page }) => {
+        await open(page, '/atom/e2e/save-bar-context?shell=sidebar&modal=1', tw)
+
+        const dialog = page.getByTestId('bar-modal')
+        await expect(dialog).toHaveAttribute('open', '')
+
+        const s = await styles(page.getByTestId('modal-bar'), ['margin-bottom', 'position'])
+        const room = await styles(dialog, ['--atom-page-pb'])
+
+        expect(room['--atom-page-pb']).toBe('0px')
+        // 0.75rem under it, not the -108px the page's 120px of room would make
+        expect(s['margin-bottom']).toBe('12px')
+      })
+    })
+
     test.describe('on a phone', () => {
       test.use({ viewport: { width: 390, height: 844 } })
 

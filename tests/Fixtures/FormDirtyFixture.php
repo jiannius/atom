@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
+use Jiannius\Atom\Traits\WithEditor;
 use Livewire\Component;
 
 /**
@@ -10,15 +11,23 @@ use Livewire\Component;
  */
 class FormDirtyFixture extends Component
 {
+    use WithEditor;
+
     public ?string $name = 'Acme';
 
-    public ?string $region = null;
+    // preset values: none of them may light the label at load
+    public ?string $region = 'north';
 
-    public ?string $zone = null;
+    public ?string $zone = 'a';
 
-    public ?string $due = null;
+    public ?string $due = '2026-10-15';
 
-    public ?string $note = null;
+    public ?string $note = 'preset';
+
+    public ?string $body = null;
+
+    /** @var array<int, array{label: string}> A repeater: a button adds a row, another removes one. */
+    public array $rows = [['label' => 'One']];
 
     public bool $dirty = true;
 
@@ -34,6 +43,22 @@ class FormDirtyFixture extends Component
         $this->validate(['name' => 'required'], ['name.required' => 'Name is required.']);
 
         $this->saves++;
+    }
+
+    /**
+     * Add a row to the repeater.
+     */
+    public function addRow(): void
+    {
+        $this->rows[] = ['label' => 'Row '.(count($this->rows) + 1)];
+    }
+
+    /**
+     * Remove the last row of the repeater.
+     */
+    public function removeRow(): void
+    {
+        array_pop($this->rows);
     }
 
     /**

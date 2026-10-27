@@ -6,7 +6,8 @@
 
 {{-- The footer of a form, and its save bar. Three shapes:
      - plain: the buttons in a row, the first at the start and the last at the end (the default `Save`). A lone child (one button, or
-       the default `Save`) sits at the END: `justify-between` puts a single item at the start, so it takes an auto start margin.
+       the default `Save`) sits at the END: `justify-between` puts a single item at the start, so it takes an auto start margin. `:only-child`
+       counts every child element, hidden ones (`x-show`, `display: none`) included: a hidden sibling keeps the visible one at the start.
      - `sticky`: the same row, pinned to the bottom of a modal or slide-over (the footer <atom:form.modal> draws), bleeding to the panel's edges.
      - `bar`: the save bar of a PAGE form: a card that floats at the bottom of the screen while the page is longer than it. It is a plain
        block in the form's flow, so it is exactly as wide as the form's sections above it, inside the page's own padding; it draws a
@@ -17,7 +18,9 @@
        0.75rem it floats by, as a negative bottom margin of (--atom-page-pb - 0.75rem - the inset). At the end of the page the card
        therefore sits in flow right below the last section, 0.75rem above the page's bottom edge: the same place it holds while it is
        stuck, so there is no hole under the last section and no jump as it unsticks. (A sticky box that is stuck takes its place from its
-       border box, not its margin box, so the margin moves where the page ENDS, not where the card sticks.) Outside a page the variable is
+       border box, not its margin box, so the margin moves where the page ENDS, not where the card sticks. The calc relies on the browser holding a sticky
+       box's MARGIN box inside its containing block (the form): the negative margin lets the card overhang the form's end by the room it
+       gives back, and that overhang is what the page's own padding is under. Outside a page the variable is
        missing, the margin comes out as 0.75rem, and the card simply has that much room under it. A page that sets its own room
        (`[--atom-page-pb:80px]`) is followed.
        `dirty` adds a muted "Unsaved changes" after the start slot's content, shown only while the form holds changes that were not saved
@@ -46,15 +49,18 @@ $stickyBar = $sticky && ! $bar;
     'bottom-[calc(0.75rem_+_env(safe-area-inset-bottom,0px))] mb-[calc((var(--atom-page-pb,0px)_-_0.75rem_-_env(safe-area-inset-bottom,0px))*-1)]' => $bar,
     'sticky -bottom-6 z-10 bg-surface -mx-6 px-6 pt-4 pb-6 -mb-6 border-t mt-auto' => $stickyBar,
 ]) }} data-atom-form-actions @if ($bar) data-atom-save-bar @endif>
-    @if ($hasStart || $dirty)
-        {{-- With `dirty` the group is the formDirty scope (resources/js/alpinejs/form-dirty.js): the label shows while it says so, and a group that is only the label shows with it; x-cloak keeps both from showing before Alpine runs --}}
-        <div {{ ($hasStart ? $start->attributes : new \Illuminate\View\ComponentAttributeBag)->class('flex min-w-0 flex-wrap items-baseline gap-x-3.5 gap-y-1 text-fg-muted tabular-nums [&_:is(b,strong)]:font-semibold [&_:is(b,strong)]:text-fg [&_:is(b,strong)]:tabular-nums') }} data-atom-form-actions-start @if ($dirty) x-data="formDirty" @unless ($hasStart) x-show="dirty" x-cloak @endunless @endif>
-            @if ($hasStart) {{ $start }} @endif
+    @if ($hasStart)
+        <div {{ $start->attributes->class('flex min-w-0 flex-wrap items-baseline gap-x-3.5 gap-y-1 text-fg-muted tabular-nums [&_:is(b,strong)]:font-semibold [&_:is(b,strong)]:text-fg [&_:is(b,strong)]:tabular-nums') }} data-atom-form-actions-start>
+            {{ $start }}
 
             @if ($dirty)
-                <span x-show="dirty" x-cloak data-atom-form-dirty>{{ t('Unsaved changes') }}</span>
+                {{-- the formDirty scope (resources/js/alpinejs/form-dirty.js) is this span's own: the host's start slot above sits outside it; x-cloak keeps it from showing before Alpine runs --}}
+                <span x-data="formDirty" x-show="dirty" x-cloak data-atom-form-dirty>{{ t('Unsaved changes') }}</span>
             @endif
         </div>
+    @elseif ($dirty)
+        {{-- no start slot: the label is the bar's own start, and takes no room while it is hidden --}}
+        <span class="min-w-0 text-fg-muted" x-data="formDirty" x-show="dirty" x-cloak data-atom-form-dirty>{{ t('Unsaved changes') }}</span>
     @endif
 
     @if ($bar)
