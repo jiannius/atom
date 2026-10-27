@@ -77,7 +77,8 @@ describe('checkbox markup', function () {
             ->toContain('selectAllTableMatching')
             ->toContain('120')
             ->toContain('data-total="120"')   // count reflects the matching total, read from the bar's own attribute
-            ->toContain("select_all ? \$el.closest('[data-atom-table-checked]').dataset.total");
+            ->toContain('select_all ? _atomTotal')
+            ->toContain('x-data="tableChecked"');
 
         $without = renderBlade(
             '<atom:table :paginate="$p"><x-slot:checked><button>Delete</button></x-slot:checked></atom:table>',

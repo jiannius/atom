@@ -9,6 +9,7 @@ import { open } from './controls-helpers.js'
 const header = (page) => page.locator('[data-atom-table] > div:has([data-testid="header-input"])')
 const bar = (page) => page.locator('[data-atom-table-checked]')
 const tick = (page, n = 0) => page.locator('[data-atom-table-row] [data-atom-table-checkbox]').nth(n)
+const checkedCount = (page) => page.locator('[data-atom-table-checked] span[x-text]').first()
 const region = (page) => page.locator('[data-select="region"] select')
 const city = (page) => page.locator('[data-select="city"] select')
 
@@ -87,6 +88,10 @@ for (const tw of ['floor', 'latest']) {
       await roundTrip(page, () => page.locator('[data-set-note]').click())
       await roundTrip(page, () => page.locator('[data-set-foo]').click())
 
+      // the server's changes did not bring the header back while rows are ticked
+      await expect(header(page)).toBeHidden()
+      await expect(bar(page)).toBeVisible()
+
       await tick(page).click()
       await expect(bar(page)).toBeHidden()
       await expect(header(page)).toBeVisible()
@@ -112,6 +117,44 @@ for (const tw of ['floor', 'latest']) {
       await tick(page).click()
       await expect(page.locator('[data-atom-table-select-all]')).toContainText('12')
       await expect(page.locator('[data-atom-table-select-all]')).toBeVisible()
+    })
+
+    test('the total follows the server while rows are ticked: a search narrows it and the select-all offer goes, clearing it brings the offer back, a bigger set names the new total', async ({ page }) => {
+      await open(page, { path: 'table-server-slots', tw, extra: '&sticky=1' })
+
+      const offer = page.locator('[data-atom-table-select-all]')
+
+      for (const n of [0, 1, 2]) await tick(page, n).click()
+
+      await expect(checkedCount(page)).toHaveText('3')
+      await expect(offer).toBeVisible()
+      await expect(offer).toContainText('12')
+
+      // 12 -> 3: the three ticked rows are all of them, so there is nothing more to select
+      await roundTrip(page, () => page.locator('[data-atom-table-search] input').fill('a'))
+      await expect(offer).toBeHidden()
+      await expect(checkedCount(page)).toHaveText('3')
+
+      // 3 -> 12: the offer is back, naming 12
+      await roundTrip(page, () => page.locator('[data-atom-table-search] input').fill(''))
+      await expect(offer).toBeVisible()
+      await expect(offer).toContainText('12')
+
+      // 12 -> 20
+      await roundTrip(page, () => page.locator('[data-set-bigger]').click())
+      await expect(offer).toBeVisible()
+      await expect(offer).toContainText('20')
+    })
+
+    test('select all matching: the count reads the total, and follows it when the server changes it', async ({ page }) => {
+      await open(page, { path: 'table-server-slots', tw })
+
+      await tick(page).click()
+      await roundTrip(page, () => page.locator('[data-atom-table-select-all]').click())
+      await expect(checkedCount(page)).toHaveText('12')
+
+      await roundTrip(page, () => page.locator('[data-set-bigger]').click())
+      await expect(checkedCount(page)).toHaveText('20')
     })
 
     test('nothing flashes at load: the header is in the server\'s HTML as it was drawn (not cloaked), the bar is cloaked until Alpine says a row is ticked', async ({ page }) => {

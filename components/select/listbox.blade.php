@@ -166,6 +166,10 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                     {{-- x-show, not an x-if: the placeholder is server text, and a morph skips what an x-if rendered (Alpine 3.17) --}}
                     <div x-show="isEmpty" x-cloak class="flex items-center text-fg-subtle">{{ t($placeholder) }}</div>
 
+                    {{-- The one x-if that holds a server slot: a host's `selected` slot is a template for the CLIENT's value (it reads `selectedOptions`,
+                         which is empty here until something is picked), so it must not be drawn while empty, and x-show would draw it and run
+                         its expressions on nothing. The cost is Alpine 3.17's: a morph never patches it, so a server-changing @if inside this
+                         slot freezes; keep such markup outside it (CLAUDE.md). The default branch is client-only. --}}
                     <template x-if="!isEmpty" hidden>
                         @isset ($selected)
                             {{ $selected }}

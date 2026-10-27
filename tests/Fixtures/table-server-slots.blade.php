@@ -3,10 +3,15 @@
         <button type="button" wire:click="$set('foo', true)" data-set-foo>Set foo</button>
         <button type="button" wire:click="$set('note', 'changed note')" data-set-note>Change note</button>
         <button type="button" wire:click="$set('region', 'north')" data-set-region>Set region</button>
+        <button type="button" wire:click="$set('bigger', true)" data-set-bigger>Grow</button>
     </div>
 
     <atom:table :sticky-selection="$sticky" select-all :paginate="$this->pager">
         <x-slot:header>
+            <atom:table.filters>
+                <atom:table.search wire:model.live.debounce.0ms="search" placeholder="Search fruit..." data-search />
+            </atom:table.filters>
+
             <atom:input wire:model.live="note" aria-label="Note" data-testid="header-input" />
 
             @if ($foo)

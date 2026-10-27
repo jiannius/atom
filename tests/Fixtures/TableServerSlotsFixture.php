@@ -27,10 +27,18 @@ class TableServerSlotsFixture extends Component
 
     public bool $sticky = false;
 
+    /** A search narrows the matching total from 12 to 3 */
+    public ?string $search = null;
+
+    /** The total grows from 12 to 20 */
+    public bool $bigger = false;
+
     /** @var array<int, array{id: int, name: string}> */
     public const ROWS = [
         ['id' => 1, 'name' => 'Apple'],
         ['id' => 2, 'name' => 'Banana'],
+        ['id' => 3, 'name' => 'Cherry'],
+        ['id' => 4, 'name' => 'Damson'],
     ];
 
     /**
@@ -58,7 +66,15 @@ class TableServerSlotsFixture extends Component
      */
     public function getPagerProperty(): LengthAwarePaginator
     {
-        return new LengthAwarePaginator(self::ROWS, 12, 2, 1);
+        return new LengthAwarePaginator(self::ROWS, $this->total, 4, 1);
+    }
+
+    /**
+     * How many rows match: 12, 3 with a search, 20 once the set has grown.
+     */
+    public function getTotalProperty(): int
+    {
+        return filled($this->search) ? 3 : ($this->bigger ? 20 : 12);
     }
 
     /**

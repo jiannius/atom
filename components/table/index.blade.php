@@ -84,20 +84,22 @@ data-atom-table
          a select that depends on another filter's value, a count) would never update. A hidden bar is `display: none`, so nothing in it can be
          focused or tabbed to. The checked bar has `x-cloak` (hidden until Alpine says a row is ticked); the header has NOT: it is shown
          at first paint, as the server rendered it, and its components start while it is visible (under `x-cloak` they would measure
-         themselves at zero size, the filter chips and the popovers' first placement among them). Values the server prints that an expression needs (the total) ride on a data attribute, which a morph
-         keeps current, and are read when the expression runs. --}}
+         themselves at zero size, the filter chips and the popovers' first placement among them). The total an expression needs rides on a data attribute (`data-total`), which a morph rewrites in place but which no
+         expression tracks: the count and the select-all button each hold it as reactive state (`x-data="tableChecked"`, resources/js/alpinejs/
+         table-checked.js, which watches the attribute), and the scope is theirs alone, not the bar's, so the host's `checked` slot is
+         not inside it. --}}
     @if (isset($checked) && $checked->isNotEmpty())
         <div x-show="$wire._table.checkboxes.length || $wire._table.select_all" x-cloak class="{{ $checkedClasses }}" data-atom-table-checked @if ($checkedAccent) data-tone="accent" @endif data-total="{{ $total }}">
             <div class="shrink-0 flex items-center gap-2 text-sm font-medium {{ $checkedMuted }}">
                 <atom:icon.double-check class="size-4"/>
-                <div>
-                    <span x-text="$wire._table.select_all ? $el.closest('[data-atom-table-checked]').dataset.total : $wire._table.checkboxes.length"></span> {{ t('atom::messages.selected') }}
+                <div x-data="tableChecked">
+                    <span x-text="$wire._table.select_all ? _atomTotal : $wire._table.checkboxes.length"></span> {{ t('atom::messages.selected') }}
                 </div>
             </div>
 
             @if ($canSelectAll)
                 {{-- offer cross-page select-all once a subset is chosen, then a way back out --}}
-                <button type="button" x-show="!$wire._table.select_all && $wire._table.checkboxes.length < Number($el.closest('[data-atom-table-checked]').dataset.total)" x-cloak wire:click="selectAllTableMatching" class="shrink-0 text-sm font-medium text-accent-ink hover:underline" data-atom-table-select-all>
+                <button type="button" x-data="tableChecked" x-show="!$wire._table.select_all && $wire._table.checkboxes.length < _atomTotal" x-cloak wire:click="selectAllTableMatching" class="shrink-0 text-sm font-medium text-accent-ink hover:underline" data-atom-table-select-all>
                     {{ t('atom::messages.select-all') }} {{ number_format($total) }}
                 </button>
 
