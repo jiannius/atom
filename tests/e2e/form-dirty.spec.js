@@ -261,6 +261,45 @@ for (const tw of ['floor', 'latest']) {
         await expect(label(page)).toBeHidden()
       })
 
+      test('a field of a child Livewire component inside the form lights it (its value is not the form\'s, so its own events say so)', async ({ page }) => {
+        await open(page, '', tw)
+
+        await expect(label(page)).toBeHidden()
+        await probe(page, 'remark').fill('typed in the child')
+        await expect(label(page)).toBeVisible()
+
+        await roundTrip(page, () => save(page).click())
+        await expect(label(page)).toBeHidden()
+      })
+
+      test('a "Save draft" button of the bar clears it when it succeeds, and not when it fails', async ({ page }) => {
+        await open(page, '', tw)
+
+        const draft = page.locator('[data-save-draft]')
+
+        // a validation failure: the draft is not saved
+        await probe(page, 'name').fill('')
+        await expect(label(page)).toBeVisible()
+        await roundTrip(page, () => draft.click())
+        await expect(page.locator('[data-drafts]')).toHaveText('0')
+        await expect(label(page)).toBeVisible()
+
+        // a request that never lands
+        await probe(page, 'name').fill('Draft name')
+        const livewire = (url) => url.pathname.includes('/livewire')
+        await page.route(livewire, (route) => route.request().postData()?.includes('"method":"saveDraft"') ? route.abort() : route.continue())
+        await draft.click()
+        await page.waitForTimeout(400)
+        await expect(page.locator('[data-drafts]')).toHaveText('0')
+        await expect(label(page)).toBeVisible()
+        await page.unroute(livewire)
+
+        // and one that does
+        await roundTrip(page, () => draft.click())
+        await expect(page.locator('[data-drafts]')).toHaveText('1')
+        await expect(label(page)).toBeHidden()
+      })
+
       test('without the prop there is never a label, and the bar is still there', async ({ page }) => {
         await open(page, 'dirty=0', tw)
 

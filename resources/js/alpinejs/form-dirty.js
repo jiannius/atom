@@ -8,14 +8,15 @@ import { errorKeys, targets } from '../helpers/form-errors'
 //   `wire:dirty`: that compares the whole component's state against the server's, so a `.live` field (which the server has after 150ms)
 //   or a property the form does not own would move it, and it goes quiet after ANY round trip, saved or not. Typing a character and
 //   deleting it is clean again; a control that only fires an event (a lazy editor's blur, a date typed and escaped) changes nothing.
-// - the form's bubbling `input` and `change` events, for a control that is NOT bound with wire:model: the whole signal of a plain form
-//   (no Livewire), and of an unbound control on a Livewire one. The select, the date picker and the editor `$dispatch('input', ...)`.
+// - the form's bubbling `input` and `change` events, for a control that is NOT bound with wire:model to the form's component: the whole
+//   signal of a plain form (no Livewire), of an unbound control on a Livewire one, and of a field of a child component inside the form. The select, the date picker and the editor `$dispatch('input', ...)`.
 //   A control that sets its value without an event (the time picker, the date range, a rating, removing an email chip) is only seen
 //   through the first signal, which needs Livewire. An event from inside a <dialog> that does not hold the form (a modal that sits in
 //   the form) is not the form's.
 //
 // It clears on a `reset`, on the `submit` of a plain form, and in the success path of the Livewire action the form submits (the
-// action named in its wire:target, from a control of this form): when that response leaves none of the form's fields in error. A
+// action named in its wire:target, from a control of this form) or that a button of its actions bar starts (a "Save draft"
+// `wire:click`): when that response leaves none of the form's fields in error. A
 // request that fails (offline, 5xx, cancelled) or a save that fails validation leaves the label up, and no other request clears it.
 //
 // The `wire:model` keys are read again on a clear and after every morph (a repeater row added or removed changes them), and the
@@ -24,12 +25,15 @@ import { errorKeys, targets } from '../helpers/form-errors'
 // The factory is a constant (`x-data="formDirty"`, no per-render value) and keeps its state across a morph.
 
 /**
- * The `wire:model` keys of a form's fields.
+ * The `wire:model` keys of the form's fields that its own component (`root`) owns.
  */
-const modelKeys = (form) => {
+const modelKeys = (form, root) => {
     const keys = new Set()
 
     form.querySelectorAll('*').forEach((el) => {
+        // a field owned by a child component (its own wire:id) is that component's: $wire here cannot read it
+        if (el.closest('[wire\\:id]') !== root) return
+
         for (const attribute of el.attributes) {
             if (attribute.name.startsWith('wire:model') && attribute.value.trim()) keys.add(attribute.value.trim())
         }
@@ -39,12 +43,13 @@ const modelKeys = (form) => {
 }
 
 /**
- * Whether a control (or an ancestor of it, up to the form) is bound with wire:model, so its value is the signature's to judge.
+ * Whether a control (or an ancestor of it, up to the form) is bound with wire:model to the form's own component, so its value is the
+ * signature's to judge. One bound to a child component inside the form is not: its value is not in the signature, so its events count.
  */
-const bound = (el, form) => {
+const bound = (el, form, root) => {
     for (let node = el; node && node !== form; node = node.parentElement) {
         for (const attribute of node.attributes ?? []) {
-            if (attribute.name.startsWith('wire:model')) return true
+            if (attribute.name.startsWith('wire:model') && node.closest('[wire\\:id]') === root) return true
         }
     }
 
@@ -57,6 +62,7 @@ export default () => ({
     // the form's wire:model values differ from the baseline
     differs: false,
     form: null,
+    bar: null,
     root: null,
     keys: [],
     baseline: null,
@@ -68,6 +74,7 @@ export default () => ({
         if (! this.form) return
 
         this.root = this.form.closest('[wire\\:id]')
+        this.bar = this.$el.closest('[data-atom-form-actions]')
 
         const on = (type, callback) => {
             this.form.addEventListener(type, callback)
@@ -78,7 +85,7 @@ export default () => ({
             const dialog = e.target?.closest?.('dialog')
 
             if (dialog && ! dialog.contains(this.form)) return
-            if (bound(e.target, this.form)) return
+            if (bound(e.target, this.form, this.root)) return
 
             this.touched = true
         }
@@ -95,12 +102,15 @@ export default () => ({
 
         // after every control has settled its value (a picker normalises what it is given), not before
         this.$nextTick(() => this.$nextTick(() => {
-            this.keys = modelKeys(this.form)
+            this.keys = modelKeys(this.form, this.root)
             this.baseline = this.signature
             this.$watch('signature', () => this.differs = this.signature !== this.baseline)
         }))
 
-        this.stops.push(onMorphed(() => this.read()))
+        this.stops.push(onMorphed((el) => {
+            // only a morph that reaches the form can change its fields
+            if (el && this.form && (el.contains(this.form) || this.form.contains(el))) this.read()
+        }))
 
         if (typeof window.Livewire?.interceptAction === 'function') {
             const stop = window.Livewire.interceptAction((context) => this.intercept(context))
@@ -130,19 +140,22 @@ export default () => ({
     read () {
         if (! this.form?.isConnected || this.baseline === null) return
 
-        const keys = modelKeys(this.form)
+        const keys = modelKeys(this.form, this.root)
 
         if (keys.join('\n') !== this.keys.join('\n')) this.keys = keys
     },
 
-    // the action this form submits: named in its wire:target, started by a control of this form (or by no one: `$wire.save()`)
+    // an action that saves the form: the one it submits (named in its wire:target, started by a control of this form, or by no one:
+    // `$wire.save()`), or one started from a button in its actions bar (a "Save draft" `wire:click`). A framework action (`$set`,
+    // `$refresh`) never is. Nothing else is: a plain `<form wire:submit>` that is not an <atom:form>, or a save that an Alpine `fetch`es.
     intercept ({ action, onSuccess, onFinish }) {
         if (! this.form?.isConnected || action.component.el !== this.root) return
-        if (! targets(this.form).includes(action.name)) return
 
         const origin = action.origin?.el
+        const fromBar = origin && this.bar?.contains(origin) && ! action.name.startsWith('$')
+        const submits = targets(this.form).includes(action.name) && (! origin || this.form.contains(origin))
 
-        if (origin && ! this.form.contains(origin)) return
+        if (! fromBar && ! submits) return
 
         let succeeded = false
 
@@ -165,7 +178,7 @@ export default () => ({
         this.touched = false
 
         if (this.root && this.form?.isConnected) {
-            this.keys = modelKeys(this.form)
+            this.keys = modelKeys(this.form, this.root)
             this.baseline = this.signature
         }
 

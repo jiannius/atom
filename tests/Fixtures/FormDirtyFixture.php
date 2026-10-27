@@ -45,6 +45,18 @@ class FormDirtyFixture extends Component
         $this->saves++;
     }
 
+    public int $drafts = 0;
+
+    /**
+     * A "Save draft" button of the bar: validates the name like the save, and counts.
+     */
+    public function saveDraft(): void
+    {
+        $this->validate(['name' => 'required'], ['name.required' => 'Name is required.']);
+
+        $this->drafts++;
+    }
+
     /**
      * Add a row to the repeater.
      */

@@ -23,7 +23,6 @@ $hasOwnWidth = \Jiannius\Atom\Services\Attributes::hasWidth($attributes, false);
 
 $classes = Arr::toCssClasses([
     'group/modal',
-    // a page's bottom room (--atom-page-pb) is for a save bar at the foot of the screen: a bar inside a dialog starts from none
     '[--atom-page-pb:0px]',
     '[:where(&)]:max-w-full min-w-sm shadow-pop rounded-modal',
     'w-full' => $hasMaxWidth && ! $hasOwnWidth,
@@ -88,6 +87,7 @@ $classes = Arr::toCssClasses([
 ]);
 @endphp
 
+{{-- `[--atom-page-pb:0px]` above: a page's bottom room (--atom-page-pb) is for a save bar at the foot of the screen, so a bar inside a dialog starts from none --}}
 <dialog
 wire:ignore.self {{-- This needs to be here because the dialog element adds a "close" attribute that isn't durable... --}}
 x-data="modal({

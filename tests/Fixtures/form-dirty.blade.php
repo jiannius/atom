@@ -1,7 +1,7 @@
 <div>
     <atom:page data-testid="page">
         <button type="button" wire:click="touch" data-touch>Touch</button>
-        <span>Touches: <span data-touches>{{ $touches }}</span> Saves: <span data-saves>{{ $saves }}</span></span>
+        <span>Touches: <span data-touches>{{ $touches }}</span> Saves: <span data-saves>{{ $saves }}</span> Drafts: <span data-drafts>{{ $drafts }}</span></span>
 
         <atom:form wire:submit="save" data-form="main" :error-toast="false" x-data="{ form: { total: 5 }, dirty: 'host', keys: 'host-keys' }">
             <atom:input label="Name" wire:model="name" data-probe="name" />
@@ -32,6 +32,9 @@
                 <button type="button" x-on:click="atom.modal('inner').show()" data-open-inner>Open inner</button>
             </div>
 
+            {{-- a child Livewire component inside the form, with a wire:model field of its own --}}
+            <livewire:atom-e2e-form-dirty-child />
+
             {{-- a modal that sits inside the form: what is typed in it is not the form's --}}
             <atom:modal name="inner" class="w-[24rem]">
                 <input type="text" data-probe="inner" aria-label="Inner">
@@ -42,11 +45,13 @@
             @if ($dirty)
                 <atom:form.actions bar dirty>
                     <x-slot:start><span>Total <b>RM 10.00</b> <i data-testid="host-scope" x-text="form.total + ':' + dirty + ':' + keys"></i></span></x-slot:start>
+                    <atom:button type="button" wire:click="saveDraft" data-save-draft>Save draft</atom:button>
                     <atom:button type="submit" data-submit="main">Save</atom:button>
                 </atom:form.actions>
             @else
                 <atom:form.actions bar>
                     <x-slot:start><span>Total <b>RM 10.00</b> <i data-testid="host-scope" x-text="form.total + ':' + dirty + ':' + keys"></i></span></x-slot:start>
+                    <atom:button type="button" wire:click="saveDraft" data-save-draft>Save draft</atom:button>
                     <atom:button type="submit" data-submit="main">Save</atom:button>
                 </atom:form.actions>
             @endif
