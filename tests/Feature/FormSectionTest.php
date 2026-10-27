@@ -98,7 +98,7 @@ describe('save bar', function () {
     it('is the plain footer without `bar` or `sticky`', function () {
         $bar = domQuery(renderBlade('<atom:form.actions />'), '//*[@data-atom-form-actions]')[0];
 
-        expect(domClasses($bar))->toContain('justify-between')->not->toContain('sticky')
+        expect(domClasses($bar))->toContain('justify-between', '[&>:only-child]:ms-auto')->not->toContain('sticky')
             ->and($bar->hasAttribute('data-atom-save-bar'))->toBeFalse()
             ->and(domQuery(renderBlade('<atom:form.actions />'), '//button[@type="submit"]'))->toHaveCount(1);
     });
@@ -111,7 +111,7 @@ describe('save bar', function () {
             ->and(implode(' ', $classes))->toContain('bottom-[calc(0.75rem_+_env(safe-area-inset-bottom,0px))]')
             // no blur, no transparency, no pseudo-element strip, no bleed, no hairline above it
             ->and(implode(' ', $classes))->not->toContain('before:')->not->toContain('after:')->not->toContain('backdrop-blur')->not->toContain('bg-surface/')
-            ->and($classes)->not->toContain('border-t', '-bottom-6', 'bottom-0', 'justify-between');
+            ->and($classes)->not->toContain('border-t', '-bottom-6', 'bottom-0', 'justify-between', '[&>:only-child]:ms-auto');
     });
 
     it('leaves no strip behind in atom.css: no bleed variables, clip-path or box-shadow spread on the bar', function () {
@@ -193,7 +193,7 @@ describe('save bar', function () {
     it('keeps the modal footer as it was: pinned, bleeding to the panel, on the surface', function () {
         $bar = domQuery(renderBlade('<atom:form.actions sticky />'), '//*[@data-atom-form-actions]')[0];
 
-        expect(domClasses($bar))->toContain('sticky', '-bottom-6', '-mx-6', 'px-6', 'pb-6', '-mb-6', 'bg-surface', 'border-t', 'justify-between')
+        expect(domClasses($bar))->toContain('sticky', '-bottom-6', '-mx-6', 'px-6', 'pb-6', '-mb-6', 'bg-surface', 'border-t', 'justify-between', '[&>:only-child]:ms-auto')
             ->and($bar->hasAttribute('data-atom-save-bar'))->toBeFalse();
     });
 

@@ -5,8 +5,9 @@
 ])
 
 {{-- The footer of a form, and its save bar. Three shapes:
-     - plain: the buttons in a row, the first at the start and the last at the end (the default `Save`).
-     - `sticky`: pinned to the bottom of a modal or slide-over (the footer <atom:form.modal> draws), bleeding to the panel's edges.
+     - plain: the buttons in a row, the first at the start and the last at the end (the default `Save`). A lone child (one button, or
+       the default `Save`) sits at the END: `justify-between` puts a single item at the start, so it takes an auto start margin.
+     - `sticky`: the same row, pinned to the bottom of a modal or slide-over (the footer <atom:form.modal> draws), bleeding to the panel's edges.
      - `bar`: the save bar of a PAGE form: a card that floats at the bottom of the screen while the page is longer than it. It is a plain
        block in the form's flow, so it is exactly as wide as the form's sections above it, inside the page's own padding; it draws a
        solid surface (`bg-surface`, no blur, nothing behind it shows through), a 1px border, the panel radius (10px) and the pop shadow, and
@@ -40,7 +41,7 @@ $stickyBar = $sticky && ! $bar;
 
 <div {{ $attributes->class([
     'flex items-center',
-    'justify-between gap-3' => ! $bar,
+    'justify-between gap-3 [&>:only-child]:ms-auto' => ! $bar,
     'sticky isolate z-10 flex-wrap gap-2 rounded-panel border border-border bg-surface px-4 py-3 shadow-pop' => $bar,
     'bottom-[calc(0.75rem_+_env(safe-area-inset-bottom,0px))] mb-[calc((var(--atom-page-pb,0px)_-_0.75rem_-_env(safe-area-inset-bottom,0px))*-1)]' => $bar,
     'sticky -bottom-6 z-10 bg-surface -mx-6 px-6 pt-4 pb-6 -mb-6 border-t mt-auto' => $stickyBar,
