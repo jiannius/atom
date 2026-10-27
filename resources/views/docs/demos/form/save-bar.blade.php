@@ -8,7 +8,7 @@
             <atom:input label="Item four" value="Data migration"/>
         </atom:form.section>
 
-        <atom:form.actions bar>
+        <atom:form.actions bar dirty>
             <x-slot:start>
                 <span>Subtotal <b>4,140.00</b></span>
                 <span>Total <b>RM 4,231.20</b></span>

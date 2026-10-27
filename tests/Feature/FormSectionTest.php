@@ -140,6 +140,43 @@ describe('save bar', function () {
             ->and(domQuery($html, '//*[@data-atom-form-actions-start]/following-sibling::*[@data-atom-form-actions-buttons]'))->toHaveCount(1);
     });
 
+    it('prints no "Unsaved changes" label unless `dirty` is on, and the bar is there either way', function () {
+        $off = renderBlade('<atom:form.actions bar><x-slot:start>Total</x-slot:start></atom:form.actions>');
+        $on = renderBlade('<atom:form.actions bar dirty><x-slot:start>Total</x-slot:start></atom:form.actions>');
+
+        expect(domQuery($off, '//*[@data-atom-form-dirty]'))->toBeEmpty()
+            ->and($off)->not->toContain('formDirty')->not->toContain('Unsaved changes')
+            ->and(domQuery($off, '//*[@data-atom-save-bar]'))->toHaveCount(1)
+            ->and(domQuery($on, '//*[@data-atom-save-bar]'))->toHaveCount(1);
+
+        $label = domQuery($on, '//*[@data-atom-form-actions-start]/*[@data-atom-form-dirty]');
+
+        expect($label)->toHaveCount(1)
+            ->and($label[0]->textContent)->toBe('Unsaved changes')
+            ->and($label[0]->getAttribute('x-show'))->toBe('dirty')
+            ->and($label[0]->hasAttribute('x-cloak'))->toBeTrue()
+            // after what the start slot holds, inside the formDirty scope the group is
+            ->and(domQuery($on, '//*[@data-atom-form-actions-start][@x-data="formDirty"]'))->toHaveCount(1)
+            ->and(domQuery($on, '//*[@data-atom-form-actions-start]')[0]->textContent)->toContain('Total')
+            ->and(domQuery($on, '//*[@data-atom-form-actions-start]/*[last()]')[0]->hasAttribute('data-atom-form-dirty'))->toBeTrue();
+    });
+
+    it('draws the label with no start slot too, and the group is hidden with it, and translates it', function () {
+        app('translator')->setLoaded(['*' => ['*' => ['en' => ['Unsaved changes' => 'Perubahan belum disimpan']]]]);
+
+        $html = renderBlade('<atom:form.actions bar dirty />');
+        $group = domQuery($html, '//*[@data-atom-form-actions-start]');
+
+        expect($group)->toHaveCount(1)
+            ->and($group[0]->getAttribute('x-show'))->toBe('dirty')
+            ->and(domQuery($html, '//*[@data-atom-form-dirty]')[0]->textContent)->toBe('Perubahan belum disimpan');
+    });
+
+    it('ignores `dirty` outside a page save bar', function () {
+        expect(renderBlade('<atom:form.actions dirty />'))->not->toContain('data-atom-form-dirty')
+            ->and(renderBlade('<atom:form.actions sticky dirty />'))->not->toContain('data-atom-form-dirty');
+    });
+
     it('has no start group without a start slot, and a default Save without buttons', function () {
         $html = renderBlade('<atom:form.actions bar />');
 

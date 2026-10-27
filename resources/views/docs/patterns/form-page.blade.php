@@ -8,7 +8,7 @@
      - Two layouts, one prop: `aside` (the default) puts the heading in a 220px column beside the fields from 768px (below that,
        above them); `stacked` always puts it above, for a narrow place. Open this page as ?layout=stacked to see it. Fields are
        two across once their own box is wide enough; `class="@md:col-span-2"` makes one span the row.
-     - The save bar is `<atom:form.actions bar>`, the LAST thing in the form. Its `start` slot is live totals (a <b> in it is the figure);
+     - The save bar is `<atom:form.actions bar>`, the LAST thing in the form. Its `start` slot is live totals (a <b> in it is the figure); `dirty` adds a muted "Unsaved changes" after it, shown only while the form has changes that were not saved;
        its buttons are Cancel (ghost), a secondary save, and the submit, which is the screen's ONE primary action.
      - Money is tabular and right-aligned, the currency named once in the heading or the column ("Amount (RM)"). Line items are
        EDITABLE: a frameless table whose cells hold inputs (the item, then the quantity and the unit price as right-aligned tabular
@@ -141,7 +141,7 @@ $money = fn (float $amount) => number_format($amount, 2);
                 </div>
             </atom:form.section>
 
-            <atom:form.actions bar>
+            <atom:form.actions bar dirty>
                 <x-slot:start>
                     <span>Subtotal <b>{{ $money($subtotal) }}</b></span>
                     <span>Service tax <b>{{ $money($tax) }}</b></span>
