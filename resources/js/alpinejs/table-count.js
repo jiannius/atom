@@ -1,9 +1,8 @@
 import onMorphed from '../helpers/morphed'
 
-// The row count in the toolbar's end group ("1–50 of 128"). The toolbar sits in the table's `header` slot, which is an Alpine
-// <template>: the server renders it once and a re-render never refreshes the clone. So the table prints the text outside the
-// template, on a hidden `data-atom-table-count-source` element (a morph keeps that one current), and this reads it: when it starts,
-// and after every morph. A toolbar outside a table, or a table with no paginator, has no source and shows nothing.
+// The row count in the toolbar's end group ("1–50 of 128"). The toolbar sits in the table's `header` slot. The table prints the
+// text outside it, on a hidden `data-atom-table-count-source` element (a morph keeps that one current), and this reads it: when it
+// starts, and after every morph. A toolbar outside a table, or a table with no paginator, has no source and shows nothing.
 export default () => {
     return {
         text: '',

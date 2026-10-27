@@ -433,7 +433,7 @@ for (const tw of ['floor', 'latest']) {
 
       await view(page, 'overdue').click()
 
-      await expect(page.locator('[data-atom-table-checked]')).toHaveCount(0)
+      await expect(page.locator('[data-atom-table-checked]')).toBeHidden()
       await expect(page.locator('[data-atom-table-toolbar]')).toBeVisible()
       await expect.poll(checked).toEqual([])
       await expect(page.locator('[data-atom-table] tbody tr')).toHaveCount(2)
@@ -460,7 +460,8 @@ for (const tw of ['floor', 'latest']) {
       const checked = page.locator('[data-atom-table-checked]')
 
       await expect(toolbar).toBeVisible()
-      await expect(checked).toHaveCount(0)
+      // the bar is in the DOM and hidden (x-show) until a row is ticked
+      await expect(checked).toBeHidden()
       // the toolbar sits in the table's own hairline strip
       expect((await styles(toolbar.locator('xpath=..'), ['border-bottom-width', 'padding-left']))).toEqual({ 'border-bottom-width': '1px', 'padding-left': '12px' })
 
@@ -468,13 +469,13 @@ for (const tw of ['floor', 'latest']) {
 
       await expect(checked).toBeVisible()
       await expect(page.getByTestId('bulk-action')).toBeVisible()
-      await expect(toolbar).toHaveCount(0)
+      await expect(toolbar).toBeHidden()
       expect((await styles(checked, ['border-bottom-width', 'padding-left']))).toEqual({ 'border-bottom-width': '1px', 'padding-left': '12px' })
 
       await page.locator('tbody [data-atom-table-checkbox]').first().click()
 
       await expect(toolbar).toBeVisible()
-      await expect(checked).toHaveCount(0)
+      await expect(checked).toBeHidden()
     })
   })
 

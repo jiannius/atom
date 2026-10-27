@@ -72,82 +72,79 @@ if (!$showSkeleton && !is_bool($empty)) {
 x-on:table-filter:changed.window="{!! $onFilterChanged !!}"
 data-atom-table
 @if ($frameless) data-atom-table-frameless @endif>
-    {{-- The row count the toolbar shows at its end ("1–50 of 128"). The toolbar is in the header slot, an Alpine template that a
-         re-render never refreshes, so the text is printed here, outside it, where a morph keeps it current, and the toolbar reads it
-         (resources/js/alpinejs/table-count.js). Nothing is printed without a paginator, or with no rows on it. --}}
+    {{-- The row count the toolbar shows at its end ("1–50 of 128"). The toolbar is in the header slot, which is hidden while
+         rows are ticked (and can be re-rendered on its own), so the text is printed here, outside it, where a morph keeps it current, and
+         the toolbar reads it (resources/js/alpinejs/table-count.js). Nothing is printed without a paginator, or with no rows on it. --}}
     @if ($paginate?->firstItem())
         <span hidden data-atom-table-count-source data-text="{{ t('atom::pagination.range', ['from' => $paginate->firstItem(), 'to' => $paginate->lastItem(), 'total' => $paginate->total()]) }}"></span>
     @endif
 
+    {{-- The checked bar and the header are real elements shown with x-show, never a `<template x-if>` around the server-rendered slot: from
+         Alpine 3.17 (Livewire 4.4) the morph skips what an x-if rendered, so a header or `checked` slot that changes on the server (an `@if`,
+         a select that depends on another filter's value, a count) would never update. A hidden bar is `display: none`, so nothing in it can be
+         focused or tabbed to. The checked bar has `x-cloak` (hidden until Alpine says a row is ticked); the header has NOT: it is shown
+         at first paint, as the server rendered it, and its components start while it is visible (under `x-cloak` they would measure
+         themselves at zero size, the filter chips and the popovers' first placement among them). Values the server prints that an expression needs (the total) ride on a data attribute, which a morph
+         keeps current, and are read when the expression runs. --}}
     @if (isset($checked) && $checked->isNotEmpty())
-        <template x-if="$wire._table.checkboxes.length || $wire._table.select_all" hidden>
-            <div class="{{ $checkedClasses }}" data-atom-table-checked @if ($checkedAccent) data-tone="accent" @endif>
-                <div class="shrink-0 flex items-center gap-2 text-sm font-medium {{ $checkedMuted }}">
-                    <atom:icon.double-check class="size-4"/>
-                    <div>
-                        <span x-text="$wire._table.select_all ? {{ $total }} : $wire._table.checkboxes.length"></span> {{ t('atom::messages.selected') }}
-                    </div>
-                </div>
-
-                @if ($canSelectAll)
-                    {{-- offer cross-page select-all once a subset is chosen, then a way back out --}}
-                    <template x-if="!$wire._table.select_all && $wire._table.checkboxes.length < {{ $total }}" hidden>
-                        <button type="button" wire:click="selectAllTableMatching" class="shrink-0 text-sm font-medium text-accent-ink hover:underline" data-atom-table-select-all>
-                            {{ t('atom::messages.select-all') }} {{ number_format($total) }}
-                        </button>
-                    </template>
-
-                    <template x-if="$wire._table.select_all" hidden>
-                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium {{ $checkedMuted }} hover:underline">
-                            {{ t('atom::messages.deselect-all') }}
-                        </button>
-                    </template>
-                @endif
-
-                @if ($stickySelection)
-                    {{-- the batch is the thing being built, so it needs to be
-                         reviewable: this lists the selection instead of the filtered
-                         rows, ignoring the search that hid half of it. --}}
-                    <button type="button" wire:click="toggleTableShowSelected" class="shrink-0 text-sm font-medium text-accent-ink hover:underline" data-atom-table-show-selected>
-                        <span x-show="!$wire._table.show_selected">{{ t('atom::messages.show-selected') }}</span>
-                        <span x-show="$wire._table.show_selected" x-cloak>{{ t('atom::messages.show-all') }}</span>
-                    </button>
-
-                    {{-- part of the selection can be off-screen once it outlives a
-                         filter, so the way out can't depend on finding the ticked
-                         rows again. Hidden in select-all mode, which brings its own. --}}
-                    <template x-if="!$wire._table.select_all" hidden>
-                        <button type="button" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium {{ $checkedMuted }} hover:underline" data-atom-table-clear-selection>
-                            {{ t('atom::messages.clear-selection') }}
-                        </button>
-                    </template>
-                @endif
-
-                <div {{ $checked->attributes->except('tone')->class('grow flex flex-wrap items-center gap-3') }}>
-                    {{ $checked }}
+        <div x-show="$wire._table.checkboxes.length || $wire._table.select_all" x-cloak class="{{ $checkedClasses }}" data-atom-table-checked @if ($checkedAccent) data-tone="accent" @endif data-total="{{ $total }}">
+            <div class="shrink-0 flex items-center gap-2 text-sm font-medium {{ $checkedMuted }}">
+                <atom:icon.double-check class="size-4"/>
+                <div>
+                    <span x-text="$wire._table.select_all ? $el.closest('[data-atom-table-checked]').dataset.total : $wire._table.checkboxes.length"></span> {{ t('atom::messages.selected') }}
                 </div>
             </div>
-        </template>
+
+            @if ($canSelectAll)
+                {{-- offer cross-page select-all once a subset is chosen, then a way back out --}}
+                <button type="button" x-show="!$wire._table.select_all && $wire._table.checkboxes.length < Number($el.closest('[data-atom-table-checked]').dataset.total)" x-cloak wire:click="selectAllTableMatching" class="shrink-0 text-sm font-medium text-accent-ink hover:underline" data-atom-table-select-all>
+                    {{ t('atom::messages.select-all') }} {{ number_format($total) }}
+                </button>
+
+                <button type="button" x-show="$wire._table.select_all" x-cloak wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium {{ $checkedMuted }} hover:underline">
+                    {{ t('atom::messages.deselect-all') }}
+                </button>
+            @endif
+
+            @if ($stickySelection)
+                {{-- the batch is the thing being built, so it needs to be
+                     reviewable: this lists the selection instead of the filtered
+                     rows, ignoring the search that hid half of it. --}}
+                <button type="button" wire:click="toggleTableShowSelected" class="shrink-0 text-sm font-medium text-accent-ink hover:underline" data-atom-table-show-selected>
+                    <span x-show="!$wire._table.show_selected">{{ t('atom::messages.show-selected') }}</span>
+                    <span x-show="$wire._table.show_selected" x-cloak>{{ t('atom::messages.show-all') }}</span>
+                </button>
+
+                {{-- part of the selection can be off-screen once it outlives a
+                     filter, so the way out can't depend on finding the ticked
+                     rows again. Hidden in select-all mode, which brings its own. --}}
+                <button type="button" x-show="!$wire._table.select_all" wire:click="resetTableCheckboxes" class="shrink-0 text-sm font-medium {{ $checkedMuted }} hover:underline" data-atom-table-clear-selection>
+                    {{ t('atom::messages.clear-selection') }}
+                </button>
+            @endif
+
+            <div {{ $checked->attributes->except('tone')->class('grow flex flex-wrap items-center gap-3') }}>
+                {{ $checked }}
+            </div>
+        </div>
     @endif
 
     @if (isset($header) || $trashed)
-        <template x-if="{!! $showHeader !!}" hidden>
-            @isset ($header)
-                <div {{ $header->attributes->class(['min-h-10', $header->attributes->get('class', 'flex flex-wrap items-center gap-3'), $stripClasses]) }}>
-                    {{ $header }}
+        @isset ($header)
+            <div x-show="{!! $showHeader !!}" {{ $header->attributes->class(['min-h-10', $header->attributes->get('class', 'flex flex-wrap items-center gap-3'), $stripClasses]) }}>
+                {{ $header }}
 
-                    @if ($trashed)
-                        <div class="ml-auto shrink-0"><atom:table.trashed :variant="is_string($trashed) ? $trashed : 'archived'" /></div>
-                    @endif
-                </div>
-            @else
-                <div class="{{ Arr::toCssClasses(['min-h-10 flex flex-wrap items-center gap-3', $stripClasses]) }}">
+                @if ($trashed)
                     <div class="ml-auto shrink-0"><atom:table.trashed :variant="is_string($trashed) ? $trashed : 'archived'" /></div>
-                </div>
-            @endisset
-        </template>
+                @endif
+            </div>
+        @else
+            <div x-show="{!! $showHeader !!}" class="{{ Arr::toCssClasses(['min-h-10 flex flex-wrap items-center gap-3', $stripClasses]) }}">
+                <div class="ml-auto shrink-0"><atom:table.trashed :variant="is_string($trashed) ? $trashed : 'archived'" /></div>
+            </div>
+        @endisset
     @endif
-    
+
     {{-- The pager is the last child of this box, which is why the box clips (`overflow-clip`) instead of hiding its overflow: `overflow-hidden`
          makes it a scroll container, and a sticky pager inside would stick to a box that never scrolls instead of to the page. The
          scroll box below is the only scroller, and the pager sits outside it, so a wide table still scrolls sideways under a pager that

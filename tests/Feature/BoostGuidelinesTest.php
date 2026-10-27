@@ -489,7 +489,7 @@ describe('lists, forms and the timeline in the docs', function () {
             ->and($skill)->toContain('the HOST supplies the counts')
             ->and($skill)->toContain('atom never counts')
             ->and($skill)->toContain('never `#[Locked]`')
-            ->and($skill)->toContain('Alpine template')
+            ->and($skill)->toContain('real element hidden with `x-show`')
             ->and($skill)->toContain('numeric')
             ->and($skill)->toContain('font-id')
             ->and($skill)->toContain('docs/patterns/list-page.blade.php')

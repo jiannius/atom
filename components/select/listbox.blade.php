@@ -126,9 +126,8 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                 @endif
 
                 @if ($multiple === true)
-                    <template x-if="isEmpty" hidden>
-                        <div class="flex items-center text-fg-subtle">{{ t($placeholder) }}</div>
-                    </template>
+                    {{-- x-show, not an x-if: the placeholder is server text, and a morph skips what an x-if rendered (Alpine 3.17) --}}
+                    <div x-show="isEmpty" x-cloak class="flex items-center text-fg-subtle">{{ t($placeholder) }}</div>
 
                     <template x-if="!isEmpty" hidden>
                         <div class="flex items-center gap-2 flex-wrap">
@@ -164,9 +163,8 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                 @elseif ($multiple === 'list')
                     <div class="flex items-center text-fg-subtle">{{ t($placeholder) }}</div>
                 @else
-                    <template x-if="isEmpty" hidden>
-                        <div class="flex items-center text-fg-subtle">{{ t($placeholder) }}</div>
-                    </template>
+                    {{-- x-show, not an x-if: the placeholder is server text, and a morph skips what an x-if rendered (Alpine 3.17) --}}
+                    <div x-show="isEmpty" x-cloak class="flex items-center text-fg-subtle">{{ t($placeholder) }}</div>
 
                     <template x-if="!isEmpty" hidden>
                         @isset ($selected)

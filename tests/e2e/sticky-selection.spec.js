@@ -116,5 +116,5 @@ test('the persistent clear empties a selection that is off-screen', async ({ pag
   await expect(selectedCount(page)).toHaveText('2')
 
   await page.locator('[data-atom-table-clear-selection]').click()
-  await expect(page.locator('[data-atom-table-checked]')).toHaveCount(0)
+  await expect(page.locator('[data-atom-table-checked]')).toBeHidden()
 })
