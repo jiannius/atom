@@ -90,6 +90,10 @@ for (const build of ['floor', 'latest']) {
           const gap = (await rect(bar(page))).top - (await rect(panel(page))).bottom
           expect(Math.abs(gap - GAP)).toBeLessThan(1.5)
 
+          // the bar is a card floating 12px above the bottom of the screen: the lift reads its top edge, so the toast clears the card, not the screen's edge
+          const vh = await page.evaluate(() => document.documentElement.clientHeight)
+          expect(Math.abs(vh - 12 - (await rect(bar(page))).bottom)).toBeLessThan(1.5)
+
           await shot(page, `toast-${width}`)
 
           // the toast is still sticky (a form error is not dismissed by time), and the button works through it

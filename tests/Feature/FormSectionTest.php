@@ -98,43 +98,37 @@ describe('save bar', function () {
     it('is the plain footer without `bar` or `sticky`', function () {
         $bar = domQuery(renderBlade('<atom:form.actions />'), '//*[@data-atom-form-actions]')[0];
 
-        expect(domClasses($bar))->toContain('justify-between')->not->toContain('sticky')
+        expect(domClasses($bar))->toContain('justify-between', '[&>:only-child]:ms-auto')->not->toContain('sticky')
             ->and($bar->hasAttribute('data-atom-save-bar'))->toBeFalse()
             ->and(domQuery(renderBlade('<atom:form.actions />'), '//button[@type="submit"]'))->toHaveCount(1);
     });
 
-    it('is sticky at the bottom of the screen; its surface and hairline are pseudo-elements that fill its box', function () {
+    it('is a sticky card: a solid surface, a border, the panel radius and the pop shadow, 0.75rem above the bottom of the screen', function () {
         $bar = domQuery(renderBlade('<atom:form.actions bar />'), '//*[@data-atom-save-bar]')[0];
         $classes = domClasses($bar);
 
-        expect($classes)->toContain('sticky', 'bottom-0', 'isolate', 'before:inset-0', 'before:-z-10', 'before:bg-surface/95', 'before:backdrop-blur-sm')
-            ->and($classes)->toContain('after:absolute', 'after:inset-x-0', 'after:top-0', 'after:h-px', 'after:-z-10', 'after:bg-border')
-            // the surface is not on the bar's own box (the page's padding box, narrower than the screen), and nothing takes layout room to bleed
-            ->and($classes)->not->toContain('border-t', 'bg-surface/95', 'backdrop-blur-sm', '-bottom-6', 'before:border-t')
-            ->and(implode(' ', $classes))->not->toContain('before:left-')->not->toContain('before:right-');
+        expect($classes)->toContain('sticky', 'isolate', 'z-10', 'flex-wrap', 'gap-2', 'rounded-panel', 'border', 'border-border', 'bg-surface', 'shadow-pop', 'px-4', 'py-3')
+            ->and(implode(' ', $classes))->toContain('bottom-[calc(0.75rem_+_env(safe-area-inset-bottom,0px))]')
+            // no blur, no transparency, no pseudo-element strip, no bleed, no hairline above it
+            ->and(implode(' ', $classes))->not->toContain('before:')->not->toContain('after:')->not->toContain('backdrop-blur')->not->toContain('bg-surface/')
+            ->and($classes)->not->toContain('border-t', '-bottom-6', 'bottom-0', 'justify-between', '[&>:only-child]:ms-auto');
     });
 
-    it('lets atom.css bleed the surface with a clipped box-shadow only in a shell, and never clips the page', function () {
+    it('leaves no strip behind in atom.css: no bleed variables, clip-path or box-shadow spread on the bar', function () {
         $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/atom.css');
 
-        expect($css)->toContain("[data-atom-sidebar] ~ [data-atom-main] {\n    --atom-bar-left: 0px;\n    --atom-bar-right: -100vmax;")
-            ->and($css)->toContain("[data-atom-header-bar] ~ [data-atom-main] {\n    --atom-bar-left: -100vmax;\n    --atom-bar-right: -100vmax;")
-            ->and($css)->toContain('clip-path: inset(0 var(--atom-bar-right, 0px) 0 var(--atom-bar-left, 0px));')
-            ->and($css)->toContain('box-shadow: 0 0 0 100vmax color-mix(in oklab, var(--atom-surface) 95%, transparent);')
-            ->and($css)->toContain('box-shadow: 0 0 0 100vmax var(--atom-border);')
-            ->and($css)->not->toContain('html:has([data-atom-save-bar])')
-            ->and($css)->not->toMatch('/\\[data-atom-save-bar\\][^{]*\\{[^}]*overflow-x/');
+        expect($css)->not->toContain('--atom-bar-left')->not->toContain('--atom-bar-right')
+            ->and($css)->not->toContain('100vmax')
+            ->and($css)->not->toMatch('/\\[data-atom-save-bar\\][^{]*\\{/');
     });
 
-    it('bleeds to the page gutter and sits inside it; outside a page it bleeds nowhere and keeps a 1rem padding', function () {
+    it('takes the page\'s bottom room as its own, less the 0.75rem it floats by, and has no gutter margin or padding', function () {
         $html = renderBlade('<atom:form.actions bar />');
         $classes = implode(' ', domClasses(domQuery($html, '//*[@data-atom-save-bar]')[0]));
 
-        expect($classes)->toContain('ms-[calc(var(--atom-gutter-s,0px)*-1)]')
-            ->and($classes)->toContain('me-[calc(var(--atom-gutter-e,0px)*-1)]')
-            ->and($classes)->toContain('ps-[var(--atom-gutter-s,1rem)]')
-            ->and($classes)->toContain('pe-[var(--atom-gutter-e,1rem)]')
-            ->and($classes)->toContain('env(safe-area-inset-bottom');
+        expect($classes)->toContain('mb-[calc((var(--atom-page-pb,0px)_-_0.75rem_-_env(safe-area-inset-bottom,0px))*-1)]')
+            ->and($classes)->not->toContain('--atom-gutter')
+            ->and($classes)->not->toContain('ms-[')->not->toContain('me-[')->not->toContain('ps-[')->not->toContain('pe-[');
     });
 
     it('prints the start slot at the start, and the buttons at the end', function () {
@@ -142,8 +136,54 @@ describe('save bar', function () {
 
         expect(domQuery($html, '//*[@data-atom-save-bar]/*[@data-atom-form-actions-start]/span[@id="t"]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-atom-save-bar]/*[@data-atom-form-actions-buttons]/button[@id="b"]'))->toHaveCount(1)
-            ->and(domClasses(domQuery($html, '//*[@data-atom-form-actions-start]')[0]))->toContain('tabular-nums')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-form-actions-start]')[0]))->toContain('tabular-nums', 'text-fg-muted', 'gap-x-3.5', 'flex-wrap', '[&_:is(b,strong)]:font-semibold', '[&_:is(b,strong)]:text-fg', '[&_:is(b,strong)]:tabular-nums')
             ->and(domQuery($html, '//*[@data-atom-form-actions-start]/following-sibling::*[@data-atom-form-actions-buttons]'))->toHaveCount(1);
+    });
+
+    it('prints no "Unsaved changes" label unless `dirty` is on, and the bar is there either way', function () {
+        $off = renderBlade('<atom:form.actions bar><x-slot:start>Total</x-slot:start></atom:form.actions>');
+        $on = renderBlade('<atom:form.actions bar dirty><x-slot:start>Total</x-slot:start></atom:form.actions>');
+
+        expect(domQuery($off, '//*[@data-atom-form-dirty]'))->toBeEmpty()
+            ->and($off)->not->toContain('formDirty')->not->toContain('Unsaved changes')
+            ->and(domQuery($off, '//*[@data-atom-save-bar]'))->toHaveCount(1)
+            ->and(domQuery($on, '//*[@data-atom-save-bar]'))->toHaveCount(1);
+
+        $label = domQuery($on, '//*[@data-atom-form-actions-start]/*[@data-atom-form-dirty]');
+
+        expect($label)->toHaveCount(1)
+            ->and($label[0]->textContent)->toBe('Unsaved changes')
+            ->and($label[0]->getAttribute('x-show'))->toBe('dirty')
+            ->and($label[0]->hasAttribute('x-cloak'))->toBeTrue()
+            // after what the start slot holds; the formDirty scope is the label's own, not the group's that holds the host's slot
+            ->and($label[0]->getAttribute('x-data'))->toBe('formDirty')
+            ->and(domQuery($on, '//*[@data-atom-form-actions-start][@x-data]'))->toBeEmpty()
+            ->and(domQuery($on, '//*[@data-atom-form-actions-start]')[0]->textContent)->toContain('Total')
+            ->and(domQuery($on, '//*[@data-atom-form-actions-start]/*[last()]')[0]->hasAttribute('data-atom-form-dirty'))->toBeTrue();
+    });
+
+    it('draws the label with no start slot too, as the bar\'s own start with no group around it, and translates it', function () {
+        app('translator')->setLoaded(['*' => ['*' => ['en' => ['Unsaved changes' => 'Perubahan belum disimpan']]]]);
+
+        $html = renderBlade('<atom:form.actions bar dirty />');
+        $label = domQuery($html, '//*[@data-atom-save-bar]/*[@data-atom-form-dirty]');
+
+        expect($label)->toHaveCount(1)
+            ->and($label[0]->getAttribute('x-show'))->toBe('dirty')
+            ->and($label[0]->getAttribute('x-data'))->toBe('formDirty')
+            ->and(domQuery($html, '//*[@data-atom-form-actions-start]'))->toBeEmpty()
+            ->and($label[0]->textContent)->toBe('Perubahan belum disimpan');
+    });
+
+    it('starts a dialog from no page bottom room, so a bar inside one is not pulled out of it', function () {
+        $dialog = domQuery(renderBlade('<atom:modal name="m">x</atom:modal>'), '//dialog')[0];
+
+        expect(domClasses($dialog))->toContain('[--atom-page-pb:0px]');
+    });
+
+    it('ignores `dirty` outside a page save bar', function () {
+        expect(renderBlade('<atom:form.actions dirty />'))->not->toContain('data-atom-form-dirty')
+            ->and(renderBlade('<atom:form.actions sticky dirty />'))->not->toContain('data-atom-form-dirty');
     });
 
     it('has no start group without a start slot, and a default Save without buttons', function () {
@@ -162,7 +202,7 @@ describe('save bar', function () {
     it('keeps the modal footer as it was: pinned, bleeding to the panel, on the surface', function () {
         $bar = domQuery(renderBlade('<atom:form.actions sticky />'), '//*[@data-atom-form-actions]')[0];
 
-        expect(domClasses($bar))->toContain('sticky', '-bottom-6', '-mx-6', 'px-6', 'pb-6', '-mb-6', 'bg-surface', 'border-t', 'justify-between')
+        expect(domClasses($bar))->toContain('sticky', '-bottom-6', '-mx-6', 'px-6', 'pb-6', '-mb-6', 'bg-surface', 'border-t', 'justify-between', '[&>:only-child]:ms-auto')
             ->and($bar->hasAttribute('data-atom-save-bar'))->toBeFalse();
     });
 

@@ -76,7 +76,9 @@ describe('checkbox markup', function () {
             ->toContain('data-atom-table-select-all')
             ->toContain('selectAllTableMatching')
             ->toContain('120')
-            ->toContain('select_all ? 120');   // count reflects the matching total
+            ->toContain('data-total="120"')   // count reflects the matching total, read from the bar's own attribute
+            ->toContain('select_all ? _atomTotal')
+            ->toContain('x-data="tableChecked"');
 
         $without = renderBlade(
             '<atom:table :paginate="$p"><x-slot:checked><button>Delete</button></x-slot:checked></atom:table>',
@@ -213,10 +215,10 @@ describe('sticky selection', function () {
         // the checked bar normally takes the header's place — which would make the
         // tick, search, tick again flow impossible on the very table built for it
         expect(renderBlade('<atom:table :sticky-selection="true">'.$header.'</atom:table>'))
-            ->toContain('<template x-if="true"');
+            ->toContain('x-show="true"');
 
         expect(renderBlade('<atom:table>'.$header.'</atom:table>'))
-            ->toContain('<template x-if="!$wire._table.checkboxes.length"');
+            ->toContain('x-show="!$wire._table.checkboxes.length"');
     });
 
     it('renders a persistent clear only when sticky', function () {

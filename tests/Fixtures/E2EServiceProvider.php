@@ -44,6 +44,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-breadcrumbs-trail', BreadcrumbsTrailFixture::class);
         Livewire::component('atom-e2e-sticky-selection', StickySelectionFixture::class);
         Livewire::component('atom-e2e-table-checked', TableCheckedFixture::class);
+        Livewire::component('atom-e2e-table-server-slots', TableServerSlotsFixture::class);
         Livewire::component('atom-e2e-input-morph', InputMorphFixture::class);
         Livewire::component('atom-e2e-table-loading', TableLoadingFixture::class);
         Livewire::component('atom-e2e-table-search-chip', TableSearchChipFixture::class);
@@ -56,6 +57,8 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-safe-url-breadcrumbs', SafeUrlBreadcrumbsFixture::class);
         Livewire::component('atom-e2e-form-error-toast', FormErrorToastFixture::class);
         Livewire::component('atom-e2e-form-toast-bar', FormToastBarFixture::class);
+        Livewire::component('atom-e2e-form-dirty', FormDirtyFixture::class);
+        Livewire::component('atom-e2e-form-dirty-child', FormDirtyChildFixture::class);
         Livewire::component('atom-e2e-url-filters', UrlFiltersFixture::class);
         Livewire::component('atom-e2e-shell-actions', ShellActionsFixture::class);
         Livewire::component('atom-e2e-page-header-slide', PageHeaderSlideFixture::class);
@@ -81,6 +84,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/navlist-persist', fn () => view('atom::e2e.navlist-persist'));
         Route::middleware('web')->get('/atom/e2e/sticky-selection', fn () => view('atom::e2e.sticky-selection'));
         Route::middleware('web')->get('/atom/e2e/table-checked', fn () => view('atom::e2e.table-checked'));
+        Route::middleware('web')->get('/atom/e2e/table-server-slots', fn () => view('atom::e2e.table-server-slots'));
         Route::middleware('web')->get('/atom/e2e/table-filters-more', fn () => view('atom::e2e.table-filters-more'));
         Route::middleware('web')->get('/atom/e2e/table-filter-bar', fn () => view('atom::e2e.table-filter-bar'));
         Route::middleware('web')->get('/atom/e2e/table-filters-inline', fn () => view('atom::e2e.table-filters-inline'));
@@ -164,6 +168,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/safe-url-breadcrumbs', fn () => view('atom::e2e.safe-url-breadcrumbs'));
         Route::middleware('web')->get('/atom/e2e/form-error-toast', fn () => view('atom::e2e.form-error-toast'));
         Route::middleware('web')->get('/atom/e2e/form-toast-bar', fn () => view('atom::e2e.form-toast-bar'));
+        Route::middleware('web')->get('/atom/e2e/form-dirty', fn () => view('atom::e2e.form-dirty'));
         Route::middleware('web')->get('/atom/e2e/calendar', fn () => view('atom::e2e.calendar'));
         Route::middleware('web')->get('/atom/e2e/calendar-static', fn () => view('atom::e2e.calendar-static'));
         Route::middleware('web')->get('/atom/e2e/calendar-twin', fn () => view('atom::e2e.calendar-twin'));
