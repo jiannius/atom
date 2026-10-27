@@ -1409,7 +1409,12 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
 }
 
 /* page: <atom:page> pads the page; the shell's <main> does not. In the top-nav shell the page's gutter is the bar's
-   (24px), so a page's content lines up with it. */
+   (24px) and its default column the bar's (1248px, --atom-page-max), so a centred page's content starts where the bar's and the
+   crumbs' do. A `narrow` page sets its own cap and stays a centred form column. */
+[data-atom-header-bar] ~ [data-atom-main] [data-atom-page] {
+    --atom-page-max: 1248px;
+}
+
 @media (min-width: 64rem) {
     [data-atom-header-bar] ~ [data-atom-main] [data-atom-page] {
         --atom-gutter-s: max(1.5rem, env(safe-area-inset-left, 0px));
@@ -1421,8 +1426,8 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
 /* The save bar (form.actions bar): its blurred surface (::before) and hairline (::after) fill the bar's own box, which is the page's padding
    box. They go on to the edge of the screen with a box-shadow spread, which takes no room (nothing scrolls sideways, nothing prints
    smaller), clipped by a clip-path whose insets are the --atom-bar-left and --atom-bar-right the shells' <main> sets below. The sidebar shell
-   stops it at the shell's content edge, so it does not cover the sidebar; this assumes the page starts at <main>'s content edge (no mx-auto on
-   <atom:page>). The top-nav shell lets it run to both edges. Outside a shell the variables are missing, the clip is the box itself and the
+   stops it at the shell's content edge, so it does not cover the sidebar; on the left it stops at the bar's own edge, so a centred
+   <atom:page> (mx-auto) leaves the strip beside its column. The top-nav shell lets it run to both edges. Outside a shell the variables are missing, the clip is the box itself and the
    surface is just the bar. The shadow colours are the surface at 95% and the border role: what `bg-surface/95` and `bg-border` draw. */
 [data-atom-sidebar] ~ [data-atom-main] {
     --atom-bar-left: 0px;

@@ -6,7 +6,7 @@ describe('page', function () {
     it('is the only padded block: a 1240px column with the gutters and gap of the design', function () {
         $page = domQuery(renderBlade('<atom:page class="mt-2"><p id="c">x</p></atom:page>'), '//*[@data-atom-page]')[0];
 
-        expect(domClasses($page))->toContain('max-w-[1240px]', 'pt-[26px]', 'pb-(--atom-page-pb)', '[:where(&)]:[--atom-page-pb:120px]', 'gap-[22px]', 'grid', 'mt-2')
+        expect(domClasses($page))->toContain('mx-auto', 'max-w-(--atom-page-max)', '[:where(&)]:[--atom-page-max:1240px]', 'pt-[26px]', 'pb-(--atom-page-pb)', '[:where(&)]:[--atom-page-pb:120px]', 'gap-[22px]', 'grid', 'mt-2')
             ->and($page->getElementsByTagName('p')->length)->toBe(1);
     });
 
@@ -15,9 +15,10 @@ describe('page', function () {
         $full = domQuery(renderBlade('<atom:page width="full" />'), '//*[@data-atom-page]')[0];
         $other = domQuery(renderBlade('<atom:page width="huge" />'), '//*[@data-atom-page]')[0];
 
-        expect(domClasses($narrow))->toContain('max-w-[980px]')
+        expect(domClasses($narrow))->toContain('mx-auto', 'max-w-[980px]')
             ->and(array_filter(domClasses($full), fn ($c) => str_starts_with($c, 'max-w-')))->toBeEmpty()
-            ->and(domClasses($other))->toContain('max-w-[1240px]');
+            ->and(domClasses($full))->not->toContain('mx-auto')
+            ->and(domClasses($other))->toContain('mx-auto', 'max-w-(--atom-page-max)');
     });
 });
 

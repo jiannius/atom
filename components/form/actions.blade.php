@@ -11,8 +11,8 @@
        the page's width. Its blurred surface (::before) and the hairline above it (::after) fill that box, and atom.css goes on from there to the edge
        of the screen with a box-shadow spread, clipped by a clip-path (in the sidebar shell from the shell's content edge, in the
        top-nav shell from the screen's left edge), the way a full-width bar does: atom.css sets --atom-bar-left and --atom-bar-right
-       on the shells' <main>. A shadow takes no room, so nothing scrolls sideways or prints smaller. The sidebar shell's bleed assumes
-       the page starts at <main>'s content edge (no mx-auto on <atom:page>). Outside a shell and a page the variables are missing: the
+       on the shells' <main>. A shadow takes no room, so nothing scrolls sideways or prints smaller. The sidebar shell's bleed on the left stops
+       at the bar's own edge, so a centred page (mx-auto) leaves the strip beside its column. Outside a shell and a page the variables are missing: the
        surface is the bar's own box, it bleeds nowhere and keeps a 1rem padding, so it never overflows its parent.
        It also takes the page's 120px of bottom room as its own (a negative margin), so at the end of the page it sits flush with the
        bottom, as it does everywhere above it, instead of 120px up.
