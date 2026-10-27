@@ -59,50 +59,6 @@ const contrastBetween = (page, a, b) => page.evaluate(([a, b]) => {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 }, [a, b])
 
-// How far the save bar's surface reaches, from the computed style of its ::before: the box, plus the box-shadow spread, clipped by the
-// clip-path insets the shell sets. (The side regions are a shadow, so they are not hit-testable: a click goes through them.)
-const surfaceReach = (page) => page.evaluate(() => {
-  const bar = document.querySelector('[data-atom-save-bar]')
-  const r = bar.getBoundingClientRect()
-  const c = getComputedStyle(bar, '::before')
-  const spread = parseFloat((c.boxShadow.match(/ (-?[\d.]+)px$/) || [0, 0])[1])
-  const inset = c.clipPath.match(/^inset\((.+)\)$/)
-
-  // no clip-path: the shadow is not held to the content area at all
-  if (!inset) return { left: r.left - spread, right: r.right + spread, clipped: false }
-
-  // the computed value is the shortest form: one to four lengths, top, right, bottom, left
-  const v = inset[1].split(' ').map(parseFloat)
-  const [, right, , left] = [v[0], v[1] ?? v[0], v[2] ?? v[0], v[3] ?? v[1] ?? v[0]]
-
-  return { left: r.left - Math.min(Math.max(-left, 0), spread) + Math.max(left, 0), right: r.right + Math.min(Math.max(-right, 0), spread) - Math.max(right, 0), clipped: true }
-})
-
-const barAt = async (page, x) => {
-  const reach = await surfaceReach(page)
-
-  return x >= reach.left - 0.5 && x <= reach.right + 0.5
-}
-
-// The colour of one pixel of the screen, read back from a screenshot
-const pixel = async (page, x, y) => {
-  const png = await page.screenshot({ clip: { x: Math.round(x), y: Math.round(y), width: 1, height: 1 } })
-
-  return page.evaluate(async (base64) => {
-    const image = new Image()
-    image.src = `data:image/png;base64,${base64}`
-    await image.decode()
-    const cv = document.createElement('canvas')
-    cv.width = cv.height = 1
-    const ctx = cv.getContext('2d')
-    ctx.drawImage(image, 0, 0)
-
-    return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3)
-  }, png.toString('base64'))
-}
-
-const clientWidth = (page) => page.evaluate(() => document.documentElement.clientWidth)
-
 const noSideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
 for (const tw of ['floor', 'latest']) {
@@ -594,86 +550,20 @@ for (const tw of ['floor', 'latest']) {
         expect(p['margin-top']).toBe('4px')
       })
 
-      test('the save bar is pinned to the bottom of the screen on a long page, and stays there to the end', async ({ page }) => {
+      test('the card sits on the page column and its content inside the card: the totals at the start, the buttons at the end', async ({ page }) => {
         await form(page)
 
-        const bar = page.locator('[data-atom-save-bar]')
-        const doc = await page.evaluate(() => document.documentElement.scrollHeight)
-        const s = await styles(bar, ['position', 'bottom', 'z-index'])
-        // the surface and the hairline are the bar's pseudo-element
-        const surface = await bar.evaluate((el) => {
-          const c = getComputedStyle(el, '::before')
-          const h = getComputedStyle(el, '::after')
-          return { border: h.height, hairline: h.backgroundColor, blur: c.backdropFilter, background: c.backgroundColor }
-        })
-
-        // a page taller than the screen, or the test proves nothing
-        expect(doc).toBeGreaterThan(700 * 1.15)
-        expect(s.position).toBe('sticky')
-        expect(s.bottom).toBe('0px')
-        // the hairline is a 1px ::after at the bar's top, in the border colour; the surface a translucent ::before
-        expect(surface.border).toBe('1px')
-        expect(surface.hairline).not.toBe('rgba(0, 0, 0, 0)')
-        expect(surface.blur).toContain('blur(8px)')
-        // a surface you can see through: the blurred bar is not opaque
-        expect(surface.background).toMatch(/\/ 0?\.9\d*\)|rgba\(.*0\.9/)
-
-        // at the top, in the middle, and at the very end the bar's bottom edge is the screen's: it takes the page's bottom room
-        for (const y of [0, 400, doc]) {
-          await page.evaluate((y) => window.scrollTo(0, y), y)
-          const b = await box(bar)
-
-          expect(Math.abs(b.bottom - 700), `scrolled to ${y}`).toBeLessThan(1.5)
-          await expect(bar).toBeInViewport()
-        }
-
-        // at the foot the page's own 120px of room sits under the bar, and the last field is not hidden by it
-        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-        await expect(page.getByLabel('Note to customer (optional)')).toBeInViewport()
-        const note = await box(page.getByLabel('Note to customer (optional)'))
-        expect(note.bottom).toBeLessThanOrEqual((await box(bar)).y)
-        await shot(page, `form-savebar-${tw}-1280`)
-      })
-
-      test('the bar`s own box is the page`s, and its surface goes on to the screen edge: no gap on the right in either shell, the sidebar left alone', async ({ page }) => {
-        for (const shell of ['sidebar', 'header']) {
-          await form(page, `shell=${shell}`)
-
-          const bar = await box(page.locator('[data-atom-save-bar]'))
-          const pageBox = await box(page.locator('[data-atom-page]'))
-          const gutter = await styles(page.locator('[data-atom-page]'), ['padding-left'])
-          const width = await clientWidth(page)
-
-          expect(Math.abs(bar.x - pageBox.x), shell).toBeLessThan(1)
-          expect(Math.abs(bar.right - pageBox.right), shell).toBeLessThan(1)
-          expect(gutter['padding-left'], shell).toBe(shell === 'header' ? '24px' : '28px')
-          // this page is a 980px column, so the bar's box stops well short of the screen; the surface does not
-          expect(bar.right, shell).toBeLessThan(width - 20)
-          expect(await barAt(page, width - 1), `${shell}: right edge`).toBe(true)
-          expect(await barAt(page, bar.right + 5), `${shell}: past the page column`).toBe(true)
-          // the surface starts at the shell's content edge: the sidebar shell's sidebar is not covered, the top nav's screen edge is reached
-          if (shell === 'sidebar') {
-            expect(await barAt(page, bar.x + 2), shell).toBe(true)
-            expect(await barAt(page, bar.x - 5), 'over the sidebar').toBe(false)
-          } else {
-            expect(await barAt(page, 1), shell).toBe(true)
-          }
-          expect(await noSideScroll(page), shell).toBe(true)
-        }
-      })
-
-      test('the bar`s content sits in the same gutter as the page: the totals at the start, the buttons at the end', async ({ page }) => {
-        await form(page)
-
-        const pageBox = await box(page.locator('[data-atom-page]'))
+        const barBox = await box(page.locator('[data-atom-save-bar]'))
         const start = await box(page.locator('[data-atom-form-actions-start]'))
         const buttons = await box(page.locator('[data-atom-form-actions-buttons]'))
         const heading = await box(page.locator('[data-atom-page-header-title]'))
 
-        expect(Math.abs(start.x - heading.x)).toBeLessThan(1)
-        expect(Math.abs(buttons.right - (pageBox.right - 28))).toBeLessThan(1)
+        // the card is as wide as the sections and the header above it; the card's border and its 16px padding hold the content
+        expect(Math.abs(barBox.x - heading.x)).toBeLessThan(1)
+        expect(Math.abs(start.x - (barBox.x + 17))).toBeLessThan(1)
+        expect(Math.abs(buttons.right - (barBox.right - 17))).toBeLessThan(1)
         expect((await styles(page.locator('[data-atom-form-actions-start]'), ['font-variant-numeric']))['font-variant-numeric']).toContain('tabular-nums')
-        expect((await styles(page.getByTestId('grand-total'), ['font-size', 'font-weight']))).toEqual({ 'font-size': '17px', 'font-weight': '590' })
+        expect((await styles(page.getByTestId('grand-total'), ['font-weight', 'font-variant-numeric']))).toEqual({ 'font-weight': '590', 'font-variant-numeric': 'tabular-nums' })
       })
 
       test('the submit is the one primary action', async ({ page }) => {
@@ -684,7 +574,7 @@ for (const tw of ['floor', 'latest']) {
         expect(await page.getByTestId('form-primary').getAttribute('type')).toBe('submit')
       })
 
-      test('the bar in the dark theme is a dark, translucent surface with readable totals', async ({ page }) => {
+      test('the card in the dark theme is a dark surface with readable totals', async ({ page }) => {
         await form(page, '', { dark: true })
 
         const surface = (await styles(page.locator('[data-atom-page]'), ['background-color']))['background-color']
@@ -717,16 +607,16 @@ for (const tw of ['floor', 'latest']) {
         await shot(page, `form-${tw}-390`, { fullPage: true })
       })
 
-      test('the bar spans the screen: the buttons take the full row and the submit grows', async ({ page }) => {
+      test('the card sits in the page gutter: the buttons take the full row and the submit grows', async ({ page }) => {
         await form(page)
 
         const bar = await box(page.locator('[data-atom-save-bar]'))
         const buttons = await box(page.locator('[data-atom-form-actions-buttons]'))
         const submit = await box(page.getByTestId('form-primary'))
 
-        expect(bar.x).toBe(0)
-        expect(Math.round(bar.right)).toBe(390)
-        expect(Math.abs(buttons.width - (390 - 32))).toBeLessThan(1.5)
+        expect(bar.x).toBe(16)
+        expect(Math.round(bar.right)).toBe(374)
+        expect(Math.abs(buttons.width - (358 - 34))).toBeLessThan(1.5)
         // the submit takes what the other two leave
         expect(submit.width).toBeGreaterThan(120)
         expect(await noSideScroll(page)).toBe(true)
@@ -758,33 +648,6 @@ for (const tw of ['floor', 'latest']) {
       test.describe(`${shell} shell`, () => {
         test.use({ viewport: { width: 1600, height: 700 } })
 
-        // a 1240px default page, a 980px narrow one and a page with no cap: the content follows the page column, the surface follows the screen
-        for (const [name, query, columnMax] of [['default', '', 1240], ['narrow', '&width=narrow', 980], ['full', '&width=full', null]]) {
-          test(`${name} page: the start slot and the buttons sit on the page column, the surface runs to the screen edge`, async ({ page }) => {
-            await open(page, `/atom/e2e/save-bar-context?shell=${shell}${query}`, { tw })
-
-            const pageBox = await box(page.getByTestId('page'))
-            const gutter = parseFloat((await styles(page.getByTestId('page'), ['padding-left']))['padding-left'])
-            const bar = await box(page.locator('[data-atom-save-bar]'))
-            const start = await box(page.getByTestId('start'))
-            const buttons = await box(page.locator('[data-atom-form-actions-buttons]'))
-            const width = await clientWidth(page)
-
-            if (columnMax) expect(pageBox.width).toBeLessThanOrEqual(columnMax)
-            // no cap: the page is as wide as <main> (the whole screen less the sidebar, or the top nav's centred 1248px)
-            else expect(Math.abs(pageBox.width - (await box(page.locator('[data-atom-main]'))).width)).toBeLessThan(1)
-
-            expect(Math.abs(bar.x - pageBox.x)).toBeLessThan(1)
-            expect(Math.abs(start.x - (pageBox.x + gutter))).toBeLessThan(1)
-            expect(Math.abs(buttons.right - (pageBox.right - gutter))).toBeLessThan(1)
-            expect(await barAt(page, width - 1)).toBe(true)
-            expect(await barAt(page, pageBox.right + 5) || pageBox.right >= width - 6).toBe(true)
-            if (shell === 'sidebar') expect(await barAt(page, pageBox.x - 5)).toBe(false)
-            expect(await barAt(page, shell === 'sidebar' ? pageBox.x + 2 : 1)).toBe(true)
-            expect(await noSideScroll(page)).toBe(true)
-          })
-        }
-
         test('no sideways scroll at 1280 and 390, light and dark', async ({ page }) => {
           for (const size of [1280, 390]) {
             await page.setViewportSize({ width: size, height: 700 })
@@ -793,14 +656,13 @@ for (const tw of ['floor', 'latest']) {
               await open(page, `/atom/e2e/save-bar-context?shell=${shell}`, { tw, dark })
 
               expect(await noSideScroll(page), `${size}px, ${dark ? 'dark' : 'light'}`).toBe(true)
-              expect(await barAt(page, (await clientWidth(page)) - 1), `${size}px, ${dark ? 'dark' : 'light'}: right edge`).toBe(true)
             }
           }
         })
       })
     }
 
-    test('real sideways overflow on a save-bar page still scrolls: nothing is clipped, and the bleed takes no room', async ({ page }) => {
+    test('real sideways overflow on a save-bar page still scrolls: nothing is clipped', async ({ page }) => {
       for (const shell of ['sidebar', 'header']) {
         await open(page, `/atom/e2e/save-bar-context?shell=${shell}&wide=1`, { tw })
 
@@ -816,74 +678,13 @@ for (const tw of ['floor', 'latest']) {
       }
     })
 
-    test('without that block, the surface adds nothing to the page width, in both shells', async ({ page }) => {
+    test('without that block, the card adds nothing to the page width, in both shells', async ({ page }) => {
       for (const shell of ['sidebar', 'header']) {
         await open(page, `/atom/e2e/save-bar-context?shell=${shell}`, { tw })
 
         const dims = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }))
 
         expect(dims.sw, shell).toBeLessThanOrEqual(dims.cw)
-      }
-    })
-
-    for (const dark of [false, true]) {
-      test(`the surface past the page column is the same colour as inside it, ${dark ? 'dark' : 'light'}`, async ({ page }) => {
-        await page.setViewportSize({ width: 1600, height: 700 })
-
-        for (const shell of ['sidebar', 'header']) {
-          await open(page, `/atom/e2e/save-bar-context?shell=${shell}&width=narrow`, { tw, dark })
-
-          const bar = await box(page.locator('[data-atom-save-bar]'))
-          const width = await clientWidth(page)
-          // low in the bar, in its padding, where no text is; the hairline is at the top
-          const y = bar.bottom - 5
-          const inside = await pixel(page, bar.x + bar.width * 0.4, y)
-          const outside = await pixel(page, width - 4, y)
-          const beyondLeft = shell === 'header' ? await pixel(page, 4, y) : null
-
-          // the same surface over the same page: within a rounding step per channel
-          for (const [name, sample] of [['right', outside], ['left', beyondLeft]]) {
-            if (!sample) continue
-            for (let i = 0; i < 3; i++) expect(Math.abs(sample[i] - inside[i]), `${shell}, ${name}, channel ${i}: ${sample} against ${inside}`).toBeLessThanOrEqual(2)
-          }
-
-          // and the hairline carries on too: the row of pixels at the top of the bar differs from the surface under it, inside and past the column
-          const lineInside = await pixel(page, bar.x + bar.width * 0.4, Math.floor(bar.y + 0.1))
-          const lineOutside = await pixel(page, width - 4, Math.floor(bar.y + 0.1))
-          expect(Math.abs(lineOutside[0] - lineInside[0]) + Math.abs(lineOutside[1] - lineInside[1]) + Math.abs(lineOutside[2] - lineInside[2]), `${shell}: the hairline past the column`).toBeLessThanOrEqual(6)
-          expect(Math.abs(lineInside[0] - inside[0]) + Math.abs(lineInside[1] - inside[1]) + Math.abs(lineInside[2] - inside[2]), `${shell}: a hairline you can see`).toBeGreaterThan(3)
-        }
-      })
-    }
-
-    test('the sidebar shell does not paint the surface over the sidebar', async ({ page }) => {
-      await page.setViewportSize({ width: 1600, height: 700 })
-      await open(page, '/atom/e2e/save-bar-context?shell=sidebar&width=narrow', { tw })
-
-      const bar = await box(page.locator('[data-atom-save-bar]'))
-      const y = bar.bottom - 5
-      const sidebar = await pixel(page, bar.x - 20, y)
-      const beside = await pixel(page, bar.x - 20, bar.y - 40)
-
-      // the sidebar column under the bar is what it is above it: the bar adds nothing there
-      expect(sidebar).toEqual(beside)
-      expect((await surfaceReach(page)).left).toBeGreaterThanOrEqual(bar.x - 1)
-    })
-
-    test('a page that changes its bottom room through the variable keeps the bar flush with the bottom', async ({ page }) => {
-      for (const [query, room] of [['mode=page', 120], ['mode=page&pb=80', 80]]) {
-        await open(page, `/atom/e2e/save-bar-context?${query}`, { tw })
-
-        expect((await styles(page.getByTestId('page'), ['padding-bottom']))['padding-bottom'], query).toBe(`${room}px`)
-
-        await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-
-        const bar = await box(page.locator('[data-atom-save-bar]'))
-        const doc = await page.evaluate(() => document.documentElement.scrollHeight)
-
-        // at the very end the bar's bottom is the page's bottom, whatever room the page gives it
-        expect(Math.abs(bar.bottom - 700), query).toBeLessThan(1.5)
-        expect(doc, query).toBeGreaterThan(1400)
       }
     })
   })

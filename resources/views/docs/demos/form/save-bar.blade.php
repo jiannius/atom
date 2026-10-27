@@ -1,5 +1,5 @@
-{{-- The bar bleeds to the gutter of the page it sits in (<atom:page>); this box stands in for one --}}
-<div class="relative h-72 overflow-y-auto rounded-panel border px-4 pt-4" style="--atom-gutter-s: 1rem; --atom-gutter-e: 1rem; --atom-page-pb: 0px">
+{{-- The bar is a card in the form's flow, as wide as the sections above it; this scrolling box stands in for the page --}}
+<div class="relative h-72 overflow-y-auto rounded-panel border px-4 pt-4">
     <atom:form x-on:submit.prevent>
         <atom:form.section heading="Items" subheading="Amounts in Malaysian Ringgit.">
             <atom:input label="Item one" value="Base module"/>
@@ -10,8 +10,8 @@
 
         <atom:form.actions bar>
             <x-slot:start>
-                <span class="text-fg-subtle">Subtotal <b class="ms-1.5 font-medium text-fg">4,140.00</b></span>
-                <span class="text-[17px] font-semibold text-fg">RM 4,231.20</span>
+                <span>Subtotal <b>4,140.00</b></span>
+                <span>Total <b>RM 4,231.20</b></span>
             </x-slot:start>
 
             <atom:button type="button" variant="ghost">Cancel</atom:button>

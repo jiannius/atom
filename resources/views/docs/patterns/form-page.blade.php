@@ -1,4 +1,4 @@
-{{-- Pattern: form page. A long form made of sections (a new invoice), with the save bar pinned to the bottom of the screen.
+{{-- Pattern: form page. A long form made of sections (a new invoice), with the save bar, a card, floating at the bottom of the screen.
      Built from atom's components with invented data; copy the structure, not the data.
 
      The rules this page follows:
@@ -8,7 +8,7 @@
      - Two layouts, one prop: `aside` (the default) puts the heading in a 220px column beside the fields from 768px (below that,
        above them); `stacked` always puts it above, for a narrow place. Open this page as ?layout=stacked to see it. Fields are
        two across once their own box is wide enough; `class="@md:col-span-2"` makes one span the row.
-     - The save bar is `<atom:form.actions bar>`, the LAST thing in the form. Its `start` slot is live totals (or "Unsaved changes");
+     - The save bar is `<atom:form.actions bar>`, the LAST thing in the form. Its `start` slot is live totals (a <b> in it is the figure);
        its buttons are Cancel (ghost), a secondary save, and the submit, which is the screen's ONE primary action.
      - Money is tabular and right-aligned, the currency named once in the heading or the column ("Amount (RM)"). Line items are
        EDITABLE: a frameless table whose cells hold inputs (the item, then the quantity and the unit price as right-aligned tabular
@@ -143,9 +143,9 @@ $money = fn (float $amount) => number_format($amount, 2);
 
             <atom:form.actions bar>
                 <x-slot:start>
-                    <span class="text-fg-subtle">Subtotal <b class="ms-1.5 font-medium text-fg">{{ $money($subtotal) }}</b></span>
-                    <span class="text-fg-subtle">Service tax <b class="ms-1.5 font-medium text-fg">{{ $money($tax) }}</b></span>
-                    <span class="text-[17px] font-semibold tracking-[-0.01em] text-fg" data-testid="grand-total">RM {{ $money($subtotal + $tax) }}</span>
+                    <span>Subtotal <b>{{ $money($subtotal) }}</b></span>
+                    <span>Service tax <b>{{ $money($tax) }}</b></span>
+                    <span>Total <b data-testid="grand-total">RM {{ $money($subtotal + $tax) }}</b></span>
                 </x-slot:start>
 
                 <atom:button type="button" variant="ghost">Cancel</atom:button>

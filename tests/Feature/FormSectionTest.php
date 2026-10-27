@@ -103,38 +103,32 @@ describe('save bar', function () {
             ->and(domQuery(renderBlade('<atom:form.actions />'), '//button[@type="submit"]'))->toHaveCount(1);
     });
 
-    it('is sticky at the bottom of the screen; its surface and hairline are pseudo-elements that fill its box', function () {
+    it('is a sticky card: a solid surface, a border, the panel radius and the pop shadow, 0.75rem above the bottom of the screen', function () {
         $bar = domQuery(renderBlade('<atom:form.actions bar />'), '//*[@data-atom-save-bar]')[0];
         $classes = domClasses($bar);
 
-        expect($classes)->toContain('sticky', 'bottom-0', 'isolate', 'before:inset-0', 'before:-z-10', 'before:bg-surface/95', 'before:backdrop-blur-sm')
-            ->and($classes)->toContain('after:absolute', 'after:inset-x-0', 'after:top-0', 'after:h-px', 'after:-z-10', 'after:bg-border')
-            // the surface is not on the bar's own box (the page's padding box, narrower than the screen), and nothing takes layout room to bleed
-            ->and($classes)->not->toContain('border-t', 'bg-surface/95', 'backdrop-blur-sm', '-bottom-6', 'before:border-t')
-            ->and(implode(' ', $classes))->not->toContain('before:left-')->not->toContain('before:right-');
+        expect($classes)->toContain('sticky', 'isolate', 'z-10', 'flex-wrap', 'gap-2', 'rounded-panel', 'border', 'border-border', 'bg-surface', 'shadow-pop', 'px-4', 'py-3')
+            ->and(implode(' ', $classes))->toContain('bottom-[calc(0.75rem_+_env(safe-area-inset-bottom,0px))]')
+            // no blur, no transparency, no pseudo-element strip, no bleed, no hairline above it
+            ->and(implode(' ', $classes))->not->toContain('before:')->not->toContain('after:')->not->toContain('backdrop-blur')->not->toContain('bg-surface/')
+            ->and($classes)->not->toContain('border-t', '-bottom-6', 'bottom-0', 'justify-between');
     });
 
-    it('lets atom.css bleed the surface with a clipped box-shadow only in a shell, and never clips the page', function () {
+    it('leaves no strip behind in atom.css: no bleed variables, clip-path or box-shadow spread on the bar', function () {
         $css = file_get_contents(dirname(__DIR__, 2).'/resources/css/atom.css');
 
-        expect($css)->toContain("[data-atom-sidebar] ~ [data-atom-main] {\n    --atom-bar-left: 0px;\n    --atom-bar-right: -100vmax;")
-            ->and($css)->toContain("[data-atom-header-bar] ~ [data-atom-main] {\n    --atom-bar-left: -100vmax;\n    --atom-bar-right: -100vmax;")
-            ->and($css)->toContain('clip-path: inset(0 var(--atom-bar-right, 0px) 0 var(--atom-bar-left, 0px));')
-            ->and($css)->toContain('box-shadow: 0 0 0 100vmax color-mix(in oklab, var(--atom-surface) 95%, transparent);')
-            ->and($css)->toContain('box-shadow: 0 0 0 100vmax var(--atom-border);')
-            ->and($css)->not->toContain('html:has([data-atom-save-bar])')
-            ->and($css)->not->toMatch('/\\[data-atom-save-bar\\][^{]*\\{[^}]*overflow-x/');
+        expect($css)->not->toContain('--atom-bar-left')->not->toContain('--atom-bar-right')
+            ->and($css)->not->toContain('100vmax')
+            ->and($css)->not->toMatch('/\\[data-atom-save-bar\\][^{]*\\{/');
     });
 
-    it('bleeds to the page gutter and sits inside it; outside a page it bleeds nowhere and keeps a 1rem padding', function () {
+    it('takes the page\'s bottom room as its own, less the 0.75rem it floats by, and has no gutter margin or padding', function () {
         $html = renderBlade('<atom:form.actions bar />');
         $classes = implode(' ', domClasses(domQuery($html, '//*[@data-atom-save-bar]')[0]));
 
-        expect($classes)->toContain('ms-[calc(var(--atom-gutter-s,0px)*-1)]')
-            ->and($classes)->toContain('me-[calc(var(--atom-gutter-e,0px)*-1)]')
-            ->and($classes)->toContain('ps-[var(--atom-gutter-s,1rem)]')
-            ->and($classes)->toContain('pe-[var(--atom-gutter-e,1rem)]')
-            ->and($classes)->toContain('env(safe-area-inset-bottom');
+        expect($classes)->toContain('mb-[calc((var(--atom-page-pb,0px)_-_0.75rem_-_env(safe-area-inset-bottom,0px))*-1)]')
+            ->and($classes)->not->toContain('--atom-gutter')
+            ->and($classes)->not->toContain('ms-[')->not->toContain('me-[')->not->toContain('ps-[')->not->toContain('pe-[');
     });
 
     it('prints the start slot at the start, and the buttons at the end', function () {
@@ -142,7 +136,7 @@ describe('save bar', function () {
 
         expect(domQuery($html, '//*[@data-atom-save-bar]/*[@data-atom-form-actions-start]/span[@id="t"]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-atom-save-bar]/*[@data-atom-form-actions-buttons]/button[@id="b"]'))->toHaveCount(1)
-            ->and(domClasses(domQuery($html, '//*[@data-atom-form-actions-start]')[0]))->toContain('tabular-nums')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-form-actions-start]')[0]))->toContain('tabular-nums', 'text-fg-muted', 'gap-x-3.5', 'flex-wrap', '[&_:is(b,strong)]:font-semibold', '[&_:is(b,strong)]:text-fg', '[&_:is(b,strong)]:tabular-nums')
             ->and(domQuery($html, '//*[@data-atom-form-actions-start]/following-sibling::*[@data-atom-form-actions-buttons]'))->toHaveCount(1);
     });
 
