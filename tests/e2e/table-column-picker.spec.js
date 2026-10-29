@@ -307,7 +307,7 @@ for (const tw of ['floor', 'latest']) {
       await roundTrip(page, () => page.locator('[data-reset-layout]').click())
 
       // resetLayout() pushes { phone: true } and a new wire:key: the new table adopts it, the picker is drawn again from it
-      expect(await shown(page, 'phone')).toBe(true)
+      await expect.poll(() => shown(page, 'phone')).toBe(true)
       await expect(badge(page)).toBeHidden()
       await expect(trigger(page)).toHaveAccessibleDescription('')
 
@@ -369,7 +369,8 @@ for (const tw of ['floor', 'latest']) {
       await page.keyboard.press('Escape')
 
       await roundTrip(page, () => page.locator('[data-reset-layout]').click())
-      expect(await shown(page, 'city')).toBe(true)
+      // the response is applied a moment after it arrives (a busy server makes that moment long): wait for the new table
+      await expect.poll(() => shown(page, 'city')).toBe(true)
       await expect(badge(page)).toBeHidden()
       await openMenu(page)
       await expect(item(page, 'City')).toHaveAttribute('aria-checked', 'true')
