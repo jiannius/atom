@@ -211,6 +211,84 @@ describe('button label', function () {
     ]);
 });
 
+describe('button tooltip', function () {
+    it('wraps the button in a tooltip only when asked', function () {
+        expect(domQuery(renderBlade('<atom:button>Save</atom:button>'), '//*[@data-atom-tooltip]'))->toHaveCount(0);
+
+        $html = renderBlade('<atom:button tooltip="Save the record">Save</atom:button>');
+        $wrapper = domQuery($html, '//*[@data-atom-tooltip]');
+
+        expect($wrapper)->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-tooltip]/button[@data-atom-button]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-tooltip]/*[@data-atom-tooltip-content]'))->toHaveCount(1)
+            ->and(trim(domQuery($html, '//*[@data-atom-tooltip-content]')[0]->textContent))->toBe('Save the record')
+            ->and(domClasses($wrapper[0]))->toContain('inline-flex', 'min-w-0', 'max-w-full');
+    });
+
+    it('does not print tooltip as an attribute of the button', function () {
+        $button = domQuery(renderBlade('<atom:button tooltip="Save the record" icon="add"/>'), '//button')[0];
+
+        expect($button->hasAttribute('tooltip'))->toBeFalse();
+    });
+
+    it('makes the wrapper full width for a block button', function () {
+        $wrapper = domQuery(renderBlade('<atom:button block tooltip="Save">Save</atom:button>'), '//*[@data-atom-tooltip]')[0];
+
+        expect(domClasses($wrapper))->toContain('flex', 'w-full')->not->toContain('inline-flex');
+    });
+
+    it('names a slotless icon button from the tooltip', function () {
+        $button = domQuery(renderBlade('<atom:button icon="add" tooltip="Add a contact"/>'), '//button')[0];
+
+        expect($button->getAttribute('aria-label'))->toBe('Add a contact');
+    });
+
+    it('lets the caller\'s aria-label win over the tooltip', function () {
+        $button = domQuery(renderBlade('<atom:button icon="add" tooltip="Add a contact" aria-label="New contact"/>'), '//button')[0];
+
+        expect($button->getAttribute('aria-label'))->toBe('New contact');
+    });
+
+    it('keeps naming an icon button without a tooltip from its icon', function () {
+        $button = domQuery(renderBlade('<atom:button icon="add"/>'), '//button')[0];
+
+        expect($button->getAttribute('aria-label'))->toBe('Add');
+    });
+
+    it('gives a button with a visible label no aria-label', function () {
+        $button = domQuery(renderBlade('<atom:button icon="add" tooltip="Add a contact">Add</atom:button>'), '//button')[0];
+
+        expect($button->hasAttribute('aria-label'))->toBeFalse();
+    });
+
+    it('keeps the host\'s attributes on the button, not on the wrapper', function () {
+        $html = renderBlade('<atom:button icon="add" tooltip="Add" wire:click="add" x-on:click="open = !open" data-testid="add"/>');
+        $button = domQuery($html, '//button')[0];
+        $wrapper = domQuery($html, '//*[@data-atom-tooltip]')[0];
+
+        expect($button->getAttribute('wire:click'))->toBe('add')
+            ->and($button->getAttribute('x-on:click'))->toBe('open = !open')
+            ->and($button->getAttribute('data-testid'))->toBe('add')
+            ->and($wrapper->hasAttribute('wire:click'))->toBeFalse()
+            ->and($wrapper->hasAttribute('data-testid'))->toBeFalse();
+    });
+
+    it('keeps a hostile tooltip inside its attribute and its text node', function () {
+        $html = renderBlade('<atom:button icon="add" tooltip=\'"><img src=x onerror=alert(1)>\'/>');
+
+        expect(domQuery($html, '//img'))->toHaveCount(0)
+            ->and(domQuery($html, '//button')[0]->getAttribute('aria-label'))->toBe('"><img src=x onerror=alert(1)>')
+            ->and(domQuery($html, '//*[@data-atom-tooltip-content]')[0]->textContent)->toContain('"><img src=x onerror=alert(1)>');
+    });
+
+    it('renders the tooltip on a link button too', function () {
+        $html = renderBlade('<atom:button href="/x" icon="add" tooltip="Go"/>');
+
+        expect(domQuery($html, '//*[@data-atom-tooltip]/a[@data-atom-button]'))->toHaveCount(1)
+            ->and(domQuery($html, '//a')[0]->getAttribute('aria-label'))->toBe('Go');
+    });
+});
+
 describe('button.group', function () {
     it('collapses adjacent button borders', function () {
         $html = renderBlade('<atom:button.group><atom:button>A</atom:button><atom:button>B</atom:button></atom:button.group>');

@@ -262,7 +262,7 @@ test('a re-run init() does not stack morph callbacks', async ({ page }) => {
     }
 
     const dropdown = wrap(document.querySelector('[data-probe="menu"] [data-atom-dropdown]'), 'syncState')
-    const tooltip = wrap(document.querySelector('[data-probe="tooltip"] [data-atom-tooltip]'), 'link')
+    const tooltip = wrap(document.querySelector('[data-probe="tooltip"] [data-atom-tooltip]'), '_atomLink')
 
     const palette = document.querySelector('dialog[data-atom-command]')
     window.dispatchEvent(new CustomEvent('atom-command-show', { detail: { name: 'morph-palette' } }))

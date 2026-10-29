@@ -110,6 +110,19 @@ describe('sharer', function () {
     });
 });
 
+describe('button tooltip', function () {
+    it('keeps a hostile tooltip inside the aria-label and the content node', function () {
+        $html = Blade::render('<atom:button icon="add" :tooltip="$tooltip" />', ['tooltip' => ATTRIBUTE_ESCAPING_HOSTILE]);
+        $button = attributeEscapingElements($html, 'button')[0];
+
+        expect(attributeEscapingNames($button))
+            ->not->toContain('onmouseover')
+            ->not->toContain('data-x')
+            ->and($button->getAttribute('aria-label'))->toBe(ATTRIBUTE_ESCAPING_HOSTILE)
+            ->and(attributeEscapingElements($html, 'b'))->toBeEmpty();
+    });
+});
+
 describe('embed', function () {
     it('keeps a hostile image source inside its src attribute', function () {
         $src = 'https://cdn.test/a"onerror="alert(1)"x=\'<>&.jpg';

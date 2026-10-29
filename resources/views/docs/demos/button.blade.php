@@ -14,6 +14,11 @@ description="icon prefixes, iconSuffix appends, 16px beside 13px text. A slotles
 view="atom::docs.demos.button.icons"/>
 
 <atom:docs.example
+title="Tooltip"
+description="tooltip wraps the button in an atom:tooltip. On an icon-only button it is also the accessible name (a caller's aria-label wins), so it is announced once; on a button with a label it is a description. Hover or keyboard focus shows it, and it stays away while the button's own menu is open. For a position or a kbd hint, wrap the button in atom:tooltip yourself."
+view="atom::docs.demos.button.tooltip"/>
+
+<atom:docs.example
 title="Submit & delete types"
 description="type=submit is primary and shows a loading state on wire submit. type=delete is the danger tone's tint and auto-wires the confirm dialog, which dispatches confirmed → $wire.delete(), unless you override wire:click or x-on:click. Neither adds an icon of its own: pass icon=."
 view="atom::docs.demos.button.delete"/>

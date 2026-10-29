@@ -48,4 +48,14 @@ describe('tooltip', function () {
     it('renders nothing without content or a slot', function () {
         expect(trim(renderBlade('<atom:tooltip/>')))->toBe('');
     });
+
+    it('ships its factory members under an _atom prefix, so a host scope around a tooltipped button is not shadowed', function () {
+        $source = file_get_contents(__DIR__.'/../../resources/js/alpinejs/tooltip.js');
+
+        expect($source)
+            ->toContain('_atomShow')
+            ->toContain('_atomLink')
+            ->not->toMatch('/^\s+(show|hide|link|trigger|popover|placement|cleanup|interactive)\s*[(:]/m')
+            ->not->toMatch('/^\s+get (trigger|popover)\s*\(/m');
+    });
 });
