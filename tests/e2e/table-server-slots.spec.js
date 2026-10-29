@@ -138,6 +138,44 @@ for (const tw of ['floor', 'latest']) {
       await expect(page.getByTestId('header-input')).toHaveValue('from the menu')
     })
 
+    test('a ⋯ menu whose whole slot is conditional appears and disappears with the server, and its end group is shown when the ⋯ is all it holds', async ({ page }) => {
+      await open(page, { path: 'table-server-slots', tw, extra: '&menu=2' })
+
+      const toolbar = page.getByTestId('menu-only-toolbar')
+      const end = toolbar.locator('[data-atom-table-toolbar-end]')
+      const trigger = toolbar.getByRole('button', { name: 'More actions' })
+      const menu = toolbar.getByRole('menu')
+
+      // no menu content and no paginator: no ⋯ and no end group to see
+      await expect(trigger).toHaveCount(0)
+      await expect(end).toBeHidden()
+
+      // the server turns the slot on: the ⋯ is drawn, in an end group that is really shown (not left display:none by the count's x-show)
+      await roundTrip(page, () => page.locator('[data-toggle-menu]').click())
+      await expect(trigger).toBeVisible()
+      await expect(end).toBeVisible()
+      expect(await end.evaluate((el) => el.style.display)).toBe('')
+
+      await trigger.click()
+      await expect(menu).toBeVisible()
+      await expect(menu.getByRole('menuitem')).toHaveCount(1)
+      await roundTrip(page, () => page.getByTestId('menu-cond').click())
+      await expect(page.getByTestId('header-input')).toHaveValue('from the conditional menu')
+
+      // and off again: the ⋯ and its menu are gone
+      await page.keyboard.press('Escape')
+      await roundTrip(page, () => page.locator('[data-toggle-menu]').click())
+      await expect(trigger).toHaveCount(0)
+      await expect(toolbar.getByRole('menu')).toHaveCount(0)
+      await expect(end).toBeHidden()
+
+      // and on once more: it comes back and still opens
+      await roundTrip(page, () => page.locator('[data-toggle-menu]').click())
+      await expect(trigger).toBeVisible()
+      await trigger.click()
+      await expect(menu.getByRole('menuitem')).toBeVisible()
+    })
+
     test('select all matching: the button names the table\'s total, and the count reads it', async ({ page }) => {
       await open(page, { path: 'table-server-slots', tw })
 

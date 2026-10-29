@@ -105,8 +105,9 @@ it('treats each of actions, end and menu alone as an end group, so the start gro
         ->and(domClasses(domQuery($html, '//*[@data-atom-table-toolbar-end]')[0]))->not->toContain('max-sm:hidden');
 })->with(['actions', 'end', 'menu']);
 
-it('renders a toolbar with only an end slot as it did before the actions and menu slots existed', function () {
-    // captured from the toolbar before `actions` and `menu`, whitespace collapsed; no ⋯ and no extra markup appear
+it('renders a toolbar with only an end slot with the same elements and attributes as before the actions and menu slots existed', function () {
+    // captured from the toolbar before `actions` and `menu`, whitespace collapsed; no ⋯ and no extra element appears (inside Livewire
+    // there are two extra empty `<!--[if BLOCK]-->` comment pairs, which this plain render does not print)
     $before = '<div class="flex min-w-0 grow basis-full flex-wrap items-start gap-2" data-atom-table-toolbar> <div class="flex min-w-0 grow flex-wrap items-start gap-2 sm:basis-0 sm:min-w-48 [&_[data-atom-table-search]]:w-full sm:[&_[data-atom-table-search]]:w-60 basis-48" data-atom-table-toolbar-start> x </div> <div x-data="tableCount" class="ms-auto flex min-h-(--atom-control-h) shrink-0 flex-wrap items-center gap-2 self-start text-xs text-fg-subtle" data-atom-table-toolbar-end> <span x-show="text" x-cloak x-text="text" class="tabular-nums text-xs text-fg-muted max-sm:hidden" data-atom-table-count></span> <button id="n">Export</button> </div> </div>';
 
     $html = renderBlade('<atom:table.toolbar>x<x-slot:end><button id="n">Export</button></x-slot:end></atom:table.toolbar>');

@@ -575,7 +575,7 @@ Four pattern pages in `resources/views/docs/patterns/` (also at `/atom/docs/patt
         <x-slot:header>
             <atom:table.toolbar>
                 <atom:table.search wire:model.live.debounce.250ms="filters.search" placeholder="Search number or customer" />
-                <x-slot:actions><atom:button size="sm" variant="ghost" icon="download">Export</atom:button></x-slot:actions>
+                <x-slot:actions><atom:button variant="ghost" icon="download">Export</atom:button></x-slot:actions>
                 <x-slot:menu><atom:menu.item icon="archive" wire:click="archiveAll">Archive all</atom:menu.item></x-slot:menu>
             </atom:table.toolbar>
         </x-slot:header>

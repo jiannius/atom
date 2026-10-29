@@ -4,11 +4,20 @@
         <button type="button" wire:click="$set('note', 'changed note')" data-set-note>Change note</button>
         <button type="button" wire:click="$set('region', 'north')" data-set-region>Set region</button>
         <button type="button" wire:click="$set('bigger', true)" data-set-bigger>Grow</button>
+        <button type="button" wire:click="$toggle('showMenu')" data-toggle-menu>Toggle menu</button>
     </div>
 
-    <atom:table :sticky-selection="$sticky" select-all :paginate="$this->pager">
+    <atom:table :sticky-selection="$sticky" select-all :paginate="$menu === 2 ? null : $this->pager" :empty="false">
         <x-slot:header>
-            @if ($menu)
+            @if ($menu === 2)
+                <atom:table.toolbar data-testid="menu-only-toolbar">
+                    <x-slot:menu>
+                        @if ($showMenu)
+                            <atom:menu.item icon="archive" wire:click="$set('note', 'from the conditional menu')" data-testid="menu-cond">Conditional item</atom:menu.item>
+                        @endif
+                    </x-slot:menu>
+                </atom:table.toolbar>
+            @elseif ($menu === 1)
                 <atom:table.toolbar :count="false" data-testid="menu-toolbar">
                     <x-slot:actions>
                         <atom:button variant="ghost" icon="download" aria-label="Export" />

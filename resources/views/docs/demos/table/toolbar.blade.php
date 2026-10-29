@@ -5,7 +5,7 @@
         <atom:table.search placeholder="Search number or customer"/>
 
         <x-slot:actions>
-            <atom:button size="sm" variant="ghost" icon="download">Export</atom:button>
+            <atom:button variant="ghost" icon="download">Export</atom:button>
         </x-slot:actions>
 
         <x-slot:menu>
