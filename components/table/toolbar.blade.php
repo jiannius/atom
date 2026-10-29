@@ -2,6 +2,7 @@
     'trashed' => false,
     'strip' => false,
     'count' => true,
+    'columns' => false,
 ])
 
 {{-- The bar above a list's rows, for the table's `header` slot: the search and the filters on the start side, then
@@ -14,7 +15,11 @@
      actions") and the dropdown, aligned to the end, as <atom:page.header> does for its own `menu` slot; no content, no button.
      `trashed` adds the archived or voided toggle to the end group (`true` or `voided`). Use it OR the table's own `trashed` prop, never
      both: with both the toggle is drawn twice.
-     Order of the end group: the row count, `actions`, `end`, the trashed toggle, the ⋯ menu. A slot counts as content only if it holds more
+     `columns` adds the column picker (<atom:table.columns>) last in the end group, after a thin divider drawn only when something visible
+     precedes it (with only the row count before it, the divider follows the count: no text, no divider, and none on a phone); `columns="table-id"`
+     passes the id as the picker's `for`, for a toolbar that sits outside the table it steers. It is opt-in: the toolbar renders before the
+     table's columns, so it cannot tell whether any is `hideable`.
+     Order of the end group: the row count, `actions`, `end`, the trashed toggle, the ⋯ menu, the divider and the column picker. A slot counts as content only if it holds more
      than comments and whitespace (hasActualContent), so a slot of `@if` blocks that all come out false draws nothing.
      The row count ("1–50 of 128", from the table's paginator; `:count="false"` leaves it out) leads the end group. The table's header slot
      is a real element the server keeps current, but the paginator belongs to the table, not to this bar, so the count is not rendered here:
@@ -23,7 +28,7 @@
      the table. Outside a table, or in a table with no paginator, nothing shows.
      In the table's `header` slot the table draws the strip around it (a frameless table's hairline and padding). Placed
      anywhere else, in a panel above a table, pass `strip` to draw its own: `border-b px-3 py-2.5`.
-     On a phone the start group takes the full row, unless there is an end group (`actions`, `end`, `menu` or `trashed`): then the start group has a 12rem floor: a narrow end group (an icon-only button,
+     On a phone the start group takes the full row, unless there is an end group (`actions`, `end`, `menu`, `trashed` or `columns`): then the start group has a 12rem floor: a narrow end group (an icon-only button,
      with `max-sm:sr-only` on its label) shares the first row, a wide one wraps to a row of its own, and the search is never squeezed under 12rem.
      From `sm` up the start group takes only what the end group leaves (`flex: 1 1 0`, so it never asks for a row of its own) and wraps its
      chips inside itself: the end group stays at the top end, on the first row, however many rows the filters take. It keeps a 12rem floor
@@ -35,8 +40,12 @@ $has = fn ($slot) => isset($slot) && $slot->hasActualContent();
 $hasActions = $has($actions ?? null);
 $hasEnd = $has($end ?? null);
 $hasMenu = $has($menu ?? null);
-$hasGroup = $hasActions || $hasEnd || $hasMenu;
+$hasColumns = (bool) $columns;
+$hasGroup = $hasActions || $hasEnd || $hasMenu || $hasColumns;
 $hasCount = (bool) $count;
+// what the picker's divider follows: the host's buttons, the trashed toggle and the ⋯ menu are always there when set; the row count
+// only while it has text (and not on a phone), so with the count alone the divider takes the count's own rules
+$hasBeforeColumns = $hasActions || $hasEnd || $hasMenu || $trashed;
 @endphp
 
 <div {{ $attributes->class(['flex min-w-0 grow basis-full flex-wrap items-start gap-2', 'border-b px-3 py-2.5' => $strip]) }} data-atom-table-toolbar>
@@ -76,6 +85,14 @@ $hasCount = (bool) $count;
                         {{ $menu }}
                     </atom:menu>
                 </atom:dropdown>
+            @endif
+
+            @if ($hasColumns)
+                @if ($hasBeforeColumns || $hasCount)
+                    <span @if (! $hasBeforeColumns) x-show="text" x-cloak @endif @class(['h-5 w-px shrink-0 bg-border', 'max-sm:hidden' => ! $hasBeforeColumns]) aria-hidden="true" data-atom-table-toolbar-divider></span>
+                @endif
+
+                <atom:table.columns :for="is_string($columns) ? $columns : null" />
             @endif
         </div>
     @endif

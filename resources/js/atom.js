@@ -24,6 +24,7 @@ import headerShell from './alpinejs/header-shell'
 import pageTabs from './alpinejs/page-tabs'
 import tableCount from './alpinejs/table-count'
 import tableChecked from './alpinejs/table-checked'
+import tableColumns from './alpinejs/table-columns'
 import formDirty from './alpinejs/form-dirty'
 import calendar from './alpinejs/calendar'
 import chartBar from './alpinejs/chart/bar'
@@ -53,6 +54,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('pageTabs', pageTabs)
     Alpine.data('tableCount', tableCount)
     Alpine.data('tableChecked', tableChecked)
+    Alpine.data('tableColumns', tableColumns)
     Alpine.data('formDirty', formDirty)
     Alpine.data('datePicker', datePicker)
     Alpine.data('timePicker', timePicker)
