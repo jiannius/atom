@@ -444,7 +444,8 @@ for (const tw of ['floor', 'latest']) {
       expect(await hidden(page, 'email', '[data-testid="b"]')).toBe(true)
       expect(await shown(page, 'email', '[data-testid="a"]')).toBe(true)
       expect(await shown(page, 'name', '[data-testid="b"]')).toBe(true)
-      await expect(badge(page, 0)).toHaveText('1')
+      await expect(badge(page, 1)).toHaveText('1')
+      await expect(badge(page, 0)).toHaveText('1') // A's own default-hidden phone, unchanged
     })
 
     test('two tables on one persist-key stay in step, and the picker follows a change made through the API', async ({ page }) => {
