@@ -8,6 +8,20 @@
 
     <atom:table :sticky-selection="$sticky" select-all :paginate="$this->pager">
         <x-slot:header>
+            @if ($menu)
+                <atom:table.toolbar :count="false" data-testid="menu-toolbar">
+                    <x-slot:actions>
+                        <atom:button variant="ghost" icon="download" aria-label="Export" />
+                    </x-slot:actions>
+                    <x-slot:menu>
+                        @if ($foo)
+                            <atom:menu.item icon="check" data-testid="menu-foo">Foo is on</atom:menu.item>
+                        @endif
+                        <atom:menu.item icon="archive" wire:click="$set('note', 'from the menu')" data-testid="menu-note">Set the note</atom:menu.item>
+                    </x-slot:menu>
+                </atom:table.toolbar>
+            @endif
+
             <atom:table.filters>
                 <atom:table.search wire:model.live.debounce.0ms="search" placeholder="Search fruit..." data-search />
             </atom:table.filters>

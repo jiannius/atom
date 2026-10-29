@@ -27,6 +27,9 @@ class TableServerSlotsFixture extends Component
 
     public bool $sticky = false;
 
+    /** ?menu=1 adds a toolbar with a ⋯ menu to the header, whose items depend on `$foo` */
+    public bool $menu = false;
+
     /** A search narrows the matching total from 12 to 3 */
     public ?string $search = null;
 
@@ -59,6 +62,7 @@ class TableServerSlotsFixture extends Component
     public function mount(): void
     {
         $this->sticky = request()->boolean('sticky');
+        $this->menu = request()->boolean('menu');
     }
 
     /**

@@ -63,6 +63,33 @@ $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->q
             <atom:table.search placeholder="Search"/>
         </atom:table.toolbar>
     </div>
+
+    {{-- the `actions` slot, the ⋯ `menu` slot and the older `end` slot together: count (none here), actions, end, trashed, ⋯ --}}
+    <div class="rounded-panel border bg-surface" data-testid="toolbar-menu">
+        <atom:table.toolbar strip trashed>
+            <atom:table.search placeholder="Search"/>
+            <x-slot:actions>
+                <atom:button variant="ghost" icon="download" aria-label="Export" data-testid="act-export"><span class="max-sm:sr-only">Export</span></atom:button>
+            </x-slot:actions>
+            <x-slot:end>
+                <atom:button variant="ghost" icon="upload" aria-label="Import" data-testid="act-import" />
+            </x-slot:end>
+            <x-slot:menu>
+                <atom:menu.item icon="archive" data-testid="menu-archive" x-on:click="$el.closest('[data-testid=toolbar-menu]').dataset.picked = 'archive'">Archive all</atom:menu.item>
+                <atom:menu.item icon="upload">Import</atom:menu.item>
+            </x-slot:menu>
+        </atom:table.toolbar>
+    </div>
+
+    {{-- only the ⋯ menu, icon-only: a narrow end group that shares the search's row on a phone --}}
+    <div class="rounded-panel border bg-surface" data-testid="toolbar-menu-only">
+        <atom:table.toolbar strip>
+            <atom:table.search placeholder="Search"/>
+            <x-slot:menu>
+                <atom:menu.item icon="archive">Archive all</atom:menu.item>
+            </x-slot:menu>
+        </atom:table.toolbar>
+    </div>
 </div>
 
 @livewireScripts

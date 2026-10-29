@@ -146,9 +146,9 @@ $money = fn (float $amount) => number_format($amount, 2);
                     <atom:date-picker variant="range" add x-model="filters.issued" data-filter-key="filters.issued" placeholder="Issued"/>
                 </atom:table.filters>
 
-                <x-slot:end>
+                <x-slot:actions>
                     <atom:button variant="ghost" icon="download" aria-label="Export"><span class="max-sm:sr-only">Export</span></atom:button>
-                </x-slot:end>
+                </x-slot:actions>
             </atom:table.toolbar>
 
             {{-- No Livewire component here, so no rows, sorting or paging come from one. In a real page the rows come from a component

@@ -111,6 +111,33 @@ for (const tw of ['floor', 'latest']) {
       await expect(page.getByTestId('checked-foo')).toBeVisible()
     })
 
+    test('the toolbar\'s ⋯ menu: opens with the host\'s items, follows the server, and an item\'s wire:click runs', async ({ page }) => {
+      await open(page, { path: 'table-server-slots', tw, extra: '&menu=1' })
+
+      const trigger = page.getByTestId('menu-toolbar').getByRole('button', { name: 'More actions' })
+      const menu = page.getByTestId('menu-toolbar').getByRole('menu')
+
+      await expect(trigger).toBeVisible()
+      await expect(menu).toBeHidden()
+
+      await trigger.click()
+      await expect(menu).toBeVisible()
+      await expect(menu.getByRole('menuitem')).toHaveCount(1)
+      await expect(page.getByTestId('menu-foo')).toHaveCount(0)
+
+      // a server @if inside the slot appears after a round trip (the header is a real element)
+      await page.keyboard.press('Escape')
+      await expect(menu).toBeHidden()
+      await roundTrip(page, () => page.locator('[data-set-foo]').click())
+      await trigger.click()
+      await expect(page.getByTestId('menu-foo')).toBeVisible()
+      await expect(menu.getByRole('menuitem')).toHaveCount(2)
+
+      // an item's wire:click runs on the server
+      await roundTrip(page, () => page.getByTestId('menu-note').click())
+      await expect(page.getByTestId('header-input')).toHaveValue('from the menu')
+    })
+
     test('select all matching: the button names the table\'s total, and the count reads it', async ({ page }) => {
       await open(page, { path: 'table-server-slots', tw })
 

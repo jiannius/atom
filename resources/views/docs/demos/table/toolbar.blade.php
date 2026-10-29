@@ -4,8 +4,13 @@
     <atom:table.toolbar strip>
         <atom:table.search placeholder="Search number or customer"/>
 
-        <x-slot:end>
+        <x-slot:actions>
             <atom:button size="sm" variant="ghost" icon="download">Export</atom:button>
-        </x-slot:end>
+        </x-slot:actions>
+
+        <x-slot:menu>
+            <atom:menu.item icon="archive">Archive all</atom:menu.item>
+            <atom:menu.item icon="upload">Import</atom:menu.item>
+        </x-slot:menu>
     </atom:table.toolbar>
 </div>
