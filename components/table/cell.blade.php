@@ -5,11 +5,18 @@
     'muted' => false,
     'truncate' => false,
     'numeric' => false,
+    'column' => null,
 ])
 
 @php
 if ($checkbox) {
     app('atom')->requireTrait(\Jiannius\Atom\Traits\WithTable::class, '<atom:table.cell checkbox>');
+}
+
+// `column` links the cell to a named table column, so hiding that column hides this cell. It becomes a CSS token: a value
+// outside the pattern throws. A checkbox cell is never linked.
+if ($column !== null && ! $checkbox) {
+    $attributes = $attributes->merge(['data-atom-column' => \Jiannius\Atom\Services\TableColumns::assertName($column, '<atom:table.cell column>')]);
 }
 
 // A numeric cell (money, quantities) is right-aligned with tabular figures, so a column of amounts lines up on the

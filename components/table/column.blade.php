@@ -3,6 +3,9 @@
     'sort' => null,
     'checkbox' => false,
     'numeric' => false,
+    'name' => null,
+    'hideable' => false,
+    'hidden' => false,
 ])
 
 @php
@@ -17,6 +20,27 @@ if ($sort || $checkbox) {
 $sortValue = $sort && str($sort)->startsWith('raw:')
     ? \Jiannius\Atom\Services\TableSort::sign(str($sort)->after('raw:')->toString())
     : $sort;
+
+// A named column joins the column picker: it is listed there, and the cells that carry a matching `column` follow it. Without
+// `hideable` it is locked (listed, always shown). A name becomes a CSS token, so one outside the pattern throws here,
+// before it can reach a stylesheet. A checkbox column is never listed. `hidden` means "hidden until the user shows it" only on a
+// hideable column; anywhere else it is still the plain HTML attribute.
+$named = ! $checkbox && $name !== null;
+if ($named) {
+    $name = \Jiannius\Atom\Services\TableColumns::assertName($name, '<atom:table.column name>');
+}
+$hideable = $named && $hideable;
+
+if ($hidden && ! $hideable) {
+    $attributes = $attributes->merge(['hidden' => true]);
+}
+
+if ($named) {
+    $attributes = $attributes->merge([
+        'data-atom-column' => $name,
+        'data-atom-column-meta' => json_encode(\Jiannius\Atom\Services\TableColumns::meta($name, $slot->toHtml(), $hideable, (bool) $hidden)),
+    ]);
+}
 
 // A numeric column (money, quantities) lines its figures up on the right; the header follows. Name the currency in the
 // header ("Amount (RM)"), not in every cell.

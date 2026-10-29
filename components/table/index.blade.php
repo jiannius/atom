@@ -8,6 +8,8 @@
     'stickySelection' => false,
     'frameless' => false,
     'stickyPager' => true,
+    'persistKey' => null,
+    'columnsState' => null,
 ])
 
 @php
@@ -61,6 +63,20 @@ if (!$showSkeleton && !is_bool($empty)) {
     if ($paginate) $empty = !$paginate->total();
     else $empty = isset($rows) && !strip_tags($rows->toHtml());
 }
+
+// Column visibility (resources/js/helpers/table-columns.js). The named columns come off the rendered `columns` slot, which Blade
+// has captured before this view runs, so they exist while the table is empty or in its skeleton, when there is no <thead> to read.
+// `columns-state` is the host's own copy of the user's choices (name => visible), read from the user's settings: when it is given it
+// is used instead of localStorage. Without it a `persist-key` keeps the choices in localStorage; with neither they live in memory.
+$columnsList = isset($columns) ? \Jiannius\Atom\Services\TableColumns::payload($columns->toHtml()) : [];
+$columnsKey = filled($persistKey) ? (string) $persistKey : null;
+$columnsFromHost = $columnsState !== null;
+$columnsChosen = $columnsFromHost
+    ? \Jiannius\Atom\Services\TableColumns::cleanState($columnsState instanceof \Illuminate\Contracts\Support\Arrayable ? $columnsState->toArray() : $columnsState)
+    : [];
+$columnsHidden = \Jiannius\Atom\Services\TableColumns::hiddenNames($columnsList, $columnsChosen);
+$columnsCss = \Jiannius\Atom\Services\TableColumns::css($columnsList);
+$columnsScript = $columnsCss !== '' && $columnsKey !== null && ! $columnsFromHost;
 @endphp
 
 {{-- The checked bar wraps (count first, then the actions) so a narrow screen shows every action instead of clipping them.
@@ -77,6 +93,20 @@ data-atom-table
          the toolbar reads it (resources/js/alpinejs/table-count.js). Nothing is printed without a paginator, or with no rows on it. --}}
     @if ($paginate?->firstItem())
         <span hidden data-atom-table-count-source data-text="{{ t('atom::pagination.range', ['from' => $paginate->firstItem(), 'to' => $paginate->lastItem(), 'total' => $paginate->total()]) }}"></span>
+    @endif
+
+    {{-- The named columns, for the column picker and the browser's store: a hidden source the way the count is, printed here because
+         the picker may live in the header slot (hidden while rows are ticked) or outside the table. The stylesheet has one rule per
+         hideable column, keyed on a token list on the scroll box; both are printed before the first visible child (a trailing
+         hidden child would take a space-y margin). Every name in them has passed TableColumns::NAME. --}}
+    @if ($columnsList)
+        <span hidden data-atom-column-source x-init="atom.tableColumns.sync($el)" data-columns="{{ json_encode($columnsList) }}"
+            @if ($columnsKey !== null) data-key="{{ $columnsKey }}" @endif
+            @if ($columnsFromHost) data-state="{{ json_encode((object) $columnsChosen) }}" @endif></span>
+    @endif
+
+    @if ($columnsCss !== '')
+        <style data-atom-column-css>{!! $columnsCss !!}</style>
     @endif
 
     {{-- The checked bar and the header are real elements shown with x-show, never a `<template x-if>` around the server-rendered slot: from
@@ -158,7 +188,15 @@ data-atom-table
         ])>
             {{-- the scroll box: a wide table scrolls sideways in here, never the page (min-w-0 on every ancestor up to the root,
                  or a grid or flex parent such as <atom:page> grows to the table's width instead) --}}
-            <div class="relative min-w-0 overflow-x-auto" data-atom-table-scroll>
+            <div class="relative min-w-0 overflow-x-auto" data-atom-table-scroll
+                @if ($columnsList) data-atom-column-scope @endif
+                @if ($columnsCss !== '') data-atom-column-hide="{{ implode(' ', $columnsHidden) }}" @endif
+                @if ($columnsList && $columnsKey !== null) data-atom-column-key="{{ $columnsKey }}" @endif>
+                {{-- First paint: the user's choices from localStorage, written before the <table> below is parsed, so a column the user
+                     hid is never drawn and a default-hidden one they showed is never missing. The text is constant (TableColumns::SCRIPT). --}}
+                @if ($columnsScript)
+                    <script{!! ($nonce = \Illuminate\Support\Facades\Vite::cspNonce()) ? ' nonce="'.e($nonce).'"' : '' !!}>{!! \Jiannius\Atom\Services\TableColumns::SCRIPT !!}</script>
+                @endif
                 @if ($showSkeleton)
                     <div class="motion-safe:animate-pulse divide-y divide-border" data-atom-table-skeleton>
                         @for ($i = 0; $i < $skeletonRows; $i++)
