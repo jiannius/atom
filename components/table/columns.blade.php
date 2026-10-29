@@ -69,7 +69,7 @@ data-atom-column-picker>
     x-show="hiddenCount"
     x-cloak
     x-text="hiddenCount"
-    class="pointer-events-none absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-pill bg-accent px-1 text-[10px] font-medium leading-none tabular-nums text-accent-foreground"
+    class="pointer-events-none absolute right-0 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-pill bg-accent px-1 text-[10px] font-medium leading-none tabular-nums text-accent-foreground"
     aria-hidden="true"
     data-atom-column-picker-badge></span>
 
