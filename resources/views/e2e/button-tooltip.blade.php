@@ -40,6 +40,18 @@ $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->q
         <span data-testid="scope-value" x-text="show"></span>
     </div>
 
+    {{-- the save bar's buttons: on a phone the submit takes what the others leave, tooltipped or not --}}
+    <div data-probe="bar" class="w-[358px]">
+        <atom:form.actions bar>
+            <atom:button data-testid="bar-cancel">Cancel</atom:button>
+            <atom:button type="submit" tooltip="Save the record" data-testid="bar-submit-tooltip">Save</atom:button>
+        </atom:form.actions>
+        <atom:form.actions bar>
+            <atom:button data-testid="bar-cancel-plain">Cancel</atom:button>
+            <atom:button type="submit" data-testid="bar-submit-plain">Save</atom:button>
+        </atom:form.actions>
+    </div>
+
     <div data-probe="long" class="w-[228px] border border-dashed p-0" data-testid="column">
         <atom:button block variant="ghost" icon-suffix="dropdown" tooltip="Switch workspace" data-testid="long">Northwind Trading Company International Sdn. Bhd.</atom:button>
     </div>

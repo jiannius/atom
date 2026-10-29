@@ -143,3 +143,19 @@ test('a long block label truncates inside the wrapper on the consumer build', as
   await button.hover()
   await expect(contentOf(page, 'long')).toBeVisible()
 })
+
+for (const tw of ['floor', 'latest']) {
+  test(`a tooltipped submit grows in the save bar on a phone as a plain one does (${tw})`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await page.goto(`/atom/e2e/button-tooltip?tw=${tw}`)
+    await page.evaluate(() => document.fonts.ready)
+
+    const width = async (id) => (await page.getByTestId(id).boundingBox()).width
+    const tooltipped = await width('bar-submit-tooltip')
+    const plain = await width('bar-submit-plain')
+
+    expect(plain, 'the plain submit grows past its label').toBeGreaterThan(120)
+    expect(Math.abs(tooltipped - plain)).toBeLessThan(1.5)
+    expect(await width('bar-cancel')).toBeLessThan(120)
+  })
+}
