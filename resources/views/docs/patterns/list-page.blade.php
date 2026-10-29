@@ -129,7 +129,7 @@ $money = fn (float $amount) => number_format($amount, 2);
             {{-- The toolbar. In a Livewire page it goes in the table's `header` slot (`<x-slot:header>`, no `strip`): the table draws
                  the hairline around it and swaps it for the bulk-action bar while rows are ticked. That slot needs a component, which
                  this page has not, so the toolbar sits above the table here and draws its own strip. --}}
-            <atom:table.toolbar strip x-data="{ filters: { search: null, customer: null, state: null, issued: '2026-04-01 to 2026-10-31' } }">
+            <atom:table.toolbar strip columns="invoices" x-data="{ filters: { search: null, customer: null, state: null, issued: '2026-04-01 to 2026-10-31' } }">
                 <atom:table.search placeholder="Search number or customer" data-filter-key="filters.search"/>
 
                 <atom:table.filters chips="inline">
@@ -153,37 +153,39 @@ $money = fn (float $amount) => number_format($amount, 2);
 
             {{-- No Livewire component here, so no rows, sorting or paging come from one. In a real page the rows come from a component
                  (`:paginate="$this->invoices"` draws the pager); `:empty` is derived from the paginator then. --}}
-            <atom:table frameless :empty="! $rows">
+            {{-- `columns` on the toolbar draws the column picker; this toolbar is outside its table, so it names the table's id. In a
+                 Livewire page the toolbar is in the header slot and `columns` needs no id. --}}
+            <atom:table id="invoices" persist-key="invoices-list" frameless :empty="! $rows">
                 <x-slot:columns>
                     {{-- in a Livewire page: <atom:table.column checkbox/> here, and <atom:table.cell :checkbox="$invoice->id"/> in each row --}}
                     <atom:table.column class="w-10"><atom:table.checkbox x-data="{ on: false }" x-on:click="on = ! on" x-bind:data-checked="on || null" role="checkbox" aria-label="Select all" tabindex="0"/></atom:table.column>
-                    <atom:table.column>Number</atom:table.column>
-                    <atom:table.column>Customer</atom:table.column>
-                    {{-- the dates are for a wider screen: on a phone the amount and the status stay in reach --}}
-                    <atom:table.column class="max-sm:hidden">Issued</atom:table.column>
-                    <atom:table.column class="max-sm:hidden">Due</atom:table.column>
-                    <atom:table.column numeric>Amount (RM)</atom:table.column>
-                    <atom:table.column>Status</atom:table.column>
+                    <atom:table.column name="number">Number</atom:table.column>
+                    <atom:table.column name="customer">Customer</atom:table.column>
+                    {{-- the dates are for a wider screen: on a phone the amount and the status stay in reach. The user can hide them at any width. --}}
+                    <atom:table.column name="issued" hideable class="max-sm:hidden">Issued</atom:table.column>
+                    <atom:table.column name="due" hideable class="max-sm:hidden">Due</atom:table.column>
+                    <atom:table.column name="amount" numeric>Amount (RM)</atom:table.column>
+                    <atom:table.column name="status">Status</atom:table.column>
                 </x-slot:columns>
 
                 <x-slot:rows>
                     @foreach ($rows as [$number, $customer, $what, $issued, $due, $amount, $owed, $state, $label])
                         <atom:table.row href="document-page">
                             <atom:table.cell class="w-10" x-on:click.stop><atom:table.checkbox x-data="{ on: false }" x-on:click="on = ! on" x-bind:data-checked="on || null" role="checkbox" :aria-label="'Select '.$number" tabindex="0"/></atom:table.cell>
-                            <atom:table.cell><span class="font-id">{{ $number }}</span></atom:table.cell>
-                            <atom:table.cell class="max-w-36 sm:max-w-64">
+                            <atom:table.cell column="number"><span class="font-id">{{ $number }}</span></atom:table.cell>
+                            <atom:table.cell column="customer" class="max-w-36 sm:max-w-64">
                                 <div class="truncate font-medium">{{ $customer }}</div>
                                 <div class="mt-0.5 truncate text-xs text-fg-subtle">{{ $what }}</div>
                             </atom:table.cell>
-                            <atom:table.cell class="max-sm:hidden">{{ $issued }}</atom:table.cell>
-                            <atom:table.cell :muted="$state !== 'overdue'" :class="($state === 'overdue' ? 'text-danger-fg! ' : '').'max-sm:hidden'">{{ $due }}</atom:table.cell>
-                            <atom:table.cell numeric>
+                            <atom:table.cell column="issued" class="max-sm:hidden">{{ $issued }}</atom:table.cell>
+                            <atom:table.cell column="due" :muted="$state !== 'overdue'" :class="($state === 'overdue' ? 'text-danger-fg! ' : '').'max-sm:hidden'">{{ $due }}</atom:table.cell>
+                            <atom:table.cell column="amount" numeric>
                                 {{ $money($amount) }}
                                 @if ($owed > 0 && $owed < $amount)
                                     <div class="mt-0.5 text-xs text-fg-subtle">{{ $money($owed) }} due</div>
                                 @endif
                             </atom:table.cell>
-                            <atom:table.cell>
+                            <atom:table.cell column="status">
                                 <div class="flex flex-wrap items-center gap-1.5">
                                     <atom:status :tone="$tones[$state]" :label="$label"/>
                                     @if ($state === 'overdue' && $owed > 0 && $owed < $amount)
