@@ -9,6 +9,7 @@ export default () => {
     // The picker's root. `$root` is the closest x-data to the element that asks, so inside the menu's x-for clones (which sit in the
     // dropdown's own x-data) it is the dropdown's, not this one: every method after init() reads the root from here.
     let root = null
+    let warned = false
 
     return {
         columns: [],
@@ -21,9 +22,10 @@ export default () => {
             return found?.matches('[data-atom-table]') ? found : null
         },
 
-        // the hideable columns that are shown; the picker never lets the last one go (the engine does not enforce it)
+        // every named column that is shown, locked ones included: the picker never lets the last one go (the engine does not
+        // enforce it), so a table keeps something to read. A locked column that is shown frees every hideable one.
         get shown () {
-            return this.columns.filter((column) => column.hideable && column.visible).length
+            return this.columns.filter((column) => column.visible).length
         },
 
         get hiddenCount () {
@@ -40,14 +42,14 @@ export default () => {
 
         // Everything a row shows is worked out here: a binding in the x-for clone reads only `row`
         get rows () {
-            let last = this.shown === 1
+            let sole = this.shown === 1
 
             return this.columns.map((column) => ({
                 name: column.name,
                 label: column.label,
                 locked: ! column.hideable,
                 visible: column.visible,
-                disabled: ! column.hideable || (column.visible && last),
+                disabled: ! column.hideable || (column.visible && sole),
             }))
         },
 
@@ -72,6 +74,12 @@ export default () => {
 
         read () {
             let list = this.table ? engine.list(this.table) : []
+
+            // a picker with no table does nothing: say so once, naming the id it was given
+            if (! this.table && ! warned && root?.dataset.atomColumnPickerFor) {
+                warned = true
+                console.warn(`[atom] <atom:table.columns for="${root.dataset.atomColumnPickerFor}">: no <atom:table> has that id, so the column picker has nothing to steer.`)
+            }
 
             if (JSON.stringify(list) !== JSON.stringify(this.columns)) this.columns = list
         },

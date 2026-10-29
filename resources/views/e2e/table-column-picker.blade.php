@@ -4,7 +4,7 @@
 //    persist-key, a locked Name, a default-hidden Phone, and a header that holds text that looks like markup.
 // B: a toolbar with `columns` and nothing else, no count: no divider. It steers the table it is `for`.
 // C: a table with an outside toolbar (`columns="picker-c"`) on a persist-key it shares with D: a second table, no picker. E: a table with
-// ONE hideable column and a locked one. (A table's own header slot needs $wire, so the picker without `for` is proven on the Livewire fixture.)
+// ONE hideable column and a locked one. F: only hideable columns (the last shown one cannot be hidden). G: a toolbar whose `columns` names no table. (A table's own header slot needs $wire, so the picker without `for` is proven on the Livewire fixture.)
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
 @endphp
 
@@ -91,6 +91,27 @@ $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->q
             </atom:table.row>
         </x-slot:rows>
     </atom:table>
+
+    <div class="rounded-panel border bg-surface" data-testid="f-panel">
+        <atom:table.toolbar strip :count="false" columns="picker-f" />
+    </div>
+
+    <atom:table id="picker-f" persist-key="picker-f" :empty="false" data-testid="f">
+        <x-slot:columns>
+            <atom:table.column name="email" hideable>Email</atom:table.column>
+            <atom:table.column name="city" hideable>City</atom:table.column>
+        </x-slot:columns>
+        <x-slot:rows>
+            <atom:table.row>
+                <atom:table.cell column="email">f@example.com</atom:table.cell>
+                <atom:table.cell column="city">f town</atom:table.cell>
+            </atom:table.row>
+        </x-slot:rows>
+    </atom:table>
+
+    <div class="rounded-panel border bg-surface" data-testid="g-panel">
+        <atom:table.toolbar strip :count="false" columns="picker-missing" />
+    </div>
 </div>
 
 @livewireScripts

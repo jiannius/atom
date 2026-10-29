@@ -44,6 +44,8 @@ class TableColumnsFixture extends Component
 
     public bool $label = false;
 
+    public bool $sticky = false;
+
     /** A column the server adds on a round trip (`addColumn()`) */
     public bool $extra = false;
 
@@ -72,6 +74,7 @@ class TableColumnsFixture extends Component
         $this->picker = request()->boolean('picker');
         $this->outside = request()->boolean('outside');
         $this->label = request()->boolean('label');
+        $this->sticky = request()->boolean('sticky');
         $this->_table['max_rows'] = self::SIZE;
 
         if (request()->has('state')) {

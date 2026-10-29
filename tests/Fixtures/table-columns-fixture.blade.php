@@ -24,6 +24,7 @@
         :paginate="$items"
         :skeleton="! $loaded"
         :empty="$empty"
+        :sticky-selection="$sticky"
         :persist-key="$keyed ? 'people' : null"
         :columns-state="$state"
         wire:key="people-{{ $generation }}"

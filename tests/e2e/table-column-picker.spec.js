@@ -154,24 +154,41 @@ for (const tw of ['floor', 'latest']) {
       await expect(menu(page)).toBeVisible()
     })
 
-    test('the last visible hideable column cannot be hidden', async ({ page }) => {
+    test('with a locked column shown, every hideable column can be hidden', async ({ page }) => {
       await open(page, { tw, query: '&picker=1' })
       await openMenu(page)
 
+      // phone is hidden by default; email, city and plan go one after the other, the last of them too
       await item(page, 'Email').click()
       await item(page, 'City').click()
+      await expect(item(page, 'Plan')).not.toHaveAttribute('aria-disabled', 'true')
+      await item(page, 'Plan').click()
 
-      // plan is the last one drawn: its row is disabled and a click changes nothing
-      await expect(item(page, 'Plan')).toHaveAttribute('aria-disabled', 'true')
-      await expect(item(page, 'Plan')).toHaveAttribute('aria-checked', 'true')
-      await item(page, 'Plan').click({ force: true })
-      await expect(item(page, 'Plan')).toHaveAttribute('aria-checked', 'true')
-      expect(await shown(page, 'plan')).toBe(true)
-      expect(JSON.parse(await stored(page))).toEqual({ v: 1, columns: { email: false, city: false } })
+      await expect(item(page, 'Plan')).toHaveAttribute('aria-checked', 'false')
+      expect(await hidden(page, 'plan')).toBe(true)
+      expect(JSON.parse(await stored(page))).toEqual({ v: 1, columns: { email: false, city: false, plan: false } })
+      expect(await shown(page, 'name')).toBe(true)
+      await expect(badge(page)).toHaveText('4')
+    })
+
+    test('the last shown column of a table of only hideable columns cannot be hidden', async ({ page }) => {
+      await open(page, { path: 'table-column-picker', tw, key: 'atom:table-columns:picker-f' })
+      await openMenu(page, 4)
+
+      await expect(menu(page, 4).locator('[data-atom-column-name]')).toHaveText(['Email', 'City'])
+      await item(page, 'Email', 4).click()
+
+      // city is the only one left: its row is disabled and a click changes nothing
+      await expect(item(page, 'City', 4)).toHaveAttribute('aria-disabled', 'true')
+      await expect(item(page, 'City', 4)).toHaveAttribute('aria-checked', 'true')
+      await item(page, 'City', 4).click({ force: true })
+      await expect(item(page, 'City', 4)).toHaveAttribute('aria-checked', 'true')
+      expect(await shown(page, 'city', '[data-testid="f"]')).toBe(true)
+      expect(JSON.parse(await stored(page, 'atom:table-columns:picker-f'))).toEqual({ v: 1, columns: { email: false } })
 
       // showing another one frees it again
-      await item(page, 'Email').click()
-      await expect(item(page, 'Plan')).not.toHaveAttribute('aria-disabled', 'true')
+      await item(page, 'Email', 4).click()
+      await expect(item(page, 'City', 4)).not.toHaveAttribute('aria-disabled', 'true')
     })
 
     test('a locked item does nothing on click but takes focus', async ({ page }) => {
@@ -326,6 +343,18 @@ for (const tw of ['floor', 'latest']) {
       await expect(items(page).first()).toBeFocused()
     })
 
+    test('with sticky-selection the picker stays while rows are ticked', async ({ page }) => {
+      await open(page, { tw, query: '&picker=1&sticky=1' })
+
+      await page.locator('[data-atom-table-row] [data-atom-table-checkbox]').first().click()
+      await expect.poll(() => page.locator('[data-atom-table-row] [data-atom-table-checkbox][data-checked]').count()).toBe(1)
+      await expect(trigger(page)).toBeVisible()
+
+      await openMenu(page)
+      await item(page, 'Email').click()
+      expect(await hidden(page, 'email')).toBe(true)
+    })
+
     test('a toolbar outside the table steers it by `for`, across a re-adopt too', async ({ page }) => {
       await open(page, { tw, query: '&outside=1' })
 
@@ -402,12 +431,13 @@ for (const tw of ['floor', 'latest']) {
       await open(page, { path: 'table-column-picker', tw, key: 'atom:table-columns:picker-a' })
       await openMenu(page, 1)
 
-      // B's picker: one hideable column, the only one shown, so it cannot be hidden
+      // B's picker hides B's email (its locked name stays) and nothing of A's
       await expect(menu(page, 1).locator('[data-atom-column-name]')).toHaveText(['Name', 'Email'])
-      await expect(item(page, 'Email', 1)).toHaveAttribute('aria-disabled', 'true')
-      await item(page, 'Email', 1).click({ force: true })
-      expect(await shown(page, 'email', '[data-testid="b"]')).toBe(true)
+      await item(page, 'Email', 1).click()
+      expect(await hidden(page, 'email', '[data-testid="b"]')).toBe(true)
       expect(await shown(page, 'email', '[data-testid="a"]')).toBe(true)
+      expect(await shown(page, 'name', '[data-testid="b"]')).toBe(true)
+      await expect(badge(page, 0)).toHaveText('1')
     })
 
     test('two tables on one persist-key stay in step, and the picker follows a change made through the API', async ({ page }) => {
@@ -431,6 +461,27 @@ for (const tw of ['floor', 'latest']) {
 
       // a table with another key is not touched
       expect(await shown(page, 'email', '[data-testid="a"]')).toBe(true)
+    })
+
+    test('a picker whose `for` names no table warns once, naming the id, and lists no columns', async ({ page }) => {
+      const warnings = []
+      page.on('console', (message) => { if (message.type() === 'warning') warnings.push(message.text()) })
+      // the helper loads the page twice (it seeds storage first): count what the last load said
+      page.on('framenavigated', () => { warnings.length = 0 })
+
+      await open(page, { path: 'table-column-picker', tw, key: 'atom:table-columns:picker-a' })
+      await openMenu(page, 5)
+      await expect(menu(page, 5).locator('[data-atom-column-name]')).toHaveCount(0)
+      await page.keyboard.press('Escape')
+      await openMenu(page, 0)
+      // every picker reads its table again when a change is announced: the dead one must not say it twice
+      await page.evaluate(() => { for (let i = 0; i < 3; i++) window.dispatchEvent(new CustomEvent('atom-table-columns-changed')) })
+
+      const mine = warnings.filter((text) => text.includes('picker-missing'))
+      expect(mine).toHaveLength(1)
+      expect(mine[0]).toContain('no <atom:table> has that id')
+      // the pickers that find their table say nothing
+      expect(warnings.filter((text) => text.includes('[atom]'))).toHaveLength(1)
     })
   })
 }
