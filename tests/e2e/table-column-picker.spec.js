@@ -26,12 +26,20 @@ const shown = (page, name, scope = '[data-atom-table]') => page.evaluate(([name,
 const stored = (page, key = KEY) => page.evaluate((key) => window.localStorage.getItem(key), key)
 const hideList = (page, scope = '[data-atom-table]') => page.locator(`${scope} [data-atom-column-scope]`).first().getAttribute('data-atom-column-hide')
 
-const roundTrip = async (page, action) => {
+// Run an action that makes a Livewire round trip, then wait for the response and for `applied`, a concrete condition the caller
+// polls (the response is applied a moment after it arrives, and on a slow runner that moment is long). No timer.
+const roundTrip = async (page, action, applied) => {
   const response = page.waitForResponse((r) => r.url().includes('/livewire') && r.request().method() === 'POST')
   await action()
   await response
-  await page.evaluate(() => new Promise((done) => setTimeout(done, 80)))
+  await applied()
 }
+
+// the table's count text ("... of N"), which a search or a new table rewrites
+const countText = (page) => page.locator('[data-atom-table-count-source]').getAttribute('data-text')
+
+// two animation frames: what a handler queued by the last event has had its turn (a negative check needs a moment, not a timer)
+const frames = (page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))))
 
 async function open(page, { path = 'table-columns', tw = 'latest', query = '', seed = null, key = KEY } = {}) {
   await page.goto(`/atom/e2e/${path}?tw=${tw}${query}`)
@@ -243,7 +251,7 @@ for (const tw of ['floor', 'latest']) {
       await expect(trigger(page)).toBeFocused()
       await expect(trigger(page)).toHaveAttribute('aria-expanded', 'false')
       // Escape gives the focus back; the tooltip does not pop up over a menu that is just closing
-      await page.waitForTimeout(400)
+      await frames(page)
       await expect(tipOf(page)).toBeHidden()
     })
 
@@ -260,7 +268,7 @@ for (const tw of ['floor', 'latest']) {
 
       await page.mouse.move(5, 5)
       await trigger(page).hover()
-      await page.waitForTimeout(300)
+      await frames(page)
       await expect(tipOf(page)).toBeHidden()
     })
 
@@ -278,7 +286,7 @@ for (const tw of ['floor', 'latest']) {
       await open(page, { tw, query: '&picker=1', seed: { v: 1, columns: { email: false, phone: true } } })
       await expect(badge(page)).toHaveText('1')
 
-      await roundTrip(page, () => page.getByTestId('search').fill('Person 1'))
+      await roundTrip(page, () => page.getByTestId('search').fill('Person 1'), () => expect.poll(() => countText(page)).toMatch(/\b11\b/))
       expect(await hidden(page, 'email')).toBe(true)
       expect(await shown(page, 'phone')).toBe(true)
       await expect(badge(page)).toHaveText('1')
@@ -290,7 +298,7 @@ for (const tw of ['floor', 'latest']) {
       await expect(item(page, 'Phone')).toHaveAttribute('aria-checked', 'true')
 
       // and a morph while the menu is open leaves it open
-      await roundTrip(page, () => page.getByTestId('search').fill('Person 2'))
+      await roundTrip(page, () => page.getByTestId('search').fill('Person 3'), () => expect.poll(() => countText(page)).toMatch(/\b2\b/))
       await expect(menu(page)).toBeVisible()
       await expect(item(page, 'Email')).toHaveAttribute('aria-checked', 'false')
 
@@ -304,7 +312,7 @@ for (const tw of ['floor', 'latest']) {
       await open(page, { tw, query: '&picker=1' })
       await expect(badge(page)).toHaveText('1')
 
-      await roundTrip(page, () => page.locator('[data-reset-layout]').click())
+      await roundTrip(page, () => page.locator('[data-reset-layout]').click(), () => expect.poll(() => shown(page, 'phone')).toBe(true))
 
       // resetLayout() pushes { phone: true } and a new wire:key: the new table adopts it, the picker is drawn again from it
       await expect.poll(() => shown(page, 'phone')).toBe(true)
@@ -322,7 +330,7 @@ for (const tw of ['floor', 'latest']) {
       await expect(menu(page).locator('[data-atom-column-name]')).toHaveText(['Name', 'Email', 'Phone', 'City', 'Plan'])
 
       // (the click outside closes the menu; the list behind it is what changes)
-      await roundTrip(page, () => page.locator('[data-add-column]').click())
+      await roundTrip(page, () => page.locator('[data-add-column]').click(), () => expect(page.locator('[data-atom-table] th[data-atom-column="region"]')).toHaveCount(1))
       await openMenu(page)
       await expect(menu(page).locator('[data-atom-column-name]')).toHaveText(['Name', 'Email', 'Phone', 'City', 'Plan', 'Region'])
       await item(page, 'Region').click()
@@ -368,9 +376,7 @@ for (const tw of ['floor', 'latest']) {
       await expect(badge(page)).toHaveText('2')
       await page.keyboard.press('Escape')
 
-      await roundTrip(page, () => page.locator('[data-reset-layout]').click())
-      // the response is applied a moment after it arrives (a busy server makes that moment long): wait for the new table
-      await expect.poll(() => shown(page, 'city')).toBe(true)
+      await roundTrip(page, () => page.locator('[data-reset-layout]').click(), () => expect.poll(() => shown(page, 'city')).toBe(true))
       await expect(badge(page)).toBeHidden()
       await openMenu(page)
       await expect(item(page, 'City')).toHaveAttribute('aria-checked', 'true')
