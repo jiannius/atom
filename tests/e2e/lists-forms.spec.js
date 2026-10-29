@@ -294,15 +294,17 @@ for (const tw of ['floor', 'latest']) {
         await expect(page.locator('[data-atom-table] tbody tr').first().locator('[data-atom-status]')).toBeInViewport()
       })
 
-      test('the views scroll inside their own strip and the toolbar wraps: the search fills the row beside the icon-only Export', async ({ page }) => {
+      test('the views scroll inside their own strip and the toolbar wraps: the search fills the row beside the icon-only Export and the column picker', async ({ page }) => {
         await list(page)
 
         const search = await box(page.locator('[data-atom-table-toolbar] [data-atom-table-search]'))
         const exporter = await box(page.getByTestId('list-panel').getByRole('button', { name: 'Export' }))
+        const picker = await box(page.getByTestId('list-panel').locator('[data-atom-column-picker]'))
         const panel = await box(page.getByTestId('list-panel'))
 
-        // the whole row of the panel less its 12px strip padding: the search, an 8px gap and the Export icon
-        expect(Math.abs(search.width + 8 + exporter.width - (panel.width - 2 - 24))).toBeLessThan(2)
+        // the whole row of the panel less its 12px strip padding: the search, an 8px gap, the Export icon, a gap, the 1px divider, a gap
+        // and the icon-only column picker
+        expect(Math.abs(search.width + 8 + exporter.width + 8 + 1 + 8 + picker.width - (panel.width - 2 - 24))).toBeLessThan(2)
         expect(await noSideScroll(page)).toBe(true)
       })
     })
