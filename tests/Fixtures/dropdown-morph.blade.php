@@ -54,6 +54,21 @@
         </atom:tooltip>
     </div>
 
+    {{-- a dropdown trigger inside a tooltip, keyed by a generation: swap() replaces the button and keeps the tooltip around it --}}
+    @if ($showSwap)
+        <div data-probe="swap" style="margin: 24px 0">
+            <atom:dropdown>
+                <atom:tooltip content="Swap actions">
+                    <button type="button" wire:key="swap-trigger-{{ $generation }}" data-generation="{{ $generation }}">Swap</button>
+                </atom:tooltip>
+
+                <atom:menu popover>
+                    <atom:menu.item>One</atom:menu.item>
+                </atom:menu>
+            </atom:dropdown>
+        </div>
+    @endif
+
     <div data-probe="context" style="margin: 24px 0">
         <atom:context-menu>
             <div data-context-target style="width: 200px; height: 60px; border: 1px solid #ccc">Right click</div>

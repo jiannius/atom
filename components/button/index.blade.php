@@ -12,6 +12,7 @@
     'color' => null,
     'icon' => null,
     'iconSuffix' => null,
+    'tooltip' => null,
 ])
 
 @php
@@ -190,11 +191,17 @@ if ($type === 'delete' && !$attributes->wire('click')->value() && !$attributes->
 if ($slot->isEmpty() && data_get($icon, 'start')) {
     $merges = [
         ...$merges,
-        'aria-label' => str(data_get($icon, 'start'))->headline()->toString(),
+        'aria-label' => $tooltip ? t($tooltip) : str(data_get($icon, 'start'))->headline()->toString(),
     ];
 }
 @endphp
 
+{{-- With a tooltip the button sits in an <atom:tooltip> wrapper: a box floating-ui can place the tooltip against, which keeps the
+     button's own shrink-to-fit (and the truncation of a long label) inside it. A tag cannot be opened and closed under two
+     separate @if directives, so the button is captured and printed either way. The tail has no whitespace of its own, so a button
+     without `tooltip` prints the bytes it always did. The wrapper takes the button's `wire:key` too, so a morph in a loop
+     matches wrappers by key and not by position (keys are looked up among siblings only, so the button keeps its own). --}}
+@php ob_start(); @endphp
 <{{ $el }} {{ $attributes->merge($merges)->class($classes) }} data-atom-button>
     <div class="absolute inset-0 items-center justify-center hidden group-[.is-loading]/button:flex {{ $type === 'submit' ? 'group-[.is-loading]/form:flex' : '' }}">
         <atom:icon.loading :class="data_get($icon, 'class')"/>
@@ -216,3 +223,5 @@ if ($slot->isEmpty() && data_get($icon, 'start')) {
         @endif
     </div>
 </{{ $el }}>
+@php $button = ob_get_clean(); @endphp
+@if ($tooltip)<atom:tooltip :content="$tooltip" :class="$block ? 'flex w-full' : 'inline-flex max-w-full min-w-0'" :wire:key="$attributes->get('wire:key')">{!! $button !!}</atom:tooltip>@else{!! $button !!}@endif

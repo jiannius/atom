@@ -64,7 +64,7 @@ $stickyBar = $sticky && ! $bar;
     @endif
 
     @if ($bar)
-        <div class="flex w-full flex-wrap items-center justify-end gap-2 max-sm:[&>[type=submit]]:flex-1 sm:ms-auto sm:w-auto" data-atom-form-actions-buttons>
+        <div class="flex w-full flex-wrap items-center justify-end gap-2 max-sm:[&>[type=submit]]:flex-1 max-sm:[&>[data-atom-tooltip]:has(>[type=submit])]:flex-1 max-sm:[&>[data-atom-tooltip]>[type=submit]]:w-full sm:ms-auto sm:w-auto" data-atom-form-actions-buttons>
             @if ($slot->isEmpty())
                 <atom:button type="submit">{{ t('Save') }}</atom:button>
             @else

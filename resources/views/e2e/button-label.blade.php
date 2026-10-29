@@ -22,6 +22,15 @@ $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->q
         <atom:button block variant="ghost" icon-suffix="dropdown" data-testid="short">Acme</atom:button>
     </div>
 
+    {{-- the same label with a tooltip: the wrapper must give the truncation the box it had --}}
+    <div class="w-[228px] border border-dashed p-0" data-testid="column-tooltip">
+        <atom:button block variant="ghost" icon-suffix="dropdown" tooltip="Switch workspace" data-testid="tooltip-long">Northwind Trading Company International Sdn. Bhd.</atom:button>
+    </div>
+
+    <div class="w-[228px] border border-dashed p-0" data-testid="column-tooltip-inline">
+        <atom:button icon-suffix="dropdown" tooltip="Switch workspace" data-testid="tooltip-inline-long">Northwind Trading Company International Sdn. Bhd.</atom:button>
+    </div>
+
     {{-- a non-block button in a narrow column shrinks to it --}}
     <div class="w-[228px] border border-dashed p-0" data-testid="column-inline">
         <atom:button icon-suffix="dropdown" data-testid="inline-long">Northwind Trading Company International Sdn. Bhd.</atom:button>

@@ -77,6 +77,20 @@ for (const tw of ['floor', 'latest']) {
       expect(short.width).toBeLessThan(100)
     })
 
+    test('a tooltipped button truncates its label in the wrapper and keeps its icon, block or not', async ({ page }) => {
+      for (const [id, columnId] of [['tooltip-long', 'column-tooltip'], ['tooltip-inline-long', 'column-tooltip-inline']]) {
+        const button = page.getByTestId(id)
+        const label = button.locator('[data-atom-button-label]')
+        const b = await box(button)
+        const column = await box(page.getByTestId(columnId))
+
+        expect(b.right, id).toBeLessThanOrEqual(column.right + 0.5)
+        expect((await box(button.locator('svg').last())).right, id).toBeLessThanOrEqual(b.right)
+        expect(await label.evaluate((el) => el.scrollWidth > el.clientWidth), id).toBe(true)
+        expect(await label.evaluate((el) => getComputedStyle(el).textOverflow), id).toBe('ellipsis')
+      }
+    })
+
     // the underline of a link button is drawn on the label, whose `truncate` clips to its box: the label has room above and below
     // for it (and a matching negative margin, so the button's own height is the same as any other variant's)
     for (const size of ['xs', 'sm', 'base', 'lg']) {

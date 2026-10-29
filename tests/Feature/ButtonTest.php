@@ -211,6 +211,128 @@ describe('button label', function () {
     ]);
 });
 
+describe('button tooltip', function () {
+    it('wraps the button in a tooltip only when asked', function () {
+        expect(domQuery(renderBlade('<atom:button>Save</atom:button>'), '//*[@data-atom-tooltip]'))->toHaveCount(0);
+
+        $html = renderBlade('<atom:button tooltip="Save the record">Save</atom:button>');
+        $wrapper = domQuery($html, '//*[@data-atom-tooltip]');
+
+        expect($wrapper)->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-tooltip]/button[@data-atom-button]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-tooltip]/*[@data-atom-tooltip-content]'))->toHaveCount(1)
+            ->and(trim(domQuery($html, '//*[@data-atom-tooltip-content]')[0]->textContent))->toBe('Save the record')
+            ->and(domClasses($wrapper[0]))->toContain('inline-flex', 'min-w-0', 'max-w-full');
+    });
+
+    it('does not print tooltip as an attribute of the button', function () {
+        $button = domQuery(renderBlade('<atom:button tooltip="Save the record" icon="add"/>'), '//button')[0];
+
+        expect($button->hasAttribute('tooltip'))->toBeFalse();
+    });
+
+    it('makes the wrapper full width for a block button', function () {
+        $wrapper = domQuery(renderBlade('<atom:button block tooltip="Save">Save</atom:button>'), '//*[@data-atom-tooltip]')[0];
+
+        expect(domClasses($wrapper))->toContain('flex', 'w-full')->not->toContain('inline-flex');
+    });
+
+    it('names a slotless icon button from the tooltip', function () {
+        $button = domQuery(renderBlade('<atom:button icon="add" tooltip="Add a contact"/>'), '//button')[0];
+
+        expect($button->getAttribute('aria-label'))->toBe('Add a contact');
+    });
+
+    it('lets the caller\'s aria-label win over the tooltip', function () {
+        $button = domQuery(renderBlade('<atom:button icon="add" tooltip="Add a contact" aria-label="New contact"/>'), '//button')[0];
+
+        expect($button->getAttribute('aria-label'))->toBe('New contact');
+    });
+
+    it('keeps naming an icon button without a tooltip from its icon', function () {
+        $button = domQuery(renderBlade('<atom:button icon="add"/>'), '//button')[0];
+
+        expect($button->getAttribute('aria-label'))->toBe('Add');
+    });
+
+    it('gives a button with a visible label no aria-label', function () {
+        $button = domQuery(renderBlade('<atom:button icon="add" tooltip="Add a contact">Add</atom:button>'), '//button')[0];
+
+        expect($button->hasAttribute('aria-label'))->toBeFalse();
+    });
+
+    it('keeps the host\'s attributes on the button, not on the wrapper', function () {
+        $html = renderBlade('<atom:button icon="add" tooltip="Add" wire:click="add" x-on:click="open = !open" data-testid="add"/>');
+        $button = domQuery($html, '//button')[0];
+        $wrapper = domQuery($html, '//*[@data-atom-tooltip]')[0];
+
+        expect($button->getAttribute('wire:click'))->toBe('add')
+            ->and($button->getAttribute('x-on:click'))->toBe('open = !open')
+            ->and($button->getAttribute('data-testid'))->toBe('add')
+            ->and($wrapper->hasAttribute('wire:click'))->toBeFalse()
+            ->and($wrapper->hasAttribute('data-testid'))->toBeFalse();
+    });
+
+    it('keeps a hostile tooltip inside its attribute and its text node', function () {
+        $html = renderBlade('<atom:button icon="add" tooltip=\'"><img src=x onerror=alert(1)>\'/>');
+
+        expect(domQuery($html, '//img'))->toHaveCount(0)
+            ->and(domQuery($html, '//button')[0]->getAttribute('aria-label'))->toBe('"><img src=x onerror=alert(1)>')
+            ->and(domQuery($html, '//*[@data-atom-tooltip-content]')[0]->textContent)->toContain('"><img src=x onerror=alert(1)>');
+    });
+
+    it('adds nothing to a button without a tooltip: the markup ends with the one newline it always did', function (string $tag) {
+        $html = renderBlade($tag);
+
+        // a stray newline after the closing tag (an inline sibling then gets a space) is what a wrapper added once
+        expect($html)->toStartWith('<')->toEndWith('>'."\n")->not->toEndWith("\n\n")
+            ->and($html)->not->toContain('data-atom-tooltip');
+    })->with([
+        'button' => '<atom:button>Save</atom:button>',
+        'icon only' => '<atom:button icon="add"/>',
+        'link' => '<atom:button href="/x">Go</atom:button>',
+        'submit' => '<atom:button type="submit">Save</atom:button>',
+        'block' => '<atom:button block>Save</atom:button>',
+    ]);
+
+    it('prints the same button inside the wrapper as it does bare', function () {
+        $bare = renderBlade('<atom:button variant="ghost" wire:click="save">Save</atom:button>');
+        $wrapped = renderBlade('<atom:button variant="ghost" wire:click="save" tooltip="Save it">Save</atom:button>');
+        $button = domQuery($wrapped, '//*[@data-atom-tooltip]/button')[0];
+
+        expect(domQuery($bare, '//button')[0]->getAttribute('class'))->toBe($button->getAttribute('class'))
+            ->and(domQuery($bare, '//button')[0]->getAttribute('wire:click'))->toBe($button->getAttribute('wire:click'))
+            ->and(domQuery($bare, '//button')[0]->textContent)->toBe($button->textContent);
+    });
+
+    it('puts the wire:key on the wrapper as well, so a loop is matched by key and not by position', function () {
+        $html = renderBlade('@foreach ([1, 2] as $id)<atom:button icon="add" tooltip="Add" :wire:key="\'row-\'.$id"/>@endforeach');
+
+        $wrappers = domQuery($html, '//*[@data-atom-tooltip]');
+        $buttons = domQuery($html, '//*[@data-atom-tooltip]/button');
+
+        expect($wrappers)->toHaveCount(2)
+            ->and($wrappers[0]->getAttribute('wire:key'))->toBe('row-1')
+            ->and($wrappers[1]->getAttribute('wire:key'))->toBe('row-2')
+            // the button keeps its own: keys are matched among siblings only, and the button is its wrapper's only sibling-level node
+            ->and($buttons[0]->getAttribute('wire:key'))->toBe('row-1')
+            ->and($buttons[1]->getAttribute('wire:key'))->toBe('row-2');
+    });
+
+    it('gives the wrapper no wire:key when the button has none', function () {
+        $wrapper = domQuery(renderBlade('<atom:button icon="add" tooltip="Add"/>'), '//*[@data-atom-tooltip]')[0];
+
+        expect($wrapper->hasAttribute('wire:key'))->toBeFalse();
+    });
+
+    it('renders the tooltip on a link button too', function () {
+        $html = renderBlade('<atom:button href="/x" icon="add" tooltip="Go"/>');
+
+        expect(domQuery($html, '//*[@data-atom-tooltip]/a[@data-atom-button]'))->toHaveCount(1)
+            ->and(domQuery($html, '//a')[0]->getAttribute('aria-label'))->toBe('Go');
+    });
+});
+
 describe('button.group', function () {
     it('collapses adjacent button borders', function () {
         $html = renderBlade('<atom:button.group><atom:button>A</atom:button><atom:button>B</atom:button></atom:button.group>');

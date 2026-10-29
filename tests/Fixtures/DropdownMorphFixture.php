@@ -16,6 +16,10 @@ class DropdownMorphFixture extends Component
 
     public string $menuClass = 'menu-a';
 
+    public int $generation = 0;
+
+    public bool $showSwap = true;
+
     /**
      * Re-render the component so Livewire morphs the markup around every open panel.
      */
@@ -31,6 +35,22 @@ class DropdownMorphFixture extends Component
     public function restyle(): void
     {
         $this->menuClass = 'menu-b';
+    }
+
+    /**
+     * Give the swap probe's trigger a new key, so the morph replaces that node and leaves the tooltip around it.
+     */
+    public function swap(): void
+    {
+        $this->generation++;
+    }
+
+    /**
+     * Take the swap probe out of the page, so Alpine destroys its tooltip.
+     */
+    public function removeSwap(): void
+    {
+        $this->showSwap = false;
     }
 
     /**

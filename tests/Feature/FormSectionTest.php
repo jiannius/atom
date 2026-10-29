@@ -199,6 +199,12 @@ describe('save bar', function () {
         expect(domClasses($buttons))->toContain('w-full', 'sm:w-auto', 'sm:ms-auto', 'max-sm:[&>[type=submit]]:flex-1');
     });
 
+    it('grows a tooltipped submit too: its wrapper takes the room and the button fills the wrapper', function () {
+        $buttons = domQuery(renderBlade('<atom:form.actions bar />'), '//*[@data-atom-form-actions-buttons]')[0];
+
+        expect(domClasses($buttons))->toContain('max-sm:[&>[data-atom-tooltip]:has(>[type=submit])]:flex-1', 'max-sm:[&>[data-atom-tooltip]>[type=submit]]:w-full');
+    });
+
     it('keeps the modal footer as it was: pinned, bleeding to the panel, on the surface', function () {
         $bar = domQuery(renderBlade('<atom:form.actions sticky />'), '//*[@data-atom-form-actions]')[0];
 

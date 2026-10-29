@@ -262,7 +262,7 @@ test('a re-run init() does not stack morph callbacks', async ({ page }) => {
     }
 
     const dropdown = wrap(document.querySelector('[data-probe="menu"] [data-atom-dropdown]'), 'syncState')
-    const tooltip = wrap(document.querySelector('[data-probe="tooltip"] [data-atom-tooltip]'), 'link')
+    const tooltip = wrap(document.querySelector('[data-probe="tooltip"] [data-atom-tooltip]'), '_atomLink')
 
     const palette = document.querySelector('dialog[data-atom-command]')
     window.dispatchEvent(new CustomEvent('atom-command-show', { detail: { name: 'morph-palette' } }))
@@ -302,6 +302,51 @@ test('a tooltip stays anchored and keeps its aria link through a morph', async (
   expect(await rect(content)).toEqual(before)
   await expect(content).toHaveAttribute('id', id)
   await expect(button).toHaveAttribute('aria-describedby', id)
+})
+
+test('a morph that swaps the trigger rebinds the tooltip to the new one: opening its menu still hides the tooltip', async ({ page }) => {
+  const trigger = probe(page, 'swap').locator('button[data-generation]')
+  const content = probe(page, 'swap').locator('[data-atom-tooltip-content]')
+  const menu = menuOf(page, 'swap')
+
+  await expect(trigger).toHaveAttribute('data-generation', '0')
+  await page.evaluate(() => window.Livewire.first().call('swap'))
+  await expect(trigger).toHaveAttribute('data-generation', '1')
+
+  await trigger.hover()
+  await expect(content).toBeVisible()
+  await trigger.click()
+  await expect(menu).toBeVisible()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  await expect(content).toBeHidden()
+})
+
+test('a tooltip taken out of the page stops watching its trigger', async ({ page }) => {
+  const errors = []
+  page.on('pageerror', (error) => errors.push(error.message))
+
+  const hides = await page.evaluate(async () => {
+    const root = document.querySelector('[data-probe="swap"] [data-atom-tooltip]')
+    const trigger = root.querySelector(':scope > button')
+    const data = window.Alpine.$data(root)
+    let calls = 0
+    const original = data._atomHide.bind(data)
+    data._atomHide = (...args) => { calls++; return original(...args) }
+
+    await window.Livewire.first().call('removeSwap')
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    const afterRemoval = calls
+
+    // the old trigger is out of the page; a watcher that outlived the tooltip would still hide on this
+    trigger.setAttribute('aria-expanded', 'true')
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    return { gone: !document.contains(root), afterRemoval, afterChange: calls }
+  })
+
+  expect(hides.gone).toBe(true)
+  expect(hides.afterChange).toBe(hides.afterRemoval)
+  expect(errors).toEqual([])
 })
 
 test('a context menu keeps its position through a morph', async ({ page }) => {
