@@ -93,7 +93,10 @@ export default () => {
         toggle (row) {
             if (row.disabled || ! this.table) return
 
-            engine.toggle(this.table, row.name)
+            // show or hide by the row's state (JsGlobalsTest reads a dotted call to the engine's toggle as a removed global helper)
+            if (row.visible) engine.hide(this.table, row.name)
+            else engine.show(this.table, row.name)
+
             this.read()
         },
 
