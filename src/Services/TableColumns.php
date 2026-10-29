@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom\Services;
 
+use Illuminate\Contracts\Support\Arrayable;
 use InvalidArgumentException;
 
 /**
@@ -28,7 +29,8 @@ class TableColumns
      */
     public const SCRIPT = <<<'JS'
 (function (s) { try {
-    var d = JSON.parse(localStorage.getItem('atom:table-columns:' + s.dataset.atomColumnKey) || 'null'), c = d && d.v === 1 && d.columns || {}
+    var d = JSON.parse(localStorage.getItem('atom:table-columns:' + s.dataset.atomColumnKey) || 'null'), c = d && d.v === 1 && d.columns
+    if (!c || typeof c !== 'object' || Array.isArray(c)) c = {}
     var h = (s.getAttribute('data-atom-column-hide') || '').split(' ').filter(Boolean), k
     for (k in c) if (/^[A-Za-z0-9_-]{1,64}$/.test(k) && typeof c[k] === 'boolean') {
         h = h.filter(function (n) { return n !== k })
@@ -52,6 +54,39 @@ JS;
         }
 
         return (string) $name;
+    }
+
+    /**
+     * The table's `persist-key` as a string, or null for none. Empty, null and false mean none; a string or an int is the key.
+     * Anything else (an array, an object) is a mistake in the markup and throws, like a bad column name.
+     */
+    public static function key(mixed $key): ?string
+    {
+        if ($key === null || $key === false || $key === '') {
+            return null;
+        }
+
+        if (! is_string($key) && ! is_int($key)) {
+            throw new InvalidArgumentException('<atom:table persist-key> must be a string, got '.get_debug_type($key).'.');
+        }
+
+        return (string) $key;
+    }
+
+    /**
+     * The host's `columns-state` as an array, or null when none was given. Only an array (or an Arrayable such as a collection) is a
+     * state: a JSON string, a number or an object is not one, and is treated as not given, so a saved setting that came back as the
+     * wrong type falls back to `persist-key` instead of switching the table to host mode with no choices or throwing on a page load.
+     *
+     * @return array<mixed>|null
+     */
+    public static function hostState(mixed $state): ?array
+    {
+        return match (true) {
+            is_array($state) => $state,
+            $state instanceof Arrayable => $state->toArray(),
+            default => null,
+        };
     }
 
     /**
@@ -149,7 +184,9 @@ JS;
 
     /**
      * One rule per hideable column. It is `!important` and unlayered, like [x-cloak] in atom.css, so a utility such as
-     * `lg:table-cell` (in Tailwind's layer) cannot show a cell again. Every name here has passed NAME.
+     * `lg:table-cell` (in Tailwind's layer) cannot show a cell again. The selector walks the table's own structure with child
+     * combinators (scroll box, table, section, row, cell), so a table nested in a cell, with a column of the same name, is not
+     * reached by the outer table's list. Every name here has passed NAME.
      *
      * @param  list<array{name: string, label: string, hideable: bool, hidden: bool}>  $payload
      */
@@ -159,7 +196,7 @@ JS;
 
         foreach ($payload as $column) {
             if ($column['hideable'] && preg_match(static::NAME, $column['name'])) {
-                $rules[] = '[data-atom-column-hide~="'.$column['name'].'"] [data-atom-column="'.$column['name'].'"]{display:none!important}';
+                $rules[] = '[data-atom-column-hide~="'.$column['name'].'"]>table>:is(thead,tbody,tfoot)>tr>[data-atom-column="'.$column['name'].'"]{display:none!important}';
             }
         }
 

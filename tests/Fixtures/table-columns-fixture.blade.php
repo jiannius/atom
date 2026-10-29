@@ -2,6 +2,8 @@
     <div class="flex gap-3 pb-3">
         <input type="text" wire:model.live.debounce.0ms="search" placeholder="Search people" data-testid="search" />
         <button type="button" wire:click="load" data-load>Load</button>
+        <button type="button" wire:click="pushState" data-push-state>Push state</button>
+        <button type="button" wire:click="resetLayout" data-reset-layout>Reset layout</button>
         <a href="/atom/e2e/table-columns-other" wire:navigate data-go-other>Other page</a>
         <span data-testid="saved">{{ json_encode($events) }}</span>
     </div>
@@ -14,6 +16,7 @@
         :empty="$empty"
         :persist-key="$keyed ? 'people' : null"
         :columns-state="$state"
+        wire:key="people-{{ $generation }}"
         data-testid="people">
         <x-slot:columns>
             <atom:table.column checkbox hideable />

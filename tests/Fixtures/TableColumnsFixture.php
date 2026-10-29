@@ -38,6 +38,9 @@ class TableColumnsFixture extends Component
 
     public bool $empty = false;
 
+    /** The table's wire:key: a new one makes Livewire draw a new table, which takes the server's `state` again */
+    public int $generation = 0;
+
     public ?string $search = null;
 
     /** The host's copy of the user's choices (name => visible), or null for none */
@@ -70,6 +73,23 @@ class TableColumnsFixture extends Component
     public function load(): void
     {
         $this->loaded = true;
+    }
+
+    /**
+     * The server changes `columns-state` and nothing else: the table already on the page ignores it.
+     */
+    public function pushState(): void
+    {
+        $this->state = ['phone' => true];
+    }
+
+    /**
+     * The server changes `columns-state` and the table's wire:key (a "reset layout" button, a saved-view switch): a new table.
+     */
+    public function resetLayout(): void
+    {
+        $this->state = ['phone' => true];
+        $this->generation++;
     }
 
     /**

@@ -80,8 +80,8 @@ it('prints exactly one rule per hideable column and none for a locked one', func
     $rules = explode("\n", $style[1]);
 
     expect($rules)->toBe([
-        '[data-atom-column-hide~="email"] [data-atom-column="email"]{display:none!important}',
-        '[data-atom-column-hide~="phone"] [data-atom-column="phone"]{display:none!important}',
+        '[data-atom-column-hide~="email"]>table>:is(thead,tbody,tfoot)>tr>[data-atom-column="email"]{display:none!important}',
+        '[data-atom-column-hide~="phone"]>table>:is(thead,tbody,tfoot)>tr>[data-atom-column="phone"]{display:none!important}',
     ]);
     expect(substr_count($html, '<style data-atom-column-css'))->toBe(1);
 });
@@ -163,7 +163,7 @@ it('accepts the longest name and every allowed character', function () {
     $html = columnsTable('<atom:table.column name="'.$name.'" hideable>X</atom:table.column>');
 
     expect(strlen($name))->toBe(64);
-    expect($html)->toContain('[data-atom-column-hide~="'.$name.'"]');
+    expect($html)->toContain('[data-atom-column-hide~="'.$name.'"]>table>');
 });
 
 it('never lets a forged meta attribute into the stylesheet', function () {
@@ -201,16 +201,53 @@ it('prints no script when the table has no hideable column, or the host gives th
     expect(columnsTable(COLUMNS, 'persist-key="k" :columns-state="[]"'))->not->toContain('<script');
 });
 
-it('carries the CSP nonce on the script when one is set, and none when it is not', function () {
-    expect(columnsTable(COLUMNS, 'persist-key="k"'))->toContain('<script>(function (s)')->not->toContain('nonce');
+it('carries the CSP nonce on the script and the stylesheet when one is set, and none when it is not', function () {
+    $plain = columnsTable(COLUMNS, 'persist-key="k"');
+
+    expect($plain)->toContain('<script>(function (s)')->not->toContain('nonce');
+    expect(domQuery($plain, '//style[@data-atom-column-css]')[0]->hasAttribute('nonce'))->toBeFalse();
 
     Vite::useCspNonce('abc123');
 
     $html = columnsTable(COLUMNS, 'persist-key="k"');
     $script = domQuery($html, '//*[@data-atom-table-scroll]/script')[0];
+    $style = domQuery($html, '//style[@data-atom-column-css]')[0];
 
     expect($script->getAttribute('nonce'))->toBe('abc123');
     expect($script->textContent)->toBe(TableColumns::SCRIPT);
+    expect($style->getAttribute('nonce'))->toBe('abc123');
+
+    // a table with no key has no script, and still needs the nonce on its stylesheet
+    $keyless = columnsTable(COLUMNS);
+    expect(domQuery($keyless, '//style[@data-atom-column-css]')[0]->getAttribute('nonce'))->toBe('abc123');
+
+    // the nonce is escaped into its attribute
+    Vite::useCspNonce('a"><b');
+    expect(columnsTable(COLUMNS, 'persist-key="k"'))->not->toContain('nonce="a">');
+});
+
+it('reads persist-key as a string: empty is none, an int is a key, anything else throws', function () {
+    expect(columnSource(columnsTable(COLUMNS))->hasAttribute('data-key'))->toBeFalse();
+    expect(columnSource(columnsTable(COLUMNS, 'persist-key=""'))->hasAttribute('data-key'))->toBeFalse();
+    expect(columnSource(columnsTable(COLUMNS, ':persist-key="false"'))->hasAttribute('data-key'))->toBeFalse();
+    expect(columnSource(columnsTable(COLUMNS, ':persist-key="7"'))->getAttribute('data-key'))->toBe('7');
+
+    expect(throwsInvalidName(fn () => columnsTable(COLUMNS, ':persist-key="[\'a\']"')))->toBeTrue();
+    expect(throwsInvalidName(fn () => columnsTable(COLUMNS, ':persist-key="new stdClass"')))->toBeTrue();
+});
+
+it('takes columns-state only as an array or a collection; anything else is not given', function () {
+    // a string (a JSON document, say), a number or an object is not a state: the table is not switched to host mode (localStorage still applies)
+    foreach (['\'email\'', '1', 'true', 'new stdClass'] as $value) {
+        $html = columnsTable(COLUMNS, 'persist-key="k" :columns-state="'.$value.'"');
+
+        expect(columnSource($html)->hasAttribute('data-state'))->toBeFalse($value);
+        expect(domQuery($html, '//*[@data-atom-table-scroll]/script'))->toHaveCount(1);
+        expect(scrollBox($html)->getAttribute('data-atom-column-hide'))->toBe('phone');
+    }
+
+    $collection = columnsTable(COLUMNS, ':columns-state="collect([\'email\' => false])"');
+    expect(json_decode(columnSource($collection)->getAttribute('data-state'), true))->toBe(['email' => false]);
 });
 
 it('computes the hidden list from the host\'s columns-state, over the defaults', function () {

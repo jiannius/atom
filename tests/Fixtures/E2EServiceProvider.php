@@ -86,6 +86,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/sticky-selection', fn () => view('atom::e2e.sticky-selection'));
         Route::middleware('web')->get('/atom/e2e/table-checked', fn () => view('atom::e2e.table-checked'));
         Route::middleware('web')->get('/atom/e2e/table-columns', fn () => view('atom::e2e.table-columns'));
+        Route::middleware('web')->get('/atom/e2e/table-columns-pair', fn () => view('atom::e2e.table-columns-pair'));
         Route::middleware('web')->get('/atom/e2e/table-columns-other', fn () => view('atom::e2e.table-columns-other'));
         Route::middleware('web')->get('/atom/e2e/table-server-slots', fn () => view('atom::e2e.table-server-slots'));
         Route::middleware('web')->get('/atom/e2e/table-filters-more', fn () => view('atom::e2e.table-filters-more'));

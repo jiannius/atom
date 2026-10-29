@@ -171,6 +171,21 @@ test.describe('first paint', () => {
     expect(errors).toEqual([])
   })
 
+  test('choices stored as a list, not an object, are ignored by the inline script as the engine ignores them', async ({ page }) => {
+    await page.goto('/atom/e2e/table-columns')
+    await page.evaluate((key) => window.localStorage.setItem(key, '{"v":1,"columns":[false,false]}'), KEY)
+
+    const release = await holdScripts(page)
+    const loaded = page.goto('/atom/e2e/table-columns?tw=latest')
+    await page.waitForFunction(() => performance.getEntriesByType('paint').length > 0)
+
+    expect(await page.evaluate(() => window.Alpine === undefined)).toBe(true)
+    expect(await page.locator('[data-atom-column-scope]').getAttribute('data-atom-column-hide')).toBe('phone')
+
+    release()
+    await loaded
+  })
+
   test('the host\'s columns-state is drawn at first paint with no script, and localStorage is not read', async ({ page }) => {
     await page.goto('/atom/e2e/table-columns')
     await page.evaluate(([key, value]) => window.localStorage.setItem(key, JSON.stringify(value)), [KEY, choices({ email: true, phone: true })])
@@ -420,6 +435,124 @@ test.describe('the host\'s columns-state', () => {
 
     expect(await shown(page, 'email')).toBe(true)
     expect(await hidden(page, 'phone')).toBe(true)
+  })
+})
+
+test.describe('state pushed from the server', () => {
+  const state = '&state=' + encodeURIComponent('{"email":false}')
+
+  test('a changed columns-state is ignored by the table already on the page', async ({ page }) => {
+    await open(page, { query: state })
+    await api(page, 'hide', 'city')
+    await expect(page.getByTestId('saved')).toHaveText('[{"email":false,"city":false}]')
+
+    // the server now says {phone: shown}, in the same table (same wire:key): the user's choices stand
+    await roundTrip(page, () => page.locator('[data-push-state]').click())
+
+    expect(await hidden(page, 'email')).toBe(true)
+    expect(await hidden(page, 'city')).toBe(true)
+    expect(await hidden(page, 'phone')).toBe(true)
+  })
+
+  test('a new wire:key draws a new table, which takes the server\'s state again', async ({ page }) => {
+    await open(page, { query: state })
+    await api(page, 'hide', 'city')
+    await expect(page.getByTestId('saved')).toHaveText('[{"email":false,"city":false}]')
+
+    await roundTrip(page, () => page.locator('[data-reset-layout]').click())
+
+    expect(await shown(page, 'email')).toBe(true)
+    expect(await shown(page, 'city')).toBe(true)
+    expect(await shown(page, 'phone')).toBe(true)
+    expect((await api(page, 'state')).columns).toEqual({ phone: true })
+
+    // and the new table is the user's again: a change keeps working, and reaches the host
+    await api(page, 'hide', 'plan')
+    expect(await hidden(page, 'plan')).toBe(true)
+    await roundTrip(page, () => page.getByRole('button', { name: 'Go to page 2' }).click())
+    expect(await hidden(page, 'plan')).toBe(true)
+    expect(await shown(page, 'phone')).toBe(true)
+  })
+})
+
+test.describe('several tables on one page', () => {
+  // the cells a table owns (not those of a table nested in one of its cells)
+  const own = (page, id, name) => page.evaluate(([id, name]) => {
+    const root = document.querySelector(`[data-testid="${id}"]`)
+    // the header, the cells and any footer of the column agree: [true] drawn, [false] hidden
+    return [...new Set([...root.querySelectorAll(`[data-atom-column="${name}"]`)]
+      .filter((el) => el.closest('[data-atom-table]') === root)
+      .map((el) => getComputedStyle(el).display !== 'none'))]
+  }, [id, name])
+  const call = (page, id, method, name) => page.evaluate(([id, method, name]) => window.atom.tableColumns[method](document.querySelector(`[data-testid="${id}"]`), name), [id, method, name])
+  const storedKeys = (page) => page.evaluate(() => Object.keys(window.localStorage).filter((key) => key.startsWith('atom:table-columns:')).sort())
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/atom/e2e/table-columns-pair')
+    await page.evaluate(() => window.localStorage.clear())
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+  })
+
+  test('two tables with a column of one name and different defaults and keys stay apart', async ({ page }) => {
+    expect(await own(page, 'a', 'phone')).toEqual([false])
+    expect(await own(page, 'b', 'phone')).toEqual([true])
+
+    expect(await call(page, 'a', 'show', 'phone')).toBe(true)
+    expect(await own(page, 'a', 'phone')).toEqual([true])
+    expect(await own(page, 'b', 'phone')).toEqual([true])
+
+    expect(await call(page, 'b', 'hide', 'phone')).toBe(true)
+    expect(await own(page, 'a', 'phone')).toEqual([true])
+    expect(await own(page, 'b', 'phone')).toEqual([false])
+
+    expect(await storedKeys(page)).toEqual(['atom:table-columns:pair-a', 'atom:table-columns:pair-b'])
+
+    // and a reload draws each as chosen
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+    expect(await own(page, 'a', 'phone')).toEqual([true])
+    expect(await own(page, 'b', 'phone')).toEqual([false])
+  })
+
+  test('two tables sharing a key share their choices, and say so once', async ({ page }) => {
+    await page.evaluate(() => {
+      window.__events = []
+      window.addEventListener('atom-table-columns-changed', (e) => window.__events.push(e.detail))
+    })
+
+    await call(page, 'c', 'hide', 'email')
+
+    expect(await own(page, 'c', 'email')).toEqual([false])
+    expect(await own(page, 'd', 'email')).toEqual([false])
+    expect(await page.evaluate(() => window.__events)).toEqual([{ key: 'pair-shared', columns: { email: false } }])
+    expect(await storedKeys(page)).toEqual(['atom:table-columns:pair-shared'])
+
+    await call(page, 'd', 'show', 'email')
+    expect(await own(page, 'c', 'email')).toEqual([true])
+  })
+
+  test('a table nested in a cell is not reached by the outer table\'s hidden column of the same name', async ({ page }) => {
+    expect(await own(page, 'outer', 'status')).toEqual([true])
+    expect(await own(page, 'inner', 'status')).toEqual([true])
+
+    await call(page, 'outer', 'hide', 'status')
+    expect(await own(page, 'outer', 'status')).toEqual([false])
+    expect(await own(page, 'inner', 'status'), 'the outer table hid the inner one\'s cells').toEqual([true])
+
+    await call(page, 'inner', 'hide', 'status')
+    await call(page, 'outer', 'show', 'status')
+    expect(await own(page, 'outer', 'status')).toEqual([true])
+    expect(await own(page, 'inner', 'status')).toEqual([false])
+  })
+
+  test('the same on first paint, from storage', async ({ page }) => {
+    await page.evaluate(() => window.localStorage.setItem('atom:table-columns:pair-outer', '{"v":1,"columns":{"status":false}}'))
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+
+    expect(await own(page, 'outer', 'status')).toEqual([false])
+    expect(await own(page, 'inner', 'status')).toEqual([true])
   })
 })
 

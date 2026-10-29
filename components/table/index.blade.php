@@ -69,11 +69,12 @@ if (!$showSkeleton && !is_bool($empty)) {
 // `columns-state` is the host's own copy of the user's choices (name => visible), read from the user's settings: when it is given it
 // is used instead of localStorage. Without it a `persist-key` keeps the choices in localStorage; with neither they live in memory.
 $columnsList = isset($columns) ? \Jiannius\Atom\Services\TableColumns::payload($columns->toHtml()) : [];
-$columnsKey = filled($persistKey) ? (string) $persistKey : null;
-$columnsFromHost = $columnsState !== null;
-$columnsChosen = $columnsFromHost
-    ? \Jiannius\Atom\Services\TableColumns::cleanState($columnsState instanceof \Illuminate\Contracts\Support\Arrayable ? $columnsState->toArray() : $columnsState)
-    : [];
+$columnsKey = \Jiannius\Atom\Services\TableColumns::key($persistKey);
+$columnsHostState = \Jiannius\Atom\Services\TableColumns::hostState($columnsState);
+$columnsFromHost = $columnsHostState !== null;
+$columnsChosen = $columnsFromHost ? \Jiannius\Atom\Services\TableColumns::cleanState($columnsHostState) : [];
+// the script and the stylesheet are inline, so under a strict Content-Security-Policy both need the page's nonce
+$columnsNonce = ($nonce = \Illuminate\Support\Facades\Vite::cspNonce()) ? ' nonce="'.e($nonce).'"' : '';
 $columnsHidden = \Jiannius\Atom\Services\TableColumns::hiddenNames($columnsList, $columnsChosen);
 $columnsCss = \Jiannius\Atom\Services\TableColumns::css($columnsList);
 $columnsScript = $columnsCss !== '' && $columnsKey !== null && ! $columnsFromHost;
@@ -106,7 +107,7 @@ data-atom-table
     @endif
 
     @if ($columnsCss !== '')
-        <style data-atom-column-css>{!! $columnsCss !!}</style>
+        <style data-atom-column-css{!! $columnsNonce !!}>{!! $columnsCss !!}</style>
     @endif
 
     {{-- The checked bar and the header are real elements shown with x-show, never a `<template x-if>` around the server-rendered slot: from
@@ -195,7 +196,7 @@ data-atom-table
                 {{-- First paint: the user's choices from localStorage, written before the <table> below is parsed, so a column the user
                      hid is never drawn and a default-hidden one they showed is never missing. The text is constant (TableColumns::SCRIPT). --}}
                 @if ($columnsScript)
-                    <script{!! ($nonce = \Illuminate\Support\Facades\Vite::cspNonce()) ? ' nonce="'.e($nonce).'"' : '' !!}>{!! \Jiannius\Atom\Services\TableColumns::SCRIPT !!}</script>
+                    <script{!! $columnsNonce !!}>{!! \Jiannius\Atom\Services\TableColumns::SCRIPT !!}</script>
                 @endif
                 @if ($showSkeleton)
                     <div class="motion-safe:animate-pulse divide-y divide-border" data-atom-table-skeleton>
