@@ -521,7 +521,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:form.section>` | One section of a form or settings page: `heading`, `subheading`, `layout` (`aside` (default): a 220px label column beside the fields from 768px, above them below that; `stacked`: always above, for a slide-over or modal), `level` (heading level, `2`; use `3` in a modal), `variant` (`danger`: the danger zone at the end of a settings or edit page, with the heading in the danger ink and the fields in a danger hairline box; at most one, and last). The fields sit in a grid of two columns once their own box is 448px wide (`class="@md:col-span-2"` on a field spans the row). A hairline and the form's gap separate sections. Slot `footer`: a right-aligned row for a section that saves on its own. |
 | `<atom:form.actions>` | The form's footer. `sticky` pins it to a modal or slide-over (what `form.modal` draws); `bar` makes it the **save bar** of a page form: a card (solid surface, border, the panel radius, the pop shadow) sticky 0.75rem above the bottom of the screen, as wide as the form's sections, that ends the page 0.75rem above the bottom (it takes the page's bottom room as a negative margin). Slot `start` holds live totals (a `<b>` or `<strong>` in it is the figure); `dirty` adds a muted "Unsaved changes" after it, shown only while the form has changes that were not saved (on a Livewire form its `wire:model` values against the last save, so typing and deleting is clean again; the `input`/`change` events of a control with no `wire:model` and of a plain form; cleared only by the form's own submit action, or an action started from a button in the actions bar, when it succeeds; any other request, a plain non-atom `<form wire:submit>` and a save that an Alpine `fetch`es do not clear it). The buttons are at the end (full width on a phone), and the submit is the screen's one primary action. A lone child of a plain or `sticky` footer sits at the end (CSS `:only-child`, which counts hidden `x-show` siblings too). |
 | `<atom:form.modal>` | `name`, `cols` (`auto`, `1`, `2`, `3`), `submit` (Save label), `method` (the component method the form calls, `submit` by default: `method="saveDomain"`; a name that is not a plain method name falls back to `submit`), `dismissible`, `escapable`, `closeable`. The width derives from `cols` (`1` is `max-w-xl`, `auto` and `2` are `max-w-2xl`, `3` is `max-w-4xl`); a `w-*` or `max-w-*` class on the tag (`class="w-[28rem]"`, `class="sm:max-w-lg"`, not `min-w-*`) replaces it at every size, so a width that only applies under a variant needs its base too (`w-full md:w-96`, `max-w-md md:max-w-lg`). Modal + form + sticky bar: Save on the left, and on the right the optional named slots `actions` (anything that should stay visible while the form scrolls, e.g. a running total) and `delete`, in that order. With only `delete`, or neither, the markup is unchanged. |
-| `<atom:table>` | `empty`, `paginate`, `maxRows` (array of row options), `skeleton`, `trashed`, `selectAll`, `stickySelection`, `frameless` (no outer box: for a table inside a panel the page draws, with the saved views and toolbar above it; give that panel `overflow-clip`, not `overflow-hidden`), `stickyPager` (default `true`: the bottom pager is pinned to the bottom of the screen, or of a dialog, while the table runs past it, and sits in place at the end; a page with a save bar keeps it in flow). Slots: `columns`, `rows`, `header`, `checked` (bulk-action bar; `<x-slot:checked tone="accent">` tints it with the accent-soft token and sets its text in the accent ink, framed or `frameless`; any other tone is the plain bar), `footer`. Children: `<atom:table.column>`, `<atom:table.row>`, `<atom:table.cell>`, `<atom:table.checkbox>`, `<atom:table.search>`, `<atom:table.filters>`, `<atom:table.trashed>`, `<atom:table.actions>`, `<atom:table.pagination>`, `<atom:table.toolbar>`, `<atom:table.views>`. `<atom:table.filters>` takes `chips` (`below`, the default: the active filters on a row of their own under the controls; `inline`: each active filter is a sentence pill, a name, a muted operator and the value, in the same wrapping row, ahead of the controls that are not set; a control with `add` draws its own chip, which opens its menu), `overflow` and the `more` slot; its "More filters" button is a 26px pill with a sliders icon and a count of the active filters whose control sits in the slot. `<atom:table.toolbar>` takes `strip`, `trashed` and `count` (default `true`: the row count of a paginated table, "1–50 of 128", opens its end group and follows every filter, search and page change; `:count="false"` leaves it out), and from `sm` up keeps its end group at the top end however many rows the filters take. Slots: `actions` (your own buttons, in the end group after the count; `end` is the same place under its older name and keeps working through 4.x) and `menu` (`<atom:menu.item>`s: atom draws a ⋯ ghost button with the tooltip "More actions" and the dropdown, last in the end group after `trashed`, as `<atom:page.header>` does for its own `menu` slot; no content, no button). `<atom:table.pagination>` takes `paginate`, `maxRows` and `sticky` (default `true`; the table's `stickyPager` forwards to it). `<atom:table.column>` and `<atom:table.cell>` take `numeric` (right-aligned, tabular figures: money and quantities). Driven by `$_table` state on the Livewire component. See [Table selection](#table-selection). |
+| `<atom:table>` | `empty`, `paginate`, `maxRows` (array of row options), `skeleton`, `trashed`, `selectAll`, `stickySelection`, `frameless` (no outer box: for a table inside a panel the page draws, with the saved views and toolbar above it; give that panel `overflow-clip`, not `overflow-hidden`), `persistKey` and `columnsState` (see [Hiding table columns](#hiding-table-columns)), `stickyPager` (default `true`: the bottom pager is pinned to the bottom of the screen, or of a dialog, while the table runs past it, and sits in place at the end; a page with a save bar keeps it in flow). Slots: `columns`, `rows`, `header`, `checked` (bulk-action bar; `<x-slot:checked tone="accent">` tints it with the accent-soft token and sets its text in the accent ink, framed or `frameless`; any other tone is the plain bar), `footer`. Children: `<atom:table.column>`, `<atom:table.row>`, `<atom:table.cell>`, `<atom:table.checkbox>`, `<atom:table.search>`, `<atom:table.filters>`, `<atom:table.trashed>`, `<atom:table.actions>`, `<atom:table.pagination>`, `<atom:table.toolbar>`, `<atom:table.views>`. `<atom:table.filters>` takes `chips` (`below`, the default: the active filters on a row of their own under the controls; `inline`: each active filter is a sentence pill, a name, a muted operator and the value, in the same wrapping row, ahead of the controls that are not set; a control with `add` draws its own chip, which opens its menu), `overflow` and the `more` slot; its "More filters" button is a 26px pill with a sliders icon and a count of the active filters whose control sits in the slot. `<atom:table.toolbar>` takes `strip`, `trashed` and `count` (default `true`: the row count of a paginated table, "1–50 of 128", opens its end group and follows every filter, search and page change; `:count="false"` leaves it out), and from `sm` up keeps its end group at the top end however many rows the filters take. Slots: `actions` (your own buttons, in the end group after the count; `end` is the same place under its older name and keeps working through 4.x) and `menu` (`<atom:menu.item>`s: atom draws a ⋯ ghost button with the tooltip "More actions" and the dropdown, last in the end group after `trashed`, as `<atom:page.header>` does for its own `menu` slot; no content, no button). `<atom:table.pagination>` takes `paginate`, `maxRows` and `sticky` (default `true`; the table's `stickyPager` forwards to it). `<atom:table.column>` and `<atom:table.cell>` take `numeric` (right-aligned, tabular figures: money and quantities). Driven by `$_table` state on the Livewire component. See [Table selection](#table-selection). |
 | `<atom:tabs>` | `tabs` (array), `size` (`sm`), `variant` (`button` for a segmented control; the default is a line). Child: `<atom:tabs.item>`. |
 | `<atom:page>` | The padded body of a screen (a shell's `<main>` is unpadded): a 1240px column, centred in its shell (`mx-auto`), 26px above, 120px below, a 22px gap between its blocks. `width` (`narrow` is a centred 980px, `full` has no cap). |
 | `<atom:page.header>` | Crumbs, the title (`<h1>`, 22px) with its status beside it, key facts, actions. Props: `title`, `level` (`1`; use `2` in a modal or slide-over), `size` (`sm` for a modal or slide-over), `crumbs` (`[['label' => ..., 'href' => ...], ...]`; the last is the current page and prints as given, every other label goes through `t()`, so a parent crumb that holds record data should not contain a `|`), `facts` (strings or `['label' => ..., 'value' => ..., 'mono' => true]`). Slots: `status`, `meta` (more facts), `actions`, `menu` (the overflow menu's items), `primary` (the one action for the record's current status). Where the actions go depends on the header's own width, not on how long its title or meta line is: the header is a container, and from 48rem the actions sit beside the title block (bottom-aligned, the title wraps in its column), narrower they are on a row of their own below it, at the start; `size="sm"` keeps the old rule (they share the row when they fit). The default header is a size container: it takes its parent's width and needs a parent that gives it one (a block, as the page column, the shells and `<atom:page>` are). In a flex row put `flex-1 min-w-0` on it; do not put it in an `inline-block`, a `w-fit` box or an `auto` grid column, where it collapses to nothing; and in a modal or slide-over use `size="sm"`, which is not a container (a default-size header no longer sizes the dialog). A slot made only of `@if` blocks that all come out false counts as empty (no ⋯ button, no actions wrapper), also in a Livewire view. |
@@ -728,6 +728,89 @@ there's no server-side or cross-device state.
 | `<atom:html>` | Page boilerplate (see [Page boilerplate](#page-boilerplate)). |
 | `<atom:sharer>` | `sites` (array), `url`, `title` — social share buttons. atom does not bundle [sharer.js](https://ellisonleao.github.io/sharer.js): load it on the page (`<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`) or the share buttons do nothing (the copy-link button works without it). The default sites (`facebook`, `twitter-x`, `linkedin`, `whatsapp`, `telegram`, `email`) were checked against sharer.js 0.5.4; a site needs an atom icon of the same name. |
 | `<atom:whatsapp>` | `number`, `text` — floating WhatsApp button: a pill in the success ink with `shadow-pop`, fixed bottom right (a caller's `fixed bottom-32 right-14` wins). |
+
+---
+
+## Hiding table columns
+
+Name a column, say it is `hideable`, and the user can hide it. The choice is presentation only (see the last point), costs no round trip and survives pagination, filters, searches and a reload.
+
+```blade
+<atom:table persist-key="contacts" :paginate="$this->contacts">
+    <x-slot:columns>
+        <atom:table.column checkbox />
+        <atom:table.column name="name">Name</atom:table.column>                       {{-- named, not hideable: locked, always shown --}}
+        <atom:table.column name="email" hideable>Email</atom:table.column>
+        <atom:table.column name="phone" hideable hidden>Phone</atom:table.column>      {{-- hidden until the user shows it --}}
+    </x-slot:columns>
+
+    <x-slot:rows>
+        @foreach ($this->contacts as $contact)
+            <atom:table.row wire:key="contact-{{ $contact->id }}">
+                <atom:table.cell :checkbox="$contact->id" />
+                <atom:table.cell column="name">{{ $contact->name }}</atom:table.cell>
+                <atom:table.cell column="email">{{ $contact->email }}</atom:table.cell>
+                <atom:table.cell column="phone">{{ $contact->phone }}</atom:table.cell>
+            </atom:table.row>
+        @endforeach
+    </x-slot:rows>
+</atom:table>
+```
+
+- **`name` on a column, `column` on its cells.** `name` joins the column to the system; a cell (in the rows and in the footer) follows it with `column="<name>"`. A name is 1 to 64 letters, digits, `_` or `-`: it becomes a CSS token, and anything else throws when the table renders. `hideable` lets the user hide it; a named column without it is **locked** (the picker lists it, greyed). `hidden` means "hidden until the user shows it" only on a `hideable` column; on any other column it is still the plain HTML `hidden` attribute. A `checkbox` column is never listed and never hidden. A table that names no column is unchanged.
+- **Where the choices live.** With `persist-key` (a string, like the one on `<atom:navlist.group>`) in the browser's `localStorage`, under `atom:table-columns:<key>`: per browser, not per user (`persist-key="contacts.{{ auth()->id() }}"` where a computer is shared). Only what differs from the defaults is stored, so a column you add later starts at its own default; a renamed or removed column's choice does nothing and is dropped at the next write. A storage that throws (private mode) leaves the defaults and keeps the choices in memory for the page. Without `persist-key` the choices live in memory: they survive pagination, filters and morphs, not a reload. Two tables with the same key share their choices, so use **one key per column set**: a write keeps only the names of the table that made it, so two different tables on one key overwrite each other. Choices are per browser and a second tab does not follow the first: the last tab to write wins.
+- **No flash.** The hiding is a stylesheet the table prints, keyed on a list of hidden names on the table's scroll box, so the defaults hold before any script runs. A choice kept in `localStorage` is written by a small inline script before the browser parses the rows. Under a strict Content-Security-Policy the script is allowed by its hash (it is the same text for every table) or by the nonce it carries when you set one (`Vite::useCspNonce()`); the stylesheet is inline too and can only be allowed by that nonce (`style-src 'nonce-...'`), which it carries the same way: without one, a policy that blocks inline styles leaves every column showing. A morph puts the list back to the defaults and the table writes the choices again before the browser paints.
+- **Next to your own responsive classes.** Hidden means hidden at every width. A column the user shows is still hidden by your `max-sm:hidden` below that breakpoint, and one your `hidden lg:table-cell` hides is still hidden below `lg`: the picker cannot tell a column your classes hide. The rule is unlayered and `!important`, so a Tailwind utility cannot show a hidden cell again; a `!` utility of your own can.
+- **Things to know.** A table nested in a cell has columns of its own: the outer table's hidden list does not reach a column of the same name inside it. A hidden sorted column keeps sorting the rows. A footer cell that spans a hideable column (`colspan`) keeps its span: give footer cells `column` and do not span hideable columns. **Hiding a column is presentation only:** every cell is still in the HTML and the query still runs; leave the column out on the server to keep data from a user.
+
+### Keeping the choices in the user's settings
+
+A host that wants the choices to follow the user (across browsers and devices) keeps them in the user's own settings. Pass them in with `columns-state`, and save them when the table says they changed.
+
+- **`:columns-state`** on `<atom:table>`: the user's choices, `name => visible`, the same object the table keeps in `localStorage` (only the choices that differ from the defaults). When it is given, even as `[]`, it is used instead of `localStorage`, which is then neither read nor written, and it is the starting point: after that the page holds the user's choices, and re-rendering with an older value does not undo them. A name that is not a plain column name, a value that is not a boolean, and a locked or unknown column are ignored.
+- **`atom-table-columns-changed`**: dispatched on the table (it bubbles to the `window`) whenever the user changes a column through the table's controls or the JS API. `event.detail` is `{ key, columns }`: the table's `persist-key` (`null` without one) and the whole map of choices, ready to store and to hand back as `columns-state`. It does not fire for a morph, a reload, a restored choice or a change that changes nothing.
+
+**`columns-state` is where the table starts, not a binding.** The table reads it when it first appears on the page and then holds what the user chose, so a re-render that carries an older value (a save that has not come back yet) cannot undo a choice. To push new state from the server, for a "Reset layout" button or a switch of saved view, change the table's `persist-key` or its `wire:key` (`wire:key="contacts-{{ $layout }}"`): Livewire draws a new table and it takes the state you give it. Only an array or a collection is a state; any other value (a JSON string, say) counts as not given, so decode it first. `persist-key` is a string (an empty one means none), an int or a `Str::of()`; anything else throws.
+
+It is not a Livewire public property, so there is nothing for a client to set: you decide what to store. The handler is a public method, though, so check what it is given:
+
+```php
+class Contacts extends Component
+{
+    use WithPagination, WithTable;
+
+    private const COLUMNS = ['email', 'phone', 'city'];
+
+    #[Computed]
+    public function columnsState(): array
+    {
+        return auth()->user()->settings['contacts_columns'] ?? [];   // [] for a user who never chose, not null
+    }
+
+    public function saveColumns(array $columns): void
+    {
+        $columns = collect($columns)->only(self::COLUMNS)->map(fn ($visible) => (bool) $visible)->all();
+
+        auth()->user()->update(['settings->contacts_columns' => $columns]);
+    }
+}
+```
+
+```blade
+<div x-on:atom-table-columns-changed.window="$event.detail.key === 'contacts' && $wire.saveColumns($event.detail.columns)">
+    <atom:table persist-key="contacts" :columns-state="$this->columnsState" :paginate="$this->contacts">
+```
+
+### The JS API
+
+`window.atom.tableColumns` is what a column picker calls; use it for your own. `target` is a table, or any element inside one.
+
+| Call | Does |
+|---|---|
+| `list(target)` | The named columns: `{ name, label, hideable, hidden (the default), visible (now) }`. |
+| `state(target)` | `{ key, columns }`: the user's choices, the shape of `columns-state`. |
+| `show(target, name)`, `hide(target, name)`, `toggle(target, name)` | Change one hideable column; `true` if something changed. A locked or unknown name does nothing. |
+| `reset(target)` | Back to the defaults. |
 
 ---
 

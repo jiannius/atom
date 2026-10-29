@@ -12,6 +12,7 @@ import floatingui from './floatingui'
 import recaptcha from './recaptcha'
 import safeUrl from './safe-url'
 import toastLift from './toast-lift'
+import tableColumns from './table-columns'
 
 export default {
     alert,
@@ -27,6 +28,7 @@ export default {
     recaptcha,
     safeUrl,
     toastLift,
+    tableColumns,
 
     ajax: (url, headers = null) => new ajax(url, headers),
     json: (data) => JSON.stringify(data, null, 2),
