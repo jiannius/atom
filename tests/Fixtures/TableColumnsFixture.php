@@ -38,6 +38,15 @@ class TableColumnsFixture extends Component
 
     public bool $empty = false;
 
+    public bool $picker = false;
+
+    public bool $outside = false;
+
+    public bool $label = false;
+
+    /** A column the server adds on a round trip (`addColumn()`) */
+    public bool $extra = false;
+
     /** The table's wire:key: a new one makes Livewire draw a new table, which takes the server's `state` again */
     public int $generation = 0;
 
@@ -60,6 +69,9 @@ class TableColumnsFixture extends Component
         $this->keyed = ! request()->boolean('nokey');
         $this->transition = request()->boolean('transition');
         $this->empty = request()->boolean('empty');
+        $this->picker = request()->boolean('picker');
+        $this->outside = request()->boolean('outside');
+        $this->label = request()->boolean('label');
         $this->_table['max_rows'] = self::SIZE;
 
         if (request()->has('state')) {
@@ -73,6 +85,14 @@ class TableColumnsFixture extends Component
     public function load(): void
     {
         $this->loaded = true;
+    }
+
+    /**
+     * The server draws one more hideable column: the picker has to list it without a reload.
+     */
+    public function addColumn(): void
+    {
+        $this->extra = true;
     }
 
     /**
