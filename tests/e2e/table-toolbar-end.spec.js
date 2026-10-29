@@ -129,3 +129,71 @@ for (const tw of ['floor', 'latest']) {
     })
   })
 }
+
+// The `actions` slot, the older `end` slot and the ⋯ `menu` slot: one end group, in the order count, actions, end, trashed, ⋯.
+for (const tw of ['floor', 'latest']) {
+  test.describe(`toolbar actions and ⋯ menu, ${tw} consumer build`, () => {
+    test('at 390px a toolbar with only an icon-only ⋯ shares the search\'s row', async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 800 })
+      await open(page, { path: 'table-toolbar-end', tw })
+
+      const bar = page.getByTestId('toolbar-menu-only')
+      const [s, e] = await Promise.all([bar.locator('[data-atom-table-search]').boundingBox(), bar.locator('[data-atom-table-toolbar-end]').boundingBox()])
+
+      expect(e.x).toBeGreaterThan(s.x + s.width)
+      expect(Math.abs((e.y + e.height / 2) - (s.y + s.height / 2))).toBeLessThan(4)
+      expect(await width(bar.locator('[data-atom-table-search]'))).toBeGreaterThanOrEqual(160)
+    })
+
+    for (const w of [1440, 1024, 768]) {
+      test(`at ${w}px the end group reads actions, end, archived, ⋯ left to right, flush with the toolbar's end`, async ({ page }) => {
+        await page.setViewportSize({ width: w, height: 900 })
+        await open(page, { path: 'table-toolbar-end', tw })
+
+        const bar = page.getByTestId('toolbar-menu')
+        const x = async (locator) => (await locator.boundingBox()).x
+        const xs = [
+          await x(bar.getByTestId('act-export')),
+          await x(bar.getByTestId('act-import')),
+          await x(bar.locator('[data-atom-table-trashed]')),
+          await x(bar.getByRole('button', { name: 'More actions' })),
+        ]
+
+        expect(xs).toEqual([...xs].sort((a, b) => a - b))
+        expect(new Set(xs).size).toBe(4)
+
+        const [t, e, more] = await Promise.all([
+          bar.locator('[data-atom-table-toolbar]').boundingBox(),
+          bar.locator('[data-atom-table-toolbar-end]').boundingBox(),
+          bar.getByRole('button', { name: 'More actions' }).boundingBox(),
+        ])
+
+        // the ⋯ is the last thing in the group, and the group is flush with the toolbar's end on the first row
+        expect(Math.abs((more.x + more.width) - (e.x + e.width))).toBeLessThan(2)
+        expect(Math.abs((e.x + e.width) - (t.x + t.width - 12))).toBeLessThan(2)
+        expect(Math.abs(e.y - (await bar.locator('[data-atom-table-search]').boundingBox()).y)).toBeLessThan(2)
+      })
+    }
+
+    test('the ⋯ opens a menu with the host\'s items, and the tooltip stays out of its way while it is open', async ({ page }) => {
+      await page.setViewportSize({ width: 1200, height: 800 })
+      await open(page, { path: 'table-toolbar-end', tw })
+
+      const bar = page.getByTestId('toolbar-menu')
+      const trigger = bar.getByRole('button', { name: 'More actions' })
+      const menu = bar.getByRole('menu')
+
+      await trigger.hover()
+      await expect(bar.locator('[data-atom-table-toolbar-end] [data-atom-tooltip-content]:has-text("More actions")')).toBeVisible()
+
+      await trigger.click()
+      await expect(menu).toBeVisible()
+      await expect(menu.getByRole('menuitem')).toHaveText(['Archive all', 'Import'])
+      await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+      await expect(bar.locator('[data-atom-table-toolbar-end] [data-atom-tooltip-content]:has-text("More actions")')).toBeHidden()
+
+      await menu.getByTestId('menu-archive').click()
+      await expect(bar).toHaveAttribute('data-picked', 'archive')
+    })
+  })
+}

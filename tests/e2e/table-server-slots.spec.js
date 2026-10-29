@@ -111,6 +111,71 @@ for (const tw of ['floor', 'latest']) {
       await expect(page.getByTestId('checked-foo')).toBeVisible()
     })
 
+    test('the toolbar\'s ⋯ menu: opens with the host\'s items, follows the server, and an item\'s wire:click runs', async ({ page }) => {
+      await open(page, { path: 'table-server-slots', tw, extra: '&menu=1' })
+
+      const trigger = page.getByTestId('menu-toolbar').getByRole('button', { name: 'More actions' })
+      const menu = page.getByTestId('menu-toolbar').getByRole('menu')
+
+      await expect(trigger).toBeVisible()
+      await expect(menu).toBeHidden()
+
+      await trigger.click()
+      await expect(menu).toBeVisible()
+      await expect(menu.getByRole('menuitem')).toHaveCount(1)
+      await expect(page.getByTestId('menu-foo')).toHaveCount(0)
+
+      // a server @if inside the slot appears after a round trip (the header is a real element)
+      await page.keyboard.press('Escape')
+      await expect(menu).toBeHidden()
+      await roundTrip(page, () => page.locator('[data-set-foo]').click())
+      await trigger.click()
+      await expect(page.getByTestId('menu-foo')).toBeVisible()
+      await expect(menu.getByRole('menuitem')).toHaveCount(2)
+
+      // an item's wire:click runs on the server
+      await roundTrip(page, () => page.getByTestId('menu-note').click())
+      await expect(page.getByTestId('header-input')).toHaveValue('from the menu')
+    })
+
+    test('a ⋯ menu whose whole slot is conditional appears and disappears with the server, and its end group is shown when the ⋯ is all it holds', async ({ page }) => {
+      await open(page, { path: 'table-server-slots', tw, extra: '&menu=2' })
+
+      const toolbar = page.getByTestId('menu-only-toolbar')
+      const end = toolbar.locator('[data-atom-table-toolbar-end]')
+      const trigger = toolbar.getByRole('button', { name: 'More actions' })
+      const menu = toolbar.getByRole('menu')
+
+      // no menu content and no paginator: no ⋯ and no end group to see
+      await expect(trigger).toHaveCount(0)
+      await expect(end).toBeHidden()
+
+      // the server turns the slot on: the ⋯ is drawn, in an end group that is really shown (not left display:none by the count's x-show)
+      await roundTrip(page, () => page.locator('[data-toggle-menu]').click())
+      await expect(trigger).toBeVisible()
+      await expect(end).toBeVisible()
+      expect(await end.evaluate((el) => el.style.display)).toBe('')
+
+      await trigger.click()
+      await expect(menu).toBeVisible()
+      await expect(menu.getByRole('menuitem')).toHaveCount(1)
+      await roundTrip(page, () => page.getByTestId('menu-cond').click())
+      await expect(page.getByTestId('header-input')).toHaveValue('from the conditional menu')
+
+      // and off again: the ⋯ and its menu are gone
+      await page.keyboard.press('Escape')
+      await roundTrip(page, () => page.locator('[data-toggle-menu]').click())
+      await expect(trigger).toHaveCount(0)
+      await expect(toolbar.getByRole('menu')).toHaveCount(0)
+      await expect(end).toBeHidden()
+
+      // and on once more: it comes back and still opens
+      await roundTrip(page, () => page.locator('[data-toggle-menu]').click())
+      await expect(trigger).toBeVisible()
+      await trigger.click()
+      await expect(menu.getByRole('menuitem')).toBeVisible()
+    })
+
     test('select all matching: the button names the table\'s total, and the count reads it', async ({ page }) => {
       await open(page, { path: 'table-server-slots', tw })
 
