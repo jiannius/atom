@@ -59,6 +59,11 @@ description="atom:table.toolbar lays out the search and the filters at the start
 view="atom::docs.demos.table.toolbar"/>
 
 <atom:docs.example
+title="Choosing columns"
+description="Name a column (name='email') and say it is hideable, and the toolbar's columns prop draws a picker: an icon-only Columns button with a count of the hidden columns, and a menu that lists every named column in order. A named column without hideable is locked (greyed, with a padlock); hidden on a hideable column means hidden until the user shows it; the last shown hideable column cannot be hidden. The choices cost no round trip: persist-key keeps them in the browser, columns-state in the user's settings. A toolbar outside the table, as here, names the table's id (columns='contacts-demo'); in the table's header slot the bare columns prop is enough. This demo is live. Hiding is presentation only: the cells are still in the HTML."
+view="atom::docs.demos.table.columns"/>
+
+<atom:docs.example
 title="Saved views"
 description="atom:table.views is a strip of views with counts, for the top of the list's panel. Bind it with wire:model (add .live to refetch at once): the property holds the chosen view's value, so WithUrlFilters can carry it in the URL. The host supplies the counts, as an array keyed by value or a closure that gets the value; atom never runs a count query. An item with an href is a link instead."
 view="atom::docs.demos.table.views"/>

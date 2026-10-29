@@ -4,9 +4,19 @@
         <button type="button" wire:click="load" data-load>Load</button>
         <button type="button" wire:click="pushState" data-push-state>Push state</button>
         <button type="button" wire:click="resetLayout" data-reset-layout>Reset layout</button>
+        <button type="button" wire:click="addColumn" data-add-column>Add a column</button>
         <a href="/atom/e2e/table-columns-other" wire:navigate data-go-other>Other page</a>
         <span data-testid="saved">{{ json_encode($events) }}</span>
     </div>
+
+    @if ($outside)
+        {{-- the list-page pattern: the toolbar above the table, outside it, steering it by id --}}
+        <div class="mb-3 rounded-panel border bg-surface">
+            <atom:table.toolbar strip columns="people-table" data-testid="outside-toolbar">
+                <atom:table.search wire:model.live.debounce.0ms="search" placeholder="Search people" />
+            </atom:table.toolbar>
+        </div>
+    @endif
 
     {{-- Every column is named; the fixture's cells follow them. `name` is locked, the rest hideable. --}}
     <div @if ($transition) wire:transition @endif>
@@ -14,10 +24,20 @@
         :paginate="$items"
         :skeleton="! $loaded"
         :empty="$empty"
+        :sticky-selection="$sticky"
         :persist-key="$keyed ? 'people' : null"
         :columns-state="$state"
         wire:key="people-{{ $generation }}"
+        id="people-table"
         data-testid="people">
+        @if ($picker)
+            <x-slot:header>
+                <atom:table.toolbar columns data-testid="toolbar">
+                    <atom:table.search wire:model.live.debounce.0ms="search" placeholder="Search people" />
+                </atom:table.toolbar>
+            </x-slot:header>
+        @endif
+
         <x-slot:columns>
             <atom:table.column checkbox hideable />
             <atom:table.column name="name">Name</atom:table.column>
@@ -25,8 +45,11 @@
             @unless ($removed)
                 <atom:table.column name="phone" hideable hidden>Phone</atom:table.column>
             @endunless
-            <atom:table.column name="city" hideable class="max-sm:hidden">City</atom:table.column>
+            <atom:table.column name="city" hideable class="max-sm:hidden">{{ $label ? 'City <img src=x onerror="window.__picked=1">' : 'City' }}</atom:table.column>
             <atom:table.column name="plan" hideable class="hidden lg:table-cell">Plan</atom:table.column>
+            @if ($extra)
+                <atom:table.column name="region" hideable>Region</atom:table.column>
+            @endif
         </x-slot:columns>
 
         <x-slot:rows>
@@ -40,6 +63,9 @@
                     @endunless
                     <atom:table.cell column="city" class="max-sm:hidden">Town {{ $row['id'] }}</atom:table.cell>
                     <atom:table.cell column="plan" class="hidden lg:table-cell">Plan {{ $row['id'] }}</atom:table.cell>
+                    @if ($extra)
+                        <atom:table.cell column="region">Region {{ $row['id'] }}</atom:table.cell>
+                    @endif
                 </atom:table.row>
             @endforeach
         </x-slot:rows>
