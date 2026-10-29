@@ -226,11 +226,13 @@ it('carries the CSP nonce on the script and the stylesheet when one is set, and 
     expect(columnsTable(COLUMNS, 'persist-key="k"'))->not->toContain('nonce="a">');
 });
 
-it('reads persist-key as a string: empty is none, an int is a key, anything else throws', function () {
+it('reads persist-key as a string: empty is none, an int or a Stringable is a key, anything else throws', function () {
     expect(columnSource(columnsTable(COLUMNS))->hasAttribute('data-key'))->toBeFalse();
     expect(columnSource(columnsTable(COLUMNS, 'persist-key=""'))->hasAttribute('data-key'))->toBeFalse();
     expect(columnSource(columnsTable(COLUMNS, ':persist-key="false"'))->hasAttribute('data-key'))->toBeFalse();
     expect(columnSource(columnsTable(COLUMNS, ':persist-key="7"'))->getAttribute('data-key'))->toBe('7');
+    expect(columnSource(columnsTable(COLUMNS, ':persist-key="Str::of(\'contacts\')"'))->getAttribute('data-key'))->toBe('contacts');
+    expect(columnSource(columnsTable(COLUMNS, ':persist-key="Str::of(\'\')"'))->hasAttribute('data-key'))->toBeFalse();
 
     expect(throwsInvalidName(fn () => columnsTable(COLUMNS, ':persist-key="[\'a\']"')))->toBeTrue();
     expect(throwsInvalidName(fn () => columnsTable(COLUMNS, ':persist-key="new stdClass"')))->toBeTrue();

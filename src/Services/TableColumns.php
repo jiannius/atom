@@ -57,11 +57,15 @@ JS;
     }
 
     /**
-     * The table's `persist-key` as a string, or null for none. Empty, null and false mean none; a string or an int is the key.
-     * Anything else (an array, an object) is a mistake in the markup and throws, like a bad column name.
+     * The table's `persist-key` as a string, or null for none. Empty, null and false mean none; a string, an int or a Stringable
+     * (`Str::of()`) is the key. Anything else (an array, another object) is a mistake in the markup and throws, like a bad column name.
      */
     public static function key(mixed $key): ?string
     {
+        if ($key instanceof \Stringable) {
+            $key = (string) $key;
+        }
+
         if ($key === null || $key === false || $key === '') {
             return null;
         }
