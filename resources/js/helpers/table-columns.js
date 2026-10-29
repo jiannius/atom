@@ -127,9 +127,11 @@ const visibleIn = (store, column) => !column.hideable || (store.choices[column.n
 const paint = (parts, store) => {
     if (!parts.scope.hasAttribute('data-atom-column-hide') && !parts.columns.some((column) => column.hideable)) return
 
-    let hidden = parts.columns.filter((column) => !visibleIn(store, column)).map((column) => column.name).join(' ')
+    let hidden = parts.columns.filter((column) => !visibleIn(store, column)).map((column) => column.name)
+    let current = (parts.scope.getAttribute('data-atom-column-hide') || '').split(' ').filter(Boolean)
 
-    if (parts.scope.getAttribute('data-atom-column-hide') !== hidden) parts.scope.setAttribute('data-atom-column-hide', hidden)
+    // as sets: the first-paint script may have written the same names in another order
+    if (current.length !== hidden.length || !hidden.every((name) => current.includes(name))) parts.scope.setAttribute('data-atom-column-hide', hidden.join(' '))
 }
 
 // bring a table up to date: set it up if it is new, then paint
