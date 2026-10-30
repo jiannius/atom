@@ -673,11 +673,17 @@ The slots are the same, but a few land differently, because the two shells are l
 | `profile` without `dropdown` | Plain content at the foot of the sidebar. | Plain content in the bar. |
 | `brand` with `dropdown` (`account="brand"`) | Your brand is printed as it is (it may be a link), with a caret button beside it that opens the account menu. | The same, on the bar's left. |
 
-The sidebar's top bar is not drawn from `lg` up when `crumbs`, `actions` and the dark toggle (drawn only with `dark`, without `theme-switcher="false"` and with no `dropdown`) are all empty (below `lg` it still holds the menu button and the account). The same when the slot holds only a persisted `<atom:breadcrumbs>` and it prints nothing, which is one crumb on a page that has its own `<atom:page.header>` (or `:heading="false"`): the layout leaves it out from the first frame when the page's trail is one crumb and its `page.header` is in the slot, and `breadcrumbs.js` keeps it right afterwards; `layouts.header` leaves out its crumbs row the same way.
+The sidebar's top bar is not drawn from `lg` up when `crumbs`, `actions` and the dark toggle (drawn only with `dark`, without `theme-switcher="false"` and with no `dropdown`) are all empty (below `lg` it still holds the menu button and the account), and the sidebar is not collapsed (see [Collapsing the sidebar](#collapsing-the-sidebar)). The same when the slot holds only a persisted `<atom:breadcrumbs>` and it prints nothing, which is one crumb on a page that has its own `<atom:page.header>` (or `:heading="false"`): the layout leaves it out from the first frame when the page's trail is one crumb and its `page.header` is in the slot, and `breadcrumbs.js` keeps it right afterwards; `layouts.header` leaves out its crumbs row the same way.
 
 The default profile card reads `auth()->user()`: `avatar` (a URL; none, or a model that has no such attribute, gives initials), `name` and `email`. The initials come from the model's public `initials()` method if it returns a string; otherwise (no method, a protected `Attribute` accessor, another return type, a blank string) they are the first letters of the first two words of `name`, uppercase.
 
 `<main>` is unpadded in both: padding belongs to the page. See both shells as live pages, with one shared nav partial, under **Patterns** in `/atom/docs` (source: `resources/views/docs/patterns/`; the index at `/atom/docs/patterns` says when to use each page).
+
+#### Collapsing the sidebar
+
+From `lg` up, `layouts.sidebar` has a button at the start of its top bar that hides the sidebar completely (no icon rail) and brings it back: `aria-expanded` and `aria-controls` on the button, "Hide sidebar" / "Show sidebar" as its name, and Ctrl or Cmd + B does the same unless the focus is in a field or an editor (the editor's bold keeps it). The page takes the freed width. The choice is kept in `localStorage` (`atom-sidebar-collapsed`) and written on `<html>` (`data-atom-sidebar-collapsed`) by a script in the body before the sidebar is parsed, so a reload and a `wire:navigate` start collapsed, with no frame of the sidebar. Below `lg` nothing changes: the menu button opens the stashed sidebar.
+
+While the sidebar is collapsed the top bar is always drawn, since it holds the button that brings the sidebar back. While it is shown, a bar with nothing else in it is still left out (see above), so the button is then a "Hide sidebar" row at the foot of the sidebar instead. There is no prop to turn the button off.
 
 #### Your own theme switcher
 

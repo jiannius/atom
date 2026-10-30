@@ -37,6 +37,16 @@
         <code>dropdown</code> is plain content, not a button.
     </p>
 
+    <h3 class="text-base font-semibold" id="collapsing-the-sidebar">Collapsing the sidebar</h3>
+
+    <p>
+        From 1024px the sidebar shell's top bar starts with a button that hides the sidebar completely and brings it back
+        (Ctrl or Cmd + B does the same, except from a field or an editor). The choice is remembered in
+        <code>localStorage</code> and applied before the first paint, so a reload or a <code>wire:navigate</code> starts
+        collapsed. A bar with nothing else in it is not drawn while the sidebar is shown, and the button is then a row at
+        the foot of the sidebar; while the sidebar is collapsed the bar is always drawn.
+    </p>
+
     <h3 class="text-base font-semibold" id="your-own-theme-switcher">Your own theme switcher</h3>
 
     <p>

@@ -227,19 +227,53 @@ dialog,
 }
 
 /* the sidebar's bar is not drawn from lg up when it has nothing to hold (its menu button and account are for small
-   screens): no crumbs, no actions, no dark toggle. layouts.sidebar marks it; the row and the variable go with it. */
+   screens): no crumbs, no actions, no dark toggle. layouts.sidebar marks it; the row and the variable go with it.
+   Not while the sidebar is collapsed: the bar then holds the button that brings it back, so it is always drawn
+   (the mark is left as it is, so the bar goes again when the sidebar comes back). */
 @media (min-width: 64rem) {
-    [data-atom-sidebar] + [data-atom-header][data-atom-header-empty] {
+    html:not([data-atom-sidebar-collapsed]) [data-atom-sidebar] + [data-atom-header][data-atom-header-empty] {
         display: none;
     }
 
-    *:has(>[data-atom-sidebar]+[data-atom-header][data-atom-header-empty]) {
+    html:not([data-atom-sidebar-collapsed]) *:has(>[data-atom-sidebar]+[data-atom-header][data-atom-header-empty]) {
         grid-template-rows: 0 1fr auto;
     }
 
-    html:has([data-atom-sidebar] + [data-atom-header][data-atom-header-empty]) {
+    html:not([data-atom-sidebar-collapsed]):has([data-atom-sidebar] + [data-atom-header][data-atom-header-empty]) {
         --atom-shell-bar-h: 0px;
     }
+
+    /* with no bar to hold the collapse button, the sidebar's foot has a copy of it */
+    *:has(>[data-atom-sidebar]+[data-atom-header][data-atom-header-empty]) [data-atom-sidebar-fallback] {
+        display: flex;
+    }
+
+    /* The sidebar collapsed from lg up (layouts.sidebar writes data-atom-sidebar-collapsed on <html> before the first paint,
+       from localStorage, and keeps it in step): out of the grid, so <main> takes its column, and out of reach until the
+       stashed sidebar is shown. The Tailwind classes the sidebar gets from Alpine say the same once it has started. */
+    html[data-atom-sidebar-collapsed] [data-atom-sidebar] {
+        position: fixed !important;
+        top: 0 !important;
+        inset-inline-start: 0;
+        min-height: 100dvh;
+        max-height: 100dvh !important;
+        visibility: hidden;
+    }
+
+    html[data-atom-sidebar-collapsed] body[data-show-stashed-sidebar] [data-atom-sidebar] {
+        visibility: visible;
+    }
+}
+
+[data-atom-sidebar-fallback] {
+    display: none;
+}
+
+/* the collapse button's glyph: "hide" while the sidebar is shown, "show" while it is collapsed (the page starts with the
+   right one, because the attribute is on <html> before the button is parsed) */
+html[data-atom-sidebar-collapsed] [data-atom-sidebar-glyph="collapse"],
+html:not([data-atom-sidebar-collapsed]) [data-atom-sidebar-glyph="expand"] {
+    display: none;
 }
 
 /* layouts.header: the crumbs row is not drawn when the trail in it prints nothing (one crumb above a page.header, or none).

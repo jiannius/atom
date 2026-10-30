@@ -11,7 +11,9 @@
 ])
 
 {{-- From lg up the top bar holds only crumbs, actions and the dark toggle (drawn only when there is no account menu to hold the theme row) (the menu button and the account are for
-     small screens), so with all three empty it is not drawn there ($barEmpty, data-atom-header-empty in atom.css).
+     small screens), so with all three empty it is not drawn there ($barEmpty, data-atom-header-empty in atom.css), except while
+     the sidebar is collapsed: the bar then holds the button that brings it back, and atom.css draws it whatever the mark says. With the
+     bar not drawn, the collapse button is the row at the sidebar's foot (data-atom-sidebar-fallback).
      A bar that holds only crumbs ($crumbsOnly, data-atom-header-crumbs-only) can only be known empty in the browser: the trail
      is a persisted <atom:breadcrumbs> whose markup is always there, and it prints nothing for one crumb above a page.header or
      for none. breadcrumbs.js turns data-atom-header-empty on and off on it, and the server starts it on when it already knows the
@@ -76,6 +78,15 @@ $trailEmpty = $crumbsOnly
 :scripts="$scripts"
 :vite="$vite"
 :attributes="$attributes->class('min-h-screen bg-canvas')">
+    {{-- The sidebar collapsed from lg up is remembered in localStorage and written on <html> before the sidebar is parsed, so the
+         first paint is the right one (atom.css reads the attribute). It sits in the body, not the head, so it runs again after a
+         wire:navigate swaps the body in, which is when the attribute has to be written again. --}}
+    <script>
+        try {
+            document.documentElement.toggleAttribute('data-atom-sidebar-collapsed', window.localStorage.getItem('atom-sidebar-collapsed') === '1')
+        } catch (e) {}
+    </script>
+
     {{-- stashed sidebar backdrop --}}
     <div
     x-data
@@ -85,7 +96,7 @@ $trailEmpty = $crumbsOnly
     {{-- sidebar --}}
     <div
     x-data="{
-        isHidden: false,
+        isHidden: document.documentElement.hasAttribute('data-atom-sidebar-collapsed'),
         screenLg: window.innerWidth >= 1024
     }"
     {{-- the window's own resize event, not x-resize.document: that one is a ResizeObserver whose handler changes the page's layout (the
@@ -94,8 +105,26 @@ $trailEmpty = $crumbsOnly
     x-init="() => {
         $el.classList.add('-translate-x-full', 'rtl:translate-x-full')
         $el.removeAttribute('data-mobile-cloak')
+
+        $watch('isHidden', (hidden) => {
+            document.documentElement.toggleAttribute('data-atom-sidebar-collapsed', hidden)
+
+            try {
+                hidden ? window.localStorage.setItem('atom-sidebar-collapsed', '1') : window.localStorage.removeItem('atom-sidebar-collapsed')
+            } catch (e) {}
+
+            $dispatch('atom-sidebar-collapsed', hidden)
+        })
     }"
     x-on:toggle-sidebar.window="isHidden = !isHidden" {{--hide sidebar on large screen, only work in large screen --}}
+    {{-- Ctrl or Cmd + B, unless the focus is in a field or an editor (the editor's bold) --}}
+    x-on:keydown.window="(e) => {
+        if (!screenLg || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'b') return
+        if (e.target?.isContentEditable || e.target?.closest?.('input, textarea, select')) return
+
+        e.preventDefault()
+        isHidden = !isHidden
+    }"
     x-bind:data-stashed="!screenLg || isHidden"
     x-bind:style="{
         position: 'sticky',
@@ -111,6 +140,7 @@ $trailEmpty = $crumbsOnly
         '[[data-show-stashed-sidebar]_&]:translate-x-0! [[data-show-stashed-sidebar]_&]:shadow-pop',
         'z-20! data-stashed:start-0! data-stashed:fixed! data-stashed:top-0! data-stashed:min-h-dvh! data-stashed:max-h-dvh!',
     ])
+    id="atom-sidebar"
     data-mobile-cloak
     data-atom-sidebar>
         {{-- The brand row as the account menu: the logo tile still goes home, and the app name (the user's name under
@@ -186,6 +216,20 @@ $trailEmpty = $crumbsOnly
             <div class="flex flex-col pt-2.5" data-atom-nav-shell="sidebar" data-atom-navfoot>{{ $navfoot }}</div>
         @endisset
 
+        {{-- With no top bar to hold the collapse button (a bar with nothing else in it is not drawn from lg up), the button is
+             here instead: atom.css shows this row only then. --}}
+        <button
+        type="button"
+        x-on:click="$dispatch('toggle-sidebar')"
+        aria-expanded="true"
+        aria-controls="atom-sidebar"
+        aria-keyshortcuts="Control+B Meta+B"
+        class="mt-2.5 min-h-9 items-center gap-2 rounded-nav px-2 py-1 text-sm text-fg-muted hover:bg-fg/5 hover:text-fg"
+        data-atom-sidebar-fallback>
+            <atom:icon.panel-left-close class="size-4 shrink-0"/>
+            <span>{{ t('Hide sidebar') }}</span>
+        </button>
+
         {{-- User menu at the foot (`account="end"`; large screens, small screens have it in the top bar). The row is a
              button only when there is a menu behind it: a `profile` with no `dropdown` is plain content. --}}
         @if (isset($dropdown) && ! $accountInBrand)
@@ -245,6 +289,26 @@ $trailEmpty = $crumbsOnly
             aria-label="{{ t('Show sidebar') }}"
             data-atom-sidebar-toggle>
                 <atom:icon.menu class="size-4"/>
+            </button>
+
+            {{-- collapse the sidebar from lg up (Ctrl or Cmd + B too): it drives the sidebar's isHidden through toggle-sidebar, and
+                 keeps its own copy of the state from atom-sidebar-collapsed. The glyph is chosen by atom.css from <html>, so
+                 the first paint has the right one. --}}
+            <button
+            type="button"
+            x-data="{ collapsed: document.documentElement.hasAttribute('data-atom-sidebar-collapsed') }"
+            x-on:atom-sidebar-collapsed.window="collapsed = $event.detail"
+            x-on:click="$dispatch('toggle-sidebar')"
+            x-bind:aria-expanded="collapsed ? 'false' : 'true'"
+            x-bind:aria-label="collapsed ? @js(t('Show sidebar')) : @js(t('Hide sidebar'))"
+            aria-expanded="true"
+            aria-controls="atom-sidebar"
+            aria-keyshortcuts="Control+B Meta+B"
+            aria-label="{{ t('Hide sidebar') }}"
+            class="flex h-control aspect-square shrink-0 items-center justify-center rounded-control text-fg-muted hover:bg-fg/5 hover:text-fg max-lg:hidden"
+            data-atom-sidebar-collapse>
+                <atom:icon.panel-left-close class="size-4" data-atom-sidebar-glyph="collapse"/>
+                <atom:icon.panel-left-open class="size-4" data-atom-sidebar-glyph="expand"/>
             </button>
 
             <div class="flex min-w-0 grow items-center" data-atom-shell-crumbs>
