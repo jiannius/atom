@@ -45,6 +45,27 @@ for (const tw of ['floor', 'latest']) {
         await expect(trigger).toBeFocused()
       })
 
+      if (shell === 'sidebar') {
+        test('the logo is centred on the name block, and the caret on the app name\'s line', async ({ page }) => {
+          await page.setViewportSize({ width: 1280, height: 800 })
+          await open(page, shell, tw)
+
+          const centres = await page.evaluate(() => {
+            const button = document.querySelector('[data-atom-shell-brand] [data-atom-account-trigger]')
+            const mid = (el) => { const r = el.getBoundingClientRect(); return r.y + r.height / 2 }
+            return {
+              logo: mid(document.querySelector('[data-atom-shell-brand] a')),
+              block: mid(button),
+              name: mid(button.querySelector('.font-semibold')),
+              caret: mid(button.querySelector('svg')),
+            }
+          })
+
+          expect(Math.abs(centres.logo - centres.block)).toBeLessThanOrEqual(0.5)
+          expect(Math.abs(centres.caret - centres.name)).toBeLessThanOrEqual(0.5)
+        })
+      }
+
       test('Log out is reachable at 390px without opening the sidebar', async ({ page }) => {
         await page.setViewportSize({ width: 390, height: 800 })
         await open(page, shell, tw)

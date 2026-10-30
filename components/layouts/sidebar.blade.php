@@ -138,7 +138,7 @@ $trailEmpty = $crumbsOnly
                     </a>
 
                     <atom:dropdown class="min-w-0 grow">
-                        <button type="button" class="flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-start hover:bg-fg/5" data-atom-account-trigger>
+                        <button type="button" class="flex w-full min-w-0 items-start gap-2 rounded-control px-1.5 py-1 text-start hover:bg-fg/5" data-atom-account-trigger>
                             <span class="grid min-w-0 grow leading-tight">
                                 <span class="truncate text-sm font-semibold">{{ config('app.name') }}</span>
                                 @if (filled($name))
@@ -146,7 +146,8 @@ $trailEmpty = $crumbsOnly
                                 @endif
                             </span>
                             <span class="sr-only">{{ t('Account') }}</span>
-                            <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
+                            {{-- on the app name's line, not centred on the two lines --}}
+                            <atom:icon.dropdown class="mt-[3px] size-3.5 shrink-0 text-fg-subtle"/>
                         </button>
 
                         <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
