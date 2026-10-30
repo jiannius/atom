@@ -243,8 +243,9 @@ dialog,
         --atom-shell-bar-h: 0px;
     }
 
-    /* with no bar to hold the collapse button, the sidebar's foot has a copy of it */
-    *:has(>[data-atom-sidebar]+[data-atom-header][data-atom-header-empty]) [data-atom-sidebar-fallback] {
+    /* With no bar to hold the collapse button (the sidebar shown, the bar empty), the button is the round one on the sidebar's
+       edge, in the brand row: layouts._sidebar-circle. Collapsed, or with a bar, the bar's own button is the only one. */
+    html:not([data-atom-sidebar-collapsed]) *:has(>[data-atom-sidebar]+[data-atom-header][data-atom-header-empty]) [data-atom-sidebar-circle] {
         display: flex;
     }
 
@@ -265,8 +266,31 @@ dialog,
     }
 }
 
-[data-atom-sidebar-fallback] {
+/* The round collapse button: 28px, centred on the sidebar's border (the sidebar pads its content 10px and has a 1px border, so the
+   border's middle is 10.5px past the brand row's end), on the line named by its anchor. Inside the brand row, which is relative:
+   it follows the caret and a host-widened sidebar. Not drawn unless the rule above asks for it. */
+[data-atom-sidebar-circle] {
     display: none;
+    position: absolute;
+    z-index: 1;
+    width: 28px;
+    height: 28px;
+    inset-inline-end: calc(-10.5px - 14px);
+}
+
+[data-atom-sidebar-circle="center"] {
+    top: 50%;
+    margin-top: -14px;
+}
+
+/* the default brand row: the caret is 14px high, 4px (the trigger's padding) and 3px (its margin) under the row's top */
+[data-atom-sidebar-circle="caret"] {
+    top: 0;
+}
+
+/* the default link: a 26px tile 6px under the top */
+[data-atom-sidebar-circle="logo"] {
+    top: 5px;
 }
 
 /* the collapse button's glyph: "hide" while the sidebar is shown, "show" while it is collapsed (the page starts with the

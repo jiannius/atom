@@ -144,10 +144,30 @@ describe('the sidebar collapse button', function () {
         expect(domQuery($html, '//head//script[contains(., "atom-sidebar-collapsed")]'))->toHaveCount(0);
     });
 
-    it('leaves a copy of the button at the sidebar\'s foot, for atom.css to show only when the bar is not drawn', function () {
-        $html = shellHtml('layouts.sidebar');
+    it('has a round twin on the sidebar\'s edge, in the brand row, with the same name, controls and shortcut, and no row at the foot', function (string $props, string $anchor, string $slots) {
+        $html = shellHtml('layouts.sidebar', $props, true, $slots);
 
-        expect(domQuery($html, '//*[@data-atom-sidebar]//button[@data-atom-sidebar-fallback][@aria-controls="atom-sidebar"][contains(., "Hide sidebar")]'))->toHaveCount(1);
+        expect(domQuery($html, '//button[@data-atom-sidebar-circle]'))->toHaveCount(1)
+            ->and(domQuery($html, '//button[@data-atom-sidebar-circle="'.$anchor.'"][@type="button"][@aria-expanded="true"][@aria-controls="atom-sidebar"][@aria-label="Sidebar"][@aria-keyshortcuts="Control+B Meta+B"][contains(@title, "Toggle sidebar")]'))->toHaveCount(1)
+            // inside the sidebar, which no longer clips (the scroll box is under the brand row)
+            ->and(domQuery($html, '//*[@data-atom-sidebar]//button[@data-atom-sidebar-circle]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-sidebar][not(contains(@class, "overflow-y-auto"))]/*[@data-atom-sidebar-scroll][contains(@class, "overflow-y-auto")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-sidebar-scroll]//button[@data-atom-sidebar-circle]'))->toHaveCount(0)
+            ->and($html)->not->toContain('data-atom-sidebar-fallback')->not->toContain('Hide sidebar');
+    })->with([
+        'default brand row (the caret)' => ['', 'caret', ''],
+        'a brand slot with the caret button' => ['', 'center', '<x-slot:brand><a href="/home">B</a></x-slot>'],
+    ]);
+
+    it('puts the circle in the brand row of the layouts without a caret too', function () {
+        // account="end": the default link; and with a brand slot
+        $link = shellHtml('layouts.sidebar', 'account="end"');
+        $slot = shellHtml('layouts.sidebar', 'account="end"', true, '<x-slot:brand><a href="/home">B</a></x-slot>');
+        $none = shellHtml('layouts.sidebar', '', false);
+
+        expect(domQuery($link, '//*[@class="relative"]/a[@href="/app"]/following-sibling::button[@data-atom-sidebar-circle="logo"]'))->toHaveCount(1)
+            ->and(domQuery($slot, '//*[@class="relative"][a[@href="/home"]]/button[@data-atom-sidebar-circle="center"]'))->toHaveCount(1)
+            ->and(domQuery($none, '//button[@data-atom-sidebar-circle="logo"]'))->toHaveCount(1);
     });
 
     it('listens for Ctrl or Cmd + B, and leaves a field or an editor alone', function () {

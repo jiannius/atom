@@ -1,4 +1,5 @@
-<div>
+{{-- padded as <atom:page> pads a page: the sidebar's round collapse button overhangs the page's left edge by half its width --}}
+<div class="px-7">
     @if (in_array($page, ['new', 'deep'], true))
         <atom:page.header title="{{ $page === 'new' ? 'New page' : 'Detail' }}" />
     @endif
