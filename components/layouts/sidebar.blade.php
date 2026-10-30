@@ -111,7 +111,7 @@ $trailEmpty = $crumbsOnly
              it) and the caret open the menu. A host's `brand` slot is kept as it is (it may be a link), with a compact
              avatar trigger beside it. --}}
         @if ($accountInBrand)
-            <div @class(['flex items-start gap-1', 'pb-3' => ! isset($brand)]) data-atom-shell-brand>
+            <div @class(['flex items-center gap-1', 'pb-3' => ! isset($brand)]) data-atom-shell-brand>
                 @isset ($brand)
                     <div class="min-w-0 grow">{{ $brand }}</div>
 
@@ -133,20 +133,20 @@ $trailEmpty = $crumbsOnly
                         </atom:layouts._account-menu>
                     </atom:dropdown>
                 @else
-                    <a href="/app" class="ms-2 mt-1 flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
+                    <a href="/app" class="ms-2 flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
                         <atom:logo class="size-4 fill-current" />
                     </a>
 
                     <atom:dropdown class="min-w-0 grow">
-                        <button type="button" class="flex w-full min-w-0 items-start gap-2 rounded-control px-1.5 py-1 text-start hover:bg-fg/5" data-atom-account-trigger>
+                        <button type="button" class="flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-start hover:bg-fg/5" data-atom-account-trigger>
                             <span class="grid min-w-0 grow leading-tight">
                                 <span class="truncate text-sm font-semibold">{{ config('app.name') }}</span>
                                 @if (filled($name))
-                                    <span class="truncate text-xs text-fg-subtle">{{ $name }}</span>
+                                    <span class="truncate text-[11px] text-fg-subtle">{{ $name }}</span>
                                 @endif
                             </span>
                             <span class="sr-only">{{ t('Account') }}</span>
-                            <atom:icon.dropdown class="mt-px size-3.5 shrink-0 text-fg-subtle"/>
+                            <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                         </button>
 
                         <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
