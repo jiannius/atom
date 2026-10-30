@@ -22,7 +22,7 @@ describe('the theme row in the account menu', function () {
 
         expect(domQuery($html, $row))->toHaveCount($menus)
             ->and(domQuery($html, $row.'//*[@role="group"][@aria-label="Theme"]'))->toHaveCount($menus)
-            ->and(domQuery($html, $row.'//button[@type="button"][@aria-pressed][@aria-label]'))->toHaveCount(3 * $menus)
+            ->and(domQuery($html, $row.'//button[@type="button"][@role="menuitemradio"][@aria-checked][@aria-label]'))->toHaveCount(3 * $menus)
             ->and(domQuery($html, $row.'//button[@aria-label="Light"][@data-atom-theme-option="light"]'))->toHaveCount($menus)
             ->and(domQuery($html, $row.'//button[@aria-label="Dark"][@data-atom-theme-option="dark"]'))->toHaveCount($menus)
             ->and(domQuery($html, $row.'//button[@aria-label="System"][@data-atom-theme-option="system"]'))->toHaveCount($menus);
@@ -107,7 +107,7 @@ describe('the sidebar collapse button', function () {
         $button = '//header[@data-atom-header]//button[@data-atom-sidebar-collapse]';
 
         expect(domQuery($html, $button))->toHaveCount(1)
-            ->and(domQuery($html, $button.'[@type="button"][@aria-expanded="true"][@aria-label="Hide sidebar"][@aria-controls="atom-sidebar"]'))->toHaveCount(1)
+            ->and(domQuery($html, $button.'[@type="button"][@aria-expanded="true"][@aria-label="Sidebar"][@aria-controls="atom-sidebar"][contains(@title, "Toggle sidebar")]'))->toHaveCount(1)
             ->and(domQuery($html, $button.'[contains(@class, "max-lg:hidden")]'))->toHaveCount(1)
             // the sidebar it controls, and the menu button for small screens beside it
             ->and(domQuery($html, '//*[@id="atom-sidebar"][@data-atom-sidebar]'))->toHaveCount(1)
@@ -123,11 +123,12 @@ describe('the sidebar collapse button', function () {
         expect(domQuery($html, '//*[@data-atom-header]/div/button[@data-atom-sidebar-collapse]/following-sibling::*[@data-atom-shell-crumbs]'))->toHaveCount(1);
     });
 
-    it('labels both states through t(), and keeps the collapsed state in localStorage', function () {
+    it('has one name through t(), the state in aria-expanded, and keeps the collapsed state in localStorage', function () {
         $html = shellHtml('layouts.sidebar');
 
         expect($html)
-            ->toContain("collapsed ? 'Show sidebar' : 'Hide sidebar'")
+            ->not->toContain("collapsed ? 'Show sidebar' : 'Hide sidebar'")
+            ->toContain("collapsed ? 'false' : 'true'")
             ->toContain("window.localStorage.getItem('atom-sidebar-collapsed') === '1'")
             ->toContain("window.localStorage.setItem('atom-sidebar-collapsed', '1')");
     });
@@ -155,7 +156,9 @@ describe('the sidebar collapse button', function () {
         expect($html)
             ->toContain('x-on:keydown.window')
             ->toContain('e.ctrlKey || e.metaKey')
-            ->toContain("e.key.toLowerCase() !== 'b'")
+            ->toContain('e.repeat')
+            ->toContain("e.code === 'KeyB'")
+            ->toContain("document.querySelector('dialog[open]')")
             ->toContain('e.target?.isContentEditable')
             ->toContain("closest?.('input, textarea, select')");
     });

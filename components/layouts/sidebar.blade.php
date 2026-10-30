@@ -114,13 +114,26 @@ $trailEmpty = $crumbsOnly
             } catch (e) {}
 
             $dispatch('atom-sidebar-collapsed', hidden)
+
+            // The sidebar the focus was in (or the page, from the shortcut) is gone: the bar's button is where it goes, so the next
+            // Tab does not start from the top of the document.
+            if (hidden && screenLg && (!document.activeElement || document.activeElement === document.body || $el.contains(document.activeElement))) {
+                $nextTick(() => document.querySelector('[data-atom-sidebar-collapse]')?.focus())
+            }
         })
+
+        // The stashed sidebar is for below lg. A menu button press that left it open when the window grew would show it over the page.
+        $watch('screenLg', (lg) => lg && document.body.removeAttribute('data-show-stashed-sidebar'))
     }"
     x-on:toggle-sidebar.window="isHidden = !isHidden" {{--hide sidebar on large screen, only work in large screen --}}
-    {{-- Ctrl or Cmd + B, unless the focus is in a field or an editor (the editor's bold) --}}
+    {{-- Ctrl or Cmd + B, unless the focus is in a field or an editor (the editor's bold), a dialog is open, or the key is held down --}}
     x-on:keydown.window="(e) => {
-        if (!screenLg || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'b') return
-        if (e.target?.isContentEditable || e.target?.closest?.('input, textarea, select')) return
+        let key = e.key.toLowerCase()
+
+        // B by its letter, or by its place on a layout that has no Latin B (not on one that has the letter elsewhere)
+        if (!screenLg || e.repeat || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
+        if (key !== 'b' && !(e.code === 'KeyB' && !/^[a-z]$/.test(key))) return
+        if (e.target?.isContentEditable || e.target?.closest?.('input, textarea, select') || document.querySelector('dialog[open]')) return
 
         e.preventDefault()
         isHidden = !isHidden
@@ -300,11 +313,11 @@ $trailEmpty = $crumbsOnly
             x-on:atom-sidebar-collapsed.window="collapsed = $event.detail"
             x-on:click="$dispatch('toggle-sidebar')"
             x-bind:aria-expanded="collapsed ? 'false' : 'true'"
-            x-bind:aria-label="collapsed ? @js(t('Show sidebar')) : @js(t('Hide sidebar'))"
             aria-expanded="true"
             aria-controls="atom-sidebar"
             aria-keyshortcuts="Control+B Meta+B"
-            aria-label="{{ t('Hide sidebar') }}"
+            aria-label="{{ t('Sidebar') }}"
+            title="{{ t('Toggle sidebar') }} (Ctrl/⌘ B)"
             class="flex h-control aspect-square shrink-0 items-center justify-center rounded-control text-fg-muted hover:bg-fg/5 hover:text-fg max-lg:hidden"
             data-atom-sidebar-collapse>
                 <atom:icon.panel-left-close class="size-4" data-atom-sidebar-glyph="collapse"/>

@@ -38,21 +38,21 @@ for (const shell of ['sidebar', 'header']) {
       await expect(row.getByRole('group', { name: 'Theme' })).toBeVisible()
 
       const pressed = async () => ({
-        light: await row.getByRole('button', { name: 'Light' }).getAttribute('aria-pressed'),
-        dark: await row.getByRole('button', { name: 'Dark' }).getAttribute('aria-pressed'),
-        system: await row.getByRole('button', { name: 'System' }).getAttribute('aria-pressed'),
+        light: await row.getByRole('menuitemradio', { name: 'Light' }).getAttribute('aria-checked'),
+        dark: await row.getByRole('menuitemradio', { name: 'Dark' }).getAttribute('aria-checked'),
+        system: await row.getByRole('menuitemradio', { name: 'System' }).getAttribute('aria-checked'),
       })
 
       expect(await pressed()).toEqual({ light: 'false', dark: 'false', system: 'true' })
 
-      await row.getByRole('button', { name: 'Dark' }).click()
+      await row.getByRole('menuitemradio', { name: 'Dark' }).click()
 
       expect(await isDark(page)).toBe(true)
       await expect(page.getByRole('menuitem', { name: 'Log out' })).toBeVisible()
       await expect(row).toBeVisible()
       expect(await pressed()).toEqual({ light: 'false', dark: 'true', system: 'false' })
 
-      await row.getByRole('button', { name: 'Light' }).click()
+      await row.getByRole('menuitemradio', { name: 'Light' }).click()
       expect(await isDark(page)).toBe(false)
       await expect(row).toBeVisible()
       expect(await pressed()).toEqual({ light: 'true', dark: 'false', system: 'false' })
@@ -62,7 +62,7 @@ for (const shell of ['sidebar', 'header']) {
       await open(page, { shell, query: '&dark=1' })
 
       await page.locator('[data-atom-shell-brand] [data-atom-account-trigger]').click()
-      await page.locator('[data-atom-theme-row]:visible').getByRole('button', { name: 'Dark' }).click()
+      await page.locator('[data-atom-theme-row]:visible').getByRole('menuitemradio', { name: 'Dark' }).click()
       expect(await isDark(page)).toBe(true)
 
       await page.reload()
@@ -70,7 +70,33 @@ for (const shell of ['sidebar', 'header']) {
 
       expect(await isDark(page)).toBe(true)
       await page.locator('[data-atom-shell-brand] [data-atom-account-trigger]').click()
-      await expect(page.locator('[data-atom-theme-row]:visible').getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'true')
+      await expect(page.locator('[data-atom-theme-row]:visible').getByRole('menuitemradio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true')
+    })
+
+    test('Tab reaches the options, which are menu radios, and Space or Enter picks one with the menu still open', async ({ page }) => {
+      await open(page, { shell, query: '&dark=1' })
+
+      await page.locator('[data-atom-shell-brand] [data-atom-account-trigger]').click()
+      const row = page.locator('[data-atom-theme-row]:visible')
+      await expect(row.getByRole('menuitemradio')).toHaveCount(3)
+
+      const light = row.getByRole('menuitemradio', { name: 'Light' })
+      let reached = false
+      for (let i = 0; i < 12 && !reached; i++) {
+        await page.keyboard.press('Tab')
+        reached = await light.evaluate((el) => el === document.activeElement)
+      }
+      expect(reached, 'Tab got to the first option').toBe(true)
+
+      await page.keyboard.press('Enter')
+      expect(await isDark(page)).toBe(false)
+      await expect(light).toHaveAttribute('aria-checked', 'true')
+
+      await page.keyboard.press('Tab')
+      await page.keyboard.press('Space')
+      expect(await isDark(page)).toBe(true)
+      await expect(row.getByRole('menuitemradio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true')
+      await expect(page.getByRole('menuitem', { name: 'Log out' })).toBeVisible()
     })
 
     test('there is no row, and no toggle, with dark mode off', async ({ page }) => {
@@ -144,8 +170,45 @@ test.describe('window.darkmode()', () => {
       afterSystem: 'system',
       resolvedDark: true,
       stored: null,
-      seen: ['system', 'dark', 'dark', 'light', 'light', 'system', 'system'],
+      // only the three explicit calls tell the page; reading is silent
+      seen: ['dark', 'light', 'system'],
     })
+  })
+
+  test('with no argument it only reads: no event, no write, no change to the page, and anything stored but light or dark reads as system', async ({ page }) => {
+    await open(page, { query: '&dark=1' })
+
+    const result = await page.evaluate(() => {
+      const seen = []
+      document.addEventListener('darkmode-changed', (e) => seen.push(e.detail))
+      const writes = []
+      const setItem = Storage.prototype.setItem
+      const removeItem = Storage.prototype.removeItem
+      Storage.prototype.setItem = function (...args) { writes.push(['set', ...args]); return setItem.apply(this, args) }
+      Storage.prototype.removeItem = function (...args) { writes.push(['remove', ...args]); return removeItem.apply(this, args) }
+
+      const out = { reads: [] }
+      for (const stored of [null, 'light', 'dark', 'garbage', 'DARK']) {
+        // set up with the original methods, so only what darkmode() itself does is recorded
+        if (stored === null) removeItem.call(window.localStorage, 'darkmode')
+        else setItem.call(window.localStorage, 'darkmode', stored)
+        out.reads.push(window.darkmode())
+      }
+
+      // the class on <html> stays whatever it was
+      document.documentElement.classList.remove('dark')
+      window.darkmode()
+      out.darkClass = document.documentElement.classList.contains('dark')
+
+      Storage.prototype.setItem = setItem
+      Storage.prototype.removeItem = removeItem
+      return { ...out, seen, writes }
+    })
+
+    expect(result.reads).toEqual(['system', 'light', 'dark', 'system', 'system'])
+    expect(result.seen).toEqual([])
+    expect(result.writes).toEqual([])
+    expect(result.darkClass).toBe(false)
   })
 
   test('the theme row starts from the stored choice', async ({ page }) => {
@@ -154,7 +217,7 @@ test.describe('window.darkmode()', () => {
     await open(page, { query: '&dark=1' })
 
     await page.locator('[data-atom-shell-brand] [data-atom-account-trigger]').click()
-    await expect(page.locator('[data-atom-theme-row]:visible').getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('[data-atom-theme-row]:visible').getByRole('menuitemradio', { name: 'Light' })).toHaveAttribute('aria-checked', 'true')
   })
 })
 
@@ -197,7 +260,8 @@ test.describe('the sidebar collapse button', () => {
     const button = collapseButton(page)
     await expect(button).toBeVisible()
     await expect(button).toHaveAttribute('aria-expanded', 'true')
-    await expect(button).toHaveAttribute('aria-label', 'Hide sidebar')
+    await expect(button).toHaveAttribute('aria-label', 'Sidebar')
+    await expect(button).toHaveAttribute('title', /Toggle sidebar/)
     await expect(button).toHaveAttribute('aria-controls', 'atom-sidebar')
     await expect(page.locator('#atom-sidebar')).toHaveCount(1)
     await expect.poll(() => sidebarShown(page)).toBe(true)
@@ -208,7 +272,8 @@ test.describe('the sidebar collapse button', () => {
     await button.click()
 
     await expect(button).toHaveAttribute('aria-expanded', 'false')
-    await expect(button).toHaveAttribute('aria-label', 'Show sidebar')
+    // the name does not flip, the state is aria-expanded
+    await expect(button).toHaveAttribute('aria-label', 'Sidebar')
     await expect.poll(() => sidebarShown(page)).toBe(false)
     expect(await stash(page)).toBe('1')
 
@@ -223,7 +288,7 @@ test.describe('the sidebar collapse button', () => {
 
     await button.click()
     await expect(button).toHaveAttribute('aria-expanded', 'true')
-    await expect(button).toHaveAttribute('aria-label', 'Hide sidebar')
+    await expect(button).toHaveAttribute('aria-label', 'Sidebar')
     await expect.poll(() => sidebarShown(page)).toBe(true)
     expect(await stash(page)).toBeNull()
     expect((await page.locator('[data-atom-main]').boundingBox()).x).toBeGreaterThan(200)
@@ -374,7 +439,7 @@ test.describe('the sidebar collapse button', () => {
     // it was a navigation, not a load, and the state is still the browser's
     expect(await page.evaluate(() => performance.getEntriesByType('navigation').length)).toBe(1)
     await expect(collapseButton(page)).toHaveAttribute('aria-expanded', 'false')
-    await expect(collapseButton(page)).toHaveAttribute('aria-label', 'Show sidebar')
+    await expect(collapseButton(page)).toHaveAttribute('aria-label', 'Sidebar')
     await expect.poll(() => sidebarShown(page)).toBe(false)
 
     await collapseButton(page).click()
@@ -384,6 +449,107 @@ test.describe('the sidebar collapse button', () => {
     await expect(page.locator('[data-fixture-page="one"]')).toBeVisible()
     await expect.poll(() => sidebarShown(page)).toBe(true)
     await expect(collapseButton(page)).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  test('focus goes to the bar button when the sidebar it was in goes away', async ({ page }) => {
+    await goCollapse(page)
+
+    // by keyboard, from the foot row
+    await page.locator('[data-atom-sidebar-fallback]').focus()
+    await page.keyboard.press('Enter')
+    await expect(collapseButton(page)).toBeFocused()
+
+    // and back: expanding leaves the focus on the button
+    await page.keyboard.press('Enter')
+    await expect.poll(() => sidebarShown(page)).toBe(true)
+    await expect(collapseButton(page)).toBeFocused()
+
+    // Ctrl+B with a nav link focused
+    await page.getByRole('link', { name: 'Page two' }).focus()
+    await page.keyboard.press('Control+b')
+    await expect.poll(() => sidebarShown(page)).toBe(false)
+    await expect(collapseButton(page)).toBeFocused()
+
+    // Ctrl+B from the page itself (the focus on the body)
+    await page.keyboard.press('Control+b')
+    await expect.poll(() => sidebarShown(page)).toBe(true)
+    await page.evaluate(() => document.activeElement?.blur())
+    await page.keyboard.press('Control+b')
+    await expect.poll(() => sidebarShown(page)).toBe(false)
+    await expect(collapseButton(page)).toBeFocused()
+  })
+
+  test('a focus that is somewhere else stays there', async ({ page }) => {
+    await goCollapse(page, { query: '&crumbs=1' })
+
+    await page.locator('[data-go]').focus()
+    await page.keyboard.press('Control+b')
+    await expect.poll(() => sidebarShown(page)).toBe(false)
+    await expect(page.locator('[data-go]')).toBeFocused()
+  })
+
+  test('Ctrl+B held down toggles once, and not at all under an open dialog', async ({ page }) => {
+    await goCollapse(page, { query: '&crumbs=1' })
+    const button = collapseButton(page)
+
+    await page.evaluate(() => {
+      const fire = (repeat) => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', code: 'KeyB', ctrlKey: true, repeat, bubbles: true, cancelable: true }))
+      fire(false)
+      fire(true)
+    })
+    await expect(button).toHaveAttribute('aria-expanded', 'false')
+
+    await button.click()
+    await expect(button).toHaveAttribute('aria-expanded', 'true')
+
+    await page.evaluate(() => {
+      const dialog = document.createElement('dialog')
+      dialog.id = 'st-dialog'
+      document.body.appendChild(dialog)
+      dialog.showModal()
+    })
+    await page.keyboard.press('Control+b')
+    await expect(button).toHaveAttribute('aria-expanded', 'true')
+    expect(await stash(page)).toBeNull()
+
+    await page.evaluate(() => document.getElementById('st-dialog').close())
+    await page.keyboard.press('Control+b')
+    await expect(button).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  test('works from a layout without a Latin B (the key is not b, the code is KeyB), but not where the letter is elsewhere', async ({ page }) => {
+    await goCollapse(page, { query: '&crumbs=1' })
+    const button = collapseButton(page)
+
+    const press = (key, code) => page.evaluate(([k, c]) => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, code: c, ctrlKey: true, bubbles: true, cancelable: true })), [key, code])
+
+    await press('и', 'KeyB')
+    await expect(button).toHaveAttribute('aria-expanded', 'false')
+    await press('и', 'KeyB')
+    await expect(button).toHaveAttribute('aria-expanded', 'true')
+
+    // a Dvorak "x" sits on the physical B: it is not ours
+    await press('x', 'KeyB')
+    await expect(button).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  test('a stashed sidebar does not outlive the window growing to lg', async ({ page }) => {
+    await page.setViewportSize({ width: 800, height: 800 })
+    await page.addInitScript(() => { try { window.localStorage.setItem('atom-sidebar-collapsed', '1') } catch {} })
+    await goCollapse(page, { query: '&crumbs=1' })
+
+    // below lg the menu button opens the stashed sidebar over the page
+    await page.locator('[data-atom-sidebar-toggle]').click()
+    await expect(page.locator('body')).toHaveAttribute('data-show-stashed-sidebar', '')
+    await expect.poll(() => sidebarShown(page)).toBe(true)
+
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await expect.poll(() => page.evaluate(() => document.body.hasAttribute('data-show-stashed-sidebar'))).toBe(false)
+    await expect.poll(() => sidebarShown(page)).toBe(false)
+    // collapsed still: the bar button brings it back
+    await expect(collapseButton(page)).toHaveAttribute('aria-expanded', 'false')
+    await collapseButton(page).click()
+    await expect.poll(() => sidebarShown(page)).toBe(true)
   })
 
   test('storage that throws leaves the sidebar working', async ({ page }) => {
@@ -396,4 +562,24 @@ test.describe('the sidebar collapse button', () => {
     await expect(collapseButton(page)).toHaveAttribute('aria-expanded', 'false')
     await expect.poll(() => sidebarShown(page)).toBe(false)
   })
+})
+
+test('in a real editor Ctrl+B bolds and does not collapse the sidebar', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  const css = await page.request.get('/atom/e2e/consumer-css/latest')
+  expect(css.status(), 'run `node tests/consumer/build.mjs` first').toBe(200)
+
+  await page.goto('/atom/e2e/shell-editor?tw=latest&bare=1')
+  await page.waitForFunction(() => window.Alpine !== undefined)
+
+  const editor = page.locator('.ProseMirror').first()
+  await editor.click()
+  await page.keyboard.type('bold me')
+  // ProseMirror's Mod is Cmd on a Mac and Ctrl elsewhere
+  await page.keyboard.press('ControlOrMeta+a')
+  await page.keyboard.press('ControlOrMeta+b')
+
+  await expect(editor.locator('strong')).toHaveText('bold me')
+  expect(await page.evaluate(() => document.documentElement.hasAttribute('data-atom-sidebar-collapsed'))).toBe(false)
+  expect(await page.evaluate(() => window.localStorage.getItem('atom-sidebar-collapsed'))).toBeNull()
 })
