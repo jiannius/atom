@@ -257,8 +257,8 @@ for (const tw of ['floor', 'latest']) {
       await expect(page.locator('[data-atom-navlist-group-trigger]').first()).toBeHidden()
       await expect(link(page, 'Sales')).toBeVisible()
 
-      // Tab reaches the links in the panel (the brand link sits between the button and the panel)
-      for (let i = 0; i < 4 && !(await dashboard.evaluate((el) => el === document.activeElement)); i++) {
+      // Tab reaches the links in the panel (the brand link and the account trigger beside it sit between the button and the panel)
+      for (let i = 0; i < 5 &&!(await dashboard.evaluate((el) => el === document.activeElement)); i++) {
         await page.keyboard.press('Tab')
       }
       await expect(dashboard).toBeFocused()

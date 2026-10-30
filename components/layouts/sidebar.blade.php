@@ -6,6 +6,7 @@
     'scripts' => [],
     'styles' => [],
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
+    'account' => 'brand',
 ])
 
 {{-- From lg up the top bar holds only crumbs, actions and the dark toggle (the menu button and the account are for
@@ -32,6 +33,10 @@ $initials = is_string($initials) || $initials instanceof \Stringable ? trim((str
 $initials = $user && blank($initials)
     ? str((string) $name)->squish()->initials()->take(2)->upper()->toString()
     : $initials;
+
+/* The account menu opens from the brand row (`account="brand"`, the default) or from the row at the foot of the sidebar
+   (`account="end"`). Either way it needs a `dropdown` slot; without one the brand row stays a plain link. */
+$accountInBrand = $account !== 'end' && isset($dropdown);
 
 /* A slot counts only when it holds more than comments and whitespace: a Livewire view's `@if` blocks that all come out false
    still print `<!--[if BLOCK]-->` markers, which a string test takes for content (an empty bar drawn). A slot not passed is '' here. */
@@ -102,7 +107,49 @@ $trailEmpty = $crumbsOnly
     ])
     data-mobile-cloak
     data-atom-sidebar>
-        @isset ($brand)
+        {{-- The brand row as the account menu: the logo tile still goes home, and the app name (the user's name under
+             it) and the caret open the menu. A host's `brand` slot is kept as it is (it may be a link), with a caret
+             button beside it. --}}
+        @if ($accountInBrand)
+            <div @class(['flex items-center gap-1', 'pb-3' => ! isset($brand)]) data-atom-shell-brand>
+                @isset ($brand)
+                    <div class="min-w-0 grow">{{ $brand }}</div>
+
+                    <atom:dropdown class="shrink-0">
+                        <button type="button" class="flex h-control items-center rounded-control px-1.5 hover:bg-fg/5" data-atom-account-trigger>
+                            <span class="sr-only">{{ t('Account') }}</span>
+                            <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
+                        </button>
+
+                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
+                            {{ $dropdown }}
+                        </atom:layouts._account-menu>
+                    </atom:dropdown>
+                @else
+                    <a href="/app" class="ms-2 flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
+                        <atom:logo class="size-4 fill-current" />
+                    </a>
+
+                    <atom:dropdown class="min-w-0 grow">
+                        <button type="button" class="flex w-full min-w-0 items-start gap-2 rounded-control px-1.5 py-1 text-start hover:bg-fg/5" data-atom-account-trigger>
+                            <span class="grid min-w-0 grow leading-tight">
+                                <span class="truncate text-sm font-semibold">{{ config('app.name') }}</span>
+                                @if (filled($name))
+                                    <span class="truncate text-[11px] text-fg-subtle">{{ $name }}</span>
+                                @endif
+                            </span>
+                            <span class="sr-only">{{ t('Account') }}</span>
+                            {{-- on the app name's line, not centred on the two lines --}}
+                            <atom:icon.dropdown class="mt-[3px] size-3.5 shrink-0 text-fg-subtle"/>
+                        </button>
+
+                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
+                            {{ $dropdown }}
+                        </atom:layouts._account-menu>
+                    </atom:dropdown>
+                @endisset
+            </div>
+        @elseif (isset($brand))
             {{ $brand }}
         @else
             <a href="/app" class="flex items-center gap-[9px] px-2 pb-3 pt-1.5" wire:navigate>
@@ -113,7 +160,7 @@ $trailEmpty = $crumbsOnly
                     {{ config('app.name') }}
                 </span>
             </a>
-        @endisset
+        @endif
 
         @isset ($context)
             <div class="pb-2" data-atom-shell-context>{{ $context }}</div>
@@ -133,9 +180,9 @@ $trailEmpty = $crumbsOnly
             <div class="flex flex-col pt-2.5" data-atom-nav-shell="sidebar" data-atom-navfoot>{{ $navfoot }}</div>
         @endisset
 
-        {{-- User menu (large screens; small screens have it in the top bar). The row is a button only when there is a
-             menu behind it: a `profile` with no `dropdown` is plain content. --}}
-        @isset ($dropdown)
+        {{-- User menu at the foot (`account="end"`; large screens, small screens have it in the top bar). The row is a
+             button only when there is a menu behind it: a `profile` with no `dropdown` is plain content. --}}
+        @if (isset($dropdown) && ! $accountInBrand)
             <atom:dropdown class="mt-2.5 hidden lg:block">
                 <button type="button" class="flex min-h-9 w-full items-center gap-2 rounded-nav px-2 py-1 hover:bg-fg/5">
                     @isset ($profile)
@@ -168,9 +215,9 @@ $trailEmpty = $crumbsOnly
                     {{ $dropdown }}
                 </atom:menu>
             </atom:dropdown>
-        @elseif (isset($profile))
+        @elseif (! isset($dropdown) && isset($profile))
             <div class="mt-2.5 flex min-h-9 items-center gap-2 px-2 py-1" data-atom-shell-profile>{{ $profile }}</div>
-        @endisset
+        @endif
     </div>
 
     {{-- The top bar: 48px, sticky, crumbs on the left and actions on the right. atom.css lets it span the page's
@@ -206,7 +253,7 @@ $trailEmpty = $crumbsOnly
                     <atom:darkmode-toggle/>
                 @endif
 
-                {{-- Account menu (small screens; large screens have it at the foot of the sidebar) --}}
+                {{-- Account menu (small screens, where the sidebar is stashed; large screens have it in the sidebar's brand row or foot) --}}
                 @isset ($dropdown)
                     <atom:dropdown class="lg:hidden">
                         <button type="button" class="flex items-center gap-1 rounded-full p-0.5 hover:bg-fg/5" aria-label="{{ t('Account') }}">
@@ -221,34 +268,9 @@ $trailEmpty = $crumbsOnly
                             <atom:icon.dropdown class="size-3.5 text-fg-subtle"/>
                         </button>
 
-                        <atom:menu class="w-[220px]" popover>
-                            @isset ($profile)
-                                {{ $profile }}
-                            @else
-                                <div class="flex items-center gap-2 truncate p-1.5">
-                                    <div class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg">
-                                        @if ($avatar)
-                                            <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
-                                        @else
-                                            {{ $initials }}
-                                        @endif
-                                    </div>
-
-                                    <div class="min-w-0 text-start leading-tight">
-                                        <div class="truncate text-sm font-medium">
-                                            {{ $name }}
-                                        </div>
-                                        <div class="truncate text-xs text-fg-subtle">
-                                            {{ $read('email') }}
-                                        </div>
-                                    </div>
-                                </div>
-                            @endisset
-
-                            <atom:separator class="my-2"/>
-
+                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
                             {{ $dropdown }}
-                        </atom:menu>
+                        </atom:layouts._account-menu>
                     </atom:dropdown>
                 @endisset
             </div>

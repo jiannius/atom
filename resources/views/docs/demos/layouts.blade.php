@@ -24,6 +24,12 @@
     </p>
 
     <p>
+        The account menu (the <code>dropdown</code> slot) opens from the brand row: the logo goes home, the app name and
+        the caret open the menu. Pass <code>account="end"</code> to put it at the foot of the sidebar, or behind an
+        avatar at the end of the top nav, instead.
+    </p>
+
+    <p>
         Below 1024px the top nav becomes a menu (the <code>context</code> and <code>search</code> slots are the first
         two rows of its panel). From 1024px the <code>search</code> slot is an icon button that opens a popover, and from
         1280px it is inline; nav items that do not fit the bar move into a trailing "More" dropdown.

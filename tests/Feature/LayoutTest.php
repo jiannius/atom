@@ -467,7 +467,7 @@ describe('the shells\' slots', function () {
         $html = renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:profile>\n<span>PROFILE-ONLY</span>\n</x-slot>\nx</atom:".$layout.'>');
 
         expect(domQuery($html, '//*[@data-atom-shell-profile][contains(., "PROFILE-ONLY")]'))->toHaveCount(1)
-            ->and(domQuery($html, '//button[@aria-label="Account"]'))->toHaveCount(0)
+            ->and(domQuery($html, '//button[@data-atom-account-trigger or @aria-label="Account"]'))->toHaveCount(0)
             ->and(domQuery($html, '//*[@data-atom-shell-profile]//button'))->toHaveCount(0)
             ->and(substr_count($html, 'PROFILE-ONLY'))->toBe(1);
     })->with(['layouts.sidebar', 'layouts.header']);
@@ -475,7 +475,7 @@ describe('the shells\' slots', function () {
     it('keeps the account button where there is a menu behind it', function (string $layout) {
         $html = renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>');
 
-        expect(domQuery($html, '//button[@aria-label="Account"]'))->not->toBeEmpty();
+        expect(domQuery($html, '//button[@data-atom-account-trigger or @aria-label="Account"]'))->not->toBeEmpty();
     })->with(['layouts.sidebar', 'layouts.header']);
 
     // A host's User model need not have an initials() method; the shells called it unguarded (BadMethodCallException on every
@@ -487,7 +487,7 @@ describe('the shells\' slots', function () {
 
         $html = renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>');
 
-        expect(trim(domQuery($html, '//button[@aria-label="Account"]')[0]->textContent))->toBe($expected);
+        expect(trim(domQuery($html, '//*[@data-atom-account-avatar]')[0]->textContent))->toBe($expected);
     })->with(['layouts.sidebar', 'layouts.header'])->with([
         'two words' => ['tan joon long', 'TJ'],
         'one word' => ['alex', 'A'],
@@ -511,7 +511,7 @@ describe('the shells\' slots', function () {
             Model::preventAccessingMissingAttributes(false);
         }
 
-        expect(trim(domQuery($html, '//button[@aria-label="Account"]')[0]->textContent))->toBe('AD');
+        expect(trim(domQuery($html, '//*[@data-atom-account-avatar]')[0]->textContent))->toBe('AD');
     })->with(['layouts.sidebar', 'layouts.header']);
 
     it('reads a missing name and email as null on a model that refuses missing attributes', function (string $layout) {
@@ -529,7 +529,7 @@ describe('the shells\' slots', function () {
         }
 
         expect($html)->toContain('OUT')
-            ->and(domQuery($html, '//button[@aria-label="Account"]'))->not->toBeEmpty();
+            ->and(domQuery($html, '//button[@data-atom-account-trigger or @aria-label="Account"]'))->not->toBeEmpty();
     })->with(['layouts.sidebar', 'layouts.header']);
 
     // Only MissingAttributeException is treated as "no value": a failing accessor is the host's bug and must surface.
@@ -611,7 +611,7 @@ describe('the shells\' slots', function () {
         };
         Auth::setUser($user);
 
-        expect(trim(domQuery(accountMenuHtml($layout), '//button[@aria-label="Account"]')[0]->textContent))->toBe('AD');
+        expect(trim(domQuery(accountMenuHtml($layout), '//*[@data-atom-account-avatar]')[0]->textContent))->toBe('AD');
     })->with(['layouts.sidebar', 'layouts.header'])->with(['protected accessor', 'public attribute', 'public blank', 'public empty', 'public null']);
 
     it('accepts a Stringable from initials()', function (string $layout) {
@@ -624,7 +624,7 @@ describe('the shells\' slots', function () {
             }
         });
 
-        expect(trim(domQuery(accountMenuHtml($layout), '//button[@aria-label="Account"]')[0]->textContent))->toBe('XQ');
+        expect(trim(domQuery(accountMenuHtml($layout), '//*[@data-atom-account-avatar]')[0]->textContent))->toBe('XQ');
     })->with(['layouts.sidebar', 'layouts.header']);
 
     // GenericUser::__get is `$this->attributes[$key]`: a missing key is an ErrorException, not null.
@@ -634,7 +634,7 @@ describe('the shells\' slots', function () {
         $html = accountMenuHtml($layout);
 
         expect($html)->toContain('OUT')
-            ->and(domQuery($html, '//button[@aria-label="Account"]'))->not->toBeEmpty();
+            ->and(domQuery($html, '//button[@data-atom-account-trigger or @aria-label="Account"]'))->not->toBeEmpty();
     })->with(['layouts.sidebar', 'layouts.header']);
 
     it('renders the account menu for a guest', function (string $layout) {
@@ -653,7 +653,7 @@ describe('the shells\' slots', function () {
 
         $html = renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>');
 
-        expect(domQuery($html, '//button[@aria-label="Account"]')[0]->textContent)->toContain('XQ')->not->toContain('AD');
+        expect(domQuery($html, '//*[@data-atom-account-avatar]')[0]->textContent)->toContain('XQ')->not->toContain('AD');
     })->with(['layouts.sidebar', 'layouts.header']);
 
     it('marks the sidebar\'s top bar empty (not drawn from lg up) only with no crumbs, actions or dark toggle', function () {
@@ -679,6 +679,80 @@ describe('the shells\' slots', function () {
             ->and($only('dark', "<x-slot:crumbs>\nC\n</x-slot>"))->toBeFalse()
             ->and($only('', "<x-slot:crumbs>\nC\n</x-slot><x-slot:actions>\nA\n</x-slot>"))->toBeFalse();
     });
+});
+
+describe('the account menu in the brand row', function () {
+    $render = fn (string $layout, string $props = '', string $slots = '') => renderBlade(
+        '<atom:'.$layout.' :vite="false" '.$props.">\n".$slots."\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>'
+    );
+
+    beforeEach(fn () => Auth::setUser(new class(['name' => 'Ada Lovelace', 'email' => 'ada@example.com']) extends \Illuminate\Foundation\Auth\User {
+        protected $guarded = [];
+    }));
+
+    it('opens from the brand row by default: the logo goes home, the name and caret open the menu', function (string $layout) use ($render) {
+        $html = $render($layout);
+        $brand = '//*[@data-atom-shell-brand]';
+
+        expect(domQuery($html, $brand.'/a[@href="/app"][@aria-label="Home"]'))->toHaveCount(1)
+            ->and(domQuery($html, $brand.'//button[@data-atom-account-trigger][contains(., "'.config('app.name').'")][contains(., "Account")]'))->toHaveCount(1)
+            ->and(domQuery($html, $brand.'//*[@data-atom-menu][contains(., "ada@example.com")][contains(., "OUT")]'))->toHaveCount(1)
+            // no second desktop account trigger: the sidebar's foot row and the top nav's end avatar are gone
+            ->and(domQuery($html, '//*[@data-atom-sidebar]/*[@data-atom-dropdown][contains(@class, "mt-2.5")]'))->toHaveCount(0)
+            ->and(domQuery($html, '//*[@data-atom-shell-actions]//*[@data-atom-dropdown]'))->toHaveCount($layout === 'layouts.sidebar' ? 1 : 0);
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('puts the user\'s name under the app name in the sidebar\'s brand row', function () use ($render) {
+        expect(domQuery($render('layouts.sidebar'), '//button[@data-atom-account-trigger][contains(., "Ada Lovelace")]'))->toHaveCount(1);
+    });
+
+    it('keeps the phone account button in the sidebar shell\'s top bar, where the sidebar is stashed', function () use ($render) {
+        expect(domQuery($render('layouts.sidebar'), '//*[@data-atom-header]//*[@data-atom-dropdown][contains(@class, "lg:hidden")]//button[@aria-label="Account"]'))->toHaveCount(1);
+    });
+
+    it('keeps the old place with account="end"', function (string $layout) use ($render) {
+        $html = $render($layout, 'account="end"');
+
+        expect(domQuery($html, '//*[@data-atom-shell-brand]'))->toHaveCount(0)
+            ->and(domQuery($html, '//button[@data-atom-account-trigger]'))->toHaveCount(0)
+            ->and(domQuery($html, '//a[@href="/app"][contains(., "'.config('app.name').'")]'))->toHaveCount(1)
+            ->and(domQuery($html, $layout === 'layouts.sidebar'
+                ? '//*[@data-atom-sidebar]/*[@data-atom-dropdown][contains(@class, "mt-2.5")][contains(., "OUT")]'
+                : '//*[@data-atom-shell-actions]//button[@aria-label="Account"]'))->toHaveCount(1);
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('keeps a host\'s brand slot as it is, with a compact trigger beside it', function (string $layout) use ($render) {
+        $html = $render($layout, '', '<x-slot:brand><a href="/home">BRAND-SLOT</a></x-slot>');
+
+        expect(substr_count($html, 'BRAND-SLOT'))->toBe(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-brand]//a[@href="/home"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//button//a'))->toHaveCount(0)
+            ->and(domQuery($html, '//*[@data-atom-shell-brand]//button[@data-atom-account-trigger][contains(., "Account")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-brand]//*[@data-atom-menu][contains(., "OUT")]'))->toHaveCount(1);
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('lets the profile slot replace the card at the head of the menu', function (string $layout) use ($render) {
+        $html = $render($layout, '', '<x-slot:profile><span>PROFILE-SLOT</span></x-slot>');
+
+        expect(domQuery($html, '//*[@data-atom-shell-brand]//*[@data-atom-menu][contains(., "PROFILE-SLOT")][contains(., "OUT")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-brand]//*[@data-atom-account-card]'))->toHaveCount(0);
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    // A profile with a dropdown lives in the menu only: never also printed as the plain content a profile alone gets.
+    it('prints the profile slot only inside the account menus', function (string $layout, string $props) use ($render) {
+        $html = $render($layout, $props, '<x-slot:profile><span>PROFILE-SLOT</span></x-slot>');
+
+        // the sidebar shell: its desktop place (the brand menu or the foot row) and the phone top-bar menu
+        expect(domQuery($html, '//*[@data-atom-shell-profile]'))->toHaveCount(0)
+            ->and(substr_count($html, 'PROFILE-SLOT'))->toBe($layout === 'layouts.sidebar' ? 2 : 1);
+    })->with(['layouts.sidebar', 'layouts.header'])->with(['' => [''], 'end' => ['account="end"']]);
+
+    it('leaves the brand a plain link when there is no dropdown', function (string $layout) {
+        $html = renderBlade('<atom:'.$layout.' :vite="false">x</atom:'.$layout.'>');
+
+        expect(domQuery($html, '//*[@data-atom-shell-brand]'))->toHaveCount(0)
+            ->and(domQuery($html, '//a[@href="/app"][contains(., "'.config('app.name').'")]'))->toHaveCount(1);
+    })->with(['layouts.sidebar', 'layouts.header']);
 });
 
 describe('a trail that prints nothing leaves out the empty bar on the first frame', function () {
