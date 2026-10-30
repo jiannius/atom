@@ -2,9 +2,9 @@
 
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\QueryException;
 use Illuminate\Routing\RouteCollection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
@@ -13,6 +13,7 @@ use Jiannius\Atom\Services\DevLogin;
 use Jiannius\Atom\Tests\Fixtures\DevLoginActiveMember;
 use Jiannius\Atom\Tests\Fixtures\DevLoginMember;
 use Jiannius\Atom\Tests\Fixtures\DevLoginSoftMember;
+use Jiannius\Atom\Tests\Fixtures\DevLoginStringIdMember;
 use Jiannius\Atom\Tests\Fixtures\DevLoginUuidMember;
 use Jiannius\Atom\Tests\Support\LocalEnvironment;
 
@@ -139,8 +140,10 @@ it('returns 404 for a segment the key type cannot hold, without querying', funct
         devLoginPost($this, '/atom/dev/login/'.$segment)->assertNotFound();
     }
 
+    $lookups = collect(DB::getQueryLog())->filter(fn ($entry) => str_contains($entry['query'], 'members') && str_contains($entry['query'], 'where'));
+
     expect(Auth::check())->toBeFalse()
-        ->and(collect(DB::getQueryLog())->filter(fn ($entry) => str_contains($entry['query'], 'where "members"."id"')))->toBeEmpty();
+        ->and($lookups)->toBeEmpty();
 });
 
 it('does not hide a failing query', function () {
@@ -167,6 +170,29 @@ it('qualifies the identifier column, so a withQuery() join with an id of its own
     devLoginPost($this, '/atom/dev/login/'.$this->sam->id)->assertRedirect('/');
 
     $this->assertAuthenticatedAs($this->sam);
+});
+
+it('signs in by a string id when the model is not incrementing, even with the default int key type', function () {
+    Schema::create('string_id_members', function ($table) {
+        $table->string('id')->primary();
+        $table->string('name');
+        $table->rememberToken();
+        $table->timestamps();
+    });
+
+    config(['auth.providers.users.model' => DevLoginStringIdMember::class]);
+    Auth::forgetGuards();
+
+    $a = DevLoginStringIdMember::create(['id' => 'abc-123', 'name' => 'Ana String']);
+
+    $buttons = devLoginButtons();
+
+    expect($buttons)->toHaveCount(1)
+        ->and($buttons[0]->getAttribute('formaction'))->toBe(route('atom.dev.login', ['atomUser' => 'abc-123']));
+
+    devLoginPost($this, '/atom/dev/login/abc-123')->assertRedirect('/');
+
+    expect(Auth::id())->toBe('abc-123');
 });
 
 it('leaves the current session intact when the account is refused', function () {
@@ -201,6 +227,26 @@ it('forgets the remember-me cookie of every session guard, so the previous accou
         ->post('/atom/dev/login/'.$this->sam->id, ['_token' => 'token']);
 
     $response->assertRedirect('/')->assertCookieExpired($web)->assertCookieExpired($admin);
+
+    $this->assertAuthenticatedAs($this->sam);
+});
+
+it('forgets recaller cookies by name: a stale guard config does not break the sign-in, and other cookies stay', function () {
+    config([
+        'auth.guards.ghost' => ['driver' => 'nope', 'provider' => 'users'],
+        'auth.guards.orphan' => ['driver' => 'session', 'provider' => 'missing'],
+    ]);
+    Auth::forgetGuards();
+
+    $web = Auth::guard('web')->getRecallerName();
+
+    $response = $this->withCookie($web, $this->alex->id.'|token|hash')
+        ->withCookie('theme', 'dark')
+        ->withCookie('remember_me_pref', 'yes')
+        ->withSession(['_token' => 'token'])
+        ->post('/atom/dev/login/'.$this->sam->id, ['_token' => 'token']);
+
+    $response->assertRedirect('/')->assertCookieExpired($web)->assertCookieMissing('theme')->assertCookieMissing('remember_me_pref');
 
     $this->assertAuthenticatedAs($this->sam);
 });

@@ -3,7 +3,6 @@
 namespace Jiannius\Atom\Services;
 
 use Illuminate\Auth\EloquentUserProvider;
-use Illuminate\Auth\SessionGuard;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\StatefulGuard;
@@ -80,8 +79,9 @@ class DevLogin
 
     /**
      * The account with this identifier among the ones dev login accepts, or the first one when none is named; null when there is none.
-     * An identifier that cannot be the key's value (text, or a number past PHP_INT_MAX, for an integer key) is none, and is not queried:
-     * PostgreSQL throws on it, where SQLite and MySQL match nothing.
+     * When the identifier is an auto-incrementing integer key, a segment that is not a whole number within PHP_INT_MAX is none and is not
+     * queried (PostgreSQL throws on it, where SQLite and MySQL match nothing). Any other key is queried as given: a malformed uuid on
+     * PostgreSQL surfaces as the database's error, a 500.
      */
     public static function find(?string $id): ?Authenticatable
     {
@@ -94,8 +94,12 @@ class DevLogin
         $model = $query->getModel();
         $name = $model->getAuthIdentifierName();
 
-        if ($name === $model->getKeyName() && in_array($model->getKeyType(), ['int', 'integer'], true)
-            && ! (ctype_digit($id) && filter_var($id, FILTER_VALIDATE_INT) !== false)) {
+        if (
+            $name === $model->getKeyName()
+            && $model->getIncrementing()
+            && in_array($model->getKeyType(), ['int', 'integer'], true)
+            && ! (ctype_digit($id) && filter_var($id, FILTER_VALIDATE_INT) !== false)
+        ) {
             return null;
         }
 
@@ -123,16 +127,15 @@ class DevLogin
     }
 
     /**
-     * Queue the removal of the remember-me cookie of every session guard the request carries one for. The sign-in does not remember
+     * Queue the removal of every remember-me cookie the request carries (`remember_<guard>_<sha1 of the guard class>`, which is how
+     * `SessionGuard` names it and any subclass too), found by name so no guard is built from the config. The sign-in does not remember
      * the visitor, and a cookie left behind would sign the previous account back in once the new session expires.
      */
     protected static function forgetRecallers(Request $request): void
     {
-        foreach (array_keys(config('auth.guards', [])) as $name) {
-            $guard = Auth::guard($name);
-
-            if ($guard instanceof SessionGuard && $request->cookies->has($guard->getRecallerName())) {
-                Cookie::queue(Cookie::forget($guard->getRecallerName()));
+        foreach (array_keys($request->cookies->all()) as $name) {
+            if (preg_match('/^remember_.+_[0-9a-f]{40}$/', (string) $name)) {
+                Cookie::queue(Cookie::forget((string) $name));
             }
         }
     }
