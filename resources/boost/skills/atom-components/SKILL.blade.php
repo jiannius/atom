@@ -496,6 +496,7 @@ These are the conventions Atom-using projects should adopt unless they have a re
 - **Description lists (show pages).** Group label/value pairs in `<atom:dd.group>`; use `cols="2"` only for many fields on a wide page — same density logic as forms.
 - **Section separation.** Prefer `<atom:separator>` over ad-hoc `<hr>` or border classes; separate logical field groups with a separator and a short title (e.g. "Address", "Registration & Tax").
 - **Colour with role tokens, never `zinc-*` or a `dark:` pair.** `bg-surface`, `bg-surface-sunken`, `text-fg`, `text-fg-muted`, `text-fg-subtle`, `border-border`, `border-border-strong`, `bg-accent`, `text-accent-ink` and the tones (`bg-danger-bg text-danger-fg`) are one name for both themes, so there is no pair to keep in step. Tailwind v4 draws a border in `currentColor`; atom's base rule gives every element the `border` token's colour, so `border-t` and `divide-y` are right as written, and a `dark:`-only border colour is the old defect (a heavy black rule in light mode).
+- **Local sign-in.** On the login page put `<atom:dev-login />` after the form (never inside it: a nested `<form>` is dropped), and add `scopeDevLogin()` to the auth model to leave blocked accounts out. It is local only: it prints nothing and its `POST /atom/dev/login` route does not exist outside `APP_ENV=local`.
 @endverbatim
 - **Component method order** (top of class to bottom):
     1. Validation (`$rules`, `$messages`, `#[Rule]` properties)

@@ -618,3 +618,17 @@ it('teaches the 3d tokens and no longer the dotted link', function () {
         ->and($skill)->toContain('`orange` and `yellow` are both warning')
         ->and($skill)->not->toContain('dotted underline');
 });
+
+// #140: the local sign-in is taught in the skill (not the always-on guideline, which is at its word budget) and in the README.
+it('documents <atom:dev-login> in the skill and the README', function () {
+    $readme = file_get_contents(__DIR__.'/../../README.md');
+
+    foreach ([boostFile('skills/atom-components/SKILL.blade.php'), $readme] as $text) {
+        expect($text)->toContain('<atom:dev-login />')
+            ->and($text)->toContain('scopeDevLogin')
+            ->and($text)->toMatch('/never inside (it|the login form)|not inside (it|the login form)/');
+    }
+
+    expect($readme)->toContain('## Signing in during local development')
+        ->and(boostFile('guidelines/core.blade.php'))->not->toContain('dev-login');
+});

@@ -27,7 +27,7 @@ composer require jiannius/atom
 
 The service provider (`Jiannius\Atom\AtomServiceProvider`) auto-registers via Laravel's package discovery. It will:
 
-- Mount its routes under `/atom/*` (asset serving + action endpoint).
+- Mount its routes under `/atom/*` (asset serving + action endpoint), plus the local-only docs and `POST /atom/dev/login` (registered only when `APP_ENV=local`).
 - Register all components under the `atom` view namespace.
 - Install the `<atom:...>` Blade tag compiler.
 - Mix macros onto `Eloquent\Builder`, `Query\Builder`, `Request`, `Str`, `Stringable`, `Arr` and `Livewire\Component`.
@@ -723,6 +723,7 @@ there's no server-side or cross-device state.
 | `<atom:copy>` | `value` — copy-to-clipboard button. |
 | `<atom:darkmode-toggle>` | Dark-mode switcher. Needs the page to pass `dark` to `<atom:html>` or its layout — without it `window.darkmode()` is never defined. The sidebar layout renders its own toggle when `dark` is set. |
 | `<atom:dd>` | A label (muted) and its value (an empty one prints `filler`, `--`). `label`, `block` (stack them), `filler`. Wrap several in `<atom:dd.group cols="1\|2\|3">`. |
+| `<atom:dev-login>` | `limit` (5), `label` (`name`) — buttons that sign in as one of your first accounts, local environment only. See [Signing in during local development](#signing-in-during-local-development). |
 | `<atom:embed>` | `src`, `icon`, `file` — embeds image / video / YouTube / file preview. |
 | `<atom:error>` | Plain error message slot. |
 | `<atom:html>` | Page boilerplate (see [Page boilerplate](#page-boilerplate)). |
@@ -1879,6 +1880,35 @@ An option may instead carry its own `html` (and `selected_html`, the version sho
 An unescaped field in `html` is a stored XSS for everyone who opens that select. Keep `label` plain even when `html` is set: the label is what search filters on and what the chips show.
 
 The native variant prints `label` into `<option>`, and escapes it.
+
+---
+
+## Signing in during local development
+
+`<atom:dev-login />` prints a "Local development" separator and one "Log in as ..." button per account, so you can sign in on a login page without typing a password. It exists only when `APP_ENV=local`: the route (`POST /atom/dev/login/{atomUser?}`, named `atom.dev.login`) is registered when the routes file loads, as `/atom/docs` is, and the component prints nothing and runs no query in any other environment. The route exists in every app that runs with `APP_ENV=local`.
+
+```blade
+<atom:form wire:submit="submit">...</atom:form>
+
+<atom:dev-login />
+```
+
+- **Put it after the login form, never inside it.** HTML drops a nested `<form>`, so the buttons would submit your login form instead.
+- **Props.** `limit` (default `5`) is the number of buttons; `label` (default `name`) is the attribute printed in "Log in as {label}", falling back to the account's identifier when it is empty (use a model accessor for a computed label: `label="dev_login_label"`). It reads any attribute of the model, `$hidden` ones included, so pick a display column (`name`, `email`), never a token or a password. The label is printed as text.
+- **Accounts.** The default guard's own Eloquent user provider (its model, and its `withQuery()` callback when one is set), in identifier order (the query orders by the identifier first, so a scope that wants another order calls `reorder()`). A model that has a `scopeDevLogin` decides which accounts are offered, and the same scope is the gate: an account it leaves out gets a 404 even when its id is posted by hand.
+
+  ```php
+  /** Accounts the local dev login offers and accepts */
+  public function scopeDevLogin(Builder $query): void
+  {
+      $query->whereNull('blocked_at')->where('role', 'owner')->reorder('name');
+  }
+  ```
+
+  The default guard must be a session guard with an Eloquent provider (the `database` driver and custom providers are not supported): anything else throws a `LogicException` that names it. It uses the configured default guard, so it is not for a login page that switches guard with `Auth::shouldUse()` or an `auth:<guard>` middleware.
+- **POST, not GET.** A link that signs in could be fired from another site, or by a prefetcher; a POST carries the CSRF token your `web` group already checks. Opening `/atom/dev/login` in the address bar returns 405. A browser test clicks the "Log in as ..." button.
+- **After the click.** The session is wiped and started again and the remember-me cookies are forgotten (as after a logout, without the `Logout` event), the account is signed in through the guard (no "remember me"; the `Login` event fires, so your listeners run), and the visitor goes to the intended URL, else where your guest middleware sends a signed-in user (`redirectUsersTo()`, else the `dashboard` route, else `home`, else `/`). The password and any second factor are skipped.
+- **Route cache.** `loadRoutesFrom` skips atom's routes file when routes are cached, so a route cache built under `APP_ENV=local` keeps `POST /atom/dev/login` live wherever it is deployed. Never run `route:cache` or `optimize` with a local `.env` for a build that gets deployed.
 
 ---
 

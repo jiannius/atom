@@ -82,6 +82,7 @@ function restyledComponents(): array
         'separator',
         'sharer',
         'copy',
+        'dev-login',
         'embed',
         'whatsapp',
         'tiptap',
