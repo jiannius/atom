@@ -1895,7 +1895,7 @@ The native variant prints `label` into `<option>`, and escapes it.
 
 - **Put it after the login form, never inside it.** HTML drops a nested `<form>`, so the buttons would submit your login form instead.
 - **Props.** `limit` (default `5`) is the number of buttons; `label` (default `name`) is the attribute printed in "Log in as {label}", falling back to the account's identifier when it is empty (use a model accessor for a computed label: `label="dev_login_label"`). It reads any attribute of the model, `$hidden` ones included, so pick a display column (`name`, `email`), never a token or a password. The label is printed as text.
-- **Accounts.** The default guard's own Eloquent user provider (its model, and its `withQuery()` callback when one is set), in identifier order. A model that has a `scopeDevLogin` decides which accounts are offered, and the same scope is the gate: an account it leaves out gets a 404 even when its id is posted by hand.
+- **Accounts.** The default guard's own Eloquent user provider (its model, and its `withQuery()` callback when one is set), in identifier order (the query orders by the identifier first, so a scope that wants another order calls `reorder()`). A model that has a `scopeDevLogin` decides which accounts are offered, and the same scope is the gate: an account it leaves out gets a 404 even when its id is posted by hand.
 
   ```php
   /** Accounts the local dev login offers and accepts */
@@ -1905,9 +1905,9 @@ The native variant prints `label` into `<option>`, and escapes it.
   }
   ```
 
-  The default guard must be a session guard with an Eloquent provider (the `database` driver and custom providers are not supported): anything else throws a `LogicException` that names it.
+  The default guard must be a session guard with an Eloquent provider (the `database` driver and custom providers are not supported): anything else throws a `LogicException` that names it. It uses the configured default guard, so it is not for a login page that switches guard with `Auth::shouldUse()` or an `auth:<guard>` middleware.
 - **POST, not GET.** A link that signs in could be fired from another site, or by a prefetcher; a POST carries the CSRF token your `web` group already checks. Opening `/atom/dev/login` in the address bar returns 405. A browser test clicks the "Log in as ..." button.
-- **After the click.** The session is wiped and started again (as after a logout), the account is signed in through the guard (no "remember me"; the `Login` event fires, so your listeners run), and the visitor goes to the intended URL, else where your guest middleware sends a signed-in user (`redirectUsersTo()`, else the `dashboard` route, else `home`, else `/`). The password and any second factor are skipped.
+- **After the click.** The session is wiped and started again and the remember-me cookies are forgotten (as after a logout, without the `Logout` event), the account is signed in through the guard (no "remember me"; the `Login` event fires, so your listeners run), and the visitor goes to the intended URL, else where your guest middleware sends a signed-in user (`redirectUsersTo()`, else the `dashboard` route, else `home`, else `/`). The password and any second factor are skipped.
 - **Route cache.** `loadRoutesFrom` skips atom's routes file when routes are cached, so a route cache built under `APP_ENV=local` keeps `POST /atom/dev/login` live wherever it is deployed. Never run `route:cache` or `optimize` with a local `.env` for a build that gets deployed.
 
 ---

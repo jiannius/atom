@@ -4,6 +4,8 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\QueryException;
+use Illuminate\Routing\RouteCollection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -130,22 +132,92 @@ it('ignores what the withQuery() callback returns, as the user provider does', f
     expect(Auth::check())->toBeFalse();
 });
 
-it('returns 404 for a segment the key type cannot hold, and for a query that fails', function () {
-    devLoginPost($this, '/atom/dev/login/not-a-number')->assertNotFound();
+it('returns 404 for a segment the key type cannot hold, without querying', function () {
+    DB::enableQueryLog();
 
-    Auth::guard()->getProvider()->withQuery(fn ($query) => $query->whereRaw('this is not sql ('));
+    foreach (['not-a-number', '1.5', '-1', '007', '99999999999999999999'] as $segment) {
+        devLoginPost($this, '/atom/dev/login/'.$segment)->assertNotFound();
+    }
 
-    devLoginPost($this, '/atom/dev/login/'.$this->sam->id)->assertNotFound();
-
-    expect(Auth::check())->toBeFalse();
+    expect(Auth::check())->toBeFalse()
+        ->and(collect(DB::getQueryLog())->filter(fn ($entry) => str_contains($entry['query'], 'where "members"."id"')))->toBeEmpty();
 });
 
-it('does not hide a failing query when no account is named', function () {
+it('does not hide a failing query', function () {
     Auth::guard()->getProvider()->withQuery(fn ($query) => $query->whereRaw('this is not sql ('));
 
     $this->withoutExceptionHandling();
 
-    expect(fn () => devLoginPost($this, '/atom/dev/login'))->toThrow(QueryException::class);
+    expect(fn () => devLoginPost($this, '/atom/dev/login/'.$this->sam->id))->toThrow(QueryException::class)
+        ->and(fn () => devLoginPost($this, '/atom/dev/login'))->toThrow(QueryException::class);
+});
+
+it('qualifies the identifier column, so a withQuery() join with an id of its own is not ambiguous', function () {
+    Schema::create('extras', function ($table) {
+        $table->id();
+        $table->unsignedBigInteger('member_id');
+    });
+
+    DB::table('extras')->insert([['member_id' => $this->alex->id], ['member_id' => $this->sam->id]]);
+
+    Auth::guard()->getProvider()->withQuery(fn ($query) => $query->join('extras', 'extras.member_id', '=', 'members.id')->select('members.*'));
+
+    expect(array_map(devLoginLabel(...), devLoginButtons()))->toBe(['Log in as Alex Doe', 'Log in as Sam Lee']);
+
+    devLoginPost($this, '/atom/dev/login/'.$this->sam->id)->assertRedirect('/');
+
+    $this->assertAuthenticatedAs($this->sam);
+});
+
+it('leaves the current session intact when the account is refused', function () {
+    config(['auth.providers.users.model' => DevLoginActiveMember::class]);
+    Auth::forgetGuards();
+
+    $blocked = DevLoginMember::create(['name' => 'Bob Blocked', 'blocked_at' => now()]);
+
+    $this->actingAs($this->alex);
+
+    foreach ([999, $blocked->id, 'nope'] as $id) {
+        devLoginPost($this, '/atom/dev/login/'.$id, ['cart' => 'kept'])->assertNotFound();
+
+        expect(Auth::id())->toBe($this->alex->id)
+            ->and(session('cart'))->toBe('kept');
+    }
+});
+
+it('forgets the remember-me cookie of every session guard, so the previous account does not come back', function () {
+    config([
+        'auth.guards.admin' => ['driver' => 'session', 'provider' => 'users'],
+        'auth.guards.api' => ['driver' => 'token', 'provider' => 'users'],
+    ]);
+    Auth::forgetGuards();
+
+    $web = Auth::guard('web')->getRecallerName();
+    $admin = Auth::guard('admin')->getRecallerName();
+
+    $response = $this->withCookie($web, $this->alex->id.'|token|hash')
+        ->withCookie($admin, $this->alex->id.'|token|hash')
+        ->withSession(['_token' => 'token'])
+        ->post('/atom/dev/login/'.$this->sam->id, ['_token' => 'token']);
+
+    $response->assertRedirect('/')->assertCookieExpired($web)->assertCookieExpired($admin);
+
+    $this->assertAuthenticatedAs($this->sam);
+});
+
+it('queues no cookie when the request carries no remember-me cookie', function () {
+    $response = devLoginPost($this, '/atom/dev/login/'.$this->sam->id);
+
+    $response->assertCookieMissing(Auth::guard('web')->getRecallerName());
+});
+
+it('prints nothing when the sign-in route is missing, as after a route cache built elsewhere', function () {
+    Route::setRoutes(new RouteCollection);
+
+    session()->start();
+
+    expect(Route::has('atom.dev.login'))->toBeFalse()
+        ->and(trim(renderBlade('<atom:dev-login />')))->toBe('');
 });
 
 it('leaves out accounts a global scope hides (soft-deleted), in the list and at sign-in', function () {
@@ -212,11 +284,11 @@ it('redirects to the intended url, else the guest middleware\'s target, else the
         Route::get('/overview', fn () => 'ok')->name('dashboard');
     }
 
-    devLoginPost($this, '/atom/dev/login', $session)->assertRedirect($expected);
+    devLoginPost($this, '/atom/dev/login', $session)->assertRedirect($expected === 'the dashboard route' ? route('dashboard') : $expected);
 })->with([
     'intended' => ['intended', 'http://localhost/reports'],
     'callback' => ['callback', '/members/home'],
-    'dashboard' => ['dashboard', 'http://localhost/overview'],
+    'dashboard' => ['dashboard', 'the dashboard route'],
     'root' => ['root', '/'],
 ]);
 

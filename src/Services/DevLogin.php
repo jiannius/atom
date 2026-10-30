@@ -3,15 +3,16 @@
 namespace Jiannius\Atom\Services;
 
 use Illuminate\Auth\EloquentUserProvider;
+use Illuminate\Auth\SessionGuard;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use LogicException;
 
 /**
@@ -36,8 +37,9 @@ class DevLogin
     }
 
     /**
-     * The accounts dev login offers and accepts, in identifier order: the provider's own query (its `withQuery()` callback
-     * included), narrowed by the model's `scopeDevLogin()` when it has one.
+     * The accounts dev login offers and accepts, in identifier order: the provider's own query (its `withQuery()` callback,
+     * called for what it does to the builder with its return value ignored, as `EloquentUserProvider::newModelQuery()` does),
+     * ordered by the identifier first and then narrowed by the model's `scopeDevLogin()` when it has one (which may `reorder()`).
      *
      * @return Builder<\Illuminate\Database\Eloquent\Model>
      */
@@ -54,11 +56,10 @@ class DevLogin
         $query = $model->newQuery();
 
         if ($callback = $provider->getQueryCallback()) {
-            // Called for what it does to the builder and its return value ignored, as EloquentUserProvider::newModelQuery() does.
             $callback($query);
         }
 
-        $query->orderBy($model->getAuthIdentifierName());
+        $query->orderBy($model->qualifyColumn($model->getAuthIdentifierName()));
 
         if ($model->hasNamedScope('devLogin')) {
             $query->devLogin();
@@ -78,8 +79,9 @@ class DevLogin
     }
 
     /**
-     * The account with this identifier among the ones dev login accepts, or the first one when none is named; null when there is none
-     * (an identifier the key's type rejects counts as none).
+     * The account with this identifier among the ones dev login accepts, or the first one when none is named; null when there is none.
+     * An identifier that cannot be the key's value (text, or a number past PHP_INT_MAX, for an integer key) is none, and is not queried:
+     * PostgreSQL throws on it, where SQLite and MySQL match nothing.
      */
     public static function find(?string $id): ?Authenticatable
     {
@@ -89,12 +91,15 @@ class DevLogin
             return $query->first();
         }
 
-        try {
-            return $query->where($query->getModel()->getAuthIdentifierName(), $id)->first();
-        } catch (QueryException) {
-            // A segment the key's type cannot hold (text against an integer or uuid column on PostgreSQL) is an account that does not exist.
+        $model = $query->getModel();
+        $name = $model->getAuthIdentifierName();
+
+        if ($name === $model->getKeyName() && in_array($model->getKeyType(), ['int', 'integer'], true)
+            && ! (ctype_digit($id) && filter_var($id, FILTER_VALIDATE_INT) !== false)) {
             return null;
         }
+
+        return $query->where($model->qualifyColumn($name), $id)->first();
     }
 
     /**
@@ -105,6 +110,9 @@ class DevLogin
     {
         $middleware = new class extends RedirectIfAuthenticated
         {
+            /**
+             * The protected `redirectTo()`, which holds the host's `redirectUsersTo()` callback and the default route lookup.
+             */
             public function target(Request $request): ?string
             {
                 return $this->redirectTo($request);
@@ -115,7 +123,23 @@ class DevLogin
     }
 
     /**
-     * Sign the visitor in as this account (404 when dev login does not accept it) from a clean session, as after a logout.
+     * Queue the removal of the remember-me cookie of every session guard the request carries one for. The sign-in does not remember
+     * the visitor, and a cookie left behind would sign the previous account back in once the new session expires.
+     */
+    protected static function forgetRecallers(Request $request): void
+    {
+        foreach (array_keys(config('auth.guards', [])) as $name) {
+            $guard = Auth::guard($name);
+
+            if ($guard instanceof SessionGuard && $request->cookies->has($guard->getRecallerName())) {
+                Cookie::queue(Cookie::forget($guard->getRecallerName()));
+            }
+        }
+    }
+
+    /**
+     * Sign the visitor in as this account (404 when dev login does not accept it) from a clean session, as after a logout: the
+     * session is wiped and the remember-me cookies are forgotten, without logging the previous user out (no `Logout` event).
      */
     public static function login(Request $request, ?string $id): RedirectResponse
     {
@@ -124,6 +148,8 @@ class DevLogin
         abort_if($account === null, 404);
 
         $intended = $request->session()->pull('url.intended');
+
+        static::forgetRecallers($request);
 
         $request->session()->invalidate();
 
