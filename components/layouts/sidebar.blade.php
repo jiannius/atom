@@ -107,6 +107,8 @@ $trailEmpty = $crumbsOnly
         $el.removeAttribute('data-mobile-cloak')
 
         $watch('isHidden', (hidden) => {
+            let fromBar = document.activeElement?.matches?.('[data-atom-sidebar-collapse]')
+
             document.documentElement.toggleAttribute('data-atom-sidebar-collapsed', hidden)
 
             try {
@@ -119,6 +121,15 @@ $trailEmpty = $crumbsOnly
             // Tab does not start from the top of the document.
             if (hidden && screenLg && (!document.activeElement || document.activeElement === document.body || $el.contains(document.activeElement))) {
                 $nextTick(() => document.querySelector('[data-atom-sidebar-collapse]')?.focus())
+            }
+
+            // A bar with nothing else in it goes again when the sidebar is back, and the button the focus was on with it: the row at the foot is its twin.
+            if (!hidden && fromBar) {
+                $nextTick(() => {
+                    let button = document.querySelector('[data-atom-sidebar-collapse]')
+
+                    if (!button || button.getClientRects().length === 0) document.querySelector('[data-atom-sidebar-fallback]')?.focus()
+                })
             }
         })
 

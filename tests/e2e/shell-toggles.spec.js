@@ -459,10 +459,22 @@ test.describe('the sidebar collapse button', () => {
     await page.keyboard.press('Enter')
     await expect(collapseButton(page)).toBeFocused()
 
-    // and back: expanding leaves the focus on the button
+    // and back: the bar has nothing else in it, so it goes with the sidebar's return, and the focus goes to the row that is the button's twin
     await page.keyboard.press('Enter')
     await expect.poll(() => sidebarShown(page)).toBe(true)
+    await expect(page.locator('[data-atom-sidebar-fallback]')).toBeFocused()
+
+    // with crumbs the bar stays, and so does the focus on its button
+    await page.goto('/atom/e2e/shell-collapse/one?tw=latest&crumbs=1')
+    await page.waitForFunction(() => window.Alpine !== undefined)
+    await collapseButton(page).focus()
+    await page.keyboard.press('Enter')
+    await expect(collapseButton(page)).toHaveAttribute('aria-expanded', 'false')
+    await page.keyboard.press('Enter')
+    await expect(collapseButton(page)).toHaveAttribute('aria-expanded', 'true')
     await expect(collapseButton(page)).toBeFocused()
+    await page.goto('/atom/e2e/shell-collapse/one?tw=latest')
+    await page.waitForFunction(() => window.Alpine !== undefined)
 
     // Ctrl+B with a nav link focused
     await page.getByRole('link', { name: 'Page two' }).focus()
