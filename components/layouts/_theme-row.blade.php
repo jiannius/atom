@@ -1,5 +1,5 @@
-{{-- The shells' theme row: a Light / Dark / System segmented group inside the account menu. It is not a menu.item, and the
-     wrapper stops the click, so picking a theme does not close the menu (the dropdown closes on a click that reaches its
+{{-- The shells' theme row: a Light / Dark / System segmented group inside the account menu. It is not a menu.item (the options are
+     menuitemradio in the menu's group), and the wrapper stops the click, so picking a theme does not close the menu (the dropdown closes on a click that reaches its
      root). window.darkmode() exists only when the page passed `dark`; the shells draw this row only then. --}}
 <div
 x-data="{ mode: window.darkmode() }"
@@ -14,10 +14,11 @@ data-atom-theme-row>
             <button
             type="button"
             x-on:click="window.darkmode('{{ $mode }}')"
-            x-bind:aria-pressed="mode === '{{ $mode }}' ? 'true' : 'false'"
-            aria-pressed="false"
+            role="menuitemradio"
+            x-bind:aria-checked="mode === '{{ $mode }}' ? 'true' : 'false'"
+            aria-checked="false"
             aria-label="{{ t($label) }}"
-            class="flex size-6 items-center justify-center rounded-nav text-fg-muted hover:text-fg [&[aria-pressed=true]]:bg-fg/10 [&[aria-pressed=true]]:text-fg"
+            class="flex size-6 items-center justify-center rounded-nav text-fg-muted hover:text-fg [&[aria-checked=true]]:bg-fg/10 [&[aria-checked=true]]:text-fg"
             data-atom-theme-option="{{ $mode }}">
                 <x-dynamic-component :component="'atom::icon.'.$icon" class="size-3.5"/>
             </button>

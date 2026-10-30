@@ -53,8 +53,8 @@
         With <code>dark</code>, both shells put a Light / Dark / System row in the account menu, or a toggle in the bar
         when there is no <code>dropdown</code> slot. Pass <code>:theme-switcher="false"</code> to draw neither and
         use your own control: <code>dark</code> still emits the <code>window.darkmode()</code> bootstrap.
-        <code>window.darkmode('dark')</code> applies and returns a choice; with no argument it returns the stored one
-        (<code>light</code>, <code>dark</code> or <code>system</code>), and <code>darkmode-changed</code> on
+        <code>window.darkmode('dark')</code> applies and returns a choice; with no argument it only reads the stored one
+        (<code>light</code>, <code>dark</code> or <code>system</code>; nothing is applied or dispatched), and <code>darkmode-changed</code> on
         <code>document</code> carries the choice as its <code>detail</code>.
     </p>
 
