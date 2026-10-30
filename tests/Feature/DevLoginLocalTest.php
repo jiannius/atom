@@ -1,0 +1,181 @@
+<?php
+
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
+use Jiannius\Atom\Services\DevLogin;
+use Jiannius\Atom\Tests\Fixtures\DevLoginActiveMember;
+use Jiannius\Atom\Tests\Fixtures\DevLoginMember;
+use Jiannius\Atom\Tests\Support\LocalEnvironment;
+
+// The app boots as `local` here, so the real routes file registers the route, and Laravel's CSRF check is on (it is skipped
+// only in `testing`): every POST must carry a token.
+uses(LocalEnvironment::class);
+
+/**
+ * POST with a CSRF token the session holds.
+ */
+function devLoginPost($test, string $uri, array $session = [], bool $withToken = true)
+{
+    return $test->withSession(['_token' => 'token', ...$session])->post($uri, $withToken ? ['_token' => 'token'] : []);
+}
+
+beforeEach(function () {
+    Schema::create('members', function ($table) {
+        $table->id();
+        $table->string('name');
+        $table->string('email')->nullable();
+        $table->string('password')->nullable();
+        $table->timestamp('blocked_at')->nullable();
+        $table->rememberToken();
+        $table->timestamps();
+    });
+
+    config(['auth.providers.users.model' => DevLoginMember::class]);
+    Auth::forgetGuards();
+
+    $this->alex = DevLoginMember::create(['name' => 'Alex Doe', 'email' => 'alex@example.com']);
+    $this->sam = DevLoginMember::create(['name' => 'Sam Lee', 'email' => 'sam@example.com']);
+});
+
+afterEach(function () {
+    (new ReflectionProperty(RedirectIfAuthenticated::class, 'redirectToCallback'))->setValue(null, null);
+});
+
+it('registers the sign-in route in local as POST only', function () {
+    expect(Route::has('atom.dev.login'))->toBeTrue()
+        ->and(Route::getRoutes()->getByName('atom.dev.login')->methods())->toBe(['POST']);
+
+    $this->get('/atom/dev/login/'.$this->alex->id)->assertStatus(405);
+
+    expect(Auth::check())->toBeFalse();
+});
+
+it('signs in as the given account through the default guard\'s own provider', function () {
+    Event::fake([Login::class]);
+
+    devLoginPost($this, '/atom/dev/login/'.$this->sam->id)->assertRedirect('/');
+
+    $this->assertAuthenticatedAs($this->sam);
+
+    expect(Auth::user())->toBeInstanceOf(DevLoginMember::class)
+        ->and(class_exists('App\Models\User', false))->toBeFalse();
+
+    Event::assertDispatched(Login::class, fn (Login $event) => $event->user->is($this->sam));
+});
+
+it('signs in as the first account by identifier when none is named', function () {
+    devLoginPost($this, '/atom/dev/login')->assertRedirect('/');
+
+    $this->assertAuthenticatedAs($this->alex);
+});
+
+it('refuses a POST without a CSRF token', function () {
+    devLoginPost($this, '/atom/dev/login/'.$this->alex->id, withToken: false)->assertStatus(419);
+
+    expect(Auth::check())->toBeFalse();
+});
+
+it('returns 404 for an account that does not exist', function () {
+    devLoginPost($this, '/atom/dev/login/999')->assertNotFound();
+
+    expect(Auth::check())->toBeFalse();
+});
+
+it('lets the model\'s scopeDevLogin be both the list and the gate', function () {
+    config(['auth.providers.users.model' => DevLoginActiveMember::class]);
+    Auth::forgetGuards();
+
+    $blocked = DevLoginMember::create(['name' => 'Aaron Blocked', 'blocked_at' => now()]);
+    $zed = DevLoginMember::create(['name' => 'Zed Last']);
+
+    devLoginPost($this, '/atom/dev/login/'.$blocked->id)->assertNotFound();
+
+    expect(Auth::check())->toBeFalse();
+
+    // first by the scope's order (name), and not by id: Aaron is blocked, so Alex comes first
+    devLoginPost($this, '/atom/dev/login')->assertRedirect('/');
+
+    expect(Auth::user()->name)->toBe('Alex Doe');
+});
+
+it('honours the provider\'s withQuery() callback', function () {
+    Auth::guard()->getProvider()->withQuery(fn ($query) => $query->where('email', '!=', 'sam@example.com'));
+
+    devLoginPost($this, '/atom/dev/login/'.$this->sam->id)->assertNotFound();
+
+    expect(Auth::check())->toBeFalse();
+
+    devLoginPost($this, '/atom/dev/login/'.$this->alex->id)->assertRedirect('/');
+
+    $this->assertAuthenticatedAs($this->alex);
+});
+
+it('is not reached by a host\'s global {user} binding', function () {
+    Route::bind('user', fn () => abort(500));
+
+    devLoginPost($this, '/atom/dev/login/'.$this->sam->id)->assertRedirect('/');
+
+    $this->assertAuthenticatedAs($this->sam);
+});
+
+it('redirects to the intended url, else the guest middleware\'s target, else the dashboard route, else /', function (string $case, string $expected) {
+    $session = [];
+
+    if ($case === 'intended') {
+        $session = ['url.intended' => 'http://localhost/reports'];
+        RedirectIfAuthenticated::redirectUsing(fn () => '/ignored');
+    }
+    else if ($case === 'callback') {
+        RedirectIfAuthenticated::redirectUsing(fn () => '/members/home');
+    }
+    else if ($case === 'dashboard') {
+        Route::get('/overview', fn () => 'ok')->name('dashboard');
+    }
+
+    devLoginPost($this, '/atom/dev/login', $session)->assertRedirect($expected);
+})->with([
+    'intended' => ['intended', 'http://localhost/reports'],
+    'callback' => ['callback', '/members/home'],
+    'dashboard' => ['dashboard', 'http://localhost/overview'],
+    'root' => ['root', '/'],
+]);
+
+it('starts from a clean session', function () {
+    $this->actingAs($this->alex);
+
+    $response = devLoginPost($this, '/atom/dev/login/'.$this->sam->id, [
+        'password_hash_web' => 'stale',
+        'url.intended' => '/x',
+    ]);
+
+    $response->assertRedirect('/x');
+
+    $this->assertAuthenticatedAs($this->sam);
+    $response->assertSessionMissing('password_hash_web');
+
+    expect(session()->token())->not->toBe('token');
+});
+
+it('needs a session guard with an Eloquent provider', function (callable $configure, string $named) {
+    $configure();
+    Auth::forgetGuards();
+
+    expect(fn () => DevLogin::query())->toThrow(LogicException::class, $named);
+})->with([
+    'a token guard' => [
+        function () {
+            config(['auth.guards.api' => ['driver' => 'token', 'provider' => 'users'], 'auth.defaults.guard' => 'api']);
+        },
+        '[api]',
+    ],
+    'a database provider' => [
+        function () {
+            config(['auth.providers.users' => ['driver' => 'database', 'table' => 'members']]);
+        },
+        'Illuminate\Auth\DatabaseUserProvider',
+    ],
+]);
