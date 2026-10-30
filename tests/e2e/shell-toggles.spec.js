@@ -83,3 +83,53 @@ for (const shell of ['sidebar', 'header']) {
     })
   })
 }
+
+test.describe('window.darkmode()', () => {
+  test('returns the choice, and the event carries the choice, never the resolved scheme', async ({ page }) => {
+    // the visitor's OS is dark: a "system" choice resolves to dark, and must still read as "system"
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await open(page, { query: '&dark=1' })
+
+    const run = () => page.evaluate(() => {
+      const seen = []
+      document.addEventListener('darkmode-changed', (e) => seen.push(e.detail))
+
+      return {
+        initial: window.darkmode(),
+        dark: window.darkmode('dark'),
+        afterDark: window.darkmode(),
+        light: window.darkmode('light'),
+        afterLight: window.darkmode(),
+        system: window.darkmode('system'),
+        afterSystem: window.darkmode(),
+        resolvedDark: document.documentElement.classList.contains('dark'),
+        stored: window.localStorage.getItem('darkmode'),
+        seen,
+      }
+    })
+
+    const result = await run()
+
+    expect(result).toEqual({
+      initial: 'system',
+      dark: 'dark',
+      afterDark: 'dark',
+      light: 'light',
+      afterLight: 'light',
+      system: 'system',
+      afterSystem: 'system',
+      resolvedDark: true,
+      stored: null,
+      seen: ['system', 'dark', 'dark', 'light', 'light', 'system', 'system'],
+    })
+  })
+
+  test('the theme row starts from the stored choice', async ({ page }) => {
+    await page.addInitScript(() => { try { window.localStorage.setItem('darkmode', 'light') } catch {} })
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await open(page, { query: '&dark=1' })
+
+    await page.locator('[data-atom-shell-brand] [data-atom-account-trigger]').click()
+    await expect(page.locator('[data-atom-theme-row]:visible').getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'true')
+  })
+})

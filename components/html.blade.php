@@ -172,7 +172,11 @@ fbq('track', 'PageView');
             applyLight()
         }
 
+        // `detail` and the return value are the CHOICE ('light', 'dark' or 'system'), never the scheme it resolved to, so
+        // darkmode() with no argument reads it (and applies it again, as livewire:navigated does).
         document.dispatchEvent(new CustomEvent('darkmode-changed', { detail: mode }))
+
+        return mode
     }
 
     darkmode()

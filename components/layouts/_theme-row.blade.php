@@ -2,7 +2,7 @@
      wrapper stops the click, so picking a theme does not close the menu (the dropdown closes on a click that reaches its
      root). window.darkmode() exists only when the page passed `dark`; the shells draw this row only then. --}}
 <div
-x-data="{ mode: window.localStorage.getItem('darkmode') || 'system' }"
+x-data="{ mode: window.darkmode() }"
 x-on:darkmode-changed.document="mode = $event.detail"
 x-on:click.stop
 class="flex items-center justify-between gap-2 px-2.5 py-1"
