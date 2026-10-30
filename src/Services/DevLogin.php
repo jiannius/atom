@@ -128,7 +128,8 @@ class DevLogin
 
     /**
      * Queue the removal of every remember-me cookie the request carries (`remember_<guard>_<sha1 of the guard class>`, which is how
-     * `SessionGuard` names it and any subclass too), found by name so no guard is built from the config. The sign-in does not remember
+     * `SessionGuard` names it and any subclass too), found by name so no guard is built from the config, and of the default guard's
+     * own recaller cookie when it names it differently (a subclass overriding `getRecallerName()`). The sign-in does not remember
      * the visitor, and a cookie left behind would sign the previous account back in once the new session expires.
      */
     protected static function forgetRecallers(Request $request): void
@@ -137,6 +138,12 @@ class DevLogin
             if (preg_match('/^remember_.+_[0-9a-f]{40}$/', (string) $name)) {
                 Cookie::queue(Cookie::forget((string) $name));
             }
+        }
+
+        $guard = static::guard();
+
+        if (method_exists($guard, 'getRecallerName') && $request->cookies->has($guard->getRecallerName())) {
+            Cookie::queue(Cookie::forget($guard->getRecallerName()));
         }
     }
 

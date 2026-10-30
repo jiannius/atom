@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Jiannius\Atom\Services\DevLogin;
 use Jiannius\Atom\Tests\Fixtures\DevLoginActiveMember;
+use Jiannius\Atom\Tests\Fixtures\DevLoginCustomRecallerGuard;
 use Jiannius\Atom\Tests\Fixtures\DevLoginMember;
 use Jiannius\Atom\Tests\Fixtures\DevLoginSoftMember;
 use Jiannius\Atom\Tests\Fixtures\DevLoginStringIdMember;
@@ -247,6 +248,29 @@ it('forgets recaller cookies by name: a stale guard config does not break the si
         ->post('/atom/dev/login/'.$this->sam->id, ['_token' => 'token']);
 
     $response->assertRedirect('/')->assertCookieExpired($web)->assertCookieMissing('theme')->assertCookieMissing('remember_me_pref');
+
+    $this->assertAuthenticatedAs($this->sam);
+});
+
+it('forgets the default guard\'s own recaller cookie when a subclass names it differently', function () {
+    Auth::extend('dev-login-custom', function ($app, $name, array $config) {
+        $guard = new DevLoginCustomRecallerGuard($name, Auth::createUserProvider($config['provider']), $app['session.store'], $app['request']);
+
+        $guard->setCookieJar($app['cookie']);
+        $guard->setDispatcher($app['events']);
+        $guard->setRequest($app->refresh('request', $guard, 'setRequest'));
+
+        return $guard;
+    });
+
+    config(['auth.guards.web.driver' => 'dev-login-custom']);
+    Auth::forgetGuards();
+
+    $response = $this->withCookie('keep_me_signed_in', $this->alex->id.'|token|hash')
+        ->withSession(['_token' => 'token'])
+        ->post('/atom/dev/login/'.$this->sam->id, ['_token' => 'token']);
+
+    $response->assertRedirect('/')->assertCookieExpired('keep_me_signed_in');
 
     $this->assertAuthenticatedAs($this->sam);
 });
