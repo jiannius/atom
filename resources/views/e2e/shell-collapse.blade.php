@@ -11,6 +11,12 @@ $suffix = request()->getQueryString() ? '?'.request()->getQueryString() : '';
         <atom:navlist>
             <atom:navlist.item href="/atom/e2e/shell-collapse/one{{ $suffix }}" wire:navigate>Page one</atom:navlist.item>
             <atom:navlist.item href="/atom/e2e/shell-collapse/two{{ $suffix }}" wire:navigate>Page two</atom:navlist.item>
+            {{-- ?tall=1: a nav longer than the window, so the sidebar scrolls --}}
+            @if (request()->query('tall') === '1')
+                @foreach (range(1, 40) as $n)
+                    <atom:navlist.item href="#item-{{ $n }}">Filler {{ $n }}</atom:navlist.item>
+                @endforeach
+            @endif
         </atom:navlist>
     </x-slot>
 

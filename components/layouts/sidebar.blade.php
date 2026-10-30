@@ -235,8 +235,9 @@ $trailEmpty = $crumbsOnly
             </div>
         @endif
 
-        {{-- Everything under the brand row scrolls; the brand row stays, so the round collapse button on the sidebar's edge is not clipped by the scroll box. --}}
-        <div class="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain" data-atom-sidebar-scroll>
+        {{-- Everything under the brand row scrolls; the brand row stays, so the round collapse button on the sidebar's edge is not clipped by the scroll box.
+             The box takes the sidebar's side padding itself (-mx / px), so a focus ring on an item is not cut at the box's edge and the scrollbar sits on the sidebar's edge. --}}
+        <div class="-mx-2.5 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-2.5" data-atom-sidebar-scroll>
 
         @isset ($context)
             <div class="pb-2" data-atom-shell-context>{{ $context }}</div>
@@ -334,8 +335,8 @@ $trailEmpty = $crumbsOnly
             title="{{ t('Toggle sidebar') }} (Ctrl/⌘ B)"
             class="flex h-control aspect-square shrink-0 items-center justify-center rounded-control text-fg-muted hover:bg-fg/5 hover:text-fg max-lg:hidden"
             data-atom-sidebar-collapse>
-                <atom:icon.panel-left-close class="size-4" data-atom-sidebar-glyph="collapse"/>
-                <atom:icon.panel-left-open class="size-4" data-atom-sidebar-glyph="expand"/>
+                <atom:icon.panel-left-close class="size-4 rtl:-scale-x-100" data-atom-sidebar-glyph="collapse"/>
+                <atom:icon.panel-left-open class="size-4 rtl:-scale-x-100" data-atom-sidebar-glyph="expand"/>
             </button>
 
             <div class="flex min-w-0 grow items-center" data-atom-shell-crumbs>

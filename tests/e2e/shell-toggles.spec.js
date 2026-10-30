@@ -423,6 +423,101 @@ test.describe('the sidebar collapse button', () => {
     })
   }
 
+  test('a focused nav item keeps room for its ring on both sides of the scroll box', async ({ page }) => {
+    await goCollapse(page, { query: '&crumbs=1' })
+
+    await page.getByRole('link', { name: 'Page one' }).focus()
+    const room = await page.evaluate(() => {
+      const box = document.querySelector('[data-atom-sidebar-scroll]').getBoundingClientRect()
+      const link = document.activeElement.getBoundingClientRect()
+      return { start: link.left - box.left, end: box.right - link.right }
+    })
+
+    expect(room.start).toBeGreaterThanOrEqual(3)
+    expect(room.end).toBeGreaterThanOrEqual(3)
+  })
+
+  test('a tall nav scrolls in its box while the brand row stays put', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 600 })
+    await goCollapse(page, { query: '&tall=1' })
+
+    const state = () => page.evaluate(() => {
+      const box = document.querySelector('[data-atom-sidebar-scroll]')
+      return {
+        scrolls: box.scrollHeight > box.clientHeight,
+        top: box.scrollTop,
+        brandY: Math.round(document.querySelector('[data-atom-shell-brand]').getBoundingClientRect().y),
+        circleY: Math.round(document.querySelector('[data-atom-sidebar-circle]').getBoundingClientRect().y),
+        sidebarScrolls: document.querySelector('[data-atom-sidebar]').scrollHeight > document.querySelector('[data-atom-sidebar]').clientHeight + 1,
+        lastY: Math.round([...document.querySelectorAll('[data-atom-navlist-item]')].pop().getBoundingClientRect().y),
+      }
+    })
+
+    const before = await state()
+    expect(before.scrolls).toBe(true)
+    expect(before.sidebarScrolls).toBe(false)
+    expect(before.lastY).toBeGreaterThan(600)
+
+    await page.locator('[data-atom-sidebar-scroll]').evaluate((el) => { el.scrollTop = el.scrollHeight })
+    const after = await state()
+    expect(after.top).toBeGreaterThan(100)
+    expect(after.brandY).toBe(before.brandY)
+    expect(after.circleY).toBe(before.circleY)
+    expect(after.lastY).toBeLessThan(600)
+    await expect(circle(page)).toBeVisible()
+  })
+
+  test('on a phone the stashed sidebar still opens over the page, and there is no circle', async ({ page }) => {
+    await page.setViewportSize({ width: 600, height: 800 })
+    await goCollapse(page)
+
+    expect(await sidebarShown(page)).toBe(false)
+    expect(await circle(page).evaluate((el) => getComputedStyle(el).display)).toBe('none')
+    await expect(collapseButton(page)).toBeHidden()
+
+    await page.locator('[data-atom-sidebar-toggle]').click()
+    await expect.poll(() => sidebarShown(page)).toBe(true)
+    await expect(page.getByRole('link', { name: 'Page one' })).toBeVisible()
+    expect(await circle(page).evaluate((el) => getComputedStyle(el).display)).toBe('none')
+
+    // the backdrop closes it
+    await page.mouse.click(560, 600)
+    await expect.poll(() => sidebarShown(page)).toBe(false)
+  })
+
+  test('right to left: the circle straddles the sidebar\'s left border, and the panel glyphs are mirrored', async ({ page }) => {
+    await goCollapse(page)
+
+    const glyphScale = () => circle(page).locator('[data-atom-icon]').evaluate((el) => getComputedStyle(el).scale)
+    expect(await glyphScale()).toBe('none')
+
+    await page.evaluate(() => { document.documentElement.dir = 'rtl' })
+
+    const geometry = await page.evaluate(() => {
+      const c = document.querySelector('[data-atom-sidebar-circle]').getBoundingClientRect()
+      const sidebar = document.querySelector('[data-atom-sidebar]').getBoundingClientRect()
+      const caret = document.querySelector('[data-atom-shell-brand] [data-atom-account-trigger] [data-atom-icon]').getBoundingClientRect()
+      return {
+        dx: (c.left + c.width / 2) - (sidebar.left + 0.5),
+        straddles: c.left < sidebar.left - 1 && c.right > sidebar.left + 1,
+        dy: (c.top + c.height / 2) - (caret.top + caret.height / 2),
+        sidebarOnTheRight: sidebar.left > window.innerWidth / 2,
+      }
+    })
+    expect(geometry.sidebarOnTheRight).toBe(true)
+    expect(Math.abs(geometry.dx)).toBeLessThanOrEqual(1.5)
+    expect(geometry.straddles).toBe(true)
+    expect(Math.abs(geometry.dy)).toBeLessThanOrEqual(2)
+    expect(await glyphScale()).not.toBe('none')
+
+    // the bar's glyphs too
+    await goCollapse(page, { query: '&crumbs=1' })
+    await page.evaluate(() => { document.documentElement.dir = 'rtl' })
+    const barScales = await page.locator('[data-atom-sidebar-collapse] [data-atom-sidebar-glyph]').evaluateAll((els) => els.map((el) => getComputedStyle(el).scale))
+    expect(barScales).toHaveLength(2)
+    for (const scale of barScales) expect(scale).not.toBe('none')
+  })
+
   test('the circle is above the page and the bar, in the dark theme too, and below an open account menu', async ({ page }) => {
     await page.addInitScript(() => { try { window.localStorage.setItem('darkmode', 'dark') } catch {} })
     await goCollapse(page, { query: '&dark=1' })

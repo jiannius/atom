@@ -16,5 +16,5 @@ aria-label="{{ t('Sidebar') }}"
 title="{{ t('Toggle sidebar') }} (Ctrl/⌘ B)"
 class="items-center justify-center rounded-full border border-border bg-canvas text-fg-muted shadow-sm hover:text-fg"
 data-atom-sidebar-circle="{{ $anchor }}">
-    <atom:icon.panel-left-close class="size-4"/>
+    <atom:icon.panel-left-close class="size-4 rtl:-scale-x-100"/>
 </button>

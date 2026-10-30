@@ -170,6 +170,17 @@ describe('the sidebar collapse button', function () {
             ->and(domQuery($none, '//button[@data-atom-sidebar-circle="logo"]'))->toHaveCount(1);
     });
 
+    it('flips the panel glyphs in a right-to-left page, on the circle and on both bar glyphs', function () {
+        $html = shellHtml('layouts.sidebar');
+
+        expect(domQuery($html, '//button[@data-atom-sidebar-circle]//*[@data-atom-icon][contains(@class, "rtl:-scale-x-100")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//button[@data-atom-sidebar-collapse]//*[@data-atom-sidebar-glyph][contains(@class, "rtl:-scale-x-100")]'))->toHaveCount(2);
+    });
+
+    it('lets the scroll box take the sidebar\'s side padding, so a focus ring is not cut at its edge', function () {
+        expect(domQuery(shellHtml('layouts.sidebar'), '//*[@data-atom-sidebar-scroll][contains(@class, "-mx-2.5")][contains(@class, "px-2.5")]'))->toHaveCount(1);
+    });
+
     it('listens for Ctrl or Cmd + B, and leaves a field or an editor alone', function () {
         $html = shellHtml('layouts.sidebar');
 
