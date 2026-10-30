@@ -84,21 +84,14 @@ $trailEmpty = isset($crumbs)
 
             {{-- The logo as the account menu: the logo tile still goes home, and the app name and the caret open the menu
                  (on a phone the name is visually hidden, so the caret is the trigger). A host's `brand` slot is kept as
-                 it is (it may be a link), with a compact avatar trigger beside it. --}}
+                 it is (it may be a link), with a caret button beside it. --}}
             @if ($accountInBrand)
                 <div class="flex shrink-0 items-center gap-0.5" data-atom-shell-brand>
                     @isset ($brand)
                         {{ $brand }}
 
                         <atom:dropdown>
-                            <button type="button" class="flex h-control items-center gap-1 rounded-control px-1 hover:bg-fg/5" data-atom-account-trigger>
-                                <div class="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg">
-                                    @if ($avatar)
-                                        <img src="{{ $avatar }}" alt="" class="h-full w-full object-cover">
-                                    @else
-                                        <span aria-hidden="true">{{ $initials }}</span>
-                                    @endif
-                                </div>
+                            <button type="button" class="flex h-control items-center rounded-control px-1.5 hover:bg-fg/5" data-atom-account-trigger>
                                 <span class="sr-only">{{ t('Account') }}</span>
                                 <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                             </button>
