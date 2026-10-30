@@ -37,6 +37,32 @@
         <code>dropdown</code> is plain content, not a button.
     </p>
 
+    <h3 class="text-base font-semibold" id="collapsing-the-sidebar">Collapsing the sidebar</h3>
+
+    <p>
+        From 1024px the sidebar shell's top bar starts with a button that hides the sidebar completely and brings it back
+        (Ctrl or Cmd + B does the same, except from a field or an editor). The choice is remembered in
+        <code>localStorage</code> and applied before the first paint, so a reload or a <code>wire:navigate</code> starts
+        collapsed. A bar with nothing else in it is not drawn while the sidebar is shown, and the button is then a round one
+        on the sidebar's right edge, on the line of the account caret; while the sidebar is collapsed the bar is always
+        drawn and holds the plain button. The brand row stays put while the rest of the sidebar scrolls.
+    </p>
+
+    <h3 class="text-base font-semibold" id="your-own-theme-switcher">Your own theme switcher</h3>
+
+    <p>
+        With <code>dark</code>, both shells put a Light / Dark / System row in the account menu, or a toggle in the bar
+        when there is no <code>dropdown</code> slot. Pass <code>:theme-switcher="false"</code> to draw neither and
+        use your own control: <code>dark</code> still emits the <code>window.darkmode()</code> bootstrap.
+        <code>window.darkmode('dark')</code> applies and returns a choice; with no argument it only reads the stored one
+        (<code>light</code>, <code>dark</code> or <code>system</code>; nothing is applied or dispatched), and <code>darkmode-changed</code> on
+        <code>document</code> carries the choice as its <code>detail</code>.
+    </p>
+
+    <pre class="font-id overflow-x-auto rounded-panel border bg-surface-sunken p-4 text-fg"><code>&lt;div x-data="{ mode: window.darkmode() }" x-on:darkmode-changed.document="mode = $event.detail"&gt;
+    &lt;button type="button" x-on:click="window.darkmode('dark')" x-bind:aria-pressed="mode === 'dark'"&gt;Dark&lt;/button&gt;
+&lt;/div&gt;</code></pre>
+
     <p>See both shells in use, with one shared nav partial:</p>
 
     <ul class="list-disc ps-5">

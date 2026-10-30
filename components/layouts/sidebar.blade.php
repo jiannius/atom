@@ -7,10 +7,13 @@
     'styles' => [],
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
     'account' => 'brand',
+    'themeSwitcher' => true,
 ])
 
-{{-- From lg up the top bar holds only crumbs, actions and the dark toggle (the menu button and the account are for
-     small screens), so with all three empty it is not drawn there ($barEmpty, data-atom-header-empty in atom.css).
+{{-- From lg up the top bar holds only crumbs, actions and the dark toggle (drawn only when there is no account menu to hold the theme row) (the menu button and the account are for
+     small screens), so with all three empty it is not drawn there ($barEmpty, data-atom-header-empty in atom.css), except while
+     the sidebar is collapsed: the bar then holds the button that brings it back, and atom.css draws it whatever the mark says. With the
+     bar not drawn, the collapse button is the round one on the sidebar's edge (layouts._sidebar-circle).
      A bar that holds only crumbs ($crumbsOnly, data-atom-header-crumbs-only) can only be known empty in the browser: the trail
      is a persisted <atom:breadcrumbs> whose markup is always there, and it prints nothing for one crumb above a page.header or
      for none. breadcrumbs.js turns data-atom-header-empty on and off on it, and the server starts it on when it already knows the
@@ -38,16 +41,21 @@ $initials = $user && blank($initials)
    (`account="end"`). Either way it needs a `dropdown` slot; without one the brand row stays a plain link. */
 $accountInBrand = $account !== 'end' && isset($dropdown);
 
+/* The theme switcher lives in the account menu (a row there); the bar's own toggle is only for a shell with no account menu.
+   `theme-switcher="false"` draws neither, and `dark` still emits the bootstrap, so the host's own control can call window.darkmode(). */
+$showTheme = $dark && $themeSwitcher;
+$themeInBar = $showTheme && ! isset($dropdown);
+
 /* A slot counts only when it holds more than comments and whitespace: a Livewire view's `@if` blocks that all come out false
    still print `<!--[if BLOCK]-->` markers, which a string test takes for content (an empty bar drawn). A slot not passed is '' here. */
 $present = fn ($slot) => $slot instanceof \Illuminate\View\ComponentSlot ? $slot->hasActualContent() : filled(trim((string) $slot));
 
-$barEmpty = ! $dark
+$barEmpty = ! $themeInBar
     && ! (isset($crumbs) && $present($crumbs))
     && ! (isset($actions) && $present($actions));
 
 $crumbsOnly = ! $barEmpty
-    && ! $dark
+    && ! $themeInBar
     && ! (isset($actions) && $present($actions));
 
 /* The page mounted before this layout rendered (a full-page component, or a component in the slot), so its trail length and its
@@ -70,6 +78,15 @@ $trailEmpty = $crumbsOnly
 :scripts="$scripts"
 :vite="$vite"
 :attributes="$attributes->class('min-h-screen bg-canvas')">
+    {{-- The sidebar collapsed from lg up is remembered in localStorage and written on <html> before the sidebar is parsed, so the
+         first paint is the right one (atom.css reads the attribute). It sits in the body, not the head, so it runs again after a
+         wire:navigate swaps the body in, which is when the attribute has to be written again. --}}
+    <script>
+        try {
+            document.documentElement.toggleAttribute('data-atom-sidebar-collapsed', window.localStorage.getItem('atom-sidebar-collapsed') === '1')
+        } catch (e) {}
+    </script>
+
     {{-- stashed sidebar backdrop --}}
     <div
     x-data
@@ -79,7 +96,7 @@ $trailEmpty = $crumbsOnly
     {{-- sidebar --}}
     <div
     x-data="{
-        isHidden: false,
+        isHidden: document.documentElement.hasAttribute('data-atom-sidebar-collapsed'),
         screenLg: window.innerWidth >= 1024
     }"
     {{-- the window's own resize event, not x-resize.document: that one is a ResizeObserver whose handler changes the page's layout (the
@@ -88,8 +105,51 @@ $trailEmpty = $crumbsOnly
     x-init="() => {
         $el.classList.add('-translate-x-full', 'rtl:translate-x-full')
         $el.removeAttribute('data-mobile-cloak')
+
+        $watch('isHidden', (hidden) => {
+            let fromBar = document.activeElement?.matches?.('[data-atom-sidebar-collapse]')
+
+            document.documentElement.toggleAttribute('data-atom-sidebar-collapsed', hidden)
+
+            try {
+                hidden ? window.localStorage.setItem('atom-sidebar-collapsed', '1') : window.localStorage.removeItem('atom-sidebar-collapsed')
+            } catch (e) {}
+
+            $dispatch('atom-sidebar-collapsed', hidden)
+
+            // The sidebar the focus was in (or the page, from the shortcut) is gone: the bar's button is where it goes, so the next
+            // Tab does not start from the top of the document.
+            if (hidden && screenLg && (!document.activeElement || document.activeElement === document.body || $el.contains(document.activeElement))) {
+                $nextTick(() => document.querySelector('[data-atom-sidebar-collapse]')?.focus())
+            }
+
+            // A bar with nothing else in it goes again when the sidebar is back, and the button the focus was on with it: the round one is its twin.
+            if (!hidden && fromBar) {
+                $nextTick(() => {
+                    let button = document.querySelector('[data-atom-sidebar-collapse]')
+
+                    if (!button || button.getClientRects().length === 0) document.querySelector('[data-atom-sidebar-circle]')?.focus()
+                })
+            }
+        })
+
+        // The stashed sidebar is for below lg. A menu button press that left it open when the window grew would show it over the page.
+        $watch('screenLg', (lg) => lg && document.body.removeAttribute('data-show-stashed-sidebar'))
     }"
     x-on:toggle-sidebar.window="isHidden = !isHidden" {{--hide sidebar on large screen, only work in large screen --}}
+    {{-- Ctrl or Cmd + B, unless the focus is in a field or an editor (the editor's bold), a dialog is open, or the key is held down --}}
+    x-on:keydown.window="(e) => {
+        // an event with no key (autofill, a synthetic Event) is not ours
+        let key = (e.key ?? '').toLowerCase()
+
+        // B by its letter, or by its place on a layout that has no Latin B (not on one that has the letter elsewhere)
+        if (!screenLg || e.repeat || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
+        if (key !== 'b' && !(e.code === 'KeyB' && !/^[a-z]$/.test(key))) return
+        if (e.target?.isContentEditable || e.target?.closest?.('input, textarea, select') || document.querySelector('dialog[open]')) return
+
+        e.preventDefault()
+        isHidden = !isHidden
+    }"
     x-bind:data-stashed="!screenLg || isHidden"
     x-bind:style="{
         position: 'sticky',
@@ -99,19 +159,20 @@ $trailEmpty = $crumbsOnly
     x-bind:class="isHidden ? '' : 'lg:translate-x-0!'"
     @class([
         '[grid-area:sidebar] z-1 flex flex-col [:where(&)]:w-[228px] px-2.5 py-3',
-        'max-h-dvh overflow-y-auto overscroll-contain transition-transform',
+        'max-h-dvh transition-transform',
         'border-e border-border bg-surface-sunken',
         'max-lg:data-mobile-cloak:hidden',
         '[[data-show-stashed-sidebar]_&]:translate-x-0! [[data-show-stashed-sidebar]_&]:shadow-pop',
         'z-20! data-stashed:start-0! data-stashed:fixed! data-stashed:top-0! data-stashed:min-h-dvh! data-stashed:max-h-dvh!',
     ])
+    id="atom-sidebar"
     data-mobile-cloak
     data-atom-sidebar>
         {{-- The brand row as the account menu: the logo tile still goes home, and the app name (the user's name under
              it) and the caret open the menu. A host's `brand` slot is kept as it is (it may be a link), with a caret
              button beside it. --}}
         @if ($accountInBrand)
-            <div @class(['flex items-center gap-1', 'pb-3' => ! isset($brand)]) data-atom-shell-brand>
+            <div @class(['relative flex items-center gap-1', 'pb-3' => ! isset($brand)]) data-atom-shell-brand>
                 @isset ($brand)
                     <div class="min-w-0 grow">{{ $brand }}</div>
 
@@ -121,10 +182,12 @@ $trailEmpty = $crumbsOnly
                             <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                         </button>
 
-                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
+                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                             {{ $dropdown }}
                         </atom:layouts._account-menu>
                     </atom:dropdown>
+
+                    <atom:layouts._sidebar-circle anchor="center"/>
                 @else
                     <a href="/app" class="ms-2 flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
                         <atom:logo class="size-4 fill-current" />
@@ -143,24 +206,38 @@ $trailEmpty = $crumbsOnly
                             <atom:icon.dropdown class="mt-[3px] size-3.5 shrink-0 text-fg-subtle"/>
                         </button>
 
-                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
+                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                             {{ $dropdown }}
                         </atom:layouts._account-menu>
                     </atom:dropdown>
+
+                    <atom:layouts._sidebar-circle anchor="caret"/>
                 @endisset
             </div>
         @elseif (isset($brand))
-            {{ $brand }}
+            <div class="relative">
+                {{ $brand }}
+
+                <atom:layouts._sidebar-circle anchor="center"/>
+            </div>
         @else
-            <a href="/app" class="flex items-center gap-[9px] px-2 pb-3 pt-1.5" wire:navigate>
-                <div class="flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground">
-                    <atom:logo class="size-4 fill-current" />
-                </div>
-                <span class="truncate text-sm font-semibold leading-tight">
-                    {{ config('app.name') }}
-                </span>
-            </a>
+            <div class="relative">
+                <a href="/app" class="flex items-center gap-[9px] px-2 pb-3 pt-1.5" wire:navigate>
+                    <div class="flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground">
+                        <atom:logo class="size-4 fill-current" />
+                    </div>
+                    <span class="truncate text-sm font-semibold leading-tight">
+                        {{ config('app.name') }}
+                    </span>
+                </a>
+
+                <atom:layouts._sidebar-circle anchor="logo"/>
+            </div>
         @endif
+
+        {{-- Everything under the brand row scrolls; the brand row stays, so the round collapse button on the sidebar's edge is not clipped by the scroll box.
+             The box takes the sidebar's side padding itself (-mx / px), so a focus ring on an item is not cut at the box's edge and the scrollbar sits on the sidebar's edge. --}}
+        <div class="-mx-2.5 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-2.5" data-atom-sidebar-scroll>
 
         @isset ($context)
             <div class="pb-2" data-atom-shell-context>{{ $context }}</div>
@@ -212,12 +289,19 @@ $trailEmpty = $crumbsOnly
                 </button>
 
                 <atom:menu class="w-[220px]" popover>
+                    @if ($showTheme)
+                        <atom:layouts._theme-row/>
+
+                        <atom:separator class="my-2"/>
+                    @endif
+
                     {{ $dropdown }}
                 </atom:menu>
             </atom:dropdown>
         @elseif (! isset($dropdown) && isset($profile))
             <div class="mt-2.5 flex min-h-9 items-center gap-2 px-2 py-1" data-atom-shell-profile>{{ $profile }}</div>
         @endif
+        </div>
     </div>
 
     {{-- The top bar: 48px, sticky, crumbs on the left and actions on the right. atom.css lets it span the page's
@@ -235,6 +319,26 @@ $trailEmpty = $crumbsOnly
                 <atom:icon.menu class="size-4"/>
             </button>
 
+            {{-- collapse the sidebar from lg up (Ctrl or Cmd + B too): it drives the sidebar's isHidden through toggle-sidebar, and
+                 keeps its own copy of the state from atom-sidebar-collapsed. The glyph is chosen by atom.css from <html>, so
+                 the first paint has the right one. --}}
+            <button
+            type="button"
+            x-data="{ collapsed: document.documentElement.hasAttribute('data-atom-sidebar-collapsed') }"
+            x-on:atom-sidebar-collapsed.window="collapsed = $event.detail"
+            x-on:click="$dispatch('toggle-sidebar')"
+            x-bind:aria-expanded="collapsed ? 'false' : 'true'"
+            aria-expanded="true"
+            aria-controls="atom-sidebar"
+            aria-keyshortcuts="Control+B Meta+B"
+            aria-label="{{ t('Sidebar') }}"
+            title="{{ t('Toggle sidebar') }} (Ctrl/⌘ B)"
+            class="flex h-control aspect-square shrink-0 items-center justify-center rounded-control text-fg-muted hover:bg-fg/5 hover:text-fg max-lg:hidden"
+            data-atom-sidebar-collapse>
+                <atom:icon.panel-left-close class="size-4 rtl:-scale-x-100" data-atom-sidebar-glyph="collapse"/>
+                <atom:icon.panel-left-open class="size-4 rtl:-scale-x-100" data-atom-sidebar-glyph="expand"/>
+            </button>
+
             <div class="flex min-w-0 grow items-center" data-atom-shell-crumbs>
                 @isset ($crumbs)
                     {{ $crumbs }}
@@ -249,7 +353,7 @@ $trailEmpty = $crumbsOnly
                 {{-- <atom:html> only emits the darkmode bootstrap when $dark, so
                      window.darkmode() doesn't exist on a light-only app and the
                      switcher's menu items throw when clicked. --}}
-                @if ($dark)
+                @if ($themeInBar)
                     <atom:darkmode-toggle/>
                 @endif
 
@@ -268,7 +372,7 @@ $trailEmpty = $crumbsOnly
                             <atom:icon.dropdown class="size-3.5 text-fg-subtle"/>
                         </button>
 
-                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
+                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                             {{ $dropdown }}
                         </atom:layouts._account-menu>
                     </atom:dropdown>

@@ -230,7 +230,8 @@ for (const tw of ['floor', 'latest']) {
     })
 
     test('the trail survives wire:navigate: the same element, still collapsed to fit, reset by a new home', async ({ page }) => {
-      await open(page, 'customers', { tw, width: 1100 })
+      // 1140, not 1100: the sidebar collapse button (28px and a 12px gap) now starts the bar, so the five crumbs need that much more room
+      await open(page, 'customers', { tw, width: 1140 })
       await page.evaluate(() => { document.querySelector('[data-atom-breadcrumbs]').dataset.marker = 'same-element' })
       expect(await hiddenCount(page)).toBe(0)
 

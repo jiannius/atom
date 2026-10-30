@@ -227,19 +227,77 @@ dialog,
 }
 
 /* the sidebar's bar is not drawn from lg up when it has nothing to hold (its menu button and account are for small
-   screens): no crumbs, no actions, no dark toggle. layouts.sidebar marks it; the row and the variable go with it. */
+   screens): no crumbs, no actions, no dark toggle. layouts.sidebar marks it; the row and the variable go with it.
+   Not while the sidebar is collapsed: the bar then holds the button that brings it back, so it is always drawn
+   (the mark is left as it is, so the bar goes again when the sidebar comes back). */
 @media (min-width: 64rem) {
-    [data-atom-sidebar] + [data-atom-header][data-atom-header-empty] {
+    html:not([data-atom-sidebar-collapsed]) [data-atom-sidebar] + [data-atom-header][data-atom-header-empty] {
         display: none;
     }
 
-    *:has(>[data-atom-sidebar]+[data-atom-header][data-atom-header-empty]) {
+    html:not([data-atom-sidebar-collapsed]) *:has(>[data-atom-sidebar]+[data-atom-header][data-atom-header-empty]) {
         grid-template-rows: 0 1fr auto;
     }
 
-    html:has([data-atom-sidebar] + [data-atom-header][data-atom-header-empty]) {
+    html:not([data-atom-sidebar-collapsed]):has([data-atom-sidebar] + [data-atom-header][data-atom-header-empty]) {
         --atom-shell-bar-h: 0px;
     }
+
+    /* With no bar to hold the collapse button (the sidebar shown, the bar empty), the button is the round one on the sidebar's
+       edge, in the brand row: layouts._sidebar-circle. Collapsed, or with a bar, the bar's own button is the only one. */
+    html:not([data-atom-sidebar-collapsed]) *:has(>[data-atom-sidebar]+[data-atom-header][data-atom-header-empty]) [data-atom-sidebar-circle] {
+        display: flex;
+    }
+
+    /* The sidebar collapsed from lg up (layouts.sidebar writes data-atom-sidebar-collapsed on <html> before the first paint,
+       from localStorage, and keeps it in step): out of the grid, so <main> takes its column, and out of reach until the
+       stashed sidebar is shown. The Tailwind classes the sidebar gets from Alpine say the same once it has started. */
+    html[data-atom-sidebar-collapsed] [data-atom-sidebar] {
+        position: fixed !important;
+        top: 0 !important;
+        inset-inline-start: 0;
+        min-height: 100dvh;
+        max-height: 100dvh !important;
+        visibility: hidden;
+    }
+
+    html[data-atom-sidebar-collapsed] body[data-show-stashed-sidebar] [data-atom-sidebar] {
+        visibility: visible;
+    }
+}
+
+/* The round collapse button: 28px, centred on the sidebar's border (the sidebar pads its content 10px and has a 1px border, so the
+   border's middle is 10.5px past the brand row's end), on the line named by its anchor. Inside the brand row, which is relative:
+   it follows the caret and a host-widened sidebar. Not drawn unless the rule above asks for it. */
+[data-atom-sidebar-circle] {
+    display: none;
+    position: absolute;
+    z-index: 1;
+    width: 28px;
+    height: 28px;
+    inset-inline-end: calc(-10.5px - 14px);
+}
+
+[data-atom-sidebar-circle="center"] {
+    top: 50%;
+    margin-top: -14px;
+}
+
+/* the default brand row: the caret is 14px high, 4px (the trigger's padding) and 3px (its margin) under the row's top */
+[data-atom-sidebar-circle="caret"] {
+    top: 0;
+}
+
+/* the default link: a 26px tile 6px under the top */
+[data-atom-sidebar-circle="logo"] {
+    top: 5px;
+}
+
+/* the collapse button's glyph: "hide" while the sidebar is shown, "show" while it is collapsed (the page starts with the
+   right one, because the attribute is on <html> before the button is parsed) */
+html[data-atom-sidebar-collapsed] [data-atom-sidebar-glyph="collapse"],
+html:not([data-atom-sidebar-collapsed]) [data-atom-sidebar-glyph="expand"] {
+    display: none;
 }
 
 /* layouts.header: the crumbs row is not drawn when the trail in it prints nothing (one crumb above a page.header, or none).

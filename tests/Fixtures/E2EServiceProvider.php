@@ -149,6 +149,11 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/page-header-slide', fn () => view('atom::e2e.page-header-slide'));
         // status tones, stats and the empty states, on the consumer's Tailwind: ?tw=floor|latest, ?dark=1, ?accent=#rrggbb
         Route::middleware('web')->get('/atom/e2e/page-parts', fn () => view('atom::e2e.page-parts'));
+        // The sidebar shell's collapse button, over two pages that wire:navigate to each other: ?tw=floor|latest, ?crumbs=1, ?actions=1, ?dark=1
+        Route::middleware('web')->get('/atom/e2e/shell-collapse/{page}', fn (Request $request, string $page) => view('atom::e2e.shell-collapse', [
+            'page' => $page === 'two' ? 'two' : 'one',
+            'styles' => in_array($request->query('tw'), ['floor', 'latest'], true) ? ['/atom/e2e/consumer-css/'.$request->query('tw')] : [],
+        ]));
         Route::middleware('web')->get('/atom/e2e/shell-editor', fn () => view('atom::e2e.shell-editor'));
         Route::middleware('web')->get('/atom/e2e/tokens', fn () => view('atom::e2e.tokens'));
         // The restyled controls (V4-3a), on the consumer's Tailwind: ?tw, ?density, ?dark=1, ?accent, ?section

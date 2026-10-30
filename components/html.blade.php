@@ -154,11 +154,20 @@ fbq('track', 'PageView');
     }
 </style>
 <script>
-    window.darkmode = (mode = null) => {
+(() => {
+    // The stored choice: 'light', 'dark' or 'system' (nothing stored, or anything else).
+    let readDarkmode = () => {
+        let stored = null
+
+        try { stored = window.localStorage.getItem('darkmode') } catch (e) {}
+
+        return stored === 'light' || stored === 'dark' ? stored : 'system'
+    }
+
+    // Applies a choice, stores it, tells the page. `detail` is the CHOICE, never the scheme it resolved to.
+    let applyDarkmode = (mode) => {
         let applyDark = () => document.documentElement.classList.add('dark')
         let applyLight = () => document.documentElement.classList.remove('dark')
-
-        mode = mode || window.localStorage.getItem('darkmode') || 'system'
 
         if (mode === 'system') {
             let media = window.matchMedia('(prefers-color-scheme: dark)')
@@ -173,11 +182,17 @@ fbq('track', 'PageView');
         }
 
         document.dispatchEvent(new CustomEvent('darkmode-changed', { detail: mode }))
+
+        return mode
     }
 
-    darkmode()
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => darkmode())
-    document.addEventListener('livewire:navigated', () => darkmode())
+    // darkmode('dark') applies and returns the choice; darkmode() only reads it (no apply, no write, no event).
+    window.darkmode = (mode = null) => mode ? applyDarkmode(mode) : readDarkmode()
+
+    applyDarkmode(readDarkmode())
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => applyDarkmode(readDarkmode()))
+    document.addEventListener('livewire:navigated', () => applyDarkmode(readDarkmode()))
+})()
 </script>
 @endif
 </head>

@@ -4,9 +4,11 @@
     'email' => null,
     'initials' => null,
     'profile' => null,
+    'theme' => false,
 ])
 
-{{-- The shells' account menu: the profile card (or the host's `profile` slot), a divider and the host's `dropdown` items. --}}
+{{-- The shells' account menu: the profile card (or the host's `profile` slot), a divider, the theme row when the shell asks for it
+     (`theme`) and the host's `dropdown` items. --}}
 <atom:menu class="w-[220px]" popover>
     @if (! is_null($profile))
         {{ $profile }}
@@ -32,6 +34,12 @@
     @endif
 
     <atom:separator class="my-2"/>
+
+    @if ($theme)
+        <atom:layouts._theme-row/>
+
+        <atom:separator class="my-2"/>
+    @endif
 
     {{ $slot }}
 </atom:menu>

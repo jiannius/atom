@@ -698,7 +698,7 @@ describe('the account menu in the brand row', function () {
             ->and(domQuery($html, $brand.'//button[@data-atom-account-trigger][contains(., "'.config('app.name').'")][contains(., "Account")]'))->toHaveCount(1)
             ->and(domQuery($html, $brand.'//*[@data-atom-menu][contains(., "ada@example.com")][contains(., "OUT")]'))->toHaveCount(1)
             // no second desktop account trigger: the sidebar's foot row and the top nav's end avatar are gone
-            ->and(domQuery($html, '//*[@data-atom-sidebar]/*[@data-atom-dropdown][contains(@class, "mt-2.5")]'))->toHaveCount(0)
+            ->and(domQuery($html, '//*[@data-atom-sidebar]/*[@data-atom-sidebar-scroll]/*[@data-atom-dropdown][contains(@class, "mt-2.5")]'))->toHaveCount(0)
             ->and(domQuery($html, '//*[@data-atom-shell-actions]//*[@data-atom-dropdown]'))->toHaveCount($layout === 'layouts.sidebar' ? 1 : 0);
     })->with(['layouts.sidebar', 'layouts.header']);
 
@@ -717,7 +717,7 @@ describe('the account menu in the brand row', function () {
             ->and(domQuery($html, '//button[@data-atom-account-trigger]'))->toHaveCount(0)
             ->and(domQuery($html, '//a[@href="/app"][contains(., "'.config('app.name').'")]'))->toHaveCount(1)
             ->and(domQuery($html, $layout === 'layouts.sidebar'
-                ? '//*[@data-atom-sidebar]/*[@data-atom-dropdown][contains(@class, "mt-2.5")][contains(., "OUT")]'
+                ? '//*[@data-atom-sidebar]/*[@data-atom-sidebar-scroll]/*[@data-atom-dropdown][contains(@class, "mt-2.5")][contains(., "OUT")]'
                 : '//*[@data-atom-shell-actions]//button[@aria-label="Account"]'))->toHaveCount(1);
     })->with(['layouts.sidebar', 'layouts.header']);
 

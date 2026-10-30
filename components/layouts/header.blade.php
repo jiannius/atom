@@ -7,6 +7,7 @@
     'styles' => [],
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
     'account' => 'brand',
+    'themeSwitcher' => true,
 ])
 
 {{-- A host's User model may have no public initials() method (or one that returns no usable string): the initials are then derived from the display name,
@@ -31,6 +32,11 @@ $initials = $user && blank($initials)
 /* The account menu opens from the logo on the left (`account="brand"`, the default) or from the avatar at the bar's end
    (`account="end"`). Either way it needs a `dropdown` slot; without one the logo stays a plain link. */
 $accountInBrand = $account !== 'end' && isset($dropdown);
+
+/* The theme switcher lives in the account menu (a row there); the bar's own toggle is only for a shell with no account menu.
+   `theme-switcher="false"` draws neither, and `dark` still emits the bootstrap, so the host's own control can call window.darkmode(). */
+$showTheme = $dark && $themeSwitcher;
+$themeInBar = $showTheme && ! isset($dropdown);
 
 /* The page mounted before this layout rendered, so its trail length and page.header are known: one crumb above a page.header
    prints nothing, and the crumbs row need not draw for the first frames. 0 and null are unknown; the browser stays the
@@ -96,7 +102,7 @@ $trailEmpty = isset($crumbs)
                                 <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                             </button>
 
-                            <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
+                            <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                                 {{ $dropdown }}
                             </atom:layouts._account-menu>
                         </atom:dropdown>
@@ -112,7 +118,7 @@ $trailEmpty = isset($crumbs)
                                 <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                             </button>
 
-                            <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
+                            <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                                 {{ $dropdown }}
                             </atom:layouts._account-menu>
                         </atom:dropdown>
@@ -201,7 +207,7 @@ $trailEmpty = isset($crumbs)
                 {{-- <atom:html> only emits the darkmode bootstrap when $dark, so
                      window.darkmode() doesn't exist on a light-only app and the
                      switcher's menu items throw when clicked. --}}
-                @if ($dark)
+                @if ($themeInBar)
                     <atom:darkmode-toggle/>
                 @endif
 
@@ -217,7 +223,7 @@ $trailEmpty = isset($crumbs)
                             @endif
                         </button>
 
-                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
+                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                             {{ $dropdown }}
                         </atom:layouts._account-menu>
                     </atom:dropdown>
