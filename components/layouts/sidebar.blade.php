@@ -9,7 +9,7 @@
     'account' => 'brand',
 ])
 
-{{-- From lg up the top bar holds only crumbs, actions and the dark toggle (the menu button and the account are for
+{{-- From lg up the top bar holds only crumbs, actions and the dark toggle (drawn only when there is no account menu to hold the theme row) (the menu button and the account are for
      small screens), so with all three empty it is not drawn there ($barEmpty, data-atom-header-empty in atom.css).
      A bar that holds only crumbs ($crumbsOnly, data-atom-header-crumbs-only) can only be known empty in the browser: the trail
      is a persisted <atom:breadcrumbs> whose markup is always there, and it prints nothing for one crumb above a page.header or
@@ -38,16 +38,20 @@ $initials = $user && blank($initials)
    (`account="end"`). Either way it needs a `dropdown` slot; without one the brand row stays a plain link. */
 $accountInBrand = $account !== 'end' && isset($dropdown);
 
+/* The theme switcher lives in the account menu (a row there); the bar's own toggle is only for a shell with no account menu. */
+$showTheme = $dark;
+$themeInBar = $showTheme && ! isset($dropdown);
+
 /* A slot counts only when it holds more than comments and whitespace: a Livewire view's `@if` blocks that all come out false
    still print `<!--[if BLOCK]-->` markers, which a string test takes for content (an empty bar drawn). A slot not passed is '' here. */
 $present = fn ($slot) => $slot instanceof \Illuminate\View\ComponentSlot ? $slot->hasActualContent() : filled(trim((string) $slot));
 
-$barEmpty = ! $dark
+$barEmpty = ! $themeInBar
     && ! (isset($crumbs) && $present($crumbs))
     && ! (isset($actions) && $present($actions));
 
 $crumbsOnly = ! $barEmpty
-    && ! $dark
+    && ! $themeInBar
     && ! (isset($actions) && $present($actions));
 
 /* The page mounted before this layout rendered (a full-page component, or a component in the slot), so its trail length and its
@@ -121,7 +125,7 @@ $trailEmpty = $crumbsOnly
                             <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                         </button>
 
-                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
+                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                             {{ $dropdown }}
                         </atom:layouts._account-menu>
                     </atom:dropdown>
@@ -143,7 +147,7 @@ $trailEmpty = $crumbsOnly
                             <atom:icon.dropdown class="mt-[3px] size-3.5 shrink-0 text-fg-subtle"/>
                         </button>
 
-                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
+                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                             {{ $dropdown }}
                         </atom:layouts._account-menu>
                     </atom:dropdown>
@@ -212,6 +216,12 @@ $trailEmpty = $crumbsOnly
                 </button>
 
                 <atom:menu class="w-[220px]" popover>
+                    @if ($showTheme)
+                        <atom:layouts._theme-row/>
+
+                        <atom:separator class="my-2"/>
+                    @endif
+
                     {{ $dropdown }}
                 </atom:menu>
             </atom:dropdown>
@@ -249,7 +259,7 @@ $trailEmpty = $crumbsOnly
                 {{-- <atom:html> only emits the darkmode bootstrap when $dark, so
                      window.darkmode() doesn't exist on a light-only app and the
                      switcher's menu items throw when clicked. --}}
-                @if ($dark)
+                @if ($themeInBar)
                     <atom:darkmode-toggle/>
                 @endif
 
@@ -268,7 +278,7 @@ $trailEmpty = $crumbsOnly
                             <atom:icon.dropdown class="size-3.5 text-fg-subtle"/>
                         </button>
 
-                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null">
+                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                             {{ $dropdown }}
                         </atom:layouts._account-menu>
                     </atom:dropdown>
