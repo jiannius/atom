@@ -84,6 +84,30 @@ for (const shell of ['sidebar', 'header']) {
   })
 }
 
+test.describe('theme-switcher="false"', () => {
+  for (const shell of ['sidebar', 'header']) {
+    test(`${shell} shell: atom draws no switcher, and the host's own control drives window.darkmode()`, async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 800 })
+      await page.addInitScript(() => { try { window.localStorage.removeItem('darkmode') } catch {} })
+      await open(page, { shell, query: '&dark=1&own=1' })
+
+      await page.locator('[data-atom-shell-brand] [data-atom-account-trigger]').click()
+      await expect(page.getByRole('menuitem', { name: 'Log out' })).toBeVisible()
+      await expect(page.locator('[data-atom-theme-row]')).toHaveCount(0)
+      await expect(page.locator('[data-atom-darkmode-toggle]')).toHaveCount(0)
+      await page.keyboard.press('Escape')
+
+      const own = page.locator('[data-own-switcher]')
+      await expect(own.getByRole('button', { name: 'Own system' })).toHaveAttribute('aria-pressed', 'true')
+
+      await own.getByRole('button', { name: 'Own dark' }).click()
+      expect(await isDark(page)).toBe(true)
+      await expect(own.getByRole('button', { name: 'Own dark' })).toHaveAttribute('aria-pressed', 'true')
+      await expect(own.getByRole('button', { name: 'Own system' })).toHaveAttribute('aria-pressed', 'false')
+    })
+  }
+})
+
 test.describe('window.darkmode()', () => {
   test('returns the choice, and the event carries the choice, never the resolved scheme', async ({ page }) => {
     // the visitor's OS is dark: a "system" choice resolves to dark, and must still read as "system"

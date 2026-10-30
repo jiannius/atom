@@ -7,6 +7,7 @@
     'styles' => [],
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
     'account' => 'brand',
+    'themeSwitcher' => true,
 ])
 
 {{-- A host's User model may have no public initials() method (or one that returns no usable string): the initials are then derived from the display name,
@@ -32,8 +33,9 @@ $initials = $user && blank($initials)
    (`account="end"`). Either way it needs a `dropdown` slot; without one the logo stays a plain link. */
 $accountInBrand = $account !== 'end' && isset($dropdown);
 
-/* The theme switcher lives in the account menu (a row there); the bar's own toggle is only for a shell with no account menu. */
-$showTheme = $dark;
+/* The theme switcher lives in the account menu (a row there); the bar's own toggle is only for a shell with no account menu.
+   `theme-switcher="false"` draws neither, and `dark` still emits the bootstrap, so the host's own control can call window.darkmode(). */
+$showTheme = $dark && $themeSwitcher;
 $themeInBar = $showTheme && ! isset($dropdown);
 
 /* The page mounted before this layout rendered, so its trail length and page.header are known: one crumb above a page.header

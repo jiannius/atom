@@ -72,3 +72,31 @@ describe('the bar toggle is the fallback', function () {
         expect($html)->toContain('data-atom-header-crumbs-only');
     });
 });
+
+describe('theme-switcher="false"', function () {
+    it('draws neither the row nor the bar toggle, and still emits the darkmode bootstrap', function (string $layout, bool $dropdown) {
+        $html = shellHtml($layout, 'dark :theme-switcher="false"', $dropdown);
+
+        expect(domQuery($html, '//*[@data-atom-theme-row]'))->toHaveCount(0)
+            ->and(domQuery($html, '//*[@data-atom-darkmode-toggle]'))->toHaveCount(0)
+            ->and($html)->toContain('window.darkmode')->toContain('prefers-color-scheme');
+    })->with(['layouts.sidebar', 'layouts.header'])->with([true, false]);
+
+    it('is read in kebab case, and on by default', function (string $layout) {
+        expect(domQuery(shellHtml($layout, 'dark :theme-switcher="false"'), '//*[@data-atom-theme-row]'))->toHaveCount(0)
+            ->and(domQuery(shellHtml($layout, 'dark :theme-switcher="true"'), '//*[@data-atom-theme-row]'))->not->toBeEmpty()
+            ->and(domQuery(shellHtml($layout, 'dark'), '//*[@data-atom-theme-row]'))->not->toBeEmpty();
+    })->with(['layouts.sidebar', 'layouts.header']);
+
+    it('empties the sidebar\'s bar again, since the toggle that held it is not drawn', function () {
+        $empty = fn (string $props, bool $dropdown) => str_contains(shellHtml('layouts.sidebar', $props, $dropdown), 'data-atom-header-empty');
+
+        expect($empty('dark :theme-switcher="false"', false))->toBeTrue();
+    });
+
+    it('keeps the two shells\' @props blocks in step', function () {
+        $props = fn (string $layout): string => preg_match('/@props\(\[.*?\]\)/s', file_get_contents(__DIR__.'/../../components/layouts/'.$layout.'.blade.php'), $m) ? $m[0] : '';
+
+        expect($props('header'))->toBe($props('sidebar'))->toContain("'themeSwitcher' => true");
+    });
+});

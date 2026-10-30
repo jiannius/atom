@@ -7,6 +7,7 @@
     'styles' => [],
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
     'account' => 'brand',
+    'themeSwitcher' => true,
 ])
 
 {{-- From lg up the top bar holds only crumbs, actions and the dark toggle (drawn only when there is no account menu to hold the theme row) (the menu button and the account are for
@@ -38,8 +39,9 @@ $initials = $user && blank($initials)
    (`account="end"`). Either way it needs a `dropdown` slot; without one the brand row stays a plain link. */
 $accountInBrand = $account !== 'end' && isset($dropdown);
 
-/* The theme switcher lives in the account menu (a row there); the bar's own toggle is only for a shell with no account menu. */
-$showTheme = $dark;
+/* The theme switcher lives in the account menu (a row there); the bar's own toggle is only for a shell with no account menu.
+   `theme-switcher="false"` draws neither, and `dark` still emits the bootstrap, so the host's own control can call window.darkmode(). */
+$showTheme = $dark && $themeSwitcher;
 $themeInBar = $showTheme && ! isset($dropdown);
 
 /* A slot counts only when it holds more than comments and whitespace: a Livewire view's `@if` blocks that all come out false
