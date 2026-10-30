@@ -228,7 +228,7 @@ $trailEmpty = isset($crumbs)
                             {{ $dropdown }}
                         </atom:layouts._account-menu>
                     </atom:dropdown>
-                @elseif (isset($profile))
+                @elseif (! isset($dropdown) && isset($profile))
                     <div class="min-w-0" data-atom-shell-profile>{{ $profile }}</div>
                 @endif
             </div>

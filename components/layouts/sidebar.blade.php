@@ -111,7 +111,7 @@ $trailEmpty = $crumbsOnly
              it) and the caret open the menu. A host's `brand` slot is kept as it is (it may be a link), with a compact
              avatar trigger beside it. --}}
         @if ($accountInBrand)
-            <div class="flex items-center gap-1 pb-3" data-atom-shell-brand>
+            <div @class(['flex items-center gap-1', 'pb-3' => ! isset($brand)]) data-atom-shell-brand>
                 @isset ($brand)
                     <div class="min-w-0 grow">{{ $brand }}</div>
 
@@ -221,7 +221,7 @@ $trailEmpty = $crumbsOnly
                     {{ $dropdown }}
                 </atom:menu>
             </atom:dropdown>
-        @elseif (isset($profile))
+        @elseif (! isset($dropdown) && isset($profile))
             <div class="mt-2.5 flex min-h-9 items-center gap-2 px-2 py-1" data-atom-shell-profile>{{ $profile }}</div>
         @endif
     </div>

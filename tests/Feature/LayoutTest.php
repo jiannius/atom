@@ -738,6 +738,15 @@ describe('the account menu in the brand row', function () {
             ->and(domQuery($html, '//*[@data-atom-shell-brand]//*[@data-atom-account-card]'))->toHaveCount(0);
     })->with(['layouts.sidebar', 'layouts.header']);
 
+    // A profile with a dropdown lives in the menu only: never also printed as the plain content a profile alone gets.
+    it('prints the profile slot only inside the account menus', function (string $layout, string $props) use ($render) {
+        $html = $render($layout, $props, '<x-slot:profile><span>PROFILE-SLOT</span></x-slot>');
+
+        // the sidebar shell: its desktop place (the brand menu or the foot row) and the phone top-bar menu
+        expect(domQuery($html, '//*[@data-atom-shell-profile]'))->toHaveCount(0)
+            ->and(substr_count($html, 'PROFILE-SLOT'))->toBe($layout === 'layouts.sidebar' ? 2 : 1);
+    })->with(['layouts.sidebar', 'layouts.header'])->with(['' => [''], 'end' => ['account="end"']]);
+
     it('leaves the brand a plain link when there is no dropdown', function (string $layout) {
         $html = renderBlade('<atom:'.$layout.' :vite="false">x</atom:'.$layout.'>');
 
