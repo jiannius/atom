@@ -179,3 +179,121 @@ it('needs a session guard with an Eloquent provider', function (callable $config
         'Illuminate\Auth\DatabaseUserProvider',
     ],
 ]);
+
+/**
+ * The text of a button's label (the loading icon inside it carries a style block of its own).
+ */
+function devLoginLabel(DOMElement $button): string
+{
+    foreach ($button->getElementsByTagName('span') as $span) {
+        if ($span->hasAttribute('data-atom-button-label')) {
+            return trim($span->textContent);
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The buttons <atom:dev-login> prints for the members in the table.
+ *
+ * @return list<DOMElement>
+ */
+function devLoginButtons(string $attributes = ''): array
+{
+    session()->start();
+
+    return domQuery(renderBlade('<atom:dev-login '.$attributes.' />'), '//form[@data-atom-dev-login]//button[@data-atom-button]');
+}
+
+it('prints one POST form with a token and a submit button per account, in identifier order, up to the limit', function () {
+    foreach (range(1, 5) as $i) {
+        DevLoginMember::create(['name' => 'Extra '.$i]);
+    }
+
+    session()->start();
+
+    $html = renderBlade('<atom:dev-login limit="3" />');
+    $forms = domQuery($html, '//form[@data-atom-dev-login]');
+    $buttons = domQuery($html, '//form[@data-atom-dev-login]//button[@data-atom-button]');
+
+    expect($forms)->toHaveCount(1)
+        ->and(strtolower($forms[0]->getAttribute('method')))->toBe('post')
+        ->and(domQuery($html, '//form[@data-atom-dev-login]//input[@name="_token"]'))->toHaveCount(1)
+        ->and($buttons)->toHaveCount(3);
+
+    foreach ($buttons as $i => $button) {
+        expect($button->getAttribute('type'))->toBe('submit')
+            ->and($button->getAttribute('formaction'))->toBe(route('atom.dev.login', ['atomUser' => $i + 1]));
+    }
+});
+
+it('labels each button with the label attribute, falling back to the identifier, and prints it as text', function () {
+    $this->sam->update(['email' => null, 'name' => '<img src=x onerror=alert(1)>']);
+
+    $byName = devLoginButtons();
+
+    expect(devLoginLabel($byName[0]))->toBe('Log in as Alex Doe')
+        ->and(devLoginLabel($byName[1]))->toBe('Log in as <img src=x onerror=alert(1)>');
+
+    $html = renderBlade('<atom:dev-login label="email" />');
+
+    expect(domQuery($html, '//form[@data-atom-dev-login]//img'))->toBe([])
+        ->and(devLoginLabel(domQuery($html, '//button[@data-atom-button]')[0]))->toBe('Log in as alex@example.com')
+        ->and(devLoginLabel(domQuery($html, '//button[@data-atom-button]')[1]))->toBe('Log in as '.$this->sam->id);
+});
+
+it('draws no primary button', function () {
+    foreach (devLoginButtons() as $button) {
+        expect(domClasses($button))->not->toContain('bg-accent');
+    }
+});
+
+it('leaves out the accounts scopeDevLogin leaves out, and still fills the limit in the scope\'s order', function () {
+    config(['auth.providers.users.model' => DevLoginActiveMember::class]);
+    Auth::forgetGuards();
+
+    $this->alex->update(['blocked_at' => now()]);
+    DevLoginMember::create(['name' => 'Bea Archer']);
+    DevLoginMember::create(['name' => 'Cal Dune']);
+
+    $names = array_map(devLoginLabel(...), devLoginButtons('limit="2"'));
+
+    expect($names)->toBe(['Log in as Bea Archer', 'Log in as Cal Dune']);
+});
+
+it('prints nothing, not even a separator, when no account qualifies', function () {
+    DevLoginMember::query()->delete();
+
+    session()->start();
+
+    expect(trim(renderBlade('<atom:dev-login />')))->toBe('');
+});
+
+it('prints a button that signs in as its account', function () {
+    session()->start();
+
+    $second = devLoginButtons()[1]->getAttribute('formaction');
+
+    $this->withSession(['_token' => 'token'])->post($second, ['_token' => 'token'])->assertRedirect('/');
+
+    $this->assertAuthenticatedAs($this->sam);
+});
+
+it('throws the same LogicException from the component for a non-Eloquent provider', function () {
+    config(['auth.providers.users' => ['driver' => 'database', 'table' => 'members']]);
+    Auth::forgetGuards();
+
+    try {
+        renderBlade('<atom:dev-login />');
+        $this->fail('Expected a LogicException.');
+    }
+    catch (Throwable $e) {
+        while ($e->getPrevious() && ! $e instanceof LogicException) {
+            $e = $e->getPrevious();
+        }
+
+        expect($e)->toBeInstanceOf(LogicException::class)
+            ->and($e->getMessage())->toContain('Illuminate\Auth\DatabaseUserProvider');
+    }
+});
