@@ -545,6 +545,21 @@ test.describe('the sidebar collapse button', () => {
     await expect(button).toHaveAttribute('aria-expanded', 'true')
   })
 
+  test('a keydown with no key (autofill, a synthetic Event) is ignored, with no page error', async ({ page }) => {
+    const errors = []
+    page.on('pageerror', (error) => errors.push(error.message))
+    await goCollapse(page, { query: '&crumbs=1' })
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('keydown'))
+      document.dispatchEvent(new Event('keydown', { bubbles: true }))
+      document.body.dispatchEvent(new Event('keydown', { bubbles: true }))
+    })
+
+    await expect(collapseButton(page)).toHaveAttribute('aria-expanded', 'true')
+    expect(errors).toEqual([])
+  })
+
   test('a stashed sidebar does not outlive the window growing to lg', async ({ page }) => {
     await page.setViewportSize({ width: 800, height: 800 })
     await page.addInitScript(() => { try { window.localStorage.setItem('atom-sidebar-collapsed', '1') } catch {} })

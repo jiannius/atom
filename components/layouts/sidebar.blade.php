@@ -139,7 +139,8 @@ $trailEmpty = $crumbsOnly
     x-on:toggle-sidebar.window="isHidden = !isHidden" {{--hide sidebar on large screen, only work in large screen --}}
     {{-- Ctrl or Cmd + B, unless the focus is in a field or an editor (the editor's bold), a dialog is open, or the key is held down --}}
     x-on:keydown.window="(e) => {
-        let key = e.key.toLowerCase()
+        // an event with no key (autofill, a synthetic Event) is not ours
+        let key = (e.key ?? '').toLowerCase()
 
         // B by its letter, or by its place on a layout that has no Latin B (not on one that has the letter elsewhere)
         if (!screenLg || e.repeat || e.defaultPrevented || !(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return
