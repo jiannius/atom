@@ -3,12 +3,15 @@
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Jiannius\Atom\Services\DevLogin;
 use Jiannius\Atom\Tests\Fixtures\DevLoginActiveMember;
 use Jiannius\Atom\Tests\Fixtures\DevLoginMember;
+use Jiannius\Atom\Tests\Fixtures\DevLoginSoftMember;
+use Jiannius\Atom\Tests\Fixtures\DevLoginUuidMember;
 use Jiannius\Atom\Tests\Support\LocalEnvironment;
 
 // The app boots as `local` here, so the real routes file registers the route, and Laravel's CSRF check is on (it is skipped
@@ -30,6 +33,7 @@ beforeEach(function () {
         $table->string('email')->nullable();
         $table->string('password')->nullable();
         $table->timestamp('blocked_at')->nullable();
+        $table->softDeletes();
         $table->rememberToken();
         $table->timestamps();
     });
@@ -114,6 +118,80 @@ it('honours the provider\'s withQuery() callback', function () {
     $this->assertAuthenticatedAs($this->alex);
 });
 
+it('ignores what the withQuery() callback returns, as the user provider does', function () {
+    Auth::guard()->getProvider()->withQuery(function ($query) {
+        $query->where('email', '!=', 'sam@example.com');
+
+        return DevLoginMember::query();
+    });
+
+    devLoginPost($this, '/atom/dev/login/'.$this->sam->id)->assertNotFound();
+
+    expect(Auth::check())->toBeFalse();
+});
+
+it('returns 404 for a segment the key type cannot hold, and for a query that fails', function () {
+    devLoginPost($this, '/atom/dev/login/not-a-number')->assertNotFound();
+
+    Auth::guard()->getProvider()->withQuery(fn ($query) => $query->whereRaw('this is not sql ('));
+
+    devLoginPost($this, '/atom/dev/login/'.$this->sam->id)->assertNotFound();
+
+    expect(Auth::check())->toBeFalse();
+});
+
+it('does not hide a failing query when no account is named', function () {
+    Auth::guard()->getProvider()->withQuery(fn ($query) => $query->whereRaw('this is not sql ('));
+
+    $this->withoutExceptionHandling();
+
+    expect(fn () => devLoginPost($this, '/atom/dev/login'))->toThrow(QueryException::class);
+});
+
+it('leaves out accounts a global scope hides (soft-deleted), in the list and at sign-in', function () {
+    config(['auth.providers.users.model' => DevLoginSoftMember::class]);
+    Auth::forgetGuards();
+
+    $this->alex->delete();
+
+    devLoginPost($this, '/atom/dev/login/'.$this->alex->id)->assertNotFound();
+
+    expect(Auth::check())->toBeFalse();
+
+    $names = array_map(devLoginLabel(...), devLoginButtons());
+
+    expect($names)->toBe(['Log in as Sam Lee']);
+
+    devLoginPost($this, '/atom/dev/login')->assertRedirect('/');
+
+    expect(Auth::id())->toBe($this->sam->id);
+});
+
+it('works with a string identifier that is not called id', function () {
+    Schema::create('uuid_members', function ($table) {
+        $table->uuid('uuid')->primary();
+        $table->string('name');
+        $table->rememberToken();
+        $table->timestamps();
+    });
+
+    config(['auth.providers.users.model' => DevLoginUuidMember::class]);
+    Auth::forgetGuards();
+
+    $a = DevLoginUuidMember::create(['uuid' => '11111111-1111-4111-8111-111111111111', 'name' => 'Ana Uuid']);
+    $b = DevLoginUuidMember::create(['uuid' => '00000000-0000-4000-8000-000000000000', 'name' => 'Bo Uuid']);
+
+    $buttons = devLoginButtons();
+
+    // identifier order: Bo's uuid sorts first
+    expect($buttons)->toHaveCount(2)
+        ->and($buttons[0]->getAttribute('formaction'))->toBe(route('atom.dev.login', ['atomUser' => $b->uuid]));
+
+    devLoginPost($this, '/atom/dev/login/'.$a->uuid)->assertRedirect('/');
+
+    $this->assertAuthenticatedAs($a);
+});
+
 it('is not reached by a host\'s global {user} binding', function () {
     Route::bind('user', fn () => abort(500));
 
@@ -128,11 +206,9 @@ it('redirects to the intended url, else the guest middleware\'s target, else the
     if ($case === 'intended') {
         $session = ['url.intended' => 'http://localhost/reports'];
         RedirectIfAuthenticated::redirectUsing(fn () => '/ignored');
-    }
-    else if ($case === 'callback') {
+    } else if ($case === 'callback') {
         RedirectIfAuthenticated::redirectUsing(fn () => '/members/home');
-    }
-    else if ($case === 'dashboard') {
+    } else if ($case === 'dashboard') {
         Route::get('/overview', fn () => 'ok')->name('dashboard');
     }
 
@@ -157,7 +233,7 @@ it('starts from a clean session', function () {
     $this->assertAuthenticatedAs($this->sam);
     $response->assertSessionMissing('password_hash_web');
 
-    expect(session()->token())->not->toBe('token');
+    expect(session()->token())->toBeString()->not->toBeEmpty()->not->toBe('token');
 });
 
 it('needs a session guard with an Eloquent provider', function (callable $configure, string $named) {
@@ -243,10 +319,23 @@ it('labels each button with the label attribute, falling back to the identifier,
         ->and(devLoginLabel(domQuery($html, '//button[@data-atom-button]')[1]))->toBe('Log in as '.$this->sam->id);
 });
 
+it('does not spin while a Livewire login form submits', function () {
+    foreach (devLoginButtons() as $button) {
+        expect($button->getAttribute('wire:target'))->not->toBe('submit')
+            ->and($button->getAttribute('wire:target'))->toBe('atom-dev-login');
+    }
+});
+
 it('draws no primary button', function () {
     foreach (devLoginButtons() as $button) {
         expect(domClasses($button))->not->toContain('bg-accent');
     }
+});
+
+it('lists only what the provider\'s withQuery() callback allows', function () {
+    Auth::guard()->getProvider()->withQuery(fn ($query) => $query->where('email', '!=', 'alex@example.com'));
+
+    expect(array_map(devLoginLabel(...), devLoginButtons()))->toBe(['Log in as Sam Lee']);
 });
 
 it('leaves out the accounts scopeDevLogin leaves out, and still fills the limit in the scope\'s order', function () {
@@ -287,8 +376,7 @@ it('throws the same LogicException from the component for a non-Eloquent provide
     try {
         renderBlade('<atom:dev-login />');
         $this->fail('Expected a LogicException.');
-    }
-    catch (Throwable $e) {
+    } catch (Throwable $e) {
         while ($e->getPrevious() && ! $e instanceof LogicException) {
             $e = $e->getPrevious();
         }

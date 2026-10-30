@@ -5,7 +5,9 @@
 
 {{-- Local only, the same check routes/web.php makes before it registers the sign-in route; outside local nothing is printed and
      no query runs. Put it after the login form, never inside it: HTML drops a nested form and the buttons would submit the
-     login form instead. Every button is the default tier, as the login form's own submit is the page's one primary. --}}
+     login form instead. Every button is the default tier, as the login form's own submit is the page's one primary,
+     and targets a request nothing makes: a submit button otherwise takes wire:target="submit" and would spin while a Livewire login
+     form submits. --}}
 @if (app()->environment('local'))
     @php
     $accounts = \Jiannius\Atom\Services\DevLogin::users((int) $limit);
@@ -25,7 +27,7 @@
                 $name = is_scalar($name) && (string) $name !== '' ? (string) $name : (string) $id;
                 @endphp
 
-                <atom:button type="submit" variant="default" block :formaction="$action">{{ t('Log in as :name', ['name' => $name]) }}</atom:button>
+                <atom:button type="submit" variant="default" block wire:target="atom-dev-login" :formaction="$action">{{ t('Log in as :name', ['name' => $name]) }}</atom:button>
             @endforeach
         </form>
     @endif

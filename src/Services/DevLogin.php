@@ -8,6 +8,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -53,8 +54,8 @@ class DevLogin
         $query = $model->newQuery();
 
         if ($callback = $provider->getQueryCallback()) {
-            $result = $callback($query);
-            $query = $result instanceof Builder ? $result : $query;
+            // Called for what it does to the builder and its return value ignored, as EloquentUserProvider::newModelQuery() does.
+            $callback($query);
         }
 
         $query->orderBy($model->getAuthIdentifierName());
@@ -77,17 +78,23 @@ class DevLogin
     }
 
     /**
-     * The account with this identifier among the ones dev login accepts, or the first one when none is named.
+     * The account with this identifier among the ones dev login accepts, or the first one when none is named; null when there is none
+     * (an identifier the key's type rejects counts as none).
      */
     public static function find(?string $id): ?Authenticatable
     {
         $query = static::query();
 
-        if ($id !== null) {
-            $query->where($query->getModel()->getAuthIdentifierName(), $id);
+        if ($id === null) {
+            return $query->first();
         }
 
-        return $query->first();
+        try {
+            return $query->where($query->getModel()->getAuthIdentifierName(), $id)->first();
+        } catch (QueryException) {
+            // A segment the key's type cannot hold (text against an integer or uuid column on PostgreSQL) is an account that does not exist.
+            return null;
+        }
     }
 
     /**
