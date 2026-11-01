@@ -30,7 +30,7 @@ const gaps = async (page, selector = '[data-atom-page]') => {
 const noSideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
 for (const tw of ['floor', 'latest']) {
-  test.describe(`a centred page, ${tw} consumer build`, () => {
+  test.describe(`page width, ${tw} consumer build`, () => {
     for (const width of [1440, 1920]) {
       test.describe(`at ${width}px`, () => {
         test.use({ viewport: { width, height: 900 } })
@@ -55,13 +55,15 @@ for (const tw of ['floor', 'latest']) {
           })
         }
 
-        test('top-nav shell: the default page starts where the bar and its brand do', async ({ page }) => {
-          await open(page, '/atom/e2e/shell-record?shell=header', tw)
+        test('top-nav shell: the default page and a contained one start where the bar and its brand do', async ({ page }) => {
+          for (const url of ['/atom/e2e/shell-record?shell=header', '/atom/e2e/save-bar-context?shell=header&width=contained']) {
+            await open(page, url, tw)
 
-          const head = await box(page.locator('[data-atom-page-header]').first())
-          const brand = await box(page.locator('[data-atom-header-bar] a').first())
+            const head = await box(page.locator('[data-atom-page-header]').first())
+            const brand = await box(page.locator('[data-atom-header-bar] a').first())
 
-          expect(Math.abs(head.x - brand.x)).toBeLessThanOrEqual(1)
+            expect(Math.abs(head.x - brand.x), url).toBeLessThanOrEqual(1)
+          }
         })
 
         test('a utility of the host\'s on a contained page (`[--atom-page-max:1000px]`) beats the top-nav shell\'s own cap', async ({ page }) => {
