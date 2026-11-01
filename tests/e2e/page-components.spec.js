@@ -172,7 +172,7 @@ for (const tw of ['floor', 'latest']) {
 
         expect([p['padding-top'], p['padding-left'], p['padding-right'], p['padding-bottom']]).toEqual(['26px', '28px', '28px', '120px'])
         expect(p['row-gap']).toBe('22px')
-        expect(p['max-width']).toBe('1240px')
+        expect(p['max-width']).toBe('none')
         // the stage path sits under the header, and the stats under it, each at the page's gap
         expect(stages.y - head.bottom).toBe(22)
         expect(stats.y - stages.bottom).toBe(22)
@@ -225,10 +225,10 @@ for (const tw of ['floor', 'latest']) {
         expect(Math.abs(head.x - brand.x)).toBeLessThan(1)
       })
 
-      test('the page is capped at 1240px on a wide screen, `narrow` is 980px and `full` has no cap', async ({ page }) => {
+      test('the page fills a wide screen by default, `narrow` is 980px and `contained` 1240px', async ({ page }) => {
         await page.setViewportSize({ width: 2000, height: 900 })
 
-        for (const [query, width] of [['', 1240], ['&width=narrow', 980], ['&width=full', 2000], ['&width=huge', 1240]]) {
+        for (const [query, width] of [['', 2000], ['&width=narrow', 980], ['&width=contained', 1240], ['&width=full', 2000], ['&width=huge', 2000]]) {
           await open(page, `/atom/e2e/page-width?x=1${query}`, { tw })
 
           expect((await box(page.getByTestId('page'))).width, query || 'default').toBe(width)

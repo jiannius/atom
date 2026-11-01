@@ -3,22 +3,28 @@
 $evil = '<img src=x onerror=alert(1)>';
 
 describe('page', function () {
-    it('is the only padded block: a 1240px column with the gutters and gap of the design', function () {
+    it('is the only padded block: it fills its shell, with the gutters and gap of the design', function () {
         $page = domQuery(renderBlade('<atom:page class="mt-2"><p id="c">x</p></atom:page>'), '//*[@data-atom-page]')[0];
 
-        expect(domClasses($page))->toContain('mx-auto', 'max-w-[var(--atom-page-max,1240px)]', 'pt-[26px]', 'pb-(--atom-page-pb)', '[:where(&)]:[--atom-page-pb:120px]', 'gap-[22px]', 'grid', 'mt-2')
+        expect(array_filter(domClasses($page), fn ($c) => str_starts_with($c, 'max-w-')))->toBeEmpty()
+            ->and(domClasses($page))->not->toContain('mx-auto')
+            ->and(domClasses($page))->toContain('pt-[26px]', 'pb-(--atom-page-pb)', '[:where(&)]:[--atom-page-pb:120px]', 'gap-[22px]', 'grid', 'mt-2')
             ->and($page->getElementsByTagName('p')->length)->toBe(1);
     });
 
-    it('has a narrow and a full width', function () {
+    it('has a narrow and a contained width; full and an unknown value are the default', function () {
         $narrow = domQuery(renderBlade('<atom:page width="narrow" />'), '//*[@data-atom-page]')[0];
-        $full = domQuery(renderBlade('<atom:page width="full" />'), '//*[@data-atom-page]')[0];
-        $other = domQuery(renderBlade('<atom:page width="huge" />'), '//*[@data-atom-page]')[0];
+        $contained = domQuery(renderBlade('<atom:page width="contained" />'), '//*[@data-atom-page]')[0];
 
         expect(domClasses($narrow))->toContain('mx-auto', 'max-w-[980px]')
-            ->and(array_filter(domClasses($full), fn ($c) => str_starts_with($c, 'max-w-')))->toBeEmpty()
-            ->and(domClasses($full))->not->toContain('mx-auto')
-            ->and(domClasses($other))->toContain('mx-auto', 'max-w-[var(--atom-page-max,1240px)]');
+            ->and(domClasses($contained))->toContain('mx-auto', 'max-w-[var(--atom-page-max,1240px)]');
+
+        foreach (['full', 'huge'] as $width) {
+            $page = domQuery(renderBlade('<atom:page width="'.$width.'" />'), '//*[@data-atom-page]')[0];
+
+            expect(array_filter(domClasses($page), fn ($c) => str_starts_with($c, 'max-w-')))->toBeEmpty()
+                ->and(domClasses($page))->not->toContain('mx-auto');
+        }
     });
 });
 

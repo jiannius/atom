@@ -2,12 +2,12 @@
 // ?mode=bare puts the save bar in a plain box with no <atom:page> around it; ?mode=page puts it in a page.
 // ?pb=80 sets the page's bottom room to 80px through its variable. ?shell=sidebar|header puts the page in an app shell.
 // ?max=1000 puts a host utility (`[--atom-page-max:1000px]`) on the page. ?modal=1 adds a modal, open, whose form carries a bar.
-// ?width=narrow|full is the page's width (the default is 1240px). ?wide=1 puts a 2400px block in the page: real sideways overflow.
+// ?width=narrow|contained|full is the page's width (the default fills <main>). ?wide=1 puts a 2400px block in the page: real sideways overflow.
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
 $mode = request()->query('mode') === 'bare' ? 'bare' : 'page';
 $pb = request()->query('pb') === '80';
 $shell = in_array(request()->query('shell'), ['sidebar', 'header'], true) ? request()->query('shell') : null;
-$width = in_array(request()->query('width'), ['narrow', 'full'], true) ? request()->query('width') : null;
+$width = in_array(request()->query('width'), ['narrow', 'contained', 'full'], true) ? request()->query('width') : null;
 $dark = request()->query('dark') === '1';
 $wide = request()->query('wide') === '1';
 $max = request()->query('max') === '1000' ? '[--atom-page-max:1000px]' : '';

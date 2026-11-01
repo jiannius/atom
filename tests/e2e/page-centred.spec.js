@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
-// <atom:page> is centred in the space its shell gives it: the default (1240px) and `narrow` (980px) columns carry `mx-auto`, `full` has
-// no cap and fills <main>. The pages are the shells' pattern pages and the save-bar fixture, on the consumer's Tailwind (the rig has none;
+// <atom:page> fills the space its shell gives it by default (`full` is the same); `contained` (1240px) and `narrow` (980px) are columns
+// centred in it with `mx-auto`. The pages are the shells' pattern pages and the save-bar fixture, on the consumer's Tailwind (the rig has none;
 // `mx-auto` is a utility), at the hosts' minimum (floor) and the newest 4.x (latest). What is measured is the page's gap to <main> on each
 // side, and that what sits inside the page (the header, the tabs, the table toolbar and its pager) stays on the page column.
 
@@ -30,15 +30,15 @@ const gaps = async (page, selector = '[data-atom-page]') => {
 const noSideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
 for (const tw of ['floor', 'latest']) {
-  test.describe(`a centred page, ${tw} consumer build`, () => {
+  test.describe(`page width, ${tw} consumer build`, () => {
     for (const width of [1440, 1920]) {
       test.describe(`at ${width}px`, () => {
         test.use({ viewport: { width, height: 900 } })
 
         for (const shell of ['sidebar', 'header']) {
-          test(`${shell} shell: the default page's gap on the left equals the gap on the right; narrow is centred; full fills <main>`, async ({ page }) => {
-            // the column the page asks for: the default is 1240px (the top-nav shell's own 1248px, its bar's width), narrow 980px, full has none
-            for (const [name, query, cap] of [['default', '', shell === 'header' ? 1248 : 1240], ['narrow', '&width=narrow', 980], ['full', '&width=full', null]]) {
+          test(`${shell} shell: the default page fills <main>; contained and narrow are centred`, async ({ page }) => {
+            // the column the page asks for: the default and full have none, contained is 1240px (the top-nav shell's own 1248px, its bar's width), narrow 980px
+            for (const [name, query, cap] of [['default', '', null], ['contained', '&width=contained', shell === 'header' ? 1248 : 1240], ['narrow', '&width=narrow', 980], ['full', '&width=full', null]]) {
               await open(page, `/atom/e2e/save-bar-context?shell=${shell}${query}`, tw)
 
               const g = await gaps(page, '[data-testid="page"]')
@@ -55,18 +55,20 @@ for (const tw of ['floor', 'latest']) {
           })
         }
 
-        test('top-nav shell: the centred default page starts where the bar and its brand do', async ({ page }) => {
-          await open(page, '/atom/e2e/shell-record?shell=header', tw)
+        test('top-nav shell: the default page and a contained one start where the bar and its brand do', async ({ page }) => {
+          for (const url of ['/atom/e2e/shell-record?shell=header', '/atom/e2e/save-bar-context?shell=header&width=contained']) {
+            await open(page, url, tw)
 
-          const head = await box(page.locator('[data-atom-page-header]').first())
-          const brand = await box(page.locator('[data-atom-header-bar] a').first())
+            const head = await box(page.locator('[data-atom-page-header]').first())
+            const brand = await box(page.locator('[data-atom-header-bar] a').first())
 
-          expect(Math.abs(head.x - brand.x)).toBeLessThanOrEqual(1)
+            expect(Math.abs(head.x - brand.x), url).toBeLessThanOrEqual(1)
+          }
         })
 
-        test('a utility of the host\'s on the page (`[--atom-page-max:1000px]`) beats the top-nav shell\'s own cap', async ({ page }) => {
+        test('a utility of the host\'s on a contained page (`[--atom-page-max:1000px]`) beats the top-nav shell\'s own cap', async ({ page }) => {
           for (const shell of ['header', 'sidebar']) {
-            await open(page, `/atom/e2e/save-bar-context?shell=${shell}&max=1000`, tw)
+            await open(page, `/atom/e2e/save-bar-context?shell=${shell}&width=contained&max=1000`, tw)
 
             const g = await gaps(page, '[data-testid="page"]')
 
@@ -105,7 +107,7 @@ for (const tw of ['floor', 'latest']) {
 
       for (const shell of ['sidebar', 'header']) {
         test(`${shell} shell: the page fills the screen less its 16px gutters, nothing scrolls sideways`, async ({ page }) => {
-          for (const query of ['', '&width=narrow', '&width=full']) {
+          for (const query of ['', '&width=narrow', '&width=contained', '&width=full']) {
             await open(page, `/atom/e2e/save-bar-context?shell=${shell}${query}`, tw)
 
             const p = await box(page.locator('[data-testid="page"]'))

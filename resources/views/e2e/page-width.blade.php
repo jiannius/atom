@@ -1,5 +1,5 @@
 @php
-// ?width=narrow|full (anything else is the default); ?tw=floor|latest opts in to the consumer build
+// ?width=narrow|contained|full (anything else is the default); ?tw=floor|latest opts in to the consumer build
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : null;
 $width = is_string(request()->query('width')) ? request()->query('width') : null;
 @endphp
