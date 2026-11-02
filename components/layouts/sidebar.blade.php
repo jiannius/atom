@@ -191,22 +191,22 @@ $trailEmpty = $crumbsOnly
                     <atom:layouts._sidebar-circle anchor="center"/>
                 @else
                     <a href="/app" class="ms-2 flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
-                        @isset ($logo)
+                        @if (isset($logo) && $present($logo))
                             {{ $logo }}
                         @else
                             <atom:logo class="size-4 fill-current" />
-                        @endisset
+                        @endif
                     </a>
 
                     <atom:dropdown class="min-w-0 grow">
                         <button type="button" class="flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-start hover:bg-fg/5" data-atom-account-trigger>
                             <span class="grid min-w-0 grow leading-tight">
                                 <span class="truncate text-sm font-semibold">{{ config('app.name') }}</span>
-                                @isset ($caption)
+                                @if (isset($caption) && $present($caption))
                                     <span class="truncate text-[11px] text-fg-subtle">{{ $caption }}</span>
                                 @elseif (filled($name))
                                     <span class="truncate text-[11px] text-fg-subtle">{{ $name }}</span>
-                                @endisset
+                                @endif
                             </span>
                             <span class="sr-only">{{ t('Account') }}</span>
                             <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
@@ -230,11 +230,11 @@ $trailEmpty = $crumbsOnly
             <div class="relative">
                 <a href="/app" class="flex items-center gap-[9px] px-2 pb-3 pt-1.5" wire:navigate>
                     <div class="flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground">
-                        @isset ($logo)
+                        @if (isset($logo) && $present($logo))
                             {{ $logo }}
                         @else
                             <atom:logo class="size-4 fill-current" />
-                        @endisset
+                        @endif
                     </div>
                     <span class="truncate text-sm font-semibold leading-tight">
                         {{ config('app.name') }}

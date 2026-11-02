@@ -33,6 +33,10 @@ $initials = $user && blank($initials)
    (`account="end"`). Either way it needs a `dropdown` slot; without one the logo stays a plain link. */
 $accountInBrand = $account !== 'end' && isset($dropdown);
 
+/* A slot counts only when it holds more than comments and whitespace (an `@if` that comes out false still prints Livewire's
+   `<!--[if BLOCK]-->` markers): an empty `logo` keeps atom's logo, as in layouts.sidebar. */
+$present = fn ($slot) => $slot instanceof \Illuminate\View\ComponentSlot ? $slot->hasActualContent() : filled(trim((string) $slot));
+
 /* The theme switcher lives in the account menu (a row there); the bar's own toggle is only for a shell with no account menu.
    `theme-switcher="false"` draws neither, and `dark` still emits the bootstrap, so the host's own control can call window.darkmode(). */
 $showTheme = $dark && $themeSwitcher;
@@ -108,11 +112,11 @@ $trailEmpty = isset($crumbs)
                         </atom:dropdown>
                     @else
                         <a href="/app" class="flex size-[22px] shrink-0 items-center justify-center rounded-nav bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
-                            @isset ($logo)
+                            @if (isset($logo) && $present($logo))
                                 {{ $logo }}
                             @else
                                 <atom:logo class="size-3.5 fill-current" />
-                            @endisset
+                            @endif
                         </a>
 
                         <atom:dropdown>
@@ -133,11 +137,11 @@ $trailEmpty = isset($crumbs)
             @else
                 <a href="/app" class="flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight" wire:navigate>
                     <div class="flex size-[22px] items-center justify-center rounded-nav bg-accent text-accent-foreground">
-                        @isset ($logo)
+                        @if (isset($logo) && $present($logo))
                             {{ $logo }}
                         @else
                             <atom:logo class="size-3.5 fill-current" />
-                        @endisset
+                        @endif
                     </div>
                     <span class="max-sm:sr-only">{{ config('app.name') }}</span>
                 </a>

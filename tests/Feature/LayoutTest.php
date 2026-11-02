@@ -726,6 +726,28 @@ describe('the account menu in the brand row', function () {
         'no dropdown' => ['', false],
     ]);
 
+    it('keeps the user\'s name and atom\'s logo when the caption and logo slots come out empty', function () use ($render) {
+        $html = $render('layouts.sidebar', '', "<x-slot:caption>\n@if (false) CC @endif\n</x-slot>\n<x-slot:logo>\n</x-slot>");
+
+        expect(domQuery($html, '//*[@data-atom-shell-brand]//button[@data-atom-account-trigger][contains(., "Ada Lovelace")]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-brand]/a[@href="/app"]//*[name()="svg"]'))->toHaveCount(1);
+    });
+
+    it('ignores logo and caption beside a brand slot, and caption where there is no second line', function (string $layout, string $props, string $slots) use ($render) {
+        $html = $render($layout, $props, $slots.'<x-slot:logo><span>LL</span></x-slot><x-slot:caption><span>CC</span></x-slot>');
+
+        expect($html)->not->toContain('<span>CC</span>');
+
+        if (str_contains($slots, 'brand')) {
+            expect($html)->not->toContain('<span>LL</span>');
+        }
+    })->with([
+        'a brand slot (sidebar)' => ['layouts.sidebar', '', '<x-slot:brand><a href="/home">B</a></x-slot>'],
+        'a brand slot (header)' => ['layouts.header', '', '<x-slot:brand><a href="/home">B</a></x-slot>'],
+        'the top nav' => ['layouts.header', '', ''],
+        'account="end"' => ['layouts.sidebar', 'account="end"', ''],
+    ]);
+
     it('keeps the phone account button in the sidebar shell\'s top bar, where the sidebar is stashed', function () use ($render) {
         expect(domQuery($render('layouts.sidebar'), '//*[@data-atom-header]//*[@data-atom-dropdown][contains(@class, "lg:hidden")]//button[@aria-label="Account"]'))->toHaveCount(1);
     });

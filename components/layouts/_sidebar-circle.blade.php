@@ -3,8 +3,8 @@
 ])
 
 {{-- The sidebar's collapse button when the top bar is empty: a round button on the sidebar's right edge, half in and half out, on the
-     middle of the brand row (`anchor`: center = the brand row's middle, where the caret is; logo = the default link's tile). It sits inside the brand row, so it follows the caret and a host-widened
-     sidebar. atom.css draws it (lg up, bar empty, sidebar shown) and puts it on the edge; the bar's own button takes over otherwise. --}}
+     middle of the brand row (`anchor`: center = the brand row's middle, where the caret is; logo = the default link's tile). It sits
+     inside the brand row, so it follows the caret and a host-widened sidebar. atom.css draws it (lg up, bar empty, sidebar shown) and puts it on the edge; the bar's own button takes over otherwise. --}}
 <button
 type="button"
 x-on:click="$dispatch('toggle-sidebar')"

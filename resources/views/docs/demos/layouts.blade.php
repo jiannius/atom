@@ -18,14 +18,16 @@
 &lt;/x-dynamic-component&gt;</code></pre>
 
     <p>
-        Slots: <code>brand</code>, <code>context</code>, <code>search</code>, <code>nav</code>,
+        Slots: <code>brand</code>, <code>logo</code>, <code>caption</code>, <code>context</code>, <code>search</code>, <code>nav</code>,
         <code>navfoot</code>, <code>crumbs</code>, <code>actions</code>, <code>dropdown</code>,
         <code>profile</code>, <code>footer</code>. <code>&lt;main&gt;</code> is unpadded: padding comes from the page.
     </p>
 
     <p>
         The account menu (the <code>dropdown</code> slot) opens from the brand row: the logo goes home, the app name and
-        the caret open the menu. Pass <code>account="end"</code> to put it at the foot of the sidebar, or behind an
+        the caret open the menu. <code>logo</code> fills the home tile, and in the sidebar <code>caption</code> is the line
+        under the app name (the user's name by default); both keep the whole name block as the trigger, where a
+        <code>brand</code> of your own gets only a caret beside it. Pass <code>account="end"</code> to put it at the foot of the sidebar, or behind an
         avatar at the end of the top nav, instead.
     </p>
 
@@ -44,7 +46,7 @@
         (Ctrl or Cmd + B does the same, except from a field or an editor). The choice is remembered in
         <code>localStorage</code> and applied before the first paint, so a reload or a <code>wire:navigate</code> starts
         collapsed. A bar with nothing else in it is not drawn while the sidebar is shown, and the button is then a round one
-        on the sidebar's right edge, on the line of the account caret; while the sidebar is collapsed the bar is always
+        on the sidebar's right edge, on the brand row's middle; while the sidebar is collapsed the bar is always
         drawn and holds the plain button. The brand row stays put while the rest of the sidebar scrolls.
     </p>
 
