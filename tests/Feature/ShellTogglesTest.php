@@ -155,7 +155,7 @@ describe('the sidebar collapse button', function () {
             ->and(domQuery($html, '//*[@data-atom-sidebar-scroll]//button[@data-atom-sidebar-circle]'))->toHaveCount(0)
             ->and($html)->not->toContain('data-atom-sidebar-fallback')->not->toContain('Hide sidebar');
     })->with([
-        'default brand row (the caret)' => ['', 'caret', ''],
+        'default brand row (its middle, where the caret is)' => ['', 'center', ''],
         'a brand slot with the caret button' => ['', 'center', '<x-slot:brand><a href="/home">B</a></x-slot>'],
     ]);
 

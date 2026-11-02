@@ -283,11 +283,6 @@ dialog,
     margin-top: -14px;
 }
 
-/* the default brand row: the caret is 14px high, 4px (the trigger's padding) and 3px (its margin) under the row's top */
-[data-atom-sidebar-circle="caret"] {
-    top: 0;
-}
-
 /* the default link: a 26px tile 6px under the top */
 [data-atom-sidebar-circle="logo"] {
     top: 5px;

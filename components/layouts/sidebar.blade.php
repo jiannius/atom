@@ -168,11 +168,12 @@ $trailEmpty = $crumbsOnly
     id="atom-sidebar"
     data-mobile-cloak
     data-atom-sidebar>
-        {{-- The brand row as the account menu: the logo tile still goes home, and the app name (the user's name under
-             it) and the caret open the menu. A host's `brand` slot is kept as it is (it may be a link), with a caret
-             button beside it. --}}
+        {{-- The brand row as the account menu: the logo tile still goes home, and the app name (the `caption` slot under it,
+             else the user's name) and the caret open the menu, all centred on one line with the collapse circle. The `logo`
+             slot fills the tile. A host's `brand` slot is kept as it is (it may be a link), with a caret button beside it;
+             a host that wants the whole name block to open the menu passes `logo` and `caption` instead of `brand`. --}}
         @if ($accountInBrand)
-            <div @class(['relative flex items-center gap-1', 'pb-3' => ! isset($brand)]) data-atom-shell-brand>
+            <div @class(['relative flex items-center gap-1', 'mb-3' => ! isset($brand)]) data-atom-shell-brand>
                 @isset ($brand)
                     <div class="min-w-0 grow">{{ $brand }}</div>
 
@@ -190,20 +191,25 @@ $trailEmpty = $crumbsOnly
                     <atom:layouts._sidebar-circle anchor="center"/>
                 @else
                     <a href="/app" class="ms-2 flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
-                        <atom:logo class="size-4 fill-current" />
+                        @if (isset($logo) && $present($logo))
+                            {{ $logo }}
+                        @else
+                            <atom:logo class="size-4 fill-current" />
+                        @endif
                     </a>
 
                     <atom:dropdown class="min-w-0 grow">
-                        <button type="button" class="flex w-full min-w-0 items-start gap-2 rounded-control px-1.5 py-1 text-start hover:bg-fg/5" data-atom-account-trigger>
+                        <button type="button" class="flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-start hover:bg-fg/5" data-atom-account-trigger>
                             <span class="grid min-w-0 grow leading-tight">
                                 <span class="truncate text-sm font-semibold">{{ config('app.name') }}</span>
-                                @if (filled($name))
+                                @if (isset($caption) && $present($caption))
+                                    <span class="truncate text-[11px] text-fg-subtle">{{ $caption }}</span>
+                                @elseif (filled($name))
                                     <span class="truncate text-[11px] text-fg-subtle">{{ $name }}</span>
                                 @endif
                             </span>
                             <span class="sr-only">{{ t('Account') }}</span>
-                            {{-- on the app name's line, not centred on the two lines --}}
-                            <atom:icon.dropdown class="mt-[3px] size-3.5 shrink-0 text-fg-subtle"/>
+                            <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                         </button>
 
                         <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
@@ -211,7 +217,7 @@ $trailEmpty = $crumbsOnly
                         </atom:layouts._account-menu>
                     </atom:dropdown>
 
-                    <atom:layouts._sidebar-circle anchor="caret"/>
+                    <atom:layouts._sidebar-circle anchor="center"/>
                 @endisset
             </div>
         @elseif (isset($brand))
@@ -224,7 +230,11 @@ $trailEmpty = $crumbsOnly
             <div class="relative">
                 <a href="/app" class="flex items-center gap-[9px] px-2 pb-3 pt-1.5" wire:navigate>
                     <div class="flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground">
-                        <atom:logo class="size-4 fill-current" />
+                        @if (isset($logo) && $present($logo))
+                            {{ $logo }}
+                        @else
+                            <atom:logo class="size-4 fill-current" />
+                        @endif
                     </div>
                     <span class="truncate text-sm font-semibold leading-tight">
                         {{ config('app.name') }}

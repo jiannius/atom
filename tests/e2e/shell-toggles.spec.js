@@ -384,7 +384,7 @@ test.describe('the sidebar collapse button', () => {
     await expect(collapseButton(page)).toBeVisible()
   })
 
-  // the circle: 28px, on the sidebar's border (half in, half out), on the line of the caret (or of the brand row when there is none)
+  // the circle: 28px, on the sidebar's border (half in, half out), on the brand row's middle, where the caret is (the logo tile's line with account="end")
   for (const [name, query, target] of [
     ['the default brand row: the caret', '', '[data-atom-shell-brand] [data-atom-account-trigger] [data-atom-icon]'],
     ['a host brand slot: the caret button beside it', '&brand=1', '[data-atom-shell-brand] [data-atom-account-trigger]'],

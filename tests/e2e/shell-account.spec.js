@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test'
 
 // The account menu in the brand row (account="brand", the default) of both shells, with atom's own brand: the logo tile
-// goes home, the app name and the caret open the menu. On the consumer Tailwind build (`node tests/consumer/build.mjs` first).
+// goes home, the app name (with its caption) and the caret open the menu. On the consumer Tailwind build (`node tests/consumer/build.mjs` first).
 
-async function open (page, shell, tw) {
+async function open (page, shell, tw, query = '') {
   const css = await page.request.get(`/atom/e2e/consumer-css/${tw}`)
   expect(css.status(), 'run `node tests/consumer/build.mjs` first').toBe(200)
 
-  await page.goto(`/atom/e2e/shell-account?tw=${tw}&shell=${shell}`)
+  await page.goto(`/atom/e2e/shell-account?tw=${tw}&shell=${shell}${query}`)
   await page.waitForFunction(() => window.Alpine !== undefined)
 }
 
@@ -46,23 +46,36 @@ for (const tw of ['floor', 'latest']) {
       })
 
       if (shell === 'sidebar') {
-        test('the logo is centred on the name block, and the caret on the app name\'s line', async ({ page }) => {
-          await page.setViewportSize({ width: 1280, height: 800 })
-          await open(page, shell, tw)
+        for (const [name, query] of [['atom\'s own row', ''], ['the logo and caption slots', '&caption=1']]) {
+          test(`the logo, the name block and the caret share one centre: ${name}`, async ({ page }) => {
+            await page.setViewportSize({ width: 1280, height: 800 })
+            await open(page, shell, tw, query)
 
-          const centres = await page.evaluate(() => {
-            const button = document.querySelector('[data-atom-shell-brand] [data-atom-account-trigger]')
-            const mid = (el) => { const r = el.getBoundingClientRect(); return r.y + r.height / 2 }
-            return {
-              logo: mid(document.querySelector('[data-atom-shell-brand] a')),
-              block: mid(button),
-              name: mid(button.querySelector('.font-semibold')),
-              caret: mid(button.querySelector('svg')),
-            }
+            const centres = await page.evaluate(() => {
+              const button = document.querySelector('[data-atom-shell-brand] [data-atom-account-trigger]')
+              const mid = (el) => { const r = el.getBoundingClientRect(); return r.y + r.height / 2 }
+              return {
+                logo: mid(document.querySelector('[data-atom-shell-brand] a')),
+                block: mid(button),
+                caret: mid(button.querySelector('[data-atom-icon]')),
+              }
+            })
+
+            expect(Math.abs(centres.logo - centres.block)).toBeLessThanOrEqual(0.5)
+            expect(Math.abs(centres.caret - centres.block)).toBeLessThanOrEqual(0.5)
           })
+        }
 
-          expect(Math.abs(centres.logo - centres.block)).toBeLessThanOrEqual(0.5)
-          expect(Math.abs(centres.caret - centres.name)).toBeLessThanOrEqual(0.5)
+        test('a click on the caption opens the menu, and the logo goes home', async ({ page }) => {
+          await page.setViewportSize({ width: 1280, height: 800 })
+          await open(page, shell, tw, '&caption=1')
+
+          const brand = page.locator('[data-atom-shell-brand]')
+          await expect(brand.getByRole('link', { name: 'Home' }).locator('[data-logo-slot]')).toHaveText('T')
+
+          await brand.locator('[data-caption-slot]').click()
+          await expect(brand.getByRole('menu')).toBeVisible()
+          await expect(brand.getByRole('menuitem', { name: 'Log out' })).toBeVisible()
         })
       }
 
