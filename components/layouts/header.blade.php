@@ -108,7 +108,11 @@ $trailEmpty = isset($crumbs)
                         </atom:dropdown>
                     @else
                         <a href="/app" class="flex size-[22px] shrink-0 items-center justify-center rounded-nav bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
-                            <atom:logo class="size-3.5 fill-current" />
+                            @isset ($logo)
+                                {{ $logo }}
+                            @else
+                                <atom:logo class="size-3.5 fill-current" />
+                            @endisset
                         </a>
 
                         <atom:dropdown>
@@ -129,7 +133,11 @@ $trailEmpty = isset($crumbs)
             @else
                 <a href="/app" class="flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight" wire:navigate>
                     <div class="flex size-[22px] items-center justify-center rounded-nav bg-accent text-accent-foreground">
-                        <atom:logo class="size-3.5 fill-current" />
+                        @isset ($logo)
+                            {{ $logo }}
+                        @else
+                            <atom:logo class="size-3.5 fill-current" />
+                        @endisset
                     </div>
                     <span class="max-sm:sr-only">{{ config('app.name') }}</span>
                 </a>

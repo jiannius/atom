@@ -8,7 +8,9 @@ $vite = $vite ?? app(\Jiannius\Atom\Services\Docs::class)->vite();
 
 <atom:layouts.sidebar title="App shell (sidebar)" :vite="$vite" :styles="$styles" :dark="$dark ?? true">
     <x-slot:brand>
-        {{-- a brand with a subline (the company or the branch) is host markup: no component for it --}}
+        {{-- a brand of your own (here a different name, with a subline): atom draws a caret beside it, and only the caret opens
+             the account menu. To keep the app name and have the whole name block open the menu, pass `logo` (the tile) and
+             `caption` (the subline) instead of `brand`. --}}
         <a href="?page=dashboard" class="flex items-center gap-[9px] px-2 pb-3 pt-1.5">
             <div class="flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground">
                 <atom:icon.blocks class="size-4"/>

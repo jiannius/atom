@@ -706,6 +706,26 @@ describe('the account menu in the brand row', function () {
         expect(domQuery($render('layouts.sidebar'), '//button[@data-atom-account-trigger][contains(., "Ada Lovelace")]'))->toHaveCount(1);
     });
 
+    it('puts the caption slot under the app name in the sidebar\'s brand row, inside the trigger, in place of the user\'s name', function () use ($render) {
+        $html = $render('layouts.sidebar', '', '<x-slot:caption><span data-caption>Ada · HQ</span></x-slot>');
+
+        expect(domQuery($html, '//*[@data-atom-shell-brand]//button[@data-atom-account-trigger][contains(., "'.config('app.name').'")]//*[@data-caption]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-shell-brand]//button[@data-atom-account-trigger][contains(., "Ada Lovelace")]'))->toHaveCount(0);
+    });
+
+    it('fills the home tile with the logo slot, in the brand row and in the plain link', function (string $layout, string $props, bool $dropdown) {
+        $slots = '<x-slot:logo><span data-logo>T</span></x-slot>'.($dropdown ? "\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>" : '');
+        $html = renderBlade('<atom:'.$layout.' :vite="false" '.$props.">\n".$slots."\nx</atom:".$layout.'>');
+
+        expect(domQuery($html, '//a[@href="/app"]//*[@data-logo]'))->toHaveCount(1)
+            ->and(domQuery($html, '//button//*[@data-logo]'))->toHaveCount(0)
+            ->and(substr_count($html, 'data-logo'))->toBe(1);
+    })->with(['layouts.sidebar', 'layouts.header'])->with([
+        'the brand row' => ['', true],
+        'account="end"' => ['account="end"', true],
+        'no dropdown' => ['', false],
+    ]);
+
     it('keeps the phone account button in the sidebar shell\'s top bar, where the sidebar is stashed', function () use ($render) {
         expect(domQuery($render('layouts.sidebar'), '//*[@data-atom-header]//*[@data-atom-dropdown][contains(@class, "lg:hidden")]//button[@aria-label="Account"]'))->toHaveCount(1);
     });
