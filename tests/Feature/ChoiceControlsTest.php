@@ -41,6 +41,18 @@ describe('checkbox', function () {
 });
 
 describe('radio', function () {
+    it('prints a caption under the label inside the same <label>, in a card group too (#161)', function () {
+        $html = renderBlade('<atom:radio.group variant="card"><atom:radio name="b" value="y" label="Yearly" caption="RM 500 a year" align="start"/></atom:radio.group>');
+        $labels = domQuery($html, '//label[@data-atom-radio]');
+
+        expect($labels)->toHaveCount(1)
+            ->and($labels[0]->textContent)->toContain('Yearly')->toContain('RM 500 a year')
+            // the dot sits on the first line
+            ->and(domQuery($html, '//label[@data-atom-radio]//div[contains(@class, "items-start")]'))->toHaveCount(1)
+            // and the panel is the card's
+            ->and($html)->toContain('divide-y');
+    });
+
     it('renders a native radio with the decorative swatch hidden from AT', function () {
         $html = renderBlade('<atom:radio label="Option A" />');
 

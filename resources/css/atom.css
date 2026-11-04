@@ -34,6 +34,13 @@
     display: none;
 }
 
+/* The node <atom:chart> mounts ApexCharts on. Apex takes a percentage height from the PARENT of that node, so the node fills the
+   chart's own box (the h-16 or h-64 on the root, or a host's h-full) instead of letting the box that holds the chart set the size.
+   Structural, not a utility: the e2e rig has no Tailwind and the chart measures this. */
+[data-atom-chart-canvas] {
+    height: 100%;
+}
+
 /* Geist and Geist Mono (SIL OFL, see resources/fonts/OFL.txt): self-hosted variable fonts, served by the
    /atom/{file} route next to this stylesheet. <atom:html> preloads them. */
 @font-face {

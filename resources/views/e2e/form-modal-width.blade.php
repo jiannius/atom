@@ -1,6 +1,6 @@
 @php
 // <atom:form.modal cols="1"> with a width class of the caller's, opened on load: ?class=fixed|max|both|none, ?tw=floor|latest, ?dark=1.
-// ?actions=1 adds an `actions` slot (a second button in the footer); ?plain=1 draws a plain <atom:form.actions> in a page form instead of the modal.
+// ?actions=1 adds an `actions` slot (a second button in the footer); ?start=1 adds a `start` slot (a Delete button at the footer's start, Save last); ?plain=1 draws a plain <atom:form.actions> in a page form instead of the modal.
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
 $class = match (request()->query('class')) {
     'max' => 'max-w-md',
@@ -20,6 +20,9 @@ $class = match (request()->query('class')) {
     @else
         <atom:form.modal name="width" cols="1" class="{{ $class }}" data-testid="dialog">
             <atom:input label="Subject"/>
+            @if (request()->query('start') === '1')
+                <x-slot:start><atom:button type="button" variant="danger" data-testid="start-delete">Delete</atom:button></x-slot:start>
+            @endif
             @if (request()->query('actions') === '1')
                 <x-slot:actions><atom:button type="button">Cancel</atom:button></x-slot:actions>
             @endif

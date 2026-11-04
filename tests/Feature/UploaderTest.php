@@ -48,6 +48,43 @@ describe('uploader', function () {
             ->not->toContain('Cancel upload');   // default chrome is skipped
     });
 
+    it('keeps its upload button and prints the end slot beside it (#152)', function () {
+        $html = renderBlade('<atom:uploader wire:model="photo"><x-slot:end>PNG, up to 2 MB</x-slot:end></atom:uploader>');
+
+        expect($html)
+            ->toContain('Upload')
+            ->toContain('Cancel upload')
+            ->toContain('PNG, up to 2 MB')
+            ->toContain('data-atom-uploader-end');
+    });
+
+    it('keeps the end slot out of the trigger replacement: a default slot still replaces the button, and the end slot follows it', function () {
+        $html = renderBlade('<atom:uploader>BROWSE<x-slot:end>Hint</x-slot:end></atom:uploader>');
+
+        expect($html)->toContain('BROWSE')->toContain('Hint')->not->toContain('Cancel upload');
+    });
+
+    it('does not force the small size\'s icon size onto the end slot', function () {
+        $html = renderBlade('<atom:uploader size="sm"><x-slot:end><atom:icon.info class="size-5"/></x-slot:end></atom:uploader>');
+
+        // the rule sits on the button, not on the row the end slot is in
+        $row = domQuery($html, '//div[@data-atom-uploader-end]/..')[0];
+
+        expect(domClasses($row))->not->toContain('[&_[data-atom-icon]]:size-4');
+    });
+
+    it('prints the end slot of the dropzone below the zone', function () {
+        $html = renderBlade('<atom:uploader.dropzone><x-slot:end>Up to 10 files</x-slot:end></atom:uploader.dropzone>');
+
+        expect($html)->toContain('Drop files here')->toContain('Up to 10 files')->toContain('data-atom-uploader-end');
+    });
+
+    it('forwards the end slot of <atom:input type="file">, with a label and without', function (string $attributes) {
+        $html = renderBlade('<atom:input type="file" '.$attributes.'><x-slot:end>Hint text</x-slot:end></atom:input>');
+
+        expect($html)->toContain('Hint text')->toContain('Upload');
+    })->with(['with a label' => ['label="Photo" name="photo"'], 'without' => ['name="photo"']]);
+
     it('wires the Livewire upload lifecycle and progress bar', function () {
         $html = renderBlade('<atom:uploader />');
 

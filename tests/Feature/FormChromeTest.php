@@ -357,6 +357,56 @@ function elementChildren(DOMNode $node): array
 describe('form.modal actions slot', function () {
     beforeEach(fn () => view()->share('errors', new ViewErrorBag));
 
+    it('puts a start slot at the footer start and Save last in the end group (#155)', function () {
+        $children = formModalBarChildren(renderBlade(<<<'BLADE'
+            <atom:form.modal name="c">
+                <span>field</span>
+                <x-slot:start><button type="button" id="del">Delete</button></x-slot:start>
+                <x-slot:actions><button type="button" id="cancel">Cancel</button></x-slot:actions>
+            </atom:form.modal>
+        BLADE));
+
+        // [start group, end group]; the end group is the actions, then Save
+        expect($children)->toHaveCount(2)
+            ->and($children[0]->hasAttribute('data-atom-form-actions-start'))->toBeTrue()
+            ->and(elementChildren($children[0])[0]->getAttribute('id'))->toBe('del')
+            ->and($children[1]->hasAttribute('data-atom-form-modal-actions'))->toBeTrue();
+
+        $end = elementChildren($children[1]);
+
+        expect($end)->toHaveCount(2)
+            ->and($end[0]->getAttribute('id'))->toBe('cancel')
+            ->and($end[1]->getAttribute('type'))->toBe('submit');
+    });
+
+    it('puts Save alone in the end group when only start is given', function () {
+        $children = formModalBarChildren(renderBlade('<atom:form.modal name="c"><span>field</span><x-slot:start>Status</x-slot:start></atom:form.modal>'));
+
+        expect($children)->toHaveCount(2)
+            ->and($children[0]->hasAttribute('data-atom-form-actions-start'))->toBeTrue()
+            ->and(elementChildren($children[1]))->toHaveCount(1)
+            ->and(elementChildren($children[1])[0]->getAttribute('type'))->toBe('submit');
+    });
+
+    it('keeps a delete slot beside the actions, before Save, when start is given too', function () {
+        $end = elementChildren(formModalBarChildren(renderBlade(<<<'BLADE'
+            <atom:form.modal name="c">
+                <span>field</span>
+                <x-slot:start>Status</x-slot:start>
+                <x-slot:delete><button type="button" id="del">Remove</button></x-slot:delete>
+            </atom:form.modal>
+        BLADE))[1]);
+
+        expect(array_map(fn ($el) => $el->getAttribute('id') ?: $el->getAttribute('type'), $end))->toBe(['del', 'submit']);
+    });
+
+    it('keeps the order without start: Save first (the footer is unchanged)', function () {
+        $children = formModalBarChildren(renderBlade('<atom:form.modal name="c"><span>field</span><x-slot:start>   </x-slot:start></atom:form.modal>'));
+
+        expect($children)->toHaveCount(1)
+            ->and($children[0]->getAttribute('type'))->toBe('submit');
+    });
+
     it('leaves the bar as Save plus a bare delete when only delete is given', function () {
         $children = formModalBarChildren(renderBlade(<<<'BLADE'
             <atom:form.modal name="c">

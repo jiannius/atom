@@ -37,6 +37,16 @@ describe('chart', function () {
             ->toContain('h-16');
     });
 
+    it('mounts ApexCharts on an inner canvas that Livewire leaves alone, so the chart sizes from its own box and survives a morph', function () use ($barData) {
+        $html = renderBlade('<atom:chart type="trend" :data="$data" class="h-24"/>', ['data' => [8, 12, 9, 14]]);
+
+        // the canvas is the only child of the sized root, and it is wire:ignore
+        $canvas = domQuery($html, '//div[@data-atom-chart]/div[@data-atom-chart-canvas]');
+
+        expect($canvas)->toHaveCount(1)
+            ->and($canvas[0]->hasAttribute('wire:ignore'))->toBeTrue();
+    });
+
     it('lets a caller override the default height', function () use ($barData) {
         $html = renderBlade('<atom:chart :data="$data" class="h-96"/>', ['data' => $barData]);
 

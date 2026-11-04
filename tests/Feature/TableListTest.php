@@ -284,10 +284,10 @@ describe('toolbar', function () {
 
         // both bars are real elements (a template x-if would freeze the server-rendered slot under Alpine 3.17): the header is shown while
         // nothing is ticked, the checked bar while something is
-        expect($html)->toContain('x-show="!$wire._table.checkboxes.length"')
+        expect($html)->toContain('x-show="!$wire._table?.checkboxes?.length"')
             ->and($html)->toContain('x-show="$wire._table.checkboxes.length || $wire._table.select_all"')
             ->and($html)->not->toContain('<template x-if')
-            ->and(preg_match('/<div x-show="!\$wire\._table\.checkboxes\.length"[^>]*>.*data-atom-table-toolbar/s', $html))->toBe(1)
+            ->and(preg_match('/<div x-show="!\$wire\._table\?\.checkboxes\?\.length"[^>]*>.*data-atom-table-toolbar/s', $html))->toBe(1)
             // the header is visible at first paint (its components start visible); only the checked bar is cloaked
             ->and($html)->not->toMatch('/x-show="!\$wire\._table\.checkboxes\.length" x-cloak/')
             ->and($html)->toMatch('/x-show="\$wire\._table\.checkboxes\.length \|\| \$wire\._table\.select_all" x-cloak/');

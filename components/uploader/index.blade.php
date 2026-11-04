@@ -12,6 +12,9 @@
 // "Upload Attachment" without composing two translated strings by hand. Derived from the
 // anchor it was given, so it stays stable across a Livewire morph like every other id.
 $triggerId = $ariaLabelledby ? $ariaLabelledby.'-trigger' : null;
+
+/* Content beside the button (a size or type hint, a link to the rules). A slot made of false @if blocks is not content. */
+$hasEnd = isset($end) && $end->hasActualContent();
 @endphp
 
 <div
@@ -28,13 +31,12 @@ x-on:livewire-upload-progress="progress = $event.detail.progress"
     @if ($slot->isNotEmpty())
         {{ $slot }}
     @else
-        <div @class([
-            'flex items-center gap-2',
-            '[&_[data-atom-icon]]:size-4' => $size === 'sm',
-        ])>
+        <div class="flex items-center gap-2">
+            {{-- the small size's 16px icon is the button's rule: it must not reach into what the end slot holds --}}
             <atom:button
             :variant="$variant"
             :size="$size"
+            :class="$size === 'sm' ? '[&_[data-atom-icon]]:size-4' : null"
             :id="$triggerId"
             :aria-labelledby="$triggerId ? $triggerId.' '.$ariaLabelledby : null"
             x-bind:class="uploading && 'opacity-50 pointer-events-none'"
@@ -55,6 +57,14 @@ x-on:livewire-upload-progress="progress = $event.detail.progress"
                     <atom:icon.stop class="size-4" />
                 </button>
             </atom:tooltip>
+
+            @if ($hasEnd)
+                <div {{ $end->attributes->class('min-w-0 text-sm text-fg-muted') }} data-atom-uploader-end>{{ $end }}</div>
+            @endif
         </div>
+    @endif
+
+    @if ($hasEnd && $slot->isNotEmpty())
+        <div {{ $end->attributes->class('mt-1 min-w-0 text-sm text-fg-muted') }} data-atom-uploader-end>{{ $end }}</div>
     @endif
 </div>

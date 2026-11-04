@@ -61,9 +61,13 @@ describe('card', function () {
 
 describe('callout', function () {
     it('draws each variant on its tone: the tint, a hairline of its ink and the icon in the ink', function (string $variant, string $tone) {
-        $classes = domClasses(displayElement('<atom:callout :variant="$variant" heading="h" />', 'x-data', compact('variant')));
+        $html = renderBlade('<atom:callout :variant="$variant" heading="h" />', compact('variant'));
+        $classes = domClasses(domQuery($html, '//*[@x-data]')[0]);
 
-        expect($classes)->toContain("bg-{$tone}-bg", "border-{$tone}-fg/20", "[&_[data-atom-icon]]:text-{$tone}-fg", 'rounded-panel', 'text-fg');
+        // the ink is on the leading icon itself, not a descendant rule on every icon in the callout
+        expect($classes)->toContain("bg-{$tone}-bg", "border-{$tone}-fg/20", 'rounded-panel', 'text-fg')
+            ->not->toContain("[&_[data-atom-icon]]:text-{$tone}-fg")
+            ->and(domClasses(domQuery($html, '//*[@data-atom-icon]')[0]))->toContain("text-{$tone}-fg");
     })->with([['info', 'info'], ['success', 'success'], ['warning', 'warning'], ['danger', 'danger'], ['error', 'danger']]);
 
     it('is the neutral tint with no variant', function () {
@@ -348,7 +352,9 @@ describe('callout accent and actions', function () {
         $html = renderBlade('<atom:callout variant="accent" heading="Decide" content="x" />');
         $classes = domClasses(domQuery($html, '//*[@x-data]')[0]);
 
-        expect($classes)->toContain('bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))]', 'border-s-4', 'border-s-accent-ink', '[&_[data-atom-icon]]:text-accent-ink', '[&_[data-atom-callout-heading]]:text-accent-ink');
+        expect($classes)->toContain('bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))]', 'border-s-4', 'border-s-accent-ink', '[&_[data-atom-callout-heading]]:text-accent-ink')
+            ->not->toContain('[&_[data-atom-icon]]:text-accent-ink')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-icon]')[0]))->toContain('text-accent-ink');
     });
 
     it('draws the actions slot as a row of buttons under the text, and nothing without it', function () {

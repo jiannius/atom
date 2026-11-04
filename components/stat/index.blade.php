@@ -7,11 +7,15 @@
     'breakdown' => null,
     'tone' => null,
     'href' => null,
+    'trend' => null,
 ])
 
 {{-- One figure of a totals strip: label, a tabular value with an optional small prefix (a currency), an optional
      delta and a breakdown line. Sized by its content, never a fixed height. With an `href` it is a link (a clickable
-     filter). `delta` reads as up or down from its sign; `inverse` flips which direction is good (overdue going down). --}}
+     filter). `delta` reads as up or down from its sign; `inverse` flips which direction is good (overdue going down).
+     `trend` is a list of numbers drawn as a small sparkline under the sub line (the card's stats variant does the same on a
+     card), coloured by the same good-or-bad reading as the delta: success, danger, or neutral when there is no direction.
+     It is decoration (the figure and the delta carry the meaning), so it is hidden from assistive tech. --}}
 @php
 $href = safe_url($href);
 $el = $href ? 'a' : 'div';
@@ -28,6 +32,15 @@ $direction = match (true) {
     default => 'up',
 };
 $isGood = $direction && $direction !== 'flat' ? (($direction === 'up') xor (bool) $inverse) : null;
+
+/* finite numbers only, in order (NAN and INF cannot be encoded for the chart); a Collection is read as its array; fewer than two points draw nothing */
+$trend = $trend instanceof \Illuminate\Contracts\Support\Arrayable ? $trend->toArray() : $trend;
+$trend = is_array($trend) ? array_values(array_map(fn ($point) => $point + 0, array_filter($trend, fn ($point) => is_numeric($point) && is_finite($point + 0)))) : [];
+$trendColor = match ($isGood) {
+    true => 'success',
+    false => 'danger',
+    default => 'neutral',
+};
 
 $classes = Arr::toCssClasses([
     'block min-w-0 rounded-panel border bg-surface px-[18px] py-3.5 text-start',
@@ -86,5 +99,11 @@ $deltaClasses = Arr::toCssClasses([
                 <span>{{ t($breakdown) }}</span>
             @endif
         </span>
+    @endif
+
+    @if (count($trend) > 1)
+        <div class="mt-2" aria-hidden="true" data-atom-stat-trend>
+            <atom:chart type="trend" :data="$trend" :color="$trendColor" class="h-8"/>
+        </div>
     @endif
 </{{ $el }}>

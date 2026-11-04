@@ -136,6 +136,10 @@ describe('the calendar section of the README', function () {
         return substr($readme, $start, strpos($readme, "\n## ", $start + 5) - $start);
     }
 
+    it('says that validate() reads properties, so a save method validates its arguments with Validator::make (#89)', function () {
+        expect(calendarReadmeSection())->toContain('checks public properties, not a method\'s arguments')->toContain('Validator::make(');
+    });
+
     it('lists every prop of the component, by its tag name', function () {
         preg_match('/@props\(\[(.*?)\]\)/s', file_get_contents(__DIR__.'/../../components/calendar/index.blade.php'), $props);
         preg_match_all("/^\s*'([A-Za-z]+)' =>/m", $props[1], $names);

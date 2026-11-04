@@ -47,14 +47,21 @@ function publicNamesOf(string $class): array
 const COMPONENT_MACROS = ['toast', 'modal', 'alert', 'confirm', 'command', 'wirekey', 'action'];
 
 it('WithTable occupies only the names it documents', function () {
-    expect(publicNamesOf(WithTable::class))->toBe([
+    expect(publicNamesOf(WithTable::class))->toBe([   // getPage .. setPage (less atom's) are Livewire's WithPagination, which the trait uses
         'clearTableSelectAll',
+        'getPage',
         'getTableCheckboxes',
+        'gotoPage',
         'isTableSelectAll',
         'isTableShowSelected',
         'isTableShowTrashed',
+        'nextPage',
+        'previousPage',
+        'queryStringHandlesPagination',
+        'resetPage',
         'resetTableCheckboxes',
         'selectAllTableMatching',
+        'setPage',
         'tableRowsQuery',
         'tableSelection',
         'tableSelectionQuery',
@@ -144,7 +151,7 @@ it('declares its own state under an underscore prefix, one bucket per trait', fu
         ->map(fn ($property) => $property->getName())
         ->all();
 
-    expect($state(WithTable::class))->toBe(['_table']);
+    expect($state(WithTable::class))->toBe(['_table', 'paginators']);   // paginators: Livewire's WithPagination
     expect($state(WithBreadcrumbs::class))->toBe(['_breadcrumbs']);
     expect($state(WithEditor::class))->toBe(['_editor']);
     expect($state(WithRecaptcha::class))->toBe(['_recaptcha']);
@@ -278,13 +285,43 @@ it('lets a class method of the same name win over the macro', function () {
  * A component that renders something needing a trait it does not use fails with a
  * message naming the trait and the class, instead of a silent dead control.
  */
-it('names WithTable and the component when <atom:table> is rendered without it', function () {
-    $component = new class extends Component {
-        public function render() { return '<div><atom:table :paginate="null"><x-slot:rows></x-slot:rows></atom:table></div>'; }
+it('renders a plain <atom:table> (columns, rows, a header) without WithTable, and names the trait for the checked bar', function () {
+    $plain = new class extends Component {
+        public function render()
+        {
+            return '<div><atom:table>
+                <x-slot:header><span>Heading</span></x-slot:header>
+                <x-slot:columns><atom:table.column>Name</atom:table.column></x-slot:columns>
+                <x-slot:rows><atom:table.row><atom:table.cell>Ada</atom:table.cell></atom:table.row></x-slot:rows>
+            </atom:table></div>';
+        }
     };
 
-    expect(fn () => Livewire::test($component::class))
-        ->toThrow(Exception::class, 'needs the WithTable trait: add `use \Jiannius\Atom\Traits\WithTable;` to '.$component::class);
+    $html = Livewire::test($plain::class)->assertSee('Ada')->html();
+
+    // the header's x-show reads _table, which a static table does not have
+    expect($html)->toContain('!$wire._table?.checkboxes?.length')->not->toContain('x-show="!$wire._table.checkboxes');
+
+    $checked = new class extends Component {
+        public function render()
+        {
+            return '<div><atom:table><x-slot:checked>Delete</x-slot:checked><x-slot:rows></x-slot:rows></atom:table></div>';
+        }
+    };
+
+    expect(fn () => Livewire::test($checked::class))
+        ->toThrow(Exception::class, 'needs the WithTable trait: add `use \Jiannius\Atom\Traits\WithTable;` to '.$checked::class);
+
+    $withTrait = new class extends Component {
+        use WithTable;
+
+        public function render()
+        {
+            return '<div><atom:table><x-slot:checked>Delete</x-slot:checked><x-slot:rows></x-slot:rows></atom:table></div>';
+        }
+    };
+
+    Livewire::test($withTrait::class)->assertSee('Delete');
 });
 
 it('names WithTable for each table part that reads _table', function (string $blade) {
@@ -306,23 +343,74 @@ it('names WithTable for each table part that reads _table', function (string $bl
     'trashed toggle' => '<atom:table.trashed />',
 ]);
 
-it('also asks a paginated table for WithPagination', function () {
+it('lets a component that uses only WithTable page a table, and keeps working beside WithPagination', function () {
     $component = new class extends Component {
         use WithTable;
 
         public function render()
         {
-            $paginator = new \Illuminate\Pagination\LengthAwarePaginator([1], 200, 10, 1);
+            $paginator = new \Illuminate\Pagination\LengthAwarePaginator([1], 200, 10, $this->getPage());
 
             return view('atom-test::trait-guard-pager', ['paginate' => $paginator]);
         }
     };
 
-    expect(fn () => Livewire::test($component::class))->toThrow(Exception::class, 'needs the WithPagination trait');
+    Livewire::test($component::class)->assertSee('wire:click', false)->call('gotoPage', 2)->assertSetStrict('paginators.page', 2);
+
+    $both = new class extends Component {
+        use WithPagination, WithTable;
+
+        public function render()
+        {
+            return view('atom-test::trait-guard-pager', ['paginate' => new \Illuminate\Pagination\LengthAwarePaginator([1], 200, 10, $this->getPage())]);
+        }
+    };
+
+    Livewire::test($both::class)->call('nextPage')->assertSetStrict('paginators.page', 2);
+});
+
+it('names WithTable for a paginated table in a component that has neither trait', function () {
+    $component = new class extends Component {
+        public function render()
+        {
+            return view('atom-test::trait-guard-pager', ['paginate' => new \Illuminate\Pagination\LengthAwarePaginator([1], 200, 10, 1)]);
+        }
+    };
+
+    expect(fn () => Livewire::test($component::class))->toThrow(Exception::class, 'needs the WithTable trait');
+});
+
+it('names WithPagination and the component when <atom:pagination> is rendered without it', function () {
+    $component = new class extends Component {
+        public function render()
+        {
+            return '<div><atom:pagination :paginator="new \Illuminate\Pagination\LengthAwarePaginator([1], 200, 10, 1)" /></div>';
+        }
+    };
+
+    expect(fn () => Livewire::test($component::class))
+        ->toThrow(Exception::class, '<atom:pagination> needs the WithPagination trait: add `use \Livewire\WithPagination;` to '.$component::class);
+
+    $paged = new class extends Component {
+        use WithPagination;
+
+        public function render()
+        {
+            return '<div><atom:pagination :paginator="new \Illuminate\Pagination\LengthAwarePaginator([1], 200, 10, 1)" /></div>';
+        }
+    };
+
+    Livewire::test($paged::class)->assertSee('wire:click', false);
+});
+
+it('does not ask for WithPagination when <atom:pagination> is rendered outside a Livewire component', function () {
+    $html = Blade::render('<atom:pagination :paginator="$p" />', ['p' => new \Illuminate\Pagination\LengthAwarePaginator([1], 200, 10, 1)]);
+
+    expect($html)->toContain('<nav');
 });
 
 it('does not complain about a table outside a Livewire component', function () {
-    expect(Blade::render('<atom:table><x-slot:rows></x-slot:rows></atom:table>'))->toContain('data-atom-table');
+    expect(Blade::render('<atom:table><x-slot:checked>Act</x-slot:checked><x-slot:rows></x-slot:rows></atom:table>'))->toContain('data-atom-table');
 });
 
 it('names WithEditor for the tiptap image toolbar, and WithRecaptcha for <atom:form recaptcha>', function () {
@@ -576,7 +664,7 @@ it('is not fooled by a render stack left behind by a view that threw', function 
         expect(HandleComponents::$renderStack)->not->toBeEmpty();
         expect(app('livewire')->current())->toBeFalsy();
 
-        expect(Blade::render('<atom:table><x-slot:rows></x-slot:rows></atom:table>'))->toContain('data-atom-table');
+        expect(Blade::render('<atom:table><x-slot:checked>Act</x-slot:checked><x-slot:rows></x-slot:rows></atom:table>'))->toContain('data-atom-table');
     }
     finally {
         HandleComponents::$renderStack = [];

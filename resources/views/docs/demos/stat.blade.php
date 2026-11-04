@@ -12,3 +12,8 @@ view="atom::docs.demos.stat.delta"/>
 title="On its own"
 description="Outside a group a stat has its own outline."
 view="atom::docs.demos.stat.single"/>
+
+<atom:docs.example
+title="Trend"
+description="trend is a list of numbers drawn as a small sparkline under the stat. It takes the delta's reading: green when the change is good, red when it is bad (inverse flips it), grey when there is no direction. It is decoration, hidden from assistive tech: the figure and the delta carry the meaning."
+view="atom::docs.demos.stat.trend"/>

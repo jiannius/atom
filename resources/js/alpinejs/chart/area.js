@@ -1,4 +1,4 @@
-import { seriesColor, chrome, tooltipHtml } from './colors'
+import { seriesColor, chrome, tooltipHtml, canvasOf } from './colors'
 
 export default (config) => {
     // the theme listener belongs to the document, so it is kept here to be taken off again when the element goes (destroy())
@@ -16,7 +16,7 @@ export default (config) => {
 
                 let { line, onLine } = chrome(this.$el)
 
-                this.chart = new ApexCharts.default(this.$el, {
+                this.chart = new ApexCharts.default(canvasOf(this.$el), {
                     chart: {
                         type: 'area',
                         height: '100%',

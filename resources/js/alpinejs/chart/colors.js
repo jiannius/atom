@@ -22,6 +22,12 @@ const INK = {
     accent: '--atom-accent-ink',
 }
 
+/**
+ * The node ApexCharts draws into. <atom:chart> renders an inner canvas so Apex's percentage height reads the chart's own box
+ * (it reads the parent of the node it mounts on); a factory on a bare element (the stat card's trend) mounts on the element itself.
+ */
+export const canvasOf = (el) => el.querySelector(':scope > [data-atom-chart-canvas]') ?? el
+
 /** The tone a colour name stands for; `neutral` for gray, an unknown name or no name at all. */
 export const toneOf = (name) => {
     const key = typeof name === 'string' ? name.trim().toLowerCase() : ''

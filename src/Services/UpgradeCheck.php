@@ -411,9 +411,10 @@ class UpgradeCheck
             // js globals
             'js-currency' => [
                 'title' => 'x.currency(...) becomes atom.currency(x, ...)',
-                'section' => 'JS globals', 'severity' => static::BREAKS, 'codemod' => 'report',
-                'detect' => '.currency( in JS files and in Blade markup outside PHP regions',
-                'kinds' => ['js', 'blade'], 'variant' => 'markup', 'pattern' => '/(?<!atom)\.currency\s*\(/',
+                'section' => 'JS globals', 'severity' => static::BREAKS, 'codemod' => 'auto',
+                'detect' => '.currency( in JS code: script files, <script> bodies and Alpine/Livewire attributes, not in a string, a regex, or prose; not this./$wire./super./Number. and the like',
+                'kinds' => ['js', 'blade'], 'variant' => 'code', 'pattern' => '/(?<!atom)\.currency\s*\(/',
+                'skip' => fn (string $text, int $offset) => static::currencyOwnerAt($text, $offset) !== null,
             ],
             'js-array-helper' => [
                 'title' => 'Array helpers (pluck, unique, sum, where, firstWhere, toggle) become atom.arr.*(list, ...)',
@@ -649,6 +650,10 @@ class UpgradeCheck
                     continue;
                 }
 
+                if (($check['variant'] ?? 'full') === 'code') {
+                    $prepared['code'] ??= $this->codeFromMarkup($kind, $prepared['markup']);
+                }
+
                 $text = $prepared[$check['variant'] ?? 'full'];
 
                 if (! preg_match_all($check['pattern'], $text, $found, PREG_OFFSET_CAPTURE)) {
@@ -656,6 +661,10 @@ class UpgradeCheck
                 }
 
                 foreach ($found[0] as [$match, $offset]) {
+                    if (isset($check['skip']) && $check['skip']($text, $offset)) {
+                        continue;
+                    }
+
                     if (isset($check['exclude'])) {
                         $from = strrpos(substr($text, 0, $offset), "\n");
                         $to = strpos($text, "\n", $offset);
@@ -783,6 +792,44 @@ class UpgradeCheck
     public function commentFree(string $kind, string $source): string
     {
         return $this->prepare($kind, $source)['full'];
+    }
+
+    /**
+     * A file's text as its JavaScript is read: comments blanked and, in Blade, every PHP region too, at the same length (so an
+     * offset here is the offset in the file)
+     */
+    public function markupText(string $kind, string $source): string
+    {
+        return $this->prepare($kind, $source)['markup'];
+    }
+
+    /**
+     * A file's text as JavaScript code only, at the same length: what is not code is blanked. In a script file that is the
+     * contents of a string, a regex and the text of a template literal (its `${ }` expressions stay); in Blade it is also
+     * everything outside a `<script>` body and the value of an Alpine or Livewire attribute (`x-*`, `@*`, `:*`, `wire:*`),
+     * so prose and markup are never read as code
+     */
+    public function codeText(string $kind, string $source): string
+    {
+        return $this->codeFromMarkup($kind, $this->markupText($kind, $source));
+    }
+
+    /**
+     * The receivers whose `.currency(x)` is a method of their own rather than a number's: `this.currency(x)` is a call to
+     * the component, `super.currency(x)` the parent class's
+     */
+    public const CURRENCY_OWNERS = ['this', 'super', '$wire', '$refs', '$el', '$data', '$store', 'window', 'document', 'Alpine', 'atom', 'Number', 'Math'];
+
+    /**
+     * The owner in CURRENCY_OWNERS that the `.` at $dot hangs off, or null when the receiver is anything else (a chain
+     * such as `this.total.currency()` is a number's)
+     */
+    public static function currencyOwnerAt(string $text, int $dot): ?string
+    {
+        $before = substr($text, max(0, $dot - 20), min(20, $dot));
+        $names = implode('|', array_map(fn (string $name) => preg_quote($name, '/'), static::CURRENCY_OWNERS));
+
+        return preg_match('/(?<![\w$.])('.$names.')$/', $before, $m) ? $m[1] : null;
     }
 
     /**
@@ -1196,6 +1243,248 @@ class UpgradeCheck
                 $i = $end;
 
                 continue;
+            }
+
+            if (! ctype_space($c)) {
+                $last = $c;
+            }
+
+            $i++;
+        }
+
+        return $out;
+    }
+
+    /**
+     * The code-only text (see codeText()) of a file whose markup text is $markup
+     */
+    protected function codeFromMarkup(string $kind, string $markup): string
+    {
+        if ($kind !== 'blade') {
+            return $this->maskJsLiterals($markup);
+        }
+
+        $out = preg_replace('/[^\n]/', ' ', $markup) ?? $markup;
+
+        foreach ($this->bladeJsSegments($markup) as [$at, $js]) {
+            $out = substr($out, 0, $at).$this->maskJsLiterals($js).substr($out, $at + strlen($js));
+        }
+
+        return $out;
+    }
+
+    /**
+     * Whether the byte at $offset of a Blade file's markup text sits in an attribute value written without quotes
+     * (`x-text=amt.currency(2)`): a rewrite there must not add a space
+     */
+    public function inUnquotedAttribute(string $markup, int $offset): bool
+    {
+        foreach ($this->bladeJsSegments($markup) as [$at, $js, $quoted]) {
+            if (! $quoted && $offset >= $at && $offset < $at + strlen($js)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The JavaScript regions of a Blade file's markup text: `<script>` bodies, the value of an `x-*`, `@*`, `:*`, `wire:*` or
+     * `on*` attribute, and what follows `javascript:` in an `href`, `src`, `action` or `formaction` value, quoted or not
+     *
+     * @return array<int, array{0: int, 1: string, 2: bool}>  offset, text, quoted
+     */
+    protected function bladeJsSegments(string $markup): array
+    {
+        $segments = [];
+
+        if (preg_match_all('/<script\b[^>]*>(.*?)<\/script>/is', $markup, $scripts, PREG_OFFSET_CAPTURE)) {
+            foreach ($scripts[1] as [$body, $at]) {
+                $segments[] = [$at, $body, true];
+            }
+        }
+
+        if (! preg_match_all('/<[a-z][\w:.\-]*/i', $markup, $tags, PREG_OFFSET_CAPTURE)) {
+            return $segments;
+        }
+
+        $value = '(?:"([^"]*)"|\'([^\']*)\'|([^\s"\'=<>`]+))';
+
+        foreach ($tags[0] as [$tag, $at]) {
+            $from = $at + strlen($tag);
+            $attributes = $this->readAttributes($markup, $from);
+
+            foreach ([
+                '/(?<=\s)(?:x-[\w:.\-]*|@[\w:.\-]+|:[\w.\-]+|wire:[\w.\-]+|on[a-z]+)\s*=\s*'.$value.'/' => false,
+                '/(?<=\s)(?:href|src|action|formaction)\s*=\s*'.$value.'/i' => true,
+            ] as $pattern => $url) {
+                if (! preg_match_all($pattern, $attributes, $found, PREG_OFFSET_CAPTURE)) {
+                    continue;
+                }
+
+                foreach ([1, 2, 3] as $group) {
+                    foreach ($found[$group] as [$text, $textAt]) {
+                        if ($text === '' || $textAt < 0) {
+                            continue;
+                        }
+
+                        if ($url) {
+                            if (! preg_match('/^\s*javascript:/i', $text, $scheme)) {
+                                continue;
+                            }
+
+                            $text = substr($text, strlen($scheme[0]));
+                            $textAt += strlen($scheme[0]);
+                        }
+
+                        if ($text !== '') {
+                            $segments[] = [$from + $textAt, $text, $group !== 3];
+                        }
+                    }
+                }
+            }
+        }
+
+        return $segments;
+    }
+
+    /**
+     * JavaScript with the contents of its strings, regex literals and template text blanked (quotes and slashes stay,
+     * newlines stay, the length is the same). A template literal's `${ }` expression is code.
+     */
+    protected function maskJsLiterals(string $js): string
+    {
+        $n = strlen($js);
+        $out = $js;
+        $blank = function (int $from, int $to) use (&$out, $js, $n): void {
+            for ($j = $from; $j < $to && $j < $n; $j++) {
+                if ($js[$j] !== "\n") {
+                    $out[$j] = ' ';
+                }
+            }
+        };
+
+        $i = 0;
+        $last = '';
+        $depth = 0;
+        $expressions = [];
+        $headers = [];
+        $inTemplate = false;
+
+        while ($i < $n) {
+            if ($inTemplate) {
+                $from = $i;
+
+                while ($i < $n && $js[$i] !== '`' && ! ($js[$i] === '$' && ($js[$i + 1] ?? '') === '{')) {
+                    $i += $js[$i] === '\\' ? 2 : 1;
+                }
+
+                $blank($from, $i);
+
+                if ($i >= $n) {
+                    break;
+                }
+
+                if ($js[$i] === '`') {
+                    $inTemplate = false;
+                    $last = '`';
+                    $i++;
+
+                    continue;
+                }
+
+                $expressions[] = $depth++;
+                $inTemplate = false;
+                $last = '{';
+                $i += 2;
+
+                continue;
+            }
+
+            $c = $js[$i];
+
+            if ($c === '`') {
+                $inTemplate = true;
+                $i++;
+
+                continue;
+            }
+
+            if ($c === '"' || $c === "'") {
+                $from = ++$i;
+
+                while ($i < $n && $js[$i] !== $c && $js[$i] !== "\n") {
+                    $i += $js[$i] === '\\' ? 2 : 1;
+                }
+
+                $blank($from, $i);
+                $i += ($js[$i] ?? '') === $c ? 1 : 0;
+                $last = $c;
+
+                continue;
+            }
+
+            if ($c === '/' && ! in_array($js[$i + 1] ?? '', ['/', '*'], true) && ($last === '' || str_contains('(,=:[!&|?{};+-*%<>~^', $last) || preg_match('/\b(?:return|typeof|case|in|of|void)\s*$/', substr($js, max(0, $i - 8), min(8, $i))))) {
+                $j = $i + 1;
+                $class = false;
+
+                while ($j < $n && $js[$j] !== "\n") {
+                    if ($js[$j] === '\\') {
+                        $j += 2;
+
+                        continue;
+                    }
+
+                    if ($js[$j] === '[') {
+                        $class = true;
+                    } elseif ($js[$j] === ']') {
+                        $class = false;
+                    } elseif ($js[$j] === '/' && ! $class) {
+                        break;
+                    }
+
+                    $j++;
+                }
+
+                if (($js[$j] ?? '') === '/') {
+                    $blank($i + 1, $j);
+                    $i = $j + 1;
+                    $last = '/';
+
+                    continue;
+                }
+            }
+
+            // `n++ / 2`: a slash after a postfix increment or decrement divides
+            if (($c === '+' || $c === '-') && ($js[$i + 1] ?? '') === $c) {
+                $last = 'x';
+                $i += 2;
+
+                continue;
+            }
+
+            // `if (x) /re/.test(y)`: the slash after the `)` of an if, while, for or with header starts a regex
+            if ($c === '(') {
+                $headers[] = (bool) preg_match('/\b(?:if|while|for|with)\s*$/', substr($js, max(0, $i - 8), min(8, $i)));
+            } elseif ($c === ')') {
+                $last = array_pop($headers) ? ';' : ')';
+                $i++;
+
+                continue;
+            }
+
+            if ($c === '{') {
+                $depth++;
+            } elseif ($c === '}') {
+                $depth--;
+
+                if ($expressions !== [] && end($expressions) === $depth) {
+                    array_pop($expressions);
+                    $inTemplate = true;
+                    $i++;
+
+                    continue;
+                }
             }
 
             if (! ctype_space($c)) {
@@ -1971,6 +2260,13 @@ class UpgradeCheck
             }
         }
 
+        // a group import (`use Jiannius\Atom\Services\{Carbon, Asset as A};`, aliases included) is read by tokens
+        foreach (UpgradePhp::structure($php)['imports'] as $short => $fqn) {
+            if (strcasecmp(ltrim($fqn, '\\'), 'Jiannius\\Atom\\Services\\Carbon') === 0) {
+                $names[] = $short;
+            }
+        }
+
         foreach ($calls[0] as [$call, $at]) {
             $open = $at + strlen($call) - 1;
             $close = $this->matchingDelimiter($php, $open);
@@ -1981,7 +2277,7 @@ class UpgradeCheck
             }
 
             foreach ($names as $name) {
-                if ($argument === $name.'::class') {
+                if (strcasecmp($argument, $name.'::class') === 0) {
                     return true;
                 }
             }
@@ -2104,10 +2400,10 @@ class UpgradeCheck
         $paginates = preg_match('/->\s*(?:paginate|simplePaginate|cursorPaginate|toPage|toTable)\s*\(|\b(?:resetPage|setPage|gotoPage|nextPage|previousPage)\s*\(/', $php) || $tagged(['pagination']) || str_contains($markup, '->links(');
 
         if ($paginates || $tagged(['table'])) {
-            // an <atom:table> alone is enough to keep the trait, but a table that never paginates does not need it: say so
+            // WithTable brings WithPagination itself, so the line is kept for clarity and either spelling is fine: say so
             $evidence['WithPagination'] = $paginates
                 ? 'paginates (paginate(), toTable(), <atom:table> or <atom:pagination>)'
-                : 'only <atom:table> in the view: it may be unneeded when the table never paginates';
+                : 'only <atom:table> in the view: WithTable already brings it, so keeping or dropping it makes no difference';
         }
 
         if (! isset($evidence['WithEditor']) && ($tagged(['uploader', 'tiptap.chat', 'editor.chat']) || $tagged(['input'], fn ($a) => static::value($a, 'type') === 'file') || preg_match('/TemporaryUploadedFile|->\s*temporaryUrl\s*\(/', preg_replace('/^use\s[^;]*;/m', '', $php)) || preg_match('/\$wire\s*\.\s*upload\s*\(|livewire-upload-/', $markup) || preg_match('/<input\b[^>]*\btype\s*=\s*["\']file["\']/i', $markup))) {

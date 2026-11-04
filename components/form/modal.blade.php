@@ -18,6 +18,10 @@ $method = is_string($method) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*\z/', $metho
 
 $hasOwnWidth = \Jiannius\Atom\Services\Attributes::hasWidth($attributes);
 
+/* `start` is content at the footer's start (a status line, a Delete button) and moves Save to the end of the bar, last in the end group.
+   Without it the order is the one it always was: Save first, then `actions`, then `delete`. A slot of only false @if blocks is not content. */
+$hasStart = isset($start) && $start->hasActualContent();
+
 $width = $hasOwnWidth ? '' : match ((string) $cols) {
     'auto', '2' => 'max-w-2xl',
     '3' => 'max-w-4xl',
@@ -32,17 +36,32 @@ $width = $hasOwnWidth ? '' : match ((string) $cols) {
         </atom:form.grid>
 
         <atom:form.actions sticky>
-            <atom:button type="submit">{{ t($submit) }}</atom:button>
-            @isset($actions)
-                <div class="flex min-w-0 flex-wrap items-center justify-end gap-3" data-atom-form-modal-actions>
-                    {{ $actions }}
+            @if ($hasStart)
+                <x-slot:start :attributes="$start->attributes">{{ $start }}</x-slot:start>
+
+                <div class="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-3" data-atom-form-modal-actions>
+                    @isset($actions)
+                        {{ $actions }}
+                    @endisset
                     @isset($delete)
                         {{ $delete }}
                     @endisset
+
+                    <atom:button type="submit">{{ t($submit) }}</atom:button>
                 </div>
-            @elseif (isset($delete))
-                {{ $delete }}
-            @endisset
+            @else
+                <atom:button type="submit">{{ t($submit) }}</atom:button>
+                @isset($actions)
+                    <div class="flex min-w-0 flex-wrap items-center justify-end gap-3" data-atom-form-modal-actions>
+                        {{ $actions }}
+                        @isset($delete)
+                            {{ $delete }}
+                        @endisset
+                    </div>
+                @elseif (isset($delete))
+                    {{ $delete }}
+                @endisset
+            @endif
         </atom:form.actions>
     </atom:form>
 </atom:modal>

@@ -167,6 +167,26 @@ for (const tw of ['floor', 'latest']) {
 
       expect((await style(page.getByTestId('r-uploader-button').locator('[data-atom-button]'))).height).toBe(28)
     })
+
+    test('the uploader keeps its button and sets the end slot beside it on the same row; the small size\'s icon rule stays on the button', async ({ page }) => {
+      await open(page, { tw, section: 'ranges' })
+
+      const button = page.getByTestId('r-uploader-end').locator('[data-atom-button]')
+      const end = page.getByTestId('r-uploader-end').locator('[data-atom-uploader-end]')
+
+      await expect(end).toHaveText('PNG, up to 2 MB')
+      const b = await button.boundingBox()
+      const e = await end.boundingBox()
+
+      expect(e.x).toBeGreaterThanOrEqual(b.x + b.width)
+      expect(Math.abs((e.y + e.height / 2) - (b.y + b.height / 2))).toBeLessThanOrEqual(b.height / 2)
+
+      // a 20px icon the host put in the end slot is not forced to 16px by the small button's rule
+      const hostIcon = (await style(page.getByTestId('r-uploader-end-sm').locator('[data-atom-uploader-end] [data-atom-icon]'))).width
+      const buttonIcon = (await style(page.getByTestId('r-uploader-end-sm').locator('[data-atom-button] [data-atom-icon]:visible').first())).width
+
+      expect([hostIcon, buttonIcon]).toEqual([20, 16])
+    })
   })
 }
 

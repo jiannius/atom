@@ -54,6 +54,26 @@ for (const tw of ['floor', 'latest']) {
       expect(Math.abs(last.right - (bar.right - pad.right))).toBeLessThanOrEqual(1)
     })
 
+    test('a form modal with a start slot: it sits at the start, Save ends at the footer\'s content edge, after the actions', async ({ page }) => {
+      await open(page, { path: 'form-modal-width', tw, extra: '&start=1&actions=1' })
+
+      const dialog = page.getByTestId('dialog')
+      await expect(dialog).toHaveAttribute('open', '')
+      await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished.catch(() => null))))
+
+      const footer = dialog.locator('[data-atom-form-actions]')
+      const bar = await box(footer)
+      const pad = await padding(footer)
+      const start = await box(footer.locator('[data-atom-form-actions-start]'))
+      const cancel = await box(dialog.getByRole('button', { name: 'Cancel' }))
+      const save = await box(footer.locator('button[type=submit]'))
+
+      expect(await footer.locator('> *').count()).toBe(2)
+      expect(Math.abs(start.x - (bar.x + pad.left))).toBeLessThanOrEqual(1)
+      expect(Math.abs(save.right - (bar.right - pad.right))).toBeLessThanOrEqual(1)
+      expect(cancel.right).toBeLessThanOrEqual(save.x)
+    })
+
     test('a start slot and a button (a slide-over footer): the label at the start, the button at the end', async ({ page }) => {
       await open(page, { path: 'slide-over-short', tw })
 

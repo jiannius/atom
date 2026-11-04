@@ -150,7 +150,7 @@ describe('atom:upgrade-check: the findings', function () {
             'macro-str' => [$php.':47'],
             'macro-builder' => [$php.':48'],
             'macro-attribute-bag' => ['resources/views/components/field.blade.php:2'],
-            'js-currency' => [$widget.':15'],
+            'js-currency' => [$widget.':15', $widget.':35', $widget.':36'],
             'js-array-helper' => ['resources/js/app.js:6', $widget.':16', $widget.':16', $widget.':20', $widget.':27'],
             'js-string-helper' => ['resources/js/app.js:6', $widget.':16'],
             'js-date-helper' => ['resources/js/app.js:4', 'resources/js/app.js:5', $widget.':16'],
@@ -221,10 +221,10 @@ describe('atom:upgrade-check: the findings', function () {
                 ->and($check['detect'])->toBeString()->not->toBeEmpty();
         }
 
-        // what UPGRADE.md says the codemod fixes: the CSS import, the traits, the Date::use line, the editor tags, the editor prop
+        // what UPGRADE.md says the codemod fixes: the CSS import, the traits, the Date::use line, the editor tags, the editor prop, `x.currency()`
         $auto = collect(UpgradeCheck::checks())->filter(fn ($c) => $c['codemod'] === 'auto')->keys()->all();
 
-        expect($auto)->toEqualCanonicalizing(['css-atom-source', 'css-skeleton-theme', 'css-border-color-rule', 'html-editor-prop', 'use-atom-component', 'date-use-line', 'editor-tag']);
+        expect($auto)->toEqualCanonicalizing(['css-atom-source', 'css-skeleton-theme', 'css-border-color-rule', 'html-editor-prop', 'use-atom-component', 'date-use-line', 'editor-tag', 'js-currency']);
     });
 
     it('infers the traits each component needs from its view, its partials and its methods', function () {
@@ -489,6 +489,78 @@ describe('atom:upgrade-check: the command', function () {
             ->and(file_get_contents($out))->toBe(Artisan::output());
 
         unlink($out);
+    });
+
+    it('exits 0 by default and with --fail-on=breaks on a tree with no break, and 1 only when an app-scope break remains (#157)', function () {
+        $clean = sys_get_temp_dir().'/atom-upgrade-clean-'.bin2hex(random_bytes(6));
+        mkdir($clean.'/app/Providers', 0777, true);
+        file_put_contents($clean.'/app/Providers/AppServiceProvider.php', "<?php\n\nnamespace App\\Providers;\n\nuse Illuminate\\Support\\Facades\\Date;\nuse Illuminate\\Support\\ServiceProvider;\nuse Jiannius\\Atom\\Services\\Carbon;\n\nclass AppServiceProvider extends ServiceProvider\n{\n    public function boot(): void\n    {\n        Date::use(Carbon::class);\n    }\n}\n");
+
+        try {
+            expect(Artisan::call('atom:upgrade-check', ['--path' => $clean, '--fail-on' => 'breaks']))->toBe(0);
+        } finally {
+            upgradeRemove($clean);
+        }
+
+        // the fixture host has breaks left in app code: the report is the same, the exit code is not
+        expect(Artisan::call('atom:upgrade-check', ['--path' => upgradeFixture()]))->toBe(0)
+            ->and(Artisan::call('atom:upgrade-check', ['--path' => upgradeFixture(), '--fail-on' => 'breaks']))->toBe(1)
+            ->and(Artisan::output())->toContain('BREAKS AT RUNTIME');
+    });
+
+    it('fails on a break in app code only, not on one in tests/ or on a review or visual finding', function () {
+        $dir = sys_get_temp_dir().'/atom-upgrade-scope-'.bin2hex(random_bytes(6));
+        mkdir($dir.'/tests', 0777, true);
+        mkdir($dir.'/app/Providers', 0777, true);
+        mkdir($dir.'/resources/css', 0777, true);
+        file_put_contents($dir.'/app/Providers/AppServiceProvider.php', "<?php\n\nnamespace App\\Providers;\n\nuse Illuminate\\Support\\Facades\\Date;\nuse Jiannius\\Atom\\Services\\Carbon;\n\nclass AppServiceProvider\n{\n    public function boot(): void\n    {\n        Date::use(Carbon::class);\n    }\n}\n");
+        file_put_contents($dir.'/tests/total.blade.php', "<span x-text=\"fee.currency('RM')\"></span>\n");
+        file_put_contents($dir.'/resources/css/app.css', "@import 'tailwindcss';\n");
+
+        try {
+            // a break that exists only under tests/ does not fail a host's CI
+            expect(Artisan::call('atom:upgrade-check', ['--path' => $dir, '--fail-on' => 'breaks']))->toBe(0);
+
+            mkdir($dir.'/resources/views', 0777, true);
+            file_put_contents($dir.'/resources/views/total.blade.php', "<span x-text=\"fee.currency('RM')\"></span>\n");
+
+            expect(Artisan::call('atom:upgrade-check', ['--path' => $dir, '--fail-on' => 'breaks']))->toBe(1);
+        } finally {
+            upgradeRemove($dir);
+        }
+    });
+
+    it('goes green on --fail-on=breaks for a host whose own object has a currency() method, or that names one in a string or prose', function () {
+        $dir = sys_get_temp_dir().'/atom-upgrade-currency-'.bin2hex(random_bytes(6));
+        mkdir($dir.'/resources/js', 0777, true);
+        mkdir($dir.'/resources/views', 0777, true);
+        mkdir($dir.'/app/Providers', 0777, true);
+        file_put_contents($dir.'/app/Providers/AppServiceProvider.php', "<?php\n\nnamespace App\\Providers;\n\nuse Illuminate\\Support\\Facades\\Date;\nuse Jiannius\\Atom\\Services\\Carbon;\n\nclass AppServiceProvider\n{\n    public function boot(): void\n    {\n        Date::use(Carbon::class);\n    }\n}\n");
+        mkdir($dir.'/resources/css', 0777, true);
+        file_put_contents($dir.'/resources/css/app.css', "@import 'tailwindcss';\n");
+        file_put_contents($dir.'/resources/js/own.js', "export default { currency(v) { return v }, show() { return this.currency(1) + \$wire.currency(2) + super.currency(3) + Number.currency(4) + 'a.currency(5)' + /b.currency(6)/.source } }\n");
+        file_put_contents($dir.'/resources/views/prose.blade.php', "<p>Use price.currency(2) to format.</p>\n");
+
+        try {
+            expect(Artisan::call('atom:upgrade-check', ['--path' => $dir, '--fail-on' => 'breaks']))->toBe(0);
+
+            file_put_contents($dir.'/resources/js/own.js', "const a = price.currency(2)\n");
+
+            expect(Artisan::call('atom:upgrade-check', ['--path' => $dir, '--fail-on' => 'breaks']))->toBe(1);
+        } finally {
+            upgradeRemove($dir);
+        }
+    });
+
+    it('keeps --json clean when --fail-on fails: the reason goes to the error stream, not into the JSON', function () {
+        Artisan::call('atom:upgrade-check', ['--path' => upgradeFixture(), '--json' => true, '--fail-on' => 'breaks']);
+
+        expect(json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR))->toHaveKey('checks');
+    });
+
+    it('refuses a --fail-on value it does not know', function () {
+        expect(Artisan::call('atom:upgrade-check', ['--path' => upgradeFixture(), '--fail-on' => 'visual']))->toBe(1)
+            ->and(Artisan::output())->toContain('--fail-on');
     });
 
     it('is a command the service provider registers', function () {
@@ -788,6 +860,16 @@ describe('atom:upgrade-check: Date::use and the date checks', function () {
 
         $write('', 'Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);');
         expect($date())->toBe('app/Providers/AppServiceProvider.php');
+
+        // a group import, with or without an alias in it
+        $write('use Jiannius\Atom\Services\{Carbon, Asset};', 'Date::use(Carbon::class);');
+        expect($date())->toBe('app/Providers/AppServiceProvider.php');
+
+        $write('use Jiannius\Atom\Services\{Asset, Carbon as AtomCarbon};', 'Date::use(AtomCarbon::class);');
+        expect($date())->toBe('app/Providers/AppServiceProvider.php');
+
+        $write('use Jiannius\Atom\Services\{Asset, Docs};', 'Date::use(Carbon::class);');
+        expect($date())->toBeNull();
 
         // an alias that is not atom's is not it, even when atom's is imported as another name
         $write("use Jiannius\Atom\Services\Carbon as AtomCarbon;\nuse Carbon\CarbonImmutable as Carbon;", 'Date::use(Carbon::class);');

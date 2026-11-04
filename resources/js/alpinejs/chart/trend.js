@@ -1,4 +1,4 @@
-import { seriesColor } from './colors'
+import { seriesColor, canvasOf } from './colors'
 
 export default (config) => {
     // the theme listener and the first-render timer belong outside the component, so destroy() can take them off
@@ -15,7 +15,7 @@ export default (config) => {
                 // the element went before the library arrived
                 if (destroyed || !this.$el.isConnected) return
 
-                this.chart = new ApexCharts.default(this.$el, {
+                this.chart = new ApexCharts.default(canvasOf(this.$el), {
                     chart: {
                         type: 'area',
                         height: '100%',

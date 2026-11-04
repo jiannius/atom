@@ -35,6 +35,77 @@ describe('stat', function () {
             ->and(substr_count($html, '&lt;img src=x onerror=alert(1)&gt;'))->toBe(4);
     });
 
+    describe('trend (#159)', function () {
+        $tone = fn (string $html) => preg_match("/color: '(\w+)'/", $html, $m) ? $m[1] : null;
+
+        it('draws a small sparkline under the sub line, hidden from assistive tech, coloured by the delta', function (string $delta, bool $inverse, string $color) use ($tone) {
+            $html = renderBlade('<atom:stat label="Revenue" value="1,280" :delta="$delta" :inverse="$inverse" :trend="[3, 5, 4, 7, 6, 9]" />', ['delta' => $delta, 'inverse' => $inverse]);
+            $box = domQuery($html, '//*[@data-atom-stat-trend]');
+            $chart = domQuery($html, '//*[@data-atom-stat-trend]//*[@data-atom-chart-type="trend"]');
+
+            expect($box)->toHaveCount(1)
+                ->and($box[0]->getAttribute('aria-hidden'))->toBe('true')
+                ->and($chart)->toHaveCount(1)
+                ->and(domClasses($chart[0]))->toContain('h-8')
+                ->and($tone($html))->toBe($color);
+        })->with([
+            'up is good' => ['+12%', false, 'success'],
+            'down is bad' => ['-4%', false, 'danger'],
+            'down is good when inverse' => ['-4%', true, 'success'],
+            'up is bad when inverse' => ['+4%', true, 'danger'],
+            'flat is neutral' => ['0%', false, 'neutral'],
+            'no figure, no direction' => ['n/a', false, 'neutral'],
+            'no delta' => ['', false, 'neutral'],
+        ]);
+
+        it('draws nothing for no trend, one point, or values that are not numbers', function (mixed $trend) {
+            $html = renderBlade('<atom:stat label="x" value="1" :trend="$trend" />', ['trend' => $trend]);
+
+            expect(domQuery($html, '//*[@data-atom-stat-trend]'))->toBeEmpty();
+        })->with([
+            'none' => [null],
+            'empty' => [[]],
+            'one point' => [[5]],
+            'text' => [['a', 'b', 'c']],
+            'a string' => ['3,5,4'],
+        ]);
+
+        it('keeps the numeric points and passes them as numbers, never as markup', function () {
+            $html = renderBlade('<atom:stat label="x" value="1" :trend="[1, \'2\', 3.5, \'<b>\', null]" />');
+
+            expect($html)->toContain("data: JSON.parse('[1,2,3.5]')")
+                ->and($html)->not->toContain('<b>');
+        });
+
+        it('drops a point that is not finite instead of failing to render', function (mixed $trend, string $json) {
+            $html = renderBlade('<atom:stat label="x" value="1" :trend="$trend" />', ['trend' => $trend]);
+
+            expect($html)->toContain("data: JSON.parse('{$json}')");
+        })->with([
+            'NAN' => [[1, NAN, 3], '[1,3]'],
+            'INF' => [[1, INF, -INF, 3], '[1,3]'],
+            'a numeric string that overflows' => [[1, '1e999', 3], '[1,3]'],
+        ]);
+
+        it('draws nothing when the finite points left are fewer than two', function () {
+            $html = renderBlade('<atom:stat label="x" value="1" :trend="$trend" />', ['trend' => [1, NAN, INF]]);
+
+            expect(domQuery($html, '//*[@data-atom-stat-trend]'))->toBeEmpty();
+        });
+
+        it('reads a Collection or any Arrayable as its list', function () {
+            $html = renderBlade('<atom:stat label="x" value="1" :trend="$trend" />', ['trend' => collect([3, 5, '4', 'x'])->values()]);
+
+            expect($html)->toContain("data: JSON.parse('[3,5,4]')");
+        });
+
+        it('sits inside a link stat too', function () {
+            $html = renderBlade('<atom:stat label="x" value="1" href="/x" :trend="[1, 2, 3]" />');
+
+            expect(domQuery($html, '//a[@data-atom-stat]//*[@data-atom-stat-trend]'))->toHaveCount(1);
+        });
+    });
+
     describe('href', function () {
         it('is a link when the url is safe', function (string $href) {
             $stat = domQuery(renderBlade('<atom:stat label="x" value="1" :href="$href" />', ['href' => $href]), '//*[@data-atom-stat]')[0];

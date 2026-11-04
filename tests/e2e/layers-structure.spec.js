@@ -199,6 +199,33 @@ for (const tw of ['floor', 'latest']) {
         expect([s.opacity, s['pointer-events']]).toEqual(['0.5', 'none'])
       })
 
+      test('the end text of a disabled item and of an enabled one sit at the row\'s end, aligned, and a disabled link is a disabled button', async ({ page }) => {
+        await openLayers(page, { tw, section: 'menus' })
+        const menu = await showMenu(page)
+
+        const edge = async (testid) => {
+          const row = await menu.getByTestId(testid).boundingBox()
+          const end = await menu.getByTestId(testid).locator('[data-atom-menu-item-end]').boundingBox()
+          const label = await menu.getByTestId(testid).locator('div.grow').boundingBox()
+
+          return { row: row.x + row.width, end: end.x + end.width, endLeft: end.x, labelRight: label.x + label.width }
+        }
+
+        const disabled = await edge('item-end-disabled')
+        const enabled = await edge('item-end-enabled')
+
+        // aligned with each other, and at the row's end (inside its horizontal padding, 10px)
+        expect(Math.abs(disabled.end - enabled.end)).toBeLessThanOrEqual(1)
+        expect(disabled.row - disabled.end).toBeGreaterThanOrEqual(0)
+        expect(disabled.row - disabled.end).toBeLessThanOrEqual(12)
+        // and after the label, not under it
+        expect(disabled.endLeft).toBeGreaterThanOrEqual(disabled.labelRight - 1)
+
+        const link = menu.getByTestId('item-link-disabled')
+        expect(await link.evaluate((el) => [el.tagName, el.hasAttribute('href'), el.disabled])).toEqual(['BUTTON', false, true])
+        expect((await style(link, 'opacity', 'pointer-events')).opacity).toBe('0.5')
+      })
+
       test('a menu item that has the keyboard draws the ring inside its own box, so the panel does not clip it', async ({ page }) => {
         await openLayers(page, { tw, section: 'menus' })
         const menu = await showMenu(page)

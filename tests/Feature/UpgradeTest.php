@@ -214,22 +214,23 @@ DIFF));
          return view('partials.blank');
 DIFF));
 
-        // the Date::use line, first in boot(), with its import
+        // the Date::use line, first in boot(), with its imports
         expect($output)->toContain(upgradeCodemodDiff(<<<'DIFF'
 --- a/app/Providers/AppServiceProvider.php
 +++ b/app/Providers/AppServiceProvider.php
-@@ -2,11 +2,13 @@
+@@ -2,11 +2,14 @@
 
  namespace App\Providers;
 
 +use Illuminate\Support\Facades\Date;
  use Illuminate\Support\ServiceProvider;
++use Jiannius\Atom\Services\Carbon;
 
  class AppServiceProvider extends ServiceProvider
  {
      public function boot(): void
      {
-+        Date::use(\Jiannius\Atom\Services\Carbon::class);
++        Date::use(Carbon::class);
      }
  }
 DIFF));
@@ -800,6 +801,62 @@ describe('atom:upgrade: the PHP and Blade rewrites', function () {
         expect(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('it has no boot() method');
     });
 
+    it('imports atom\'s Carbon for Date::use, so a style check has no fully qualified name to flag, and is idempotent (#158)', function () {
+        $dir = ($this->host)(false);
+        $path = $dir.'/app/Providers/AppServiceProvider.php';
+        file_put_contents($path, "<?php\n\nnamespace App\\Providers;\n\nuse Illuminate\\Support\\ServiceProvider;\n\nclass AppServiceProvider extends ServiceProvider\n{\n    public function boot(): void\n    {\n    }\n}\n");
+
+        upgradeCodemodRun($dir);
+
+        $once = file_get_contents($path);
+
+        expect($once)->toContain("use Illuminate\\Support\\Facades\\Date;\nuse Illuminate\\Support\\ServiceProvider;\nuse Jiannius\\Atom\\Services\\Carbon;\n")
+            ->and($once)->toContain('        Date::use(Carbon::class);')
+            ->and($once)->not->toContain('\\Jiannius\\Atom\\Services\\Carbon::class')
+            ->and((new UpgradeCheck)->scan($dir)['checks']['date-use-line']['findings'])->toBe([]);
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($path))->toBe($once);
+    });
+
+    it('uses the name atom\'s Carbon is already imported under, and imports nothing more', function (string $head, string $name) {
+        $dir = ($this->host)(false);
+        $path = $dir.'/app/Providers/AppServiceProvider.php';
+        file_put_contents($path, "<?php\n\nnamespace App\\Providers;\n\n{$head}use Illuminate\\Support\\ServiceProvider;\n\nclass AppServiceProvider extends ServiceProvider\n{\n    public function boot(): void\n    {\n    }\n}\n");
+
+        upgradeCodemodRun($dir);
+
+        $provider = file_get_contents($path);
+
+        expect($provider)->toContain("        Date::use({$name}::class);")
+            ->and(substr_count($provider, 'Services\\Carbon'))->toBeLessThanOrEqual(1)
+            ->and($provider)->not->toContain('\\Jiannius\\Atom\\Services\\Carbon::class')
+            ->and((new UpgradeCheck)->scan($dir)['checks']['date-use-line']['findings'])->toBe([]);
+    })->with([
+        'an alias' => ["use Jiannius\\Atom\\Services\\Carbon as AtomCarbon;\n", 'AtomCarbon'],
+        'an alias in a group' => ["use Jiannius\\Atom\\Services\\{Asset, Carbon as AtomCarbon};\n", 'AtomCarbon'],
+        'a group, no alias' => ["use Jiannius\\Atom\\Services\\{Asset, Carbon};\n", 'Carbon'],
+        'an alias that shadows another Carbon' => ["use Jiannius\\Atom\\Services\\Carbon as AtomCarbon;\nuse Carbon\\CarbonImmutable as Carbon;\n", 'AtomCarbon'],
+    ]);
+
+    it('keeps the fully qualified Carbon where the short name is taken: another import of it, or a Carbon written in the code', function (string $head, string $body) {
+        $dir = ($this->host)(false);
+        $path = $dir.'/app/Providers/AppServiceProvider.php';
+        file_put_contents($path, "<?php\n\nnamespace App\\Providers;\n\n{$head}use Illuminate\\Support\\ServiceProvider;\n\nclass AppServiceProvider extends ServiceProvider\n{\n    public function boot(): void\n    {\n{$body}    }\n}\n");
+
+        upgradeCodemodRun($dir);
+
+        $provider = file_get_contents($path);
+
+        expect($provider)->toContain('        Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);')
+            ->and($provider)->not->toContain('use Jiannius\\Atom\\Services\\Carbon;')
+            ->and((new UpgradeCheck)->scan($dir)['checks']['date-use-line']['findings'])->toBe([]);
+    })->with([
+        'another Carbon is imported' => ["use Carbon\\Carbon;\n", "        \$now = Carbon::now();\n"],
+        'Carbon is written in the code with no import' => ['', "        \$now = Carbon::now();\n"],
+    ]);
+
     it('puts the call first in a boot() that has code, with a blank line after it', function () {
         $dir = ($this->host)(false);
         file_put_contents($dir.'/app/Providers/AppServiceProvider.php', "<?php\n\nnamespace App\\Providers;\n\nuse Illuminate\\Support\\ServiceProvider;\n\nclass AppServiceProvider extends ServiceProvider\n{\n    public function boot()\n    {\n        Model::shouldBeStrict();\n    }\n}\n");
@@ -807,7 +864,7 @@ describe('atom:upgrade: the PHP and Blade rewrites', function () {
         upgradeCodemodRun($dir);
 
         expect(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("use Illuminate\\Support\\Facades\\Date;\nuse Illuminate\\Support\\ServiceProvider;")
-            ->toContain("    {\n        Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n\n        Model::shouldBeStrict();\n    }");
+            ->toContain("    {\n        Date::use(Carbon::class);\n\n        Model::shouldBeStrict();\n    }");
     });
 
     it('renames editor tags only: not a comment, not another tag, not a name that only starts with editor', function () {
@@ -980,12 +1037,12 @@ describe('atom:upgrade: the TODO', function () {
             // what it changed, with the trait evidence
             ->toContain('- `app/Livewire/Orders.php:11`: `use AtomComponent;` became `use WithTable, WithBreadcrumbs, WithPagination, WithFileUploads;`. Check the traits: WithTable (<atom:table> in the view); WithBreadcrumbs (defines breadcrumbs($b))')
             ->toContain('- `resources/views/livewire/profile.blade.php`: 4 `<atom:editor*>` tags renamed to `<atom:tiptap*>`')
-            ->toContain("- `app/Providers/AppServiceProvider.php`: added `Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);` to boot()")
+            ->toContain("- `app/Providers/AppServiceProvider.php`: added `Date::use(Carbon::class);` to boot() and imported `Jiannius\\Atom\\Services\\Carbon`")
             // the sections of UPGRADE.md, in the findings
             ->toContain('### Tokens')->toContain('### Livewire traits')->toContain('### JS globals')->toContain('### PHP globals: dates and macros')
             // JS globals, $wire helpers, listeners
             ->toContain('  - `resources/js/app.js:3` dd(rows)')
-            ->toContain('**js-currency** (breaks at runtime, 1)')
+            ->not->toContain('**js-currency**')
             ->toContain('  - `resources/views/components/widget.blade.php:22` <button @click="$wire.alert(\'Hi\')">hi</button>')
             ->toContain('**wire-helper-listener** (breaks at runtime, 10)')
             ->toContain('  - `app/Livewire/Orders.php:16` protected $listeners = [\'saved\' => \'toast\'];')
@@ -1013,7 +1070,163 @@ describe('atom:upgrade: the TODO', function () {
             ->not->toContain('**css-border-color-rule**')
             ->not->toContain('**editor-tag**')
             ->not->toContain('**html-editor-prop**')
-            ->not->toContain('**date-use-line**');
+            ->not->toContain('**date-use-line**')
+            ->not->toContain('**js-currency**');
+    });
+});
+
+describe('atom:upgrade: x.currency() becomes atom.currency(x)', function () {
+    /**
+     * Write a file into a copy of the fixture host, run the codemod and give back what the file reads after
+     */
+    function upgradeCurrency(object $test, string $relative, string $source): array
+    {
+        $dir = ($test->host)(false);
+        file_put_contents($dir.'/'.$relative, $source);
+        upgradeCodemodRun($dir);
+
+        return [file_get_contents($dir.'/'.$relative), $dir];
+    }
+
+    it('rewrites the fixture\'s call and nothing else in that attribute', function () {
+        $dir = ($this->host)();
+        upgradeCodemodRun($dir);
+
+        $widget = file_get_contents($dir.'/resources/views/components/widget.blade.php');
+
+        expect($widget)->toContain("label = atom.currency(total, 'RM');")
+            ->and($widget)->not->toContain("total.currency('RM')")
+            ->and($widget)->toContain('<span x-text="atom.currency(total)"></span>');
+    });
+
+    it('rewrites a plain member chain, in Blade markup and in a script file', function (string $before, string $after) {
+        [$blade] = upgradeCurrency($this, 'resources/views/x.blade.php', "<span x-text=\"{$before}\"></span>\n");
+        [$js] = upgradeCurrency($this, 'resources/js/x.js', "const v = {$before}\n");
+
+        expect($blade)->toBe("<span x-text=\"{$after}\"></span>\n")
+            ->and($js)->toBe("const v = {$after}\n");
+    })->with([
+        'a property' => ['total.currency()', 'atom.currency(total)'],
+        'a chain' => ['fee.amount.currency()', 'atom.currency(fee.amount)'],
+        'arguments' => ["total.currency('RM', 2)", "atom.currency(total, 'RM', 2)"],
+        'spaces around the arguments' => ["total.currency( 'RM' )", "atom.currency(total, 'RM')"],
+        'a Livewire property' => ["\$wire.total.currency('RM')", "atom.currency(\$wire.total, 'RM')"],
+        'a literal index' => ['rows[0].total.currency()', 'atom.currency(rows[0].total)'],
+        'a string index' => ["item['price'].currency()", "atom.currency(item['price'])"],
+        'a unary minus' => ['-total.currency()', '-atom.currency(total)'],
+        'a call inside the arguments' => ["a.currency(b.currency('RM'))", "atom.currency(a, atom.currency(b, 'RM'))"],
+        'two calls on a line' => ["a.currency() + ' / ' + b.currency()", "atom.currency(a) + ' / ' + atom.currency(b)"],
+        'an argument with a comma and brackets in a string' => ["total.currency('a,b)(c')", "atom.currency(total, 'a,b)(c')"],
+        'a template literal expression' => ['`${total.currency()}`', '`${atom.currency(total)}`'],
+        'after a string on the same line' => ["'a.currency()' + total.currency()", "'a.currency()' + atom.currency(total)"],
+    ]);
+
+    it('leaves an object\'s own method, a string, a regex and prose alone, and does not list them', function (string $source) {
+        [$js, $dir] = upgradeCurrency($this, 'resources/js/x.js', $source."\n");
+        [$blade] = upgradeCurrency($this, 'resources/views/x.blade.php', "<script>\n{$source}\n</script>\n");
+
+        expect($js)->toBe($source."\n")
+            ->and($blade)->toBe("<script>\n{$source}\n</script>\n");
+    })->with([
+        'a double quoted string' => ['const a = "total.currency(2)"'],
+        'a single quoted string' => ["const a = 'total.currency(2)'"],
+        'a string with an escaped quote before it' => ["const a = 'it\\'s total.currency(2)'"],
+        'the text of a template literal' => ['const a = `total.currency(2)`'],
+        'a regex literal' => ['const a = /total.currency(2)/.test(s)'],
+        'super' => ['class A extends B { fmt() { return super.currency(2) } }'],
+        'Number' => ['const a = Number.currency(2)'],
+        'Math' => ['const a = Math.currency(2)'],
+        'this' => ["const a = this.currency('RM')"],
+        '$wire' => ["const a = \$wire.currency('RM')"],
+    ]);
+
+    it('reads only JavaScript in a Blade file: prose, plain attributes and markup are not code', function () {
+        $source = "<p>Use price.currency(2) to format</p>\n<code>total.currency()</code>\n<div title=\"fee.currency()\" class=\"a.currency()\">x</div>\n"
+            ."<span x-text=\"'total.currency()'\"></span>\n<span x-init=\"ok = /a.currency(2)/.test(s)\"></span>\n<button @click=\"super.currency(1); Number.currency(2)\"></button>\n";
+        [$after, $dir] = upgradeCurrency($this, 'resources/views/x.blade.php', $source);
+
+        expect($after)->toBe($source)
+            ->and(file_exists($dir.'/ATOM-UPGRADE-TODO.md') ? file_get_contents($dir.'/ATOM-UPGRADE-TODO.md') : '')->not->toContain('resources/views/x.blade.php');
+    });
+
+    it('reads an inline handler, a javascript: URL and an unquoted JS attribute as code, and declines to rewrite what it cannot quote', function () {
+        $source = "<button onclick=\"alert(total.currency(2))\">a</button>\n<a href=\"javascript:void(total.currency(2))\">b</a>\n<a href=\"/x?total.currency(2)\">c</a>\n<span x-text=amt.currency(2)></span>\n<span x-text=amt.currency()></span>\n";
+        [$after, $dir] = upgradeCurrency($this, 'resources/views/x.blade.php', $source);
+        $todo = file_get_contents($dir.'/ATOM-UPGRADE-TODO.md');
+
+        expect($after)->toBe("<button onclick=\"alert(atom.currency(total, 2))\">a</button>\n<a href=\"javascript:void(atom.currency(total, 2))\">b</a>\n<a href=\"/x?total.currency(2)\">c</a>\n<span x-text=amt.currency(2)></span>\n<span x-text=amt.currency()></span>\n")
+            ->and($todo)->toContain('resources/views/x.blade.php:4')->toContain('resources/views/x.blade.php:5')->toContain('without quotes')
+            ->and($todo)->not->toContain('resources/views/x.blade.php:3');
+    });
+
+    it('reads a slash after ++ or -- as division, and after the header of an if, while or for as a regex', function (string $js, string $after) {
+        [$file] = upgradeCurrency($this, 'resources/js/x.js', $js."\n");
+        [$blade] = upgradeCurrency($this, 'resources/views/x.blade.php', "<script>\n{$js}\n</script>\n");
+
+        expect($file)->toBe($after."\n")
+            ->and($blade)->toBe("<script>\n{$after}\n</script>\n");
+    })->with([
+        'a postfix increment' => ['let a = n++ / 2, b = z.currency(2) / 4', 'let a = n++ / 2, b = atom.currency(z, 2) / 4'],
+        'a postfix decrement' => ['x = y-- / 2 + w.currency(3) / 5', 'x = y-- / 2 + atom.currency(w, 3) / 5'],
+        'a division after a parenthesis' => ['x = (a) / 2 + w.currency(3) / 5', 'x = (a) / 2 + atom.currency(w, 3) / 5'],
+        'a regex after an if header' => ["if (ok) /a.currency(1)/.test(s)", "if (ok) /a.currency(1)/.test(s)"],
+        'a regex after a while header' => ["while (ok) /a.currency(1)/.test(s)", "while (ok) /a.currency(1)/.test(s)"],
+    ]);
+
+    it('rewrites the code of a Blade file beside its prose', function () {
+        [$after] = upgradeCurrency($this, 'resources/views/x.blade.php', "<p>Use price.currency(2)</p>\n<span x-text=\"price.currency(2)\"></span>\n<script>\nlet v = price.currency(2)\n</script>\n<button wire:click=\"go(fee.currency())\" :title=\"fee.currency()\"></button>\n");
+
+        expect($after)->toBe("<p>Use price.currency(2)</p>\n<span x-text=\"atom.currency(price, 2)\"></span>\n<script>\nlet v = atom.currency(price, 2)\n</script>\n<button wire:click=\"go(atom.currency(fee))\" :title=\"atom.currency(fee)\"></button>\n");
+    });
+
+    it('declines the shapes it cannot be sure of, leaves them byte for byte and says why in the TODO', function (string $call, string $reason) {
+        $source = "<span x-text=\"{$call}\"></span>\n";
+        [$after, $dir] = upgradeCurrency($this, 'resources/views/x.blade.php', $source);
+
+        expect($after)->toBe($source)
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('resources/views/x.blade.php:1')->toContain($reason);
+    })->with([
+        'the result of a call' => ['calc().currency()', 'not a plain property chain'],
+        'a parenthesised expression' => ['(a + b).currency()', 'not a plain property chain'],
+        'optional chaining' => ['total?.currency()', 'optional chaining'],
+        'a number' => ['5.currency()', 'a number'],
+        'a string' => ["'5'.currency()", 'not a plain property chain'],
+        'a computed index' => ['rows[i].currency()', 'index that is not a literal'],
+        'a template literal in the arguments' => ['total.currency(`R${m}`)', 'template literal'],
+        'an unbalanced quote' => ["total.currency('RM)", 'arguments it cannot read'],
+    ]);
+
+    it('declines arguments that run over a line, and a receiver on the line before', function () {
+        $source = "<div x-text=\"total.currency(\n    'RM'\n)\"></div>\n<div x-text=\"total\n    .currency()\"></div>\n";
+        [$after, $dir] = upgradeCurrency($this, 'resources/views/x.blade.php', $source);
+        $todo = file_get_contents($dir.'/ATOM-UPGRADE-TODO.md');
+
+        expect($after)->toBe($source)
+            ->and($todo)->toContain('resources/views/x.blade.php:1')->toContain('resources/views/x.blade.php:5');
+    });
+
+    it('does not read a PHP region, a comment, or atom.currency() that is already there', function () {
+        $source = "{{-- total.currency() --}}\n<p>{{ \$total->currency() }}</p>\n@php \$a = \$b->currency(); @endphp\n<script>\n// a.currency()\nconst v = atom.currency(a)\n</script>\n";
+        [$after] = upgradeCurrency($this, 'resources/views/x.blade.php', $source);
+
+        expect($after)->toBe($source);
+    });
+
+    it('rewrites each of two calls in a file where one is declined, and a second run changes nothing', function () {
+        [$after, $dir] = upgradeCurrency($this, 'resources/js/x.js', "const a = fee.currency()\nconst b = calc().currency()\n");
+
+        expect($after)->toBe("const a = atom.currency(fee)\nconst b = calc().currency()\n");
+
+        $tree = upgradeCodemodTree($dir);
+        upgradeCodemodRun($dir);
+
+        expect(upgradeCodemodTree($dir))->toBe($tree);
+    });
+
+    it('keeps a file\'s CRLF line endings', function () {
+        [$after] = upgradeCurrency($this, 'resources/js/x.js', "const a = fee.currency()\r\nconst b = 2\r\n");
+
+        expect($after)->toBe("const a = atom.currency(fee)\r\nconst b = 2\r\n");
     });
 });
 
@@ -1160,7 +1373,7 @@ describe('atom:upgrade: the guide', function () {
         $readme = file_get_contents(__DIR__.'/../../README.md');
 
         expect($skill)->not->toMatch('/V4-\d[a-z]?\b/')
-            ->and($skill)->toContain('a chart\'s height goes on a wrapper that the chart fills')
+            ->and($skill)->toContain('a chart is as tall as its own box')
             ->and($readme)->toContain('<div class="h-48"><atom:chart class="h-full" .../></div>')
             ->and($skill)->toContain('<atom:chart class="h-full" .../></div>')
             ->and(file_get_contents(__DIR__.'/../../UPGRADE.md'))->toContain('<atom:chart class="h-full" .../></div>')
@@ -1290,7 +1503,7 @@ describe('atom:upgrade: a rewrite it cannot be sure of is declined, not guessed'
             ->and(substr_count(file_get_contents($dir.'/app/Livewire/Multi.php'), 'Livewire\\WithPagination'))->toBe(1)
             ->and(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("use Illuminate\\Support\\Facades\\{DB, Date};\n")
             ->and(substr_count(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'), 'Facades\\Date'))->toBe(0)
-            ->and(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("    {\n        Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n\n        DB::prohibit");
+            ->and(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("    {\n        Date::use(Carbon::class);\n\n        DB::prohibit");
     });
 
     it('declines a file with a braced namespace', function () {
@@ -1314,14 +1527,14 @@ describe('atom:upgrade: a rewrite it cannot be sure of is declined, not guessed'
             ->and(file_get_contents($dir.'/app/Livewire/Mixed.php'))->toContain('    use WithTable, Paginates;');
     });
 
-    it('keeps WithPagination for a table that only draws <atom:table>, and says it may be unneeded', function () {
+    it('keeps WithPagination for a table that only draws <atom:table>, and says WithTable already brings it', function () {
         $dir = upgradeShapeHost('php-table-only');
         $this->hosts[] = $dir;
 
         upgradeCodemodRun($dir);
 
         expect(file_get_contents($dir.'/app/Livewire/TableOnly.php'))->toContain('use WithTable, WithPagination;')
-            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('WithPagination (only <atom:table> in the view: it may be unneeded when the table never paginates)');
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('WithPagination (only <atom:table> in the view: WithTable already brings it, so keeping or dropping it makes no difference)');
     });
 
     it('declines a file with several classes in it', function () {
@@ -1387,7 +1600,7 @@ describe('atom:upgrade: a rewrite it cannot be sure of is declined, not guessed'
 
         $provider = file_get_contents($dir.'/app/Providers/AppServiceProvider.php');
 
-        expect($provider)->toContain("    public function boot(): void\n    {\n        Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n\n        //\n    }")
+        expect($provider)->toContain("    public function boot(): void\n    {\n        Date::use(Carbon::class);\n\n        //\n    }")
             ->and(substr_count($provider, 'Date::use'))->toBe(1);
     });
 
@@ -1515,7 +1728,7 @@ describe('atom:upgrade: the smaller guards', function () {
 
         upgradeCodemodRun($dir);
 
-        expect(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("\t{\n\t\tDate::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n\t}");
+        expect(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("\t{\n\t\tDate::use(Carbon::class);\n\t}");
     });
 
     it('sees an upload through $wire.upload(), a livewire-upload event or temporaryUrl(), and not through an import', function () {

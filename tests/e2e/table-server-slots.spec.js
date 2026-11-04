@@ -225,7 +225,7 @@ for (const tw of ['floor', 'latest']) {
     test('nothing flashes at load: the header is in the server\'s HTML as it was drawn (not cloaked), the bar is cloaked until Alpine says a row is ticked', async ({ page }) => {
       const html = await (await page.request.get('/atom/e2e/table-server-slots?tw=' + tw)).text()
 
-      expect(html).toMatch(/x-show="!\$wire\._table\.checkboxes\.length"(?! x-cloak)/)
+      expect(html).toMatch(/x-show="!\$wire\._table\?\.checkboxes\?\.length"(?! x-cloak)/)
       expect(html).toMatch(/x-show="\$wire\._table\.checkboxes\.length \|\| \$wire\._table\.select_all" x-cloak/)
 
       await open(page, { path: 'table-server-slots', tw })

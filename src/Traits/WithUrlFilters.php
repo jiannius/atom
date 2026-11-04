@@ -30,7 +30,7 @@ use ReflectionProperty;
  * not use the trait.
  *
  * A filter's query key (with its prefix) must not be one something else writes to the
- * URL: `page` on a component that uses WithPagination, the host's own `queryString`,
+ * URL: `page` on a component that uses WithPagination (every WithTable component does), the host's own `queryString`,
  * other traits' entries and `#[Url]` properties are refused at mount. A custom
  * paginator page name (`->paginate(10, pageName: 'p')`) cannot be seen at mount,
  * because Livewire registers it lazily while rendering, so dehydrateWithUrlFilters()
