@@ -153,3 +153,15 @@ it('draws no shell bar for a sidebar layout whose crumbs and actions slots are o
 
     expect(domQuery($html, '//header[@data-atom-header-empty]'))->toHaveCount(1);
 });
+
+it('draws no result row for a finished job whose end slot is only false blocks and which has nothing else to show', function () {
+    $html = Livewire::test(new class extends Component {
+        public function render()
+        {
+            return '<div><atom:progress :job="new \Jiannius\Atom\Services\JobProgress(name: \'x\', status: \'finished\', run: \'r\')"><x-slot:end>'.FALSE_BLOCKS.'</x-slot:end></atom:progress></div>';
+        }
+    })->html();
+
+    expect(domQuery($html, '//*[@data-atom-progress-job]'))->toHaveCount(1)
+        ->and(domQuery($html, '//*[@data-atom-progress-result]'))->toBeEmpty();
+});

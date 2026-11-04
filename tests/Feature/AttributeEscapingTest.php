@@ -271,3 +271,24 @@ describe('error', function () {
         expect($html)->toContain('Tom &amp; Jerry 不能为空')->not->toContain('&amp;amp;');
     });
 });
+
+describe('progress (job mode)', function () {
+    it('keeps a hostile file name and message inside their text', function () {
+        $action = 'download';
+        $job = new \Jiannius\Atom\Services\JobProgress(
+            name: 'x', status: 'finished', file: '/f', fileName: '<img src=x onerror=alert(1)>.xlsx',
+            errors: ['<script>alert(2)</script> {{ 1 + 1 }}'], errorCount: 1, run: 'r',
+        );
+
+        $html = Blade::render('<atom:progress :job="$job" :download="$action" />', compact('job', 'action'));
+        $buttons = array_values(array_filter(attributeEscapingElements($html, 'button'), fn ($b) => $b->hasAttribute('wire:click')));
+
+        expect($buttons)->toHaveCount(1)
+            ->and($buttons[0]->getAttribute('wire:click'))->toBe($action)
+            ->and(attributeEscapingNames($buttons[0]))->not->toContain('onmouseover')
+            ->and(attributeEscapingElements($html, 'img'))->toBeEmpty()
+            ->and(attributeEscapingElements($html, 'script'))->toBeEmpty()
+            ->and(collect(attributeEscapingElements($html, 'li'))->map->textContent->all())->toBe(['<script>alert(2)</script> {{ 1 + 1 }}'])
+            ->and($html)->toContain('&lt;img src=x onerror=alert(1)&gt;.xlsx');
+    });
+});

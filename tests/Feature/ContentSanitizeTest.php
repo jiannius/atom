@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Jiannius\Atom\Tiptap\Content;
 use Jiannius\Atom\Tiptap\Extensions\AtomImage;
+use Jiannius\Atom\Tiptap\Markdown;
 
 /**
  * Content::sanitize(): editor / chat HTML from the browser is untrusted. It has
@@ -1036,5 +1037,319 @@ describe('Content: <pre> input the minifier is quadratic or fatal on', function 
         $out = Content::render('<pre>'.str_repeat('a', 400000).'</pre>');
 
         expect($out)->toContain('<pre>');
+    });
+});
+
+/**
+ * Markdown (an assistant's answer, a pasted message) is untrusted text that becomes HTML: Markdown::toHtml() converts it
+ * with raw HTML escaped, unsafe links stripped and images read as their alt text, then runs Content::sanitize() over what
+ * the converter printed. Checked structurally, like the rest of this file: the allow-list of tags, attributes and URL shapes,
+ * on top of "nothing from the schema's own list that markdown cannot produce" (no image, no frame, no style).
+ *
+ * @return array<int, string>
+ */
+function markdownViolations(string $html): array
+{
+    // the base check wants an absolute address; a relative one is fine here, and the scheme rule below reads every href
+    $violations = array_values(array_filter(sanitisedViolations($html), fn ($v) => ! str_starts_with($v, 'href ')));
+
+    $dom = new DOMDocument;
+    @$dom->loadHTML('<?xml encoding="utf-8"?><body>'.$html.'</body>', LIBXML_NOERROR | LIBXML_NOWARNING);
+
+    foreach ($dom->getElementsByTagName('*') as $el) {
+        if (in_array($el->nodeName, ['img', 'iframe', 'div', 'span', 'mark', 'input'], true)) {
+            $violations[] = "markdown printed <{$el->nodeName}>";
+        }
+
+        foreach ($el->attributes as $attr) {
+            if ($attr->nodeName === 'style' || str_starts_with($attr->nodeName, 'on')) {
+                $violations[] = "markdown printed {$attr->nodeName}";
+            }
+
+            // what a browser reads as the scheme: leading control characters and spaces go, tabs and newlines inside are ignored,
+            // and a colon after a character a scheme cannot hold (a percent sign, a slash) is not a scheme at all
+            if ($el->nodeName === 'a' && $attr->nodeName === 'href') {
+                $address = preg_replace('/[\t\n\r]/', '', ltrim($attr->nodeValue, "\0..\x20"));
+
+                if (preg_match('/^([a-z][a-z0-9+.\-]*):/i', $address, $scheme) && ! in_array(strtolower($scheme[1]), ['http', 'https', 'mailto'], true)) {
+                    $violations[] = "href {$attr->nodeValue}";
+                }
+            }
+        }
+
+        if ($el->nodeName === 'a' && ! $el->hasAttribute('href')) {
+            $violations[] = 'link without an address';
+        }
+    }
+
+    return $violations;
+}
+
+/** The deepest element nesting of an HTML string. */
+function markdownDepth(string $html): int
+{
+    $dom = new DOMDocument;
+    @$dom->loadHTML('<?xml encoding="utf-8"?><body>'.$html.'</body>', LIBXML_NOERROR | LIBXML_NOWARNING);
+
+    $deepest = 0;
+    $walk = function (DOMNode $node, int $depth) use (&$walk, &$deepest) {
+        $deepest = max($deepest, $depth);
+
+        foreach ($node->childNodes as $child) {
+            $walk($child, $depth + 1);
+        }
+    };
+    $walk($dom->getElementsByTagName('body')->item(0), 0);
+
+    return $deepest;
+}
+
+describe('Markdown: hostile input comes out schema-only', function () {
+    it('escapes raw HTML to text instead of passing it on', function (string $markdown, string $shownAsText) {
+        $html = Markdown::toHtml($markdown);
+
+        expect($html)->not->toBeNull()
+            ->and(markdownViolations($html))->toBe([])
+            ->and(html_entity_decode(strip_tags($html)))->toContain($shownAsText);
+    })->with([
+        'a script' => ['<script>alert(1)</script>', '<script>alert(1)</script>'],
+        'an image with a handler' => ['<img src=x onerror=alert(1)>', '<img src=x onerror=alert(1)>'],
+        'a frame' => ['<iframe src="https://evil.test"></iframe>', '<iframe src="https://evil.test">'],
+        'a link with a script address' => ['<a href="javascript:alert(1)">x</a>', '<a href="javascript:alert(1)">'],
+        'an svg' => ['<svg onload=alert(1)>', '<svg onload=alert(1)>'],
+        'a style attribute' => ['<p style="position:fixed;inset:0">x</p>', '<p style="position:fixed;inset:0">'],
+        'a comment' => ['a <!-- hidden --> b', '<!-- hidden -->'],
+        'a CDATA section' => ['<![CDATA[<script>x</script>]]>', '<![CDATA['],
+        'a processing instruction' => ['<?php echo 1; ?>', '<?php'],
+        'an html block' => ["<div>\n<b>x</b>\n</div>", '<div>'],
+        'html after a list marker' => ["- <script>alert(1)</script>\n- b", '<script>alert(1)</script>'],
+        'html in a table cell' => ["| a |\n|---|\n| <img src=x onerror=1> |", '<img src=x onerror=1>'],
+        'html in a heading' => ['# <script>alert(1)</script>', '<script>alert(1)</script>'],
+        'html in emphasis' => ['**<b onclick=x>y</b>**', '<b onclick=x>'],
+    ]);
+
+    it('drops the address of an unsafe link and keeps its text', function (string $markdown) {
+        $html = Markdown::toHtml($markdown);
+
+        expect($html)->not->toBeNull()
+            ->and(markdownViolations($html))->toBe([])
+            ->and($html)->not->toContain('<a')
+            ->and(strip_tags($html))->toContain('click');
+    })->with([
+        'javascript' => ['[click](javascript:alert(1))'],
+        'mixed case' => ['[click](JaVaScRiPt:alert(1))'],
+        'vbscript' => ['[click](vbscript:msgbox(1))'],
+        'file' => ['[click](file:///etc/passwd)'],
+        'data html' => ['[click](data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==)'],
+        'data javascript' => ['[click](data:text/javascript,alert(1))'],
+        'decimal entity scheme' => ['[click](&#106;avascript:alert(1))'],
+        'hex entity scheme' => ['[click](&#x6A;avascript:alert(1))'],
+        'a named entity colon' => ['[click](javascript&colon;alert(1))'],
+        'an angle bracket address' => ['[click](<javascript:alert(1)>)'],
+        'reference style' => ["[click][r]\n\n[r]: javascript:alert(1)"],
+        'reference style, entity scheme' => ["[click][r]\n\n[r]: &#106;avascript:alert(1)"],
+        'a shortcut reference' => ["[click]\n\n[click]: javascript:alert(1)"],
+        'a link title that tries to close the attribute' => ['[click](javascript:alert(1) "\" onmouseover=\"alert(1)")'],
+    ]);
+
+    it('leaves no script scheme in an address the converter only percent-encodes', function (string $markdown) {
+        $html = Markdown::toHtml($markdown);
+
+        // `java&Tab;script:` is not `javascript:` to the converter's check, but it is encoded (`java%09script:`) before it is
+        // printed, and a browser reads a percent sign as no scheme: a relative address, which cannot run
+        expect($html)->not->toBeNull()
+            ->and(markdownViolations($html))->toBe([])
+            ->and($html)->not->toMatch('/href="[^"]*[\t\n]/');
+    })->with([
+        'a tab inside the scheme' => ['[click](java&Tab;script:alert(1))'],
+        'an encoded newline in the scheme' => ['[click](java&#10;script:alert(1))'],
+        'a leading entity space' => ['[click](&#32;javascript:alert(1))'],
+        'a leading control character' => ["[click](&#1;javascript:alert(1))"],
+    ]);
+
+    it('keeps nothing of an unsafe autolink but its text', function (string $markdown) {
+        $html = Markdown::toHtml($markdown);
+
+        expect($html)->not->toBeNull()
+            ->and(markdownViolations($html))->toBe([])
+            ->and($html)->not->toContain('<a');
+    })->with([
+        'javascript' => ['<javascript:alert(1)>'],
+        'data' => ['<data:text/html,x>'],
+        'vbscript' => ['<vbscript:x>'],
+    ]);
+
+    it('links an http(s) address and an email, and nothing else', function () {
+        $html = Markdown::toHtml('[a](https://example.com/x?y=1&z=2) <https://example.org> <me@example.com> www.example.net [b](mailto:me@example.com)');
+
+        expect(markdownViolations($html))->toBe([])
+            ->and(substr_count($html, '<a '))->toBe(5)
+            ->and($html)->toContain('href="https://example.com/x?y=1&amp;z=2"');
+    });
+
+    it('never prints an image, whatever its address', function (string $markdown) {
+        $html = Markdown::toHtml($markdown);
+
+        expect($html)->not->toBeNull()
+            ->and(markdownViolations($html))->toBe([])
+            ->and($html)->not->toContain('<img')
+            ->and($html)->not->toContain('evil.test')
+            ->and(strip_tags($html))->toContain('alt');
+    })->with([
+        'https' => ['![alt](https://evil.test/p.png)'],
+        'with a query that carries the page' => ['![alt](https://evil.test/p.png?q=the+conversation)'],
+        'javascript' => ['![alt](javascript:alert(1))'],
+        'data html' => ['![alt](data:text/html;base64,AAAA)'],
+        'data image' => ['![alt](data:image/png;base64,AAAA)'],
+        'entity scheme' => ['![alt](&#106;avascript:alert(1))'],
+        'reference style' => ["![alt][r]\n\n[r]: https://evil.test/p.png"],
+        'reference style, script address' => ["![alt][r]\n\n[r]: javascript:alert(1)"],
+        'a shortcut reference' => ["![alt]\n\n[alt]: https://evil.test/p.png"],
+        'a linked image' => ['[![alt](https://evil.test/p.png)](https://example.com)'],
+        'inside a table' => ["| a |\n|---|\n| ![alt](https://evil.test/p.png) |"],
+        'inside emphasis in the alt text' => ['![*alt*](https://evil.test/p.png)'],
+        'an image in an image' => ['![![alt](https://evil.test/a.png)](https://evil.test/b.png)'],
+    ]);
+
+    it('puts a hostile code fence info string only in a language class, or nowhere', function (string $info) {
+        $html = Markdown::toHtml("```{$info}\ncode\n```");
+
+        expect($html)->not->toBeNull()
+            ->and(markdownViolations($html))->toBe([])
+            ->and($html)->toContain('<pre>')->toContain('code');
+    })->with([
+        'a script' => ['"><script>alert(1)</script>'],
+        'a class list' => ['php evil other'],
+        'an attribute' => ['php" onmouseover="alert(1)'],
+        'a long name' => [str_repeat('a', 500)],
+        'entities' => ['&lt;b&gt;'],
+    ]);
+
+    it('keeps a language class a fence names', function () {
+        expect(Markdown::toHtml("```php\necho 1;\n```"))->toContain('<code class="language-php">');
+    });
+
+    it('drops what only the converter lets through: a task list checkbox and a column alignment', function () {
+        $converter = Markdown::convert("- [x] done\n\n| a |\n|:-:|\n| 1 |");
+
+        // the converter prints both, so the sanitiser is what removes them
+        expect($converter)->toContain('<input')->toContain('align="center"');
+
+        $html = Markdown::toHtml("- [x] done\n\n| a |\n|:-:|\n| 1 |");
+
+        expect(markdownViolations($html))->toBe([])
+            ->and($html)->not->toContain('<input')->not->toContain('align=')
+            ->and(strip_tags($html))->toContain('done');
+    });
+
+    it('is hardened by the converter itself, before the sanitiser sees it', function () {
+        $converter = Markdown::convert("<script>alert(1)</script>\n\n[a](javascript:alert(1)) ![b](https://evil.test/p.png) [c](&#106;avascript:alert(1))\n\n<javascript:alert(1)>");
+
+        // the escaped script and the autolink's text stay as text; what must not be there is an element, an address or an image
+        expect($converter)->not->toContain('<script')->not->toContain('<img')->not->toContain('evil.test')
+            ->and($converter)->not->toMatch('/href="[^"]*javascript/i')
+            ->and($converter)->toContain('<a>javascript:alert(1)</a>');
+    });
+});
+
+describe('Markdown: what it keeps', function () {
+    it('renders the markdown a long answer is written in as the editor schema', function () {
+        $html = Markdown::toHtml("# Title\n\nSome **bold**, *italic*, ~~struck~~ and `code`.\n\n- one\n- two\n\n1. first\n2. second\n\n> quoted\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n---\n\n```php\necho 1;\n```");
+
+        expect(markdownViolations($html))->toBe([]);
+
+        foreach (['<h1>', '<strong>', '<em>', '<s>', '<code>', '<ul>', '<ol>', '<blockquote>', '<table>', '<th>', '<td>', '<hr>', '<pre>'] as $tag) {
+            expect($html)->toContain($tag);
+        }
+    });
+
+    it('reads empty, blank and non-text input as nothing to show', function (mixed $value) {
+        expect(Markdown::toHtml($value))->toBe('');
+    })->with([[null], [''], ["  \n\t "], [[]], [['a']], [new stdClass]]);
+
+    it('reads a Stringable and a number as text', function () {
+        expect(Markdown::toHtml(Str::of('**a**')))->toContain('<strong>a</strong>')
+            ->and(Markdown::toHtml(42))->toContain('42');
+    });
+});
+
+describe('Markdown: limits', function () {
+    it('refuses a source over the byte limit without converting it', function () {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+
+        [$html, $seconds, $mb] = measured(fn () => Markdown::toHtml(str_repeat('a ', Markdown::MAX_BYTES)));
+
+        expect($html)->toBeNull()
+            ->and($seconds)->toBeLessThan(0.5)
+            ->and($mb)->toBeLessThan(5.0);
+    });
+
+    it('holds the worst shapes at the byte limit to a memory and time bound', function (string $markdown) {
+        $this->mock(ExceptionHandler::class)->shouldNotReceive('report');
+
+        expect(strlen($markdown))->toBeLessThanOrEqual(Markdown::MAX_BYTES);
+
+        [$result, $seconds, $mb] = measured(fn () => Markdown::toHtml($markdown));
+
+        // a host with PHP's default 128 MB has to live through the worst input; this is the converter at 1.4 KB a byte
+        expect($mb)->toBeLessThan(80.0)
+            ->and($seconds)->toBeLessThan(3.0);
+
+        if ($result !== null) {
+            expect(markdownViolations($result))->toBe([]);
+        }
+    })->with(function () {
+        $max = Markdown::MAX_BYTES;
+
+        return [
+            'brackets' => [str_repeat('[', $max)],
+            'image openers' => [str_repeat('![', intdiv($max, 2))],
+            'asterisks' => [str_repeat('*a', intdiv($max, 2))],
+            'mixed emphasis' => [str_repeat('*_', intdiv($max, 2))],
+            'backticks' => [str_repeat('`', $max)],
+            'quote markers' => [str_repeat('>', $max)],
+            'quoted lines' => [str_repeat("> a\n", intdiv($max, 4))],
+            'list items' => [str_repeat("- a\n", intdiv($max, 4))],
+            'paragraphs' => [str_repeat("a\n\n", intdiv($max, 3))],
+            'rules' => [str_repeat("---\n", intdiv($max, 4))],
+            'references' => [str_repeat("[a]: http://x\n", intdiv($max, 14))],
+            'links' => [str_repeat('[a](http://x) ', intdiv($max, 14))],
+            'escaped html' => [str_repeat('<p>', intdiv($max, 3))],
+            'entities' => [str_repeat('&amp;', intdiv($max, 5))],
+        ];
+    });
+
+    it('stops nesting blocks and renders the rest as text', function (string $markdown) {
+        $html = Markdown::toHtml($markdown);
+
+        expect($html)->not->toBeNull()
+            ->and(markdownViolations($html))->toBe([])
+            ->and(markdownDepth($html))->toBeLessThan(60);
+    })->with([
+        'quotes' => [str_repeat('> ', 4000).'deep'],
+        'nested lists' => [implode("\n", array_map(fn ($i) => str_repeat('  ', $i).'- item', range(0, 120)))],
+        'quotes of lists' => [str_repeat('> - ', 3000).'deep'],
+        'nested emphasis' => [str_repeat('*a ', 1000).'x'.str_repeat(' a*', 1000)],
+        'nested links' => [str_repeat('[a](http://x ', 800).'x'.str_repeat(')', 800)],
+    ]);
+
+    it('hands a table over the tag limit back as text instead of printing it', function () {
+        $rows = intdiv(Markdown::SANITIZE_MAX_TAGS, 4) + 100;
+        $markdown = "| a |\n|---|\n".str_repeat("| 1 |\n", $rows);
+
+        expect(strlen($markdown))->toBeLessThan(Markdown::MAX_BYTES)
+            ->and(Markdown::toHtml($markdown))->toBeNull();
+    });
+
+    it('renders a long answer with a table of a hundred rows', function () {
+        $markdown = "## Report\n\n".str_repeat("A paragraph with **bold** and a [link](https://example.com).\n\n", 40)
+            ."| a | b | c |\n|---|---|---|\n".str_repeat("| 1 | 2 | 3 |\n", 100)
+            ."\n```php\n".str_repeat("echo 1;\n", 100)."```\n";
+
+        $html = Markdown::toHtml($markdown);
+
+        expect($html)->not->toBeNull()
+            ->and(markdownViolations($html))->toBe([])
+            ->and(substr_count($html, '<tr>'))->toBe(101);
     });
 });

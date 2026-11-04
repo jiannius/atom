@@ -296,6 +296,7 @@ A component takes only the state it uses, each from its own trait in `Jiannius\A
 | `WithBreadcrumbs` | `$_breadcrumbs`, built on mount from your optional `breadcrumbs($crumbs)` method | `<atom:breadcrumbs>` |
 | `WithEditor` | `$_editor.images` and Livewire's `WithFileUploads` | `<atom:tiptap>` with image upload |
 | `WithRecaptcha` | `$_recaptcha` and `verifyRecaptcha()` | `<atom:form recaptcha>` |
+| `WithJobProgress` | two **protected** helpers, `jobProgress()` and `forgetJobProgress()`; no public method, no property | `<atom:progress :job>`, see [Job progress](#job-progress) |
 
 `WithTable` uses Livewire's `WithPagination` itself, so a component that also lists it keeps working.
 Add `WithPagination` yourself to a paginated component that has no table, and `WithFileUploads` to one
@@ -317,7 +318,7 @@ depends entirely on **who calls the name**, and the two halves are not equally r
 delegates to `app('atom')`, there for you to call and no one else. Define your own `toast()`
 and you get yours; you'll know, because you wrote it.
 
-> `modal`, `command`, `toast`, `alert`, `confirm`, `action`, `wirekey`, `verifyRecaptcha`
+> `modal`, `command`, `toast`, `alert`, `confirm`, `action`, `wirekey`, `verifyRecaptcha`, `jobProgress`, `forgetJobProgress`
 
 A class method named `action` is a real method, so declare yours `protected`: a
 `public function action()` on your component is callable from the browser as `$wire.action(...)`,
@@ -355,6 +356,138 @@ Nothing else is reserved. The computed property feeding `<atom:table :paginate="
 yours to name: atom neither defines nor looks for `items`, `rows`, `records`, `data`, or
 anything like them. `tests/Feature/ComponentTraitsSurfaceTest.php` pins these lists, so they can't
 drift from the traits without a failing test.
+
+### Job progress
+
+A queued job says how far it has got, and a page shows it, with no table and no package: one cache entry per
+signed-in user, tenant and job, with a status (`queued`, `running`, `finished`, `failed`), a percent, the messages the
+job reported and, optionally, a result file. Register the tenant once, in a service provider:
+
+```php
+use Jiannius\Atom\Services\JobProgress;
+
+JobProgress::scopeUsing(fn () => org()?->id);   // the tenant the signed-in user acts in
+JobProgress::scopeUsing(fn () => null);         // an app with no tenants
+```
+
+It is **required**: reading an entry, or pushing a tracked job, throws until it is registered, so one user's export cannot
+turn up in their other organisation. It must return an `int`, a `string` or `null`. It is compared as a
+string, so `1` and `"1"` are one tenant, and ids from two tables that can collide (an org `1` and a team `1`) are told apart
+by a prefix of yours: `fn () => 'org:'.$org->id`.
+
+**The job** uses `ReportsProgress` (which brings `InteractsWithQueue`, so listing that too is fine):
+
+```php
+class ExportJournal implements ShouldQueue
+{
+    use Dispatchable, Queueable, SerializesModels, ReportsProgress;
+
+    public function handle(): void
+    {
+        $this->progress(0, $total);                      // running; no total is an indeterminate bar
+        foreach ($rows as $i => $row) {
+            $this->progress($i + 1, $total);             // written at most once a second, or when the whole percent changes
+        }
+
+        $this->error('Invoice #12: no line items');      // shown on the page, as text; does not fail the job
+        $this->finish($path, 'journal.xlsx');            // your file and what to call it; atom never serves it
+    }
+}
+```
+
+`queued`, `running` and `failed` are written for you, by hooks on the queue (the way Laravel's own log context rides along
+with a job): `queued` when the job is really pushed (not when it is built, so a `ShouldBeUnique` job refused by its lock
+leaves the running entry alone), `running` when a worker picks it up, `failed` on every way a job can fail. A job that
+never calls `finish()` ends as finished, without a file. A retried job starts again at 0. The entry is keyed by the
+signed-in user, the tenant and `progressName()` (the class by default; override it to keep one entry per document
+type), built on the server in the request and carried to the worker in the queue payload, so nothing key-related
+ever comes from the browser. A job pushed with nobody signed in (the scheduler, a webhook) is not tracked, and
+every call is a silent no-op; so is a job pushed from **inside a queue worker**, whoever the auth guard says is signed in
+(a worker never resets the guard, so a job that signed a user in would otherwise leave them there for the next job). A job that declares its own `progress()`, `error()` or `finish()` is refused at dispatch
+naming the method (a class method silently beats a trait method). Do not put an exception's message in `error()`
+(SQL and paths); a failed job shows a fixed line, "The job stopped before it finished.", plus the messages you reported.
+
+**The page** uses `WithJobProgress`, reads the entry where it shows it, and offers the file through its own action:
+
+```php
+use Jiannius\Atom\Traits\WithJobProgress;
+
+class Export extends Component
+{
+    use WithJobProgress;
+
+    public function download()                      // yours: atom never serves a file
+    {
+        $export = $this->jobProgress(ExportJournal::class);
+
+        abort_unless($export->isFinished() && $export->file && is_file($export->file), 404);
+        // ...and check the user may still have this file: the entry proves their job made it, not that they may still read it
+
+        return response()->download($export->file, $export->fileName);
+    }
+
+    public function again()
+    {
+        $this->forgetJobProgress(ExportJournal::class);   // after a download, on dismiss, before a new run (the file is yours to delete)
+    }
+}
+```
+
+```blade
+@php $export = $this->jobProgress(\App\Jobs\ExportJournal::class) @endphp
+
+@if ($export->exists())
+    <atom:progress :job="$export" download="download">
+        <x-slot:end><atom:button size="sm" wire:click="again">New export</atom:button></x-slot:end>
+    </atom:progress>
+@else
+    ...the form and the Export button...
+@endif
+```
+
+`<atom:progress :job>` draws a status row, the bar, the reported messages (the first 100, then "and N more"), and when finished
+the file's name and a Download button that calls the action you name in `download`. It **polls on its own** (`poll`, 2500 ms; `false` or `0`
+turns it off; less than a second is raised to one) while the job is queued or running, only while it is on screen, and stops
+when the job is done; with no entry it renders nothing and polls nothing, so the `@else` above is your form again. The path in
+`file` is never printed or sent to the browser; only `fileName` is. `download` is **a method name** (`download="download"`, letters, digits and underscore): it becomes the `wire:click`,
+so a call, a property path or anything with a quote throws when the component renders. Do not serialise the `JobProgress` into
+the page yourself (`@json($export)`, `Js::from($export)`, an `x-data`): its `file` is your server path, and the browser should
+only ever get `fileName`. Each poll re-renders the component, so keep an editable
+form out of it while it polls (the screens hide the form while the job is active). Several jobs on a page share one poll clock.
+
+Both helpers are `protected`, on purpose: a public method of a Livewire component is callable from the browser, and its return
+value, the file's path, would go back with it. Read the entry in the view or `render()`, **never keep it in a public property**
+(Livewire refuses the object, and an array copy would be client-writable). Outside Livewire use `JobProgress::for($name)` and
+`JobProgress::forget($name)`. The name you pass may be built from a client-writable property (`'export:'.$this->type`): the user
+and tenant parts of the key never come from it, so a client can only switch between its own entries.
+
+**Requirements and limits.**
+
+- The cache store must be one that web requests and workers **share** (`database`, `redis`, or `file` on a single server). `array`
+  lives in one process: it works in tests, and under the `sync` queue, and anywhere else reading throws a `LogicException`; the `null`
+  store always does. Set `atom.job_progress.store` (a store name; `null` is the default store) and `atom.job_progress.ttl` (seconds,
+  default 86400, refreshed on every write) in a `config/atom.php` if you need to.
+- With the `database` store, a progress call made inside the job's own `DB::transaction()` on the cache's connection is not visible
+  until the commit and is lost on a rollback: give the cache its own connection (`DB_CACHE_CONNECTION`), or keep progress calls
+  outside transactions.
+- A cache that fails never fails the job: it is logged once per process (the job class and where, never a value).
+- One run per user, tenant and name is assumed; a second dispatch while one runs shares the entry, so hide the start button
+  while `$export->isActive()`. Keep `retry_after` longer than the job can run.
+- Not tracked: jobs pushed with nobody signed in or from inside a queue worker (a job dispatching a job), `Queue::fake()`, `dispatchAfterResponse()` (the page has rendered before the
+  push, so it never sees `queued`), batched jobs of one class, which share a name (use Laravel's batch progress, or a
+  distinct `progressName()`), and the later jobs of a chain (`Bus::chain([new A, new B])`): the worker pushes `B`, and the key is not carried
+  along a chain. Track the job that matters, or have `A` dispatch `B` itself from a
+  request-side action.
+- `forgetJobProgress()` is not a cancel: a running job's next write re-creates the entry. A job that releases itself shows
+  Running at its last numbers until its next attempt starts. A job dropped by middleware (`Skip`, `WithoutOverlapping` with
+  `dontRelease()`) never runs `handle()` and ends as Done, without a file. And if the push itself throws after `queued` was
+  written, the page shows Queued until the entry expires.
+- The entry holds numbers and short text only (at most 100 messages of 500 bytes), and expires a day after its last write; nothing
+  here deletes the result file.
+
+**Coming from a tracker table.** `setProgress($i, $total)` is `$this->progress($i, $total)`, per-row errors are `$this->error()`, a
+result path and name are `$this->finish($path, $name)`, and the page's "get the tracker" call is `$this->jobProgress(Job::class)`. There is
+no table, no model, no route and no migration, and no `stopped` or `expired` state (an entry that expired is simply gone).
 
 ### The `Enum` trait
 
@@ -441,6 +574,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:time-picker>` | `name`, `label`, `caption`, `invalid`, `inline`. |
 | `<atom:uploader>` | `label` (default `Upload`), `variant`, `size`. A default slot **replaces** the upload button (your own trigger); the `end` slot (`<x-slot:end>`) adds content beside the button and the cancel control and keeps the button: a size or type hint. `<atom:input type="file">` forwards both slots. Drop variant: `<atom:uploader.dropzone>`, with the same two slots (`end` is drawn under the zone). |
 | `<atom:tiptap>` | Tiptap rich text. `name`, `label`, `caption`, `readonly`, `autofocus`, `variant="transparent"`, `placeholder`, `toolbar`, `mention`. Many sub-buttons under `<atom:tiptap.toolbar.*>` and contextual menus under `<atom:tiptap.menu.*>`. `<atom:editor>`, `<atom:editor.chat>` and `<atom:editor.content>` are gone: they were aliases of `<atom:tiptap>`, `<atom:tiptap.chat>` and `<atom:tiptap.content>`. |
+| `<atom:prose>` | Typography for text that is read inside something else (a message bubble, a card): the same wrapper as `<atom:tiptap.content>`, with the first and last block flush against the box. `size="sm"` is the chat-bubble step. One of three sources: `markdown` (a string, converted and sanitised: see "Markdown in a message"), `content` (stored Tiptap JSON or HTML, through `Content::render()`) or the slot (your own markup, printed as written). Put it in `<atom:timeline.item kind="message">`'s slot for an assistant's reply. |
 
 ### Buttons & links
 
@@ -468,7 +602,7 @@ An `href` is only followed if it is `http`, `https`, `mailto`, `tel`, `sms` or s
 | `<atom:callout>` | A tone's tint with a hairline of its ink, a 16px icon and the heading in the ink; the text stays the foreground. The ink is on the callout's own icon only: an icon in a button of `actions`, or in the body, keeps the colour of what it sits in. `icon`, `heading`, `content`, `variant` (`info`, `success`, `warning`, `danger`, `error`, `accent` (the brand tint, for a decision the reader has to take, with a flag as its default icon); none is neutral), `closeable`. Slot `actions` is a row of buttons under the text (a decision box: "Send back", then the primary last); it takes the same contrast in every tone. |
 | `<atom:skeleton>` | Loading block on the strong hairline token; it pulses only for a viewer who has not asked for reduced motion. |
 | `<atom:placeholder-bar>` | `size="100%x20px"`. |
-| `<atom:progress>` | A 6px pill track (4px at `size="sm"`) filled with the accent ink, or a tone's ink. `value` (default 0, read as a percent of `max`) and `max` (default 100), `variant` (`success`, `warning`, `danger`, `info`), `size`, `label` (`true` for the percent, or a string), `indeterminate` (stands still under reduced motion). |
+| `<atom:progress>` | A 6px pill track (4px at `size="sm"`) filled with the accent ink, or a tone's ink. `value` (default 0, read as a percent of `max`) and `max` (default 100), `variant` (`success`, `warning`, `danger`, `info`), `size`, `label` (`true` for the percent, or a string), `indeterminate` (stands still under reduced motion). `job` (a `JobProgress` from `$this->jobProgress()`) turns it into a queued job's progress, with `poll` and `download` and an `end` slot, see [Job progress](#job-progress). |
 | `<atom:pagination>` | A standalone pager for a Livewire paginator. `paginator`, `simple` (prev and next only), `summary` (default `true`). Every cell is control-high (28px, 40 on touch) with tabular figures; the current page sits on the neutral fill and carries `aria-current="page"`. The table's own pager is the same recipe. |
 | `<atom:empty>` | `kind` (`first-use`, `no-results` (default), `error`, `done` (a cleared work queue: a success-toned check and "All caught up"; no next step needed)), `icon`, `size` (`sm`), `subtle`, `heading`, `subheading`. Slot `action` holds the next step; a default slot replaces the heading and subheading. The large state draws its icon in once (CSS only; not at `sm` or `subtle`, not under `prefers-reduced-motion`). |
 | `<atom:status>` | `tone` (`neutral` (default), `info`, `success`, `warning`, `danger`, `accent`), `label` (or the slot), `running` (pulses the dot; still under `prefers-reduced-motion`). A dot plus a word: the word is always printed. |
@@ -1555,6 +1689,27 @@ Two things it does not do:
 
 - **It doesn't check a mention's `data-id`.** It is escaped, but it is whatever the client sent. If a mention does anything (a notification, a link to a record), look the id up on the server, scoped to what the current user may mention, and ignore the rest.
 - **It doesn't check that the caller may post.** Authorise the request as you would any other write.
+
+### Markdown in a message: `<atom:prose :markdown>`
+
+```blade
+<atom:timeline kind="message" label="Conversation">
+    <atom:timeline.item speaker="Assistant" time="10:03">
+        <atom:prose :markdown="$reply->body" size="sm"/>
+    </atom:timeline.item>
+</atom:timeline>
+```
+
+`markdown` is for text somebody else wrote, an AI assistant's answer most of all, so nothing in it is trusted. It goes through two gates, and only what passes both is printed:
+
+1. **The converter** (`league/commonmark`, GitHub-flavoured: tables, strikethrough, autolinks, fenced code) with raw HTML escaped, so `<script>` and `<img onerror>` are shown as text; a link with an unsafe address (`javascript:`, `data:`, `vbscript:`, `file:`, entity-encoded or reference-style ones too) keeps its words and loses its address; and an **image becomes its alt text**, because an image is a request the reader's browser makes to an address the author chose (a way to send what is on the page to a third party). Blocks stop nesting at 16 levels.
+2. **`Content::sanitize()`**, the gate for HTML from outside (see above), so a gap in the converter is not a gap in the page: only tags, attributes and addresses the editor schema holds come out. A task list's checkbox and a column's alignment do not (the item and the cell stay).
+
+An empty or whitespace-only `markdown` renders nothing, and the slot is **not** used instead: `markdown` wins as soon as it is passed, so leave the prop off (or fall back in your own markup) when the source may be empty.
+
+A source over 32 KB (about five thousand words; the converter's memory follows its size), or one that turns into more than 10,000 tags (a one-column table of about 2,400 rows), is not converted: the text is printed **as it is**, escaped, with its line breaks (`whitespace-pre-line`), so a message is never blank. `Jiannius\Atom\Tiptap\Markdown::toHtml($markdown)` is the same step for a host that needs the HTML (`null` means "show the text as it is"); it needs `league/commonmark`, which atom requires (hosts on `laravel/framework` already have it).
+
+Markdown images never load. To show a picture in a message, put it in `content` (Tiptap JSON) or in your own slot markup.
 
 ### Upgrading: `render()` and `<atom:tiptap.content>` refuse what they can't parse safely
 
