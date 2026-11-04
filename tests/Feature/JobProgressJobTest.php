@@ -84,7 +84,7 @@ function jpWork(): void
     Auth::forgetUser();
     JobProgress::scopeUsing(fn () => throw new RuntimeException('the worker must not ask the scope'));
 
-    Artisan::call('queue:work', ['connection' => 'database', '--once' => true]);
+    Artisan::call('queue:work', ['connection' => 'database', '--once' => true, '--memory' => 100000]);   // the worker's own 128 MB cap would stop it in a big test run
 
     JobProgress::scopeUsing(fn () => 'org-1');
 }
@@ -792,7 +792,7 @@ it('does not decode the payload of a job that carries no progress key', function
 /** Work every queued job in ONE worker process, with nobody signed out between them: what a real `queue:work` does. */
 function jpWorkAll(): void
 {
-    Artisan::call('queue:work', ['connection' => 'database', '--stop-when-empty' => true]);
+    Artisan::call('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--memory' => 100000]);   // the worker's own 128 MB cap would stop it after one job in a big test run
 }
 
 describe('inside a worker', function () {
