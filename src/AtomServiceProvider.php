@@ -9,7 +9,11 @@ use Jiannius\Atom\Commands\MigrateTiptapContent;
 use Jiannius\Atom\Commands\PurgeEditorImages;
 use Jiannius\Atom\Commands\Upgrade;
 use Jiannius\Atom\Commands\UpgradeCheck;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
 use Jiannius\Atom\Services\Asset;
+use Jiannius\Atom\Services\JobProgressStore;
 use Jiannius\Atom\Services\TagCompiler;
 
 class AtomServiceProvider extends ServiceProvider
@@ -44,6 +48,7 @@ class AtomServiceProvider extends ServiceProvider
         $this->registerComponentMacros();
         $this->registerComponentGuards();
         $this->registerCommands();
+        $this->registerJobProgress();
 
         Asset::boot();
 
@@ -52,6 +57,23 @@ class AtomServiceProvider extends ServiceProvider
             $isResponseObject = $result instanceof \Illuminate\Http\JsonResponse || $result instanceof \Illuminate\Http\Response;
             return $isResponseObject ? $result : response()->json($result);
         })->middleware('web');
+    }
+
+    /**
+     * The queue hooks behind job progress (#115), the way Laravel's own Context hooks the queue: a payload hook (runs in the
+     * request, while the job is an object, and only for a job really being pushed) and the three worker events. Each one
+     * returns at once for a job without the key in its payload, so they cost nothing for any other job. Listening does not
+     * resolve the queue manager at boot.
+     */
+    protected function registerJobProgress() : void
+    {
+        \Illuminate\Queue\Queue::createPayloadUsing(fn ($connection, $queue, $payload) => JobProgressStore::payload($payload));
+
+        $events = $this->app['events'];
+
+        $events->listen(JobProcessing::class, fn (JobProcessing $event) => JobProgressStore::processing($event->job));
+        $events->listen(JobProcessed::class, fn (JobProcessed $event) => JobProgressStore::processed($event->job));
+        $events->listen(JobFailed::class, fn (JobFailed $event) => JobProgressStore::failed($event->job));
     }
 
     /**

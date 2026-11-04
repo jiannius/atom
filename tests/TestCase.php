@@ -3,6 +3,7 @@
 namespace Jiannius\Atom\Tests;
 
 use Jiannius\Atom\AtomServiceProvider;
+use Jiannius\Atom\Services\JobProgressStore;
 use Livewire\LivewireServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
@@ -34,6 +35,8 @@ abstract class TestCase extends Orchestra
         if ($this->app && $this->app->bound('livewire')) {
             $this->app->make('livewire')->flushState();
         }
+
+        JobProgressStore::flushState();
 
         parent::tearDown();
     }
