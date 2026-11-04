@@ -706,3 +706,82 @@ describe('the hooks, one at a time', function () {
             ->and($stored['error_count'])->toBe(150);
     });
 });
+
+describe('the key', function () {
+    it('is the same for ordinary input as the plain JSON hash it always was', function () {
+        jpSignIn(7);
+
+        expect(JobProgressStore::key('Some\\Job'))->toBe('atom:job-progress:'.hash('sha256', json_encode([GenericUser::class, '7', 'org-1', 'Some\\Job'])));
+
+        JobProgress::scopeUsing(fn () => null);
+
+        expect(JobProgressStore::key('x'))->toBe('atom:job-progress:'.hash('sha256', json_encode([GenericUser::class, '7', null, 'x'])));
+    });
+
+    it('is distinct for users whose ids are binary, not one key for them all', function () {
+        $keys = [];
+
+        foreach (["\xFF\x01", "\xFE\x01", "\x80", 'plain'] as $id) {
+            jpSignIn($id);
+            $keys[] = JobProgressStore::key('x');
+        }
+
+        expect(array_unique($keys))->toHaveCount(4)
+            ->and($keys[0])->not->toBe('atom:job-progress:'.hash('sha256', ''));
+    });
+
+    it('is distinct for names and scopes that are not UTF-8', function () {
+        jpSignIn(7);
+
+        $names = array_map(fn ($name) => JobProgressStore::key($name), ["export:\xFF", "export:\xFE", 'export:x']);
+
+        JobProgress::scopeUsing(fn () => "\xFF");
+        $a = JobProgressStore::key('x');
+        JobProgress::scopeUsing(fn () => "\xFE");
+        $b = JobProgressStore::key('x');
+
+        expect(array_unique($names))->toHaveCount(3)->and($a)->not->toBe($b);
+    });
+
+    it('does not mistake binary bytes for the hex text of the same bytes', function () {
+        jpSignIn(7);
+
+        expect(JobProgressStore::key("\xFF"))->not->toBe(JobProgressStore::key('ff'))
+            ->and(JobProgressStore::key("\xFF"))->not->toBe(JobProgressStore::key('{"hex":"ff"}'));
+    });
+});
+
+it('tracks a job run with dispatchNow, like handle() called directly, under the signed-in user', function () {
+    jpSignIn(7);
+
+    \Illuminate\Support\Facades\Bus::dispatchNow(new JobProgressFixtureJob);   // gives the job an empty SyncJob, so $this->job is set
+
+    expect(JobProgress::for(JobProgressFixtureJob::class))
+        ->isFinished()->toBeTrue()
+        ->fileName->toBe('journal.xlsx');
+});
+
+it('still leaves a real sync dispatch with nobody signed in untracked', function () {
+    JobProgressFixtureJob::dispatchSync();
+
+    expect(jpEntryRows())->toBeEmpty();
+});
+
+it('does not decode the payload of a job that carries no progress key', function () {
+    $job = new class(app(), json_encode(['uuid' => 'u', 'job' => 'x', 'data' => []]), 'sync', 'default') extends SyncJob {
+        public int $decoded = 0;
+
+        public function payload()
+        {
+            $this->decoded++;
+
+            return parent::payload();
+        }
+    };
+
+    JobProgressStore::processing($job);
+    JobProgressStore::processed($job);
+    JobProgressStore::failed($job);
+
+    expect($job->decoded)->toBe(0);
+});

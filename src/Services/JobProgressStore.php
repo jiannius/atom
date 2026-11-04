@@ -6,6 +6,7 @@ use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\NullStore;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Queue\Job;
+use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -87,10 +88,20 @@ final class JobProgressStore
 
         return 'atom:job-progress:'.hash('sha256', json_encode([
             $user::class,
-            (string) $user->getAuthIdentifier(),
-            $scope === null ? null : (string) $scope,
-            $name,
-        ]));
+            self::text((string) $user->getAuthIdentifier()),
+            $scope === null ? null : self::text((string) $scope),
+            self::text($name),
+        ], JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * A part of the key that json_encode() cannot fail on: valid UTF-8 as it is (so a key built from ordinary ids and names
+     * is the same as ever), anything else, a binary uuid for instance, as its hex in an object. json_encode() returns false on
+     * invalid UTF-8, and hashing false is hashing '', which would give every such user and name one key.
+     */
+    private static function text(string $part): string|array
+    {
+        return mb_check_encoding($part, 'UTF-8') ? $part : ['hex' => bin2hex($part)];
     }
 
     /**
@@ -287,7 +298,7 @@ final class JobProgressStore
      */
     public static function keyFor(object $job): ?string
     {
-        $queueJob = $job->job ?? null;
+        $queueJob = self::queueJobOf($job);
 
         if ($queueJob instanceof Job) {
             return self::payloadOf($queueJob)[0];
@@ -296,10 +307,26 @@ final class JobProgressStore
         return self::key($job->progressName());
     }
 
+    /**
+     * The queue job a running job reports through, or null when it is not on a queue. dispatchNow() gives a job a
+     * SyncJob with an empty payload (no uuid, no key) so that $this->job works: that is no queue at all, and it is
+     * treated like handle() called directly. A real sync dispatch has a payload with a uuid, and its own key or none.
+     */
+    private static function queueJobOf(object $job): ?Job
+    {
+        $queueJob = $job->job ?? null;
+
+        if (! $queueJob instanceof Job) {
+            return null;
+        }
+
+        return $queueJob instanceof SyncJob && $queueJob->payload() === [] ? null : $queueJob;
+    }
+
     /** The run id the payload carries, or a new one for a job with no queue job. */
     public static function runOf(object $job): string
     {
-        $queueJob = $job->job ?? null;
+        $queueJob = self::queueJobOf($job);
 
         if ($queueJob instanceof Job) {
             return (string) (self::payloadOf($queueJob)[1]['uuid'] ?? '');
@@ -311,7 +338,7 @@ final class JobProgressStore
     /** @return array<string, mixed> */
     public static function payloadFor(object $job): array
     {
-        $queueJob = $job->job ?? null;
+        $queueJob = self::queueJobOf($job);
 
         return $queueJob instanceof Job ? self::payloadOf($queueJob)[1] : [];
     }
@@ -341,6 +368,11 @@ final class JobProgressStore
     private static function payloadOf(Job $job): array
     {
         try {
+            /* Most jobs carry no progress: look for the key in the raw body before decoding it (three hooks run per job). */
+            if (! str_contains($job->getRawBody(), self::PAYLOAD_KEY)) {
+                return [null, []];
+            }
+
             $payload = $job->payload();
         } catch (Throwable) {
             return [null, []];

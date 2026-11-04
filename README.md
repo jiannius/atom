@@ -468,8 +468,14 @@ and tenant parts of the key never come from it, so a client can only switch betw
 - One run per user, tenant and name is assumed; a second dispatch while one runs shares the entry, so hide the start button
   while `$export->isActive()`. Keep `retry_after` longer than the job can run.
 - Not tracked: jobs pushed with nobody signed in, `Queue::fake()`, `dispatchAfterResponse()` (the page has rendered before the
-  push, so it never sees `queued`), and batched jobs of one class, which share a name (use Laravel's batch progress, or a
-  distinct `progressName()`).
+  push, so it never sees `queued`), batched jobs of one class, which share a name (use Laravel's batch progress, or a
+  distinct `progressName()`), and the later jobs of a chain (`Bus::chain([new A, new B])`): the worker pushes `B` with nobody
+  signed in, and the key is not carried along a chain. Track the job that matters, or have `A` dispatch `B` itself from a
+  request-side action.
+- `forgetJobProgress()` is not a cancel: a running job's next write re-creates the entry. A job that releases itself shows
+  Running at its last numbers until its next attempt starts. A job dropped by middleware (`Skip`, `WithoutOverlapping` with
+  `dontRelease()`) never runs `handle()` and ends as Done, without a file. And if the push itself throws after `queued` was
+  written, the page shows Queued until the entry expires.
 - The entry holds numbers and short text only (at most 100 messages of 500 bytes), and expires a day after its last write; nothing
   here deletes the result file.
 
@@ -1692,6 +1698,8 @@ Two things it does not do:
 
 1. **The converter** (`league/commonmark`, GitHub-flavoured: tables, strikethrough, autolinks, fenced code) with raw HTML escaped, so `<script>` and `<img onerror>` are shown as text; a link with an unsafe address (`javascript:`, `data:`, `vbscript:`, `file:`, entity-encoded or reference-style ones too) keeps its words and loses its address; and an **image becomes its alt text**, because an image is a request the reader's browser makes to an address the author chose (a way to send what is on the page to a third party). Blocks stop nesting at 16 levels.
 2. **`Content::sanitize()`**, the gate for HTML from outside (see above), so a gap in the converter is not a gap in the page: only tags, attributes and addresses the editor schema holds come out. A task list's checkbox and a column's alignment do not (the item and the cell stay).
+
+An empty or whitespace-only `markdown` renders nothing, and the slot is **not** used instead: `markdown` wins as soon as it is passed, so leave the prop off (or fall back in your own markup) when the source may be empty.
 
 A source over 32 KB (about five thousand words; the converter's memory follows its size), or one that turns into more than 10,000 tags (a one-column table of about 2,400 rows), is not converted: the text is printed **as it is**, escaped, with its line breaks (`whitespace-pre-line`), so a message is never blank. `Jiannius\Atom\Tiptap\Markdown::toHtml($markdown)` is the same step for a host that needs the HTML (`null` means "show the text as it is"); it needs `league/commonmark`, which atom requires (hosts on `laravel/framework` already have it).
 
