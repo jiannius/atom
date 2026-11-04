@@ -371,7 +371,9 @@ JobProgress::scopeUsing(fn () => null);         // an app with no tenants
 ```
 
 It is **required**: reading an entry, or pushing a tracked job, throws until it is registered, so one user's export cannot
-turn up in their other organisation. It must return an `int`, a `string` or `null`.
+turn up in their other organisation. It must return an `int`, a `string` or `null`. It is compared as a
+string, so `1` and `"1"` are one tenant, and ids from two tables that can collide (an org `1` and a team `1`) are told apart
+by a prefix of yours: `fn () => 'org:'.$org->id`.
 
 **The job** uses `ReportsProgress` (which brings `InteractsWithQueue`, so listing that too is fine):
 
@@ -400,7 +402,8 @@ never calls `finish()` ends as finished, without a file. A retried job starts ag
 signed-in user, the tenant and `progressName()` (the class by default; override it to keep one entry per document
 type), built on the server in the request and carried to the worker in the queue payload, so nothing key-related
 ever comes from the browser. A job pushed with nobody signed in (the scheduler, a webhook) is not tracked, and
-every call is a silent no-op. A job that declares its own `progress()`, `error()` or `finish()` is refused at dispatch
+every call is a silent no-op; so is a job pushed from **inside a queue worker**, whoever the auth guard says is signed in
+(a worker never resets the guard, so a job that signed a user in would otherwise leave them there for the next job). A job that declares its own `progress()`, `error()` or `finish()` is refused at dispatch
 naming the method (a class method silently beats a trait method). Do not put an exception's message in `error()`
 (SQL and paths); a failed job shows a fixed line, "The job stopped before it finished.", plus the messages you reported.
 
@@ -446,7 +449,10 @@ class Export extends Component
 the file's name and a Download button that calls the action you name in `download`. It **polls on its own** (`poll`, 2500 ms; `false` or `0`
 turns it off; less than a second is raised to one) while the job is queued or running, only while it is on screen, and stops
 when the job is done; with no entry it renders nothing and polls nothing, so the `@else` above is your form again. The path in
-`file` is never printed or sent to the browser; only `fileName` is. Each poll re-renders the component, so keep an editable
+`file` is never printed or sent to the browser; only `fileName` is. `download` is **a method name** (`download="download"`, letters, digits and underscore): it becomes the `wire:click`,
+so a call, a property path or anything with a quote throws when the component renders. Do not serialise the `JobProgress` into
+the page yourself (`@json($export)`, `Js::from($export)`, an `x-data`): its `file` is your server path, and the browser should
+only ever get `fileName`. Each poll re-renders the component, so keep an editable
 form out of it while it polls (the screens hide the form while the job is active). Several jobs on a page share one poll clock.
 
 Both helpers are `protected`, on purpose: a public method of a Livewire component is callable from the browser, and its return
@@ -467,10 +473,10 @@ and tenant parts of the key never come from it, so a client can only switch betw
 - A cache that fails never fails the job: it is logged once per process (the job class and where, never a value).
 - One run per user, tenant and name is assumed; a second dispatch while one runs shares the entry, so hide the start button
   while `$export->isActive()`. Keep `retry_after` longer than the job can run.
-- Not tracked: jobs pushed with nobody signed in, `Queue::fake()`, `dispatchAfterResponse()` (the page has rendered before the
+- Not tracked: jobs pushed with nobody signed in or from inside a queue worker (a job dispatching a job), `Queue::fake()`, `dispatchAfterResponse()` (the page has rendered before the
   push, so it never sees `queued`), batched jobs of one class, which share a name (use Laravel's batch progress, or a
-  distinct `progressName()`), and the later jobs of a chain (`Bus::chain([new A, new B])`): the worker pushes `B` with nobody
-  signed in, and the key is not carried along a chain. Track the job that matters, or have `A` dispatch `B` itself from a
+  distinct `progressName()`), and the later jobs of a chain (`Bus::chain([new A, new B])`): the worker pushes `B`, and the key is not carried
+  along a chain. Track the job that matters, or have `A` dispatch `B` itself from a
   request-side action.
 - `forgetJobProgress()` is not a cancel: a running job's next write re-creates the entry. A job that releases itself shows
   Running at its last numbers until its next attempt starts. A job dropped by middleware (`Skip`, `WithoutOverlapping` with

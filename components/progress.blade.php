@@ -23,6 +23,12 @@ if ($jobMode && ! $job instanceof \Jiannius\Atom\Services\JobProgress) {
     throw new \InvalidArgumentException('<atom:progress :job> expects a Jiannius\Atom\Services\JobProgress, got '.get_debug_type($job).'. Read one with $this->jobProgress(Job::class) or JobProgress::for(Job::class).');
 }
 
+/* `download` is the NAME of a method on the host's component, nothing else: it becomes a wire:click expression, so a call, a property path
+   or anything with a quote is refused, not escaped. */
+if ($jobMode && $download !== null && $download !== false && $download !== '' && (! is_string($download) || preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', $download) !== 1)) {
+    throw new \InvalidArgumentException('<atom:progress download> must be the name of a method on your component, such as download="download", got '.json_encode($download).'.');
+}
+
 $hasEnd = isset($end) && $end->hasActualContent();
 
 if ($jobMode) {

@@ -160,6 +160,43 @@ describe('the download button', function () {
     ]);
 });
 
+describe('the download prop', function () {
+    it('takes a method name and nothing else', function (string $name) {
+        $html = jpRender(jpEntry('finished', ['file' => '/f', 'fileName' => 'f.xlsx']), 'download="'.$name.'"');
+
+        expect(domQuery($html, '//button[@*[name()="wire:click"]="'.$name.'"]'))->toHaveCount(1);
+    })->with(['download', 'downloadExport', '_save', 'a1']);
+
+    it('refuses anything else, rather than escaping it into a wire:click expression', function (mixed $value) {
+        try {
+            renderBlade('<atom:progress :job="$job" :download="$value" />', ['job' => jpEntry('finished', ['file' => '/f', 'fileName' => 'f.xlsx']), 'value' => $value]);
+            $e = null;
+        } catch (Throwable $e) {
+            while ($e->getPrevious()) {
+                $e = $e->getPrevious();
+            }
+        }
+
+        expect($e)->toBeInstanceOf(InvalidArgumentException::class)->and($e->getMessage())->toContain('name of a method');
+    })->with([
+        'a call' => ['download()'],
+        'a call with an argument' => ["download('x')"],
+        'a property path' => ['$wire.download'],
+        'a dotted name' => ['a.b'],
+        'a quote' => ['x" onmouseover="alert(1)'],
+        'a space' => ['a b'],
+        'a leading digit' => ['1a'],
+        'a trailing newline' => ["download\n"],
+        'an array' => [['download']],
+    ]);
+
+    it('lets no download, an empty one and false mean no button', function (mixed $value) {
+        $html = renderBlade('<atom:progress :job="$job" :download="$value" />', ['job' => jpEntry('finished', ['file' => '/f', 'fileName' => 'f.xlsx']), 'value' => $value]);
+
+        expect(domQuery($html, '//button[@*[name()="wire:click"]]'))->toBeEmpty();
+    })->with([[null], [''], [false]]);
+});
+
 describe('polling', function () {
     it('polls while queued or running and not after', function (string $status, bool $polls) {
         expect(jpTrack(jpRender(jpEntry($status)))->hasAttribute('wire:poll.2500ms.visible'))->toBe($polls);

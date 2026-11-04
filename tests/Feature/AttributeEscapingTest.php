@@ -273,8 +273,8 @@ describe('error', function () {
 });
 
 describe('progress (job mode)', function () {
-    it('keeps a hostile download action, file name and message inside their attributes and text', function () {
-        $action = 'x" onmouseover="alert(1)" data-x=\'<b>&amp;</b>';
+    it('keeps a hostile file name and message inside their text', function () {
+        $action = 'download';
         $job = new \Jiannius\Atom\Services\JobProgress(
             name: 'x', status: 'finished', file: '/f', fileName: '<img src=x onerror=alert(1)>.xlsx',
             errors: ['<script>alert(2)</script> {{ 1 + 1 }}'], errorCount: 1, run: 'r',
