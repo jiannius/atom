@@ -447,8 +447,7 @@ the file's name and a Download button that calls the action you name in `downloa
 turns it off; less than a second is raised to one) while the job is queued or running, only while it is on screen, and stops
 when the job is done; with no entry it renders nothing and polls nothing, so the `@else` above is your form again. The path in
 `file` is never printed or sent to the browser; only `fileName` is. Each poll re-renders the component, so keep an editable
-form out of it while it polls (the screens hide the form while the job is active), and on a heavy page wrap the progress in
-an `@island`. Several jobs on a page share one poll clock.
+form out of it while it polls (the screens hide the form while the job is active). Several jobs on a page share one poll clock.
 
 Both helpers are `protected`, on purpose: a public method of a Livewire component is callable from the browser, and its return
 value, the file's path, would go back with it. Read the entry in the view or `render()`, **never keep it in a public property**
