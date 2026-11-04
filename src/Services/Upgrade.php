@@ -749,15 +749,11 @@ class Upgrade
     // ------------------------------------------------------------------ JS: x.currency(...)
 
     /**
-     * The receivers that are an object's own method rather than a number: `this.currency(x)` is a call to the component
-     */
-    protected const CURRENCY_OWNERS = ['this', '$wire', '$refs', '$el', '$data', '$store', 'window', 'document', 'Alpine', 'atom'];
-
-    /**
      * `R.currency(ARGS)` to `atom.currency(R, ARGS)` where R is a plain member chain (identifiers with `$`, dots, literal
      * `[0]` / `['key']` steps) and the arguments close on the same line with their brackets and quotes balanced. Anything
      * else is left byte for byte and listed with its reason. Matches are read from the file's markup text (comments and PHP
-     * regions blanked at the same length), so an offset there is the offset here.
+     * regions blanked at the same length), so an offset there is the offset here. A match is only read where the code text
+     * says it is code: not inside a string or a regex, not in a template's text, not in the prose of a Blade file.
      *
      * @param  array<int, array{file: string, line: int, reason: string}>  $declined
      */
@@ -765,7 +761,9 @@ class Upgrade
     {
         $markup = $this->scanner->markupText($kind, $text);
 
-        if (strlen($markup) !== strlen($text) || ! preg_match_all('/(?<!atom)\.currency\s*\(/', $markup, $found, PREG_OFFSET_CAPTURE)) {
+        $code = $this->scanner->codeText($kind, $text);
+
+        if (strlen($markup) !== strlen($text) || strlen($code) !== strlen($text) || ! preg_match_all('/(?<!atom)\.currency\s*\(/', $code, $found, PREG_OFFSET_CAPTURE)) {
             return $text;
         }
 
@@ -773,8 +771,9 @@ class Upgrade
         // changed text is read again, so a call inside another one's arguments is already rewritten when the outer is read
         foreach (array_reverse($found[0]) as [$match, $dot]) {
             $markup = $this->scanner->markupText($kind, $text);
+            $code = $this->scanner->codeText($kind, $text);
 
-            if (substr($markup, $dot, strlen($match)) !== $match) {
+            if (substr($code, $dot, strlen($match)) !== $match) {
                 continue;
             }
 
@@ -859,7 +858,7 @@ class Upgrade
                 continue;
             }
 
-            if ($start + strlen($name) === $dot && in_array($name, static::CURRENCY_OWNERS, true)) {
+            if ($start + strlen($name) === $dot && in_array($name, UpgradeCheck::CURRENCY_OWNERS, true)) {
                 return 'a method of `'.$name.'`, not a number';
             }
 

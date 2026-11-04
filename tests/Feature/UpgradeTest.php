@@ -1097,7 +1097,43 @@ describe('atom:upgrade: x.currency() becomes atom.currency(x)', function () {
         'a call inside the arguments' => ["a.currency(b.currency('RM'))", "atom.currency(a, atom.currency(b, 'RM'))"],
         'two calls on a line' => ["a.currency() + ' / ' + b.currency()", "atom.currency(a) + ' / ' + atom.currency(b)"],
         'an argument with a comma and brackets in a string' => ["total.currency('a,b)(c')", "atom.currency(total, 'a,b)(c')"],
+        'a template literal expression' => ['`${total.currency()}`', '`${atom.currency(total)}`'],
+        'after a string on the same line' => ["'a.currency()' + total.currency()", "'a.currency()' + atom.currency(total)"],
     ]);
+
+    it('leaves an object\'s own method, a string, a regex and prose alone, and does not list them', function (string $source) {
+        [$js, $dir] = upgradeCurrency($this, 'resources/js/x.js', $source."\n");
+        [$blade] = upgradeCurrency($this, 'resources/views/x.blade.php', "<script>\n{$source}\n</script>\n");
+
+        expect($js)->toBe($source."\n")
+            ->and($blade)->toBe("<script>\n{$source}\n</script>\n");
+    })->with([
+        'a double quoted string' => ['const a = "total.currency(2)"'],
+        'a single quoted string' => ["const a = 'total.currency(2)'"],
+        'a string with an escaped quote before it' => ["const a = 'it\\'s total.currency(2)'"],
+        'the text of a template literal' => ['const a = `total.currency(2)`'],
+        'a regex literal' => ['const a = /total.currency(2)/.test(s)'],
+        'super' => ['class A extends B { fmt() { return super.currency(2) } }'],
+        'Number' => ['const a = Number.currency(2)'],
+        'Math' => ['const a = Math.currency(2)'],
+        'this' => ["const a = this.currency('RM')"],
+        '$wire' => ["const a = \$wire.currency('RM')"],
+    ]);
+
+    it('reads only JavaScript in a Blade file: prose, plain attributes and markup are not code', function () {
+        $source = "<p>Use price.currency(2) to format</p>\n<code>total.currency()</code>\n<div title=\"fee.currency()\" class=\"a.currency()\">x</div>\n"
+            ."<span x-text=\"'total.currency()'\"></span>\n<span x-init=\"ok = /a.currency(2)/.test(s)\"></span>\n<button @click=\"super.currency(1); Number.currency(2)\"></button>\n";
+        [$after, $dir] = upgradeCurrency($this, 'resources/views/x.blade.php', $source);
+
+        expect($after)->toBe($source)
+            ->and(file_exists($dir.'/ATOM-UPGRADE-TODO.md') ? file_get_contents($dir.'/ATOM-UPGRADE-TODO.md') : '')->not->toContain('resources/views/x.blade.php');
+    });
+
+    it('rewrites the code of a Blade file beside its prose', function () {
+        [$after] = upgradeCurrency($this, 'resources/views/x.blade.php', "<p>Use price.currency(2)</p>\n<span x-text=\"price.currency(2)\"></span>\n<script>\nlet v = price.currency(2)\n</script>\n<button wire:click=\"go(fee.currency())\" :title=\"fee.currency()\"></button>\n");
+
+        expect($after)->toBe("<p>Use price.currency(2)</p>\n<span x-text=\"atom.currency(price, 2)\"></span>\n<script>\nlet v = atom.currency(price, 2)\n</script>\n<button wire:click=\"go(atom.currency(fee))\" :title=\"atom.currency(fee)\"></button>\n");
+    });
 
     it('declines the shapes it cannot be sure of, leaves them byte for byte and says why in the TODO', function (string $call, string $reason) {
         $source = "<span x-text=\"{$call}\"></span>\n";
@@ -1111,8 +1147,6 @@ describe('atom:upgrade: x.currency() becomes atom.currency(x)', function () {
         'optional chaining' => ['total?.currency()', 'optional chaining'],
         'a number' => ['5.currency()', 'a number'],
         'a string' => ["'5'.currency()", 'not a plain property chain'],
-        'this, which is the component\'s own method' => ["this.currency('RM')", 'a method of `this`'],
-        'a Livewire method' => ["\$wire.currency('RM')", 'a method of `$wire`'],
         'a computed index' => ['rows[i].currency()', 'index that is not a literal'],
         'a template literal in the arguments' => ['total.currency(`R${m}`)', 'template literal'],
         'an unbalanced quote' => ["total.currency('RM)", 'arguments it cannot read'],

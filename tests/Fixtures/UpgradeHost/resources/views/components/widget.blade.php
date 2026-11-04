@@ -29,3 +29,6 @@ if (empty($total)) {
 </script>
 
 <atom:table :rows="empty($x) ? dd($y) : []" />
+
+<p>Use price.currency(2) in prose.</p>
+<button @click="this.currency(1); super.currency(2); label = 'a.currency(3)'">own methods and strings</button>

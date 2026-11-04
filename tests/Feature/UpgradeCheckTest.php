@@ -530,6 +530,28 @@ describe('atom:upgrade-check: the command', function () {
         }
     });
 
+    it('goes green on --fail-on=breaks for a host whose own object has a currency() method, or that names one in a string or prose', function () {
+        $dir = sys_get_temp_dir().'/atom-upgrade-currency-'.bin2hex(random_bytes(6));
+        mkdir($dir.'/resources/js', 0777, true);
+        mkdir($dir.'/resources/views', 0777, true);
+        mkdir($dir.'/app/Providers', 0777, true);
+        file_put_contents($dir.'/app/Providers/AppServiceProvider.php', "<?php\n\nnamespace App\\Providers;\n\nuse Illuminate\\Support\\Facades\\Date;\nuse Jiannius\\Atom\\Services\\Carbon;\n\nclass AppServiceProvider\n{\n    public function boot(): void\n    {\n        Date::use(Carbon::class);\n    }\n}\n");
+        mkdir($dir.'/resources/css', 0777, true);
+        file_put_contents($dir.'/resources/css/app.css', "@import 'tailwindcss';\n");
+        file_put_contents($dir.'/resources/js/own.js', "export default { currency(v) { return v }, show() { return this.currency(1) + \$wire.currency(2) + super.currency(3) + Number.currency(4) + 'a.currency(5)' + /b.currency(6)/.source } }\n");
+        file_put_contents($dir.'/resources/views/prose.blade.php', "<p>Use price.currency(2) to format.</p>\n");
+
+        try {
+            expect(Artisan::call('atom:upgrade-check', ['--path' => $dir, '--fail-on' => 'breaks']))->toBe(0);
+
+            file_put_contents($dir.'/resources/js/own.js', "const a = price.currency(2)\n");
+
+            expect(Artisan::call('atom:upgrade-check', ['--path' => $dir, '--fail-on' => 'breaks']))->toBe(1);
+        } finally {
+            upgradeRemove($dir);
+        }
+    });
+
     it('keeps --json clean when --fail-on fails: the reason goes to the error stream, not into the JSON', function () {
         Artisan::call('atom:upgrade-check', ['--path' => upgradeFixture(), '--json' => true, '--fail-on' => 'breaks']);
 
