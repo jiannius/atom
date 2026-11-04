@@ -5,7 +5,7 @@ namespace Jiannius\Atom\Tests\Fixtures;
 use Livewire\Component;
 
 /**
- * A component with no atom trait that renders an <atom:table>.
+ * A component with no atom trait that renders an <atom:table> with a checked bar (the part that needs WithTable).
  */
 class TraitGuardChildFixture extends Component
 {
@@ -14,6 +14,6 @@ class TraitGuardChildFixture extends Component
      */
     public function render()
     {
-        return '<div><atom:table><x-slot:rows></x-slot:rows></atom:table></div>';
+        return '<div><atom:table><x-slot:checked>Act</x-slot:checked><x-slot:rows></x-slot:rows></atom:table></div>';
     }
 }

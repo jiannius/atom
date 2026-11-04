@@ -506,6 +506,18 @@ describe('a key something else already writes to the URL', function () {
         expect(array_column(urlFiltersEntries($quietTab), 'as'))->toBe(['tab']);
     });
 
+    it('reserves `page` on a component that uses WithTable, which brings WithPagination', function () {
+        $table = new class extends Component {
+            use WithTable, WithUrlFilters;
+
+            public array $filters = ['page' => ''];
+
+            protected function urlFilters(): array { return ['page' => '']; }
+        };
+
+        expect(fn () => urlFiltersEntries($table))->toThrow(LogicException::class, 'already used');
+    });
+
     it('lets a prefix keep two listings apart, and the fixture as declared', function () {
         expect(array_column(urlFiltersEntries(new UrlFiltersFixture), 'as'))->toBe(['search', 'status', 'region']);
 

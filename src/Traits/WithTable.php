@@ -2,13 +2,17 @@
 
 namespace Jiannius\Atom\Traits;
 
+use Livewire\WithPagination;
+
 /**
  * State and methods behind <atom:table>: sort, checkboxes, "select all
  * matching", max rows, trashed toggle. Add it to any Livewire component that
  * renders <atom:table> or sorts through the toTable() builder macro; the table
  * blades throw a clear error when it is missing.
  *
- * Pagination is Livewire's own: add WithPagination as well for a paginated table.
+ * Pagination is Livewire's own WithPagination, which this trait uses itself:
+ * toTable() always paginates, so a table list needs both. A component that also
+ * lists WithPagination keeps working (PHP composes the same trait once).
  *
  * The signed `raw:` sort gate (issue #54) is not a method of this trait: a method of
  * the same name on the host would silently replace it. AtomServiceProvider listens on
@@ -16,6 +20,8 @@ namespace Jiannius\Atom\Traits;
  */
 trait WithTable
 {
+    use WithPagination;
+
     public $_table = [
         'sort' => ['column' => null, 'direction' => null],
         'checkboxes' => [],
@@ -139,9 +145,7 @@ trait WithTable
 
         // the selection ignores the filters, so the page it was on means nothing
         // on the other side of the flip
-        if (method_exists($this, 'resetPage')) {
-            $this->resetPage();
-        }
+        $this->resetPage();
     }
 
     /**

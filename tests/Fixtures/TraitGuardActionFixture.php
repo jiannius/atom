@@ -18,7 +18,7 @@ class TraitGuardActionFixture extends Component
      */
     public function mount(): void
     {
-        $this->html = Blade::render('<atom:table><x-slot:rows></x-slot:rows></atom:table>');
+        $this->html = Blade::render('<atom:table><x-slot:checked>Act</x-slot:checked><x-slot:rows></x-slot:rows></atom:table>');
     }
 
     /**
@@ -26,7 +26,7 @@ class TraitGuardActionFixture extends Component
      */
     public function export(): void
     {
-        $this->html = Blade::render('<atom:table><x-slot:rows></x-slot:rows></atom:table>');
+        $this->html = Blade::render('<atom:table><x-slot:checked>Act</x-slot:checked><x-slot:rows></x-slot:rows></atom:table>');
     }
 
     /**

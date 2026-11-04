@@ -2104,10 +2104,10 @@ class UpgradeCheck
         $paginates = preg_match('/->\s*(?:paginate|simplePaginate|cursorPaginate|toPage|toTable)\s*\(|\b(?:resetPage|setPage|gotoPage|nextPage|previousPage)\s*\(/', $php) || $tagged(['pagination']) || str_contains($markup, '->links(');
 
         if ($paginates || $tagged(['table'])) {
-            // an <atom:table> alone is enough to keep the trait, but a table that never paginates does not need it: say so
+            // WithTable brings WithPagination itself, so the line is kept for clarity and either spelling is fine: say so
             $evidence['WithPagination'] = $paginates
                 ? 'paginates (paginate(), toTable(), <atom:table> or <atom:pagination>)'
-                : 'only <atom:table> in the view: it may be unneeded when the table never paginates';
+                : 'only <atom:table> in the view: WithTable already brings it, so keeping or dropping it makes no difference';
         }
 
         if (! isset($evidence['WithEditor']) && ($tagged(['uploader', 'tiptap.chat', 'editor.chat']) || $tagged(['input'], fn ($a) => static::value($a, 'type') === 'file') || preg_match('/TemporaryUploadedFile|->\s*temporaryUrl\s*\(/', preg_replace('/^use\s[^;]*;/m', '', $php)) || preg_match('/\$wire\s*\.\s*upload\s*\(|livewire-upload-/', $markup) || preg_match('/<input\b[^>]*\btype\s*=\s*["\']file["\']/i', $markup))) {

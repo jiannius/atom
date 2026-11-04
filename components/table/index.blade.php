@@ -13,7 +13,10 @@
 ])
 
 @php
-app('atom')->requireTrait(\Jiannius\Atom\Traits\WithTable::class, '<atom:table>');
+/* A table of columns and rows needs nothing from $_table: the checked bar is what reads it (the parts that do guard themselves) */
+if (isset($checked) && $checked->isNotEmpty()) {
+    app('atom')->requireTrait(\Jiannius\Atom\Traits\WithTable::class, '<atom:table>');
+}
 
 // First-load skeleton: opt-in, and only while a paginator hasn't loaded yet.
 // Gated behind $skeleton so static/synchronous tables are completely unaffected.
@@ -41,7 +44,7 @@ $onFilterChanged = $stickySelection
 // has to keep the search and filters reachable instead: holding a selection
 // *while you go on searching* is the entire point, and a swapped-out header
 // makes the flow impossible. The two bars stack there.
-$showHeader = $stickySelection ? 'true' : '!$wire._table.checkboxes.length';
+$showHeader = $stickySelection ? 'true' : '!$wire._table?.checkboxes?.length';
 
 // `frameless` is for a table that sits inside a panel the page already draws (a list with saved views and a toolbar
 // above it): no outer box of its own, the header and checked bars become hairline strips, and the rows keep their

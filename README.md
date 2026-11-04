@@ -292,17 +292,19 @@ A component takes only the state it uses, each from its own trait in `Jiannius\A
 
 | Trait | Brings | Use it for |
 | --- | --- | --- |
-| `WithTable` | `$_table` (sort, checkboxes, select-all, max rows, show-trashed), the table methods, the `raw:` sort gate | `<atom:table>` and `toTable()` sorting, see [Table selection](#table-selection) |
+| `WithTable` | `$_table` (sort, checkboxes, select-all, max rows, show-trashed), the table methods, the `raw:` sort gate, and Livewire's `WithPagination` (`toTable()` always paginates, so a table list needs both) | `<atom:table>` and `toTable()` sorting, see [Table selection](#table-selection) |
 | `WithBreadcrumbs` | `$_breadcrumbs`, built on mount from your optional `breadcrumbs($crumbs)` method | `<atom:breadcrumbs>` |
 | `WithEditor` | `$_editor.images` and Livewire's `WithFileUploads` | `<atom:tiptap>` with image upload |
 | `WithRecaptcha` | `$_recaptcha` and `verifyRecaptcha()` | `<atom:form recaptcha>` |
 
-Pagination and uploads are Livewire's own: add `WithPagination` to a paginated component and
-`WithFileUploads` to one with an uploader. Rendering `<atom:table>`, a sortable `<atom:table.column>`,
+`WithTable` uses Livewire's `WithPagination` itself, so a component that also lists it keeps working.
+Add `WithPagination` yourself to a paginated component that has no table, and `WithFileUploads` to one
+with an uploader. A plain `<atom:table>` (columns, rows, a header) needs no trait; rendering one with a
+`checked` bar, a sortable `<atom:table.column>`,
 a checkbox cell, the trashed toggle, the tiptap image toolbar or `<atom:form recaptcha>` in a
 component without its trait throws an error naming the trait and the component class, and so does
 a component that defines `breadcrumbs()` without `WithBreadcrumbs` (nothing would call it; a method that takes no parameter, a method with a Livewire attribute such as `#[Computed]`, and a component or inherited method from a Composer package are left alone). The check is made while the component's view renders, so table markup rendered to a string in `mount()` or an action (an export, a PDF) is not an error.
-`<atom:table.pagination>` asks for `WithPagination` the same way. `toTable()` reads the table state only from a component
+`<atom:table.pagination>` and the standalone `<atom:pagination>` ask for `WithPagination` the same way. `toTable()` reads the table state only from a component
 that uses `WithTable`; on any other it applies no sort.
 
 #### Names the traits occupy

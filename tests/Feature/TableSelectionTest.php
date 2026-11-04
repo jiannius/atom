@@ -218,7 +218,7 @@ describe('sticky selection', function () {
             ->toContain('x-show="true"');
 
         expect(renderBlade('<atom:table>'.$header.'</atom:table>'))
-            ->toContain('x-show="!$wire._table.checkboxes.length"');
+            ->toContain('x-show="!$wire._table?.checkboxes?.length"');
     });
 
     it('renders a persistent clear only when sticky', function () {
