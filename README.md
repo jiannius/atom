@@ -441,6 +441,7 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:time-picker>` | `name`, `label`, `caption`, `invalid`, `inline`. |
 | `<atom:uploader>` | `label` (default `Upload`), `variant`, `size`. A default slot **replaces** the upload button (your own trigger); the `end` slot (`<x-slot:end>`) adds content beside the button and the cancel control and keeps the button: a size or type hint. `<atom:input type="file">` forwards both slots. Drop variant: `<atom:uploader.dropzone>`, with the same two slots (`end` is drawn under the zone). |
 | `<atom:tiptap>` | Tiptap rich text. `name`, `label`, `caption`, `readonly`, `autofocus`, `variant="transparent"`, `placeholder`, `toolbar`, `mention`. Many sub-buttons under `<atom:tiptap.toolbar.*>` and contextual menus under `<atom:tiptap.menu.*>`. `<atom:editor>`, `<atom:editor.chat>` and `<atom:editor.content>` are gone: they were aliases of `<atom:tiptap>`, `<atom:tiptap.chat>` and `<atom:tiptap.content>`. |
+| `<atom:prose>` | Typography for text that is read inside something else (a message bubble, a card): the same wrapper as `<atom:tiptap.content>`, with the first and last block flush against the box. `size="sm"` is the chat-bubble step. One of three sources: `markdown` (a string, converted and sanitised: see "Markdown in a message"), `content` (stored Tiptap JSON or HTML, through `Content::render()`) or the slot (your own markup, printed as written). Put it in `<atom:timeline.item kind="message">`'s slot for an assistant's reply. |
 
 ### Buttons & links
 
@@ -1555,6 +1556,25 @@ Two things it does not do:
 
 - **It doesn't check a mention's `data-id`.** It is escaped, but it is whatever the client sent. If a mention does anything (a notification, a link to a record), look the id up on the server, scoped to what the current user may mention, and ignore the rest.
 - **It doesn't check that the caller may post.** Authorise the request as you would any other write.
+
+### Markdown in a message: `<atom:prose :markdown>`
+
+```blade
+<atom:timeline kind="message" label="Conversation">
+    <atom:timeline.item speaker="Assistant" time="10:03">
+        <atom:prose :markdown="$reply->body" size="sm"/>
+    </atom:timeline.item>
+</atom:timeline>
+```
+
+`markdown` is for text somebody else wrote, an AI assistant's answer most of all, so nothing in it is trusted. It goes through two gates, and only what passes both is printed:
+
+1. **The converter** (`league/commonmark`, GitHub-flavoured: tables, strikethrough, autolinks, fenced code) with raw HTML escaped, so `<script>` and `<img onerror>` are shown as text; a link with an unsafe address (`javascript:`, `data:`, `vbscript:`, `file:`, entity-encoded or reference-style ones too) keeps its words and loses its address; and an **image becomes its alt text**, because an image is a request the reader's browser makes to an address the author chose (a way to send what is on the page to a third party). Blocks stop nesting at 16 levels.
+2. **`Content::sanitize()`**, the gate for HTML from outside (see above), so a gap in the converter is not a gap in the page: only tags, attributes and addresses the editor schema holds come out. A task list's checkbox and a column's alignment do not (the item and the cell stay).
+
+A source over 32 KB (about five thousand words; the converter's memory follows its size), or one that turns into more than 10,000 tags (a one-column table of about 2,400 rows), is not converted: the text is printed **as it is**, escaped, with its line breaks (`whitespace-pre-line`), so a message is never blank. `Jiannius\Atom\Tiptap\Markdown::toHtml($markdown)` is the same step for a host that needs the HTML (`null` means "show the text as it is"); it needs `league/commonmark`, which atom requires (hosts on `laravel/framework` already have it).
+
+Markdown images never load. To show a picture in a message, put it in `content` (Tiptap JSON) or in your own slot markup.
 
 ### Upgrading: `render()` and `<atom:tiptap.content>` refuse what they can't parse safely
 

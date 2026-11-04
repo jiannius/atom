@@ -258,6 +258,36 @@
 }
 
 /*
+ * <atom:prose>: the same typography for text that is read inside something else (a message bubble, a card). The first and last block
+ * sit flush against the box, so its padding is the only space around the text; size="sm" is the small step (a chat bubble), with the
+ * headings stepped down to match.
+ */
+.editor-content.editor-prose > :first-child {
+    margin-top: 0;
+}
+
+.editor-content.editor-prose > :last-child {
+    margin-bottom: 0;
+}
+
+.editor-content.editor-prose[data-size='sm'] {
+    font-size: var(--atom-text-sm);
+    line-height: 1.5;
+}
+
+.editor-content.editor-prose[data-size='sm'] h1 {
+    font-size: 1.0625rem;
+}
+
+.editor-content.editor-prose[data-size='sm'] h2 {
+    font-size: 1rem;
+}
+
+.editor-content.editor-prose[data-size='sm'] :is(h3, h4) {
+    font-size: var(--atom-text-sm);
+}
+
+/*
  * Bubble-menu popovers (table / image / youtube) start hidden and out of flow.
  * Tiptap v3's BubbleMenu positions them in place — unlike v2's tippy, which detached
  * them — and only sets inline visibility/position once a matching node is selected.
