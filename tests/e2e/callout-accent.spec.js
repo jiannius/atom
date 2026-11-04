@@ -39,6 +39,18 @@ for (const tw of ['floor', 'latest']) {
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     })
 
+    test('the tone colours the callout\'s own icon only: a button in the actions slot keeps its own icon colour', async ({ page }) => {
+      await openDisplay(page, { tw, section: 'panels' })
+
+      const colour = (loc) => loc.evaluate((el) => getComputedStyle(el).color)
+      const button = page.getByTestId('callout-accent-primary')
+      const icon = button.locator('[data-atom-icon]').first()
+
+      expect(await colour(icon)).toBe(await colour(button))
+      // and it is not the callout's accent ink, which would be dark on the primary button
+      expect(await colour(icon)).not.toBe(await colour(page.getByTestId('callout-accent').locator('[data-atom-icon]').first()))
+    })
+
     test('a callout without the slot draws no action row', async ({ page }) => {
       await openDisplay(page, { tw, section: 'panels' })
 

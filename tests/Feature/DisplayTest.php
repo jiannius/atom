@@ -99,6 +99,29 @@ describe('callout', function () {
         expect(Blade::render('<atom:callout variant="info" heading="Hi" />'))->not->toContain($flag);
     });
 
+    it('puts the tone on the leading icon only, never as a rule on every icon inside the callout (#148)', function (?string $variant, string $ink) {
+        $html = Blade::render('<atom:callout variant="'.$variant.'" heading="Hi"><atom:button icon="check">Go</atom:button></atom:callout>');
+
+        expect($html)->not->toContain('[&_[data-atom-icon]]');
+
+        // the callout's own icon is the first one, and it carries the tone; the button's does not
+        $icons = domQuery($html, '//*[@data-atom-icon]');
+
+        expect($icons)->not->toBeEmpty()
+            ->and(domClasses($icons[0]))->toContain($ink);
+
+        foreach (array_slice($icons, 1) as $inner) {
+            expect(domClasses($inner))->not->toContain($ink);
+        }
+    })->with([
+        'accent' => ['accent', 'text-accent-ink'],
+        'info' => ['info', 'text-info-fg'],
+        'success' => ['success', 'text-success-fg'],
+        'warning' => ['warning', 'text-warning-fg'],
+        'danger' => ['danger', 'text-danger-fg'],
+        'default' => [null, 'text-fg-muted'],
+    ]);
+
     it('has no dismiss button by default', function () {
         $html = Blade::render('<atom:callout heading="Hi" />');
 

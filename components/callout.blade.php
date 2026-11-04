@@ -18,8 +18,9 @@ $icon ??= match ($variant) {
     default => 'announce',
 };
 
-/* A tone's tint and a hairline of its ink; the heading takes the tone's ink and the text stays fg, so the body reads at full
-   contrast. An unknown variant is the neutral tint. */
+/* A tone's tint and a hairline of its ink; the heading and the leading icon take the tone's ink and the text stays fg, so the body
+   reads at full contrast. An unknown variant is the neutral tint. The ink goes on the leading icon itself, never as a descendant rule on
+   every icon in the callout: an icon in a button of the actions slot, or in the body, keeps the colour of what it sits in. */
 $tone = match ($variant) {
     'accent' => 'accent',
     'info' => 'info',
@@ -33,20 +34,29 @@ $classes = Arr::toCssClasses([
     '[:where(&)]:relative [:where(&)]:w-full rounded-panel border px-4 py-3 text-fg',
     'pe-11' => $closeable,
     match ($tone) {
-        'accent' => 'bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))] border-border border-s-4 border-s-accent-ink [&_[data-atom-icon]]:text-accent-ink [&_[data-atom-callout-heading]]:text-accent-ink',
-        'info' => 'bg-info-bg border-info-fg/20 [&_[data-atom-icon]]:text-info-fg [&_[data-atom-callout-heading]]:text-info-fg',
-        'success' => 'bg-success-bg border-success-fg/20 [&_[data-atom-icon]]:text-success-fg [&_[data-atom-callout-heading]]:text-success-fg',
-        'warning' => 'bg-warning-bg border-warning-fg/20 [&_[data-atom-icon]]:text-warning-fg [&_[data-atom-callout-heading]]:text-warning-fg',
-        'danger' => 'bg-danger-bg border-danger-fg/20 [&_[data-atom-icon]]:text-danger-fg [&_[data-atom-callout-heading]]:text-danger-fg',
-        default => 'bg-neutral-bg border-border [&_[data-atom-icon]]:text-fg-muted',
+        'accent' => 'bg-[color-mix(in_oklab,var(--color-accent)_7%,var(--atom-surface))] border-border border-s-4 border-s-accent-ink [&_[data-atom-callout-heading]]:text-accent-ink',
+        'info' => 'bg-info-bg border-info-fg/20 [&_[data-atom-callout-heading]]:text-info-fg',
+        'success' => 'bg-success-bg border-success-fg/20 [&_[data-atom-callout-heading]]:text-success-fg',
+        'warning' => 'bg-warning-bg border-warning-fg/20 [&_[data-atom-callout-heading]]:text-warning-fg',
+        'danger' => 'bg-danger-bg border-danger-fg/20 [&_[data-atom-callout-heading]]:text-danger-fg',
+        default => 'bg-neutral-bg border-border',
     },
 ]);
+
+$iconInk = match ($tone) {
+    'accent' => 'text-accent-ink',
+    'info' => 'text-info-fg',
+    'success' => 'text-success-fg',
+    'warning' => 'text-warning-fg',
+    'danger' => 'text-danger-fg',
+    default => 'text-fg-muted',
+};
 @endphp
 
 <div x-data="{ show: true }" x-show="show" {{ $attributes->class($classes) }}>
     <div class="flex gap-3">
         @if ($icon)
-            <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4 shrink-0 mt-[3px]" variant="solid" />
+            <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4 shrink-0 mt-[3px] {{ $iconInk }}" variant="solid" />
         @endif
 
         <div class="flex flex-col gap-1 min-w-0 flex-1">
