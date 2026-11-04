@@ -221,10 +221,10 @@ describe('atom:upgrade-check: the findings', function () {
                 ->and($check['detect'])->toBeString()->not->toBeEmpty();
         }
 
-        // what UPGRADE.md says the codemod fixes: the CSS import, the traits, the Date::use line, the editor tags, the editor prop
+        // what UPGRADE.md says the codemod fixes: the CSS import, the traits, the Date::use line, the editor tags, the editor prop, `x.currency()`
         $auto = collect(UpgradeCheck::checks())->filter(fn ($c) => $c['codemod'] === 'auto')->keys()->all();
 
-        expect($auto)->toEqualCanonicalizing(['css-atom-source', 'css-skeleton-theme', 'css-border-color-rule', 'html-editor-prop', 'use-atom-component', 'date-use-line', 'editor-tag']);
+        expect($auto)->toEqualCanonicalizing(['css-atom-source', 'css-skeleton-theme', 'css-border-color-rule', 'html-editor-prop', 'use-atom-component', 'date-use-line', 'editor-tag', 'js-currency']);
     });
 
     it('infers the traits each component needs from its view, its partials and its methods', function () {

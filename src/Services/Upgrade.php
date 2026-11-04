@@ -33,6 +33,7 @@ class Upgrade
         'date-use' => ['date-use-line'],
         'editor-tag' => ['editor-tag'],
         'editor-prop' => ['html-editor-prop'],
+        'currency' => ['js-currency'],
     ];
 
     /**
@@ -267,6 +268,25 @@ class Upgrade
             if ($result !== $text) {
                 $touch($relative, 'editor-prop', $result);
                 $applied[] = '`'.$relative.'`: removed the dead `editor` attribute from '.$count.' tag'.($count === 1 ? '' : 's');
+            }
+        }
+
+        // 5. x.currency(...) to atom.currency(x, ...), for a plain member chain
+        foreach (array_unique(array_column(array_filter($scan['checks']['js-currency']['findings'], fn ($finding) => $finding['scope'] === 'app'), 'file')) as $relative) {
+            $text = $read($relative);
+
+            if ($text === null) {
+                continue;
+            }
+
+            $count = 0;
+            $result = $this->keepingEol($text, function (string $lf) use ($relative, &$count, &$declined) {
+                return $this->rewriteCurrency($lf, str_ends_with($relative, '.blade.php') ? 'blade' : 'js', $relative, $count, $declined);
+            });
+
+            if ($result !== $text) {
+                $touch($relative, 'currency', $result);
+                $applied[] = '`'.$relative.'`: '.$count.' `x.currency(...)` call'.($count === 1 ? '' : 's').' rewritten to `atom.currency(x, ...)`';
             }
         }
 
@@ -724,6 +744,185 @@ class Upgrade
         }
 
         return $text;
+    }
+
+    // ------------------------------------------------------------------ JS: x.currency(...)
+
+    /**
+     * The receivers that are an object's own method rather than a number: `this.currency(x)` is a call to the component
+     */
+    protected const CURRENCY_OWNERS = ['this', '$wire', '$refs', '$el', '$data', '$store', 'window', 'document', 'Alpine', 'atom'];
+
+    /**
+     * `R.currency(ARGS)` to `atom.currency(R, ARGS)` where R is a plain member chain (identifiers with `$`, dots, literal
+     * `[0]` / `['key']` steps) and the arguments close on the same line with their brackets and quotes balanced. Anything
+     * else is left byte for byte and listed with its reason. Matches are read from the file's markup text (comments and PHP
+     * regions blanked at the same length), so an offset there is the offset here.
+     *
+     * @param  array<int, array{file: string, line: int, reason: string}>  $declined
+     */
+    protected function rewriteCurrency(string $text, string $kind, string $relative, int &$count, array &$declined): string
+    {
+        $markup = $this->scanner->markupText($kind, $text);
+
+        if (strlen($markup) !== strlen($text) || ! preg_match_all('/(?<!atom)\.currency\s*\(/', $markup, $found, PREG_OFFSET_CAPTURE)) {
+            return $text;
+        }
+
+        // from the last call to the first: a change at a later offset moves nothing before it, and the markup of the
+        // changed text is read again, so a call inside another one's arguments is already rewritten when the outer is read
+        foreach (array_reverse($found[0]) as [$match, $dot]) {
+            $markup = $this->scanner->markupText($kind, $text);
+
+            if (substr($markup, $dot, strlen($match)) !== $match) {
+                continue;
+            }
+
+            $open = $dot + strlen($match) - 1;
+            $line = substr_count($text, "\n", 0, $dot) + 1;
+            $receiver = $this->currencyReceiver($markup, $dot);
+            $arguments = is_array($receiver) ? $this->currencyArguments($markup, $open) : null;
+
+            if (! is_array($receiver) || ! is_array($arguments)) {
+                $declined[] = ['file' => $relative, 'line' => $line, 'reason' => '`.currency()` not rewritten, '.(is_array($receiver) ? $arguments : $receiver).': write `atom.currency(x, ...)` by hand'];
+
+                continue;
+            }
+
+            $args = trim(substr($text, $open + 1, $arguments['close'] - $open - 1));
+            $call = 'atom.currency('.substr($text, $receiver['start'], $dot - $receiver['start']).($args === '' ? '' : ', '.$args).')';
+            $text = substr($text, 0, $receiver['start']).$call.substr($text, $arguments['close'] + 1);
+            $count++;
+        }
+
+        return $text;
+    }
+
+    /**
+     * Where the receiver of the `.currency(` at $dot starts, or why it cannot be rewritten
+     *
+     * @return array{start: int}|string
+     */
+    protected function currencyReceiver(string $markup, int $dot): array|string
+    {
+        if ($dot > 0 && $markup[$dot - 1] === '?') {
+            return 'optional chaining';
+        }
+
+        $at = $dot;
+
+        while (true) {
+            if ($at > 0 && $markup[$at - 1] === ']') {
+                $open = strrpos(substr($markup, 0, $at - 1), '[');
+                $inside = $open === false ? '' : substr($markup, $open + 1, $at - $open - 2);
+
+                if ($open === false || ! preg_match('/^(?:\d+|\'[^\'\\\\\n]*\'|"[^"\\\\\n]*")$/', $inside)) {
+                    return 'an index that is not a literal';
+                }
+
+                $at = $open;
+
+                if ($at === 0 || ! preg_match('/[\w$\]]/', $markup[$at - 1])) {
+                    return 'a receiver that is not a plain property chain';
+                }
+
+                continue;
+            }
+
+            $start = $at;
+
+            while ($start > 0 && preg_match('/[\w$]/', $markup[$start - 1])) {
+                $start--;
+            }
+
+            if ($start === $at) {
+                return 'a receiver that is not a plain property chain';
+            }
+
+            $name = substr($markup, $start, $at - $start);
+
+            if (preg_match('/^\d/', $name)) {
+                return 'a number as the receiver';
+            }
+
+            if ($start > 0 && $markup[$start - 1] === '.') {
+                if ($start > 1 && $markup[$start - 2] === '?') {
+                    return 'optional chaining';
+                }
+
+                $at = $start - 1;
+
+                if ($at === 0 || ! preg_match('/[\w$\]]/', $markup[$at - 1])) {
+                    return 'a receiver that is not a plain property chain';
+                }
+
+                continue;
+            }
+
+            if ($start + strlen($name) === $dot && in_array($name, static::CURRENCY_OWNERS, true)) {
+                return 'a method of `'.$name.'`, not a number';
+            }
+
+            if (preg_match('/\bnew\s+$/', substr($markup, max(0, $start - 12), min(12, $start)))) {
+                return 'a `new` expression';
+            }
+
+            return ['start' => $start];
+        }
+    }
+
+    /**
+     * Where the `)` that closes the arguments opened at $open is, or why they cannot be read: on the line of the call,
+     * quotes and brackets balanced, no template literal
+     *
+     * @return array{close: int}|string
+     */
+    protected function currencyArguments(string $markup, int $open): array|string
+    {
+        $stack = [];
+        $length = strlen($markup);
+
+        for ($i = $open + 1; $i < $length; $i++) {
+            $char = $markup[$i];
+
+            if ($char === "\n") {
+                return 'the arguments run over a line';
+            }
+
+            if ($char === '`') {
+                return 'a template literal in the arguments';
+            }
+
+            if ($char === '\'' || $char === '"') {
+                for ($i++; $i < $length && $markup[$i] !== $char; $i++) {
+                    if ($markup[$i] === "\n") {
+                        return 'arguments it cannot read (a string that does not close)';
+                    }
+
+                    $i += $markup[$i] === '\\' ? 1 : 0;
+                }
+
+                if ($i >= $length) {
+                    return 'arguments it cannot read (a string that does not close)';
+                }
+
+                continue;
+            }
+
+            if (str_contains('([{', $char)) {
+                $stack[] = $char;
+            } elseif (str_contains(')]}', $char)) {
+                if ($stack === []) {
+                    return $char === ')' ? ['close' => $i] : 'arguments it cannot read (unbalanced brackets)';
+                }
+
+                if ('([{'[strpos(')]}', $char)] !== array_pop($stack)) {
+                    return 'arguments it cannot read (unbalanced brackets)';
+                }
+            }
+        }
+
+        return 'arguments it cannot read (no closing bracket)';
     }
 
     // ------------------------------------------------------------------ Blade: editor tags and prop

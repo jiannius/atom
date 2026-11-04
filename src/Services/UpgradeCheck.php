@@ -411,7 +411,7 @@ class UpgradeCheck
             // js globals
             'js-currency' => [
                 'title' => 'x.currency(...) becomes atom.currency(x, ...)',
-                'section' => 'JS globals', 'severity' => static::BREAKS, 'codemod' => 'report',
+                'section' => 'JS globals', 'severity' => static::BREAKS, 'codemod' => 'auto',
                 'detect' => '.currency( in JS files and in Blade markup outside PHP regions',
                 'kinds' => ['js', 'blade'], 'variant' => 'markup', 'pattern' => '/(?<!atom)\.currency\s*\(/',
             ],
@@ -783,6 +783,15 @@ class UpgradeCheck
     public function commentFree(string $kind, string $source): string
     {
         return $this->prepare($kind, $source)['full'];
+    }
+
+    /**
+     * A file's text as its JavaScript is read: comments blanked and, in Blade, every PHP region too, at the same length (so an
+     * offset here is the offset in the file)
+     */
+    public function markupText(string $kind, string $source): string
+    {
+        return $this->prepare($kind, $source)['markup'];
     }
 
     /**

@@ -1022,7 +1022,7 @@ describe('atom:upgrade: the TODO', function () {
             ->toContain('### Tokens')->toContain('### Livewire traits')->toContain('### JS globals')->toContain('### PHP globals: dates and macros')
             // JS globals, $wire helpers, listeners
             ->toContain('  - `resources/js/app.js:3` dd(rows)')
-            ->toContain('**js-currency** (breaks at runtime, 1)')
+            ->not->toContain('**js-currency**')
             ->toContain('  - `resources/views/components/widget.blade.php:22` <button @click="$wire.alert(\'Hi\')">hi</button>')
             ->toContain('**wire-helper-listener** (breaks at runtime, 10)')
             ->toContain('  - `app/Livewire/Orders.php:16` protected $listeners = [\'saved\' => \'toast\'];')
@@ -1050,7 +1050,105 @@ describe('atom:upgrade: the TODO', function () {
             ->not->toContain('**css-border-color-rule**')
             ->not->toContain('**editor-tag**')
             ->not->toContain('**html-editor-prop**')
-            ->not->toContain('**date-use-line**');
+            ->not->toContain('**date-use-line**')
+            ->not->toContain('**js-currency**');
+    });
+});
+
+describe('atom:upgrade: x.currency() becomes atom.currency(x)', function () {
+    /**
+     * Write a file into a copy of the fixture host, run the codemod and give back what the file reads after
+     */
+    function upgradeCurrency(object $test, string $relative, string $source): array
+    {
+        $dir = ($test->host)(false);
+        file_put_contents($dir.'/'.$relative, $source);
+        upgradeCodemodRun($dir);
+
+        return [file_get_contents($dir.'/'.$relative), $dir];
+    }
+
+    it('rewrites the fixture\'s call and nothing else in that attribute', function () {
+        $dir = ($this->host)();
+        upgradeCodemodRun($dir);
+
+        $widget = file_get_contents($dir.'/resources/views/components/widget.blade.php');
+
+        expect($widget)->toContain("label = atom.currency(total, 'RM');")
+            ->and($widget)->not->toContain("total.currency('RM')")
+            ->and($widget)->toContain('<span x-text="atom.currency(total)"></span>');
+    });
+
+    it('rewrites a plain member chain, in Blade markup and in a script file', function (string $before, string $after) {
+        [$blade] = upgradeCurrency($this, 'resources/views/x.blade.php', "<span x-text=\"{$before}\"></span>\n");
+        [$js] = upgradeCurrency($this, 'resources/js/x.js', "const v = {$before}\n");
+
+        expect($blade)->toBe("<span x-text=\"{$after}\"></span>\n")
+            ->and($js)->toBe("const v = {$after}\n");
+    })->with([
+        'a property' => ['total.currency()', 'atom.currency(total)'],
+        'a chain' => ['fee.amount.currency()', 'atom.currency(fee.amount)'],
+        'arguments' => ["total.currency('RM', 2)", "atom.currency(total, 'RM', 2)"],
+        'spaces around the arguments' => ["total.currency( 'RM' )", "atom.currency(total, 'RM')"],
+        'a Livewire property' => ["\$wire.total.currency('RM')", "atom.currency(\$wire.total, 'RM')"],
+        'a literal index' => ['rows[0].total.currency()', 'atom.currency(rows[0].total)'],
+        'a string index' => ["item['price'].currency()", "atom.currency(item['price'])"],
+        'a unary minus' => ['-total.currency()', '-atom.currency(total)'],
+        'a call inside the arguments' => ["a.currency(b.currency('RM'))", "atom.currency(a, atom.currency(b, 'RM'))"],
+        'two calls on a line' => ["a.currency() + ' / ' + b.currency()", "atom.currency(a) + ' / ' + atom.currency(b)"],
+        'an argument with a comma and brackets in a string' => ["total.currency('a,b)(c')", "atom.currency(total, 'a,b)(c')"],
+    ]);
+
+    it('declines the shapes it cannot be sure of, leaves them byte for byte and says why in the TODO', function (string $call, string $reason) {
+        $source = "<span x-text=\"{$call}\"></span>\n";
+        [$after, $dir] = upgradeCurrency($this, 'resources/views/x.blade.php', $source);
+
+        expect($after)->toBe($source)
+            ->and(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('resources/views/x.blade.php:1')->toContain($reason);
+    })->with([
+        'the result of a call' => ['calc().currency()', 'not a plain property chain'],
+        'a parenthesised expression' => ['(a + b).currency()', 'not a plain property chain'],
+        'optional chaining' => ['total?.currency()', 'optional chaining'],
+        'a number' => ['5.currency()', 'a number'],
+        'a string' => ["'5'.currency()", 'not a plain property chain'],
+        'this, which is the component\'s own method' => ["this.currency('RM')", 'a method of `this`'],
+        'a Livewire method' => ["\$wire.currency('RM')", 'a method of `$wire`'],
+        'a computed index' => ['rows[i].currency()', 'index that is not a literal'],
+        'a template literal in the arguments' => ['total.currency(`R${m}`)', 'template literal'],
+        'an unbalanced quote' => ["total.currency('RM)", 'arguments it cannot read'],
+    ]);
+
+    it('declines arguments that run over a line, and a receiver on the line before', function () {
+        $source = "<div x-text=\"total.currency(\n    'RM'\n)\"></div>\n<div x-text=\"total\n    .currency()\"></div>\n";
+        [$after, $dir] = upgradeCurrency($this, 'resources/views/x.blade.php', $source);
+        $todo = file_get_contents($dir.'/ATOM-UPGRADE-TODO.md');
+
+        expect($after)->toBe($source)
+            ->and($todo)->toContain('resources/views/x.blade.php:1')->toContain('resources/views/x.blade.php:5');
+    });
+
+    it('does not read a PHP region, a comment, or atom.currency() that is already there', function () {
+        $source = "{{-- total.currency() --}}\n<p>{{ \$total->currency() }}</p>\n@php \$a = \$b->currency(); @endphp\n<script>\n// a.currency()\nconst v = atom.currency(a)\n</script>\n";
+        [$after] = upgradeCurrency($this, 'resources/views/x.blade.php', $source);
+
+        expect($after)->toBe($source);
+    });
+
+    it('rewrites each of two calls in a file where one is declined, and a second run changes nothing', function () {
+        [$after, $dir] = upgradeCurrency($this, 'resources/js/x.js', "const a = fee.currency()\nconst b = calc().currency()\n");
+
+        expect($after)->toBe("const a = atom.currency(fee)\nconst b = calc().currency()\n");
+
+        $tree = upgradeCodemodTree($dir);
+        upgradeCodemodRun($dir);
+
+        expect(upgradeCodemodTree($dir))->toBe($tree);
+    });
+
+    it('keeps a file\'s CRLF line endings', function () {
+        [$after] = upgradeCurrency($this, 'resources/js/x.js', "const a = fee.currency()\r\nconst b = 2\r\n");
+
+        expect($after)->toBe("const a = atom.currency(fee)\r\nconst b = 2\r\n");
     });
 });
 
