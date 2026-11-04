@@ -2190,6 +2190,13 @@ class UpgradeCheck
             }
         }
 
+        // a group import (`use Jiannius\Atom\Services\{Carbon, Asset as A};`, aliases included) is read by tokens
+        foreach (UpgradePhp::structure($php)['imports'] as $short => $fqn) {
+            if (strcasecmp(ltrim($fqn, '\\'), 'Jiannius\\Atom\\Services\\Carbon') === 0) {
+                $names[] = $short;
+            }
+        }
+
         foreach ($calls[0] as [$call, $at]) {
             $open = $at + strlen($call) - 1;
             $close = $this->matchingDelimiter($php, $open);
@@ -2200,7 +2207,7 @@ class UpgradeCheck
             }
 
             foreach ($names as $name) {
-                if ($argument === $name.'::class') {
+                if (strcasecmp($argument, $name.'::class') === 0) {
                     return true;
                 }
             }

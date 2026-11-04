@@ -820,6 +820,26 @@ describe('atom:upgrade: the PHP and Blade rewrites', function () {
         expect(file_get_contents($path))->toBe($once);
     });
 
+    it('uses the name atom\'s Carbon is already imported under, and imports nothing more', function (string $head, string $name) {
+        $dir = ($this->host)(false);
+        $path = $dir.'/app/Providers/AppServiceProvider.php';
+        file_put_contents($path, "<?php\n\nnamespace App\\Providers;\n\n{$head}use Illuminate\\Support\\ServiceProvider;\n\nclass AppServiceProvider extends ServiceProvider\n{\n    public function boot(): void\n    {\n    }\n}\n");
+
+        upgradeCodemodRun($dir);
+
+        $provider = file_get_contents($path);
+
+        expect($provider)->toContain("        Date::use({$name}::class);")
+            ->and(substr_count($provider, 'Services\\Carbon'))->toBeLessThanOrEqual(1)
+            ->and($provider)->not->toContain('\\Jiannius\\Atom\\Services\\Carbon::class')
+            ->and((new UpgradeCheck)->scan($dir)['checks']['date-use-line']['findings'])->toBe([]);
+    })->with([
+        'an alias' => ["use Jiannius\\Atom\\Services\\Carbon as AtomCarbon;\n", 'AtomCarbon'],
+        'an alias in a group' => ["use Jiannius\\Atom\\Services\\{Asset, Carbon as AtomCarbon};\n", 'AtomCarbon'],
+        'a group, no alias' => ["use Jiannius\\Atom\\Services\\{Asset, Carbon};\n", 'Carbon'],
+        'an alias that shadows another Carbon' => ["use Jiannius\\Atom\\Services\\Carbon as AtomCarbon;\nuse Carbon\\CarbonImmutable as Carbon;\n", 'AtomCarbon'],
+    ]);
+
     it('keeps the fully qualified Carbon where the short name is taken: another import of it, or a Carbon written in the code', function (string $head, string $body) {
         $dir = ($this->host)(false);
         $path = $dir.'/app/Providers/AppServiceProvider.php';

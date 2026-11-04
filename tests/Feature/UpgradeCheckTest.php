@@ -861,6 +861,16 @@ describe('atom:upgrade-check: Date::use and the date checks', function () {
         $write('', 'Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);');
         expect($date())->toBe('app/Providers/AppServiceProvider.php');
 
+        // a group import, with or without an alias in it
+        $write('use Jiannius\Atom\Services\{Carbon, Asset};', 'Date::use(Carbon::class);');
+        expect($date())->toBe('app/Providers/AppServiceProvider.php');
+
+        $write('use Jiannius\Atom\Services\{Asset, Carbon as AtomCarbon};', 'Date::use(AtomCarbon::class);');
+        expect($date())->toBe('app/Providers/AppServiceProvider.php');
+
+        $write('use Jiannius\Atom\Services\{Asset, Docs};', 'Date::use(Carbon::class);');
+        expect($date())->toBeNull();
+
         // an alias that is not atom's is not it, even when atom's is imported as another name
         $write("use Jiannius\Atom\Services\Carbon as AtomCarbon;\nuse Carbon\CarbonImmutable as Carbon;", 'Date::use(Carbon::class);');
         expect($date())->toBeNull();

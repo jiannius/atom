@@ -720,8 +720,21 @@ class Upgrade
         $carbonShort = $known !== null
             ? strcasecmp($known, $carbon) === 0
             : ! isset(UpgradePhp::codeNames($text, $structure['statements'])['carbon']);
+        $carbonName = 'Carbon';
 
-        $call = ($short ? 'Date' : '\\Illuminate\\Support\\Facades\\Date').'::use('.($carbonShort ? 'Carbon' : '\\'.$carbon).'::class);';
+        // atom's Carbon is already imported under another name (`use ...\Carbon as AtomCarbon;`, or inside a group): use that
+        // name and import nothing
+        foreach ($structure['imports'] as $key => $fqn) {
+            if (strcasecmp(ltrim($fqn, '\\'), $carbon) === 0) {
+                $carbonName = preg_match('/\bas\s+('.preg_quote($key, '/').')\b/i', $blank, $written) ? $written[1] : 'Carbon';
+                $known = $carbon;
+                $carbonShort = true;
+
+                break;
+            }
+        }
+
+        $call = ($short ? 'Date' : '\\Illuminate\\Support\\Facades\\Date').'::use('.($carbonShort ? $carbonName : '\\'.$carbon).'::class);';
         $next = ltrim(substr($text, $newline + 1));
         $insert = $indent[0].$unit.$call."\n".(($next[0] ?? '}') === '}' ? '' : "\n");
         $text = substr($text, 0, $newline + 1).$insert.substr($text, $newline + 1);
