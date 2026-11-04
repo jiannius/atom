@@ -128,6 +128,16 @@ it('draws no input actions for an input whose actions slot is only false blocks'
         ->and(strlen($without))->toBeLessThan(strlen($with));
 });
 
+it('draws no end wrapper for an uploader, a dropzone or a menu item whose end slot is only false blocks', function () {
+    $uploader = renderInLivewire('<atom:uploader><x-slot:end>'.FALSE_BLOCKS.'</x-slot:end></atom:uploader>');
+    $dropzone = renderInLivewire('<atom:uploader.dropzone><x-slot:end>'.FALSE_BLOCKS.'</x-slot:end></atom:uploader.dropzone>');
+    $item = renderInLivewire('<atom:menu.item><x-slot:end>'.FALSE_BLOCKS.'</x-slot:end> Archive</atom:menu.item>');
+
+    expect(domQuery($uploader, '//*[@data-atom-uploader-end]'))->toBeEmpty()
+        ->and(domQuery($dropzone, '//*[@data-atom-uploader-end]'))->toBeEmpty()
+        ->and(domQuery($item, '//*[@data-atom-menu-item-end]'))->toBeEmpty();
+});
+
 it('draws no shell bar for a sidebar layout whose crumbs and actions slots are only morph markers', function () {
     // the layout is a whole document, which a Livewire test cannot mount: the markers a view prints are written out
     view()->share('errors', new \Illuminate\Support\ViewErrorBag);

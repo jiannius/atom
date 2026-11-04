@@ -157,6 +157,8 @@ $show = fn (string $name) => $section === null || $section === $name;
             <div data-testid="r-rating-readonly"><atom:rating label="Read only" name="rate3" :value="4" readonly /></div>
             <div data-testid="r-uploader"><atom:uploader.dropzone /></div>
             <div data-testid="r-uploader-button"><atom:uploader label="Upload" /></div>
+            <div data-testid="r-uploader-end"><atom:uploader label="Upload"><x-slot:end>PNG, up to 2 MB</x-slot:end></atom:uploader></div>
+            <div data-testid="r-uploader-end-sm"><atom:uploader label="Upload" size="sm"><x-slot:end><atom:icon.info class="size-5"/> Hint</x-slot:end></atom:uploader></div>
         </div>
     </section>
     @endif

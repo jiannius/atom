@@ -2,6 +2,11 @@
     'label' => 'Drop files here, or click to browse',
 ])
 
+@php
+/* Content under the zone (a size or type hint). A slot made of false @if blocks is not content. */
+$hasEnd = isset($end) && $end->hasActualContent();
+@endphp
+
 <div
 x-cloak
 x-data="{
@@ -54,5 +59,9 @@ x-on:drop.prevent="drop($event)"
 
             <span x-show="uploading" class="absolute inset-x-0 bottom-0 h-1 bg-accent-ink" x-bind:style="`width: ${progress}%`"></span>
         </button>
+    @endif
+
+    @if ($hasEnd)
+        <div {{ $end->attributes->class('mt-2 text-sm text-fg-muted') }} data-atom-uploader-end>{{ $end }}</div>
     @endif
 </div>

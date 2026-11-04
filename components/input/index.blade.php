@@ -141,11 +141,19 @@ if ($disabled ?? false) {
                  <atom:...> tag, and it would silently be null --}}
             <atom:uploader :aria-labelledby="$labelId" :attributes="$attributes->merge($merges)">
                 {{ $slot }}
+
+                @if (isset($end) && $end->hasActualContent())
+                    <x-slot:end :attributes="$end->attributes">{{ $end }}</x-slot:end>
+                @endif
             </atom:uploader>
         </atom:input.field>
     @else
         <atom:uploader :attributes="$attributes->merge($merges)">
             {{ $slot }}
+
+            @if (isset($end) && $end->hasActualContent())
+                <x-slot:end :attributes="$end->attributes">{{ $end }}</x-slot:end>
+            @endif
         </atom:uploader>
     @endif
 @endif

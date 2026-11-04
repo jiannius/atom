@@ -18,7 +18,13 @@ $icons = [
 ];
 
 $href = safe_url($href);
-$el = $href ? 'a' : 'button';
+
+/* A link is never `:disabled`, so `disabled` on a link item dimmed nothing and still navigated. A disabled item is a real
+   disabled button: no href, out of the tab order. */
+$disabled = $attributes->has('disabled') && $attributes->get('disabled') !== false && $attributes->get('disabled') !== null;
+$el = $href && ! $disabled ? 'a' : 'button';
+
+$hasEnd = isset($end) && $end->hasActualContent();
 
 /* A row of the control height (28px compact, 40 on touch) with a 6px radius. Hover and keyboard focus tint it; the focus ring
    is the base :focus-visible rule, drawn inside the row so the panel's padding does not clip it. A tone item reads the
@@ -67,6 +73,11 @@ if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attribute
     <div class="grow leading-tight whitespace-nowrap truncate">
         {{ $slot }}
     </div>
+
+    {{-- plain text at the row's end ("Coming soon", a shortcut): muted, small, and the badge and suffix icon follow it --}}
+    @if ($hasEnd)
+        <div {{ $end->attributes->class('shrink-0 ms-auto text-xs text-fg-subtle') }} data-atom-menu-item-end>{{ $end }}</div>
+    @endif
 
     @if ($badge)
         <atom:navlist.badge :color="$badgeColor" class="shrink-0">{{ $badge }}</atom:navlist.badge>

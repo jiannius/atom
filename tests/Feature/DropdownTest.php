@@ -79,6 +79,30 @@ describe('menu.item', function () {
             ->toContain('role="menuitem"');
     });
 
+    it('prints the end slot after the label, before the badge, in a muted small size (#154)', function () {
+        $html = renderBlade('<atom:menu.item badge="Fresh"><x-slot:end>Soon</x-slot:end> Billing</atom:menu.item>');
+        $end = domQuery($html, '//*[@data-atom-menu-item-end]');
+
+        expect($end)->toHaveCount(1)
+            ->and(domClasses($end[0]))->toContain('shrink-0', 'ms-auto', 'text-xs', 'text-fg-subtle')
+            ->and(strpos($html, 'Billing'))->toBeLessThan(strpos($html, 'Soon'))
+            ->and(strpos($html, 'Soon'))->toBeLessThan(strpos($html, 'Fresh'));
+    });
+
+    it('really disables an item that has an href: a disabled button with no link (#154)', function () {
+        $html = renderBlade('<atom:menu.item href="/billing" disabled>Billing</atom:menu.item>');
+
+        expect($html)
+            ->toContain('<button')
+            ->toContain('disabled')
+            ->not->toContain('href=')
+            ->not->toContain('<a ');
+
+        // and an enabled one, or one with :disabled="false", is still a link
+        expect(renderBlade('<atom:menu.item href="/billing">Billing</atom:menu.item>'))->toContain('<a')->toContain('href="/billing"');
+        expect(renderBlade('<atom:menu.item href="/billing" :disabled="false">Billing</atom:menu.item>'))->toContain('<a')->toContain('href="/billing"');
+    });
+
     it('tints danger variants', function () {
         expect(renderBlade('<atom:menu.item variant="danger">D</atom:menu.item>'))
             ->toContain('text-danger-fg')
