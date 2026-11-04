@@ -9,9 +9,12 @@ use Jiannius\Atom\Commands\MigrateTiptapContent;
 use Jiannius\Atom\Commands\PurgeEditorImages;
 use Jiannius\Atom\Commands\Upgrade;
 use Jiannius\Atom\Commands\UpgradeCheck;
+use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\Looping;
+use Illuminate\Queue\Events\WorkerStopping;
 use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\JobProgressStore;
 use Jiannius\Atom\Services\TagCompiler;
@@ -71,9 +74,20 @@ class AtomServiceProvider extends ServiceProvider
 
         $events = $this->app['events'];
 
-        $events->listen(JobProcessing::class, fn (JobProcessing $event) => JobProgressStore::processing($event->job));
-        $events->listen(JobProcessed::class, fn (JobProcessed $event) => JobProgressStore::processed($event->job));
-        $events->listen(JobFailed::class, fn (JobFailed $event) => JobProgressStore::failed($event->job));
+        $events->listen(JobProcessing::class, function (JobProcessing $event) {
+            JobProgressStore::enterWorkerJob($event->job);
+            JobProgressStore::processing($event->job);
+        });
+        $events->listen(JobProcessed::class, function (JobProcessed $event) {
+            JobProgressStore::leaveWorkerJob($event->job);
+            JobProgressStore::processed($event->job);
+        });
+        $events->listen(JobFailed::class, function (JobFailed $event) {
+            JobProgressStore::leaveWorkerJob($event->job);
+            JobProgressStore::failed($event->job);
+        });
+        $events->listen(JobExceptionOccurred::class, fn (JobExceptionOccurred $event) => JobProgressStore::leaveWorkerJob($event->job));
+        $events->listen([Looping::class, WorkerStopping::class], fn () => JobProgressStore::resetWorker());
     }
 
     /**

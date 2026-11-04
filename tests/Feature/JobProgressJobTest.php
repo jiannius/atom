@@ -14,9 +14,11 @@ use Illuminate\Support\Facades\Schema;
 use Jiannius\Atom\Services\JobProgress;
 use Jiannius\Atom\Services\JobProgressStore;
 use Jiannius\Atom\Tests\Fixtures\JobProgressBothTraitsJob;
+use Jiannius\Atom\Tests\Fixtures\JobProgressDispatchesJob;
 use Jiannius\Atom\Tests\Fixtures\JobProgressFixtureJob;
 use Jiannius\Atom\Tests\Fixtures\JobProgressRenamedJob;
 use Jiannius\Atom\Tests\Fixtures\JobProgressShadowingJob;
+use Jiannius\Atom\Tests\Fixtures\JobProgressSignsInJob;
 use Jiannius\Atom\Tests\Fixtures\JobProgressUniqueJob;
 
 // A job reports into one cache entry that a page reads back for the signed-in user and scope only (#115). These tests use a REAL
@@ -784,4 +786,107 @@ it('does not decode the payload of a job that carries no progress key', function
     JobProgressStore::failed($job);
 
     expect($job->decoded)->toBe(0);
+});
+
+/** Work every queued job in ONE worker process, with nobody signed out between them: what a real `queue:work` does. */
+function jpWorkAll(): void
+{
+    Artisan::call('queue:work', ['connection' => 'database', '--stop-when-empty' => true]);
+}
+
+describe('inside a worker', function () {
+    // The auth guard is a singleton a worker never resets: a job that signs user 7 in leaves them signed in for the next
+    // job, and a tracked job that next job dispatches must not be keyed to that stranger.
+    it('tracks nothing that a job pushes or runs from inside a worker, whoever the guard says is signed in', function (string $mode) {
+        JobProgressSignsInJob::dispatch();
+        JobProgressDispatchesJob::dispatch($mode);
+
+        jpWorkAll();
+
+        Auth::setUser(new GenericUser(['id' => 7]));   // user 7 looks at the page afterwards
+
+        expect(JobProgress::for(JobProgressFixtureJob::class)->exists())->toBeFalse()
+            ->and(jpEntryRows())->toBeEmpty();
+    })->with(['dispatch', 'dispatchSync', 'dispatchNow', 'direct', 'chain']);
+
+    it('tracks a job again in the next request once the worker is done', function () {
+        JobProgressSignsInJob::dispatch();
+        jpWorkAll();
+
+        expect(JobProgressStore::inWorker())->toBeFalse();
+
+        jpSignIn(7);
+        JobProgressFixtureJob::dispatch();
+
+        expect(JobProgress::for(JobProgressFixtureJob::class)->isQueued())->toBeTrue();
+    });
+
+    it('is over when the job is, however it ends', function (string $mode) {
+        jpSignIn(7);
+        JobProgressFixtureJob::dispatch($mode);
+        jpWork();
+
+        expect(JobProgressStore::inWorker())->toBeFalse();
+    })->with(['ok', 'throws', 'fails', 'releases']);
+
+    it('never counts below zero, and a sync job does not count at all', function () {
+        $sync = new SyncJob(app(), json_encode(['uuid' => 'u']), 'sync', 'default');
+
+        JobProgressStore::leaveWorkerJob($sync);
+        JobProgressStore::enterWorkerJob($sync);
+
+        expect(JobProgressStore::inWorker())->toBeFalse();
+
+        $queued = new \Illuminate\Queue\Jobs\DatabaseJob(app(), app('queue')->connection('database'), (object) ['id' => 1, 'queue' => 'default', 'payload' => '{}', 'attempts' => 0], 'database', 'default');
+
+        JobProgressStore::enterWorkerJob($queued);
+        expect(JobProgressStore::inWorker())->toBeTrue();
+
+        // an exception and then the failure of one job: two events for one job
+        JobProgressStore::leaveWorkerJob($queued);
+        JobProgressStore::leaveWorkerJob($queued);
+        expect(JobProgressStore::inWorker())->toBeFalse();
+
+        JobProgressStore::enterWorkerJob($queued);
+        expect(JobProgressStore::inWorker())->toBeTrue();   // a count that went to -1 would say no here
+
+        event(new \Illuminate\Queue\Events\Looping('database', 'default'));
+        expect(JobProgressStore::inWorker())->toBeFalse();
+    });
+
+    it('is over when the worker says the job raised an exception, failed, or the worker is stopping', function (string $kind) {
+        $queued = new \Illuminate\Queue\Jobs\DatabaseJob(app(), app('queue')->connection('database'), (object) ['id' => 1, 'queue' => 'default', 'payload' => '{}', 'attempts' => 0], 'database', 'default');
+
+        JobProgressStore::enterWorkerJob($queued);
+        expect(JobProgressStore::inWorker())->toBeTrue();
+
+        event(match ($kind) {
+            'exception' => new \Illuminate\Queue\Events\JobExceptionOccurred('database', $queued, new RuntimeException),
+            'failed' => new \Illuminate\Queue\Events\JobFailed('database', $queued, new RuntimeException),
+            'stopping' => new \Illuminate\Queue\Events\WorkerStopping,
+        });
+
+        expect(JobProgressStore::inWorker())->toBeFalse();
+    })->with(['exception', 'failed', 'stopping']);
+
+    it('does not stop a sync job in a request from tracking, nor one it dispatches itself', function () {
+        jpSignIn(7);
+
+        JobProgressDispatchesJob::dispatchSync('dispatchSync');   // the sync queue fires JobProcessing around the outer job
+
+        expect(JobProgress::for(JobProgressFixtureJob::class)->isFinished())->toBeTrue();
+
+        JobProgress::forget(JobProgressFixtureJob::class);
+
+        JobProgressDispatchesJob::dispatchSync('dispatchNow');
+
+        expect(JobProgress::for(JobProgressFixtureJob::class)->isFinished())->toBeTrue();
+    });
+
+    it('does not stop a request on a worker-less process from dispatching to the database queue and tracking', function () {
+        jpSignIn(7);
+        JobProgressDispatchesJob::dispatchSync('dispatch');
+
+        expect(JobProgress::for(JobProgressFixtureJob::class)->isQueued())->toBeTrue();
+    });
 });

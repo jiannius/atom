@@ -43,7 +43,9 @@ final class JobProgress
      * Register the tenant the signed-in user acts in (an org, team or workspace id): part of every key, so a user
      * working in two orgs sees two sets of entries. Return null for an app with no tenants. Required: reading or
      * writing an entry throws until this is registered. The closure lives in the container, not in config
-     * (config:cache cannot hold one) and not in a static (it cannot leak between tests).
+     * (config:cache cannot hold one) and not in a static (it cannot leak between tests). The value is compared as a string:
+     * 1 and "1" are one tenant, so ids from different tables that can collide ("org 1", "team 1") need a prefix in the
+     * closure (fn () => 'org:'.$org->id).
      */
     public static function scopeUsing(Closure $resolver): void
     {

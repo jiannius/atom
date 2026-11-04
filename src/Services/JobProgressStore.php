@@ -53,6 +53,9 @@ final class JobProgressStore
     /** @var array<string, true> failures already logged by this process */
     private static array $logged = [];
 
+    /** @var int how many worker jobs are running in this process (never below 0) */
+    private static int $workerJobs = 0;
+
     /** @var array<class-string, bool> */
     private static array $reports = [];
 
@@ -62,6 +65,7 @@ final class JobProgressStore
     /** Forget what this process remembers (tests). */
     public static function flushState(): void
     {
+        self::$workerJobs = 0;
         self::$logged = [];
         self::$reports = [];
         self::$checked = [];
@@ -102,6 +106,40 @@ final class JobProgressStore
     private static function text(string $part): string|array
     {
         return mb_check_encoding($part, 'UTF-8') ? $part : ['hex' => bin2hex($part)];
+    }
+
+    /**
+     * A worker is running a job (JobProcessing, for every job but a sync one, which runs inside the request or the job that
+     * called it). While one is, nobody who is "signed in" is the person who asked for what is being pushed: the auth guard is a
+     * singleton the worker never resets, so a job that signed a user in (audit logging, an auth-based scope) leaves them there
+     * for the next job, and a tracked job that job dispatches would be keyed to that stranger. So nothing pushed from inside a
+     * worker, and no direct-call fallback inside one, is tracked, whoever the guard says is signed in.
+     */
+    public static function enterWorkerJob(Job $job): void
+    {
+        if (! $job instanceof SyncJob) {
+            self::$workerJobs++;
+        }
+    }
+
+    /** JobProcessed, JobFailed or JobExceptionOccurred: the job is over (never below 0, an event can come twice for one job). */
+    public static function leaveWorkerJob(Job $job): void
+    {
+        if (! $job instanceof SyncJob) {
+            self::$workerJobs = max(0, self::$workerJobs - 1);
+        }
+    }
+
+    /** Looping or WorkerStopping: no job is running. */
+    public static function resetWorker(): void
+    {
+        self::$workerJobs = 0;
+    }
+
+    /** Is a queue worker running a job in this process? */
+    public static function inWorker(): bool
+    {
+        return self::$workerJobs > 0;
     }
 
     /**
@@ -164,6 +202,10 @@ final class JobProgressStore
         }
 
         self::assertNotShadowed($job);
+
+        if (self::inWorker()) {
+            return [];
+        }
 
         $key = self::key($job->progressName());
 
@@ -304,7 +346,7 @@ final class JobProgressStore
             return self::payloadOf($queueJob)[0];
         }
 
-        return self::key($job->progressName());
+        return self::inWorker() ? null : self::key($job->progressName());
     }
 
     /**
