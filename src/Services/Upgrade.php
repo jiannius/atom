@@ -227,7 +227,7 @@ class Upgrade
                         $declined[] = ['file' => $relative, 'line' => 1, 'reason' => $reason];
                     } elseif ($result !== $text) {
                         $touch($relative, 'date-use', $result);
-                        $applied[] = '`'.$relative.'`: added `Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);` to boot()';
+                        $applied[] = '`'.$relative.'`: added `Date::use(Carbon::class);` to boot() and imported `Jiannius\\Atom\\Services\\Carbon` (the fully qualified name where `Carbon` is already taken)';
                     }
                 }
             }
@@ -692,16 +692,30 @@ class Upgrade
         $unit = str_contains($indent[0], "\t") || ($indent[0] === '' && preg_match('/^\t/m', $text)) ? "\t" : '    ';
 
         $short = ! isset($structure['imports']['date']) || strcasecmp($structure['imports']['date'], 'Illuminate\\Support\\Facades\\Date') === 0;
-        $call = ($short ? 'Date' : '\\Illuminate\\Support\\Facades\\Date').'::use(\\Jiannius\\Atom\\Services\\Carbon::class);';
+
+        // atom's Carbon is imported (Pint's laravel preset wants a class written once, not fully qualified) unless the short name is
+        // taken here: another import of that name, or a `Carbon` written in the code that an import would take over
+        $carbon = 'Jiannius\\Atom\\Services\\Carbon';
+        $known = $structure['imports']['carbon'] ?? null;
+        $carbonShort = $known !== null
+            ? strcasecmp($known, $carbon) === 0
+            : ! isset(UpgradePhp::codeNames($text, $structure['statements'])['carbon']);
+
+        $call = ($short ? 'Date' : '\\Illuminate\\Support\\Facades\\Date').'::use('.($carbonShort ? 'Carbon' : '\\'.$carbon).'::class);';
         $next = ltrim(substr($text, $newline + 1));
         $insert = $indent[0].$unit.$call."\n".(($next[0] ?? '}') === '}' ? '' : "\n");
         $text = substr($text, 0, $newline + 1).$insert.substr($text, $newline + 1);
 
-        if ($short && ! isset($structure['imports']['date'])) {
-            $added = $this->addImport($text, 'Illuminate\\Support\\Facades\\Date');
+        $imports = array_filter([
+            $short && ! isset($structure['imports']['date']) ? 'Illuminate\\Support\\Facades\\Date' : null,
+            $carbonShort && $known === null ? $carbon : null,
+        ]);
+
+        foreach ($imports as $import) {
+            $added = $this->addImport($text, $import);
 
             if ($added === null) {
-                $reason = 'its imports are not each on a line of their own: add `use Illuminate\\Support\\Facades\\Date;` and Date::use(\\Jiannius\\Atom\\Services\\Carbon::class); by hand';
+                $reason = 'its imports are not each on a line of their own: add `use '.$import.';` and '.($carbonShort ? 'Date::use(Carbon::class);' : 'Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);').' by hand';
 
                 return $original;
             }

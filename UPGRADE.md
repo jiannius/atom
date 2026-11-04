@@ -286,8 +286,9 @@ A component that renders `<atom:table>` with a `checked` bar (or a sortable colu
 
 ```php
 use Illuminate\Support\Facades\Date;
+use Jiannius\Atom\Services\Carbon;
 
-Date::use(\Jiannius\Atom\Services\Carbon::class);
+Date::use(Carbon::class);
 ```
 
 Search your PHP and Blade for `->pretty(`, `->local(`, `->recent(` and `->toDateRangeString(`: each call on a model date or on `now()` throws "Method ... does not exist" without the line. A host that does not want the swap can call `carbon($date)->pretty()` (or `Carbon::instance($date)`) where it needs them; `Jiannius\Atom\Services\Carbon`, `Carbon::getLocalTimezone()` and the `carbon()` helper are unchanged, and atom's own code (`breakdown()`, the calendar, the timeline) works on either kind of date. Code that relied on a date being immutable (`$date->addDay()` leaving `$date` alone) now changes the date in place without the line: use `->copy()` or add the line.
@@ -305,7 +306,7 @@ What stays: `Request::portal()`, `Str::namespace()`, `interval()` and `initials(
 
 **Two dead declarations are gone.** The `editor` prop of `<atom:html>` and the shells (`layouts.sidebar`, `layouts.header`) was never read, because `<atom:tiptap>` links its own stylesheet: delete it from your markup (left in, it lands as an `editor` attribute on `<body>`). The provider also no longer registers a `database/migrations` path, which the package never had.
 
-**atom:upgrade:** Automated: `date-use-line`, `html-editor-prop`. Reported: `date-pretty`, `date-local`, `date-recent`, `date-range-string`, `date-printed-bare`, `carbon-import`, `carbon-typed`, `macro-request`, `macro-str`, `macro-builder`, `macro-attribute-bag`. The codemod adds `Date::use(\Jiannius\Atom\Services\Carbon::class);` as the first statement of `AppServiceProvider::boot()`, with the `Date` import, when no service provider, file of `app/Providers` or `bootstrap/*.php` calls it. With no `AppServiceProvider.php`, no `boot()`, or another `Date::use()` already there, it changes nothing and says why. It deletes the `editor` attribute of `<atom:html>` and the shells. The date and macro sites are reported with `file:line` (once the line exists the date ones are review items); the macro calls need a decision of yours.
+**atom:upgrade:** Automated: `date-use-line`, `html-editor-prop`. Reported: `date-pretty`, `date-local`, `date-recent`, `date-range-string`, `date-printed-bare`, `carbon-import`, `carbon-typed`, `macro-request`, `macro-str`, `macro-builder`, `macro-attribute-bag`. The codemod adds `Date::use(Carbon::class);` as the first statement of `AppServiceProvider::boot()`, with the `Date` and `Jiannius\Atom\Services\Carbon` imports (the fully qualified name when `Carbon` is already taken in that file, which a style check such as Pint accepts), when no service provider, file of `app/Providers` or `bootstrap/*.php` calls it. With no `AppServiceProvider.php`, no `boot()`, or another `Date::use()` already there, it changes nothing and says why. It deletes the `editor` attribute of `<atom:html>` and the shells. The date and macro sites are reported with `file:line` (once the line exists the date ones are review items); the macro calls need a decision of yours.
 
 ## JS globals
 

@@ -214,22 +214,23 @@ DIFF));
          return view('partials.blank');
 DIFF));
 
-        // the Date::use line, first in boot(), with its import
+        // the Date::use line, first in boot(), with its imports
         expect($output)->toContain(upgradeCodemodDiff(<<<'DIFF'
 --- a/app/Providers/AppServiceProvider.php
 +++ b/app/Providers/AppServiceProvider.php
-@@ -2,11 +2,13 @@
+@@ -2,11 +2,14 @@
 
  namespace App\Providers;
 
 +use Illuminate\Support\Facades\Date;
  use Illuminate\Support\ServiceProvider;
++use Jiannius\Atom\Services\Carbon;
 
  class AppServiceProvider extends ServiceProvider
  {
      public function boot(): void
      {
-+        Date::use(\Jiannius\Atom\Services\Carbon::class);
++        Date::use(Carbon::class);
      }
  }
 DIFF));
@@ -800,6 +801,42 @@ describe('atom:upgrade: the PHP and Blade rewrites', function () {
         expect(file_get_contents($dir.'/ATOM-UPGRADE-TODO.md'))->toContain('it has no boot() method');
     });
 
+    it('imports atom\'s Carbon for Date::use, so a style check has no fully qualified name to flag, and is idempotent (#158)', function () {
+        $dir = ($this->host)(false);
+        $path = $dir.'/app/Providers/AppServiceProvider.php';
+        file_put_contents($path, "<?php\n\nnamespace App\\Providers;\n\nuse Illuminate\\Support\\ServiceProvider;\n\nclass AppServiceProvider extends ServiceProvider\n{\n    public function boot(): void\n    {\n    }\n}\n");
+
+        upgradeCodemodRun($dir);
+
+        $once = file_get_contents($path);
+
+        expect($once)->toContain("use Illuminate\\Support\\Facades\\Date;\nuse Illuminate\\Support\\ServiceProvider;\nuse Jiannius\\Atom\\Services\\Carbon;\n")
+            ->and($once)->toContain('        Date::use(Carbon::class);')
+            ->and($once)->not->toContain('\\Jiannius\\Atom\\Services\\Carbon::class')
+            ->and((new UpgradeCheck)->scan($dir)['checks']['date-use-line']['findings'])->toBe([]);
+
+        upgradeCodemodRun($dir);
+
+        expect(file_get_contents($path))->toBe($once);
+    });
+
+    it('keeps the fully qualified Carbon where the short name is taken: another import of it, or a Carbon written in the code', function (string $head, string $body) {
+        $dir = ($this->host)(false);
+        $path = $dir.'/app/Providers/AppServiceProvider.php';
+        file_put_contents($path, "<?php\n\nnamespace App\\Providers;\n\n{$head}use Illuminate\\Support\\ServiceProvider;\n\nclass AppServiceProvider extends ServiceProvider\n{\n    public function boot(): void\n    {\n{$body}    }\n}\n");
+
+        upgradeCodemodRun($dir);
+
+        $provider = file_get_contents($path);
+
+        expect($provider)->toContain('        Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);')
+            ->and($provider)->not->toContain('use Jiannius\\Atom\\Services\\Carbon;')
+            ->and((new UpgradeCheck)->scan($dir)['checks']['date-use-line']['findings'])->toBe([]);
+    })->with([
+        'another Carbon is imported' => ["use Carbon\\Carbon;\n", "        \$now = Carbon::now();\n"],
+        'Carbon is written in the code with no import' => ['', "        \$now = Carbon::now();\n"],
+    ]);
+
     it('puts the call first in a boot() that has code, with a blank line after it', function () {
         $dir = ($this->host)(false);
         file_put_contents($dir.'/app/Providers/AppServiceProvider.php', "<?php\n\nnamespace App\\Providers;\n\nuse Illuminate\\Support\\ServiceProvider;\n\nclass AppServiceProvider extends ServiceProvider\n{\n    public function boot()\n    {\n        Model::shouldBeStrict();\n    }\n}\n");
@@ -807,7 +844,7 @@ describe('atom:upgrade: the PHP and Blade rewrites', function () {
         upgradeCodemodRun($dir);
 
         expect(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("use Illuminate\\Support\\Facades\\Date;\nuse Illuminate\\Support\\ServiceProvider;")
-            ->toContain("    {\n        Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n\n        Model::shouldBeStrict();\n    }");
+            ->toContain("    {\n        Date::use(Carbon::class);\n\n        Model::shouldBeStrict();\n    }");
     });
 
     it('renames editor tags only: not a comment, not another tag, not a name that only starts with editor', function () {
@@ -980,7 +1017,7 @@ describe('atom:upgrade: the TODO', function () {
             // what it changed, with the trait evidence
             ->toContain('- `app/Livewire/Orders.php:11`: `use AtomComponent;` became `use WithTable, WithBreadcrumbs, WithPagination, WithFileUploads;`. Check the traits: WithTable (<atom:table> in the view); WithBreadcrumbs (defines breadcrumbs($b))')
             ->toContain('- `resources/views/livewire/profile.blade.php`: 4 `<atom:editor*>` tags renamed to `<atom:tiptap*>`')
-            ->toContain("- `app/Providers/AppServiceProvider.php`: added `Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);` to boot()")
+            ->toContain("- `app/Providers/AppServiceProvider.php`: added `Date::use(Carbon::class);` to boot() and imported `Jiannius\\Atom\\Services\\Carbon`")
             // the sections of UPGRADE.md, in the findings
             ->toContain('### Tokens')->toContain('### Livewire traits')->toContain('### JS globals')->toContain('### PHP globals: dates and macros')
             // JS globals, $wire helpers, listeners
@@ -1290,7 +1327,7 @@ describe('atom:upgrade: a rewrite it cannot be sure of is declined, not guessed'
             ->and(substr_count(file_get_contents($dir.'/app/Livewire/Multi.php'), 'Livewire\\WithPagination'))->toBe(1)
             ->and(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("use Illuminate\\Support\\Facades\\{DB, Date};\n")
             ->and(substr_count(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'), 'Facades\\Date'))->toBe(0)
-            ->and(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("    {\n        Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n\n        DB::prohibit");
+            ->and(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("    {\n        Date::use(Carbon::class);\n\n        DB::prohibit");
     });
 
     it('declines a file with a braced namespace', function () {
@@ -1387,7 +1424,7 @@ describe('atom:upgrade: a rewrite it cannot be sure of is declined, not guessed'
 
         $provider = file_get_contents($dir.'/app/Providers/AppServiceProvider.php');
 
-        expect($provider)->toContain("    public function boot(): void\n    {\n        Date::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n\n        //\n    }")
+        expect($provider)->toContain("    public function boot(): void\n    {\n        Date::use(Carbon::class);\n\n        //\n    }")
             ->and(substr_count($provider, 'Date::use'))->toBe(1);
     });
 
@@ -1515,7 +1552,7 @@ describe('atom:upgrade: the smaller guards', function () {
 
         upgradeCodemodRun($dir);
 
-        expect(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("\t{\n\t\tDate::use(\\Jiannius\\Atom\\Services\\Carbon::class);\n\t}");
+        expect(file_get_contents($dir.'/app/Providers/AppServiceProvider.php'))->toContain("\t{\n\t\tDate::use(Carbon::class);\n\t}");
     });
 
     it('sees an upload through $wire.upload(), a livewire-upload event or temporaryUrl(), and not through an import', function () {
