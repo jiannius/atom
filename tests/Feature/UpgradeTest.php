@@ -1160,7 +1160,7 @@ describe('atom:upgrade: the guide', function () {
         $readme = file_get_contents(__DIR__.'/../../README.md');
 
         expect($skill)->not->toMatch('/V4-\d[a-z]?\b/')
-            ->and($skill)->toContain('a chart\'s height goes on a wrapper that the chart fills')
+            ->and($skill)->toContain('a chart is as tall as its own box')
             ->and($readme)->toContain('<div class="h-48"><atom:chart class="h-full" .../></div>')
             ->and($skill)->toContain('<atom:chart class="h-full" .../></div>')
             ->and(file_get_contents(__DIR__.'/../../UPGRADE.md'))->toContain('<atom:chart class="h-full" .../></div>')

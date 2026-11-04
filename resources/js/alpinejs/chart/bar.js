@@ -1,5 +1,5 @@
 import arr from '../../helpers/arr'
-import { seriesColor, chrome, tooltipHtml } from './colors'
+import { seriesColor, chrome, tooltipHtml, canvasOf } from './colors'
 
 export default (config) => {
     // the theme listener belongs to the document, so it is kept here to be taken off again when the element goes (destroy())
@@ -15,7 +15,7 @@ export default (config) => {
                 // the element went before the library arrived
                 if (destroyed || !this.$el.isConnected) return
 
-                this.chart = new ApexCharts.default(this.$el, {
+                this.chart = new ApexCharts.default(canvasOf(this.$el), {
                     chart: {
                         type: 'bar',
                         height: '100%',

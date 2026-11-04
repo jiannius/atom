@@ -125,6 +125,28 @@ $doc = ['type' => 'doc', 'content' => [
     </section>
     @endif
 
+    @if ($show('chart-sizing'))
+    <section class="grid gap-4" data-testid="chart-sizing">
+        <h2 class="text-lg font-semibold">Chart sizing</h2>
+
+        {{-- no height class on the chart: it is as tall as its own box (h-16 for a trend, h-64 otherwise), whatever the parent is --}}
+        <div style="height: 300px"><atom:chart type="trend" :data="[8, 12, 9, 14, 11, 18]" data-testid="size-trend"/></div>
+        <div style="height: 400px"><atom:chart type="bar" :data="[['label' => 'Mon', 'value' => 32, 'tooltip' => '32'], ['label' => 'Tue', 'value' => 48, 'tooltip' => '48']]" data-testid="size-bar"/></div>
+        <div style="height: 400px"><atom:chart type="area" :data="[['label' => 'Mon', 'value' => 32, 'tooltip' => '32'], ['label' => 'Tue', 'value' => 48, 'tooltip' => '48']]" data-testid="size-area"/></div>
+
+        {{-- an h-* class on the tag sets the height, for a trend as for a bar --}}
+        <div style="height: 300px"><atom:chart type="bar" :data="[['label' => 'Mon', 'value' => 32, 'tooltip' => '32'], ['label' => 'Tue', 'value' => 48, 'tooltip' => '48']]" class="h-40" data-testid="size-own-bar"/></div>
+        <div style="height: 300px"><atom:chart type="trend" :data="[8, 12, 9, 14, 11, 18]" class="h-24" data-testid="size-own-trend"/></div>
+
+        {{-- a chart that fills a box of the host's: it passes h-full, as the sections below do --}}
+        <div style="height: 120px"><atom:chart type="trend" :data="[8, 12, 9, 14, 11, 18]" class="h-full" data-testid="size-fill"/></div>
+
+        {{-- the in-package callers: a card chart fills its box, a stat draws its trend in the lower half --}}
+        <div style="height: 320px"><atom:card variant="chart" heading="Sales" :data="[['label' => 'Mon', 'value' => 32, 'tooltip' => '32'], ['label' => 'Tue', 'value' => 48, 'tooltip' => '48']]" class="h-full" data-testid="size-card-chart"/></div>
+        <div style="width: 240px"><atom:card variant="stats" heading="Revenue" data="1,280" :indicator="5" :trend="[3, 5, 4, 7, 6, 9]" data-testid="size-card-stat"/></div>
+    </section>
+    @endif
+
     @if ($show('chart'))
     <section class="grid gap-4" data-testid="chart">
         <h2 class="text-lg font-semibold">Chart</h2>
