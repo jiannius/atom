@@ -15,6 +15,7 @@ use Jiannius\Atom\Services\JobProgress;
 use Jiannius\Atom\Services\JobProgressStore;
 use Jiannius\Atom\Tests\Fixtures\JobProgressBothTraitsJob;
 use Jiannius\Atom\Tests\Fixtures\JobProgressDispatchesJob;
+use Jiannius\Atom\Tests\Fixtures\JobProgressFailingJob;
 use Jiannius\Atom\Tests\Fixtures\JobProgressFixtureJob;
 use Jiannius\Atom\Tests\Fixtures\JobProgressRenamedJob;
 use Jiannius\Atom\Tests\Fixtures\JobProgressShadowingJob;
@@ -807,7 +808,34 @@ describe('inside a worker', function () {
 
         expect(JobProgress::for(JobProgressFixtureJob::class)->exists())->toBeFalse()
             ->and(jpEntryRows())->toBeEmpty();
-    })->with(['dispatch', 'dispatchSync', 'dispatchNow', 'direct', 'chain']);
+    })->with(['dispatch', 'dispatchSync', 'dispatchNow', 'direct', 'chain', 'failThenDispatch']);
+
+    // A host listener on a job event can dispatch too, and the worker has not finished the job when it runs.
+    it('tracks nothing that a host listener on a job event dispatches, in the worker', function (string $event) {
+        $listener = match ($event) {
+            'processed' => \Illuminate\Queue\Events\JobProcessed::class,
+            'failed' => \Illuminate\Queue\Events\JobFailed::class,
+            'exception' => \Illuminate\Queue\Events\JobExceptionOccurred::class,
+        };
+
+        $dispatched = 0;
+        Event::listen($listener, function () use (&$dispatched) {
+            if ($dispatched++ === 0) {
+                JobProgressFixtureJob::dispatch();
+            }
+        });
+
+        JobProgressSignsInJob::dispatch();
+        $event === 'processed' ? JobProgressSignsInJob::dispatch() : JobProgressFailingJob::dispatch();
+
+        jpWorkAll();
+
+        Auth::setUser(new GenericUser(['id' => 7]));
+
+        expect($dispatched)->toBeGreaterThan(0)
+            ->and(JobProgress::for(JobProgressFixtureJob::class)->exists())->toBeFalse()
+            ->and(jpEntryRows())->toBeEmpty();
+    })->with(['processed', 'failed', 'exception']);
 
     it('tracks a job again in the next request once the worker is done', function () {
         JobProgressSignsInJob::dispatch();
@@ -854,20 +882,30 @@ describe('inside a worker', function () {
         expect(JobProgressStore::inWorker())->toBeFalse();
     });
 
-    it('is over when the worker says the job raised an exception, failed, or the worker is stopping', function (string $kind) {
+    it('is over when the worker has attempted the job, or is stopping, and not before', function (string $kind) {
         $queued = new \Illuminate\Queue\Jobs\DatabaseJob(app(), app('queue')->connection('database'), (object) ['id' => 1, 'queue' => 'default', 'payload' => '{}', 'attempts' => 0], 'database', 'default');
 
         JobProgressStore::enterWorkerJob($queued);
         expect(JobProgressStore::inWorker())->toBeTrue();
 
+        // none of the events that come before it ends the job: a listener on any of them can still dispatch
+        foreach ([
+            new \Illuminate\Queue\Events\JobProcessed('database', $queued),
+            new \Illuminate\Queue\Events\JobFailed('database', $queued, new RuntimeException),
+            new \Illuminate\Queue\Events\JobExceptionOccurred('database', $queued, new RuntimeException),
+        ] as $before) {
+            event($before);
+            expect(JobProgressStore::inWorker())->toBeTrue();
+        }
+
         event(match ($kind) {
-            'exception' => new \Illuminate\Queue\Events\JobExceptionOccurred('database', $queued, new RuntimeException),
-            'failed' => new \Illuminate\Queue\Events\JobFailed('database', $queued, new RuntimeException),
+            'attempted' => new \Illuminate\Queue\Events\JobAttempted('database', $queued, null, 1.0),
+            'attempted after an exception' => new \Illuminate\Queue\Events\JobAttempted('database', $queued, new RuntimeException, 1.0),
             'stopping' => new \Illuminate\Queue\Events\WorkerStopping,
         });
 
         expect(JobProgressStore::inWorker())->toBeFalse();
-    })->with(['exception', 'failed', 'stopping']);
+    })->with(['attempted', 'attempted after an exception', 'stopping']);
 
     it('does not stop a sync job in a request from tracking, nor one it dispatches itself', function () {
         jpSignIn(7);

@@ -9,7 +9,7 @@ use Jiannius\Atom\Commands\MigrateTiptapContent;
 use Jiannius\Atom\Commands\PurgeEditorImages;
 use Jiannius\Atom\Commands\Upgrade;
 use Jiannius\Atom\Commands\UpgradeCheck;
-use Illuminate\Queue\Events\JobExceptionOccurred;
+use Illuminate\Queue\Events\JobAttempted;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
@@ -34,6 +34,10 @@ class AtomServiceProvider extends ServiceProvider
         // to component form first — letting Livewire handle wire:key via its normal
         // component path instead of mangling the raw <atom:...> tag.
         $this->tagCompiler();
+
+        /* In register(), not boot(): the counter that says a worker is running a job must be incremented before any listener a host
+           registers for JobProcessing, whichever provider comes first. */
+        $this->registerJobProgress();
     }
 
     /**
@@ -51,7 +55,6 @@ class AtomServiceProvider extends ServiceProvider
         $this->registerComponentMacros();
         $this->registerComponentGuards();
         $this->registerCommands();
-        $this->registerJobProgress();
 
         Asset::boot();
 
@@ -64,7 +67,7 @@ class AtomServiceProvider extends ServiceProvider
 
     /**
      * The queue hooks behind job progress (#115), the way Laravel's own Context hooks the queue: a payload hook (runs in the
-     * request, while the job is an object, and only for a job really being pushed) and the three worker events. Each one
+     * request, while the job is an object, and only for a job really being pushed) and the worker events. Each one
      * returns at once for a job without the key in its payload, so they cost nothing for any other job. Listening does not
      * resolve the queue manager at boot.
      */
@@ -78,15 +81,12 @@ class AtomServiceProvider extends ServiceProvider
             JobProgressStore::enterWorkerJob($event->job);
             JobProgressStore::processing($event->job);
         });
-        $events->listen(JobProcessed::class, function (JobProcessed $event) {
-            JobProgressStore::leaveWorkerJob($event->job);
-            JobProgressStore::processed($event->job);
-        });
-        $events->listen(JobFailed::class, function (JobFailed $event) {
-            JobProgressStore::leaveWorkerJob($event->job);
-            JobProgressStore::failed($event->job);
-        });
-        $events->listen(JobExceptionOccurred::class, fn (JobExceptionOccurred $event) => JobProgressStore::leaveWorkerJob($event->job));
+        $events->listen(JobProcessed::class, fn (JobProcessed $event) => JobProgressStore::processed($event->job));
+        $events->listen(JobFailed::class, fn (JobFailed $event) => JobProgressStore::failed($event->job));
+        /* The one event that comes after every other, once per job, whatever its outcome (the worker fires it from a finally): the
+           job is not over at JobProcessed, nor at JobFailed (fail() fires that in the middle of handle()), nor at
+           JobExceptionOccurred, and a host listener on any of those can still dispatch. */
+        $events->listen(JobAttempted::class, fn (JobAttempted $event) => JobProgressStore::leaveWorkerJob($event->job));
         $events->listen([Looping::class, WorkerStopping::class], fn () => JobProgressStore::resetWorker());
     }
 
