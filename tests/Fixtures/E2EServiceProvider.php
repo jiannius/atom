@@ -48,6 +48,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-table-columns', TableColumnsFixture::class);
         Livewire::component('atom-e2e-input-morph', InputMorphFixture::class);
         Livewire::component('atom-e2e-table-loading', TableLoadingFixture::class);
+        Livewire::component('atom-e2e-table-only', TableOnlyFixture::class);
         Livewire::component('atom-e2e-table-search-chip', TableSearchChipFixture::class);
         Livewire::component('atom-e2e-table-search-chip-live', TableSearchChipLiveFixture::class);
         Livewire::component('atom-e2e-date-range-morph', DateRangeMorphFixture::class);
@@ -96,6 +97,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/table-filter-bar', fn () => view('atom::e2e.table-filter-bar'));
         Route::middleware('web')->get('/atom/e2e/table-filters-inline', fn () => view('atom::e2e.table-filters-inline'));
         Route::middleware('web')->get('/atom/e2e/table-loading', fn () => view('atom::e2e.table-loading'));
+        Route::middleware('web')->get('/atom/e2e/table-only', fn () => view('atom::e2e.table-only'));
         Route::middleware('web')->get('/atom/e2e/table-layout', fn () => view('atom::e2e.table-layout'));
         Route::middleware('web')->get('/atom/e2e/table-search-chip', fn () => view('atom::e2e.table-search-chip'));
         Route::middleware('web')->get('/atom/e2e/table-search-chip-live', fn () => view('atom::e2e.table-search-chip-live'));
