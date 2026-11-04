@@ -77,6 +77,28 @@ describe('stat', function () {
                 ->and($html)->not->toContain('<b>');
         });
 
+        it('drops a point that is not finite instead of failing to render', function (mixed $trend, string $json) {
+            $html = renderBlade('<atom:stat label="x" value="1" :trend="$trend" />', ['trend' => $trend]);
+
+            expect($html)->toContain("data: JSON.parse('{$json}')");
+        })->with([
+            'NAN' => [[1, NAN, 3], '[1,3]'],
+            'INF' => [[1, INF, -INF, 3], '[1,3]'],
+            'a numeric string that overflows' => [[1, '1e999', 3], '[1,3]'],
+        ]);
+
+        it('draws nothing when the finite points left are fewer than two', function () {
+            $html = renderBlade('<atom:stat label="x" value="1" :trend="$trend" />', ['trend' => [1, NAN, INF]]);
+
+            expect(domQuery($html, '//*[@data-atom-stat-trend]'))->toBeEmpty();
+        });
+
+        it('reads a Collection or any Arrayable as its list', function () {
+            $html = renderBlade('<atom:stat label="x" value="1" :trend="$trend" />', ['trend' => collect([3, 5, '4', 'x'])->values()]);
+
+            expect($html)->toContain("data: JSON.parse('[3,5,4]')");
+        });
+
         it('sits inside a link stat too', function () {
             $html = renderBlade('<atom:stat label="x" value="1" href="/x" :trend="[1, 2, 3]" />');
 

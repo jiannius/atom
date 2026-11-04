@@ -33,8 +33,9 @@ $direction = match (true) {
 };
 $isGood = $direction && $direction !== 'flat' ? (($direction === 'up') xor (bool) $inverse) : null;
 
-/* numbers only, in order; fewer than two points draw nothing */
-$trend = is_array($trend) ? array_values(array_map(fn ($point) => $point + 0, array_filter($trend, 'is_numeric'))) : [];
+/* finite numbers only, in order (NAN and INF cannot be encoded for the chart); a Collection is read as its array; fewer than two points draw nothing */
+$trend = $trend instanceof \Illuminate\Contracts\Support\Arrayable ? $trend->toArray() : $trend;
+$trend = is_array($trend) ? array_values(array_map(fn ($point) => $point + 0, array_filter($trend, fn ($point) => is_numeric($point) && is_finite($point + 0)))) : [];
 $trendColor = match ($isGood) {
     true => 'success',
     false => 'danger',
