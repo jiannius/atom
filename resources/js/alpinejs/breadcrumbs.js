@@ -301,14 +301,25 @@ export default (config) => {
                     }
                 }
                 else {
-                    let index = this.trails.findIndex(item => item.url === current.url)
+                    // a page drills down only inside its own section: when its home is not the trail's root, or it is
+                    // the home itself, the trail restarts at the page's declared one instead of grafting onto another section
+                    let rooted = this.trails[0]?.home && this.trails[0].title === home.title && this.trails[0].url === home.url
 
-                    if (index === -1) {
-                        this.trails.push(current)
+                    if (!rooted || current.home) {
+                        this.trails = [...items]
                     }
                     else {
-                        this.trails.splice(index)
-                        this.trails.push(current)
+                        // the home is never "the current page": a crumb pushed at the home's own URL
+                        // (push() with no URL takes the page's) would otherwise empty the trail
+                        let index = this.trails.findIndex(item => !item.home && item.url === current.url)
+
+                        if (index === -1) {
+                            this.trails.push(current)
+                        }
+                        else {
+                            this.trails.splice(index)
+                            this.trails.push(current)
+                        }
                     }
                 }
             }

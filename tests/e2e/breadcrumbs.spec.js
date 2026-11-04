@@ -126,6 +126,43 @@ test('pushed crumbs still accumulate across navigations', () => {
   expect(trail.breadcrumbs.map(item => item.href)).toEqual(['/app', '/app/customers', '/app/customers/5'])
 })
 
+test('a pushed page reseeds when its home is not the trail root, instead of grafting onto another section', () => {
+  const trail = breadcrumbs({})
+
+  navigate(trail, profile)
+
+  // a list page of another hierarchy, declared without replace()
+  expect(navigate(trail, customers)).toEqual(['Dashboard', 'Customers'])
+
+  // and a pushed page in the section it now belongs to still drills down
+  expect(navigate(trail, customer)).toEqual(['Dashboard', 'Customers', 'Customer #5'])
+})
+
+test('a page that is its own home reseeds the trail of the section it ends', () => {
+  const trail = breadcrumbs({})
+
+  navigate(trail, profile)
+  navigate(trail, customers)
+
+  expect(navigate(trail, dashboard)).toEqual(['Dashboard'])
+})
+
+test('a pushed page served at its home URL is not mistaken for the home, so the trail never empties', () => {
+  const trail = breadcrumbs({})
+  const overview = {
+    home: { title: 'Dashboard', url: '/app' },
+    items: [{ title: 'Overview', url: '/app' }],
+    replace: false,
+  }
+
+  navigate(trail, dashboard)
+
+  // push() with no URL takes the page's own, which is the home's
+  expect(navigate(trail, overview)).toEqual(['Dashboard', 'Overview'])
+  expect(navigate(trail, customers)).toEqual(['Dashboard', 'Overview', 'Customers'])
+  expect(navigate(trail, overview)).toEqual(['Dashboard', 'Overview'])
+})
+
 // $_breadcrumbs defaults to [] on the WithBreadcrumbs trait, so a page that renders
 // <atom:breadcrumbs> over a component with no breadcrumbs() method reaches build()
 // with an empty payload. Before the root selector was fixed, build() bailed earlier
