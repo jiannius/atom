@@ -1149,6 +1149,30 @@ describe('atom:upgrade: x.currency() becomes atom.currency(x)', function () {
             ->and(file_exists($dir.'/ATOM-UPGRADE-TODO.md') ? file_get_contents($dir.'/ATOM-UPGRADE-TODO.md') : '')->not->toContain('resources/views/x.blade.php');
     });
 
+    it('reads an inline handler, a javascript: URL and an unquoted JS attribute as code, and declines to rewrite what it cannot quote', function () {
+        $source = "<button onclick=\"alert(total.currency(2))\">a</button>\n<a href=\"javascript:void(total.currency(2))\">b</a>\n<a href=\"/x?total.currency(2)\">c</a>\n<span x-text=amt.currency(2)></span>\n<span x-text=amt.currency()></span>\n";
+        [$after, $dir] = upgradeCurrency($this, 'resources/views/x.blade.php', $source);
+        $todo = file_get_contents($dir.'/ATOM-UPGRADE-TODO.md');
+
+        expect($after)->toBe("<button onclick=\"alert(atom.currency(total, 2))\">a</button>\n<a href=\"javascript:void(atom.currency(total, 2))\">b</a>\n<a href=\"/x?total.currency(2)\">c</a>\n<span x-text=amt.currency(2)></span>\n<span x-text=amt.currency()></span>\n")
+            ->and($todo)->toContain('resources/views/x.blade.php:4')->toContain('resources/views/x.blade.php:5')->toContain('without quotes')
+            ->and($todo)->not->toContain('resources/views/x.blade.php:3');
+    });
+
+    it('reads a slash after ++ or -- as division, and after the header of an if, while or for as a regex', function (string $js, string $after) {
+        [$file] = upgradeCurrency($this, 'resources/js/x.js', $js."\n");
+        [$blade] = upgradeCurrency($this, 'resources/views/x.blade.php', "<script>\n{$js}\n</script>\n");
+
+        expect($file)->toBe($after."\n")
+            ->and($blade)->toBe("<script>\n{$after}\n</script>\n");
+    })->with([
+        'a postfix increment' => ['let a = n++ / 2, b = z.currency(2) / 4', 'let a = n++ / 2, b = atom.currency(z, 2) / 4'],
+        'a postfix decrement' => ['x = y-- / 2 + w.currency(3) / 5', 'x = y-- / 2 + atom.currency(w, 3) / 5'],
+        'a division after a parenthesis' => ['x = (a) / 2 + w.currency(3) / 5', 'x = (a) / 2 + atom.currency(w, 3) / 5'],
+        'a regex after an if header' => ["if (ok) /a.currency(1)/.test(s)", "if (ok) /a.currency(1)/.test(s)"],
+        'a regex after a while header' => ["while (ok) /a.currency(1)/.test(s)", "while (ok) /a.currency(1)/.test(s)"],
+    ]);
+
     it('rewrites the code of a Blade file beside its prose', function () {
         [$after] = upgradeCurrency($this, 'resources/views/x.blade.php', "<p>Use price.currency(2)</p>\n<span x-text=\"price.currency(2)\"></span>\n<script>\nlet v = price.currency(2)\n</script>\n<button wire:click=\"go(fee.currency())\" :title=\"fee.currency()\"></button>\n");
 

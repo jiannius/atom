@@ -792,7 +792,7 @@ class Upgrade
 
             $open = $dot + strlen($match) - 1;
             $line = substr_count($text, "\n", 0, $dot) + 1;
-            $receiver = $this->currencyReceiver($markup, $dot);
+            $receiver = $kind === 'blade' && $this->scanner->inUnquotedAttribute($markup, $dot) ? 'an attribute value without quotes' : $this->currencyReceiver($markup, $dot);
             $arguments = is_array($receiver) ? $this->currencyArguments($markup, $open) : null;
 
             if (! is_array($receiver) || ! is_array($arguments)) {

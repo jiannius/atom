@@ -150,7 +150,7 @@ describe('atom:upgrade-check: the findings', function () {
             'macro-str' => [$php.':47'],
             'macro-builder' => [$php.':48'],
             'macro-attribute-bag' => ['resources/views/components/field.blade.php:2'],
-            'js-currency' => [$widget.':15'],
+            'js-currency' => [$widget.':15', $widget.':35', $widget.':36'],
             'js-array-helper' => ['resources/js/app.js:6', $widget.':16', $widget.':16', $widget.':20', $widget.':27'],
             'js-string-helper' => ['resources/js/app.js:6', $widget.':16'],
             'js-date-helper' => ['resources/js/app.js:4', 'resources/js/app.js:5', $widget.':16'],

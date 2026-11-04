@@ -1265,36 +1265,87 @@ class UpgradeCheck
         }
 
         $out = preg_replace('/[^\n]/', ' ', $markup) ?? $markup;
-        $splice = function (int $at, string $js) use (&$out): void {
-            $out = substr($out, 0, $at).$this->maskJsLiterals($js).substr($out, $at + strlen($js));
-        };
 
-        if (preg_match_all('/<script\b[^>]*>(.*?)<\/script>/is', $markup, $scripts, PREG_OFFSET_CAPTURE)) {
-            foreach ($scripts[1] as [$body, $at]) {
-                $splice($at, $body);
+        foreach ($this->bladeJsSegments($markup) as [$at, $js]) {
+            $out = substr($out, 0, $at).$this->maskJsLiterals($js).substr($out, $at + strlen($js));
+        }
+
+        return $out;
+    }
+
+    /**
+     * Whether the byte at $offset of a Blade file's markup text sits in an attribute value written without quotes
+     * (`x-text=amt.currency(2)`): a rewrite there must not add a space
+     */
+    public function inUnquotedAttribute(string $markup, int $offset): bool
+    {
+        foreach ($this->bladeJsSegments($markup) as [$at, $js, $quoted]) {
+            if (! $quoted && $offset >= $at && $offset < $at + strlen($js)) {
+                return true;
             }
         }
 
-        if (preg_match_all('/<[a-z][\w:.\-]*/i', $markup, $tags, PREG_OFFSET_CAPTURE)) {
-            foreach ($tags[0] as [$tag, $at]) {
-                $from = $at + strlen($tag);
-                $attributes = $this->readAttributes($markup, $from);
+        return false;
+    }
 
-                if (! preg_match_all('/(?<=\s)(?:x-[\w:.\-]*|@[\w:.\-]+|:[\w.\-]+|wire:[\w.\-]+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\')/', $attributes, $values, PREG_OFFSET_CAPTURE)) {
+    /**
+     * The JavaScript regions of a Blade file's markup text: `<script>` bodies, the value of an `x-*`, `@*`, `:*`, `wire:*` or
+     * `on*` attribute, and what follows `javascript:` in an `href`, `src`, `action` or `formaction` value, quoted or not
+     *
+     * @return array<int, array{0: int, 1: string, 2: bool}>  offset, text, quoted
+     */
+    protected function bladeJsSegments(string $markup): array
+    {
+        $segments = [];
+
+        if (preg_match_all('/<script\b[^>]*>(.*?)<\/script>/is', $markup, $scripts, PREG_OFFSET_CAPTURE)) {
+            foreach ($scripts[1] as [$body, $at]) {
+                $segments[] = [$at, $body, true];
+            }
+        }
+
+        if (! preg_match_all('/<[a-z][\w:.\-]*/i', $markup, $tags, PREG_OFFSET_CAPTURE)) {
+            return $segments;
+        }
+
+        $value = '(?:"([^"]*)"|\'([^\']*)\'|([^\s"\'=<>`]+))';
+
+        foreach ($tags[0] as [$tag, $at]) {
+            $from = $at + strlen($tag);
+            $attributes = $this->readAttributes($markup, $from);
+
+            foreach ([
+                '/(?<=\s)(?:x-[\w:.\-]*|@[\w:.\-]+|:[\w.\-]+|wire:[\w.\-]+|on[a-z]+)\s*=\s*'.$value.'/' => false,
+                '/(?<=\s)(?:href|src|action|formaction)\s*=\s*'.$value.'/i' => true,
+            ] as $pattern => $url) {
+                if (! preg_match_all($pattern, $attributes, $found, PREG_OFFSET_CAPTURE)) {
                     continue;
                 }
 
-                foreach ([1, 2] as $group) {
-                    foreach ($values[$group] as [$value, $valueAt]) {
-                        if ($value !== '' && $valueAt >= 0) {
-                            $splice($from + $valueAt, $value);
+                foreach ([1, 2, 3] as $group) {
+                    foreach ($found[$group] as [$text, $textAt]) {
+                        if ($text === '' || $textAt < 0) {
+                            continue;
+                        }
+
+                        if ($url) {
+                            if (! preg_match('/^\s*javascript:/i', $text, $scheme)) {
+                                continue;
+                            }
+
+                            $text = substr($text, strlen($scheme[0]));
+                            $textAt += strlen($scheme[0]);
+                        }
+
+                        if ($text !== '') {
+                            $segments[] = [$from + $textAt, $text, $group !== 3];
                         }
                     }
                 }
             }
         }
 
-        return $out;
+        return $segments;
     }
 
     /**
@@ -1317,6 +1368,7 @@ class UpgradeCheck
         $last = '';
         $depth = 0;
         $expressions = [];
+        $headers = [];
         $inTemplate = false;
 
         while ($i < $n) {
@@ -1401,6 +1453,24 @@ class UpgradeCheck
 
                     continue;
                 }
+            }
+
+            // `n++ / 2`: a slash after a postfix increment or decrement divides
+            if (($c === '+' || $c === '-') && ($js[$i + 1] ?? '') === $c) {
+                $last = 'x';
+                $i += 2;
+
+                continue;
+            }
+
+            // `if (x) /re/.test(y)`: the slash after the `)` of an if, while, for or with header starts a regex
+            if ($c === '(') {
+                $headers[] = (bool) preg_match('/\b(?:if|while|for|with)\s*$/', substr($js, max(0, $i - 8), min(8, $i)));
+            } elseif ($c === ')') {
+                $last = array_pop($headers) ? ';' : ')';
+                $i++;
+
+                continue;
             }
 
             if ($c === '{') {

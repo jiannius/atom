@@ -32,3 +32,5 @@ if (empty($total)) {
 
 <p>Use price.currency(2) in prose.</p>
 <button @click="this.currency(1); super.currency(2); label = 'a.currency(3)'">own methods and strings</button>
+<button onclick="alert(total.currency(2))">inline handler</button>
+<a href="javascript:void(total.currency(2))">script url</a>
