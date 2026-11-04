@@ -491,6 +491,56 @@ describe('atom:upgrade-check: the command', function () {
         unlink($out);
     });
 
+    it('exits 0 by default and with --fail-on=breaks on a tree with no break, and 1 only when an app-scope break remains (#157)', function () {
+        $clean = sys_get_temp_dir().'/atom-upgrade-clean-'.bin2hex(random_bytes(6));
+        mkdir($clean.'/app/Providers', 0777, true);
+        file_put_contents($clean.'/app/Providers/AppServiceProvider.php', "<?php\n\nnamespace App\\Providers;\n\nuse Illuminate\\Support\\Facades\\Date;\nuse Illuminate\\Support\\ServiceProvider;\nuse Jiannius\\Atom\\Services\\Carbon;\n\nclass AppServiceProvider extends ServiceProvider\n{\n    public function boot(): void\n    {\n        Date::use(Carbon::class);\n    }\n}\n");
+
+        try {
+            expect(Artisan::call('atom:upgrade-check', ['--path' => $clean, '--fail-on' => 'breaks']))->toBe(0);
+        } finally {
+            upgradeRemove($clean);
+        }
+
+        // the fixture host has breaks left in app code: the report is the same, the exit code is not
+        expect(Artisan::call('atom:upgrade-check', ['--path' => upgradeFixture()]))->toBe(0)
+            ->and(Artisan::call('atom:upgrade-check', ['--path' => upgradeFixture(), '--fail-on' => 'breaks']))->toBe(1)
+            ->and(Artisan::output())->toContain('BREAKS AT RUNTIME');
+    });
+
+    it('fails on a break in app code only, not on one in tests/ or on a review or visual finding', function () {
+        $dir = sys_get_temp_dir().'/atom-upgrade-scope-'.bin2hex(random_bytes(6));
+        mkdir($dir.'/tests', 0777, true);
+        mkdir($dir.'/app/Providers', 0777, true);
+        mkdir($dir.'/resources/css', 0777, true);
+        file_put_contents($dir.'/app/Providers/AppServiceProvider.php', "<?php\n\nnamespace App\\Providers;\n\nuse Illuminate\\Support\\Facades\\Date;\nuse Jiannius\\Atom\\Services\\Carbon;\n\nclass AppServiceProvider\n{\n    public function boot(): void\n    {\n        Date::use(Carbon::class);\n    }\n}\n");
+        file_put_contents($dir.'/tests/total.blade.php', "<span x-text=\"fee.currency('RM')\"></span>\n");
+        file_put_contents($dir.'/resources/css/app.css', "@import 'tailwindcss';\n");
+
+        try {
+            // a break that exists only under tests/ does not fail a host's CI
+            expect(Artisan::call('atom:upgrade-check', ['--path' => $dir, '--fail-on' => 'breaks']))->toBe(0);
+
+            mkdir($dir.'/resources/views', 0777, true);
+            file_put_contents($dir.'/resources/views/total.blade.php', "<span x-text=\"fee.currency('RM')\"></span>\n");
+
+            expect(Artisan::call('atom:upgrade-check', ['--path' => $dir, '--fail-on' => 'breaks']))->toBe(1);
+        } finally {
+            upgradeRemove($dir);
+        }
+    });
+
+    it('keeps --json clean when --fail-on fails: the reason goes to the error stream, not into the JSON', function () {
+        Artisan::call('atom:upgrade-check', ['--path' => upgradeFixture(), '--json' => true, '--fail-on' => 'breaks']);
+
+        expect(json_decode(Artisan::output(), true, flags: JSON_THROW_ON_ERROR))->toHaveKey('checks');
+    });
+
+    it('refuses a --fail-on value it does not know', function () {
+        expect(Artisan::call('atom:upgrade-check', ['--path' => upgradeFixture(), '--fail-on' => 'visual']))->toBe(1)
+            ->and(Artisan::output())->toContain('--fail-on');
+    });
+
     it('is a command the service provider registers', function () {
         expect(array_keys(Artisan::all()))->toContain('atom:upgrade-check');
     });
