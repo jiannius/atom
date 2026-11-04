@@ -15,16 +15,14 @@
      `['label' => ..., 'value' => ..., 'mono' => true]`. `title`, labels and values print as text. It is pure Blade and CSS, so it also renders in a
      modal or a slide-over (a form, never a whole record): pass `size="sm"` and `level="2"` there (the overflow trigger follows it, and so should the buttons you pass: default size on a page, `sm` there). Use the shell's own
      `crumbs` slot OR `crumbs` here, not both.
-     Where the actions go is decided by the header's own width, never by how long the title or the meta line is, so two pages of one
-     app lay out alike. The header is a container (`@container`); from 48rem (`@3xl`: 768px, the width where a title column of about
-     370px is left beside an action group of three buttons) the actions sit beside the title block, bottom-aligned, and the title
-     wraps inside its column; narrower, the title block takes the whole row (`basis-full`) and the actions are on a row of their own
-     below, at the start. `size="sm"` (a modal or a slide-over, always narrower than that) keeps the old rule: the actions share the
-     row when they fit and wrap when they do not.
-     A size container takes its width from its parent alone (its content cannot size it), so the default header needs a parent that gives
-     it one: a block does (the page column, the shells, <atom:page>). In a flex row put `flex-1 min-w-0` on it; in an `inline-block`, a
-     `w-fit` box or an `auto` grid column it collapses to nothing (the title wraps a letter a line), and in a content-sized modal it no
-     longer widens the dialog: a modal or slide-over takes `size="sm"`, which is not a container.
+     Where the actions go is decided by what fits, never by how long the title or the meta line is, so two pages of one app lay out
+     alike. The title block has a fixed flex basis (`basis-[22rem]`, about the 370px a title needs beside three buttons) and can grow, the
+     actions do not shrink, and the header wraps: the actions sit beside the title block, bottom-aligned, while the basis and the actions
+     fit the header's width together, and on a row of their own below it, at the start, when they do not. The line breaks on the basis, not
+     on the content, so a short and a very long meta line lay out alike; what the width has to hold is the actions, so one small action
+     stays beside the title at 480px and five do not fit at 800px. `size="sm"` (a modal or a slide-over) has no basis: the actions share the
+     row when they fit and wrap when they do not. (beta.10 to beta.17 decided it with a container query at 48rem, 768px, whatever the
+     actions were; the header was a size container then, which is not needed any more.)
      A slot counts as content only if it holds more than comments and whitespace (hasActualContent), so a slot made of `@if`
      blocks that all come out false in a Livewire view, which still prints its `<!--[if BLOCK]-->` markers, draws nothing. --}}
 @php
@@ -51,10 +49,8 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
 
 <header {{ $attributes->class([
     'flex flex-wrap items-end justify-between gap-x-6 gap-y-3.5',
-    // a container: where the actions go is the header's own width, not how long the title or the meta line is
-    '@container w-full' => ! $small,
 ]) }} data-atom-page-header>
-    <div @class(['min-w-0 max-w-full grow', 'basis-full @3xl:basis-0' => ! $small])>
+    <div @class(['min-w-0 max-w-full grow', 'basis-[22rem]' => ! $small])>
         @if ($trail->isNotEmpty())
             <nav aria-label="{{ t('Breadcrumb') }}" class="mb-2" data-atom-page-crumbs>
                 <ol class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-fg-subtle">
@@ -118,7 +114,7 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
     </div>
 
     @if ($hasActions)
-        <div @class(['flex flex-wrap items-center gap-1.5', 'max-w-full' => ! $small]) data-atom-page-actions>
+        <div @class(['flex flex-wrap items-center gap-1.5', 'max-w-full shrink-0' => ! $small]) data-atom-page-actions>
             @if ($has($actions ?? null))
                 {{ $actions }}
             @endif
