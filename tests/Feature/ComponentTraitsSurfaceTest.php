@@ -1,6 +1,10 @@
 <?php
 
+use Illuminate\Auth\GenericUser;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
+use Jiannius\Atom\Services\JobProgress;
+use Jiannius\Atom\Services\JobProgressStore;
 use App\Actions\Spy;
 use Jiannius\Atom\Tests\Fixtures\ComponentHelpersFixture;
 use Jiannius\Atom\Tests\Fixtures\HookNamedPropertiesFixture;
@@ -12,6 +16,8 @@ use Jiannius\Atom\Tests\Fixtures\TraitGuardParentFixture;
 use Jiannius\Atom\Tests\Fixtures\TraitGuardTableChildFixture;
 use Jiannius\Atom\Traits\WithBreadcrumbs;
 use Jiannius\Atom\Traits\WithEditor;
+use Jiannius\Atom\Traits\WithJobProgress;
+use Jiannius\Atom\Tests\Fixtures\JobProgressFixture;
 use Jiannius\Atom\Traits\WithRecaptcha;
 use Jiannius\Atom\Traits\WithTable;
 use Livewire\Component;
@@ -85,6 +91,15 @@ it('WithBreadcrumbs, WithRecaptcha and WithEditor occupy only the names they doc
     ]);
 });
 
+it('WithJobProgress occupies no public name at all: its two helpers are protected', function () {
+    // a public jobProgress() is $wire.jobProgress('x') in every browser, and Livewire sends the return value back: the result file's path
+    expect(publicNamesOf(WithJobProgress::class))->toBe([]);
+
+    foreach (['jobProgress', 'forgetJobProgress'] as $name) {
+        expect((new ReflectionMethod(WithJobProgress::class, $name))->isProtected())->toBeTrue("{$name} must be protected");
+    }
+});
+
 it('keeps the old aggregate trait gone', function () {
     expect(trait_exists('Jiannius\Atom\Traits\AtomComponent'))->toBeFalse();
 });
@@ -119,7 +134,7 @@ it('never calls its own host-facing helpers, so shadowing them stays harmless', 
     // a walk that finds nothing would pass every assertion below it
     expect($files->count())->toBeGreaterThan(300);
 
-    $helpers = ['modal', 'command', 'toast', 'alert', 'confirm', 'action', 'wirekey', 'verifyRecaptcha'];
+    $helpers = ['modal', 'command', 'toast', 'alert', 'confirm', 'action', 'wirekey', 'verifyRecaptcha', 'jobProgress', 'forgetJobProgress'];
 
     foreach ($files as $path) {
         $contents = file_get_contents($path);
@@ -136,7 +151,7 @@ it('never calls its own host-facing helpers, so shadowing them stays harmless', 
 it('claims no name a host component is likely to want for its own data', function () {
     // the computed property feeding <atom:table :paginate="..."> is the host's to
     // name — atom must never define or look for one of these
-    foreach ([WithTable::class, WithBreadcrumbs::class, WithEditor::class, WithRecaptcha::class] as $trait) {
+    foreach ([WithTable::class, WithBreadcrumbs::class, WithEditor::class, WithRecaptcha::class, WithJobProgress::class] as $trait) {
         $reflection = new ReflectionClass($trait);
 
         foreach (['items', 'rows', 'records', 'data', 'results', 'list', 'query', 'filters'] as $name) {
@@ -155,6 +170,7 @@ it('declares its own state under an underscore prefix, one bucket per trait', fu
     expect($state(WithBreadcrumbs::class))->toBe(['_breadcrumbs']);
     expect($state(WithEditor::class))->toBe(['_editor']);
     expect($state(WithRecaptcha::class))->toBe(['_recaptcha']);
+    expect($state(WithJobProgress::class))->toBe([]);   // no state at all: nothing a client could write
 });
 
 /**
@@ -173,7 +189,7 @@ it('registers every helper as a macro on Livewire\Component, not as a trait meth
     foreach (COMPONENT_MACROS as $name) {
         expect(Component::hasMacro($name))->toBeTrue("{$name} must be a macro");
 
-        foreach ([WithTable::class, WithBreadcrumbs::class, WithEditor::class, WithRecaptcha::class] as $trait) {
+        foreach ([WithTable::class, WithBreadcrumbs::class, WithEditor::class, WithRecaptcha::class, WithJobProgress::class] as $trait) {
             expect((new ReflectionClass($trait))->hasMethod($name))->toBeFalse("{$trait} must not declare {$name}()");
         }
     }
@@ -186,12 +202,14 @@ it('keeps every helper macro off the browser-callable surface, whatever traits a
         new class extends Component { use WithTable, WithPagination; },
         new class extends Component { use WithBreadcrumbs, WithEditor, WithRecaptcha; },
         new ComponentHelpersFixture,
+        new class extends Component { use WithJobProgress; },
+        new JobProgressFixture,
     ];
 
     foreach ($combinations as $component) {
         $surface = Utils::getPublicMethodsDefinedBySubClass($component);
 
-        foreach (COMPONENT_MACROS as $name) {
+        foreach ([...COMPONENT_MACROS, 'jobProgress', 'forgetJobProgress'] as $name) {
             expect($surface)->not->toContain($name);
         }
     }
@@ -780,3 +798,28 @@ it('leaves a WithTable component with an ordinary query string, and a component 
     Livewire::test($ordinary::class)->assertOk();
     Livewire::test($without::class)->assertOk();
 });
+
+it('refuses a browser call to either job progress helper, and no path or entry comes back', function (string $name) {
+    config(['cache.default' => 'array', 'app.debug' => true]);
+    JobProgress::scopeUsing(fn () => 'org-1');
+    Auth::setUser(new GenericUser(['id' => 7]));
+    JobProgressStore::write(JobProgressStore::key('export:invoice'), JobProgressStore::entry('r', 'finished', ['file' => '/srv/data/secret-7.xlsx']));
+
+    $test = Livewire::test(JobProgressFixture::class);
+
+    expect(fn () => $test->call($name, 'export:invoice'))->toThrow(MethodNotFoundException::class);
+
+    // a crafted update request, not the test helper: refused by Livewire's own allow-list before the helper could run
+    $response = $this->withHeaders(['X-Livewire' => 'true'])->postJson(app('livewire')->getUpdateUri(), [
+        'components' => [[
+            'snapshot' => json_encode($test->snapshot),
+            'updates' => [],
+            'calls' => [['method' => $name, 'params' => ['export:invoice'], 'metadata' => []]],
+        ]],
+    ]);
+
+    expect($response->status())->toBeGreaterThanOrEqual(400)
+        ->and($response->getContent())->toContain("Public method [{$name}] not found")
+        ->and($response->getContent())->not->toContain('secret-7')
+        ->and(JobProgress::for('export:invoice')->exists())->toBeTrue();   // forgetJobProgress did not run
+})->with(['jobProgress', 'forgetJobProgress']);

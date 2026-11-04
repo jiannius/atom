@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Jiannius\Atom\Services\Carbon;
+use Jiannius\Atom\Services\JobProgress;
+use Jiannius\Atom\Services\JobProgressStore;
 use Livewire\Livewire;
 
 class E2EServiceProvider extends ServiceProvider
@@ -71,6 +73,12 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-slide-over-form', SlideOverFormFixture::class);
         Livewire::component('atom-e2e-calendar', CalendarFixture::class);
         Livewire::component('atom-e2e-calendar-look', CalendarLookFixture::class);
+        Livewire::component('atom-e2e-job-progress', JobProgressFixture::class);
+
+        // Job progress (#115): the served app has the array cache store, which cannot carry an entry from one request to the next
+        // (and the page polls), so its entries live in the file store, under one tenant.
+        config(['atom.job_progress.store' => 'file']);
+        JobProgress::scopeUsing(fn () => 'e2e');
 
         Route::middleware('web')->get('/atom/e2e/select-morph', fn () => view('atom::e2e.select-morph'));
         Route::middleware('web')->get('/atom/e2e/attr-sweep', fn () => view('atom::e2e.attr-sweep'));
@@ -186,6 +194,33 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/form-error-toast', fn () => view('atom::e2e.form-error-toast'));
         Route::middleware('web')->get('/atom/e2e/form-toast-bar', fn () => view('atom::e2e.form-toast-bar'));
         Route::middleware('web')->get('/atom/e2e/form-dirty', fn () => view('atom::e2e.form-dirty'));
+        // The Livewire page that shows a job's progress: ?second=1 adds a second job, ?modal=1 one in a closed modal
+        Route::middleware('web')->get('/atom/e2e/job-progress', fn () => view('atom::e2e.job-progress'));
+        // Sets what the fixture user's entry for ?name= says, standing in for a worker: ?status=queued|running|finished|failed,
+        // ?done, ?total, ?run, ?file=1 (with a file), ?errors=n; with no status it forgets the entry. Replies with what is stored.
+        Route::middleware('web')->get('/atom/e2e/job-progress/state', function (Request $request) {
+            Auth::setUser(new GenericUser(['id' => 7]));
+
+            $name = 'export:'.preg_replace('/[^a-z]/', '', (string) $request->query('name', 'invoice'));
+            $status = $request->query('status');
+
+            if (! in_array($status, ['queued', 'running', 'finished', 'failed'], true)) {
+                JobProgress::forget($name);
+
+                return response()->json(['forgotten' => $name]);
+            }
+
+            JobProgressStore::write(JobProgressStore::key($name), JobProgressStore::entry((string) $request->query('run', 'run-1'), $status, array_filter([
+                'done' => (int) $request->query('done', 0),
+                'total' => $request->query('total') !== null ? (int) $request->query('total') : null,
+                'file' => $request->boolean('file') ? '/srv/data/exports/secret-7.xlsx' : null,
+                'file_name' => $request->boolean('file') ? 'journal.xlsx' : null,
+                'errors' => array_map(fn ($i) => "row {$i}: no line items", range(1, (int) $request->query('errors', 0))),
+                'error_count' => (int) $request->query('errors', 0),
+            ], fn ($v) => $v !== null)));
+
+            return response()->json(JobProgress::for($name));
+        });
         Route::middleware('web')->get('/atom/e2e/calendar', fn () => view('atom::e2e.calendar'));
         Route::middleware('web')->get('/atom/e2e/calendar-static', fn () => view('atom::e2e.calendar-static'));
         Route::middleware('web')->get('/atom/e2e/calendar-twin', fn () => view('atom::e2e.calendar-twin'));
