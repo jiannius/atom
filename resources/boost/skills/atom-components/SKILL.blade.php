@@ -175,7 +175,7 @@ Rules the patterns follow (apply them to any new screen):
 - **Status tones:** neutral for draft or not started, info for in progress or scheduled, success for done, warning for waiting, blocked or needs attention, danger for failed or overdue, accent for what is yours to act on. `running` only while something is actually running. Always a word, never a colour alone.
 
 **Numbers, text and the accent**
-- **Stats:** a strip of 3 to 5 under the header; label, value, small currency `prefix`, `breakdown`. A stat that is also a filter gets an `href`. Money is tabular (the stat does it; in a table put `numeric` on the column and on the cell: right-aligned, tabular figures); identifiers (an order number, a reference) are monospace: `font-id`.
+- **Stats:** a strip of 3 to 5 under the header; label, value, small currency `prefix`, `breakdown`. A stat that is also a filter gets an `href`. A sparkline under the figure is `:trend="[3, 5, 4, 7]"` (numbers; it takes the delta's good or bad colour, decoration only: the figure and the delta carry the meaning). Money is tabular (the stat does it; in a table put `numeric` on the column and on the cell: right-aligned, tabular figures); identifiers (an order number, a reference) are monospace: `font-id`.
 - **Density and text:** the shells are compact (13px body, 28px controls), a bare page or auth is comfortable; long text and editors use `text-base` (14px) for reading. Set the brand as `--color-accent` once in `@theme`; do not hand-pick foreground or hover colours. With none set, the accent is near-black in light and near-white in dark (a primary button is visible in both), and a colour you set is the same in both themes.
 
 **Lists, documents and forms**

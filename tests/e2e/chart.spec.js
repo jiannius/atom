@@ -33,7 +33,7 @@ for (const tw of ['floor', 'latest']) {
   test.describe(`chart sizing, ${tw} consumer build`, () => {
     test.beforeEach(async ({ page }) => {
       await openContent(page, { tw, section: 'chart-sizing' })
-      for (const id of ['size-trend', 'size-bar', 'size-area', 'size-own-bar', 'size-own-trend', 'size-fill', 'size-card-chart', 'size-card-stat']) {
+      for (const id of ['size-stat-trend', 'size-trend', 'size-bar', 'size-area', 'size-own-bar', 'size-own-trend', 'size-fill', 'size-card-chart', 'size-card-stat']) {
         await expect(page.getByTestId(id).locator('.apexcharts-canvas')).toBeVisible()
       }
       await page.waitForTimeout(400)
@@ -48,6 +48,30 @@ for (const tw of ['floor', 'latest']) {
     test('an h-* class on the tag sets the height of a bar and of a trend', async ({ page }) => {
       expect(Math.abs(await svgHeight(page, 'size-own-bar') - 160)).toBeLessThanOrEqual(2)
       expect(Math.abs(await svgHeight(page, 'size-own-trend') - 96)).toBeLessThanOrEqual(2)
+    })
+
+    test('a stat with a trend draws a 32px sparkline inside its own box, and grows by the chart and its 8px gap only (#159)', async ({ page }) => {
+      const stat = page.getByTestId('size-stat-trend')
+      const svg = stat.locator('svg.apexcharts-svg')
+
+      await expect(svg).toBeVisible()
+      await page.waitForTimeout(300)
+
+      const box = await stat.boundingBox()
+      const line = await svg.boundingBox()
+
+      expect(Math.abs(line.height - 32)).toBeLessThanOrEqual(2)
+      // inside the stat, above its bottom padding
+      expect(line.y).toBeGreaterThanOrEqual(box.y)
+      expect(line.y + line.height).toBeLessThanOrEqual(box.y + box.height - 8)
+
+      // a group stretches its stats to one height, so compare what each one needs: its content plus its bottom padding
+      const natural = (testid) => page.getByTestId(testid).evaluate((el) => {
+        const last = el.lastElementChild.getBoundingClientRect()
+        return last.bottom + parseFloat(getComputedStyle(el).paddingBottom) - el.getBoundingClientRect().top
+      })
+
+      expect(Math.abs((await natural('size-stat-trend')) - (await natural('size-stat-plain')) - 40)).toBeLessThanOrEqual(2)
     })
 
     test('a chart that passes h-full still fills its box', async ({ page }) => {

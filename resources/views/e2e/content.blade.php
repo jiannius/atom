@@ -141,6 +141,12 @@ $doc = ['type' => 'doc', 'content' => [
         {{-- a chart that fills a box of the host's: it passes h-full, as the sections below do --}}
         <div style="height: 120px"><atom:chart type="trend" :data="[8, 12, 9, 14, 11, 18]" class="h-full" data-testid="size-fill"/></div>
 
+        {{-- a stat with a trend, beside the same stat without: the strip grows by the chart and no more --}}
+        <atom:stat.group data-testid="size-stat-group">
+            <atom:stat label="Revenue" prefix="RM" value="48,200" delta="+12%" breakdown="vs last month" :trend="[3, 5, 4, 7, 6, 9]" data-testid="size-stat-trend"/>
+            <atom:stat label="Revenue" prefix="RM" value="48,200" delta="+12%" breakdown="vs last month" data-testid="size-stat-plain"/>
+        </atom:stat.group>
+
         {{-- the in-package callers: a card chart fills its box, a stat draws its trend in the lower half --}}
         <div style="height: 320px"><atom:card variant="chart" heading="Sales" :data="[['label' => 'Mon', 'value' => 32, 'tooltip' => '32'], ['label' => 'Tue', 'value' => 48, 'tooltip' => '48']]" class="h-full" data-testid="size-card-chart"/></div>
         <div style="width: 240px"><atom:card variant="stats" heading="Revenue" data="1,280" :indicator="5" :trend="[3, 5, 4, 7, 6, 9]" data-testid="size-card-stat"/></div>
