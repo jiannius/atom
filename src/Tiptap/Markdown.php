@@ -59,7 +59,8 @@ class Markdown
             return '';
         }
 
-        $source = (string) $markdown;
+        /* A reply cut mid-character is invalid UTF-8, which the converter throws on (a report() per render): scrub it first. */
+        $source = mb_scrub((string) $markdown, 'UTF-8');
 
         if (trim($source) === '') {
             return '';

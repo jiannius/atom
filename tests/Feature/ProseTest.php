@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Exceptions;
 use Jiannius\Atom\Tiptap\Markdown;
 
 /**
@@ -18,6 +19,15 @@ describe('<atom:prose>', function () {
             ->toContain('<strong>bold</strong>')
             ->toContain('<li>one</li>')
             ->not->toContain('data-fallback');
+    });
+
+    it('converts markdown cut mid-character, with nothing reported', function () {
+        Exceptions::fake();
+
+        $html = Markdown::toHtml("**hello** \xE2\x82 trunc");
+
+        expect($html)->toContain('<strong>hello</strong>')->toContain('trunc');
+        Exceptions::assertNothingReported();
     });
 
     it('loads the content stylesheet', function () {
