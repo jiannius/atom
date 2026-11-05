@@ -973,7 +973,7 @@ describe('the week title', function () {
                 expect(Calendar::isFormat($format))->toBeTrue("{$locale} {$shape}: {$format}");
             }
         }
-    })->with(['en', 'ms', 'zh', 'zh_CN', 'zh-TW', 'fr', 'ru']);
+    })->with(['en', 'ms', 'zh', 'zh_CN', 'zh-TW', 'ja', 'ja_JP', 'ko', 'ko_KR', 'fr', 'ru']);
 
     it('reads like English in Malay and in a locale with no patterns of its own', function (string $locale) {
         app()->setLocale($locale);
@@ -991,6 +991,43 @@ describe('the week title', function () {
             ->and($print('cross_month', '2026-10-26', '2026-11-01'))->toBe('2026年10月26日 – 11月1日')
             ->and($print('cross_year', '2026-12-28', '2027-01-03'))->toBe('2026年12月28日 – 2027年1月3日');
     })->with(['zh', 'zh_CN', 'zh-TW']);
+
+    it('writes Japanese year first with the 年 月 日 marks, and the day alone for the end of a week in the same month', function (string $locale) {
+        app()->setLocale($locale);
+
+        $titles = Calendar::make()->labels()['week_title'];
+        $print = fn (string $shape, string $first, string $last) => Calendar::format(Carbon::parse($first), $titles[$shape][0]).' – '.Calendar::format(Carbon::parse($last), $titles[$shape][1]);
+
+        expect($print('same_month', '2026-10-05', '2026-10-11'))->toBe('2026年10月5日 – 11日')
+            ->and($print('cross_month', '2026-10-26', '2026-11-01'))->toBe('2026年10月26日 – 11月1日')
+            ->and($print('cross_year', '2026-12-28', '2027-01-03'))->toBe('2026年12月28日 – 2027年1月3日');
+    })->with(['ja', 'ja_JP', 'ja-JP', 'JA']);
+
+    it('writes Korean year first with the 년 월 일 marks and a space after each, and the day alone for the end of a week in the same month', function (string $locale) {
+        app()->setLocale($locale);
+
+        $titles = Calendar::make()->labels()['week_title'];
+        $print = fn (string $shape, string $first, string $last) => Calendar::format(Carbon::parse($first), $titles[$shape][0]).' – '.Calendar::format(Carbon::parse($last), $titles[$shape][1]);
+
+        expect($print('same_month', '2026-10-05', '2026-10-11'))->toBe('2026년 10월 5일 – 11일')
+            ->and($print('cross_month', '2026-10-26', '2026-11-01'))->toBe('2026년 10월 26일 – 11월 1일')
+            ->and($print('cross_year', '2026-12-28', '2027-01-03'))->toBe('2026년 12월 28일 – 2027년 1월 3일');
+    })->with(['ko', 'ko_KR', 'ko-KR']);
+
+    it('does not take a language that only starts like one of these for it', function (string $locale) {
+        expect(Calendar::weekTitle($locale))->toBe(Calendar::weekTitle('en'))
+            ->and(Calendar::monthTitle($locale))->toBe('F Y')
+            ->and(Calendar::dayTitle($locale))->toBe('j F Y');
+    })->with(['kok', 'kok_IN', 'jv', 'zhx']);
+
+    // the pattern is Carbon's own long date for the locale (LL), with its tokens written the way the browser formatter prints them
+    it('has, for the day, what Carbon\'s own locale file says is the long date', function (string $locale, string $carbon) {
+        app()->setLocale($locale);
+
+        $date = Carbon::parse('2026-10-09');
+
+        expect(Calendar::format($date, Calendar::make()->labels()['day_title']))->toBe($date->copy()->locale($locale)->isoFormat('LL'))->toBe($carbon);
+    })->with([['ja', '2026年10月9日'], ['ko', '2026년 10월 9일'], ['zh', '2026年10月9日']]);
 });
 
 describe('the month and day titles', function () {
@@ -1008,7 +1045,7 @@ describe('the month and day titles', function () {
 
         expect(Calendar::isFormat($labels['month_title']))->toBeTrue("{$locale} month")
             ->and(Calendar::isFormat($labels['day_title']))->toBeTrue("{$locale} day");
-    })->with(['en', 'ms', 'zh', 'zh_CN', 'zh-TW', 'fr', 'ru']);
+    })->with(['en', 'ms', 'zh', 'zh_CN', 'zh-TW', 'ja', 'ja_JP', 'ko', 'ko_KR', 'fr', 'ru']);
 
     it('reads like English in Malay and in a locale with no patterns of its own', function (string $locale) {
         app()->setLocale($locale);
@@ -1031,6 +1068,30 @@ describe('the month and day titles', function () {
             ->and($labels['month_title'])->not->toEndWith('Y')
             ->and($labels['day_title'])->not->toEndWith('Y');
     })->with(['zh', 'zh_CN', 'zh-TW']);
+
+    it('writes Japanese year first, in one weight, with the 年 月 日 marks', function (string $locale) {
+        app()->setLocale($locale);
+
+        $labels = Calendar::make()->labels();
+        $date = Carbon::parse('2026-10-09');
+
+        expect(Calendar::format($date, $labels['month_title']))->toBe('2026年10月')
+            ->and(Calendar::format($date, $labels['day_title']))->toBe('2026年10月9日')
+            ->and($labels['month_title'])->not->toEndWith('Y')
+            ->and($labels['day_title'])->not->toEndWith('Y');
+    })->with(['ja', 'ja_JP', 'ja-JP']);
+
+    it('writes Korean year first, in one weight, with the 년 월 일 marks and a space after each', function (string $locale) {
+        app()->setLocale($locale);
+
+        $labels = Calendar::make()->labels();
+        $date = Carbon::parse('2026-10-09');
+
+        expect(Calendar::format($date, $labels['month_title']))->toBe('2026년 10월')
+            ->and(Calendar::format($date, $labels['day_title']))->toBe('2026년 10월 9일')
+            ->and($labels['month_title'])->not->toEndWith('Y')
+            ->and($labels['day_title'])->not->toEndWith('Y');
+    })->with(['ko', 'ko_KR', 'ko-KR']);
 
     it('keeps the year last in English, which the title shows lighter', function () {
         $labels = Calendar::make()->labels();

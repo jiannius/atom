@@ -1400,7 +1400,7 @@ class Index extends Component
 | `month` | none | The anchor of a calendar with no `wire:model`. |
 | `name` | none | A handle of your own: the ids inside the calendar are built from it. |
 
-`time-format` and `date-format` take a set of `date()` tokens: `g G h H i a A` for a time, `d j D l m n M F y Y` for a date, plus spaces, digits, punctuation and non-ASCII text (`Y年n月j日`). There is no escape character, any other ASCII letter is refused, and a format that is refused, or has none of its kind's tokens, falls back to the default. Month, week and day titles are written the way the locale writes them (`October 2026`, `2026年10月`) and are not affected by `date-format`.
+`time-format` and `date-format` take a set of `date()` tokens: `g G h H i a A` for a time, `d j D l m n M F y Y` for a date, plus spaces, digits, punctuation and non-ASCII text (`Y年n月j日`). There is no escape character, any other ASCII letter is refused, and a format that is refused, or has none of its kind's tokens, falls back to the default. Month, week and day titles are written the way the locale writes them (`October 2026`, `2026年10月`, Korean `2026년 10월`) and are not affected by `date-format`.
 
 Anything else you put on the tag (`class`, `data-*`, `x-on:*`) goes to the root element. It is a `width: 100%` container; give it a width with a utility class. The week and day views scroll sideways where a week does not fit (a column is never narrower than `--atom-calendar-min-column`, `6rem`), and `--atom-calendar-hour` (`3.5rem`) and `--atom-calendar-grid-height` (`min(70vh, 48rem)`) set an hour's height and the grid's height.
 

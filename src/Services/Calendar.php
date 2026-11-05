@@ -444,51 +444,79 @@ class Calendar
     }
 
     /**
+     * The language of a locale, lower case, without its region: `zh` for `zh_CN`, `zh-TW` and `ZH`.
+     */
+    protected static function language(string $locale): string
+    {
+        return strtolower(preg_split('/[_-]/', $locale, 2)[0]);
+    }
+
+    /**
      * How the week view's title is written in a locale: the first day's display format and the last day's, for a week inside
      * one month, over two months and over two years (`5 – 11 October 2026`, `28 Sep – 4 Oct 2026`, `28 Dec 2026 – 3 Jan 2027`).
      *
      * The browser prints each end with FORMAT_TOKENS and puts ` – ` between them, so the order of year, month and day is the
-     * locale's and not the browser's: Chinese writes `2026年10月5日 – 11日`. A trailing `Y` in the last format is split off as the
-     * year, which the title shows lighter. A locale without its own patterns reads like English, day before month before year.
-     * Not tied to the `date-format` prop, which is for the dates inside the views.
+     * locale's and not the browser's: Chinese and Japanese write `2026年10月5日 – 11日`, Korean `2026년 10월 5일 – 11일`. A trailing
+     * `Y` in the last format is split off as the year, which the title shows lighter. A locale without its own patterns reads
+     * like English, day before month before year. Not tied to the `date-format` prop, which is for the dates inside the views.
+     *
+     * The patterns are the long date of Carbon's own locale files (`LL` in `Carbon/Lang/ja.php`: `YYYY年M月D日`, and `ko.php`:
+     * `YYYY년 MMMM D일`, whose `MMMM` is `10월`, the number and its mark), which is CLDR's `yMMMMd` for each. The month is written
+     * with `n` and its mark rather than `F`: the month names of both locales already carry the mark (`10月`, `10월`), so `F` would
+     * leave the mark to the translation files and a host's override of them. The end of a range drops what it shares with the start,
+     * as CLDR's interval patterns do (`2026年10月5日～11日`, `2026. 10. 5.~11.`); the separator is the one the browser puts between the two ends.
      *
      * @return array{same_month: list<string>, cross_month: list<string>, cross_year: list<string>}
      */
     public static function weekTitle(string $locale): array
     {
-        if (str_starts_with(strtolower($locale), 'zh')) {
-            return [
+        return match (self::language($locale)) {
+            'zh', 'ja' => [
                 'same_month' => ['Y年n月j日', 'j日'],
                 'cross_month' => ['Y年n月j日', 'n月j日'],
                 'cross_year' => ['Y年n月j日', 'Y年n月j日'],
-            ];
-        }
-
-        return [
-            'same_month' => ['j', 'j F Y'],
-            'cross_month' => ['j M', 'j M Y'],
-            'cross_year' => ['j M Y', 'j M Y'],
-        ];
+            ],
+            'ko' => [
+                'same_month' => ['Y년 n월 j일', 'j일'],
+                'cross_month' => ['Y년 n월 j일', 'n월 j일'],
+                'cross_year' => ['Y년 n월 j일', 'Y년 n월 j일'],
+            ],
+            default => [
+                'same_month' => ['j', 'j F Y'],
+                'cross_month' => ['j M', 'j M Y'],
+                'cross_year' => ['j M Y', 'j M Y'],
+            ],
+        };
     }
 
     /**
-     * How the month view's title is written in a locale, as one display format: `October 2026`, Chinese `2026年10月`.
+     * How the month view's title is written in a locale, as one display format: `October 2026`, Chinese and Japanese `2026年10月`,
+     * Korean `2026년 10월` (CLDR's `yMMMM`; see weekTitle() for where the patterns come from).
      *
      * Like weekTitle() it is a format the browser formatter prints, and a trailing `Y` is split off as the year, which the title
-     * shows lighter; Chinese has no trailing year, so the whole title is one weight. A locale without a pattern of its own reads
-     * like English.
+     * shows lighter; Chinese, Japanese and Korean have no trailing year, so the whole title is one weight. A locale without a
+     * pattern of its own reads like English.
      */
     public static function monthTitle(string $locale): string
     {
-        return str_starts_with(strtolower($locale), 'zh') ? 'Y年n月' : 'F Y';
+        return match (self::language($locale)) {
+            'zh', 'ja' => 'Y年n月',
+            'ko' => 'Y년 n월',
+            default => 'F Y',
+        };
     }
 
     /**
-     * How the day view's title is written in a locale, as one display format: `9 October 2026`, Chinese `2026年10月9日`. See monthTitle().
+     * How the day view's title is written in a locale, as one display format: `9 October 2026`, Chinese and Japanese `2026年10月9日`,
+     * Korean `2026년 10월 9일` (Carbon's `LL`). See monthTitle().
      */
     public static function dayTitle(string $locale): string
     {
-        return str_starts_with(strtolower($locale), 'zh') ? 'Y年n月j日' : 'j F Y';
+        return match (self::language($locale)) {
+            'zh', 'ja' => 'Y年n月j日',
+            'ko' => 'Y년 n월 j일',
+            default => 'j F Y',
+        };
     }
 
     /**
