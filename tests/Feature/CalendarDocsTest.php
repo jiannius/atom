@@ -162,7 +162,7 @@ describe('the calendar section of the README', function () {
         // the tag, line by line (but for its closing), is what the served fixture's `?wired=1` branch has
         $tag = array_map('trim', explode("\n", rtrim($blade[1])));
         $fixture = file_get_contents(__DIR__.'/../Fixtures/calendar.blade.php');
-        $wired = substr($fixture, strpos($fixture, '@if ($wired)'), strpos($fixture, '@else') - strpos($fixture, '@if ($wired)'));
+        $wired = substr($fixture, strpos($fixture, '@if ($wired)'), strpos($fixture, '@elseif ($legacy)') - strpos($fixture, '@if ($wired)'));
 
         expect($tag)->toContain('<atom:calendar');
 
@@ -209,12 +209,14 @@ describe('the calendar section of the README', function () {
         $section = calendarReadmeSection();
 
         expect($section)->toContain('The server\'s answer decides where the item ends up')
-            ->and($section)->toContain('data-atom-calendar-render')
+            ->and($section)->toContain('sent **after the drop**')
+            ->and($section)->toContain('What is not an answer')
+            ->and($section)->not->toContain('data-atom-calendar-render')
             ->and($section)->toContain('fails `validate()`')
             ->and($section)->toContain('error modal')
             ->and($section)->toContain('A renderless method sends no render')
             ->and($section)->toContain('saved || Promise.reject()')
-            ->and($section)->toContain('Known caveat')
+            ->and($section)->toContain('Known caveats')
             ->and($section)->not->toMatch('/(?:Livewire rejects|rejects the promise)[^.]*validat/i')
             ->and($section)->not->toContain('refuse by validating')
             ->and($section)->not->toContain('A failed `validate()` does not reject it');

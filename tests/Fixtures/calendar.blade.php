@@ -19,6 +19,23 @@
         x-on:calendar-item-resize="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
         x-on:calendar-item-click="$wire.edit($event.detail.id)"
         data-probe="calendar" />
+    @elseif ($legacy)
+        {{-- the tag as it was written before a render answered a failed validate(): the refusal is in the tag, and the methods return true once they have saved --}}
+        <atom:calendar
+        wire:model="date"
+        :views="['month', 'week', 'day']"
+        :view="$view"
+        :items="fn ($from, $to) => $this->calendarItems($from, $to)"
+        x-on:calendar-item-move="$event.detail.waitUntil($wire.rescheduleLegacy($event.detail.id, $event.detail.start, $event.detail.end).then((saved) => saved || Promise.reject()))"
+        x-on:calendar-item-resize="$event.detail.waitUntil($wire.rescheduleLegacy($event.detail.id, $event.detail.start, $event.detail.end).then((saved) => saved || Promise.reject()))"
+        data-probe="calendar" />
+    @elseif ($static)
+        {{-- a calendar with no bound property, in a component whose field sends a request on every keystroke, and nobody saves what is moved in it --}}
+        <input type="text" wire:model.live="note" data-note>
+        <atom:calendar
+        month="2026-10"
+        :items="fn ($from, $to) => $this->calendarItems($from, $to)"
+        data-probe="calendar" />
     @else
         <atom:calendar
         wire:model="date"

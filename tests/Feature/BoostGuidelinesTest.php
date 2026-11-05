@@ -260,6 +260,8 @@ it('teaches that the render answers a failed validation, and never says validati
     $skill = boostFile('skills/atom-components/SKILL.blade.php');
 
     expect($skill)->toContain('**The server\'s render is the answer**')
+        ->and($skill)->toContain('sent after the drop')
+        ->and($skill)->toContain('A render that is not an answer does not move it')
         ->and($skill)->toContain('resolves `null`')
         ->and($skill)->toContain('error modal')
         ->and($skill)->toContain('saved || Promise.reject()')

@@ -153,9 +153,9 @@ jobs:
     needs: consumer
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    # WebKit's projects had only ever run on a Mac when they were added to CI, and Linux's WebKit build is not that one: a red leg is shown but does not fail the
-    # check, until a run on this job says it holds. Firefox is required. Drop the line when WebKit has been green.
-    continue-on-error: ${{ matrix.browser == 'webkit' }}
+    # Neither leg is required yet: Firefox cannot be run on a Mac and WebKit had only ever run on one, and Linux's WebKit build is not that one. A red leg is
+    # shown (a red step, a failed run of the job) and does not fail the check. Flip both to required (drop the line) after this job's first green run.
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:

@@ -972,10 +972,11 @@ describe('the lines that take a count', function () {
         expect($more)->toBeList()->toHaveCount(7);
 
         foreach (range(1, 7) as $count) {
-            expect($more[$count - 1])->toBe(trans_choice('+:count more', $count, ['count' => $count]));
+            expect($more[$count - 1])->toBe(trans_choice('+:count more', $count, ['count' => ':count']));
         }
 
-        expect($more)->toBe(['one more', '2 more, a few', '3 more, a few', '4 more, a few', '5 more, many', '6 more, many', '7 more, many']);
+        // the placeholder stays in each form, and the browser fills the real count in (a count past the list reuses the last form)
+        expect($more)->toBe(['one more', ':count more, a few', ':count more, a few', ':count more, a few', ':count more, many', ':count more, many', ':count more, many']);
     });
 
     it('takes the two-form syntax too, and treats each line that takes a count on its own', function () use ($translate) {
@@ -983,7 +984,7 @@ describe('the lines that take a count', function () {
 
         $ui = Calendar::make()->labels(3)['ui'];
 
-        expect($ui['item'])->toBe(['1 thing', '2 things', '3 things'])
+        expect($ui['item'])->toBe([':count thing', ':count things', ':count things'])
             // the other two stay as they were: a line is plural when it says so
             ->and($ui['items'])->toBe(':count items')
             ->and($ui['more'])->toBe('+:count more');
@@ -997,7 +998,22 @@ describe('the lines that take a count', function () {
             ->and(Calendar::make()->labels(4)['ui']['more'])->toHaveCount(4)
             ->and(Calendar::make()->labels(99)['ui']['more'])->toHaveCount(99)
             ->and(Calendar::make()->labels(5000)['ui']['more'])->toHaveCount(Calendar::COUNT_FORMS_MAX)
-            ->and(Calendar::make()->labels(5000)['ui']['more'][98])->toBe('99 more');
+            // the last form keeps the placeholder: a day of 150 items reads "+147 more", not the count the list ends at
+            ->and(Calendar::make()->labels(5000)['ui']['more'][98])->toBe(':count more')
+            ->and(str_replace(':count', '147', Calendar::make()->labels(5000)['ui']['more'][98]))->toBe('147 more');
+    });
+
+    it('keeps the placeholder in every form of a payload of more than 99 items', function () use ($translate) {
+        $translate(['+:count more' => '{1} one more|[2,*] :count more', ':count items' => ':count thing|:count things']);
+
+        $items = array_map(fn (int $id) => ['id' => $id, 'title' => 'T'.$id, 'start' => '2026-10-05'], range(1, 150));
+        $ui = Calendar::make()->payload('2026-10-09', $items)['labels']['ui'];
+
+        expect($ui['more'])->toHaveCount(99)
+            ->and($ui['more'][0])->toBe('one more')
+            ->and(array_values(array_unique(array_slice($ui['more'], 1))))->toBe([':count more'])
+            ->and($ui['items'])->toHaveCount(99)
+            ->and(array_values(array_unique(array_slice($ui['items'], 1))))->toBe([':count things']);
     });
 
     it('is sized by the items of the payload', function () use ($translate) {
@@ -1016,9 +1032,9 @@ describe('the lines that take a count', function () {
 
         $more = Calendar::make()->labels(21)['ui']['more'];
 
-        expect(array_slice($more, 0, 5))->toBe(['ещё 1 (one)', 'ещё 2 (few)', 'ещё 3 (few)', 'ещё 4 (few)', 'ещё 5 (many)'])
-            ->and($more[10])->toBe('ещё 11 (many)')
-            ->and($more[20])->toBe('ещё 21 (one)');
+        expect(array_slice($more, 0, 5))->toBe(['ещё :count (one)', 'ещё :count (few)', 'ещё :count (few)', 'ещё :count (few)', 'ещё :count (many)'])
+            ->and($more[10])->toBe('ещё :count (many)')
+            ->and($more[20])->toBe('ещё :count (one)');
     });
 });
 

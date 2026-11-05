@@ -448,10 +448,10 @@ export default {
     // Tell the host that an item was moved or resized, with the range it covers now in the viewer's wall clock, as `calendar-select` does: `YYYY-MM-DDTHH:mm`
     // for a time (the end is the first minute after), `YYYY-MM-DD` for days (the end is the last day, included), either straight to Calendar::fromLocal().
     // A move says whether the item is all day too. The event can be cancelled, which puts the item back; and the host holds the item where it was put
-    // with `waitUntil(promise)`, called while it handles the event: it stays there while the promise is pending, whatever payload comes, and goes back
-    // if the promise is rejected. Resolved, it stays until the render that has the host's answer in it comes (see read(): the render token changes
-    // on every render, so a save that failed validate() and rendered the same items answers too; a host that answers without a render has no such render,
-    // and the item stays where it was put until the next one). Without a promise it stays until the next render.
+    // with `waitUntil(promise)`, called while it handles the event: it stays there while the promise is pending, whatever render comes, and goes back
+    // if the promise is rejected. Resolved, it stays until the render that answers the host's request comes (see watchAnswers(): a request sent after
+    // the drop, with a call of the host's own, whether its payload changed or not; so a save that failed validate() answers too, and a response with no
+    // render, a renderless method, does not, and the item stays where it was put). Without a promise it stays until that render.
     commitChange (gesture, range) {
         let { item, kind } = gesture
 
@@ -460,6 +460,8 @@ export default {
         if (!range || this.isUnchanged(gesture, range)) return
 
         let promises = []
+        // the requests sent so far: only an answer to one sent from here on is the host's (see watchAnswers())
+        let since = this.sent
         let detail = { id: item.id, start: range.start, end: range.end }
 
         if (kind === 'move') detail.allDay = range.allDay
@@ -478,7 +480,7 @@ export default {
         let key = String(item.id)
         let token = Symbol()
 
-        this.overrides = { ...this.overrides, [key]: { range: { start: range.start, end: range.end }, token, held: promises.length > 0, stale: false } }
+        this.overrides = { ...this.overrides, [key]: { range: { start: range.start, end: range.end }, token, since, held: promises.length > 0, stale: false } }
 
         // what is given after the event has been handled is too late: the promises are read here, once
         if (!promises.length) return

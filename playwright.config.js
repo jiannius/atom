@@ -8,9 +8,12 @@ import { defineConfig, devices } from '@playwright/test'
 //
 // Each depends on Chromium, so a local run of one is after Chromium, not beside it: the served app is PHP's one-request-at-a-time server, and a page load
 // that waits behind 700 tests times out. CI runs them in a job of their own, with `--no-deps` (see .github/workflows/ci.yml), since Chromium has its shards there.
+//
+// Firefox is in the config only on CI, or with `PW_FIREFOX=1`: Playwright's Firefox does not launch on a Mac on macOS 27 (a run of it hangs, then fails
+// every test), so a plain `npm run test:e2e` leaves it out and runs Chromium and WebKit.
 const engines = [
   { browser: 'webkit', device: 'Desktop Safari' },
-  { browser: 'firefox', device: 'Desktop Firefox' },
+  ...(process.env.CI || process.env.PW_FIREFOX ? [{ browser: 'firefox', device: 'Desktop Firefox' }] : []),
 ]
 
 const calendarProjects = engines.flatMap(({ browser, device }) => [

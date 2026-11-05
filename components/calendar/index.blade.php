@@ -129,9 +129,6 @@ data-atom-calendar-palette="{{ json_encode($palette, JSON_THROW_ON_ERROR) }}"
      the payload changes, which a clock that moves every second would make every render. The week and day views'
      now-indicator reads this one. --}}
 data-atom-calendar-now="{{ $calendar->clock() }}"
-{{-- The render token changes on every render of the host, which the payload does not: a save that failed validate() renders the same items, and the
-     engine releases an item that was dropped once the server has answered, whatever it answered. Never an id or an x-data value. --}}
-data-atom-calendar-render="{{ \Illuminate\Support\Str::random(12) }}"
 data-atom-calendar-payload="{{ json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR) }}"
 data-atom-calendar
 {{ $attributes->whereDoesntStartWith('wire:model')->class([

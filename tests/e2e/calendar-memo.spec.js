@@ -345,24 +345,26 @@ test.describe('a line that takes a count', () => {
     const worded = (ui) => ({ ...payloadFor(crowd, { max: 3 }), labels: { ...payloadFor().labels, ui } })
     const dayOf = (engine) => engine.weeks.flatMap((week) => week.days).find((entry) => entry.date === '2026-10-06')
 
-    test('is picked by count from the list the server resolved', () => {
-        const engine = engineWith({ payload: worded({ item: ['1 thing', '2 things', '3 things'], items: [], more: ['one more', '2 more (few)', '3 more (few)', '4 more (many)', '5 more (many)'] }) })
+    test('is picked by count from the list the server resolved, and the count is the real one', () => {
+        // each form keeps its `:count`, as the server sends it
+        const engine = engineWith({ payload: worded({ item: [':count thing'], items: [':count things'], more: ['one more', ':count more (few)', ':count more (few)', ':count more (many)', ':count more (many)'] }) })
 
         expect(engine.moreLabel(1)).toBe('one more')
         expect(engine.moreLabel(3)).toBe('3 more (few)')
         expect(engine.moreLabel(5)).toBe('5 more (many)')
-        // past the end of the list it is the last form, with no placeholder left to fill
-        expect(engine.moreLabel(40)).toBe('5 more (many)')
+        // past the end of the list it is the last form, with the number of the count and not the one the list ends at
+        expect(engine.moreLabel(147)).toBe('147 more (many)')
         expect(engine.moreLabel(0)).toBe('one more')
         // the month's "+N more" is the one for its count: four hidden of seven
         expect(engine.weeks.flatMap((week) => week.more)[0].label).toBe('4 more (many)')
     })
 
-    test('each line is its own: the item line is the singular one only for 1', () => {
-        const engine = engineWith({ payload: worded({ item: ['1 thing'], items: ['1 things', '2 things', '3 things', '4 things', '5 things', '6 things', '7 things'], more: '+:count more' }) })
+    test('each line is its own: the item line is the singular one only for 1, and a count past the list is still its own number', () => {
+        const engine = engineWith({ payload: worded({ item: [':count thing'], items: [':count things', ':count things', ':count things', ':count things', ':count things', ':count things', ':count things'], more: '+:count more' }) })
 
         expect(engine.countLabel(1)).toBe('1 thing')
         expect(engine.countLabel(7)).toBe('7 things')
+        expect(engine.countLabel(150)).toBe('150 things')
         expect(dayOf(engine).label).toMatch(/7 things$/)
         expect(engine.moreLabel(4)).toBe('+4 more')
     })
@@ -382,7 +384,7 @@ test.describe('a line that takes a count', () => {
 
         expect(engine.weeks.flatMap((week) => week.more)[0].label).toBe('4 more')
 
-        engine.payload = { ...engine.payload, labels: { ...engine.payload.labels, ui: { ...engine.payload.labels.ui, more: ['', '', '', '4 others'] } } }
+        engine.payload = { ...engine.payload, labels: { ...engine.payload.labels, ui: { ...engine.payload.labels.ui, more: ['', '', '', ':count others'] } } }
 
         expect(engine.weeks.flatMap((week) => week.more)[0].label).toBe('4 others')
         expect(asked(engine)).toEqual(fresh(engine))

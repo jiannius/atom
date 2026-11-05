@@ -43,6 +43,15 @@ class CalendarFixture extends Component
     /** Whether the calendar is wired as the README shows it, with x-on attributes on the tag; ?wired=1. */
     public bool $wired = false;
 
+    /** Whether the calendar is wired the way a host that wrote the refusal into its tag does, `.then((saved) => saved || Promise.reject())`; ?legacy=1. */
+    public bool $legacy = false;
+
+    /** Whether the calendar is a static one (a `month`, no wire:model) in this component, beside a field that sends a request on every keystroke; ?static=1. */
+    public bool $static = false;
+
+    /** What the field of the static calendar's page holds. */
+    public string $note = '';
+
     /** Whether create() and reschedule() fail validation, as a host's validate() does when a rule is broken; ?strict=1. */
     public bool $strict = false;
 
@@ -86,6 +95,8 @@ class CalendarFixture extends Component
         $this->locked = request()->boolean('locked');
         $this->wired = request()->boolean('wired');
         $this->strict = request()->boolean('strict');
+        $this->legacy = request()->boolean('legacy');
+        $this->static = request()->boolean('static');
     }
 
     /**
@@ -139,6 +150,18 @@ class CalendarFixture extends Component
         $this->refuseWhenStrict($start);
 
         $this->place($id, $start, $end);
+    }
+
+    /**
+     * The same, for a tag that turns what is not `true` into a refusal: a host written before the render answered a failed validation.
+     */
+    public function rescheduleLegacy(int|string $id, string $start, ?string $end): bool
+    {
+        $this->refuseWhenStrict($start);
+
+        $this->place($id, $start, $end);
+
+        return true;
     }
 
     /**

@@ -567,7 +567,8 @@ test.describe('what the host does about it', () => {
     })
 
     // A host's save that fails validate() renders the same items it rendered before (Livewire answers 200 and morphs), so the payload attribute
-    // does not change: the render token on the root is what tells the engine the server has answered (#89). Three orders, each proved here.
+    // does not change: what tells the engine the server has answered is a render that answers a request sent after the drop, with a call of the host's
+    // own in it (watchAnswers(), #89). Here the call is bump(), which the page makes after the drop. Three orders, each proved here.
     test('a render that says what it said before puts the item back: an answer that changed nothing is an answer too', async ({ page }) => {
         await mode(page, 'none')
         await dragHex(page)
@@ -615,16 +616,88 @@ test.describe('what the host does about it', () => {
         expect((await engine(page)).overrides).toEqual([])
     })
 
-    test('the render token changes on every render, and the payload does not', async ({ page }) => {
-        const root = page.locator('[data-atom-calendar]')
-        const first = await root.getAttribute('data-atom-calendar-render')
+    // The request that was already on its way when the item was dropped says what the server had before the host's save. Livewire holds the host's action
+    // behind it (a request at a time for a component), so its render comes first and the renderless answer after it: the render is not the answer.
+    test('a renderless save that waits behind a request that was already in flight keeps the item where it was put', async ({ page }) => {
+        let held = false
+        let open_ = null
+        const gate = new Promise((resolve) => { open_ = resolve })
+        const hit = new Promise((resolve) => {
+            page.route('**/update', async (route) => {
+                if (!held) {
+                    held = true
+                    resolve()
+                    await gate
+                }
 
-        expect(first).toMatch(/^[A-Za-z0-9]{12}$/)
+                await route.continue()
+            })
+        })
+
+        await mode(page, 'quiet')
+
+        // a request that is on its way and has not been answered
+        const slow = page.evaluate(() => window.Livewire.first().bump())
+
+        await hit
+        await dragHex(page)
+
+        await expect.poll(async () => (await engine(page)).overrides).toEqual(['10'])
+
+        // its render comes (the same payload), and the host's renderless save runs after it
+        open_()
+        await slow
+        await expect.poll(() => rescheduled(page)).toHaveLength(1)
+        await page.waitForTimeout(300)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
+    })
+
+    test('a held save that waits behind a request that was already in flight keeps the item through that render, and settles where the server has it', async ({ page }) => {
+        let held = false
+        let open_ = null
+        const gate = new Promise((resolve) => { open_ = resolve })
+        const hit = new Promise((resolve) => {
+            page.route('**/update', async (route) => {
+                if (!held) {
+                    held = true
+                    resolve()
+                    await gate
+                }
+
+                await route.continue()
+            })
+        })
+
+        await mode(page, 'livewire')
+
+        const slow = page.evaluate(() => window.Livewire.first().bump())
+
+        await hit
+        await dragHex(page)
+        open_()
+        await slow
+
+        // the save is answered by its own render, which has the item on the 22nd
+        await expect.poll(async () => (await engine(page)).overrides).toEqual([])
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+    })
+
+    test('a request with no call of the host\'s in it (a refresh) is not an answer, a call sent after the drop is', async ({ page }) => {
+        await mode(page, 'none')
+        await dragHex(page)
+
+        await page.evaluate(() => window.Livewire.first().$refresh())
+        await page.waitForTimeout(300)
+
+        // `$refresh` is the page's, not the host's save
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
 
         await page.evaluate(() => window.Livewire.first().bump())
         await expect(page.locator('[data-renders]')).toHaveText('1')
-
-        expect(await root.getAttribute('data-atom-calendar-render')).not.toBe(first)
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
     })
 
     test('a resize is held the same way: pending, it keeps its length; rejected, it is back', async ({ page }) => {
@@ -1965,5 +2038,59 @@ test.describe('the pointer on the body while a gesture is on', () => {
         // an item that can be picked up shows it, and its end shows what it is for
         expect(await chipOf(page, 'dot', 'Team standup').evaluate((el) => getComputedStyle(el).cursor)).toBe('grab')
         expect(await handleOf(page, 'bar', 'Launch week').evaluate((el) => getComputedStyle(el).cursor)).toBe('ew-resize')
+    })
+})
+
+// A calendar with no bound property, in a component whose field sends a request on every keystroke, and nobody saves what is moved in it ("Without
+// Livewire" in the README): the render of an unrelated request is not an answer, so the item stays where it was dropped.
+test.describe('a static calendar in a Livewire component', () => {
+    test('keeps a moved item through the renders of requests that are nobody\'s answer', async ({ page }) => {
+        await open(page, 'static=1')
+        await mode(page, 'none')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        const answered = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().includes('/update'))
+
+        await page.locator('[data-note]').fill('a keystroke')
+        await answered
+        await expect.poll(() => page.evaluate(() => window.Livewire.first().note)).toBe('a keystroke')
+        await page.waitForTimeout(300)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
+    })
+})
+
+// A host written before a render answered a failed validate() has the refusal in its tag. It keeps working: refused, the item goes back (once, by the
+// rejection and by the render), and saved, it stays where the server has it.
+test.describe('a tag with the refusal written into it', () => {
+    test('a save that fails validation puts the item back', async ({ page }) => {
+        await open(page, 'legacy=1&strict=1&view=week&date=2026-10-14')
+
+        const from = await middle(page.locator('[data-probe="calendar"] [data-atom-calendar-block]', { hasText: 'Design review' }))
+        const next = await page.locator('[data-probe="calendar"] [data-atom-calendar-column][data-date="2026-10-15"]').boundingBox()
+
+        await drag(page, from, { x: next.x + next.width / 2, y: from.y + 3.5 * 16 })
+
+        await expect.poll(async () => (await engine(page)).overrides).toEqual([])
+        expect(await rescheduled(page)).toEqual([])
+        await expect(page.locator('[data-probe="calendar"] [data-atom-calendar-column][data-date="2026-10-14"] [data-atom-calendar-block]', { hasText: 'Design review' })).toBeVisible()
+        await expect(page.locator('#livewire-error')).toHaveCount(0)
+    })
+
+    test('a save that succeeds leaves the item where the server has it', async ({ page }) => {
+        await open(page, 'legacy=1&view=week&date=2026-10-14')
+
+        const from = await middle(page.locator('[data-probe="calendar"] [data-atom-calendar-block]', { hasText: 'Design review' }))
+        const next = await page.locator('[data-probe="calendar"] [data-atom-calendar-column][data-date="2026-10-15"]').boundingBox()
+
+        await drag(page, from, { x: next.x + next.width / 2, y: from.y + 3.5 * 16 })
+
+        await expect.poll(() => rescheduled(page)).toHaveLength(1)
+        await expect.poll(async () => (await engine(page)).overrides).toEqual([])
+        await expect(page.locator('[data-probe="calendar"] [data-atom-calendar-column][data-date="2026-10-15"] [data-atom-calendar-block]', { hasText: 'Design review' })).toBeVisible()
+        await expect(page.locator('[data-probe="calendar"] [data-atom-calendar-column][data-date="2026-10-14"] [data-atom-calendar-block]', { hasText: 'Design review' })).toHaveCount(0)
     })
 })

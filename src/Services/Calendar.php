@@ -374,7 +374,7 @@ class Calendar
      * standalone ones. One more known gap: ka prints a weekday differently beside other tokens.
      * `week_title`, `month_title` and `day_title` are how the title of each view is written in the locale, see weekTitle().
      * A `ui` line that takes a count (`more`, `item`, `items`) is one string, or, when the translation uses Laravel's plural syntax
-     * (`{1} ... |[2,*] ...`, `one|many`), the list of the resolved strings for the counts 1 to `$maxCount`, see countLine().
+     * (`{1} ... |[2,*] ...`, `one|many`), the list of the resolved strings, `:count` still in each, for the counts 1 to `$maxCount`, see countLine().
      *
      * @param  int  $maxCount  the largest count a line can be asked for: the number of items in the payload
      * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, week_title: array<string, list<string>>, month_title: string, day_title: string, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string|list<string>|array<string, string>>}
@@ -455,8 +455,10 @@ class Calendar
     /**
      * A line that takes a `:count`, as the browser prints it: the translation as it is when it has no `|`, so a locale that does not use
      * Laravel's plural syntax costs nothing; else the list of what `trans_choice()` makes of it for each count from 1 to `$maxCount`
-     * (at most COUNT_FORMS_MAX, and at least 1), the string for a count `n` being at index `n - 1`, the count already in it. It is
-     * trans_choice() itself, so `{1} :count item|[2,*] :count items` and `one|many` select exactly as they do anywhere else in the app.
+     * (at most COUNT_FORMS_MAX, and at least 1), the string for a count `n` being at index `n - 1`, with `:count` still in it: trans_choice() is
+     * asked with `['count' => ':count']` so that it leaves the placeholder, and the browser puts the real number in, which is what keeps a count past the
+     * list (150 items: the last form, "+147 more") right. It is trans_choice() itself, so `{1} :count item|[2,*] :count items` and `one|many` select
+     * exactly as they do anywhere else in the app.
      *
      * @return string|list<string>
      */
@@ -467,7 +469,7 @@ class Calendar
         }
 
         return array_map(
-            fn (int $count) => (string) trans_choice($key, $count, ['count' => $count]),
+            fn (int $count) => (string) trans_choice($key, $count, ['count' => ':count']),
             range(1, max(1, min($maxCount, self::COUNT_FORMS_MAX))),
         );
     }
