@@ -952,6 +952,76 @@ describe('calendar payload', function () {
     });
 });
 
+describe('the lines that take a count', function () {
+    // Laravel's plural syntax in a translation of one of the calendar's lines ('*.<line>' is the JSON file's key, the group a JSON key has)
+    $translate = fn (array $lines) => app('translator')->addLines(collect($lines)->mapWithKeys(fn ($line, $key) => ['*.'.$key => $line])->all(), app()->getLocale());
+
+    it('sends a line with no plural syntax as the one string it was, and costs nothing for a count', function () {
+        $ui = Calendar::make()->labels(50)['ui'];
+
+        expect($ui['more'])->toBe('+:count more')
+            ->and($ui['item'])->toBe(':count item')
+            ->and($ui['items'])->toBe(':count items');
+    });
+
+    it('sends what trans_choice() makes of a line that has `|`, for every count the payload can ask for', function () use ($translate) {
+        $translate(['+:count more' => '{1} one more|[2,4] :count more, a few|[5,*] :count more, many']);
+
+        $more = Calendar::make()->labels(7)['ui']['more'];
+
+        expect($more)->toBeList()->toHaveCount(7);
+
+        foreach (range(1, 7) as $count) {
+            expect($more[$count - 1])->toBe(trans_choice('+:count more', $count, ['count' => $count]));
+        }
+
+        expect($more)->toBe(['one more', '2 more, a few', '3 more, a few', '4 more, a few', '5 more, many', '6 more, many', '7 more, many']);
+    });
+
+    it('takes the two-form syntax too, and treats each line that takes a count on its own', function () use ($translate) {
+        $translate([':count item' => ':count thing|:count things']);
+
+        $ui = Calendar::make()->labels(3)['ui'];
+
+        expect($ui['item'])->toBe(['1 thing', '2 things', '3 things'])
+            // the other two stay as they were: a line is plural when it says so
+            ->and($ui['items'])->toBe(':count items')
+            ->and($ui['more'])->toBe('+:count more');
+    });
+
+    it('holds the list to the number of items in the payload, and to 99', function () use ($translate) {
+        $translate(['+:count more' => '{1} one more|[2,*] :count more']);
+
+        expect(Calendar::make()->labels(0)['ui']['more'])->toBe(['one more'])
+            ->and(Calendar::make()->labels(1)['ui']['more'])->toBe(['one more'])
+            ->and(Calendar::make()->labels(4)['ui']['more'])->toHaveCount(4)
+            ->and(Calendar::make()->labels(99)['ui']['more'])->toHaveCount(99)
+            ->and(Calendar::make()->labels(5000)['ui']['more'])->toHaveCount(Calendar::COUNT_FORMS_MAX)
+            ->and(Calendar::make()->labels(5000)['ui']['more'][98])->toBe('99 more');
+    });
+
+    it('is sized by the items of the payload', function () use ($translate) {
+        $translate(['+:count more' => '{1} one more|[2,*] :count more']);
+
+        $items = fn (int $number) => array_map(fn (int $id) => ['id' => $id, 'title' => 'T'.$id, 'start' => '2026-10-05'], range(1, $number));
+
+        expect(Calendar::make()->payload('2026-10-09', $items(3))['labels']['ui']['more'])->toHaveCount(3)
+            ->and(Calendar::make()->payload('2026-10-09', fn () => $items(6))['labels']['ui']['more'])->toHaveCount(6)
+            ->and(Calendar::make()->payload('2026-10-09', [])['labels']['ui']['more'])->toHaveCount(1);
+    });
+
+    it('reads the locale\'s own plural rule, not a count of its own', function () use ($translate) {
+        app()->setLocale('ru');
+        $translate(['+:count more' => 'ещё :count (one)|ещё :count (few)|ещё :count (many)']);
+
+        $more = Calendar::make()->labels(21)['ui']['more'];
+
+        expect(array_slice($more, 0, 5))->toBe(['ещё 1 (one)', 'ещё 2 (few)', 'ещё 3 (few)', 'ещё 4 (few)', 'ещё 5 (many)'])
+            ->and($more[10])->toBe('ещё 11 (many)')
+            ->and($more[20])->toBe('ещё 21 (one)');
+    });
+});
+
 describe('the week title', function () {
     it('has a pair of display formats, first day and last day, for a week in a month, over two months and over two years', function () {
         $titles = Calendar::make()->labels()['week_title'];

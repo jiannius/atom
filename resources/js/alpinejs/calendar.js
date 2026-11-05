@@ -1019,11 +1019,20 @@ export default () => ({
     },
 
     countLabel (count) {
-        return ((count === 1 ? this.labels.ui?.item : this.labels.ui?.items) ?? '').replace(':count', () => String(count))
+        return this.countText(count === 1 ? this.labels.ui?.item : this.labels.ui?.items, count)
     },
 
     moreLabel (count) {
-        return (this.labels.ui?.more ?? '').replace(':count', () => String(count))
+        return this.countText(this.labels.ui?.more, count)
+    },
+
+    // A line that takes a count: the string, or, in a locale whose translation uses Laravel's plural syntax, the list the server resolved with
+    // trans_choice() for the counts 1 up (the string for a count is at count - 1, and a count past the end reuses the last). `:count` is
+    // already a number in a resolved form, and is replaced here for the plain line.
+    countText (line, count) {
+        if (Array.isArray(line)) line = line[Math.min(Math.max(count, 1), line.length) - 1]
+
+        return (typeof line === 'string' ? line : '').replace(':count', () => String(count))
     },
 
     weekdayName (date) {

@@ -373,10 +373,13 @@ class Calendar
      * in `j F`), as `day_before` (a day token earlier in the format) and `day_after` lists, and only where they differ from the
      * standalone ones. One more known gap: ka prints a weekday differently beside other tokens.
      * `week_title`, `month_title` and `day_title` are how the title of each view is written in the locale, see weekTitle().
+     * A `ui` line that takes a count (`more`, `item`, `items`) is one string, or, when the translation uses Laravel's plural syntax
+     * (`{1} ... |[2,*] ...`, `one|many`), the list of the resolved strings for the counts 1 to `$maxCount`, see countLine().
      *
-     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, week_title: array<string, list<string>>, month_title: string, day_title: string, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string|array<string, string>>}
+     * @param  int  $maxCount  the largest count a line can be asked for: the number of items in the payload
+     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, week_title: array<string, list<string>>, month_title: string, day_title: string, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string|list<string>|array<string, string>>}
      */
-    public function labels(): array
+    public function labels(int $maxCount = 0): array
     {
         $locale = app()->getLocale();
         $monday = CarbonImmutable::parse('2026-10-05', 'UTC')->locale($locale);
@@ -413,10 +416,10 @@ class Calendar
                 'week' => (string) __('Week'),
                 'day' => (string) __('Day'),
                 'all_day' => (string) __('All day'),
-                'more' => (string) __('+:count more'),
+                'more' => self::countLine('+:count more', $maxCount),
                 'overdue' => (string) __('Overdue'),
-                'item' => (string) __(':count item'),
-                'items' => (string) __(':count items'),
+                'item' => self::countLine(':count item', $maxCount),
+                'items' => self::countLine(':count items', $maxCount),
                 'close' => (string) __('Close'),
                 'choose_date' => (string) __('Choose date'),
                 'view' => (string) __('View'),
@@ -441,6 +444,32 @@ class Calendar
                 ],
             ],
         ];
+    }
+
+    /**
+     * The most counts of one line that are sent: a day with more items than this reuses the last form (a plural rule that changes again past
+     * 99, as Russian's does at 101, is the one gap).
+     */
+    public const COUNT_FORMS_MAX = 99;
+
+    /**
+     * A line that takes a `:count`, as the browser prints it: the translation as it is when it has no `|`, so a locale that does not use
+     * Laravel's plural syntax costs nothing; else the list of what `trans_choice()` makes of it for each count from 1 to `$maxCount`
+     * (at most COUNT_FORMS_MAX, and at least 1), the string for a count `n` being at index `n - 1`, the count already in it. It is
+     * trans_choice() itself, so `{1} :count item|[2,*] :count items` and `one|many` select exactly as they do anywhere else in the app.
+     *
+     * @return string|list<string>
+     */
+    protected static function countLine(string $key, int $maxCount): string|array
+    {
+        if (! str_contains((string) __($key), '|')) {
+            return (string) __($key);
+        }
+
+        return array_map(
+            fn (int $count) => (string) trans_choice($key, $count, ['count' => $count]),
+            range(1, max(1, min($maxCount, self::COUNT_FORMS_MAX))),
+        );
     }
 
     /**
@@ -633,6 +662,8 @@ class Calendar
             $items = $items($window['from'], $window['to']) ?? [];
         }
 
+        $items = $this->items($items);
+
         return [
             'anchor' => $window['anchor'],
             'today' => $this->today(),
@@ -642,9 +673,9 @@ class Calendar
                 'end' => $window['end'],
                 'days' => $window['days'],
             ],
-            'labels' => $this->labels(),
+            'labels' => $this->labels(count($items)),
             'config' => $this->config(),
-            'items' => $this->items($items),
+            'items' => $items,
         ];
     }
 
