@@ -127,6 +127,8 @@ export default () => ({
     // how many requests of this calendar's Livewire component have been sent: a drop remembers the count, and only an answer to a request sent after it
     // puts the item where the server has it (see watchAnswers() and releaseOverrides())
     sent: 0,
+    // the highest answer that came while a gesture was on (see answer() and endGesture())
+    answered: 0,
     // a payload came while a gesture was on: it waits for the gesture to end (see read() and endSelect())
     payloadHeld: false,
     hours: Array.from({ length: 24 }, (_, hour) => hour),
@@ -507,33 +509,68 @@ export default () => ({
         if (restoreFocus) this.$nextTick(() => this.focusDay())
     },
 
-    // What tells that the server has answered a move or a resize: a render that answers a request sent AFTER the drop, and a call of the host's own in it.
-    // Not any render: one that was already in flight when the item was dropped (a `wire:model.live` field, another action) says what the server had before
-    // the host's save, and a response with no render (a #[Renderless] method) says nothing about where the item belongs. And not a request that only
-    // carries a model update or a poll (a method that starts with `$`, such as `$commit`), which is not the host's save either. So a render that
-    // answers the host's action releases the items dropped before that request was sent, whether the payload changed or not: a save that failed
-    // validate() renders the same items and answers 200, and the item has to go back to where the server has it. Livewire's own interceptor, on the
-    // component this calendar is in, which is the only place the request a render answers is known. A calendar that is not in a component has none.
+    // What tells that the server has answered a move or a resize: a render of a request sent AFTER the drop, from the component the calendar is in (or
+    // one that holds it), that is either a call of the host's own (an action whose name does not start with `$`: `$commit`, `$refresh` are Livewire's)
+    // or a render that changes the payload, whatever the actions. A render whose payload is the same as before answers when the host called something:
+    // a save that failed validate() renders the same items and answers 200, and the item has to go back to where the server has it. One that changes
+    // the payload answers whoever asked for it (a poll, an event, `$refresh`, a parent, a save that went round the tag): what the payload says is where
+    // the server has the item. Not an answer: a render of a request that was already in flight when the item was dropped (a `wire:model.live` field,
+    // another action: Livewire sends the host's action after it, and its render says what the server had before the save), a response with no render (a
+    // #[Renderless] method), and a request that only carries a model update, a poll or a refresh and leaves the payload as it was.
+    //
+    // It is Livewire's own message interceptor, the only place the request a render answers is known, and Livewire's message flow must never break on it: the
+    // callbacks are guarded, the morph is waited for with `onMorphed` (Livewire 4.4.2) or else `onRender` (every 4.x, a frame later), and a Livewire without
+    // `interceptMessage` (before 4.0) or a calendar outside a component has no answer to hear: nothing releases a moved item, which stays where it was
+    // dropped (the README says so).
     watchAnswers () {
-        let id = this.rootEl.closest('[wire\\:id]')?.getAttribute('wire:id')
+        let livewire = window.Livewire
 
-        if (!id || typeof window.Livewire?.interceptMessage !== 'function') return () => {}
+        if (!this.rootEl.closest('[wire\\:id]') || typeof livewire?.interceptMessage !== 'function') return () => {}
 
-        return window.Livewire.interceptMessage(({ message, onSend, onSuccess }) => {
-            if (message.component.id !== id) return
+        let guarded = (callback) => (...args) => {
+            try {
+                return callback(...args)
+            } catch (error) {
+                console.warn('[atom:calendar] could not follow a request of the component', error)
+            }
+        }
+
+        return livewire.interceptMessage(guarded(({ message, onSend, onSuccess }) => {
+            // the component the calendar is in, or one that holds that one: a parent that saves renders the child
+            if (!message.component?.el?.contains?.(this.rootEl)) return
 
             let seq = null
 
-            onSend(() => { seq = ++this.sent })
+            onSend(guarded(() => { seq = ++this.sent }))
 
-            onSuccess(({ payload, onMorphed }) => {
+            onSuccess(guarded(({ payload, onMorphed, onRender }) => {
                 if (seq === null || !payload?.effects?.html) return
-                if (![...message.actions].some((action) => !String(action.name).startsWith('$'))) return
 
-                // the morph is done and the payload on the root has been read (or is the same), so what is released is drawn where the server has it at once
-                onMorphed(() => this.releaseOverrides(seq))
-            })
-        })
+                let before = this.rootEl.getAttribute('data-atom-calendar-payload')
+
+                let answer = guarded(() => {
+                    let called = [...message.actions].some((action) => !String(action.name).startsWith('$'))
+
+                    if (called || this.rootEl.getAttribute('data-atom-calendar-payload') !== before) this.answer(seq)
+                })
+
+                // after the morph, so what is released is drawn where the payload that came says
+                if (typeof onMorphed === 'function') onMorphed(answer)
+                else if (typeof onRender === 'function') onRender(answer)
+            }))
+        }))
+    },
+
+    // The server has answered: now, or when the gesture that is on is over (the lanes and the boxes the pointer is measured against stay as they are under
+    // it, as a payload does), the highest answer being the one that counts
+    answer (seq) {
+        if (this.gesture) {
+            this.answered = Math.max(this.answered, seq)
+
+            return
+        }
+
+        this.releaseOverrides(seq)
     },
 
     // An item that was put somewhere (a move or a resize) is where the server has it, once a render has answered a request sent after it was put. Unless the
@@ -1056,7 +1093,8 @@ export default () => ({
     countText (line, count) {
         if (Array.isArray(line)) line = line[Math.min(Math.max(count, 1), line.length) - 1]
 
-        return (typeof line === 'string' ? line : '').replaceAll(':count', () => String(count))
+        // Laravel keeps `:COUNT` when it is asked with ':count' (it upper-cases the replacement too), and writes `:Count` as `:count`
+        return (typeof line === 'string' ? line : '').replace(/:count/gi, () => String(count))
     },
 
     weekdayName (date) {

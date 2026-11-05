@@ -700,6 +700,83 @@ test.describe('what the host does about it', () => {
         await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
     })
 
+    // A save that goes round the tag (a `$wire.set()` and an `updated*` hook, a fetch), a clamp, a poll that shows another user's move, a parent that saves: the
+    // render says where the server has the item although nothing in the request is a call of the host's reschedule.
+    test('a render that changes the payload puts the item where the server has it, whatever asked for it', async ({ page }) => {
+        await mode(page, 'none')
+        await dragHex(page)
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        // the server's own state moves it to the 25th (no call of the host's in the request: the property is set, and the page is refreshed)
+        await page.evaluate(() => window.Livewire.first().$set('placed', { 10: { start: '2026-10-25T14:00', end: '2026-10-25T15:00' } }, false))
+        await page.evaluate(() => window.Livewire.first().$refresh())
+
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-25')
+        expect((await engine(page)).overrides).toEqual([])
+    })
+
+    test('a render that changes the payload does not put a held item back while the promise is pending, and the item is where the server has it once it settles', async ({ page }) => {
+        await mode(page, 'wait')
+        await dragHex(page)
+
+        await page.evaluate(() => window.Livewire.first().$set('placed', { 10: { start: '2026-10-25T14:00', end: '2026-10-25T15:00' } }, false))
+        await page.evaluate(() => window.Livewire.first().$refresh())
+        await payloadArrived(page, '2026-10-25')
+        await page.waitForTimeout(200)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        await page.evaluate(() => window.__settle.resolve())
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-25')
+    })
+
+    // An answer that comes while another item is being dragged waits for the drag to end: the lanes and the boxes the pointer is measured against stay as they
+    // are under it. And what the drag then drops is newer than that answer, so it is not released by it.
+    test('an answer that comes during a drag of another item is applied when the drag ends, and does not release what the drag drops', async ({ page }) => {
+        let held = false
+        let open_ = null
+        const gate = new Promise((resolve) => { open_ = resolve })
+        const hit = new Promise((resolve) => {
+            page.route('**/update', async (route) => {
+                if (!held) {
+                    held = true
+                    resolve()
+                    await gate
+                }
+
+                await route.continue()
+            })
+        })
+
+        await mode(page, 'livewire')
+        await dragHex(page)
+        await hit
+
+        // from here the host does not answer for what is dragged, and the first answer is on its way
+        await mode(page, 'none')
+
+        const from = await middle(chipOf(page, 'bar', 'Septembers tail'))
+        const to = await inDay(page, '2026-10-01')
+
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        await page.mouse.move(to.x, to.y, { steps: 8 })
+        await expect.poll(async () => (await engine(page)).gesture).toBe(true)
+
+        open_()
+        await expect.poll(() => page.evaluate(() => window.Alpine.$data(document.querySelector('[data-atom-calendar]')).answered)).toBeGreaterThan(0)
+        await page.waitForTimeout(200)
+
+        // the answer is in, and nothing was released under the pointer
+        expect((await engine(page)).overrides).toEqual(['10'])
+
+        await page.mouse.up()
+
+        // the first item is released; the one that was just dropped stays where it was put, as nobody answered for it
+        await expect.poll(async () => (await engine(page)).overrides).toEqual(['16'])
+        expect(await startsOn(page, chipOf(page, 'bar', 'Septembers tail'))).toBe('2026-10-01')
+    })
+
     test('a resize is held the same way: pending, it keeps its length; rejected, it is back', async ({ page }) => {
         await mode(page, 'reject')
         await drag(page, await middle(handleOf(page, 'bar', 'Launch week')), await inDay(page, '2026-10-22'))

@@ -1003,6 +1003,13 @@ describe('the lines that take a count', function () {
             ->and(str_replace(':count', '147', Calendar::make()->labels(5000)['ui']['more'][98]))->toBe('147 more');
     });
 
+    // Laravel upper-cases the replacement beside an upper-case placeholder (':COUNT' for ':count') and writes ':Count' as ':count': the browser fills all three
+    it('keeps an upper-case placeholder as Laravel leaves it, and writes a capitalised one as the lower-case one', function () use ($translate) {
+        $translate(['+:count more' => '{1} :COUNT MORE|[2,*] :Count more']);
+
+        expect(Calendar::make()->labels(3)['ui']['more'])->toBe([':COUNT MORE', ':count more', ':count more']);
+    });
+
     it('keeps the placeholder in every form of a payload of more than 99 items', function () use ($translate) {
         $translate(['+:count more' => '{1} one more|[2,*] :count more', ':count items' => ':count thing|:count things']);
 

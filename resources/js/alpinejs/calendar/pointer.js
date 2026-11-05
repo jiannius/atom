@@ -358,6 +358,13 @@ export default {
         this.payloadHeld = false
 
         if (held && apply) this.read()
+
+        // an answer that came meanwhile releases what was dropped before the request it answers (an item dropped by this gesture is newer: see commitChange)
+        let answered = this.answered
+
+        this.answered = 0
+
+        if (answered && apply) this.releaseOverrides(answered)
     },
 
     // The click that follows a drag, on the item it began on: it is not let through. It follows the release, which has not come yet only when the drag
