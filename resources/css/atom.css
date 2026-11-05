@@ -1337,6 +1337,14 @@ html.dark [data-atom-calendar-ghost-body][data-atom-calendar-hex] {
     pointer-events: none;
 }
 
+/* A chip is not a text to select, for any pointer. Firefox starts a text-selection drag on a press on a chip that is not draggable and captures the mouse for it,
+   so the release comes to the chip however far the pointer went and fires its click (`calendar-item-click`): a drag away from an item that cannot be
+   moved is not a click on it. (A touch screen's rule for a block's text is below.) */
+[data-atom-calendar-chip] {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
 /* On a touch screen a long press is how a selection starts, and the browser must not answer it with a text selection or a callout: the empty
    days and slots are not text, and a block's own text is left to be selected. */
 @media (pointer: coarse) {

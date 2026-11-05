@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { guardMouse, mousePointerId } from './calendar-viewport.js'
 
 // Moving and resizing an item, in a browser: a drag of a chip in the month, of a bar in the all-day row and of a block in the time grid, and a pull
 // of the handle on its end; and what the host is told (`calendar-item-move`, `calendar-item-resize`, in the viewer's wall clock) and when. Real
@@ -104,6 +105,11 @@ async function inAllDay (page, date, like, name) {
 
     return { x: box.x + box.width / 2, y: bar.y + bar.height / 2 }
 }
+
+test.beforeEach(({ page }) => guardMouse(page))
+
+// the day of the month grid, scrolled into view: the grid is taller than the viewport, and a day below the fold is no place for a pointer
+const reveal = (page, date, name) => cell(page, date, name).scrollIntoViewIfNeeded()
 
 async function drag (page, from, ...through) {
     await page.mouse.move(from.x, from.y)
@@ -263,6 +269,7 @@ test.describe('an item in the month', () => {
         // Night shift: 22 October 22:00 to 23 October 02:00, a bar in the month
         const night = chipOf(page, 'bar', 'Night shift')
 
+        await reveal(page, '2026-10-26')
         await drag(page, await dateGrab(page, night, '2026-10-22'), await inDay(page, '2026-10-26'))
         expect(await moves(page)).toEqual([{ id: 12, start: '2026-10-26T22:00', end: '2026-10-27T02:00', allDay: false }])
 
@@ -397,6 +404,8 @@ test.describe('what may be moved', () => {
         await page.mouse.up()
 
         expect(await moves(page)).toEqual([])
+        // the release 220px away is not a click on the item the press began on (Firefox's text-selection drag captures the mouse and sent it there)
+        expect(await page.evaluate(() => window.__clicks)).toEqual([])
 
         await standup.click()
         expect(await page.evaluate(() => window.__clicks)).toEqual([1])
@@ -854,6 +863,7 @@ test.describe('the focus of an item that is moved', () => {
     test('stays on it when it is moved in the month, to another week: it is on the chip that stands on the day it was put on', async ({ page }) => {
         await open(page)
         await chipOf(page, 'dot', 'Hex colour').focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
 
         expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-28')
@@ -864,6 +874,7 @@ test.describe('the focus of an item that is moved', () => {
     test('and when it is pulled by its end', async ({ page }) => {
         await open(page)
         await chipOf(page, 'bar', 'Launch week').first().focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(handleOf(page, 'bar', 'Launch week')), await inDay(page, '2026-10-28'))
 
         await expect(chipOf(page, 'bar', 'Launch week')).toHaveCount(4)
@@ -901,6 +912,7 @@ test.describe('the focus of an item that is moved', () => {
         await open(page)
         await mode(page, 'livewire')
         await chipOf(page, 'dot', 'Hex colour').focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
 
         await expect.poll(async () => (await engine(page)).overrides).toEqual([])
@@ -911,6 +923,7 @@ test.describe('the focus of an item that is moved', () => {
         await open(page)
         await mode(page, 'hold')
         await chipOf(page, 'dot', 'Hex colour').focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
 
         await page.evaluate(() => window.Livewire.first().toggleExtra())
@@ -945,6 +958,7 @@ test.describe('the focus of an item that is moved', () => {
         await open(page)
         await mode(page, 'hold')
         await chipOf(page, 'dot', 'Hex colour').focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
         await expect(chipOf(page, 'dot', 'Hex colour')).toBeFocused()
 
@@ -961,6 +975,7 @@ test.describe('the focus of an item that is moved', () => {
         await open(page)
         await mode(page, 'hold')
         await chipOf(page, 'dot', 'Hex colour').focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
         await expect(chipOf(page, 'dot', 'Hex colour')).toBeFocused()
 
@@ -1113,10 +1128,11 @@ test.describe('Escape and the other ends of a drag that was not let go', () => {
 
         // the same drag, with a release that nobody heard
         const from = await middle(chipOf(page, 'dot', 'Team standup'))
+        const id = await mousePointerId(page)
 
-        await page.evaluate(([x, y]) => {
-            document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1, bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y }))
-        }, [from.x, from.y])
+        await page.evaluate(([x, y, pointerId]) => {
+            document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerdown', { pointerId, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1, bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y }))
+        }, [from.x, from.y, id])
         expect((await engine(page)).gesture).toBe(true)
 
         await page.mouse.move(to.x - 30, to.y, { steps: 3 })
@@ -2014,6 +2030,10 @@ test.describe('two calendars on a page, and one that goes', () => {
         const first = probes.nth(0)
         const second = probes.nth(1)
         const standup = (root) => root.locator('[data-atom-calendar-chip="dot"]', { hasText: 'Team standup' })
+
+        // the 14th of the first calendar is below the fold: the page is scrolled to it before anything is measured (and the second calendar's box after that)
+        await first.locator('[data-atom-calendar-day][data-date="2026-10-14"]').scrollIntoViewIfNeeded()
+
         const before = await standup(second).boundingBox()
 
         await page.evaluate(() => {

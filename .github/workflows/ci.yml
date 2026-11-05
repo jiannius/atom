@@ -153,9 +153,9 @@ jobs:
     needs: consumer
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    # Neither leg is required yet: Firefox cannot be run on a Mac and WebKit had only ever run on one, and Linux's WebKit build is not that one. A red leg is
-    # shown (a red step, a failed run of the job) and does not fail the check. Flip both to required (drop the line) after this job's first green run.
-    continue-on-error: true
+    # WebKit is required (its first run on Linux was green). Firefox is not yet: it cannot be run through Playwright's own build on a Mac, and a red leg is shown
+    # (a red step, a failed run of the job) without failing the check. Drop the line, or change it to `false`, after Firefox's first green run.
+    continue-on-error: ${{ matrix.browser == 'firefox' }}
     strategy:
       fail-fast: false
       matrix:

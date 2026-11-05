@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { guardMouse, mousePointerId } from './calendar-viewport.js'
 
 // Selecting, to create, in a browser: a click or a drag on empty space in the month, the all-day row and the time grid, and what the host is
 // told (`calendar-select`, in the viewer's wall clock) and when. Real mouse events at points measured before anything moves.
@@ -68,6 +69,8 @@ async function drag (page, from, ...through) {
 
     await page.mouse.up()
 }
+
+test.beforeEach(({ page }) => guardMouse(page))
 
 async function click (page, point) {
     await page.mouse.move(point.x, point.y)
@@ -160,8 +163,10 @@ test.describe('a month day', () => {
     test('a drag that leaves the grid stays on the last day it was on', async ({ page }) => {
         const from = await inDay(page, '2026-10-15')
         const week = await cell(page, '2026-10-18').boundingBox()
+        const { width } = page.viewportSize()
 
-        await drag(page, from, { x: week.x + week.width + 300, y: week.y + week.height * 0.9 })
+        // past the window's edge, but inside the viewport (a point outside it is no pointer event in Firefox)
+        await drag(page, from, { x: Math.min(week.x + week.width + 300, width - 2), y: week.y + week.height * 0.9 })
 
         expect(await selects(page)).toEqual([{ start: '2026-10-15', end: '2026-10-18', allDay: true }])
     })
@@ -1142,7 +1147,7 @@ test.describe('a gesture that nothing ends', () => {
         const stuck = await inDay(page, '2026-10-12')
 
         // the press of a mouse, as a browser sends it, and then nothing: no pointerup
-        await pointer(page, 'pointerdown', stuck, 'mouse', 1)
+        await pointer(page, 'pointerdown', stuck, 'mouse', await mousePointerId(page))
         expect((await engine(page)).gesture).toBe(true)
 
         // the pointer comes back over the days with no button down: nothing follows it
@@ -1161,7 +1166,7 @@ test.describe('a gesture that nothing ends', () => {
     })
 
     test('a selection made after a stuck one is not blocked by it', async ({ page }) => {
-        await pointer(page, 'pointerdown', await inDay(page, '2026-10-12'), 'mouse', 1)
+        await pointer(page, 'pointerdown', await inDay(page, '2026-10-12'), 'mouse', await mousePointerId(page))
 
         const hover = await inDay(page, '2026-10-14')
 
@@ -1174,7 +1179,7 @@ test.describe('a gesture that nothing ends', () => {
     test('a context menu opening gives the gesture up', async ({ page }) => {
         const point = await inDay(page, '2026-10-12')
 
-        await pointer(page, 'pointerdown', point, 'mouse', 1)
+        await pointer(page, 'pointerdown', point, 'mouse', await mousePointerId(page))
         expect((await engine(page)).gesture).toBe(true)
 
         await page.evaluate(([x, y]) => document.elementFromPoint(x, y).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: x, clientY: y })), [point.x, point.y])
