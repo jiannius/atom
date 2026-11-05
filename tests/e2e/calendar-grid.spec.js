@@ -490,13 +490,16 @@ test.describe('the now line', () => {
 
         await page.evaluate(() => {
             const engine = window.Alpine.$data(document.querySelector('[data-probe="calendar"]'))
-            const read = engine.read
+            const readJson = engine.readJson
 
+            // the payload is parsed once for every payload that is taken: a render that says what it said parses nothing (the render token makes read()
+            // run, so it is the parse that is counted), and the payload object is the one that was there
             window.__reads = 0
-            engine.read = function () {
+            window.__payload = engine.payload
+            engine.readJson = function () {
                 window.__reads++
 
-                return read.apply(this, arguments)
+                return readJson.apply(this, arguments)
             }
         })
 
@@ -515,6 +518,7 @@ test.describe('the now line', () => {
         // the clock attribute moved with the renders, and nothing read it back
         expect(await probe(page).getAttribute('data-atom-calendar-now')).not.toBe(attribute)
         expect(await page.evaluate(() => window.__reads)).toBe(0)
+        expect(await page.evaluate(() => window.Alpine.$data(document.querySelector('[data-probe="calendar"]')).payload === window.__payload)).toBe(true)
         await expect(nowLine(page)).toHaveAttribute('data-time', '10:30 AM')
     })
 

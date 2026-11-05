@@ -449,8 +449,9 @@ export default {
     // for a time (the end is the first minute after), `YYYY-MM-DD` for days (the end is the last day, included), either straight to Calendar::fromLocal().
     // A move says whether the item is all day too. The event can be cancelled, which puts the item back; and the host holds the item where it was put
     // with `waitUntil(promise)`, called while it handles the event: it stays there while the promise is pending, whatever payload comes, and goes back
-    // if the promise is rejected. Resolved, it stays until the payload that has the host's answer in it comes (a host that answers without a render
-    // has no such payload, and the item stays where it was put until the next one). Without a promise it stays until the next payload.
+    // if the promise is rejected. Resolved, it stays until the render that has the host's answer in it comes (see read(): the render token changes
+    // on every render, so a save that failed validate() and rendered the same items answers too; a host that answers without a render has no such render,
+    // and the item stays where it was put until the next one). Without a promise it stays until the next render.
     commitChange (gesture, range) {
         let { item, kind } = gesture
 

@@ -31,6 +31,14 @@ function calendarRender(string $attributes = '', array $data = [], string $slot 
 }
 
 /**
+ * A render without its render token, which differs on every render by design (the engine releases a dropped item by it).
+ */
+function withoutRenderToken(string $html): string
+{
+    return preg_replace('/ ?data-atom-calendar-render="[^"]*"/', '', $html);
+}
+
+/**
  * The calendar root element of a render.
  */
 function calendarRoot(string $html): DOMElement
@@ -266,7 +274,24 @@ describe('calendar component markup', function () {
         $once = calendarRender('month="2026-10"');
         $twice = calendarRender('month="2026-10"');
 
-        expect($once)->toBe($twice);
+        expect(withoutRenderToken($once))->toBe(withoutRenderToken($twice));
+    });
+
+    // A save that fails validate() renders the items it rendered before: the token is what tells the engine the server answered (#89). It is its own
+    // attribute, not part of the payload (a selection a render leaves alone is compared by the payload) and never an id or an x-data value.
+    it('prints a render token that is new on every render, in an attribute of its own', function () {
+        $once = calendarRender('month="2026-10"');
+        $twice = calendarRender('month="2026-10"');
+
+        $first = calendarRoot($once)->getAttribute('data-atom-calendar-render');
+        $second = calendarRoot($twice)->getAttribute('data-atom-calendar-render');
+
+        expect($first)->toMatch('/^[A-Za-z0-9]{12}$/')
+            ->and($second)->toMatch('/^[A-Za-z0-9]{12}$/')
+            ->and($first)->not->toBe($second)
+            ->and(calendarRoot($once)->getAttribute('data-atom-calendar-payload'))->toBe(calendarRoot($twice)->getAttribute('data-atom-calendar-payload'))
+            ->and(calendarRoot($once)->getAttribute('x-data'))->toBe('calendar')
+            ->and(substr_count($once, $first))->toBe(1);
     });
 
     it('keeps the engine in wire:ignore, and the payload on the morphable root', function () {
@@ -842,8 +867,8 @@ describe('calendar accessibility markup', function () {
     it('renders the same markup twice, so no id in it is random', function () {
         Carbon::setTestNow('2026-10-09 10:30:00');
 
-        expect(calendarRender('name="a"'))->toBe(calendarRender('name="a"'))
-            ->and(calendarRenderAs('abc123'))->toBe(calendarRenderAs('abc123'));
+        expect(withoutRenderToken(calendarRender('name="a"')))->toBe(withoutRenderToken(calendarRender('name="a"')))
+            ->and(withoutRenderToken(calendarRenderAs('abc123')))->toBe(withoutRenderToken(calendarRenderAs('abc123')));
     });
 });
 

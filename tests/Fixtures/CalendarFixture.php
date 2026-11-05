@@ -116,7 +116,7 @@ class CalendarFixture extends Component
      * Make an item of what a selection says, as a host does: the calendar's wall-clock strings go straight to Calendar::fromLocal(), which gives
      * the instant in the app's timezone, and what is stored is that instant. The row is kept as the host got it and as it was stored, for the test.
      */
-    public function create(string $start, string $end, bool $allDay): bool
+    public function create(string $start, string $end, bool $allDay): void
     {
         $this->refuseWhenStrict($start);
 
@@ -128,21 +128,17 @@ class CalendarFixture extends Component
             'startUtc' => Calendar::fromLocal($start)->utc()->format('Y-m-d\TH:i:s\Z'),
             'endUtc' => Calendar::fromLocal($end)->utc()->format('Y-m-d\TH:i:s\Z'),
         ];
-
-        return true;
     }
 
     /**
      * Put an item where a move or a resize says, as a host does: the calendar's wall-clock strings are what is stored (an instant, through
      * Calendar::fromLocal(), for a time), and the next render has the item there.
      */
-    public function reschedule(int|string $id, string $start, ?string $end): bool
+    public function reschedule(int|string $id, string $start, ?string $end): void
     {
         $this->refuseWhenStrict($start);
 
         $this->place($id, $start, $end);
-
-        return true;
     }
 
     /**

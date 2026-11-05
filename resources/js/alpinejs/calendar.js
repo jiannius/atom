@@ -124,6 +124,8 @@ export default () => ({
     lingerAbort: null,
     // the payload attribute as it was last read, so a render that leaves it as it was is not a new payload
     payloadText: '',
+    // the render token as it was last read (see read()): it changes on every server render, the payload only when what it says does
+    renderToken: null,
     // a payload came while a gesture was on: it waits for the gesture to end (see read() and endSelect())
     payloadHeld: false,
     hours: Array.from({ length: 24 }, (_, hour) => hour),
@@ -369,7 +371,7 @@ export default () => ({
         this.$watch('title.text', (text) => { this.liveTitle = text })
 
         let observer = new MutationObserver(() => this.read())
-        observer.observe(this.$root, { attributes: true, attributeFilter: ['data-atom-calendar-payload'] })
+        observer.observe(this.$root, { attributes: true, attributeFilter: ['data-atom-calendar-payload', 'data-atom-calendar-render'] })
 
         // The date picker in the title hands back the browser-local instant of the day that was picked.
         this.$watch('jump', (value) => {
@@ -445,6 +447,23 @@ export default () => ({
         }
 
         let text = this.$root.getAttribute('data-atom-calendar-payload')
+        let token = this.rootEl.getAttribute('data-atom-calendar-render')
+        let first = this.payload === null
+
+        // A render is the server's answer to what was moved or resized, even when it says what it said before: a save that failed validate() renders
+        // the same items, and the item that was put somewhere has to go back to where the server has it. So an item that was put somewhere is released
+        // by any render (the token changes on every one), not only by a payload that differs (see releaseOverrides()).
+        //
+        // A render that says what it said (the clock moving, the host's form opening for a selection) is read no further: the payload is not parsed or
+        // laid out again, and a selection nothing holds is left, as only a payload that differs is the answer to what was selected.
+        if (!first && text === this.payloadText) {
+            if (token !== this.renderToken) this.releaseOverrides()
+
+            this.renderToken = token
+
+            return
+        }
+
         let payload = this.readJson(text)
 
         if (!payload || !Array.isArray(payload.window?.days) || !Array.isArray(payload.items) || !payload.labels || !payload.config) {
@@ -453,18 +472,14 @@ export default () => ({
             return
         }
 
-        let first = this.payload === null
-
         // A new payload is the answer to what was selected, so a selection that nothing holds is done with. One being made, and one the host holds
         // with waitUntil, are not the render's to take down.
-        if (!first && text !== this.payloadText) {
+        if (!first) {
             this.clearSelection()
-
-            // The payload is the answer to what was moved or resized, so an item that was put somewhere is where the payload says it is. Unless the host
-            // holds it (waitUntil): that one stays where it was put, and is marked as one the payload has been and gone past (see commitChange).
-            this.overrides = Object.fromEntries(Object.entries(this.overrides).filter(([, entry]) => entry.held).map(([id, entry]) => [id, { ...entry, stale: true }]))
+            this.releaseOverrides()
         }
 
+        this.renderToken = token
         this.payloadText = text
 
         // The focus is on a day of the month when the window changes (a key that left the old one, or a render): the days of a new window
@@ -503,6 +518,12 @@ export default () => ({
         }
 
         if (restoreFocus) this.$nextTick(() => this.focusDay())
+    },
+
+    // The server has answered, so an item that was put somewhere (a move or a resize) is where the server has it. Unless the host holds it (waitUntil):
+    // that one stays where it was put, and is marked as one the render has been and gone past (see commitChange).
+    releaseOverrides () {
+        this.overrides = Object.fromEntries(Object.entries(this.overrides).filter(([, entry]) => entry.held).map(([id, entry]) => [id, { ...entry, stale: true }]))
     },
 
     // Is the focus nobody's: on the page itself (the node it was on is gone), or on a day of this grid?

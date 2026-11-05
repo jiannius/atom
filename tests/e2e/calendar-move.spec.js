@@ -566,6 +566,67 @@ test.describe('what the host does about it', () => {
         expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
     })
 
+    // A host's save that fails validate() renders the same items it rendered before (Livewire answers 200 and morphs), so the payload attribute
+    // does not change: the render token on the root is what tells the engine the server has answered (#89). Three orders, each proved here.
+    test('a render that says what it said before puts the item back: an answer that changed nothing is an answer too', async ({ page }) => {
+        await mode(page, 'none')
+        await dragHex(page)
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        const before = await page.locator('[data-atom-calendar]').getAttribute('data-atom-calendar-payload')
+
+        await page.evaluate(() => window.Livewire.first().bump())
+        await expect(page.locator('[data-renders]')).toHaveText('1')
+
+        // the same payload, and the item is where the server has it
+        expect(await page.locator('[data-atom-calendar]').getAttribute('data-atom-calendar-payload')).toBe(before)
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+        expect((await engine(page)).overrides).toEqual([])
+    })
+
+    test('held: a render of the same payload while the promise is pending leaves the item, and it goes back when the promise settles', async ({ page }) => {
+        await mode(page, 'wait')
+        await dragHex(page)
+
+        await page.evaluate(() => window.Livewire.first().bump())
+        await expect(page.locator('[data-renders]')).toHaveText('1')
+        await page.waitForTimeout(200)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        await page.evaluate(() => window.__settle.resolve())
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+        expect((await engine(page)).overrides).toEqual([])
+    })
+
+    test('held: the promise settles first and the render of the same payload comes after it, and the item goes back then', async ({ page }) => {
+        await mode(page, 'wait')
+        await dragHex(page)
+        await page.evaluate(() => window.__settle.resolve())
+        await expect.poll(async () => (await engine(page)).overrides).toEqual(['10'])
+        await page.waitForTimeout(200)
+
+        // resolved with no render yet: it stays, as the renderless answer does
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        await page.evaluate(() => window.Livewire.first().bump())
+        await expect(page.locator('[data-renders]')).toHaveText('1')
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+        expect((await engine(page)).overrides).toEqual([])
+    })
+
+    test('the render token changes on every render, and the payload does not', async ({ page }) => {
+        const root = page.locator('[data-atom-calendar]')
+        const first = await root.getAttribute('data-atom-calendar-render')
+
+        expect(first).toMatch(/^[A-Za-z0-9]{12}$/)
+
+        await page.evaluate(() => window.Livewire.first().bump())
+        await expect(page.locator('[data-renders]')).toHaveText('1')
+
+        expect(await root.getAttribute('data-atom-calendar-render')).not.toBe(first)
+    })
+
     test('a resize is held the same way: pending, it keeps its length; rejected, it is back', async ({ page }) => {
         await mode(page, 'reject')
         await drag(page, await middle(handleOf(page, 'bar', 'Launch week')), await inDay(page, '2026-10-22'))
