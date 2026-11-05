@@ -162,7 +162,7 @@ describe('the calendar section of the README', function () {
         // the tag, line by line (but for its closing), is what the served fixture's `?wired=1` branch has
         $tag = array_map('trim', explode("\n", rtrim($blade[1])));
         $fixture = file_get_contents(__DIR__.'/../Fixtures/calendar.blade.php');
-        $wired = substr($fixture, strpos($fixture, '@if ($wired)'), strpos($fixture, '@else') - strpos($fixture, '@if ($wired)'));
+        $wired = substr($fixture, strpos($fixture, '@if ($wired)'), strpos($fixture, '@elseif ($legacy)') - strpos($fixture, '@if ($wired)'));
 
         expect($tag)->toContain('<atom:calendar');
 
@@ -170,11 +170,11 @@ describe('the calendar section of the README', function () {
             expect($wired)->toContain("\n        ".$line."\n");
         }
 
-        // a save that does not return true is a refusal: each handler that saves says so
+        // the server's render is the answer, so no handler turns a return value into a rejection (only a renderless one that can refuse does, and says so in the text)
         foreach (['calendar-select', 'calendar-item-move', 'calendar-item-resize'] as $event) {
             $line = collect($tag)->first(fn ($line) => str_starts_with($line, 'x-on:'.$event.'='));
 
-            expect(str_contains((string) $line, '.then((saved) => saved || Promise.reject())'))->toBeTrue('the README tag line for '.$event.' turns a save that did not return true into a rejection');
+            expect(str_contains((string) $line, 'Promise.reject'))->toBeFalse('the README tag line for '.$event.' needs no refusal of its own');
         }
 
         // the skill shows the same handlers
@@ -190,10 +190,10 @@ describe('the calendar section of the README', function () {
         expect(array_values(array_unique($calls[1])))->toEqualCanonicalizing(['create', 'reschedule', 'edit']);
 
         foreach (array_unique($calls[1]) as $method) {
-            expect(preg_match('/public function '.$method.'\(([^)]*)\): (void|bool)/', $php[1], $declared))->toBe(1, 'the README class has no public '.$method.'()');
+            expect(preg_match('/public function '.$method.'\(([^)]*)\): (void)/', $php[1], $declared))->toBe(1, 'the README class has no public '.$method.'()');
 
-            // what the tag turns into a refusal when it is not true is what the class returns once it has saved
-            expect($declared[2])->toBe($method === 'edit' ? 'void' : 'bool', $method.'() of the README class');
+            // nothing the tag does reads a return value
+            expect($declared[2])->toBe('void', $method.'() of the README class');
 
             preg_match_all('/\$(\w+)/', $declared[1], $names);
 
@@ -204,18 +204,22 @@ describe('the calendar section of the README', function () {
     });
 
     // Livewire catches a ValidationException on the server and answers 200, so `$wire.method()` resolves with null: only a throw, an abort or a failed
-    // request rejects (and shows Livewire's error modal). The README once said validation rejects, so a failed save left the item where it was dropped.
-    it('refuses a save by what the method returns, and never says validation rejects the promise', function () {
+    // request rejects (and shows Livewire's error modal). What puts the item back after a failed validate() is the render that answers it (#89).
+    it('says the render is the answer, that validation does not reject, and what still needs a rejection', function () {
         $section = calendarReadmeSection();
 
-        expect($section)->toContain('saved || Promise.reject()')
-            ->and($section)->toContain('does not reject it')
+        expect($section)->toContain('The server\'s answer decides where the item ends up')
+            ->and($section)->toContain('sent **after the drop**')
+            ->and($section)->toContain('What is not an answer')
+            ->and($section)->not->toContain('data-atom-calendar-render')
+            ->and($section)->toContain('fails `validate()`')
             ->and($section)->toContain('error modal')
-            ->and($section)->toContain('return `false` to refuse, `true` once saved')
-            ->and($section)->toContain('it must still `return true`')
+            ->and($section)->toContain('A renderless method sends no render')
+            ->and($section)->toContain('saved || Promise.reject()')
+            ->and($section)->toContain('Known caveats')
             ->and($section)->not->toMatch('/(?:Livewire rejects|rejects the promise)[^.]*validat/i')
             ->and($section)->not->toContain('refuse by validating')
-            ->and($section)->not->toContain('fails validation, aborts');
+            ->and($section)->not->toContain('A failed `validate()` does not reject it');
     });
 
     it('states, for each prop, the default the component has', function () {

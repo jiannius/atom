@@ -373,10 +373,13 @@ class Calendar
      * in `j F`), as `day_before` (a day token earlier in the format) and `day_after` lists, and only where they differ from the
      * standalone ones. One more known gap: ka prints a weekday differently beside other tokens.
      * `week_title`, `month_title` and `day_title` are how the title of each view is written in the locale, see weekTitle().
+     * A `ui` line that takes a count (`more`, `item`, `items`) is one string, or, when the translation uses Laravel's plural syntax
+     * (`{1} ... |[2,*] ...`, `one|many`), the list of the resolved strings, `:count` still in each, for the counts 1 to `$maxCount`, see countLine().
      *
-     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, week_title: array<string, list<string>>, month_title: string, day_title: string, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string|array<string, string>>}
+     * @param  int  $maxCount  the largest count a line can be asked for: the number of items in the payload
+     * @return array{weekdays: list<array{key: string, short: string, long: string}>, months: list<string>, months_short: list<string>, month_forms: array<string, array<string, list<string>>>, week_title: array<string, list<string>>, month_title: string, day_title: string, meridiem: list<array{0: int, 1: string, 2: string}>, am: string, pm: string, ui: array<string, string|list<string>|array<string, string>>}
      */
-    public function labels(): array
+    public function labels(int $maxCount = 0): array
     {
         $locale = app()->getLocale();
         $monday = CarbonImmutable::parse('2026-10-05', 'UTC')->locale($locale);
@@ -413,10 +416,10 @@ class Calendar
                 'week' => (string) __('Week'),
                 'day' => (string) __('Day'),
                 'all_day' => (string) __('All day'),
-                'more' => (string) __('+:count more'),
+                'more' => self::countLine('+:count more', $maxCount),
                 'overdue' => (string) __('Overdue'),
-                'item' => (string) __(':count item'),
-                'items' => (string) __(':count items'),
+                'item' => self::countLine(':count item', $maxCount),
+                'items' => self::countLine(':count items', $maxCount),
                 'close' => (string) __('Close'),
                 'choose_date' => (string) __('Choose date'),
                 'view' => (string) __('View'),
@@ -444,51 +447,107 @@ class Calendar
     }
 
     /**
+     * The most counts of one line that are sent: a day with more items than this reuses the last form (a plural rule that changes again past
+     * 99, as Russian's does at 101, is the one gap).
+     */
+    public const COUNT_FORMS_MAX = 99;
+
+    /**
+     * A line that takes a `:count`, as the browser prints it: the translation as it is when it has no `|`, so a locale that does not use
+     * Laravel's plural syntax costs nothing; else the list of what `trans_choice()` makes of it for each count from 1 to `$maxCount`
+     * (at most COUNT_FORMS_MAX, and at least 1), the string for a count `n` being at index `n - 1`, with `:count` still in it: trans_choice() is
+     * asked with `['count' => ':count']` so that it leaves the placeholder, and the browser puts the real number in, which is what keeps a count past the
+     * list (150 items: the last form, "+147 more") right. It is trans_choice() itself, so `{1} :count item|[2,*] :count items` and `one|many` select
+     * exactly as they do anywhere else in the app.
+     *
+     * @return string|list<string>
+     */
+    protected static function countLine(string $key, int $maxCount): string|array
+    {
+        if (! str_contains((string) __($key), '|')) {
+            return (string) __($key);
+        }
+
+        return array_map(
+            fn (int $count) => (string) trans_choice($key, $count, ['count' => ':count']),
+            range(1, max(1, min($maxCount, self::COUNT_FORMS_MAX))),
+        );
+    }
+
+    /**
+     * The language of a locale, lower case, without its region: `zh` for `zh_CN`, `zh-TW` and `ZH`.
+     */
+    protected static function language(string $locale): string
+    {
+        return strtolower(preg_split('/[_-]/', $locale, 2)[0]);
+    }
+
+    /**
      * How the week view's title is written in a locale: the first day's display format and the last day's, for a week inside
      * one month, over two months and over two years (`5 – 11 October 2026`, `28 Sep – 4 Oct 2026`, `28 Dec 2026 – 3 Jan 2027`).
      *
      * The browser prints each end with FORMAT_TOKENS and puts ` – ` between them, so the order of year, month and day is the
-     * locale's and not the browser's: Chinese writes `2026年10月5日 – 11日`. A trailing `Y` in the last format is split off as the
-     * year, which the title shows lighter. A locale without its own patterns reads like English, day before month before year.
-     * Not tied to the `date-format` prop, which is for the dates inside the views.
+     * locale's and not the browser's: Chinese and Japanese write `2026年10月5日 – 11日`, Korean `2026년 10월 5일 – 11일`. A trailing
+     * `Y` in the last format is split off as the year, which the title shows lighter. A locale without its own patterns reads
+     * like English, day before month before year. Not tied to the `date-format` prop, which is for the dates inside the views.
+     *
+     * The patterns are the long date of Carbon's own locale files (`LL` in `Carbon/Lang/ja.php`: `YYYY年M月D日`, and `ko.php`:
+     * `YYYY년 MMMM D일`, whose `MMMM` is `10월`, the number and its mark), which is CLDR's `yMMMMd` for each. The month is written
+     * with `n` and its mark rather than `F`: the month names of both locales already carry the mark (`10月`, `10월`), so `F` would
+     * leave the mark to the translation files and a host's override of them. The end of a range drops what it shares with the start,
+     * as CLDR's interval patterns do (`2026年10月5日～11日`, `2026. 10. 5.~11.`); the separator is the one the browser puts between the two ends.
      *
      * @return array{same_month: list<string>, cross_month: list<string>, cross_year: list<string>}
      */
     public static function weekTitle(string $locale): array
     {
-        if (str_starts_with(strtolower($locale), 'zh')) {
-            return [
+        return match (self::language($locale)) {
+            'zh', 'ja' => [
                 'same_month' => ['Y年n月j日', 'j日'],
                 'cross_month' => ['Y年n月j日', 'n月j日'],
                 'cross_year' => ['Y年n月j日', 'Y年n月j日'],
-            ];
-        }
-
-        return [
-            'same_month' => ['j', 'j F Y'],
-            'cross_month' => ['j M', 'j M Y'],
-            'cross_year' => ['j M Y', 'j M Y'],
-        ];
+            ],
+            'ko' => [
+                'same_month' => ['Y년 n월 j일', 'j일'],
+                'cross_month' => ['Y년 n월 j일', 'n월 j일'],
+                'cross_year' => ['Y년 n월 j일', 'Y년 n월 j일'],
+            ],
+            default => [
+                'same_month' => ['j', 'j F Y'],
+                'cross_month' => ['j M', 'j M Y'],
+                'cross_year' => ['j M Y', 'j M Y'],
+            ],
+        };
     }
 
     /**
-     * How the month view's title is written in a locale, as one display format: `October 2026`, Chinese `2026年10月`.
+     * How the month view's title is written in a locale, as one display format: `October 2026`, Chinese and Japanese `2026年10月`,
+     * Korean `2026년 10월` (CLDR's `yMMMM`; see weekTitle() for where the patterns come from).
      *
      * Like weekTitle() it is a format the browser formatter prints, and a trailing `Y` is split off as the year, which the title
-     * shows lighter; Chinese has no trailing year, so the whole title is one weight. A locale without a pattern of its own reads
-     * like English.
+     * shows lighter; Chinese, Japanese and Korean have no trailing year, so the whole title is one weight. A locale without a
+     * pattern of its own reads like English.
      */
     public static function monthTitle(string $locale): string
     {
-        return str_starts_with(strtolower($locale), 'zh') ? 'Y年n月' : 'F Y';
+        return match (self::language($locale)) {
+            'zh', 'ja' => 'Y年n月',
+            'ko' => 'Y년 n월',
+            default => 'F Y',
+        };
     }
 
     /**
-     * How the day view's title is written in a locale, as one display format: `9 October 2026`, Chinese `2026年10月9日`. See monthTitle().
+     * How the day view's title is written in a locale, as one display format: `9 October 2026`, Chinese and Japanese `2026年10月9日`,
+     * Korean `2026년 10월 9일` (Carbon's `LL`). See monthTitle().
      */
     public static function dayTitle(string $locale): string
     {
-        return str_starts_with(strtolower($locale), 'zh') ? 'Y年n月j日' : 'j F Y';
+        return match (self::language($locale)) {
+            'zh', 'ja' => 'Y年n月j日',
+            'ko' => 'Y년 n월 j일',
+            default => 'j F Y',
+        };
     }
 
     /**
@@ -605,6 +664,8 @@ class Calendar
             $items = $items($window['from'], $window['to']) ?? [];
         }
 
+        $items = $this->items($items);
+
         return [
             'anchor' => $window['anchor'],
             'today' => $this->today(),
@@ -614,9 +675,9 @@ class Calendar
                 'end' => $window['end'],
                 'days' => $window['days'],
             ],
-            'labels' => $this->labels(),
+            'labels' => $this->labels(count($items)),
             'config' => $this->config(),
-            'items' => $this->items($items),
+            'items' => $items,
         ];
     }
 

@@ -1318,24 +1318,20 @@ class Index extends Component
             ]);
     }
 
-    public function create(string $start, string $end, bool $allDay): bool
+    public function create(string $start, string $end, bool $allDay): void
     {
         $this->authorize('create', Event::class);
 
         Event::create(['title' => 'New event', 'all_day' => $allDay, ...$this->instants($start, $end, $allDay)]);
-
-        return true;
     }
 
-    public function reschedule(int $id, string $start, ?string $end): bool
+    public function reschedule(int $id, string $start, ?string $end): void
     {
         $event = Event::findOrFail($id);
 
         $this->authorize('update', $event);
 
         $event->update($this->instants($start, $end, $event->all_day));
-
-        return true;
     }
 
     public function edit(int $id): void
@@ -1364,13 +1360,13 @@ class Index extends Component
     :views="['month', 'week', 'day']"
     selectable
     :items="fn ($from, $to) => $this->calendarItems($from, $to)"
-    x-on:calendar-select="$event.detail.waitUntil($wire.create($event.detail.start, $event.detail.end, $event.detail.allDay).then((saved) => saved || Promise.reject()))"
-    x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end).then((saved) => saved || Promise.reject()))"
-    x-on:calendar-item-resize="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end).then((saved) => saved || Promise.reject()))"
+    x-on:calendar-select="$event.detail.waitUntil($wire.create($event.detail.start, $event.detail.end, $event.detail.allDay))"
+    x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
+    x-on:calendar-item-resize="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
     x-on:calendar-item-click="$wire.edit($event.detail.id)" />
 ```
 
-`create()`, `reschedule()` and `edit()` are Livewire actions, so the browser can call them with any arguments: authorise and scope them as you would any action. `create()` and `reschedule()` return `true` once they have saved, and the tag turns anything else into a refusal, see [Saving a change](#saving-a-change-use-waituntil). The query asks for `ends_at >= $from`, a harmless over-fetch of anything that ends exactly at the window's start, so that an item with no length that sits on the window's first instant is not dropped.
+`create()`, `reschedule()` and `edit()` are Livewire actions, so the browser can call them with any arguments: authorise and scope them as you would any action. A failed `validate()` in either puts the item back, see [Saving a change](#saving-a-change-use-waituntil). The query asks for `ends_at >= $from`, a harmless over-fetch of anything that ends exactly at the window's start, so that an item with no length that sits on the window's first instant is not dropped.
 
 ### How the window and the data flow work
 
@@ -1404,7 +1400,7 @@ class Index extends Component
 | `month` | none | The anchor of a calendar with no `wire:model`. |
 | `name` | none | A handle of your own: the ids inside the calendar are built from it. |
 
-`time-format` and `date-format` take a set of `date()` tokens: `g G h H i a A` for a time, `d j D l m n M F y Y` for a date, plus spaces, digits, punctuation and non-ASCII text (`Y年n月j日`). There is no escape character, any other ASCII letter is refused, and a format that is refused, or has none of its kind's tokens, falls back to the default. Month, week and day titles are written the way the locale writes them (`October 2026`, `2026年10月`) and are not affected by `date-format`.
+`time-format` and `date-format` take a set of `date()` tokens: `g G h H i a A` for a time, `d j D l m n M F y Y` for a date, plus spaces, digits, punctuation and non-ASCII text (`Y年n月j日`). There is no escape character, any other ASCII letter is refused, and a format that is refused, or has none of its kind's tokens, falls back to the default. Month, week and day titles are written the way the locale writes them (`October 2026`, `2026年10月`, Korean `2026년 10월`) and are not affected by `date-format`.
 
 Anything else you put on the tag (`class`, `data-*`, `x-on:*`) goes to the root element. It is a `width: 100%` container; give it a width with a utility class. The week and day views scroll sideways where a week does not fit (a column is never narrower than `--atom-calendar-min-column`, `6rem`), and `--atom-calendar-hour` (`3.5rem`) and `--atom-calendar-grid-height` (`min(70vh, 48rem)`) set an hour's height and the grid's height.
 
@@ -1475,17 +1471,17 @@ The calendar dispatches bubbling events from its root. Listen with `x-on:` on th
 Pass the promise of your save to `waitUntil()` while you handle the event, as the example above does with `$wire.reschedule(...)`:
 
 ```blade
-x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end).then((saved) => saved || Promise.reject()))"
+x-on:calendar-item-move="$event.detail.waitUntil($wire.reschedule($event.detail.id, $event.detail.start, $event.detail.end))"
 ```
 
-where `reschedule()` ends with `return true;` once it has saved.
-
 - The item is drawn where it was dropped as soon as the pointer lets go, and the calendar says "Saving..." to screen readers while the promise is pending. A selection shows a "Creating..." placeholder where it was, until the promise settles.
-- If the promise **rejects**, the item goes back to where it was. **A failed `validate()` does not reject it.** Livewire catches a validation error on the server, answers normally, and `$wire.method()` resolves with `null`, the same as a method that saved and returned nothing, so the item would stay where it was dropped. Refuse in the tag instead: the method returns `true` once it has saved, and `.then((saved) => saved || Promise.reject())` turns anything else into a rejection. A failed `validate()` then puts the item back, the errors land in the error bag as usual, and nothing else is shown. A failed request rejects the promise as well, and so does a method that throws or calls `abort()` (a failed `authorize()` is a 403), but Livewire then shows its own error modal. Returning does not reject the promise by itself: return `false` to refuse, `true` once saved. Any truthy value counts as saved, and the return value is sent to the browser, so return `true`, not a model.
-- **`$this->validate()` checks public properties, not a method's arguments.** A `reschedule($id, $start, $end)` that validates what the browser sent builds the validator itself, `Validator::make(['start' => $start, 'end' => $end], ['start' => ['required', 'date'], 'end' => ['nullable', 'date']])->validate()` (from `Illuminate\Support\Facades\Validator`). It throws the same `ValidationException`, so the item goes back through the `saved || Promise.reject()` rule above. Check the id against what the viewer may edit too (`authorize()`), not only its shape.
-- Without `waitUntil()`, or with a promise that resolves, the item stays where it was dropped until the payload changes, so a failed or refused save leaves it in the wrong place until something else re-renders the calendar with different data. Calling it has to happen while the event is being handled; a call made later is ignored.
-- A payload that arrives while the promise is pending does not move the item. Once it settles, a payload that arrived meanwhile takes over, and the item is where your server has it. With none, the item stays where it was put until the next one.
-- Do not make the method `#[Renderless]` unless you have thought it through. A renderless response sends no payload, so when its promise resolves the item stays exactly where it was dropped, even if your method changed the time (clamped it, applied a rule), and a created item never appears. A normal action re-renders, and the new payload is what the calendar shows. A move that always saves as dropped can be renderless, but it must still `return true`: a renderless method that returns nothing resolves `undefined`, the tag above rejects it, and the item snaps back after a successful save. The same goes for every method the tag calls, renderless or not: with this tag each save method has to return `true`, or the item is put back even though it was saved (a method that returns nothing relies on a re-render to correct it).
+- **The server's answer decides where the item ends up.** The calendar listens to the requests of the Livewire component it is in, its own and not a parent's (Livewire's morph leaves a child's root alone, so a parent's render says nothing about the child's items: a calendar in a child whose parent saves is released only when the child's own payload changes, which a reactive property or an event that updates the child does). A render of a request sent **after the drop** puts the item where your server has it, once the promise has settled, when the request is a call of your own in it (`$wire.reschedule(...)`, a `wire:poll="method"`, a dispatched event your component listens to with `#[On]`: any action but Livewire's `$`-methods), **or** when it changes what the calendar shows, whoever asked for it (a `$refresh()`, a bare `wire:poll`, a save that went round the tag with `$wire.set()` and an `updated*` hook, a rule that clamped the time). So a save that re-renders needs nothing more. That includes a save that **fails `validate()`**: Livewire catches the exception on the server, renders the unchanged items and answers 200, so `$wire.method()` resolves with `null` and no error modal opens, but that render is a call of yours and answers: the item goes back. Your error bag has the errors as usual.
+- **What is not an answer:** a render of a request that was already on its way when the item was dropped (a `wire:model.live` field, another action: Livewire sends your action after it, and its render says what the server had before your save); a request that only carries a model update, a bare `wire:poll` or a `$refresh()` (no call of yours) and leaves what the calendar shows as it was; and a response with no render at all (a `#[Renderless]` method). None of them moves the item, so an unrelated render never makes a saved item jump back. An answer that comes while another item is being dragged waits until the drag ends.
+- If the promise **rejects**, the item goes back to where it was. A failed request rejects it, and so does a method that throws or calls `abort()` (a failed `authorize()` is a 403), but Livewire then shows its own error modal.
+- **`$this->validate()` checks public properties, not a method's arguments.** A `reschedule($id, $start, $end)` that validates what the browser sent builds the validator itself, `Validator::make(['start' => $start, 'end' => $end], ['start' => ['required', 'date'], 'end' => ['nullable', 'date']])->validate()` (from `Illuminate\Support\Facades\Validator`). It throws the same `ValidationException`, so the item goes back. Check the id against what the viewer may edit too (`authorize()`), not only its shape.
+- A render that answers while the promise is pending does not move the item. Once it settles, the item is where your server has it. Without `waitUntil()` the item is released by that same render, and stays where it was dropped until one comes. Calling `waitUntil()` has to happen while the event is being handled; a call made later is ignored.
+- **A renderless method sends no render, so nothing can put the item back.** Do not make the method `#[Renderless]` unless you have thought it through: when its promise resolves the item stays exactly where it was dropped, even if your method changed the time (clamped it, applied a rule) or refused, and a created item never appears. A move that always saves as dropped can be renderless. One that can refuse has to say so: have it return `false` and turn that into a rejection in the tag, `$event.detail.waitUntil($wire.reschedule(...).then((saved) => saved || Promise.reject()))`; it returns `true` once saved, so a renderless method that returns nothing would be refused after a successful save. The return value is sent to the browser, so return `true`, not a model. A host that already wrote its tag this way keeps working.
+- **Known caveats.** A host whose render does not yet show the saved change (the save is queued, or your query reads a replica that is behind) draws the item back where it was, and forward again when the change arrives: hold the promise until the data is there, or return the new state in the render. A `#[Renderless]` save that is held is answered by the first render of a request sent after the drop that is an answer by the rules above, which can be one of another action that was queued before yours (a button clicked while the save waits, a `wire:poll="method"`), and then the item is drawn where that render has it, which is **before** your save: it jumps back and stays there. Keep a method that can change the time out of `#[Renderless]`, or do not poll while it can run. The calendar follows Livewire's message interceptors, which every 4.x has: `onMorphed` (4.4.2 and later) says when the morph is done, and before it the answer is applied on `onRender`, a frame later. A Livewire that has no `interceptMessage`, or a calendar outside a component, hears no answers, so a moved item stays where it was dropped.
 
 ### Keyboard, touch and screen readers
 
@@ -1495,11 +1491,12 @@ where `reschedule()` ends with `return true;` once it has saved.
 - **Pointer rules:** a press moves more than 5 px before it is a drag, so a click stays a click. On touch, a gesture starts after a half-second press, so a finger that scrolls keeps scrolling. A press with Ctrl, Cmd, Alt or Shift held is not a gesture.
 - **Narrow screens:** where the calendar is under 600 px wide (a measure of the calendar, not the screen), a month day shows its number and up to four dots instead of titles, and tapping a day with items opens its list (also on a `selectable` calendar; a drag or a long press still selects). The week and day views scroll sideways with the hour gutter and day headers kept in place; the day view fits a phone best.
 - Titles, day names, buttons and the "+N more" label go through `__()`; the month, week and day names follow the app locale.
+- **Counts take Laravel's plural syntax.** The lines that carry a number (`+:count more`, `:count item`, `:count items`) are translated like any other, and a translation that has a `|` is chosen with `trans_choice()`, so `"+:count more": "{1} one more|[2,*] :count more"` or a `one|few|many` line follows the locale's own plural rule. The server resolves it for each count up to the number of items in the payload (at most 99; a count past that uses the last form) and the browser picks by count. A line with no `|` is sent as it is.
 - **Right-to-left layouts are not supported.** The grid, the toolbar, the hour gutter and the arrow keys are all laid out and handled left to right, whatever `dir` says.
 
 ### Without Livewire
 
-With no `wire:model` the calendar is static. It shows `month` (or the current month), lays out the items it is given, and switches views, but has no previous, next, today or date jump. Events still fire, so you can drive it from Alpine. Nothing sends a payload, so a moved item stays where it was dropped.
+With no `wire:model` the calendar is static. It shows `month` (or the current month), lays out the items it is given, and switches views, but has no previous, next, today or date jump. Events still fire, so you can drive it from Alpine. Nothing sends a payload, so a moved item stays where it was dropped, and it stays through the renders of the page around it (a `wire:model.live` field, a bare `wire:poll`) unless one of your own actions sent after the drop, or a render that changes what the calendar shows, answers it.
 
 ```blade
 <atom:calendar month="2026-10" :items="$items" x-on:calendar-item-click="open($event.detail.id)" />

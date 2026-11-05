@@ -114,7 +114,7 @@ export default () => ({
     // The gesture the pointer is making, or null: { kind: 'select' | 'move' | 'resize', area, id, touch, origin, point, active, timer, frame, abort, ... }.
     // See calendar/pointer.js.
     gesture: null,
-    // Where the items that were moved or resized are drawn until the payload says: { [id]: { range: { start, end }, token, held, stale } }. See commitChange().
+    // Where the items that were moved or resized are drawn until the server answers: { [id]: { range: { start, end }, token, since, held, stale } }. See commitChange().
     overrides: {},
     // The id of the item whose chip has the focus, kept on it while it is drawn again (see keepItemFocus()), or null
     focusItem: null,
@@ -124,6 +124,11 @@ export default () => ({
     lingerAbort: null,
     // the payload attribute as it was last read, so a render that leaves it as it was is not a new payload
     payloadText: '',
+    // how many requests of this calendar's Livewire component have been sent: a drop remembers the count, and only an answer to a request sent after it
+    // puts the item where the server has it (see watchAnswers() and releaseOverrides())
+    sent: 0,
+    // the highest answer that came while a gesture was on (see answer() and endGesture())
+    answered: 0,
     // a payload came while a gesture was on: it waits for the gesture to end (see read() and endSelect())
     payloadHeld: false,
     hours: Array.from({ length: 24 }, (_, hour) => hour),
@@ -368,6 +373,7 @@ export default () => ({
         this.liveTitle = this.title.text
         this.$watch('title.text', (text) => { this.liveTitle = text })
 
+        let stopAnswers = this.watchAnswers()
         let observer = new MutationObserver(() => this.read())
         observer.observe(this.$root, { attributes: true, attributeFilter: ['data-atom-calendar-payload'] })
 
@@ -404,6 +410,7 @@ export default () => ({
 
         this.$root._atomCalendarCleanup = () => {
             observer.disconnect()
+            stopAnswers()
             resize?.disconnect()
             clearInterval(clock)
             controller.abort()
@@ -445,6 +452,11 @@ export default () => ({
         }
 
         let text = this.$root.getAttribute('data-atom-calendar-payload')
+        let first = this.payload === null
+
+        // a payload that says what it said is not read again (nothing is parsed or laid out)
+        if (!first && text === this.payloadText) return
+
         let payload = this.readJson(text)
 
         if (!payload || !Array.isArray(payload.window?.days) || !Array.isArray(payload.items) || !payload.labels || !payload.config) {
@@ -453,17 +465,9 @@ export default () => ({
             return
         }
 
-        let first = this.payload === null
-
         // A new payload is the answer to what was selected, so a selection that nothing holds is done with. One being made, and one the host holds
-        // with waitUntil, are not the render's to take down.
-        if (!first && text !== this.payloadText) {
-            this.clearSelection()
-
-            // The payload is the answer to what was moved or resized, so an item that was put somewhere is where the payload says it is. Unless the host
-            // holds it (waitUntil): that one stays where it was put, and is marked as one the payload has been and gone past (see commitChange).
-            this.overrides = Object.fromEntries(Object.entries(this.overrides).filter(([, entry]) => entry.held).map(([id, entry]) => [id, { ...entry, stale: true }]))
-        }
+        // with waitUntil, are not the render's to take down. (An item that was moved or resized is not the payload's to take: see watchAnswers().)
+        if (!first) this.clearSelection()
 
         this.payloadText = text
 
@@ -503,6 +507,89 @@ export default () => ({
         }
 
         if (restoreFocus) this.$nextTick(() => this.focusDay())
+    },
+
+    // What tells that the server has answered a move or a resize: a render of a request sent AFTER the drop, from the component the calendar is in
+    // (its own, not a parent's), that is either a call of the host's own (an action whose name does not start with `$`: `$commit`, `$refresh` are Livewire's)
+    // or a render that changes the payload, whatever the actions. A render whose payload is the same as before answers when the host called something:
+    // a save that failed validate() renders the same items and answers 200, and the item has to go back to where the server has it. One that changes
+    // the payload answers whoever asked for it (a poll, an event, `$refresh`, a parent, a save that went round the tag): what the payload says is where
+    // the server has the item. Not an answer: a render of a request that was already in flight when the item was dropped (a `wire:model.live` field,
+    // another action: Livewire sends the host's action after it, and its render says what the server had before the save), a response with no render (a
+    // #[Renderless] method), and a request that only carries a model update, a poll or a refresh and leaves the payload as it was.
+    //
+    // It is Livewire's own message interceptor, the only place the request a render answers is known, and Livewire's message flow must never break on it: the
+    // callbacks are guarded, the morph is waited for with `onMorphed` (Livewire 4.4.2) or else `onRender` (every 4.x, a frame later), and a Livewire without
+    // `interceptMessage` (before 4.0) or a calendar outside a component has no answer to hear: nothing releases a moved item, which stays where it was
+    // dropped (the README says so).
+    watchAnswers () {
+        let livewire = window.Livewire
+        let own = this.rootEl.closest('[wire\\:id]')
+
+        if (!own || typeof livewire?.interceptMessage !== 'function') return () => {}
+
+        let guarded = (callback) => (...args) => {
+            try {
+                return callback(...args)
+            } catch (error) {
+                console.warn('[atom:calendar] could not follow a request of the component', error)
+            }
+        }
+
+        return livewire.interceptMessage(guarded(({ message, onSend, onSuccess }) => {
+            // the calendar's own component only: Livewire's morph leaves a child's root alone, so the render of a parent says nothing about where the child's items
+            // are, and a parent's call after the drop would put the item back to the child's old payload. (A child that is updated by its parent, a reactive
+            // property or an event, is updated by a message of its own, which this hears.)
+            if (message.component?.el !== own) return
+
+            let seq = null
+
+            onSend(guarded(() => { seq = ++this.sent }))
+
+            onSuccess(guarded(({ payload, onMorphed, onRender }) => {
+                if (seq === null || !payload?.effects?.html) return
+
+                let before = this.rootEl.getAttribute('data-atom-calendar-payload')
+
+                let answer = guarded(() => {
+                    let called = [...message.actions].some((action) => !String(action.name).startsWith('$'))
+
+                    // The calendar's own Next and Previous (a `$set` of the bound date after the drop, whose payload differs) count, as intended: Livewire sends it
+                    // behind the save that is on its way, so its render shows the saved state.
+                    if (called || this.rootEl.getAttribute('data-atom-calendar-payload') !== before) this.answer(seq)
+                })
+
+                // after the morph, so what is released is drawn where the payload that came says
+                if (typeof onMorphed === 'function') onMorphed(answer)
+                else if (typeof onRender === 'function') onRender(answer)
+            }))
+        }))
+    },
+
+    // The server has answered: now, or when the gesture that is on is over (the lanes and the boxes the pointer is measured against stay as they are under
+    // it, as a payload does), the highest answer being the one that counts
+    answer (seq) {
+        if (this.gesture) {
+            this.answered = Math.max(this.answered, seq)
+
+            return
+        }
+
+        this.releaseOverrides(seq)
+    },
+
+    // An item that was put somewhere (a move or a resize) is where the server has it, once a render has answered a request sent after it was put. Unless the
+    // host holds it (waitUntil): that one stays where it was put, and is marked as one the render has been and gone past (see commitChange).
+    releaseOverrides (seq) {
+        let entries = Object.entries(this.overrides)
+
+        if (!entries.some(([, entry]) => seq > entry.since)) return
+
+        this.overrides = Object.fromEntries(entries.flatMap(([id, entry]) => {
+            if (seq <= entry.since) return [[id, entry]]
+
+            return entry.held ? [[id, { ...entry, stale: true }]] : []
+        }))
     },
 
     // Is the focus nobody's: on the page itself (the node it was on is gone), or on a day of this grid?
@@ -998,11 +1085,21 @@ export default () => ({
     },
 
     countLabel (count) {
-        return ((count === 1 ? this.labels.ui?.item : this.labels.ui?.items) ?? '').replace(':count', () => String(count))
+        return this.countText(count === 1 ? this.labels.ui?.item : this.labels.ui?.items, count)
     },
 
     moreLabel (count) {
-        return (this.labels.ui?.more ?? '').replace(':count', () => String(count))
+        return this.countText(this.labels.ui?.more, count)
+    },
+
+    // A line that takes a count: the string, or, in a locale whose translation uses Laravel's plural syntax, the list the server resolved with
+    // trans_choice() for the counts 1 up (the string for a count is at count - 1, and a count past the end reuses the last), with `:count` left in
+    // each form: the number is filled in here, so a count past the end of the list is still the count it is.
+    countText (line, count) {
+        if (Array.isArray(line)) line = line[Math.min(Math.max(count, 1), line.length) - 1]
+
+        // Laravel keeps `:COUNT` when it is asked with ':count' (it upper-cases the replacement too), and writes `:Count` as `:count`; a longer word (`:country`) is not it
+        return (typeof line === 'string' ? line : '').replace(/:count(?![a-z0-9_])/gi, () => String(count))
     },
 
     weekdayName (date) {

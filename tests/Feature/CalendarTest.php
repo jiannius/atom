@@ -952,6 +952,99 @@ describe('calendar payload', function () {
     });
 });
 
+describe('the lines that take a count', function () {
+    // Laravel's plural syntax in a translation of one of the calendar's lines ('*.<line>' is the JSON file's key, the group a JSON key has)
+    $translate = fn (array $lines) => app('translator')->addLines(collect($lines)->mapWithKeys(fn ($line, $key) => ['*.'.$key => $line])->all(), app()->getLocale());
+
+    it('sends a line with no plural syntax as the one string it was, and costs nothing for a count', function () {
+        $ui = Calendar::make()->labels(50)['ui'];
+
+        expect($ui['more'])->toBe('+:count more')
+            ->and($ui['item'])->toBe(':count item')
+            ->and($ui['items'])->toBe(':count items');
+    });
+
+    it('sends what trans_choice() makes of a line that has `|`, for every count the payload can ask for', function () use ($translate) {
+        $translate(['+:count more' => '{1} one more|[2,4] :count more, a few|[5,*] :count more, many']);
+
+        $more = Calendar::make()->labels(7)['ui']['more'];
+
+        expect($more)->toBeList()->toHaveCount(7);
+
+        foreach (range(1, 7) as $count) {
+            expect($more[$count - 1])->toBe(trans_choice('+:count more', $count, ['count' => ':count']));
+        }
+
+        // the placeholder stays in each form, and the browser fills the real count in (a count past the list reuses the last form)
+        expect($more)->toBe(['one more', ':count more, a few', ':count more, a few', ':count more, a few', ':count more, many', ':count more, many', ':count more, many']);
+    });
+
+    it('takes the two-form syntax too, and treats each line that takes a count on its own', function () use ($translate) {
+        $translate([':count item' => ':count thing|:count things']);
+
+        $ui = Calendar::make()->labels(3)['ui'];
+
+        expect($ui['item'])->toBe([':count thing', ':count things', ':count things'])
+            // the other two stay as they were: a line is plural when it says so
+            ->and($ui['items'])->toBe(':count items')
+            ->and($ui['more'])->toBe('+:count more');
+    });
+
+    it('holds the list to the number of items in the payload, and to 99', function () use ($translate) {
+        $translate(['+:count more' => '{1} one more|[2,*] :count more']);
+
+        expect(Calendar::make()->labels(0)['ui']['more'])->toBe(['one more'])
+            ->and(Calendar::make()->labels(1)['ui']['more'])->toBe(['one more'])
+            ->and(Calendar::make()->labels(4)['ui']['more'])->toHaveCount(4)
+            ->and(Calendar::make()->labels(99)['ui']['more'])->toHaveCount(99)
+            ->and(Calendar::make()->labels(5000)['ui']['more'])->toHaveCount(Calendar::COUNT_FORMS_MAX)
+            // the last form keeps the placeholder: a day of 150 items reads "+147 more", not the count the list ends at
+            ->and(Calendar::make()->labels(5000)['ui']['more'][98])->toBe(':count more')
+            ->and(str_replace(':count', '147', Calendar::make()->labels(5000)['ui']['more'][98]))->toBe('147 more');
+    });
+
+    // Laravel upper-cases the replacement beside an upper-case placeholder (':COUNT' for ':count') and writes ':Count' as ':count': the browser fills all three
+    it('keeps an upper-case placeholder as Laravel leaves it, and writes a capitalised one as the lower-case one', function () use ($translate) {
+        $translate(['+:count more' => '{1} :COUNT MORE|[2,*] :Count more']);
+
+        expect(Calendar::make()->labels(3)['ui']['more'])->toBe([':COUNT MORE', ':count more', ':count more']);
+    });
+
+    it('keeps the placeholder in every form of a payload of more than 99 items', function () use ($translate) {
+        $translate(['+:count more' => '{1} one more|[2,*] :count more', ':count items' => ':count thing|:count things']);
+
+        $items = array_map(fn (int $id) => ['id' => $id, 'title' => 'T'.$id, 'start' => '2026-10-05'], range(1, 150));
+        $ui = Calendar::make()->payload('2026-10-09', $items)['labels']['ui'];
+
+        expect($ui['more'])->toHaveCount(99)
+            ->and($ui['more'][0])->toBe('one more')
+            ->and(array_values(array_unique(array_slice($ui['more'], 1))))->toBe([':count more'])
+            ->and($ui['items'])->toHaveCount(99)
+            ->and(array_values(array_unique(array_slice($ui['items'], 1))))->toBe([':count things']);
+    });
+
+    it('is sized by the items of the payload', function () use ($translate) {
+        $translate(['+:count more' => '{1} one more|[2,*] :count more']);
+
+        $items = fn (int $number) => array_map(fn (int $id) => ['id' => $id, 'title' => 'T'.$id, 'start' => '2026-10-05'], range(1, $number));
+
+        expect(Calendar::make()->payload('2026-10-09', $items(3))['labels']['ui']['more'])->toHaveCount(3)
+            ->and(Calendar::make()->payload('2026-10-09', fn () => $items(6))['labels']['ui']['more'])->toHaveCount(6)
+            ->and(Calendar::make()->payload('2026-10-09', [])['labels']['ui']['more'])->toHaveCount(1);
+    });
+
+    it('reads the locale\'s own plural rule, not a count of its own', function () use ($translate) {
+        app()->setLocale('ru');
+        $translate(['+:count more' => 'ещё :count (one)|ещё :count (few)|ещё :count (many)']);
+
+        $more = Calendar::make()->labels(21)['ui']['more'];
+
+        expect(array_slice($more, 0, 5))->toBe(['ещё :count (one)', 'ещё :count (few)', 'ещё :count (few)', 'ещё :count (few)', 'ещё :count (many)'])
+            ->and($more[10])->toBe('ещё :count (many)')
+            ->and($more[20])->toBe('ещё :count (one)');
+    });
+});
+
 describe('the week title', function () {
     it('has a pair of display formats, first day and last day, for a week in a month, over two months and over two years', function () {
         $titles = Calendar::make()->labels()['week_title'];
@@ -973,7 +1066,7 @@ describe('the week title', function () {
                 expect(Calendar::isFormat($format))->toBeTrue("{$locale} {$shape}: {$format}");
             }
         }
-    })->with(['en', 'ms', 'zh', 'zh_CN', 'zh-TW', 'fr', 'ru']);
+    })->with(['en', 'ms', 'zh', 'zh_CN', 'zh-TW', 'ja', 'ja_JP', 'ko', 'ko_KR', 'fr', 'ru']);
 
     it('reads like English in Malay and in a locale with no patterns of its own', function (string $locale) {
         app()->setLocale($locale);
@@ -991,6 +1084,43 @@ describe('the week title', function () {
             ->and($print('cross_month', '2026-10-26', '2026-11-01'))->toBe('2026年10月26日 – 11月1日')
             ->and($print('cross_year', '2026-12-28', '2027-01-03'))->toBe('2026年12月28日 – 2027年1月3日');
     })->with(['zh', 'zh_CN', 'zh-TW']);
+
+    it('writes Japanese year first with the 年 月 日 marks, and the day alone for the end of a week in the same month', function (string $locale) {
+        app()->setLocale($locale);
+
+        $titles = Calendar::make()->labels()['week_title'];
+        $print = fn (string $shape, string $first, string $last) => Calendar::format(Carbon::parse($first), $titles[$shape][0]).' – '.Calendar::format(Carbon::parse($last), $titles[$shape][1]);
+
+        expect($print('same_month', '2026-10-05', '2026-10-11'))->toBe('2026年10月5日 – 11日')
+            ->and($print('cross_month', '2026-10-26', '2026-11-01'))->toBe('2026年10月26日 – 11月1日')
+            ->and($print('cross_year', '2026-12-28', '2027-01-03'))->toBe('2026年12月28日 – 2027年1月3日');
+    })->with(['ja', 'ja_JP', 'ja-JP', 'JA']);
+
+    it('writes Korean year first with the 년 월 일 marks and a space after each, and the day alone for the end of a week in the same month', function (string $locale) {
+        app()->setLocale($locale);
+
+        $titles = Calendar::make()->labels()['week_title'];
+        $print = fn (string $shape, string $first, string $last) => Calendar::format(Carbon::parse($first), $titles[$shape][0]).' – '.Calendar::format(Carbon::parse($last), $titles[$shape][1]);
+
+        expect($print('same_month', '2026-10-05', '2026-10-11'))->toBe('2026년 10월 5일 – 11일')
+            ->and($print('cross_month', '2026-10-26', '2026-11-01'))->toBe('2026년 10월 26일 – 11월 1일')
+            ->and($print('cross_year', '2026-12-28', '2027-01-03'))->toBe('2026년 12월 28일 – 2027년 1월 3일');
+    })->with(['ko', 'ko_KR', 'ko-KR']);
+
+    it('does not take a language that only starts like one of these for it', function (string $locale) {
+        expect(Calendar::weekTitle($locale))->toBe(Calendar::weekTitle('en'))
+            ->and(Calendar::monthTitle($locale))->toBe('F Y')
+            ->and(Calendar::dayTitle($locale))->toBe('j F Y');
+    })->with(['kok', 'kok_IN', 'jv', 'zhx']);
+
+    // the pattern is Carbon's own long date for the locale (LL), with its tokens written the way the browser formatter prints them
+    it('has, for the day, what Carbon\'s own locale file says is the long date', function (string $locale, string $carbon) {
+        app()->setLocale($locale);
+
+        $date = Carbon::parse('2026-10-09');
+
+        expect(Calendar::format($date, Calendar::make()->labels()['day_title']))->toBe($date->copy()->locale($locale)->isoFormat('LL'))->toBe($carbon);
+    })->with([['ja', '2026年10月9日'], ['ko', '2026년 10월 9일'], ['zh', '2026年10月9日']]);
 });
 
 describe('the month and day titles', function () {
@@ -1008,7 +1138,7 @@ describe('the month and day titles', function () {
 
         expect(Calendar::isFormat($labels['month_title']))->toBeTrue("{$locale} month")
             ->and(Calendar::isFormat($labels['day_title']))->toBeTrue("{$locale} day");
-    })->with(['en', 'ms', 'zh', 'zh_CN', 'zh-TW', 'fr', 'ru']);
+    })->with(['en', 'ms', 'zh', 'zh_CN', 'zh-TW', 'ja', 'ja_JP', 'ko', 'ko_KR', 'fr', 'ru']);
 
     it('reads like English in Malay and in a locale with no patterns of its own', function (string $locale) {
         app()->setLocale($locale);
@@ -1031,6 +1161,30 @@ describe('the month and day titles', function () {
             ->and($labels['month_title'])->not->toEndWith('Y')
             ->and($labels['day_title'])->not->toEndWith('Y');
     })->with(['zh', 'zh_CN', 'zh-TW']);
+
+    it('writes Japanese year first, in one weight, with the 年 月 日 marks', function (string $locale) {
+        app()->setLocale($locale);
+
+        $labels = Calendar::make()->labels();
+        $date = Carbon::parse('2026-10-09');
+
+        expect(Calendar::format($date, $labels['month_title']))->toBe('2026年10月')
+            ->and(Calendar::format($date, $labels['day_title']))->toBe('2026年10月9日')
+            ->and($labels['month_title'])->not->toEndWith('Y')
+            ->and($labels['day_title'])->not->toEndWith('Y');
+    })->with(['ja', 'ja_JP', 'ja-JP']);
+
+    it('writes Korean year first, in one weight, with the 년 월 일 marks and a space after each', function (string $locale) {
+        app()->setLocale($locale);
+
+        $labels = Calendar::make()->labels();
+        $date = Carbon::parse('2026-10-09');
+
+        expect(Calendar::format($date, $labels['month_title']))->toBe('2026년 10월')
+            ->and(Calendar::format($date, $labels['day_title']))->toBe('2026년 10월 9일')
+            ->and($labels['month_title'])->not->toEndWith('Y')
+            ->and($labels['day_title'])->not->toEndWith('Y');
+    })->with(['ko', 'ko_KR', 'ko-KR']);
 
     it('keeps the year last in English, which the title shows lighter', function () {
         $labels = Calendar::make()->labels();

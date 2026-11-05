@@ -43,6 +43,15 @@ class CalendarFixture extends Component
     /** Whether the calendar is wired as the README shows it, with x-on attributes on the tag; ?wired=1. */
     public bool $wired = false;
 
+    /** Whether the calendar is wired the way a host that wrote the refusal into its tag does, `.then((saved) => saved || Promise.reject())`; ?legacy=1. */
+    public bool $legacy = false;
+
+    /** Whether the calendar is a static one (a `month`, no wire:model) in this component, beside a field that sends a request on every keystroke; ?static=1. */
+    public bool $static = false;
+
+    /** What the field of the static calendar's page holds. */
+    public string $note = '';
+
     /** Whether create() and reschedule() fail validation, as a host's validate() does when a rule is broken; ?strict=1. */
     public bool $strict = false;
 
@@ -86,6 +95,8 @@ class CalendarFixture extends Component
         $this->locked = request()->boolean('locked');
         $this->wired = request()->boolean('wired');
         $this->strict = request()->boolean('strict');
+        $this->legacy = request()->boolean('legacy');
+        $this->static = request()->boolean('static');
     }
 
     /**
@@ -116,7 +127,7 @@ class CalendarFixture extends Component
      * Make an item of what a selection says, as a host does: the calendar's wall-clock strings go straight to Calendar::fromLocal(), which gives
      * the instant in the app's timezone, and what is stored is that instant. The row is kept as the host got it and as it was stored, for the test.
      */
-    public function create(string $start, string $end, bool $allDay): bool
+    public function create(string $start, string $end, bool $allDay): void
     {
         $this->refuseWhenStrict($start);
 
@@ -128,15 +139,23 @@ class CalendarFixture extends Component
             'startUtc' => Calendar::fromLocal($start)->utc()->format('Y-m-d\TH:i:s\Z'),
             'endUtc' => Calendar::fromLocal($end)->utc()->format('Y-m-d\TH:i:s\Z'),
         ];
-
-        return true;
     }
 
     /**
      * Put an item where a move or a resize says, as a host does: the calendar's wall-clock strings are what is stored (an instant, through
      * Calendar::fromLocal(), for a time), and the next render has the item there.
      */
-    public function reschedule(int|string $id, string $start, ?string $end): bool
+    public function reschedule(int|string $id, string $start, ?string $end): void
+    {
+        $this->refuseWhenStrict($start);
+
+        $this->place($id, $start, $end);
+    }
+
+    /**
+     * The same, for a tag that turns what is not `true` into a refusal: a host written before the render answered a failed validation.
+     */
+    public function rescheduleLegacy(int|string $id, string $start, ?string $end): bool
     {
         $this->refuseWhenStrict($start);
 

@@ -145,6 +145,63 @@ jobs:
           echo "Playwright shards: ${{ needs.e2e.result }}"
           test "${{ needs.e2e.result }}" = "success"
 
+  # The calendar's gestures and its keyboard and look specs in the other two engines (the projects `webkit-*` and `firefox-*` of playwright.config.js: a subset
+  # of the calendar's specs, not the whole suite). Not part of "Playwright (Chromium)": that check is the four shards above. `--no-deps` because each of these
+  # projects depends on `chromium` in the config, so a local run goes after it, and here Chromium has its own job.
+  e2e-engines:
+    name: Playwright calendar (${{ matrix.browser }})
+    needs: consumer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+
+      - id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ runner.os }}-php8.3-${{ hashFiles('composer.json') }}
+          restore-keys: composer-${{ runner.os }}-php8.3-
+
+      - run: composer install --no-interaction --no-progress --prefer-dist
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # tests/e2e/calendar-look.spec.js reads what the consumer job compiled
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: consumer-*
+          path: tests/consumer/build
+          merge-multiple: true
+
+      - run: node_modules/.bin/playwright install --with-deps ${{ matrix.browser }}
+
+      - run: node_modules/.bin/playwright test --no-deps --project=${{ matrix.browser }}-a11y --project=${{ matrix.browser }}-select --project=${{ matrix.browser }}-move --project=${{ matrix.browser }}-look
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-engines-${{ matrix.browser }}
+          path: test-results/
+          if-no-files-found: ignore
+
   dist:
     name: dist/ is up to date
     runs-on: ubuntu-24.04

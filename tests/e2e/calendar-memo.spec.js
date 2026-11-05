@@ -337,3 +337,56 @@ test.describe('and the strings laid out with them follow what they say it with',
         expect(asked(week)).toEqual(fresh(week))
     })
 })
+
+// A translation that uses Laravel's plural syntax reaches the browser as the list trans_choice() resolved for the counts 1 up, the count in each
+// string, and the engine takes the one at count - 1 (the last for a count past the end). A plain line is still one string with `:count` in it.
+test.describe('a line that takes a count', () => {
+    const crowd = [...[1, 2, 3, 4, 5].map((n) => item('c' + n, '2026-10-06')), item('t1', '2026-10-06T09:00', '2026-10-06T10:00'), item('t2', '2026-10-06T11:00', '2026-10-06T12:00')]
+    const worded = (ui) => ({ ...payloadFor(crowd, { max: 3 }), labels: { ...payloadFor().labels, ui } })
+    const dayOf = (engine) => engine.weeks.flatMap((week) => week.days).find((entry) => entry.date === '2026-10-06')
+
+    test('is picked by count from the list the server resolved, and the count is the real one', () => {
+        // each form keeps its `:count`, as the server sends it
+        const engine = engineWith({ payload: worded({ item: [':count thing'], items: [':count things'], more: ['one more', ':count more (few)', ':count more (few)', ':count more (many)', ':count more (many)'] }) })
+
+        expect(engine.moreLabel(1)).toBe('one more')
+        expect(engine.moreLabel(3)).toBe('3 more (few)')
+        expect(engine.moreLabel(5)).toBe('5 more (many)')
+        // past the end of the list it is the last form, with the number of the count and not the one the list ends at
+        expect(engine.moreLabel(147)).toBe('147 more (many)')
+        expect(engine.moreLabel(0)).toBe('one more')
+        // the month's "+N more" is the one for its count: four hidden of seven
+        expect(engine.weeks.flatMap((week) => week.more)[0].label).toBe('4 more (many)')
+    })
+
+    test('each line is its own: the item line is the singular one only for 1, and a count past the list is still its own number', () => {
+        const engine = engineWith({ payload: worded({ item: [':count thing'], items: [':count things', ':count things', ':count things', ':count things', ':count things', ':count things', ':count things'], more: '+:count more' }) })
+
+        expect(engine.countLabel(1)).toBe('1 thing')
+        expect(engine.countLabel(7)).toBe('7 things')
+        expect(engine.countLabel(150)).toBe('150 things')
+        expect(dayOf(engine).label).toMatch(/7 things$/)
+        expect(engine.moreLabel(4)).toBe('+4 more')
+    })
+
+    test('a plain line, a missing one and a stray value still read as they did', () => {
+        const engine = engineWith({ payload: worded({ item: ':count item', items: ':count items', more: '+:count more' }) })
+
+        expect(engine.moreLabel(12)).toBe('+12 more')
+        expect(engine.countLabel(1)).toBe('1 item')
+        expect(engine.countLabel(3)).toBe('3 items')
+        expect(engineWith({ payload: worded({}) }).moreLabel(3)).toBe('')
+        expect(engineWith({ payload: worded({ more: { 1: 'x' } }) }).moreLabel(3)).toBe('')
+    })
+
+    test('a payload with a new list is what the labels say, the layouts kept or not', () => {
+        const engine = engineWith({ payload: worded({ item: ':count thing', items: ':count things', more: ['one more', '2 more', '3 more', '4 more'] }) })
+
+        expect(engine.weeks.flatMap((week) => week.more)[0].label).toBe('4 more')
+
+        engine.payload = { ...engine.payload, labels: { ...engine.payload.labels, ui: { ...engine.payload.labels.ui, more: ['', '', '', ':count others'] } } }
+
+        expect(engine.weeks.flatMap((week) => week.more)[0].label).toBe('4 others')
+        expect(asked(engine)).toEqual(fresh(engine))
+    })
+})

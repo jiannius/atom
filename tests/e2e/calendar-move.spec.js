@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { guardMouse, mousePointerId } from './calendar-viewport.js'
 
 // Moving and resizing an item, in a browser: a drag of a chip in the month, of a bar in the all-day row and of a block in the time grid, and a pull
 // of the handle on its end; and what the host is told (`calendar-item-move`, `calendar-item-resize`, in the viewer's wall clock) and when. Real
@@ -104,6 +105,11 @@ async function inAllDay (page, date, like, name) {
 
     return { x: box.x + box.width / 2, y: bar.y + bar.height / 2 }
 }
+
+test.beforeEach(({ page }) => guardMouse(page))
+
+// the day of the month grid, scrolled into view: the grid is taller than the viewport, and a day below the fold is no place for a pointer
+const reveal = (page, date, name) => cell(page, date, name).scrollIntoViewIfNeeded()
 
 async function drag (page, from, ...through) {
     await page.mouse.move(from.x, from.y)
@@ -263,6 +269,7 @@ test.describe('an item in the month', () => {
         // Night shift: 22 October 22:00 to 23 October 02:00, a bar in the month
         const night = chipOf(page, 'bar', 'Night shift')
 
+        await reveal(page, '2026-10-26')
         await drag(page, await dateGrab(page, night, '2026-10-22'), await inDay(page, '2026-10-26'))
         expect(await moves(page)).toEqual([{ id: 12, start: '2026-10-26T22:00', end: '2026-10-27T02:00', allDay: false }])
 
@@ -397,6 +404,8 @@ test.describe('what may be moved', () => {
         await page.mouse.up()
 
         expect(await moves(page)).toEqual([])
+        // the release 220px away is not a click on the item the press began on (Firefox's text-selection drag captures the mouse and sent it there)
+        expect(await page.evaluate(() => window.__clicks)).toEqual([])
 
         await standup.click()
         expect(await page.evaluate(() => window.__clicks)).toEqual([1])
@@ -566,6 +575,217 @@ test.describe('what the host does about it', () => {
         expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
     })
 
+    // A host's save that fails validate() renders the same items it rendered before (Livewire answers 200 and morphs), so the payload attribute
+    // does not change: what tells the engine the server has answered is a render that answers a request sent after the drop, with a call of the host's
+    // own in it (watchAnswers(), #89). Here the call is bump(), which the page makes after the drop. Three orders, each proved here.
+    test('a render that says what it said before puts the item back: an answer that changed nothing is an answer too', async ({ page }) => {
+        await mode(page, 'none')
+        await dragHex(page)
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        const before = await page.locator('[data-atom-calendar]').getAttribute('data-atom-calendar-payload')
+
+        await page.evaluate(() => window.Livewire.first().bump())
+        await expect(page.locator('[data-renders]')).toHaveText('1')
+
+        // the same payload, and the item is where the server has it
+        expect(await page.locator('[data-atom-calendar]').getAttribute('data-atom-calendar-payload')).toBe(before)
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+        expect((await engine(page)).overrides).toEqual([])
+    })
+
+    test('held: a render of the same payload while the promise is pending leaves the item, and it goes back when the promise settles', async ({ page }) => {
+        await mode(page, 'wait')
+        await dragHex(page)
+
+        await page.evaluate(() => window.Livewire.first().bump())
+        await expect(page.locator('[data-renders]')).toHaveText('1')
+        await page.waitForTimeout(200)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        await page.evaluate(() => window.__settle.resolve())
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+        expect((await engine(page)).overrides).toEqual([])
+    })
+
+    test('held: the promise settles first and the render of the same payload comes after it, and the item goes back then', async ({ page }) => {
+        await mode(page, 'wait')
+        await dragHex(page)
+        await page.evaluate(() => window.__settle.resolve())
+        await expect.poll(async () => (await engine(page)).overrides).toEqual(['10'])
+        await page.waitForTimeout(200)
+
+        // resolved with no render yet: it stays, as the renderless answer does
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        await page.evaluate(() => window.Livewire.first().bump())
+        await expect(page.locator('[data-renders]')).toHaveText('1')
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+        expect((await engine(page)).overrides).toEqual([])
+    })
+
+    // The request that was already on its way when the item was dropped says what the server had before the host's save. Livewire holds the host's action
+    // behind it (a request at a time for a component), so its render comes first and the renderless answer after it: the render is not the answer.
+    test('a renderless save that waits behind a request that was already in flight keeps the item where it was put', async ({ page }) => {
+        let held = false
+        let open_ = null
+        const gate = new Promise((resolve) => { open_ = resolve })
+        const hit = new Promise((resolve) => {
+            page.route('**/update', async (route) => {
+                if (!held) {
+                    held = true
+                    resolve()
+                    await gate
+                }
+
+                await route.continue()
+            })
+        })
+
+        await mode(page, 'quiet')
+
+        // a request that is on its way and has not been answered
+        const slow = page.evaluate(() => window.Livewire.first().bump())
+
+        await hit
+        await dragHex(page)
+
+        await expect.poll(async () => (await engine(page)).overrides).toEqual(['10'])
+
+        // its render comes (the same payload), and the host's renderless save runs after it
+        open_()
+        await slow
+        await expect.poll(() => rescheduled(page)).toHaveLength(1)
+        await page.waitForTimeout(300)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
+    })
+
+    test('a held save that waits behind a request that was already in flight keeps the item through that render, and settles where the server has it', async ({ page }) => {
+        let held = false
+        let open_ = null
+        const gate = new Promise((resolve) => { open_ = resolve })
+        const hit = new Promise((resolve) => {
+            page.route('**/update', async (route) => {
+                if (!held) {
+                    held = true
+                    resolve()
+                    await gate
+                }
+
+                await route.continue()
+            })
+        })
+
+        await mode(page, 'livewire')
+
+        const slow = page.evaluate(() => window.Livewire.first().bump())
+
+        await hit
+        await dragHex(page)
+        open_()
+        await slow
+
+        // the save is answered by its own render, which has the item on the 22nd
+        await expect.poll(async () => (await engine(page)).overrides).toEqual([])
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+    })
+
+    test('a request with no call of the host\'s in it (a refresh) is not an answer, a call sent after the drop is', async ({ page }) => {
+        await mode(page, 'none')
+        await dragHex(page)
+
+        await page.evaluate(() => window.Livewire.first().$refresh())
+        await page.waitForTimeout(300)
+
+        // `$refresh` is the page's, not the host's save
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
+
+        await page.evaluate(() => window.Livewire.first().bump())
+        await expect(page.locator('[data-renders]')).toHaveText('1')
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+    })
+
+    // A save that goes round the tag (a `$wire.set()` and an `updated*` hook, a fetch), a clamp, a poll that shows another user's move, a parent that saves: the
+    // render says where the server has the item although nothing in the request is a call of the host's reschedule.
+    test('a render that changes the payload puts the item where the server has it, whatever asked for it', async ({ page }) => {
+        await mode(page, 'none')
+        await dragHex(page)
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        // the server's own state moves it to the 25th (no call of the host's in the request: the property is set, and the page is refreshed)
+        await page.evaluate(() => window.Livewire.first().$set('placed', { 10: { start: '2026-10-25T14:00', end: '2026-10-25T15:00' } }, false))
+        await page.evaluate(() => window.Livewire.first().$refresh())
+
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-25')
+        expect((await engine(page)).overrides).toEqual([])
+    })
+
+    test('a render that changes the payload does not put a held item back while the promise is pending, and the item is where the server has it once it settles', async ({ page }) => {
+        await mode(page, 'wait')
+        await dragHex(page)
+
+        await page.evaluate(() => window.Livewire.first().$set('placed', { 10: { start: '2026-10-25T14:00', end: '2026-10-25T15:00' } }, false))
+        await page.evaluate(() => window.Livewire.first().$refresh())
+        await payloadArrived(page, '2026-10-25')
+        await page.waitForTimeout(200)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        await page.evaluate(() => window.__settle.resolve())
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-25')
+    })
+
+    // An answer that comes while another item is being dragged waits for the drag to end: the lanes and the boxes the pointer is measured against stay as they
+    // are under it. And what the drag then drops is newer than that answer, so it is not released by it.
+    test('an answer that comes during a drag of another item is applied when the drag ends, and does not release what the drag drops', async ({ page }) => {
+        let held = false
+        let open_ = null
+        const gate = new Promise((resolve) => { open_ = resolve })
+        const hit = new Promise((resolve) => {
+            page.route('**/update', async (route) => {
+                if (!held) {
+                    held = true
+                    resolve()
+                    await gate
+                }
+
+                await route.continue()
+            })
+        })
+
+        await mode(page, 'livewire')
+        await dragHex(page)
+        await hit
+
+        // from here the host does not answer for what is dragged, and the first answer is on its way
+        await mode(page, 'none')
+
+        const from = await middle(chipOf(page, 'bar', 'Septembers tail'))
+        const to = await inDay(page, '2026-10-01')
+
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        await page.mouse.move(to.x, to.y, { steps: 8 })
+        await expect.poll(async () => (await engine(page)).gesture).toBe(true)
+
+        open_()
+        await expect.poll(() => page.evaluate(() => window.Alpine.$data(document.querySelector('[data-atom-calendar]')).answered)).toBeGreaterThan(0)
+        await page.waitForTimeout(200)
+
+        // the answer is in, and nothing was released under the pointer
+        expect((await engine(page)).overrides).toEqual(['10'])
+
+        await page.mouse.up()
+
+        // the first item is released; the one that was just dropped stays where it was put, as nobody answered for it
+        await expect.poll(async () => (await engine(page)).overrides).toEqual(['16'])
+        expect(await startsOn(page, chipOf(page, 'bar', 'Septembers tail'))).toBe('2026-10-01')
+    })
+
     test('a resize is held the same way: pending, it keeps its length; rejected, it is back', async ({ page }) => {
         await mode(page, 'reject')
         await drag(page, await middle(handleOf(page, 'bar', 'Launch week')), await inDay(page, '2026-10-22'))
@@ -643,6 +863,7 @@ test.describe('the focus of an item that is moved', () => {
     test('stays on it when it is moved in the month, to another week: it is on the chip that stands on the day it was put on', async ({ page }) => {
         await open(page)
         await chipOf(page, 'dot', 'Hex colour').focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
 
         expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-28')
@@ -653,6 +874,7 @@ test.describe('the focus of an item that is moved', () => {
     test('and when it is pulled by its end', async ({ page }) => {
         await open(page)
         await chipOf(page, 'bar', 'Launch week').first().focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(handleOf(page, 'bar', 'Launch week')), await inDay(page, '2026-10-28'))
 
         await expect(chipOf(page, 'bar', 'Launch week')).toHaveCount(4)
@@ -690,6 +912,7 @@ test.describe('the focus of an item that is moved', () => {
         await open(page)
         await mode(page, 'livewire')
         await chipOf(page, 'dot', 'Hex colour').focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
 
         await expect.poll(async () => (await engine(page)).overrides).toEqual([])
@@ -700,6 +923,7 @@ test.describe('the focus of an item that is moved', () => {
         await open(page)
         await mode(page, 'hold')
         await chipOf(page, 'dot', 'Hex colour').focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
 
         await page.evaluate(() => window.Livewire.first().toggleExtra())
@@ -734,6 +958,7 @@ test.describe('the focus of an item that is moved', () => {
         await open(page)
         await mode(page, 'hold')
         await chipOf(page, 'dot', 'Hex colour').focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
         await expect(chipOf(page, 'dot', 'Hex colour')).toBeFocused()
 
@@ -750,6 +975,7 @@ test.describe('the focus of an item that is moved', () => {
         await open(page)
         await mode(page, 'hold')
         await chipOf(page, 'dot', 'Hex colour').focus()
+        await reveal(page, '2026-10-28')
         await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-28'))
         await expect(chipOf(page, 'dot', 'Hex colour')).toBeFocused()
 
@@ -902,10 +1128,11 @@ test.describe('Escape and the other ends of a drag that was not let go', () => {
 
         // the same drag, with a release that nobody heard
         const from = await middle(chipOf(page, 'dot', 'Team standup'))
+        const id = await mousePointerId(page)
 
-        await page.evaluate(([x, y]) => {
-            document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerdown', { pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1, bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y }))
-        }, [from.x, from.y])
+        await page.evaluate(([x, y, pointerId]) => {
+            document.elementFromPoint(x, y).dispatchEvent(new PointerEvent('pointerdown', { pointerId, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1, bubbles: true, cancelable: true, composed: true, clientX: x, clientY: y }))
+        }, [from.x, from.y, id])
         expect((await engine(page)).gesture).toBe(true)
 
         await page.mouse.move(to.x - 30, to.y, { steps: 3 })
@@ -1803,6 +2030,10 @@ test.describe('two calendars on a page, and one that goes', () => {
         const first = probes.nth(0)
         const second = probes.nth(1)
         const standup = (root) => root.locator('[data-atom-calendar-chip="dot"]', { hasText: 'Team standup' })
+
+        // the 14th of the first calendar is below the fold: the page is scrolled to it before anything is measured (and the second calendar's box after that)
+        await first.locator('[data-atom-calendar-day][data-date="2026-10-14"]').scrollIntoViewIfNeeded()
+
         const before = await standup(second).boundingBox()
 
         await page.evaluate(() => {
@@ -1904,5 +2135,120 @@ test.describe('the pointer on the body while a gesture is on', () => {
         // an item that can be picked up shows it, and its end shows what it is for
         expect(await chipOf(page, 'dot', 'Team standup').evaluate((el) => getComputedStyle(el).cursor)).toBe('grab')
         expect(await handleOf(page, 'bar', 'Launch week').evaluate((el) => getComputedStyle(el).cursor)).toBe('ew-resize')
+    })
+})
+
+// A calendar with no bound property, in a component whose field sends a request on every keystroke, and nobody saves what is moved in it ("Without
+// Livewire" in the README): the render of an unrelated request is not an answer, so the item stays where it was dropped.
+test.describe('a static calendar in a Livewire component', () => {
+    test('keeps a moved item through the renders of requests that are nobody\'s answer', async ({ page }) => {
+        await open(page, 'static=1')
+        await mode(page, 'none')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+
+        const answered = page.waitForResponse((response) => response.request().method() === 'POST' && response.url().includes('/update'))
+
+        await page.locator('[data-note]').fill('a keystroke')
+        await answered
+        await expect.poll(() => page.evaluate(() => window.Livewire.first().note)).toBe('a keystroke')
+        await page.waitForTimeout(300)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
+    })
+})
+
+// A host written before a render answered a failed validate() has the refusal in its tag. It keeps working: refused, the item goes back (once, by the
+// rejection and by the render), and saved, it stays where the server has it.
+test.describe('a tag with the refusal written into it', () => {
+    test('a save that fails validation puts the item back', async ({ page }) => {
+        await open(page, 'legacy=1&strict=1&view=week&date=2026-10-14')
+
+        const from = await middle(page.locator('[data-probe="calendar"] [data-atom-calendar-block]', { hasText: 'Design review' }))
+        const next = await page.locator('[data-probe="calendar"] [data-atom-calendar-column][data-date="2026-10-15"]').boundingBox()
+
+        await drag(page, from, { x: next.x + next.width / 2, y: from.y + 3.5 * 16 })
+
+        await expect.poll(async () => (await engine(page)).overrides).toEqual([])
+        expect(await rescheduled(page)).toEqual([])
+        await expect(page.locator('[data-probe="calendar"] [data-atom-calendar-column][data-date="2026-10-14"] [data-atom-calendar-block]', { hasText: 'Design review' })).toBeVisible()
+        await expect(page.locator('#livewire-error')).toHaveCount(0)
+    })
+
+    test('a save that succeeds leaves the item where the server has it', async ({ page }) => {
+        await open(page, 'legacy=1&view=week&date=2026-10-14')
+
+        const from = await middle(page.locator('[data-probe="calendar"] [data-atom-calendar-block]', { hasText: 'Design review' }))
+        const next = await page.locator('[data-probe="calendar"] [data-atom-calendar-column][data-date="2026-10-15"]').boundingBox()
+
+        await drag(page, from, { x: next.x + next.width / 2, y: from.y + 3.5 * 16 })
+
+        await expect.poll(() => rescheduled(page)).toHaveLength(1)
+        await expect.poll(async () => (await engine(page)).overrides).toEqual([])
+        await expect(page.locator('[data-probe="calendar"] [data-atom-calendar-column][data-date="2026-10-15"] [data-atom-calendar-block]', { hasText: 'Design review' })).toBeVisible()
+        await expect(page.locator('[data-probe="calendar"] [data-atom-calendar-column][data-date="2026-10-14"] [data-atom-calendar-block]', { hasText: 'Design review' })).toHaveCount(0)
+    })
+})
+
+// Livewire's morph leaves a child component's root alone, so a render of the parent never updates the calendar of a child: a request of the parent after the
+// drop says nothing about where the child's items are, and does not put one back (?parent=1: the calendar fixture as a child of a page with a button).
+test.describe('a calendar in a child component', () => {
+    const poke = async (page, times = 1) => {
+        const clicks = Number(await page.locator('[data-clicks]').textContent())
+
+        for (let i = 1; i <= times; i++) {
+            await page.locator('[data-poke]').click()
+            await expect(page.locator('[data-clicks]')).toHaveText(String(clicks + i))
+        }
+    }
+
+    test('a call of the parent after the drop does not put a saved item back', async ({ page }) => {
+        await open(page, 'parent=1')
+        await mode(page, 'quiet')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+        await expect.poll(() => page.evaluate(() => JSON.parse(JSON.stringify(window.Livewire.find(document.querySelector('[data-atom-calendar]').closest('[wire\\:id]').getAttribute('wire:id')).rescheduled)))).toHaveLength(1)
+
+        await poke(page)
+        await page.waitForTimeout(300)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
+    })
+
+    test('nor does it end a held save at the child\'s old payload', async ({ page }) => {
+        await open(page, 'parent=1')
+        await mode(page, 'wait')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+
+        await poke(page, 2)
+        await page.evaluate(() => window.__settle.resolve())
+        await page.waitForTimeout(300)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
+    })
+
+    test('a static calendar in a child keeps a moved item through any call of the parent', async ({ page }) => {
+        await open(page, 'parent=1&static=1')
+        await mode(page, 'none')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+
+        await poke(page, 2)
+        await page.waitForTimeout(300)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
+    })
+
+    test('the child\'s own request is heard as it is on a page with no parent', async ({ page }) => {
+        await open(page, 'parent=1')
+        await mode(page, 'none')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+
+        await page.evaluate(() => window.Livewire.find(document.querySelector('[data-atom-calendar]').closest('[wire\\:id]').getAttribute('wire:id')).bump())
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+        expect((await engine(page)).overrides).toEqual([])
     })
 })

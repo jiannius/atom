@@ -249,20 +249,23 @@ it('documents the calendar wiring and its silent footguns in the skill', functio
         ->and($skill)->toContain('**Load by overlap, not by start.**')
         ->and($skill)->toContain('->whereNull(\'ends_at\')')
         ->and($skill)->toContain('**Pass the promise of your save to `waitUntil()`**')
-        ->and($skill)->toContain('**Do not put `#[Renderless]` on the handler**')
+        ->and($skill)->toContain('**A renderless handler has no render to put the item back**')
         ->and($skill)->toContain('`modes` and `periods`')
         ->and(boostFile('guidelines/core.blade.php'))->toContain('the calendar');
 });
 
-// Validation does not reject the promise of an action (Livewire answers 200, so it resolves null): the skill must teach the refusal that works.
-it('teaches the calendar refusal pattern and never says validation rejects the promise', function () {
+// Validation does not reject the promise of an action (Livewire answers 200, so it resolves null): the render that answers it puts the item back, and the
+// skill must say what that leaves for a renderless method.
+it('teaches that the render answers a failed validation, and never says validation rejects the promise', function () {
     $skill = boostFile('skills/atom-components/SKILL.blade.php');
 
-    expect($skill)->toContain('saved || Promise.reject()')
-        ->and($skill)->toContain('does not reject the promise')
+    expect($skill)->toContain('**The server\'s render is the answer**')
+        ->and($skill)->toContain('sent after the drop')
+        ->and($skill)->toContain('A render that is not an answer does not move it')
+        ->and($skill)->toContain('resolves `null`')
         ->and($skill)->toContain('error modal')
-        ->and($skill)->toContain('return `false` to refuse and `true` once saved')
-        ->and($skill)->toContain('A renderless method must still `return true`')
+        ->and($skill)->toContain('saved || Promise.reject()')
+        ->and($skill)->toContain('A renderless handler has no render to put the item back')
         ->and($skill)->not->toMatch('/(?:Livewire rejects|rejects the promise)[^.]*validat/i')
         ->and($skill)->not->toContain('refuse by throwing')
         ->and($skill)->not->toContain('a failed validation, an abort');

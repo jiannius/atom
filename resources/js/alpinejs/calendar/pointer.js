@@ -358,6 +358,13 @@ export default {
         this.payloadHeld = false
 
         if (held && apply) this.read()
+
+        // an answer that came meanwhile releases what was dropped before the request it answers (an item dropped by this gesture is newer: see commitChange)
+        let answered = this.answered
+
+        this.answered = 0
+
+        if (answered && apply) this.releaseOverrides(answered)
     },
 
     // The click that follows a drag, on the item it began on: it is not let through. It follows the release, which has not come yet only when the drag
@@ -448,9 +455,10 @@ export default {
     // Tell the host that an item was moved or resized, with the range it covers now in the viewer's wall clock, as `calendar-select` does: `YYYY-MM-DDTHH:mm`
     // for a time (the end is the first minute after), `YYYY-MM-DD` for days (the end is the last day, included), either straight to Calendar::fromLocal().
     // A move says whether the item is all day too. The event can be cancelled, which puts the item back; and the host holds the item where it was put
-    // with `waitUntil(promise)`, called while it handles the event: it stays there while the promise is pending, whatever payload comes, and goes back
-    // if the promise is rejected. Resolved, it stays until the payload that has the host's answer in it comes (a host that answers without a render
-    // has no such payload, and the item stays where it was put until the next one). Without a promise it stays until the next payload.
+    // with `waitUntil(promise)`, called while it handles the event: it stays there while the promise is pending, whatever render comes, and goes back
+    // if the promise is rejected. Resolved, it stays until the render that answers the host's request comes (see watchAnswers(): a request sent after
+    // the drop, with a call of the host's own, whether its payload changed or not; so a save that failed validate() answers too, and a response with no
+    // render, a renderless method, does not, and the item stays where it was put). Without a promise it stays until that render.
     commitChange (gesture, range) {
         let { item, kind } = gesture
 
@@ -459,6 +467,8 @@ export default {
         if (!range || this.isUnchanged(gesture, range)) return
 
         let promises = []
+        // the requests sent so far: only an answer to one sent from here on is the host's (see watchAnswers())
+        let since = this.sent
         let detail = { id: item.id, start: range.start, end: range.end }
 
         if (kind === 'move') detail.allDay = range.allDay
@@ -477,7 +487,7 @@ export default {
         let key = String(item.id)
         let token = Symbol()
 
-        this.overrides = { ...this.overrides, [key]: { range: { start: range.start, end: range.end }, token, held: promises.length > 0, stale: false } }
+        this.overrides = { ...this.overrides, [key]: { range: { start: range.start, end: range.end }, token, since, held: promises.length > 0, stale: false } }
 
         // what is given after the event has been handled is too late: the promises are read here, once
         if (!promises.length) return

@@ -47,13 +47,21 @@
     [data-atom-icon] svg { width: 100%; height: 100% }
 </style>
 <div class="p-4">
-    <livewire:atom-e2e-calendar />
+    {{-- ?parent=1: the calendar is a child of a component that has a button of its own (the host's script below finds the component the calendar is in) --}}
+    @if (request()->boolean('parent'))
+        <livewire:atom-e2e-calendar-parent />
+    @else
+        <livewire:atom-e2e-calendar />
+    @endif
 </div>
 
 <script>
     // What the host does with a selection (a calendar with `selectable`; ?selectable=1), set by the test: window.__selects is every
     // `calendar-select` it was told, and window.__selectMode what it does about it. 'none' leaves the selection alone; 'wait' and 'reject' hold it
     // with a promise that the test settles through window.__settle; 'livewire' creates the item on the server and holds the selection until that is done.
+    // the component the calendar is in: the page's only one, or the child of the page's (`?parent=1`)
+    const host = () => window.Livewire.find(document.querySelector('[data-atom-calendar]').closest('[wire\\:id]').getAttribute('wire:id'))
+
     window.__selects = []
     window.__selectMode = 'none'
 
@@ -65,7 +73,7 @@
         if (window.__selectMode === 'wait' || window.__selectMode === 'reject') {
             waitUntil(new Promise((resolve, reject) => { window.__settle = { resolve, reject } }))
         } else if (window.__selectMode === 'livewire') {
-            waitUntil(window.Livewire.first().create(start, end, allDay))
+            waitUntil(host().create(start, end, allDay))
         }
     })
 </script>
@@ -93,11 +101,11 @@
         } else if (window.__itemMode === 'hold') {
             waitUntil(new Promise((resolve, reject) => { window.__holds.push({ resolve, reject }) }))
         } else if (window.__itemMode === 'livewire') {
-            waitUntil(window.Livewire.first().reschedule(id, start, end))
+            waitUntil(host().reschedule(id, start, end))
         } else if (window.__itemMode === 'livewire-free') {
-            window.Livewire.first().reschedule(id, start, end)
+            host().reschedule(id, start, end)
         } else if (window.__itemMode === 'quiet') {
-            waitUntil(window.Livewire.first().rescheduleQuiet(id, start, end))
+            waitUntil(host().rescheduleQuiet(id, start, end))
         }
     }
 

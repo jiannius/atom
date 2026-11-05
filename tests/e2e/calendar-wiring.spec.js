@@ -106,10 +106,10 @@ test('a click on an item handled by x-on on the tag calls edit() with its id, an
     expect(await edited()).toEqual([5, 7])
 })
 
-// Livewire does not reject the promise of an action that fails validation: it catches the exception on the server, answers 200 and resolves null. So
-// the README's tag turns a save that did not return true into a rejection with `.then((saved) => saved || Promise.reject())`, and the item goes back.
-// The fixture's `?strict=1` makes reschedule() run a validation rule that a timed start breaks. Run against the tag as it was (without the `.then`) this
-// test fails: the item stays on the 15th.
+// Livewire does not reject the promise of an action that fails validation: it catches the exception on the server, answers 200 and resolves null. What
+// puts the item back is the render that answers the request (watchAnswers() in calendar.js), so the README's tag has no refusal in it. The fixture's
+// `?strict=1` makes reschedule() run a validation rule that a timed start breaks. Run against a calendar that lets a same-payload render go by (the
+// item released only by a payload that differs) this test fails: the item stays on the 15th. A tag that still has the refusal in it is tested in calendar-move.spec.js.
 test('a move whose action fails validation goes back, with nothing stored and no error modal', async ({ page }) => {
     await open(page, '&strict=1')
 
