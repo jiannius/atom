@@ -21,7 +21,9 @@ test.afterEach(() => {
 function harness ({ livewire = true, component = true, root = {} } = {}) {
     const interceptors = []
     const attributes = { [PAYLOAD]: 'one' }
-    const el = { getAttribute: (name) => attributes[name] ?? null, closest: () => (component ? {} : null), querySelector: () => null, ...root }
+    // the element of the component the calendar is in: what a message of that component carries, and what the calendar's closest [wire:id] is
+    const own = {}
+    const el = { getAttribute: (name) => attributes[name] ?? null, closest: () => (component ? own : null), querySelector: () => null, dispatchEvent: () => true, ...root }
 
     globalThis.window = livewire === true ? { Livewire: { interceptMessage: (callback) => { interceptors.push(callback); return () => interceptors.splice(0) } } } : (livewire || {})
 
@@ -33,7 +35,7 @@ function harness ({ livewire = true, component = true, root = {} } = {}) {
     const stop = engine.watchAnswers()
 
     const send = ({ actions = ['reschedule'], inside = true, shape = null } = {}) => {
-        const message = { component: { el: { contains: () => inside } }, actions: new Set(actions.map((name) => ({ name }))), ...shape }
+        const message = { component: { el: inside ? own : {} }, actions: new Set(actions.map((name) => ({ name }))), ...shape }
         const hooks = {}
 
         interceptors.forEach((callback) => callback({ message, onSend: (fn) => { hooks.send = fn }, onSuccess: (fn) => { hooks.success = fn } }))
@@ -41,7 +43,7 @@ function harness ({ livewire = true, component = true, root = {} } = {}) {
 
         return {
             // the response: `render` is whether it has html, `morph` which of Livewire's hooks it offers, `payload` what the root says once it is morphed
-            succeed ({ render = true, morph = 'onMorphed', payload = null } = {}) {
+            succeed ({ render = true, morph = 'onMorphed', payload = null, deferRender = false } = {}) {
                 const registered = {}
                 const offered = { onMorphed: (fn) => { registered.onMorphed = fn }, onRender: (fn) => { registered.onRender = fn } }
 
@@ -49,8 +51,11 @@ function harness ({ livewire = true, component = true, root = {} } = {}) {
 
                 if (payload !== null) attributes[PAYLOAD] = payload
 
-                registered.onMorphed?.()
-                registered.onRender?.()
+                // `deferRender`: the hook is kept for the test to call, as Livewire calls onRender a frame after the promise of the action is resolved
+                if (!deferRender) {
+                    registered.onMorphed?.()
+                    registered.onRender?.()
+                }
 
                 return registered
             },
@@ -60,7 +65,7 @@ function harness ({ livewire = true, component = true, root = {} } = {}) {
     // an item that was dropped now: what commitChange() records
     const drop = (id, extra = {}) => { engine.overrides = { ...engine.overrides, [id]: { range: { start: 'a', end: 'b' }, token: Symbol(), since: engine.sent, held: false, stale: false, ...extra } } }
 
-    return { engine, stop, send, drop, attributes }
+    return { engine, stop, send, drop, attributes, own }
 }
 
 test.describe('without what it listens to', () => {
@@ -121,7 +126,7 @@ test.describe('a Livewire that is older than onMorphed', () => {
 
         try {
             expect(() => send({ shape: { component: undefined } }).succeed()).not.toThrow()
-            expect(() => send({ shape: { component: { el: { contains: () => { throw new Error('no') } } } } }).succeed()).not.toThrow()
+            expect(() => send({ shape: { component: { get el () { throw new Error('no') } } } }).succeed()).not.toThrow()
 
             const request = send()
 
@@ -134,6 +139,86 @@ test.describe('a Livewire that is older than onMorphed', () => {
 
         expect(engine.overrides['10']).toBeTruthy()
         expect(warned.length).toBeGreaterThan(0)
+    })
+})
+
+// What Livewire 4.0 to 4.4.1 does: the promise of the action is resolved when the response comes (before the morph), and `onRender` fires after it, a
+// frame later. The entry is not held for that frame and is released by the render; the one that is still being dragged is not.
+test.describe('the order of Livewire before onMorphed', () => {
+    const flush = async () => { for (let i = 0; i < 5; i++) await Promise.resolve() }
+    const item = { id: 10, start: '2026-10-20T14:00', end: '2026-10-20T15:00', allDay: false }
+    const range = (day) => ({ start: `2026-10-${day}T14:00`, end: `2026-10-${day}T15:00`, allDay: false })
+
+    // what the engine does with a drop: the host's handler calls its action (a request, sent now: after the count was taken) and holds the promise
+    const dropHeld = (engine, send, range_, item_ = item) => {
+        let settle = null
+        let request = null
+
+        engine.rootEl.dispatchEvent = (event) => {
+            request = send()
+            event.detail.waitUntil(new Promise((resolve) => { settle = resolve }))
+
+            return true
+        }
+
+        engine.commitChange({ item: item_, kind: 'move' }, range_)
+
+        return { request, settle: () => settle() }
+    }
+
+    test('the promise settles before the render: held for a frame, then released by it', async () => {
+        const { engine, send } = harness()
+        const { request, settle } = dropHeld(engine, send, range('22'))
+
+        expect(engine.overrides['10'].held).toBe(true)
+
+        // the response comes: onSuccess is called, the promise is resolved, and only then the render
+        const registered = request.succeed({ morph: 'onRender', deferRender: true })
+
+        settle()
+        await flush()
+
+        expect(engine.overrides['10'].held).toBe(false)
+        expect(engine.overrides['10'].stale).toBe(false)
+
+        registered.onRender()
+
+        expect(Object.keys(engine.overrides)).toEqual([])
+    })
+
+    test('the render comes first and the promise after: stale, and gone when it settles', async () => {
+        const { engine, send } = harness()
+        const { request, settle } = dropHeld(engine, send, range('22'))
+
+        request.succeed({ morph: 'onRender' })
+
+        expect(engine.overrides['10'].stale).toBe(true)
+
+        settle()
+        await flush()
+
+        expect(Object.keys(engine.overrides)).toEqual([])
+    })
+
+    test('an answer that lands during a drag that has just started is applied when it ends, and does not release what that drag drops', async () => {
+        const { engine, send } = harness()
+        const { request, settle } = dropHeld(engine, send, range('22'))
+        const registered = request.succeed({ morph: 'onRender', deferRender: true })
+
+        settle()
+        await flush()
+
+        // a drag of another item has begun when the render of the first one's request comes
+        engine.gesture = { kind: 'move', active: false, timer: null, frame: null, abort: new AbortController() }
+        registered.onRender()
+
+        expect(Object.keys(engine.overrides)).toEqual(['10'])
+
+        // it is dropped: its request is newer than the answer
+        dropHeld(engine, send, range('25'), { ...item, id: 11 })
+        engine.endGesture()
+
+        expect(Object.keys(engine.overrides)).toEqual(['11'])
     })
 })
 
@@ -187,7 +272,7 @@ test.describe('which render is an answer', () => {
         expect(Object.keys(engine.overrides)).toEqual(['11'])
     })
 
-    test('a request of a component that does not hold the calendar is not heard', () => {
+    test('a request of another component is not heard: a parent\'s render leaves a child\'s root alone, so it says nothing about the child\'s items', () => {
         const { engine, send, drop } = harness()
 
         drop('10')
@@ -269,5 +354,8 @@ test.describe('the count in a line', () => {
         expect(engine.countText(':COUNT MORE', 4)).toBe('4 MORE')
         expect(engine.countText('+:Count more (:count)', 12)).toBe('+12 more (12)')
         expect(engine.countText([':COUNT one', ':COUNT many'], 150)).toBe('150 many')
+        // a longer word is not the placeholder
+        expect(engine.countText(':count of :country, :counts, :count_x', 3)).toBe('3 of :country, :counts, :count_x')
+        expect(engine.countText('(:count)', 3)).toBe('(3)')
     })
 })

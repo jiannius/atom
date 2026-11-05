@@ -509,8 +509,8 @@ export default () => ({
         if (restoreFocus) this.$nextTick(() => this.focusDay())
     },
 
-    // What tells that the server has answered a move or a resize: a render of a request sent AFTER the drop, from the component the calendar is in (or
-    // one that holds it), that is either a call of the host's own (an action whose name does not start with `$`: `$commit`, `$refresh` are Livewire's)
+    // What tells that the server has answered a move or a resize: a render of a request sent AFTER the drop, from the component the calendar is in
+    // (its own, not a parent's), that is either a call of the host's own (an action whose name does not start with `$`: `$commit`, `$refresh` are Livewire's)
     // or a render that changes the payload, whatever the actions. A render whose payload is the same as before answers when the host called something:
     // a save that failed validate() renders the same items and answers 200, and the item has to go back to where the server has it. One that changes
     // the payload answers whoever asked for it (a poll, an event, `$refresh`, a parent, a save that went round the tag): what the payload says is where
@@ -524,8 +524,9 @@ export default () => ({
     // dropped (the README says so).
     watchAnswers () {
         let livewire = window.Livewire
+        let own = this.rootEl.closest('[wire\\:id]')
 
-        if (!this.rootEl.closest('[wire\\:id]') || typeof livewire?.interceptMessage !== 'function') return () => {}
+        if (!own || typeof livewire?.interceptMessage !== 'function') return () => {}
 
         let guarded = (callback) => (...args) => {
             try {
@@ -536,8 +537,10 @@ export default () => ({
         }
 
         return livewire.interceptMessage(guarded(({ message, onSend, onSuccess }) => {
-            // the component the calendar is in, or one that holds that one: a parent that saves renders the child
-            if (!message.component?.el?.contains?.(this.rootEl)) return
+            // the calendar's own component only: Livewire's morph leaves a child's root alone, so the render of a parent says nothing about where the child's items
+            // are, and a parent's call after the drop would put the item back to the child's old payload. (A child that is updated by its parent, a reactive
+            // property or an event, is updated by a message of its own, which this hears.)
+            if (message.component?.el !== own) return
 
             let seq = null
 
@@ -551,6 +554,8 @@ export default () => ({
                 let answer = guarded(() => {
                     let called = [...message.actions].some((action) => !String(action.name).startsWith('$'))
 
+                    // The calendar's own Next and Previous (a `$set` of the bound date after the drop, whose payload differs) count, as intended: Livewire sends it
+                    // behind the save that is on its way, so its render shows the saved state.
                     if (called || this.rootEl.getAttribute('data-atom-calendar-payload') !== before) this.answer(seq)
                 })
 
@@ -1093,8 +1098,8 @@ export default () => ({
     countText (line, count) {
         if (Array.isArray(line)) line = line[Math.min(Math.max(count, 1), line.length) - 1]
 
-        // Laravel keeps `:COUNT` when it is asked with ':count' (it upper-cases the replacement too), and writes `:Count` as `:count`
-        return (typeof line === 'string' ? line : '').replace(/:count/gi, () => String(count))
+        // Laravel keeps `:COUNT` when it is asked with ':count' (it upper-cases the replacement too), and writes `:Count` as `:count`; a longer word (`:country`) is not it
+        return (typeof line === 'string' ? line : '').replace(/:count(?![a-z0-9_])/gi, () => String(count))
     },
 
     weekdayName (date) {

@@ -2171,3 +2171,64 @@ test.describe('a tag with the refusal written into it', () => {
         await expect(page.locator('[data-probe="calendar"] [data-atom-calendar-column][data-date="2026-10-14"] [data-atom-calendar-block]', { hasText: 'Design review' })).toHaveCount(0)
     })
 })
+
+// Livewire's morph leaves a child component's root alone, so a render of the parent never updates the calendar of a child: a request of the parent after the
+// drop says nothing about where the child's items are, and does not put one back (?parent=1: the calendar fixture as a child of a page with a button).
+test.describe('a calendar in a child component', () => {
+    const poke = async (page, times = 1) => {
+        const clicks = Number(await page.locator('[data-clicks]').textContent())
+
+        for (let i = 1; i <= times; i++) {
+            await page.locator('[data-poke]').click()
+            await expect(page.locator('[data-clicks]')).toHaveText(String(clicks + i))
+        }
+    }
+
+    test('a call of the parent after the drop does not put a saved item back', async ({ page }) => {
+        await open(page, 'parent=1')
+        await mode(page, 'quiet')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+        await expect.poll(() => page.evaluate(() => JSON.parse(JSON.stringify(window.Livewire.find(document.querySelector('[data-atom-calendar]').closest('[wire\\:id]').getAttribute('wire:id')).rescheduled)))).toHaveLength(1)
+
+        await poke(page)
+        await page.waitForTimeout(300)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
+    })
+
+    test('nor does it end a held save at the child\'s old payload', async ({ page }) => {
+        await open(page, 'parent=1')
+        await mode(page, 'wait')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+
+        await poke(page, 2)
+        await page.evaluate(() => window.__settle.resolve())
+        await page.waitForTimeout(300)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
+    })
+
+    test('a static calendar in a child keeps a moved item through any call of the parent', async ({ page }) => {
+        await open(page, 'parent=1&static=1')
+        await mode(page, 'none')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+
+        await poke(page, 2)
+        await page.waitForTimeout(300)
+
+        expect(await startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-22')
+        expect((await engine(page)).overrides).toEqual(['10'])
+    })
+
+    test('the child\'s own request is heard as it is on a page with no parent', async ({ page }) => {
+        await open(page, 'parent=1')
+        await mode(page, 'none')
+        await drag(page, await middle(chipOf(page, 'dot', 'Hex colour')), await inDay(page, '2026-10-22'))
+
+        await page.evaluate(() => window.Livewire.find(document.querySelector('[data-atom-calendar]').closest('[wire\\:id]').getAttribute('wire:id')).bump())
+        await expect.poll(() => startsOn(page, chipOf(page, 'dot', 'Hex colour'))).toBe('2026-10-20')
+        expect((await engine(page)).overrides).toEqual([])
+    })
+})

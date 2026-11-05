@@ -72,6 +72,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-timeline', TimelineFixture::class);
         Livewire::component('atom-e2e-slide-over-form', SlideOverFormFixture::class);
         Livewire::component('atom-e2e-calendar', CalendarFixture::class);
+        Livewire::component('atom-e2e-calendar-parent', CalendarParentFixture::class);
         Livewire::component('atom-e2e-calendar-look', CalendarLookFixture::class);
         Livewire::component('atom-e2e-job-progress', JobProgressFixture::class);
 
