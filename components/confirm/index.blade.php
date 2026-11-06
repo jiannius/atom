@@ -23,13 +23,25 @@ $config = [
         password: '',
         passphrase: '',
         reason: '',
+        passphraseError: null,
 
         showConfirm (e) {
             this.config = { ...@js($config), ...e.detail }
+            this.password = ''
+            this.passphrase = ''
+            this.reason = ''
+            this.passphraseError = null
             this.$nextTick(() => atom.modal('atom-confirm').show())
         },
 
         accept () {
+            {{-- the typed text has to be the passphrase (case counts, whitespace around it does not) --}}
+            if (this.config.passphrase && this.passphrase.trim() !== String(this.config.passphrase).trim()) {
+                this.passphraseError = @js(t('The text you typed does not match'));
+                this.$nextTick(() => document.getElementById('atom-confirm-passphrase')?.focus())
+                return
+            }
+
             if (typeof this.config.onAccepted === 'string') {
                 Livewire.find(this.config.wireId).call(this.config.onAccepted, {
                     password: this.password,
@@ -103,7 +115,8 @@ $config = [
                      association has to be made by hand too. Static ids: the dialog renders
                      once per page, so they are unique, and stable across a morph. --}}
                 <atom:label for="atom-confirm-passphrase"><span x-text="config.passphraseLabel.replace(':passphrase', `&quot;${config.passphrase}&quot;`)"></span></atom:label>
-                <atom:input id="atom-confirm-passphrase" x-model="passphrase" required />
+                <atom:input id="atom-confirm-passphrase" x-model="passphrase" x-bind:aria-invalid="passphraseError ? 'true' : null" aria-describedby="atom-confirm-passphrase-error" required />
+                <div x-show="passphraseError" x-text="passphraseError" id="atom-confirm-passphrase-error" role="alert" class="error text-danger-fg text-sm font-medium" data-atom-error></div>
             </atom:input.field>
         </template>
 
