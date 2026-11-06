@@ -24,6 +24,7 @@ $config = [
         passphrase: '',
         reason: '',
         passphraseError: null,
+        passphraseMismatch: @js(t('The text you typed does not match')),
 
         showConfirm (e) {
             this.config = { ...@js($config), ...e.detail }
@@ -40,7 +41,7 @@ $config = [
             let passphrase = this.passphrase.trim()
 
             if (this.config.passphrase && passphrase !== String(this.config.passphrase).trim()) {
-                this.passphraseError = @js(t('The text you typed does not match'));
+                this.passphraseError = this.passphraseMismatch
                 this.$nextTick(() => document.getElementById('atom-confirm-passphrase')?.focus())
                 return
             }
@@ -116,10 +117,13 @@ $config = [
             <atom:input.field>
                 {{-- the label is built here rather than through the `label` prop, so the
                      association has to be made by hand too. Static ids: the dialog renders
-                     once per page, so they are unique, and stable across a morph. --}}
-                <atom:label for="atom-confirm-passphrase"><span x-text="config.passphraseLabel.replace(':passphrase', `&quot;${config.passphrase}&quot;`)"></span></atom:label>
-                <atom:input id="atom-confirm-passphrase" x-model="passphrase" x-bind:aria-invalid="passphraseError ? 'true' : null" aria-describedby="atom-confirm-passphrase-error" required />
-                <div x-show="passphraseError" x-text="passphraseError" id="atom-confirm-passphrase-error" role="alert" class="error text-danger-fg text-sm font-medium" data-atom-error></div>
+                     once per page, so they are unique, and stable across a morph. The passphrase
+                     goes in through a function, so a `$$` or `$&` in it is printed as typed.
+                     `data-atom-error` is only on the error while it shows: the field draws its
+                     border red for any [data-atom-error] inside it, hidden or not. --}}
+                <atom:label for="atom-confirm-passphrase"><span x-text="config.passphraseLabel.replace(':passphrase', () => `&quot;${config.passphrase}&quot;`)"></span></atom:label>
+                <atom:input id="atom-confirm-passphrase" x-model="passphrase" x-on:input="passphraseError = null" x-bind:aria-invalid="passphraseError ? 'true' : null" aria-describedby="atom-confirm-passphrase-error" required />
+                <div x-show="passphraseError" x-text="passphraseError" x-bind:data-atom-error="passphraseError ? '' : null" id="atom-confirm-passphrase-error" role="alert" class="error text-danger-fg text-sm font-medium"></div>
             </atom:input.field>
         </template>
 

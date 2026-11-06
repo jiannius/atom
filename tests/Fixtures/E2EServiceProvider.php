@@ -58,6 +58,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-dropdown-morph', DropdownMorphFixture::class);
         Livewire::component('atom-e2e-chart-morph', ChartMorphFixture::class);
         Livewire::component('atom-e2e-date-picker-typed', DatePickerTypedFixture::class);
+        Livewire::component('atom-e2e-confirm-passphrase', ConfirmPassphraseFixture::class);
         Livewire::component('atom-e2e-select-sibling-sync', SelectSiblingSyncFixture::class);
         Livewire::component('atom-e2e-safe-url-breadcrumbs', SafeUrlBreadcrumbsFixture::class);
         Livewire::component('atom-e2e-form-error-toast', FormErrorToastFixture::class);

@@ -47,7 +47,7 @@ $linkSharers = ['email'];
         <atom:tooltip :content="t('Copy Link')">
             <button
             type="button"
-            x-on:click.stop="$clipboard({{ js($url) }})"
+            x-on:click.stop="$clipboard({{ js($url) }}).catch(() => {})"
             aria-label="{{ t('Copy Link') }}"
             class="h-control aspect-square rounded-control flex items-center justify-center cursor-pointer text-fg-muted hover:bg-fg/5 hover:text-fg">
                 <atom:icon.link class="size-4" />

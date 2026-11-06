@@ -4,8 +4,11 @@ import { test, expect } from '@playwright/test'
 // `value`), `$clipboard` resolved even when the browser refused the write (so the copy button showed its success tick),
 // and <atom:confirm> accepted any text for a passphrase. navigator.clipboard is stubbed: what was written is recorded in
 // window.__copied, and `mode` decides whether the write resolves, rejects, or whether there is no clipboard at all.
+// Unhandled rejections are recorded in window.__unhandled.
 const stubClipboard = (page, mode = 'resolve') => page.addInitScript((mode) => {
   window.__copied = []
+  window.__unhandled = []
+  addEventListener('unhandledrejection', (event) => window.__unhandled.push(event.reason?.name ?? String(event.reason)))
   const clipboard = mode === 'missing' ? undefined : {
     writeText: (text) => {
       window.__copied.push(text)
@@ -15,9 +18,9 @@ const stubClipboard = (page, mode = 'resolve') => page.addInitScript((mode) => {
   Object.defineProperty(Navigator.prototype, 'clipboard', { configurable: true, get: () => clipboard })
 }, mode)
 
-const open = async (page, mode) => {
+const open = async (page, mode, query = '') => {
   await stubClipboard(page, mode)
-  await page.goto('/atom/e2e/copy-confirm')
+  await page.goto(`/atom/e2e/copy-confirm${query}`)
   await page.waitForFunction(() => window.Alpine && window.atom)
 }
 
@@ -64,6 +67,29 @@ test.describe('<atom:copy>', () => {
     await expect.poll(() => copied(page)).toEqual(['slotted'])
   })
 
+  test('copies a value of 0', async ({ page }) => {
+    await open(page)
+
+    await page.getByTestId('copy-zero').locator('svg').click()
+
+    await expect.poll(() => copied(page)).toEqual(['0'])
+  })
+
+  test('a second click while the tick shows still puts the original icon back', async ({ page }) => {
+    await open(page)
+    const copy = page.getByTestId('copy-value')
+    const icon = await copy.innerHTML()
+
+    await copy.locator('svg').click()
+    await expect(copy.locator('svg.lucide-check')).toHaveCount(1)
+    await copy.locator('svg').click()
+    await expect.poll(() => copied(page)).toEqual(['hello', 'hello'])
+
+    // past both restores (700ms after each click): what is left is the original icon, not the tick
+    await page.waitForTimeout(1600)
+    expect(await copy.innerHTML()).toBe(icon)
+  })
+
   test('shows a failure mark, not the success tick, when the browser refuses the write, then puts the icon back', async ({ page }) => {
     await open(page, 'reject')
     const copy = page.getByTestId('copy-value')
@@ -74,6 +100,19 @@ test.describe('<atom:copy>', () => {
     await expect(copy.locator('[data-atom-copy-failed]')).toHaveCount(1)
     await expect(copy.locator('svg.lucide-check')).toHaveCount(0)
     await expect.poll(() => copy.innerHTML()).toBe(icon)
+  })
+})
+
+test.describe('<atom:sharer> copy link', () => {
+  test('a refused write is not an unhandled rejection', async ({ page }) => {
+    await open(page, 'reject')
+
+    await page.getByTestId('sharer').getByRole('button', { name: 'Copy Link' }).click()
+    await expect.poll(() => copied(page)).toEqual(['https://example.com/post'])
+
+    // unhandledrejection fires once the microtasks have run; give it a frame or two
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)))
+    expect(await page.evaluate(() => window.__unhandled)).toEqual([])
   })
 })
 
@@ -179,6 +218,75 @@ test.describe('<atom:confirm> passphrase', () => {
     await expect(dialog(page).locator('input[type="password"]')).toHaveValue('')
     await expect(dialog(page).locator('#atom-confirm-reason')).toHaveValue('')
     await expect(error(page)).toBeHidden()
+  })
+
+  test('the field is not drawn as an error until a wrong passphrase is submitted (consumer Tailwind)', async ({ page }) => {
+    await open(page, 'resolve', '?tw=floor')
+    const border = () => passphrase(page).evaluate((el) => getComputedStyle(el).borderTopColor)
+
+    await ask(page, { passphrase: 'example.com' })
+    await expect(dialog(page)).toHaveAttribute('data-open', '')
+    const before = await border()
+
+    await passphrase(page).fill('x')
+    await dialog(page).getByRole('button', { name: 'Confirm' }).click()
+    await expect(error(page)).toBeVisible()
+    const danger = await error(page).evaluate((el) => getComputedStyle(el).color)
+
+    expect(await border()).toBe(danger)
+    expect(before).not.toBe(danger)
+
+    // typing again takes the error away, and the red border with it
+    await passphrase(page).pressSequentially('y')
+    await expect(error(page)).toBeHidden()
+    expect(await border()).not.toBe(danger)
+  })
+
+  test('typing after a wrong submit clears the error and aria-invalid', async ({ page }) => {
+    await open(page)
+    await ask(page, { passphrase: 'example.com' })
+
+    await passphrase(page).fill('x')
+    await dialog(page).getByRole('button', { name: 'Confirm' }).click()
+    await expect(error(page)).toBeVisible()
+    await expect(passphrase(page)).toHaveAttribute('aria-invalid', 'true')
+
+    await passphrase(page).pressSequentially('e')
+
+    await expect(error(page)).toBeHidden()
+    await expect(passphrase(page)).not.toHaveAttribute('aria-invalid')
+    expect(await answer(page)).toBeNull()
+  })
+
+  test('a passphrase with $$ or $& in it is shown as written in the default label, and accepted', async ({ page }) => {
+    await open(page)
+    await ask(page, { passphrase: 'pa$$word$&' })
+
+    await expect(dialog(page).locator('label[for="atom-confirm-passphrase"]')).toHaveText('Please type "pa$$word$&" to continue')
+
+    await passphrase(page).fill('pa$$word$&')
+    await dialog(page).getByRole('button', { name: 'Confirm' }).click()
+
+    await expect.poll(() => answer(page)).toEqual({ accepted: { password: '', passphrase: 'pa$$word$&', reason: '' } })
+  })
+
+  test('a Livewire onAccepted method gets the trimmed passphrase, and is not called for a wrong one', async ({ page }) => {
+    await open(page)
+    const received = page.getByTestId('received')
+
+    await page.getByRole('button', { name: 'Ask from PHP' }).click()
+    await expect(dialog(page)).toHaveAttribute('data-open', '')
+
+    await passphrase(page).fill('example')
+    await dialog(page).getByRole('button', { name: 'Confirm' }).click()
+    await expect(error(page)).toBeVisible()
+    await expect(received).toBeEmpty()
+
+    await passphrase(page).fill(' example.com ')
+    await dialog(page).getByRole('button', { name: 'Confirm' }).click()
+
+    await expect(received).not.toBeEmpty()
+    expect(JSON.parse(await received.textContent())).toEqual({ password: '', passphrase: 'example.com', reason: '' })
   })
 
   test('a confirm with no passphrase still accepts at once', async ({ page }) => {
