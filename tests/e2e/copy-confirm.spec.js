@@ -139,15 +139,25 @@ test.describe('<atom:confirm> passphrase', () => {
     await expect(dialog(page)).not.toHaveAttribute('data-open', '')
   })
 
-  test('ignores whitespace around the typed text', async ({ page }) => {
+  test('ignores whitespace around the typed text, and hands on the trimmed text', async ({ page }) => {
     await open(page)
-    await ask(page, { passphrase: 'DELETE' })
+    await ask(page, { passphrase: 'example.com' })
 
-    await passphrase(page).fill('  DELETE ')
+    await passphrase(page).fill(' example.com ')
     await passphrase(page).press('Enter')
 
-    await expect.poll(() => answer(page)).not.toBeNull()
-    expect((await answer(page)).accepted).toBeTruthy()
+    await expect.poll(() => answer(page)).toEqual({ accepted: { password: '', passphrase: 'example.com', reason: '' } })
+  })
+
+  test('<atom:confirm.trigger> dispatches the trimmed passphrase in its confirmed detail', async ({ page }) => {
+    await open(page)
+
+    await page.getByRole('button', { name: 'Delete domain' }).click()
+    await expect(dialog(page)).toHaveAttribute('data-open', '')
+    await passphrase(page).fill('  example.com ')
+    await dialog(page).getByRole('button', { name: 'Confirm' }).click()
+
+    await expect.poll(() => page.evaluate(() => window.__confirmed ?? null)).toEqual({ password: '', passphrase: 'example.com', reason: '' })
   })
 
   test('opens with empty fields and no error each time it is shown', async ({ page }) => {

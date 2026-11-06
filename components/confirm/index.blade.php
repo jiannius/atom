@@ -35,8 +35,11 @@ $config = [
         },
 
         accept () {
-            {{-- the typed text has to be the passphrase (case counts, whitespace around it does not) --}}
-            if (this.config.passphrase && this.passphrase.trim() !== String(this.config.passphrase).trim()) {
+            {{-- the typed text has to be the passphrase (case counts, whitespace around it does not), and the
+                 trimmed text is what is handed on, so a host comparing it sees what the dialog accepted --}}
+            let passphrase = this.passphrase.trim()
+
+            if (this.config.passphrase && passphrase !== String(this.config.passphrase).trim()) {
                 this.passphraseError = @js(t('The text you typed does not match'));
                 this.$nextTick(() => document.getElementById('atom-confirm-passphrase')?.focus())
                 return
@@ -45,12 +48,12 @@ $config = [
             if (typeof this.config.onAccepted === 'string') {
                 Livewire.find(this.config.wireId).call(this.config.onAccepted, {
                     password: this.password,
-                    passphrase: this.passphrase,
+                    passphrase,
                     reason: this.reason,
                 })
             }
             else {
-                this.config.onAccepted?.(this.password, this.passphrase, this.reason)
+                this.config.onAccepted?.(this.password, passphrase, this.reason)
             }
 
             atom.modal('atom-confirm').close()
