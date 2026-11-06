@@ -58,6 +58,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-dropdown-morph', DropdownMorphFixture::class);
         Livewire::component('atom-e2e-chart-morph', ChartMorphFixture::class);
         Livewire::component('atom-e2e-date-picker-typed', DatePickerTypedFixture::class);
+        Livewire::component('atom-e2e-confirm-passphrase', ConfirmPassphraseFixture::class);
         Livewire::component('atom-e2e-select-sibling-sync', SelectSiblingSyncFixture::class);
         Livewire::component('atom-e2e-safe-url-breadcrumbs', SafeUrlBreadcrumbsFixture::class);
         Livewire::component('atom-e2e-form-error-toast', FormErrorToastFixture::class);
@@ -124,6 +125,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/chip-fit', fn () => view('atom::e2e.chip-fit'));
         Route::middleware('web')->get('/atom/e2e/button-label', fn () => view('atom::e2e.button-label'));
         Route::middleware('web')->get('/atom/e2e/button-tooltip', fn () => view('atom::e2e.button-tooltip'));
+        Route::middleware('web')->get('/atom/e2e/copy-confirm', fn () => view('atom::e2e.copy-confirm'));
         // The two shell pattern pages (resources/views/docs/patterns), on the consumer's Tailwind: ?tw=floor|latest, ?dark=1.
         // header-wide is the worst case for the bar: long labels, a count on each, a context switcher and a search field.
         foreach (['sidebar' => 'docs.patterns.app-shell-sidebar', 'header' => 'docs.patterns.app-shell-header', 'header-wide' => 'e2e.shell-header-wide', 'account' => 'e2e.shell-account', 'record' => 'docs.patterns.record-page', 'list' => 'docs.patterns.list-page', 'document' => 'docs.patterns.document-page', 'form' => 'docs.patterns.form-page', 'slide-over' => 'docs.patterns.slide-over-form'] as $shell => $pattern) {

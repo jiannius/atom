@@ -5,5 +5,5 @@ view="atom::docs.demos.confirm.basic"/>
 
 <atom:docs.example
 title="Password re-entry"
-description="password: true requires the user's password; passphrase and a reason field are also supported."
+description="password: true requires the user's password; passphrase (Confirm accepts only that text) and a reason field are also supported."
 view="atom::docs.demos.confirm.password"/>

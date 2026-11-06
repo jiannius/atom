@@ -641,7 +641,7 @@ A suggested mapping when a heading *is* structural: `xl` → `level="1"` (only o
 | `<atom:modal>` | `name` (required for `atom()->modal($name)` to find it), `inset`, `dismissible`, `closeable`. Trigger via `<atom:modal.trigger name="...">` or `$this->modal('name')->show()` from PHP. |
 | `<atom:alert>` | Window-bound. Triggered by `atom()->alert(...)`. Config keys: `heading`, `subheading`, `message`, `variant`, `button`, `onDismissed`. |
 | `<atom:toast>` | Window-bound. Triggered by `atom()->toast(...)`. Config keys: `message`, `variant` (`success`, `warning`, `danger`), `delay` (default 3000), `position` (`top`, `bottom`, `center`), `align`. A bottom toast sits above a pinned save bar that is on screen (`form.actions bar`), so it never covers Save. |
-| `<atom:confirm>` | Window-bound. Triggered by `atom()->confirm(...)`. Supports `password`, `passphrase`, optional reason field. Wires `onAccepted` / `onRejected` to Livewire methods. |
+| `<atom:confirm>` | Window-bound. Triggered by `atom()->confirm(...)`. Supports `password`, `passphrase` (Confirm accepts only that exact text, surrounding whitespace ignored, and shows an error otherwise; `onAccepted` gets the trimmed text), optional reason field. Wires `onAccepted` / `onRejected` to Livewire methods. The passphrase check runs in the browser only, so a Livewire `onAccepted` that does anything destructive must compare the `passphrase` it receives itself. |
 | `<atom:tooltip>` | `interactive`, `position` (`top`, `bottom`, `left`, `right`), `align` (`start`, `center`, `end`), `content`, `kbd`, `toggleable`. Shows on hover and keyboard focus and describes its trigger through `aria-describedby` (added to the trigger's own, left out when the trigger's `aria-label` already says the same words, and not shown while the trigger's menu or dropdown is open). `<atom:button tooltip="...">` wraps itself in one. |
 | `<atom:dropdown>` | `position` (`bottom`, `top`), `align` (`start`, `end`), `locked`. |
 | `<atom:context-menu>` | Right-click menu opened at the cursor. `locked`. Default slot = the right-clickable target; `<x-slot:menu>` holds `<atom:menu.item>`s. Reuses `<atom:menu>`. |
@@ -875,7 +875,7 @@ there's no server-side or cross-device state.
 
 | Tag | Notable props |
 | --- | ------------- |
-| `<atom:copy>` | `value` — copy-to-clipboard button. |
+| `<atom:copy>` | `value` — copy-to-clipboard button. Flips to a check when the copy succeeds and to a cross when the browser refuses it. |
 | `<atom:darkmode-toggle>` | Dark-mode switcher. Needs the page to pass `dark` to `<atom:html>` or its layout — without it `window.darkmode()` is never defined. Both shells put a Light / Dark / System row in the account menu when `dark` is set, and draw this toggle in the bar only when they have no `dropdown` slot (or never, with `:theme-switcher="false"`). |
 | `<atom:dd>` | A label (muted) and its value (an empty one prints `filler`, `--`). `label`, `block` (stack them), `filler`. Wrap several in `<atom:dd.group cols="1\|2\|3">`. |
 | `<atom:dev-login>` | `limit` (5), `label` (`name`) — buttons that sign in as one of your first accounts, local environment only. See [Signing in during local development](#signing-in-during-local-development). |
@@ -2108,7 +2108,7 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 - `atom.currency(value, symbol, round, maxPrecision)` — `1,234.50`; half-up, `maxPrecision` as above.
 - `atom.arr.{pluck, unique, sum, where, firstWhere, toggle}(array, ...)` and `atom.str.{headline, limit, slug, camel, nl2br, striptags, toDateString, toDatetimeString, toTimeString, toDateFormat}(string, ...)` — value first; atom adds nothing to `Array`, `Number` or `String`, and sets no `window.dd` or `window.empty`.
 - Alpine factories: `modal`, `tiptap`, `select`, `tooltip`, `dropdown`, `lightbox`, `telInput`, `emailInput`, `breadcrumbs`, `datePicker`, `timePicker`, `dateRange`, `calendar`, `tableColumns` (the column picker), plus chart variants.
-- `$clipboard` Alpine magic.
+- `$clipboard(text)` Alpine magic — returns the browser's `navigator.clipboard.writeText()` promise, so it rejects when the write is refused (an insecure context, no permission, the page not focused); chain `.catch()`.
 - Alpine plugins loaded: `@alpinejs/intersect`, `@marcreichel/alpine-autosize`.
 
 ---
