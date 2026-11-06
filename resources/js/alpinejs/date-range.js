@@ -51,8 +51,8 @@ export default (config) => {
             let split = (this.dateRangeValue || '').split('to').map(str => str.trim()).filter(Boolean)
 
             return [
-                split[0] ? dayjs(split[0]).toISOString() : undefined,
-                split[1] ? dayjs(split[1]).toISOString() : undefined,
+                split[0] ? zone.instant(split[0]) : undefined,
+                split[1] ? zone.instant(split[1]) : undefined,
             ]
         },
 

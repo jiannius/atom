@@ -215,7 +215,9 @@ test.describe('in a browser on UTC', () => {
 
   test('a zone the browser does not know falls back to the browser\'s, without throwing', async ({ page }) => {
     const errors = []
+    const warnings = []
     page.on('pageerror', error => errors.push(error.message))
+    page.on('console', message => message.type() === 'warning' && warnings.push(message.text()))
 
     await open(page, { tz: 'Not/AZone', range: '2026-08-31T16:00:00Z to 2026-10-31T15:59:59Z' })
     await expect(input(page, 'range')).toHaveValue('31 Aug 2026 to 31 Oct 2026')
@@ -223,6 +225,18 @@ test.describe('in a browser on UTC', () => {
     await preset(page, 'Today')
     await expect(out(page, 'range')).toHaveText('2026-10-31T00:00:00.000Z to 2026-10-31T23:59:59.999Z')
     expect(errors).toEqual([])
+
+    // told once for the typo, though three pickers on the page carry it
+    expect(warnings.filter(text => text.includes('Not/AZone'))).toHaveLength(1)
+  })
+
+  test('no prop, an empty one: no warning', async ({ page }) => {
+    const warnings = []
+    page.on('console', message => message.type() === 'warning' && warnings.push(message.text()))
+
+    await open(page)
+    await expect(input(page, 'range')).toBeVisible()
+    expect(warnings.filter(text => text.includes('timezone'))).toEqual([])
   })
 })
 
@@ -236,6 +250,87 @@ test.describe('in a browser on Pacific/Auckland', () => {
 
     await pickRange(page, 0, 2026, 10, 26)
     await expect(out(page, 'range')).toHaveText('2026-10-26T04:00:00.000Z to 2026-11-06T04:59:59.999Z')
+  })
+
+  test('a date or a date-time with no offset is a time in the zone, not in the browser', async ({ page }) => {
+    // read as the browser's, 2026-09-01 in Auckland is 31 Aug in Kuala Lumpur
+    await open(page, { tz: KL, range: '2026-09-01 to 2026-10-31', date: '2026-09-01', datetime: '2026-09-01T09:30:00' })
+
+    await expect(input(page, 'range')).toHaveValue('01 Sep 2026 to 31 Oct 2026')
+    await expect(input(page, 'date')).toHaveValue('01 Sep 2026')
+    await expect(input(page, 'date-time')).toHaveValue('01 Sep 2026 09:30 AM')
+
+    // and the day picked on it is the zone's
+    await pickRange(page, 1, 2026, 10, 15)
+    await expect(out(page, 'range')).toHaveText('2026-08-31T16:00:00.000Z to 2026-10-15T15:59:59.999Z')
+  })
+
+  test.describe('no timezone: the browser\'s days, as before', () => {
+    test('a stored range, a pick, a typed range and a preset are the browser\'s days', async ({ page }) => {
+      // NZST (+12) on 1 Sep, NZDT (+13) on 31 Oct
+      await open(page, { range: '2026-08-31T16:00:00Z to 2026-10-31T15:59:59Z' })
+      await expect(input(page, 'range')).toHaveValue('01 Sep 2026 to 01 Nov 2026')
+
+      await pickRange(page, 0, 2026, 9, 1)
+      await expect(out(page, 'range')).toHaveText('2026-08-31T12:00:00.000Z to 2026-10-31T15:59:59.000Z')
+      await pickRange(page, 1, 2026, 10, 31)
+      await expect(out(page, 'range')).toHaveText('2026-08-31T12:00:00.000Z to 2026-10-31T10:59:59.999Z')
+
+      await type(page, 'range', '01/09/2026 - 31/10/2026')
+      await expect(out(page, 'range')).toHaveText('2026-08-31T12:00:00.000Z to 2026-10-31T10:59:59.999Z')
+
+      // 2026-10-31 20:00 UTC is 1 Nov 09:00 in Auckland
+      await preset(page, 'Today')
+      await expect(out(page, 'range')).toHaveText('2026-10-31T11:00:00.000Z to 2026-11-01T10:59:59.999Z')
+    })
+
+    test('a single date and time stay in the browser\'s zone', async ({ page }) => {
+      await open(page, { datetime: '2026-10-31T13:30:00.000Z', date: '2026-10-31T11:00:00.000Z' })
+      await expect(input(page, 'date-time')).toHaveValue('01 Nov 2026 02:30 AM')
+      await expect(input(page, 'date')).toHaveValue('01 Nov 2026')
+
+      await pickDate(page, 'date-time', 2026, 11, 3)
+      await expect(out(page, 'date-time')).toHaveText('2026-11-02T13:30:00.000Z')
+      await pickDate(page, 'date', 2026, 11, 3)
+      await expect(out(page, 'date')).toHaveText('2026-11-02T11:00:00.000Z')
+    })
+  })
+})
+
+// The same pickers bound to Livewire (the fixture of date-picker-typed.spec.js, `?tz=` handing them the prop): what reaches the server is the zone's
+// day, and a re-render of the component (the deferred form's save) leaves what the pickers show and hold as it was.
+test.describe('through a Livewire re-render', () => {
+  test.use({ timezoneId: 'UTC' })
+
+  test('a typed range and date reach the server as the zone\'s days and survive a re-render', async ({ page }) => {
+    await page.goto('/atom/e2e/date-picker-typed?tz=' + KL)
+    await page.waitForFunction(() => window.Livewire && window.Alpine)
+
+    const server = (name) => probe(page, name).locator('[data-server]')
+
+    await type(page, 'range', '01/09/2026 - 31/10/2026')
+    await expect(server('range')).toHaveText('2026-08-31T16:00:00.000Z to 2026-10-31T15:59:59.999Z')
+
+    await type(page, 'date', '02/09/2026')
+    await expect(server('date')).toHaveText('2026-09-01T16:00:00.000Z')
+
+    await type(page, 'deferred-date', '03/09/2026')
+    await type(page, 'deferred-range', '04/09/2026 - 05/09/2026')
+    await input(page, 'deferred-range').press('Escape') // closes the panel the typing left open
+    await page.locator('[data-save]').click()
+    await expect(page.locator('[data-saves]')).toHaveText('1')
+    await expect(server('deferred-date')).toHaveText('2026-09-02T16:00:00.000Z')
+    await expect(server('deferred-range')).toHaveText('2026-09-03T16:00:00.000Z to 2026-09-05T15:59:59.999Z')
+
+    // the component has been rendered again: what is shown and held is as it was
+    await expect(input(page, 'range')).toHaveValue('01 Sep 2026 to 31 Oct 2026')
+    await expect(input(page, 'date')).toHaveValue('02 Sep 2026')
+    await expect(input(page, 'deferred-date')).toHaveValue('03 Sep 2026')
+    await expect(input(page, 'deferred-range')).toHaveValue('04 Sep 2026 to 05 Sep 2026')
+
+    // and it still picks in the zone afterwards
+    await pickRange(page, 1, 2026, 10, 15)
+    await expect(server('range')).toHaveText('2026-08-31T16:00:00.000Z to 2026-10-15T15:59:59.999Z')
   })
 })
 
@@ -267,8 +362,11 @@ test('zoneInstant is right on both sides of a DST change', () => {
   // Midnight of the day the clocks go back (EDT) and of the next (EST): the day between is 25 hours.
   expect(at(NY, 2026, 11, 1)).toBe('2026-11-01T04:00:00.000Z')
   expect(at(NY, 2026, 11, 2)).toBe('2026-11-02T05:00:00.000Z')
-  // The repeated hour takes the first of its two.
+  // The repeated hour takes the first of its two, in every zone and in both hemispheres.
   expect(at(NY, 2026, 11, 1, 1, 30)).toBe('2026-11-01T05:30:00.000Z')
+  expect(at('Europe/London', 2026, 10, 25, 1, 30)).toBe('2026-10-25T00:30:00.000Z')
+  expect(at('Australia/Sydney', 2026, 4, 5, 2, 30)).toBe('2026-04-04T15:30:00.000Z')
+  expect(at('Australia/Lord_Howe', 2026, 4, 5, 1, 45)).toBe('2026-04-04T14:45:00.000Z')
   // Southern hemisphere, and a zone with a half-hour offset.
   expect(at('Australia/Sydney', 2026, 10, 4, 12)).toBe('2026-10-04T01:00:00.000Z')
   expect(at('Asia/Kolkata', 2026, 1, 1)).toBe('2025-12-31T18:30:00.000Z')
@@ -282,25 +380,52 @@ test('a wall clock survives the trip through the zone', () => {
   const wrong = []
 
   for (const zone of zones) {
+    let repeated = 0
+
     // Every 37 minutes across 2026, so each DST change is crossed and several instants fall near one.
     for (let ms = from; ms < from + 365 * 86400000; ms += 37 * 60000) {
       const p = zoneParts(ms, zone)
       const back = zoneInstant(p, zone)
       const again = zoneParts(back.getTime(), zone)
+      const behind = ms - back.getTime()
 
-      // Its wall clock is the one asked for; the instant may differ only by the length of the DST shift (an hour, half an hour in Lord Howe) when a wall time happens twice.
-      if (JSON.stringify(again) !== JSON.stringify(p) || Math.abs(back.getTime() - ms) > 3600000) {
-        wrong.push(`${zone} ${new Date(ms).toISOString()} -> ${back.toISOString()}`)
-      }
+      // Its wall clock is the one asked for, and it is the same instant, except for the second time round of a repeated hour, which is read as the
+      // first: earlier by the length of the shift (an hour; half an hour in Lord Howe) and never later.
+      if (JSON.stringify(again) !== JSON.stringify(p) || ![0, 1800000, 3600000].includes(behind)) wrong.push(`${zone} ${new Date(ms).toISOString()} -> ${back.toISOString()}`)
+      if (behind) repeated++
     }
+
+    // only the hour the clocks repeat, once a year (an hour is under two of the 37-minute steps)
+    if (repeated > 2) wrong.push(`${zone}: ${repeated} instants read as an earlier one`)
   }
 
   expect(wrong).toEqual([])
 })
 
-test('a wall clock that does not exist lands next to the change', () => {
-  const t = zoneInstant({ year: 2026, month: 3, day: 8, hour: 2, minute: 30 }, NY)
-  expect(t.toISOString()).toBe('2026-03-08T06:30:00.000Z')
+test('a wall time the clocks skip is read forward, after the change', () => {
+  const at = (zone, y, m, d, hour, minute = 0) => zoneInstant({ year: y, month: m, day: d, hour, minute }, zone).toISOString()
+
+  expect(at(NY, 2026, 3, 8, 2, 30)).toBe('2026-03-08T07:30:00.000Z') // 03:30 EDT
+  expect(at('Europe/London', 2026, 3, 29, 1, 30)).toBe('2026-03-29T01:30:00.000Z') // 02:30 BST
+  expect(at('Australia/Sydney', 2026, 10, 4, 2, 30)).toBe('2026-10-03T16:30:00.000Z') // 03:30 AEDT
+  expect(at('Australia/Lord_Howe', 2026, 10, 4, 2, 15)).toBe('2026-10-03T15:45:00.000Z') // 02:45, the half-hour shift
+})
+
+test('a day whose midnight the clocks skip starts at the first instant of that day, never the day before', () => {
+  const zone = (name) => zoneOf(name)
+
+  for (const [name, day, start] of [
+    ['America/Santiago', '2026-09-06T12:00:00Z', '2026-09-06T04:00:00.000Z'], // 00:00 does not exist: the day starts at 01:00
+    ['America/Havana', '2026-03-08T17:00:00Z', '2026-03-08T05:00:00.000Z'],
+  ]) {
+    const z = zone(name)
+    const wall = z.read(day)
+
+    expect(z.start(wall), name).toBe(start)
+    // the first instant of that day on the clock, and an instant before it is the day before
+    expect(zoneParts(Date.parse(start), name).day, name).toBe(wall.date())
+    expect(zoneParts(Date.parse(start) - 1, name).day, name).not.toBe(wall.date())
+  }
 })
 
 test('without a zone, the helper is the browser\'s plain dayjs', () => {
@@ -323,4 +448,21 @@ test('read and write are each other\'s inverse in a zone', () => {
   expect(zone.read('garbage').isValid()).toBe(false)
   expect(zone.start(zone.read('2026-11-01T20:00:00Z'))).toBe('2026-11-01T04:00:00.000Z')
   expect(zone.end(zone.read('2026-11-01T20:00:00Z'))).toBe('2026-11-02T04:59:59.999Z')
+})
+
+test('a value with no offset is a time in the zone; one with an offset is an instant', () => {
+  const zone = zoneOf(KL)
+
+  expect(zone.instant('2026-09-01')).toBe('2026-08-31T16:00:00.000Z')
+  expect(zone.instant('2026-09-01T09:30:00')).toBe('2026-09-01T01:30:00.000Z')
+  expect(zone.instant('2026-09-01 09:30:15.5')).toBe('2026-09-01T01:30:15.500Z')
+  expect(zone.instant('2026-09-01T09:30:00Z')).toBe('2026-09-01T09:30:00.000Z')
+  expect(zone.instant('2026-09-01T09:30:00+08:00')).toBe('2026-09-01T01:30:00.000Z')
+
+  expect(zone.read('2026-09-01').format('YYYY-MM-DD HH:mm')).toBe('2026-09-01 00:00')
+  expect(zone.read('2026-09-01T09:30:00').format('YYYY-MM-DD HH:mm')).toBe('2026-09-01 09:30')
+  expect(zone.read('2026-09-01T09:30:00Z').format('YYYY-MM-DD HH:mm')).toBe('2026-09-01 17:30')
+
+  // without a zone these are the browser's, as dayjs reads them
+  expect(zoneOf(null).instant('2026-09-01T09:30:00')).toBe(dayjs('2026-09-01T09:30:00').toISOString())
 })
