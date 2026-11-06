@@ -283,6 +283,14 @@ data-atom-calendar
                                             <span x-show="week.ghost.kind === 'resize'" aria-hidden="true" class="absolute inset-y-1 right-1 w-1 rounded-full bg-fg-muted"></span>
                                         </div>
                                     </template>
+
+                                    {{-- the grips of an item a finger has picked up, on its ghost as on the item (chip.blade.php) --}}
+                                    <template x-if="week.ghost.grips">
+                                        <span aria-hidden="true" data-kind="bar" x-bind:style="hue(week.ghost)" x-bind:data-atom-calendar-hex="isHex(week.ghost) && !week.ghost.danger ? '' : null" data-atom-calendar-grips>
+                                            <span x-show="!week.ghost.before" data-atom-calendar-grip="start"><span x-bind:class="week.ghost.danger ? 'border-danger-fg' : colorClass(week.ghost, 'accent')" data-atom-calendar-grip-dot class="bg-surface"></span></span>
+                                            <span x-show="!week.ghost.after" data-atom-calendar-grip="end"><span x-bind:class="week.ghost.danger ? 'border-danger-fg' : colorClass(week.ghost, 'accent')" data-atom-calendar-grip-dot class="bg-surface"></span></span>
+                                        </span>
+                                    </template>
                                 </div>
                             </template>
 
@@ -397,6 +405,13 @@ data-atom-calendar
                                             <span x-text="allDayItemGhost.title" x-bind:class="allDayItemGhost.danger ? 'text-danger-fg' : 'text-fg'" class="truncate"></span>
                                             <span x-show="allDayItemGhost.kind === 'resize'" aria-hidden="true" class="absolute inset-y-1 right-1 w-1 rounded-full bg-fg-muted"></span>
                                         </div>
+
+                                        <template x-if="allDayItemGhost.grips">
+                                            <span aria-hidden="true" data-kind="bar" x-bind:style="hue(allDayItemGhost)" x-bind:data-atom-calendar-hex="isHex(allDayItemGhost) && !allDayItemGhost.danger ? '' : null" data-atom-calendar-grips>
+                                                <span x-show="!allDayItemGhost.before" data-atom-calendar-grip="start"><span x-bind:class="allDayItemGhost.danger ? 'border-danger-fg' : colorClass(allDayItemGhost, 'accent')" data-atom-calendar-grip-dot class="bg-surface"></span></span>
+                                                <span x-show="!allDayItemGhost.after" data-atom-calendar-grip="end"><span x-bind:class="allDayItemGhost.danger ? 'border-danger-fg' : colorClass(allDayItemGhost, 'accent')" data-atom-calendar-grip-dot class="bg-surface"></span></span>
+                                            </span>
+                                        </template>
                                     </div>
                                 </template>
                             </div>
@@ -485,11 +500,26 @@ data-atom-calendar
                                                 <span x-show="!shape.compact" x-text="timeRange(shape)" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-fg"></span>
                                             </div>
 
-                                            <template x-if="shape.kind === 'resize'">
+                                            {{-- the end that is pulled, and the time it is at: the bottom and the end, or (a finger's top grip) the top and the start --}}
+                                            <template x-if="shape.kind === 'resize' && shape.edge !== 'start'">
                                                 <div>
                                                     <span aria-hidden="true" class="absolute inset-x-0 bottom-0.5 mx-auto h-1 w-6 rounded-full bg-fg-muted"></span>
                                                     <span x-text="endLabel(shape)" class="absolute -bottom-3 right-1 rounded-sm bg-fg px-1.5 py-0.5 text-xs font-medium tabular-nums text-canvas"></span>
                                                 </div>
+                                            </template>
+
+                                            <template x-if="shape.kind === 'resize' && shape.edge === 'start'">
+                                                <div>
+                                                    <span aria-hidden="true" class="absolute inset-x-0 top-0.5 mx-auto h-1 w-6 rounded-full bg-fg-muted"></span>
+                                                    <span x-text="startLabel(shape)" data-atom-calendar-start-label class="absolute -top-3 right-1 rounded-sm bg-fg px-1.5 py-0.5 text-xs font-medium tabular-nums text-canvas"></span>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="shape.grips">
+                                                <span aria-hidden="true" data-kind="block" x-bind:style="hue(shape)" x-bind:data-atom-calendar-hex="isHex(shape) && !shape.danger ? '' : null" data-atom-calendar-grips>
+                                                    <span x-show="!shape.before" data-atom-calendar-grip="start"><span x-bind:class="shape.danger ? 'border-danger-fg' : colorClass(shape, 'accent')" data-atom-calendar-grip-dot class="bg-surface"></span></span>
+                                                    <span x-show="!shape.after" data-atom-calendar-grip="end"><span x-bind:class="shape.danger ? 'border-danger-fg' : colorClass(shape, 'accent')" data-atom-calendar-grip-dot class="bg-surface"></span></span>
+                                                </span>
                                             </template>
                                         </div>
                                     </template>

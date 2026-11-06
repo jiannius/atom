@@ -6,7 +6,9 @@
      not colour alone. Each is named whole by itemLabel(), and a tooltip with the title alone is put on only while the title shown
      is cut short (tooltip()), so a screen reader does not read it twice. A press on one starts a move (itemPress()), and on its handle, the
      end of a bar or the bottom edge of a block, a resize: the handle is for the pointer alone and is not in the tab order or the accessibility tree,
-     as an item is moved and resized with the pointer only; what is done with the keyboard is the item's own click. `data-atom-calendar-item` is the
+     as an item is moved and resized with the pointer only; what is done with the keyboard is the item's own click. A finger has no handle: its
+     long press moves the item and picks it up, and the grips at the end of this file are what it resizes by. A row of the month's day list
+     that a finger can pick up is `data-pickable`. `data-atom-calendar-item` is the
      item's id, which is how the chip that stands for it is found again once a move has drawn it somewhere else (see keepItemFocus()). --}}
 <template x-if="chip.kind === 'bar'">
     <a
@@ -23,7 +25,8 @@
     x-on:pointerdown="itemPress(chip, $event)"
     x-bind:data-atom-calendar-item="chip.id"
     x-bind:data-draggable="canDrag(chip) ? '' : null"
-    x-bind:draggable="canDrag(chip) ? 'false' : null"
+    x-bind:data-pickable="chip.pickable ? '' : null"
+    x-bind:draggable="canDrag(chip) || chip.pickable ? 'false' : null"
     x-on:click="itemClick(chip, $event)"
     x-on:keydown.enter="itemKey(chip, $event)"
     x-on:keydown.space="itemKey(chip, $event)"
@@ -47,7 +50,8 @@
     x-on:pointerdown="itemPress(chip, $event)"
     x-bind:data-atom-calendar-item="chip.id"
     x-bind:data-draggable="canDrag(chip) ? '' : null"
-    x-bind:draggable="canDrag(chip) ? 'false' : null"
+    x-bind:data-pickable="chip.pickable ? '' : null"
+    x-bind:draggable="canDrag(chip) || chip.pickable ? 'false' : null"
     x-on:click="itemClick(chip, $event)"
     x-on:keydown.enter="itemKey(chip, $event)"
     x-on:keydown.space="itemKey(chip, $event)"
@@ -101,4 +105,23 @@
         <span x-show="!chip.compact" x-text="chip.range" data-atom-calendar-item-time class="truncate font-normal tabular-nums text-fg"></span>
         <span x-show="canResize(chip)" aria-hidden="true" data-atom-calendar-handle="end"></span>
     </a>
+</template>
+
+{{-- The grips of an item a finger has picked up (pick() in calendar/pointer.js), one on each end it can be pulled by: the top and the bottom of a block,
+     the first and the last day of a bar. Beside the chip and not in it, in the block or the slot it is drawn in: a block clips what overflows it, and a
+     grip is bigger than the edge it sits on, so that a finger can hold it (atom.css). For the pointer alone, as the handle is (see the top of this file). --}}
+<template x-if="isPicked(chip) && (canResize(chip) || canResizeStart(chip))">
+    <span
+    aria-hidden="true"
+    x-bind:data-kind="chip.kind"
+    x-bind:style="hue(chip)"
+    x-bind:data-atom-calendar-hex="isHex(chip) && !chip.danger ? '' : null"
+    data-atom-calendar-grips>
+        <span x-show="canResizeStart(chip)" x-on:pointerdown="gripPress(chip, 'start', $event)" data-atom-calendar-grip="start">
+            <span x-bind:class="chip.danger ? 'border-danger-fg' : colorClass(chip, 'accent')" data-atom-calendar-grip-dot class="bg-surface"></span>
+        </span>
+        <span x-show="canResize(chip)" x-on:pointerdown="gripPress(chip, 'end', $event)" data-atom-calendar-grip="end">
+            <span x-bind:class="chip.danger ? 'border-danger-fg' : colorClass(chip, 'accent')" data-atom-calendar-grip-dot class="bg-surface"></span>
+        </span>
+    </span>
 </template>

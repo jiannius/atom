@@ -1455,6 +1455,41 @@ test.describe('the time grid', () => {
         expect(Math.abs(resized.height - 2.5 * HOUR * rem)).toBeLessThan(3)
     })
 
+    test('a pull of the end that drifts to another day stays on the block\'s own day: only the time changes', async ({ page }) => {
+        await scrollGrid(page, 8 * await hourPx(page))
+
+        const box = await handleOf(page, 'block', 'Design review').boundingBox()
+        const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+        const to = await at(page, '2026-10-15', 12.1)
+
+        await clearOfEdges(page, [from, to])
+
+        await page.mouse.move(from.x, from.y)
+        await page.mouse.down()
+        await page.mouse.move(to.x, to.y, { steps: 8 })
+
+        // the ghost is in the 14th's column, not the 15th's
+        await expect(column(page, '2026-10-14').locator('[data-atom-calendar-preview]')).toHaveCount(1)
+        await expect(column(page, '2026-10-15').locator('[data-atom-calendar-preview]')).toHaveCount(0)
+
+        await page.mouse.up()
+
+        expect(await resizes(page)).toEqual([{ id: 6, start: '2026-10-14T10:00', end: '2026-10-14T12:30' }])
+
+        // and a day back, which was a pull to before the start (nothing at all) when the date followed the pointer
+        await open(page, 'view=week&date=2026-10-12')
+        await scrollGrid(page, 8 * await hourPx(page))
+
+        const again = await handleOf(page, 'block', 'Design review').boundingBox()
+        const start = { x: again.x + again.width / 2, y: again.y + again.height / 2 }
+        const back = await at(page, '2026-10-13', 12.1)
+
+        await clearOfEdges(page, [start, back])
+        await drag(page, start, back)
+
+        expect(await resizes(page)).toEqual([{ id: 6, start: '2026-10-14T10:00', end: '2026-10-14T12:30' }])
+    })
+
     test('a block is at least one slot long', async ({ page }) => {
         await scrollGrid(page, 300)
 
@@ -1806,16 +1841,30 @@ test.describe('a touch', () => {
         expect((await engine(page)).gesture).toBe(false)
     })
 
-    test('the handle of a bar pulled by a finger resizes it', async ({ page }) => {
+    test('a finger has no handle: a long press on the end of a bar moves it, and picks it up, and the grip on its end resizes it', async ({ page }) => {
         const from = await middle(handleOf(page, 'bar', 'Launch week'))
         const to = await inDay(page, '2026-10-12')
 
         await pointer(page, 'pointerdown', from)
         await expect(ghosts(page)).toHaveCount(1, { timeout: 1500 })
+        await expect(ghosts(page)).toHaveAttribute('data-kind', 'move')
+        await pointer(page, 'pointerup', from)
+        expect(await resizes(page)).toEqual([])
+
+        // picked up: the bar shows a grip on each end (calendar-touch.spec.js has the rest of it, on a phone)
+        const grip = probe(page).locator('[data-atom-calendar-slot]', { hasText: 'Launch week' }).locator('[data-atom-calendar-grip="end"]')
+
+        await expect(grip).toBeVisible()
+
+        const end = await middle(grip)
+
+        await pointer(page, 'pointerdown', end)
+        await pointer(page, 'pointermove', { x: end.x + 10, y: end.y })
         await pointer(page, 'pointermove', to)
         await pointer(page, 'pointerup', to)
 
         expect(await resizes(page)).toEqual([{ id: 2, start: '2026-10-05', end: '2026-10-12' }])
+        expect(await moves(page)).toEqual([])
     })
 
     test('a long press that is let go where it was moves nothing, and is not the item\'s click', async ({ page }) => {
@@ -1966,13 +2015,21 @@ test.describe('the time grid scrolls under a finger at its edge', () => {
         expect(move.start > '2026-10-14T17:00').toBe(true)
     })
 
-    test('under the pull of the end of a block by a finger', async ({ page }) => {
-        const handle = await middle(handleOf(page, 'block', 'Design review'))
+    test('under the pull of the end of a block by a finger, by its grip', async ({ page }) => {
+        // picked up by a long press and let go where it was, which shows its grips
+        const body = await near(chipOf(page, 'block', 'Design review'))
+
+        await pointer(page, 'pointerdown', body)
+        await expect(shapes(page)).toHaveCount(1, { timeout: 1500 })
+        await pointer(page, 'pointerup', body)
+
+        const handle = await middle(probe(page).locator('[data-atom-calendar-block]', { hasText: 'Design review' }).locator('[data-atom-calendar-grip="end"]'))
         const to = { x: handle.x, y: await edge(page) }
         const before = await scrollTop(page)
 
         await pointer(page, 'pointerdown', handle)
-        await expect(shapes(page)).toHaveCount(1, { timeout: 1500 })
+        await pointer(page, 'pointermove', { x: handle.x, y: handle.y + 10 })
+        await expect(shapes(page)).toHaveCount(1)
         await pointer(page, 'pointermove', to)
 
         await expect.poll(() => scrollTop(page)).toBeGreaterThan(before + 120)

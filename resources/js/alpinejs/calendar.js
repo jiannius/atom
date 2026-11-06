@@ -118,6 +118,9 @@ export default () => ({
     overrides: {},
     // The id of the item whose chip has the focus, kept on it while it is drawn again (see keepItemFocus()), or null
     focusItem: null,
+    // The id of the item a finger has picked up, which shows its grips, or null; and what puts it down. See pick() in calendar/pointer.js.
+    picked: null,
+    pickAbort: null,
     // Held while a select waits for the host (see commitSelect): the placeholder is taken down when its promise settles, unless another gesture has put something else up
     pendingToken: null,
     // What takes a selection down that nothing is holding: see lingerSelection()
@@ -319,6 +322,8 @@ export default () => ({
             after: false,
             // a row of the list is not on a grid to be put somewhere on
             static: true,
+            // but a finger picks one up in the month, to put it on a day of the grid (see itemPress())
+            pickable: this.view === 'month' && this.canDrag(item),
         })).map((chip) => this.nameChip(chip))
     },
 
@@ -395,6 +400,7 @@ export default () => ({
         document.addEventListener('livewire:navigating', () => {
             this.cancelGesture()
             this.closeDay(false)
+            this.unpick()
         }, { signal })
 
         // The now line moves with the minute. The clock is read off an attribute the observer above does not watch, so a
@@ -420,6 +426,7 @@ export default () => ({
             this.pendingToken = null
             this.overrides = {}
             this.focusItem = null
+            this.unpick()
             this.closeDay(false)
             delete this.$root._atomCalendarCleanup
         }
@@ -468,6 +475,9 @@ export default () => ({
         // A new payload is the answer to what was selected, so a selection that nothing holds is done with. One being made, and one the host holds
         // with waitUntil, are not the render's to take down. (An item that was moved or resized is not the payload's to take: see watchAnswers().)
         if (!first) this.clearSelection()
+
+        // an item that is picked up and is gone has nothing to show its grips on
+        if (this.picked !== null && !payload.items.some((item) => String(item.id) === this.picked)) this.unpick()
 
         this.payloadText = text
 
@@ -806,6 +816,7 @@ export default () => ({
 
         this.closeDay(false)
         this.clearSelection()
+        this.unpick()
 
         // the grid is hidden in the month view and has no scroll position there: it opens at `scroll-time` again
         if (this.view === 'month') this.scrollPending = true
@@ -1013,9 +1024,13 @@ export default () => ({
         }
     },
 
-    // The end of a range as the time of day, for the label a resize shows beside its edge
+    // The end of a range as the time of day, for the label a resize shows beside its edge; and its start, for the pull of a start
     endLabel (shape) {
         return shape.end ? format(shape.end, this.config.timeFormat, this.labels) : ''
+    },
+
+    startLabel (shape) {
+        return shape.start ? format(shape.start, this.config.timeFormat, this.labels) : ''
     },
 
     // A selection's or a ghost's place over a month week's days, as shares of the week's width

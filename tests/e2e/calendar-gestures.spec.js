@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { addMinutes, dayCell, hasMoved, indexAtX, indexAtY, minuteAt, minutesBetween, momentAt, movedRange, resizedRange, scrollSpeed, selectionRange } from '../../resources/js/alpinejs/calendar/gestures.js'
+import { addMinutes, dayCell, hasMoved, indexAtX, indexAtY, minuteAt, minutesBetween, momentAt, movedRange, resizedRange, resizedStart, scrollSpeed, selectionRange } from '../../resources/js/alpinejs/calendar/gestures.js'
 import { allDayGhost, allDayShape, previewShapes, timeGrid } from '../../resources/js/alpinejs/calendar/grid.js'
 import { addDays } from '../../resources/js/alpinejs/calendar/dates.js'
 
@@ -240,6 +240,45 @@ test.describe('an item with its end moved', () => {
         const item = { allDay: false, start: '2026-10-22T10:00', end: '2026-10-24T00:00' }
 
         expect(resizedRange(item, '2026-10-26').end).toBe('2026-10-27T00:00')
+    })
+
+    test('an end in the time grid stops at `latest`, the midnight after the day it is pulled on', () => {
+        const item = { start: '2026-10-14T10:00', end: '2026-10-14T11:00', allDay: false }
+
+        expect(resizedRange(item, '2026-10-15T01:00', { latest: '2026-10-15T00:00' }).end).toBe('2026-10-15T00:00')
+        expect(resizedRange(item, '2026-10-14T23:00', { latest: '2026-10-15T00:00' }).end).toBe('2026-10-14T23:00')
+    })
+})
+
+test.describe('an item with its start pulled (a finger\'s top grip, or the first day of a bar)', () => {
+    test('an all-day item takes a date for its first day, and covers its last at least', () => {
+        const item = { start: '2026-10-05', end: '2026-10-09', allDay: true }
+
+        expect(resizedStart(item, '2026-10-06')).toEqual({ start: '2026-10-06', end: '2026-10-09', allDay: true })
+        expect(resizedStart(item, '2026-10-02')).toEqual({ start: '2026-10-02', end: '2026-10-09', allDay: true })
+        expect(resizedStart(item, '2026-10-12')).toEqual({ start: '2026-10-09', end: '2026-10-09', allDay: true })
+        expect(resizedStart({ start: '2026-10-05', allDay: true }, '2026-10-04')).toEqual({ start: '2026-10-04', end: '2026-10-05', allDay: true })
+    })
+
+    test('a timed item in the grid takes the moment it starts at, is at least a slot long, and starts no earlier than `earliest`', () => {
+        const item = { start: '2026-10-14T10:00', end: '2026-10-14T11:00', allDay: false }
+
+        expect(resizedStart(item, '2026-10-14T08:30')).toEqual({ start: '2026-10-14T08:30', end: '2026-10-14T11:00', allDay: false })
+        expect(resizedStart(item, '2026-10-14T12:00')).toEqual({ start: '2026-10-14T10:30', end: '2026-10-14T11:00', allDay: false })
+        expect(resizedStart(item, '2026-10-14T12:00', { slotDuration: 15 }).start).toBe('2026-10-14T10:45')
+        expect(resizedStart(item, '2026-10-13T22:00', { earliest: '2026-10-14T00:00' }).start).toBe('2026-10-14T00:00')
+    })
+
+    test('one with no end is given the end it is drawn with, a slot after its start', () => {
+        expect(resizedStart({ start: '2026-10-14T15:00', end: null, allDay: false }, '2026-10-14T14:00')).toEqual({ start: '2026-10-14T14:00', end: '2026-10-14T15:30', allDay: false })
+    })
+
+    test('a timed item in the month takes a date for its first day, and keeps the time of day it starts at', () => {
+        const item = { start: '2026-10-22T22:00', end: '2026-10-23T02:00', allDay: false }
+
+        expect(resizedStart(item, '2026-10-20')).toEqual({ start: '2026-10-20T22:00', end: '2026-10-23T02:00', allDay: false })
+        // past its end: one slot long, before the end
+        expect(resizedStart(item, '2026-10-25')).toEqual({ start: '2026-10-23T01:30', end: '2026-10-23T02:00', allDay: false })
     })
 })
 
