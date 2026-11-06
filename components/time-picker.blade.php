@@ -7,6 +7,7 @@
     'invalid' => false,
     'error' => null,
     'ariaLabelledby' => null,
+    'timezone' => null,
 ])
 
 @php
@@ -27,7 +28,7 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
     :required="$required"
     :error="$error"
     :label-id="$labelId">
-        <atom:time-picker :invalid="$invalid" :aria-labelledby="$labelId" :attributes="$attributes" />
+        <atom:time-picker :invalid="$invalid" :aria-labelledby="$labelId" :timezone="$timezone" :attributes="$attributes" />
     </atom:input.field>
 @else
     @php
@@ -43,7 +44,7 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
     @endphp
 
     <div
-    x-data="timePicker()"
+    x-data="{{ filled($timezone) ? 'timePicker({ timezone: '.\Illuminate\Support\Js::from($timezone).' })' : 'timePicker()' }}"
     x-modelable="timePickerValue"
     {{ $attributes->class($classes) }}>
         <div

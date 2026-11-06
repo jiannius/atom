@@ -2,8 +2,12 @@ import Pikaday from 'pikaday'
 import dayjs from 'dayjs'
 import { drawsOwnChip } from '../helpers/filter-chip'
 import { parseTypedDate, splitTypedRange } from '../helpers/typed-date'
+import { zoneOf } from '../helpers/zone'
 
 export default (config) => {
+    // With `config.timezone` the pickers read and write the wall clock in that zone (helpers/zone.js); without one, the browser's.
+    const zone = zoneOf(config.timezone)
+
     return {
         pikaday: [],
         endValue: null,
@@ -37,8 +41,18 @@ export default (config) => {
             let split = (this.dateRangeValue || '').split('to').map(str => str.trim()).filter(Boolean)
 
             return [
-                split[0] ? dayjs(split[0]) : null,
-                split[1] ? dayjs(split[1]) : null,
+                split[0] ? zone.read(split[0]) : null,
+                split[1] ? zone.read(split[1]) : null,
+            ]
+        },
+
+        // The ISO strings of the model's two ends, as they were stored (never a round trip through the zone's wall clock).
+        get isoValues () {
+            let split = (this.dateRangeValue || '').split('to').map(str => str.trim()).filter(Boolean)
+
+            return [
+                split[0] ? dayjs(split[0]).toISOString() : undefined,
+                split[1] ? dayjs(split[1]).toISOString() : undefined,
             ]
         },
 
@@ -49,8 +63,8 @@ export default (config) => {
 
             this.$nextTick(() => {
                 this.setCalendar()
-                this.startValue = this.dateObjects[0]?.toISOString()
-                this.endValue = this.dateObjects[1]?.toISOString()
+                this.startValue = this.isoValues[0]
+                this.endValue = this.isoValues[1]
 
                 this.$watch('startValue', () => this.updateValue())
                 this.$watch('endValue', () => this.updateValue())
@@ -58,8 +72,8 @@ export default (config) => {
         },
 
         parse () {
-            this.startValue = this.dateObjects[0]?.toISOString()
-            this.endValue = this.dateObjects[1]?.toISOString()
+            this.startValue = this.isoValues[0]
+            this.endValue = this.isoValues[1]
         },
 
         // The own chip's x: clear the range and put the focus on the add pill that comes back (it is the same button).
@@ -70,21 +84,25 @@ export default (config) => {
         },
 
         preset (name) {
+            let now = zone.now()
+            let lastMonth = now.startOf('month').subtract(1, 'day')
+            let lastYear = now.startOf('year').subtract(1, 'day')
+
             let presets = {
-                'today': [dayjs().startOf('day'), dayjs().endOf('day')],
-                'yesterday': [dayjs().subtract(1, 'day').startOf('day'), dayjs().subtract(1, 'day').endOf('day')],
-                'last-7-days': [dayjs().subtract(6, 'day').startOf('day'), dayjs().endOf('day')],
-                'last-30-days': [dayjs().subtract(29, 'day').startOf('day'), dayjs().endOf('day')],
-                'last-180-days': [dayjs().subtract(179, 'day').startOf('day'), dayjs().endOf('day')],
-                'this-month': [dayjs().startOf('month').startOf('day'), dayjs().endOf('month').endOf('day')],
-                'last-month': [dayjs().startOf('month').subtract(1, 'day').startOf('month').startOf('day'), dayjs().startOf('month').subtract(1, 'day').endOf('month').endOf('day')],
-                'this-year': [dayjs().startOf('year').startOf('day'), dayjs().endOf('year').endOf('day')],
-                'last-year': [dayjs().startOf('year').subtract(1, 'day').startOf('year').startOf('day'), dayjs().startOf('year').subtract(1, 'day').endOf('year').endOf('day')],
+                'today': [now, now],
+                'yesterday': [now.subtract(1, 'day'), now.subtract(1, 'day')],
+                'last-7-days': [now.subtract(6, 'day'), now],
+                'last-30-days': [now.subtract(29, 'day'), now],
+                'last-180-days': [now.subtract(179, 'day'), now],
+                'this-month': [now.startOf('month'), now.endOf('month')],
+                'last-month': [lastMonth.startOf('month'), lastMonth.endOf('month')],
+                'this-year': [now.startOf('year'), now.endOf('year')],
+                'last-year': [lastYear.startOf('year'), lastYear.endOf('year')],
             }
 
             if (presets[name]) {
-                this.startValue = presets[name][0].toISOString()
-                this.endValue = presets[name][1].toISOString()
+                this.startValue = zone.start(presets[name][0])
+                this.endValue = zone.end(presets[name][1])
                 this.$nextTick(() => {
                     this.setCalendarDates()
                     this.setCalendarRange()
@@ -120,16 +138,16 @@ export default (config) => {
             }
 
             // Like a calendar pick: a date-only end covers its whole day.
-            let startObject = start.hasTime ? start.date : start.date.startOf('day')
-            let endObject = end.hasTime ? end.date : end.date.endOf('day')
+            let startValue = start.hasTime ? zone.write(start.date) : zone.start(start.date)
+            let endValue = end.hasTime ? zone.write(end.date) : zone.end(end.date)
 
-            if (endObject.isBefore(startObject)) {
+            if (new Date(endValue) < new Date(startValue)) {
                 this.revertTyped(input)
                 return 'reverted'
             }
 
-            this.startValue = startObject.toISOString()
-            this.endValue = endObject.toISOString()
+            this.startValue = startValue
+            this.endValue = endValue
 
             this.$nextTick(() => {
                 // The display re-renders only if the formatted string differs,
@@ -176,18 +194,13 @@ export default (config) => {
         setCalendar () {
             this.destroyCalendar()
 
+            // Pikaday hands back a local date whose year, month and day are the ones clicked (the zone's, since it was given the wall clock).
             this.pikaday[0] = new Pikaday({ keyboardInput: false, onSelect: (value) => {
-                let dj = dayjs(value)
-                this.startValue = this.dateObjects[0]
-                    ? this.dateObjects[0].set('year', dj.get('year')).set('month', dj.get('month')).set('date', dj.get('date')).startOf('day').toISOString()
-                    : dj.startOf('day').toISOString()
+                this.startValue = zone.start(dayjs(value))
             }})
 
             this.pikaday[1] = new Pikaday({ keyboardInput: false, onSelect: (value) => {
-                let dj = dayjs(value)
-                this.endValue = this.dateObjects[1]
-                    ? this.dateObjects[1].set('year', dj.get('year')).set('month', dj.get('month')).set('date', dj.get('date')).endOf('day').toISOString()
-                    : dj.endOf('day').toISOString()
+                this.endValue = zone.end(dayjs(value))
             }})
 
             this.calendarElements[0].prepend(this.pikaday[0].el)

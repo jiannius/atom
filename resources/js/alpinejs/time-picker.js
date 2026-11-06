@@ -1,6 +1,10 @@
 import dayjs from 'dayjs'
+import { zoneOf } from '../helpers/zone'
 
-export default () => {
+export default (config = {}) => {
+    // A full date-time value is read and written as the wall clock in `config.timezone` (a date-picker's); a bare time never is.
+    const zone = zoneOf(config.timezone)
+
     return {
         hr: null,
         min: null,
@@ -14,7 +18,7 @@ export default () => {
 
         get timePickerObject () {
             if (!this.timePickerValue) return null
-            let obj = this.format === 'time' ? dayjs('1970-01-01 '+this.timePickerValue) : dayjs(this.timePickerValue)
+            let obj = this.format === 'time' ? dayjs('1970-01-01 '+this.timePickerValue) : zone.read(this.timePickerValue)
             return obj.isValid() ? obj : null
         },
 
@@ -60,11 +64,10 @@ export default () => {
                 this.timePickerValue = obj.format('HH:mm:ss')
             }
             else if (this.timePickerObject) {
-                this.timePickerValue = this.timePickerObject
+                this.timePickerValue = zone.write(this.timePickerObject
                     .set('hour', obj.get('hour'))
                     .set('minute', obj.get('minute'))
-                    .set('second', obj.get('second'))
-                    .toISOString()
+                    .set('second', obj.get('second')))
             }
         },
 

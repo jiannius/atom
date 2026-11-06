@@ -10,6 +10,7 @@
     'error' => null,
     'prefix' => null,
     'suffix' => null,
+    'timezone' => null,
 ])
 
 @php
@@ -27,6 +28,11 @@ $merges = [
 
 if ($inputId) {
     $merges['id'] = $inputId;
+}
+
+// Forwarded only when set, so a variant that has no use for it (calendar) is handed nothing.
+if (filled($timezone)) {
+    $merges['timezone'] = $timezone;
 }
 @endphp
 
