@@ -102,7 +102,7 @@ export const movedRange = (item, { days = 0, minutes = 0 } = {}) => {
 // An item with its end moved to `target`, the start where it was. An all-day item takes a date for the last day it covers, and covers at least its
 // first. A timed item takes the moment its end is at (the time grid), or a date for the last day it covers (the month's bar: the time of day of
 // its end stays, and an end at midnight, which is the end of the day before, stays at the midnight that follows the new last day). A timed item
-// is at least one slot long, and ends no later than `latest` when it is given (the time grid: the midnight after the day it is pulled on).
+// is at least one slot long, but ends no later than `latest` when it is given (the time grid: the midnight after the day it is pulled on), which wins at the edge of the day.
 export const resizedRange = (item, target, { slotDuration = 30, latest = null } = {}) => {
     if (item.allDay) {
         let first = dateOf(item.start)
@@ -118,9 +118,10 @@ export const resizedRange = (item, target, { slotDuration = 30, latest = null } 
         end = time === '00:00' ? addDays(target, 1) + 'T00:00' : target + 'T' + time
     }
 
-    if (latest && end > latest) end = latest
-
     if (minutesBetween(item.start, end) < slotDuration) end = addMinutes(item.start, slotDuration)
+
+    // last, so a minimum length never carries the end past the day: at the edge of the day the item is shorter than a slot instead
+    if (latest && end > latest) end = latest
 
     return { start: item.start, end, allDay: false }
 }
@@ -128,8 +129,8 @@ export const resizedRange = (item, target, { slotDuration = 30, latest = null } 
 // An item with its start moved to `target`, the end where it was: the other half of resizedRange. An all-day item takes a date for the first day it
 // covers, and covers at least its last. A timed item takes the moment its start is at (the time grid), or a date for the first day it covers (the
 // month's bar, which keeps the time of day it starts at). One with no end is given the end it is drawn with, a slot after its start, as a pull of its
-// end gives it one. A timed item is at least one slot long, and starts no earlier than `earliest` when it is given (the time grid: the midnight
-// that starts the day it is pulled on).
+// end gives it one. A timed item is at least one slot long, but starts no earlier than `earliest` when it is given (the time grid: the midnight
+// that starts the day it is pulled on), which wins at the edge of the day.
 export const resizedStart = (item, target, { slotDuration = 30, earliest = null } = {}) => {
     if (item.allDay) {
         let last = dateOf(item.end ?? item.start)
@@ -140,9 +141,10 @@ export const resizedStart = (item, target, { slotDuration = 30, earliest = null 
     let end = item.end ?? addMinutes(item.start, slotDuration)
     let start = timeOf(target) === null ? target + 'T' + timeOf(item.start) : target
 
-    if (earliest && start < earliest) start = earliest
-
     if (minutesBetween(start, end) < slotDuration) start = addMinutes(end, -slotDuration)
+
+    // last, as in resizedRange: a minimum length never carries the start into the day before
+    if (earliest && start < earliest) start = earliest
 
     return { start, end, allDay: false }
 }

@@ -248,6 +248,17 @@ test.describe('an item with its end moved', () => {
         expect(resizedRange(item, '2026-10-15T01:00', { latest: '2026-10-15T00:00' }).end).toBe('2026-10-15T00:00')
         expect(resizedRange(item, '2026-10-14T23:00', { latest: '2026-10-15T00:00' }).end).toBe('2026-10-14T23:00')
     })
+
+    test('a minimum length never carries the end past `latest`: a resize does not change the date', () => {
+        const late = { start: '2026-10-14T23:45', end: '2026-10-14T23:55', allDay: false }
+
+        // 23:45 + a slot is 00:15 the next day; the day's edge wins and the item is 15 minutes long
+        expect(resizedRange(late, '2026-10-14T23:59', { latest: '2026-10-15T00:00' })).toEqual({ start: '2026-10-14T23:45', end: '2026-10-15T00:00', allDay: false })
+        // pulled before its own start, still on the same day
+        expect(resizedRange(late, '2026-10-14T23:00', { latest: '2026-10-15T00:00' }).end).toBe('2026-10-15T00:00')
+        // without `latest` (the month) the minimum still holds
+        expect(resizedRange(late, '2026-10-14T23:50').end).toBe('2026-10-15T00:15')
+    })
 })
 
 test.describe('an item with its start pulled (a finger\'s top grip, or the first day of a bar)', () => {
@@ -267,6 +278,15 @@ test.describe('an item with its start pulled (a finger\'s top grip, or the first
         expect(resizedStart(item, '2026-10-14T12:00')).toEqual({ start: '2026-10-14T10:30', end: '2026-10-14T11:00', allDay: false })
         expect(resizedStart(item, '2026-10-14T12:00', { slotDuration: 15 }).start).toBe('2026-10-14T10:45')
         expect(resizedStart(item, '2026-10-13T22:00', { earliest: '2026-10-14T00:00' }).start).toBe('2026-10-14T00:00')
+    })
+
+    test('a minimum length never carries the start before `earliest`: a resize does not change the date', () => {
+        const early = { start: '2026-10-14T00:05', end: '2026-10-14T00:10', allDay: false }
+
+        // 00:10 - a slot is 23:40 the day before; the day's edge wins and the item is 10 minutes long
+        expect(resizedStart(early, '2026-10-14T00:08', { earliest: '2026-10-14T00:00' })).toEqual({ start: '2026-10-14T00:00', end: '2026-10-14T00:10', allDay: false })
+        expect(resizedStart(early, '2026-10-14T01:00', { earliest: '2026-10-14T00:00' }).start).toBe('2026-10-14T00:00')
+        expect(resizedStart(early, '2026-10-14T00:08').start).toBe('2026-10-13T23:40')
     })
 
     test('one with no end is given the end it is drawn with, a slot after its start', () => {
