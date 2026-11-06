@@ -458,6 +458,80 @@ test.describe('the month on a phone', () => {
         await expect(probe(page).locator('[data-atom-calendar-week] [data-atom-calendar-ghost]')).toHaveCount(0)
     })
 
+    // The finger above is pointer and touch events sent by hand to what the finger pressed, and sent again to what is under the point once that is no
+    // longer on the page. A row of the list is taken off the page as the press becomes a drag, and a real touch goes on to the row it began on, so the
+    // hand-sent finger hid a drag the browser cancelled (the touchmove never reached the calendar, nothing prevented it, the page panned, and a
+    // pointercancel ended the move). This one is the browser's own: touch events from the DevTools protocol, which the engine turns into pointer events.
+    // Chromium only (the protocol is); WebKit's real touch is not reachable from here.
+    const realFinger = async (page) => {
+        const cdp = await page.context().newCDPSession(page)
+        const send = (type, points) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(({ x, y }) => ({ x, y, id: 1 })) })
+
+        return {
+            down: (point) => send('touchStart', [point]),
+            async move (from, to, steps = 12) {
+                for (let i = 1; i <= steps; i++) {
+                    await send('touchMove', [{ x: from.x + (to.x - from.x) * i / steps, y: from.y + (to.y - from.y) * i / steps }])
+                    await page.waitForTimeout(16)
+                }
+            },
+            up: () => send('touchEnd', []),
+            cancel: () => send('touchCancel', []),
+        }
+    }
+
+    async function pressStandupInList (page, hand) {
+        const day = probe(page).locator('[data-atom-calendar-day][data-date="2026-10-09"]')
+        const list = probe(page).locator('[data-atom-calendar-popover]')
+
+        await finger(page).tap(await inBox(day, 0.5, 0.8))
+        await expect(list).toBeVisible()
+
+        const from = await inBox(list.locator('[data-atom-calendar-chip]', { hasText: 'Team standup' }))
+
+        await hand.down(from)
+        // held: the list goes, and the item's ghost is on its day
+        await expect(list).toBeHidden({ timeout: 1500 })
+        await expect(probe(page).locator('[data-atom-calendar-week] [data-atom-calendar-ghost]')).toHaveCount(1)
+
+        const target = probe(page).locator('[data-atom-calendar-day][data-date="2026-10-14"]')
+
+        await target.scrollIntoViewIfNeeded()
+
+        return { from, to: await inBox(target, 0.5, 0.8) }
+    }
+
+    test.describe('with a real touch (the browser\'s own events)', () => {
+        test.skip(({ browserName }) => browserName !== 'chromium', 'the DevTools protocol is Chromium\'s')
+
+        test('the list drag is not cancelled: the item is put on the day the finger is let go over', async ({ page }) => {
+            const hand = await realFinger(page)
+            const { from, to } = await pressStandupInList(page, hand)
+
+            // the row the finger pressed is gone from the page, and the finger is still its
+            await hand.move(from, to)
+            await hand.up()
+
+            await expect.poll(() => moves(page)).toEqual([{ id: 1, start: '2026-10-14T09:30', end: '2026-10-14T10:00', allDay: false }])
+            expect(await resizes(page)).toEqual([])
+            await expect(probe(page).locator('[data-atom-calendar-week] [data-atom-calendar-ghost]')).toHaveCount(0)
+        })
+
+        test('a pointercancel in the middle of the drag gives the move up: nothing is told, the ghost goes', async ({ page }) => {
+            const hand = await realFinger(page)
+            const { from, to } = await pressStandupInList(page, hand)
+
+            await page.evaluate(() => { window.__cancels = 0; document.addEventListener('pointercancel', () => window.__cancels++, true) })
+            await hand.move(from, to, 4)
+            await hand.cancel()
+
+            await expect(probe(page).locator('[data-atom-calendar-week] [data-atom-calendar-ghost]')).toHaveCount(0)
+            expect(await page.evaluate(() => window.__cancels)).toBeGreaterThan(0)
+            await page.waitForTimeout(300)
+            expect(await moves(page)).toEqual([])
+        })
+    })
+
     test('a tap on a row of the list is still its click, and a finger that scrolls the list moves nothing', async ({ page }) => {
         const hand = finger(page)
         const list = probe(page).locator('[data-atom-calendar-popover]')

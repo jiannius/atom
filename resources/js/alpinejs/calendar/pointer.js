@@ -216,9 +216,16 @@ export default {
 
             // Once the long press has come the finger is the gesture's, and the page must not scroll under it. Listened to on the calendar and not the
             // document, where a listener is passive by default and cannot prevent anything.
-            this.rootEl.addEventListener('touchmove', (move) => {
+            let hold = (move) => {
                 if (gesture.active && move.cancelable) move.preventDefault()
-            }, { signal, passive: false })
+            }
+
+            this.rootEl.addEventListener('touchmove', hold, { signal, passive: false })
+
+            // A touch's moves go to the element it began on, wherever that is by then. A row of the day list is taken off the page when the press
+            // becomes a drag (activate() closes the list), so the moves that follow reach the detached row and never bubble to the calendar: the page
+            // would pan and the browser cancel the pointer. The row holds the finger itself.
+            if (spec.el && spec.list) spec.el.addEventListener('touchmove', hold, { signal, passive: false })
         }
 
         // a grip is pulled at once, by a finger too: it takes no scroll of the browser's to be told apart from
