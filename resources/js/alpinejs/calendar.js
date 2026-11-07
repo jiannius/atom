@@ -233,9 +233,9 @@ export default () => ({
         let max = this.config.max ?? null
         let slotDuration = this.config.slotDuration ?? 30
 
-        let { labels, config } = this
+        let { labels, config, picked } = this
 
-        return memoise(this, 'grid', [items, items.length, days, today, max, slotDuration, labels, config], () => {
+        return memoise(this, 'grid', [items, items.length, days, today, max, slotDuration, labels, config, picked], () => {
             let grid = timeGrid(days, items, { today, max, slotDuration })
 
             grid.columns.forEach((column) => {
@@ -290,9 +290,9 @@ export default () => ({
         let { items, todayDate: today, previewKey } = this
         let max = this.config.max ?? null
 
-        let { labels, config, popoverDate, popoverSource } = this
+        let { labels, config, popoverDate, popoverSource, picked } = this
 
-        return memoise(this, 'weeks', [days, days.length, items, items.length, max, today, previewKey, labels, config, popoverDate, popoverSource], () => {
+        return memoise(this, 'weeks', [days, days.length, items, items.length, max, today, previewKey, labels, config, popoverDate, popoverSource, picked], () => {
             let weeks = monthLayout(days, items, { max, today, preview: raw(this.preview) })
 
             weeks.forEach((week) => {
@@ -330,6 +330,8 @@ export default () => ({
     // What a chip says, worked out with the layout so that its bindings read the scope variable alone. A binding that reads `labels` or `config` as well
     // as its scope can run with the clone's old scope while a payload is read, and Alpine drops the run that the new scope would bring (#92).
     nameChip (chip) {
+        // whether a finger has picked it up, which shows its grips: with the layout too, as the strings are (a row of the day list is never picked up in place)
+        chip.picked = !chip.static && this.picked !== null && String(chip.id) === this.picked
         chip.label = this.itemLabel(chip)
         chip.time = this.timeLabel(chip)
         chip.range = this.timeRange(chip)

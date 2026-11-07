@@ -167,10 +167,6 @@ export default {
         this.picked = null
     },
 
-    isPicked (chip) {
-        return this.picked !== null && !chip.static && String(chip.id) === this.picked
-    },
-
     // Start following the pointer: on the document, so a pointer that leaves the calendar (or the window) is still followed and can be let go anywhere
     beginGesture (event, spec) {
         let abort = new AbortController()
@@ -399,10 +395,9 @@ export default {
 
         if (!gesture || event.pointerId !== gesture.id) return
 
-        if (gesture.active) {
-            gesture.point = { x: event.clientX, y: event.clientY }
-            gesture.current = this.gestureCell(gesture, event.clientX, event.clientY) ?? gesture.current
-        }
+        gesture.point = { x: event.clientX, y: event.clientY }
+
+        if (gesture.active) gesture.current = this.gestureCell(gesture, event.clientX, event.clientY) ?? gesture.current
 
         this.finish(gesture)
     },
@@ -419,7 +414,11 @@ export default {
         this.endGesture(true, true)
 
         if (kind !== 'select') {
-            if (!active) return null
+            if (!active) {
+                if (gesture.immediate && gesture.grips) this.releaseGrip(gesture)
+
+                return null
+            }
 
             this.commitChange(gesture, range)
 
@@ -435,6 +434,17 @@ export default {
         }
 
         this.commitSelect(range)
+    },
+
+    // A grip that was pressed and let go without a pull is a tap. Its hit box is a finger's, 2rem square, and overhangs what is beside the edge it
+    // sits on (the title of the event below a block's end, the one above its start), so a tap meant for that event lands on the grip, and the
+    // press on a grip is not a press elsewhere (see pick()). What the tap was on is what is under the grip at the release point: the picked item
+    // itself keeps it picked up; another event, or an empty hour, puts it down (WebKit then sends the click on to that event).
+    releaseGrip (gesture) {
+        let under = document.elementsFromPoint(gesture.point.x, gesture.point.y).find((el) => !el.closest('[data-atom-calendar-grips]'))
+        let own = this.rootEl.contains(under) && under.closest('[data-atom-calendar-chip]')?.getAttribute('data-atom-calendar-item') === this.picked
+
+        if (!own) this.unpick()
     },
 
     // Whether the month is laid out narrow. Not measured here: the stylesheet is asked, through a probe that its own container query shows (the

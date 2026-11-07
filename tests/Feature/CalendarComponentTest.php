@@ -822,7 +822,7 @@ describe('calendar accessibility markup', function () {
         expect($kinds)->toHaveCount(3);
 
         // a finger pulls an end by the grips of an item it has picked up, which are beside the chip, for the pointer alone too
-        preg_match('/<template x-if="isPicked\(chip\) && \(canResize\(chip\) \|\| canResizeStart\(chip\)\)">(.*?)<\/template>/s', $chips, $grips);
+        preg_match('/<template x-if="chip.picked && \(canResize\(chip\) \|\| canResizeStart\(chip\)\)">(.*?)<\/template>/s', $chips, $grips);
 
         expect($grips)->toHaveCount(2)
             ->and($grips[1])->toContain('aria-hidden="true"')

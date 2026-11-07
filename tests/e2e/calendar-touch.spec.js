@@ -328,12 +328,71 @@ test.describe('a long press on an item in the time grid', () => {
         expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('[data-atom-calendar-grip]')?.getAttribute('data-atom-calendar-grip') ?? null, [over.x, over.y])).toBe('end')
     })
 
+    // The grip is a finger's size, 2rem square, and overhangs the event below a block (the title of it) by half. A tap there is meant for that event: it is
+    // a tap on something else, and puts the item down; a press on a grip is only a press on the item when it becomes a pull.
+    async function pickPlanning (page, hand) {
+        await open(page, 'view=week&date=2026-10-26&busy=1')
+        await centre(page, 'Planning')
+
+        const point = await inBox(chipOf(page, 'block', 'Planning'))
+
+        await longPress(page, hand, point)
+        await hand.up(point)
+        await expect(grips(page, 'Planning')).toHaveCount(2)
+
+        const end = await grip(page, 'Planning', 'end').boundingBox()
+
+        // the lower half of the end grip: over Retro's title, 10:00 to 11:00 under Planning in its lane
+        return { x: end.x + end.width / 2, y: end.y + end.height * 0.75 }
+    }
+
+    test('a tap on the lower half of a grip, over the event below, puts the item down', async ({ page }) => {
+        const hand = finger(page)
+        const over = await pickPlanning(page, hand)
+
+        await hand.tap(over)
+        await expect(grips(page, 'Planning')).toHaveCount(0)
+        expect(await picked(page)).toBeNull()
+        expect(await resizes(page)).toEqual([])
+        expect(await moves(page)).toEqual([])
+    })
+
+    test('the same tap, with the browser\'s own touch, puts it down, and on WebKit the event below gets the click', async ({ page, browserName }) => {
+        const hand = finger(page)
+        const over = await pickPlanning(page, hand)
+
+        await page.touchscreen.tap(over.x, over.y)
+        await expect(grips(page, 'Planning')).toHaveCount(0)
+        expect(await picked(page)).toBeNull()
+        expect(await resizes(page)).toEqual([])
+
+        // WebKit sends the click to the event under the finger, which is what was meant; Chromium sends it to the grip that was on top, and it is not forwarded
+        if (browserName === 'webkit') await expect.poll(() => page.evaluate(() => window.__clicks)).toContain(22)
+    })
+
+    test('a grip pulled a little still resizes, and the item stays picked up', async ({ page }) => {
+        const hand = finger(page)
+        await pickPlanning(page, hand)
+        const end = await inBox(grip(page, 'Planning', 'end'))
+
+        await hand.down(end)
+        const pulled = { x: end.x, y: end.y + 60 }
+
+        await hand.move(end, pulled, 4)
+        await hand.up(pulled)
+
+        expect((await resizes(page)).length).toBe(1)
+        expect(await picked(page)).not.toBeNull()
+    })
+
     test('a press on the item or on its grip does not put it down', async ({ page }) => {
         const hand = finger(page)
 
         await pickStandup(page, hand)
 
-        const end = await inBox(grip(page, 'Team standup', 'end'))
+        // the upper half of the end grip, which is over the item (the lower half is over whatever is below it: see the tests of the grip's overhang)
+        const box = await grip(page, 'Team standup', 'end').boundingBox()
+        const end = { x: box.x + box.width / 2, y: box.y + box.height * 0.25 }
 
         await hand.down(end)
         await hand.up(end)

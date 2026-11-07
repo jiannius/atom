@@ -110,7 +110,7 @@
 {{-- The grips of an item a finger has picked up (pick() in calendar/pointer.js), one on each end it can be pulled by: the top and the bottom of a block,
      the first and the last day of a bar. Beside the chip and not in it, in the block or the slot it is drawn in: a block clips what overflows it, and a
      grip is bigger than the edge it sits on, so that a finger can hold it (atom.css). For the pointer alone, as the handle is (see the top of this file). --}}
-<template x-if="isPicked(chip) && (canResize(chip) || canResizeStart(chip))">
+<template x-if="chip.picked && (canResize(chip) || canResizeStart(chip))">
     <span
     aria-hidden="true"
     x-bind:data-kind="chip.kind"
