@@ -59,6 +59,8 @@ $suffix = request()->getQueryString() ? '?'.request()->getQueryString() : '';
                 </atom:menu>
             </atom:dropdown>
 
+            <div data-select-wrap><atom:select variant="listbox" :options="[['value' => 'a', 'label' => 'Draft'], ['value' => 'b', 'label' => 'Sent']]"/></div>
+
             <atom:modal name="collapse-modal" data-modal>
                 <p>A modal</p>
                 <input type="text" class="border" data-modal-field>

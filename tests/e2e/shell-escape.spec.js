@@ -142,6 +142,67 @@ test.describe('Escape and the stashed sidebar', () => {
     await expect(toggle(page)).toBeFocused()
   })
 
+  test('an open select list takes the first Escape and the sidebar stays; the next one closes the sidebar', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await go(page, '&layers=1')
+
+    await toggle(page).click()
+    await expect.poll(() => sidebarShown(page)).toBe(true)
+
+    await press(page, '[data-select-wrap] [role="combobox"]')
+    const option = page.getByRole('option', { name: 'Sent' })
+    await expect(option).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(option).toBeHidden()
+    expect(await stashed(page)).toBe(true)
+    await expect.poll(() => sidebarShown(page)).toBe(true)
+
+    await page.keyboard.press('Escape')
+    expect(await stashed(page)).toBe(false)
+    await expect.poll(() => sidebarShown(page)).toBe(false)
+    await expect(toggle(page)).toBeFocused()
+  })
+
+  test('a repeated Escape (a held key) and one that ends an IME composition leave the sidebar open', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await go(page)
+
+    await toggle(page).click()
+    await expect.poll(() => sidebarShown(page)).toBe(true)
+
+    await page.evaluate(() => {
+      const fire = (init) => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true, ...init }))
+      fire({ repeat: true })
+      fire({ isComposing: true })
+    })
+    expect(await stashed(page)).toBe(true)
+    await expect.poll(() => sidebarShown(page)).toBe(true)
+
+    await page.keyboard.press('Escape')
+    expect(await stashed(page)).toBe(false)
+  })
+
+  test('the press that closes the sidebar does not reach the page under it', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 })
+    await go(page)
+
+    await page.evaluate(() => {
+      window.__escapes = 0
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.__escapes++ })
+    })
+    await toggle(page).click()
+    await expect.poll(() => sidebarShown(page)).toBe(true)
+    await page.keyboard.press('Escape')
+
+    expect(await stashed(page)).toBe(false)
+    expect(await page.evaluate(() => window.__escapes)).toBe(0)
+
+    // with the sidebar closed the key is the page's again
+    await page.keyboard.press('Escape')
+    expect(await page.evaluate(() => window.__escapes)).toBe(1)
+  })
+
   test('a toast on screen (a manual popover that never takes Escape) does not keep the sidebar open', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 })
     await go(page)

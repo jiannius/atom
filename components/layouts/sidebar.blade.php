@@ -155,10 +155,13 @@ $trailEmpty = $crumbsOnly
          asked instead: an open dialog or popover (a dropdown, a tooltip, a select's list; not a toast, which never takes Escape) has the key
          first, and the next press is the sidebar's. --}}
     x-on:keydown.escape.window.capture="(e) => {
-        if (screenLg || e.defaultPrevented || !document.body.hasAttribute('data-show-stashed-sidebar')) return
+        // a held key or an IME composition being cancelled is not a press for the sidebar (a held Escape that closed a layer must not go on to close it)
+        if (screenLg || e.repeat || e.isComposing || e.defaultPrevented || !document.body.hasAttribute('data-show-stashed-sidebar')) return
         if (document.querySelector('dialog[open], :popover-open:not([data-atom-toast])')) return
 
+        // this press is the sidebar's: the Escape handlers of the page under it (a typed date's revert, the calendar's selection) do not also run
         e.preventDefault()
+        e.stopPropagation()
         document.body.removeAttribute('data-show-stashed-sidebar')
         document.querySelector('[data-atom-sidebar-toggle]')?.focus()
     }"
