@@ -257,11 +257,20 @@ for (const tw of ['floor', 'latest']) {
       await expect(page.locator('[data-atom-navlist-group-trigger]').first()).toBeHidden()
       await expect(link(page, 'Sales')).toBeVisible()
 
-      // opening moved the focus into the panel (the page behind is inert, see shell-menu-panel.spec.js); Tab goes round the panel and the bar
-      expect(await page.evaluate(() => !!document.activeElement.closest('[data-atom-header-nav]'))).toBe(true)
-      for (let i = 0; i < 16 &&!(await dashboard.evaluate((el) => el === document.activeElement)); i++) {
-        await page.keyboard.press('Tab')
-      }
+      // opening moved the focus into the panel (the page behind is inert, see shell-menu-panel.spec.js); Tab goes on to the next link of the panel
+      const where = () => page.evaluate(() => ({
+        text: document.activeElement.textContent.trim(),
+        inPanel: !!document.activeElement.closest('[data-atom-header-nav]'),
+        isLink: document.activeElement.matches('a[data-atom-navlist-item]'),
+      }))
+      const first = await where()
+      expect(first).toMatchObject({ inPanel: true, isLink: true })
+      await page.keyboard.press('Tab')
+      const second = await where()
+      expect(second).toMatchObject({ inPanel: true, isLink: true })
+      expect(second.text).not.toBe(first.text)
+
+      await dashboard.focus()
       await expect(dashboard).toBeFocused()
 
       await page.keyboard.press('Escape')
