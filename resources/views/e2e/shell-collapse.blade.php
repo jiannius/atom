@@ -47,6 +47,25 @@ $suffix = request()->getQueryString() ? '?'.request()->getQueryString() : '';
         <p>Page {{ $page }}</p>
         <input type="text" class="border" data-field>
         <div contenteditable="true" class="border" data-editor>editor</div>
+        {{-- ?layers=1: a modal and a dropdown to hold Escape for themselves --}}
+        @if (request()->query('layers') === '1')
+            <button type="button" x-data x-on:click="$dispatch('atom-modal-show', { name: 'collapse-modal' })" data-open-modal>Open modal</button>
+
+            <atom:dropdown>
+                <button type="button" data-open-dropdown>Open dropdown</button>
+
+                <atom:menu popover>
+                    <atom:menu.item href="#one">Item one</atom:menu.item>
+                </atom:menu>
+            </atom:dropdown>
+
+            <div data-select-wrap><atom:select variant="listbox" :options="[['value' => 'a', 'label' => 'Draft'], ['value' => 'b', 'label' => 'Sent']]"/></div>
+
+            <atom:modal name="collapse-modal" data-modal>
+                <p>A modal</p>
+                <input type="text" class="border" data-modal-field>
+            </atom:modal>
+        @endif
         <a href="/atom/e2e/shell-collapse/{{ $page === 'one' ? 'two' : 'one' }}{{ $suffix }}" wire:navigate data-go>Go to the other page</a>
     </div>
 
