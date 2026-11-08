@@ -227,7 +227,7 @@ for (const tw of ['floor', 'latest']) {
   test.describe(`header shell at 390px, ${tw} consumer build`, () => {
     test.use({ viewport: { width: 390, height: 800 } })
 
-    test('the nav moves into a menu that opens by keyboard and closes with Escape', async ({ page }) => {
+    test('the nav moves into a menu that opens by keyboard and closes with Escape', async ({ page, browserName }) => {
       await open(page, 'header', { tw })
 
       const button = page.locator('[data-atom-header-menu-button]')
@@ -265,7 +265,8 @@ for (const tw of ['floor', 'latest']) {
       }))
       const first = await where()
       expect(first).toMatchObject({ inPanel: true, isLink: true })
-      await page.keyboard.press('Tab')
+      // Safari's Tab skips links unless the system setting says otherwise: Alt+Tab visits every control
+      await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab')
       const second = await where()
       expect(second).toMatchObject({ inPanel: true, isLink: true })
       expect(second.text).not.toBe(first.text)
@@ -1075,6 +1076,8 @@ for (const tw of ['floor', 'latest']) {
 
       await page.setViewportSize({ width: 1100, height: 800 })
       await expect(button).toBeHidden()
+      // WebKit reports the lg media query's `change` a little after the layout; resizing back at once misses it
+      await page.waitForTimeout(150)
       await page.setViewportSize({ width: 768, height: 800 })
       await expect(button).toBeVisible()
 
@@ -1109,6 +1112,8 @@ for (const tw of ['floor', 'latest']) {
 
       await page.setViewportSize({ width: 1300, height: 800 })
       await expect(page.locator('[data-atom-shell-search]')).toBeVisible()
+      // WebKit reports the xl media query's `change` a little after the layout; resizing back at once misses it
+      await page.waitForTimeout(150)
       await page.setViewportSize({ width: 1100, height: 800 })
 
       await expect(button).toBeVisible()

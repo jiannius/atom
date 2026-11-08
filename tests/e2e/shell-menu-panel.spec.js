@@ -77,7 +77,8 @@ test.describe('the header menu panel as a modal layer', () => {
     expect(await where(page)).toBe('panel')
   })
 
-  test('the page behind is inert while the panel is open, the bar is not, and it is let go on close', async ({ page }) => {
+  test('the page behind is inert while the panel is open, the bar is not, and it is let go on close', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', "reads the accessibility tree over CDP, which only Chromium has")
     await go(page)
     expect(await inertTags(page)).toEqual([])
 

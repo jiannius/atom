@@ -207,28 +207,45 @@ export default () => ({
     },
 
     /**
-     * Escape closes the innermost thing that is open and nothing else: a dropdown inside the bar or the panel
-     * (a context switcher, the account menu) is a native popover that closes itself on this same keypress, so
-     * the capture phase asks before it has. Then the search field, then "More", then the menu panel.
+     * Escape closes the innermost thing that is open and nothing else. It is heard on the window, in the capture phase, not on the
+     * header: a click on something that takes no focus (Safari does not focus a button on click; blank space in the panel, the search
+     * popover's edge, the bar) leaves the focus on <body>, and an Escape that only the header heard would be dead. So the layers are
+     * asked instead, as layouts.sidebar does: a modal dialog or a popover (a dropdown in the bar or the panel, a tooltip; not a toast,
+     * which never takes Escape) has the key first and the next press is ours. Then the search field, then "More", then a navlist.group
+     * dropdown (it closes itself, on the window too, and returns the focus to its trigger), then the menu panel. Only a press that
+     * closes one of those is prevented and stopped, so a host's own Escape listener still runs when nothing here is open.
      */
     escape (e) {
-        if (this.$el.querySelector(':popover-open')) return
+        // a held key or an IME composition being cancelled is not a press for us
+        if (e.repeat || e.isComposing || e.defaultPrevented) return
+        if (document.querySelector('dialog:modal, :popover-open:not([data-atom-toast])')) return
 
         if (this.search) {
+            this.take(e)
             this.search = false
             this.$refs.searchButton?.focus()
         }
         else if (this.more) {
+            this.take(e)
             this.more = false
             this.$refs.moreButton?.focus()
         }
         else if (this.$el.querySelector('[data-atom-navlist-group][data-menu-open]')) {
             // a navlist.group dropdown closes itself and returns focus to its trigger
         }
-        else if (this.menu) {
+        else if (this.menu && !window.matchMedia(LG).matches) {
+            this.take(e)
             this.menu = false
             this.$refs.menuButton?.focus()
         }
+    },
+
+    /**
+     * This press is ours: the Escape handlers of the page under it do not also run.
+     */
+    take (e) {
+        e.preventDefault()
+        e.stopPropagation()
     },
 
     /**

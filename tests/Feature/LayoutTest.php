@@ -415,12 +415,13 @@ describe('layouts.header search and "More"', function () {
             ->and(domQuery($html, '//*[@data-atom-shell-search]'))->toHaveCount(0);
     });
 
-    it('closes everything on Escape from the capture phase, so an inner dropdown\'s Escape never also closes the panel', function () use ($render) {
+    it('hears Escape on the window in the capture phase, so a click on something that takes no focus does not leave it dead and an inner dropdown\'s Escape never also closes the panel', function () use ($render) {
         $header = domQuery($render(), '//header[@data-atom-header-bar]')[0];
 
         expect($header->getAttribute('x-data'))->toBe('headerShell')
-            ->and($header->hasAttribute('x-on:keydown.escape.capture'))->toBeTrue()
-            ->and($header->getAttribute('x-on:keydown.escape.capture'))->toBe('escape($event)');
+            ->and($header->hasAttribute('x-on:keydown.escape.window.capture'))->toBeTrue()
+            ->and($header->getAttribute('x-on:keydown.escape.window.capture'))->toBe('escape($event)')
+            ->and($header->hasAttribute('x-on:keydown.escape.capture'))->toBeFalse();
     });
 
     it('prints "More" once after the nav, empty, as the group dropdown\'s markup, with unique ids', function () use ($render, $search, $nav) {

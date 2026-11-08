@@ -72,7 +72,7 @@ $trailEmpty = isset($crumbs)
          travel inside its own grid area). Not `relative`: below lg the nav panel is positioned against this element. --}}
     <header
     x-data="headerShell"
-    x-on:keydown.escape.capture="escape($event)"
+    x-on:keydown.escape.window.capture="escape($event)"
     x-on:click.outside="closeAll()"
     x-on:focusout="if (search && $event.relatedTarget && !$refs.search.contains($event.relatedTarget) && $event.relatedTarget !== $refs.searchButton) search = false"
     x-on:livewire:navigate.window="closeAll()"

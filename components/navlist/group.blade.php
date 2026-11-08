@@ -99,7 +99,7 @@ x-data="{
 }"
 x-bind:data-menu-open="header && menu ? '' : null"
 x-on:click.outside="menu = false"
-x-on:keydown.escape="if (menu) { menu = false; $refs.trigger.focus() }"
+x-on:keydown.escape.window="if (menu && !document.querySelector('dialog:modal, :popover-open:not([data-atom-toast])')) { menu = false; $refs.trigger.focus() }"
 x-on:focusout="if (menu && !$el.contains($event.relatedTarget)) menu = false"
 {{ $attributes->class(['group/disclosure mt-3.5 first:mt-0']) }}
 data-atom-navlist-group>
