@@ -87,9 +87,10 @@ $trailEmpty = $crumbsOnly
         } catch (e) {}
     </script>
 
-    {{-- stashed sidebar backdrop --}}
+    {{-- stashed sidebar backdrop. It also holds the drawer's behaviour (sidebar-drawer.js): the page behind goes inert while the drawer is open,
+         the focus moves in and comes back to the menu button. --}}
     <div
-    x-data
+    x-data="sidebarDrawer"
     x-on:click="document.body.removeAttribute('data-show-stashed-sidebar')"
     class="z-10 fixed inset-0 bg-black/20 hidden [[data-show-stashed-sidebar]_&]:block lg:[[data-show-stashed-sidebar]_&]:hidden"></div>
 
@@ -371,9 +372,12 @@ $trailEmpty = $crumbsOnly
             </div>
 
             <div class="flex shrink-0 items-center gap-1.5" data-atom-shell-actions>
-                @isset ($actions)
-                    {{ $actions }}
-                @endisset
+                {{-- the host's actions are the page's (inert while the drawer is open); the dark toggle and the account menu after them are the shell's --}}
+                <div class="contents" data-atom-shell-page-actions>
+                    @isset ($actions)
+                        {{ $actions }}
+                    @endisset
+                </div>
 
                 {{-- <atom:html> only emits the darkmode bootstrap when $dark, so
                      window.darkmode() doesn't exist on a light-only app and the
@@ -427,7 +431,7 @@ $trailEmpty = $crumbsOnly
     </main>
 
     @isset ($footer)
-        <footer class="[grid-area:footer] z-10 border-t border-border p-4">
+        <footer class="[grid-area:footer] z-10 border-t border-border p-4" data-atom-footer>
             {{ $footer ?? '' }}
         </footer>
     @endisset

@@ -21,6 +21,7 @@ import slider from './alpinejs/slider'
 import rating from './alpinejs/rating'
 import breadcrumbs from './alpinejs/breadcrumbs'
 import headerShell from './alpinejs/header-shell'
+import sidebarDrawer from './alpinejs/sidebar-drawer'
 import pageTabs from './alpinejs/page-tabs'
 import tableCount from './alpinejs/table-count'
 import tableChecked from './alpinejs/table-checked'
@@ -51,6 +52,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('rating', rating)
     Alpine.data('breadcrumbs', breadcrumbs)
     Alpine.data('headerShell', headerShell)
+    Alpine.data('sidebarDrawer', sidebarDrawer)
     Alpine.data('pageTabs', pageTabs)
     Alpine.data('tableCount', tableCount)
     Alpine.data('tableChecked', tableChecked)

@@ -21,8 +21,9 @@ const sidebarShown = (page) => page.evaluate(() => {
 })
 const focusIsToggle = (page) => page.evaluate(() => document.activeElement?.matches('[data-atom-sidebar-toggle]'))
 
-// the page under the backdrop is out of reach of the pointer, so the keyboard drives it
+// the page under the open drawer is inert (see shell-drawer.spec.js), so a layer is opened the way a host does it: by event, or from inside the drawer
 const press = (page, selector) => page.locator(selector).evaluate((el) => el.focus()).then(() => page.keyboard.press('Enter'))
+const openModal = (page) => page.evaluate(() => window.dispatchEvent(new CustomEvent('atom-modal-show', { detail: { name: 'collapse-modal' } })))
 
 test.describe('Escape and the stashed sidebar', () => {
   test.beforeEach(async ({ page }) => {
@@ -105,7 +106,7 @@ test.describe('Escape and the stashed sidebar', () => {
     await toggle(page).click()
     await expect.poll(() => sidebarShown(page)).toBe(true)
 
-    await press(page, '[data-open-modal]')
+    await openModal(page)
     await expect(page.locator('dialog[data-modal]')).toBeVisible()
     await page.locator('[data-modal-field]').focus()
 
@@ -127,8 +128,9 @@ test.describe('Escape and the stashed sidebar', () => {
     await toggle(page).click()
     await expect.poll(() => sidebarShown(page)).toBe(true)
 
-    await press(page, '[data-open-dropdown]')
-    const menu = page.getByRole('menuitem', { name: 'Item one' })
+    // the account menu in the drawer's brand row
+    await press(page, '[data-atom-sidebar] [data-atom-account-trigger]')
+    const menu = page.getByRole('menuitem', { name: 'Settings' }).first()
     await expect(menu).toBeVisible()
 
     await page.keyboard.press('Escape')
@@ -146,12 +148,12 @@ test.describe('Escape and the stashed sidebar', () => {
     await page.setViewportSize({ width: 390, height: 800 })
     await go(page, '&layers=1')
 
-    await toggle(page).click()
-    await expect.poll(() => sidebarShown(page)).toBe(true)
-
+    // the list is open when the drawer comes up (the page is inert under the drawer, so nothing can open it there)
     await press(page, '[data-select-wrap] [role="combobox"]')
     const option = page.getByRole('option', { name: 'Sent' })
     await expect(option).toBeVisible()
+    await page.evaluate(() => document.body.setAttribute('data-show-stashed-sidebar', ''))
+    await expect.poll(() => sidebarShown(page)).toBe(true)
 
     await page.keyboard.press('Escape')
     await expect(option).toBeHidden()
