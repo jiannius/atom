@@ -1,4 +1,5 @@
 import onMorphed from '../helpers/morphed'
+import modalLayer from '../helpers/modal-layer'
 
 // layouts.header: the menu panel below lg, the search field, and the priority-plus nav from lg up.
 //
@@ -16,6 +17,8 @@ import onMorphed from '../helpers/morphed'
 // current item is inside it.
 const LG = '(min-width: 64rem)'
 const XL = '(min-width: 80rem)'
+// the page behind the open menu panel: the layout's own nodes, outside any Livewire component (the bar itself stays live)
+const PAGE = '[data-atom-main], [data-atom-footer], [data-atom-shell-crumbs]'
 const REFERENCES = ['aria-describedby', 'aria-labelledby', 'aria-controls', 'for']
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 const FIELD = 'input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable=""], [contenteditable="true"]'
@@ -30,6 +33,34 @@ export default () => ({
 
     init () {
         this.destroyed = false
+
+        // The panel below lg is a modal layer (helpers/modal-layer.js, as layouts.sidebar's drawer): the page behind is inert while it
+        // is open, and the focus moves into it. Closing returns no focus by itself: the menu button and Escape do it
+        // (toggleMenu(), escape()), a click elsewhere or a navigation must leave it where the user put it. The layer is kept on the root,
+        // not on the Alpine data (a re-run of init() keeps what it made inert).
+        this.$el._atomMenuLayer ??= modalLayer({
+            isOpen: () => this.menu && !window.matchMedia(LG).matches,
+            page: PAGE,
+            container: () => this.$refs.nav,
+            scroll: '[data-atom-header-nav]',
+            close: () => this.closeAll(),
+            listen: (sync) => {
+                let lg = window.matchMedia(LG)
+
+                lg.addEventListener('change', sync)
+
+                return () => lg.removeEventListener('change', sync)
+            },
+        })
+
+        this.$el._atomMenuLayer.start()
+
+        // the panel is drawn from `menu` by an effect that has not run yet: write it, then the layer measures it
+        this.$watch('menu', () => {
+            this.sync()
+            this.$el._atomMenuLayer?.sync()
+        })
+
         this.fit()
 
         this.observer?.disconnect()
@@ -73,6 +104,8 @@ export default () => ({
 
     destroy () {
         this.destroyed = true
+        this.$el._atomMenuLayer?.stop()
+        this.$el._atomMenuLayer?.release()
         this.observer?.disconnect()
         this.$el._atomHeaderStopMorph?.()
         this.$el._atomHeaderStopListening?.()
@@ -131,6 +164,15 @@ export default () => ({
         this.$refs.nav.toggleAttribute('data-open', this.menu)
         this.$refs.search?.toggleAttribute('data-open', this.search)
         this.$refs.more?.toggleAttribute('data-menu-open', this.more)
+    },
+
+    /**
+     * The menu button: it opens the panel, or closes it and keeps the focus on itself (a click does not focus a button in Safari).
+     */
+    toggleMenu () {
+        this.menu = !this.menu
+
+        if (!this.menu) this.$refs.menuButton?.focus()
     },
 
     toggleSearch () {

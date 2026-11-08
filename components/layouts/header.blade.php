@@ -83,7 +83,7 @@ $trailEmpty = isset($crumbs)
             <button
             type="button"
             x-ref="menuButton"
-            x-on:click="menu = !menu"
+            x-on:click="toggleMenu()"
             x-bind:aria-expanded="menu ? 'true' : 'false'"
             aria-controls="atom-header-nav"
             aria-label="{{ t('Menu') }}"
@@ -266,7 +266,7 @@ $trailEmpty = isset($crumbs)
     </main>
 
     @isset ($footer)
-        <footer class="[grid-area:footer] z-10 mx-auto w-full max-w-[1248px] px-6 py-4">
+        <footer class="[grid-area:footer] z-10 mx-auto w-full max-w-[1248px] px-6 py-4" data-atom-footer>
             {{ $footer ?? '' }}
         </footer>
     @endisset

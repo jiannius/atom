@@ -257,8 +257,9 @@ for (const tw of ['floor', 'latest']) {
       await expect(page.locator('[data-atom-navlist-group-trigger]').first()).toBeHidden()
       await expect(link(page, 'Sales')).toBeVisible()
 
-      // Tab reaches the links in the panel (the brand link and the account trigger beside it sit between the button and the panel)
-      for (let i = 0; i < 5 &&!(await dashboard.evaluate((el) => el === document.activeElement)); i++) {
+      // opening moved the focus into the panel (the page behind is inert, see shell-menu-panel.spec.js); Tab goes round the panel and the bar
+      expect(await page.evaluate(() => !!document.activeElement.closest('[data-atom-header-nav]'))).toBe(true)
+      for (let i = 0; i < 16 &&!(await dashboard.evaluate((el) => el === document.activeElement)); i++) {
         await page.keyboard.press('Tab')
       }
       await expect(dashboard).toBeFocused()
