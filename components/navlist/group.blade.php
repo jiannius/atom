@@ -99,7 +99,9 @@ x-data="{
 }"
 x-bind:data-menu-open="header && menu ? '' : null"
 x-on:click.outside="menu = false"
-x-on:keydown.escape.window="if (menu && !document.querySelector('dialog:modal, :popover-open:not([data-atom-toast])')) { menu = false; $refs.trigger.focus() }"
+{{-- Escape is not heard here: layouts.header's escape() decides which layer an Escape closes (once, in the capture phase, whatever has the focus)
+     and asks this group to close with the event below. `menu` is only ever set by the header's trigger and its Arrow Down. --}}
+x-on:atom-navlist-group-close="if (menu) { menu = false; $refs.trigger.focus() }"
 x-on:focusout="if (menu && !$el.contains($event.relatedTarget)) menu = false"
 {{ $attributes->class(['group/disclosure mt-3.5 first:mt-0']) }}
 data-atom-navlist-group>

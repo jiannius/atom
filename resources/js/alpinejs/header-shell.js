@@ -212,10 +212,12 @@ export default () => ({
      * popover's edge, the bar) leaves the focus on <body>, and an Escape that only the header heard would be dead. So the layers are
      * asked instead, as layouts.sidebar does: a modal dialog or a popover (a dropdown in the bar or the panel, a tooltip; not a toast,
      * which never takes Escape) has the key first and the next press is ours. Then the search field, then "More", then a navlist.group
-     * dropdown (it closes itself, on the window too, and returns the focus to its trigger), then the menu panel. Only a press that
+     * dropdown (asked to close with an event, so one place decides and a host's own Escape listener cannot leave it open), then the menu panel. Only a press that
      * closes one of those is prevented and stopped, so a host's own Escape listener still runs when nothing here is open.
      */
     escape (e) {
+        let group
+
         // a held key or an IME composition being cancelled is not a press for us
         if (e.repeat || e.isComposing || e.defaultPrevented) return
         if (document.querySelector('dialog:modal, :popover-open:not([data-atom-toast])')) return
@@ -230,8 +232,10 @@ export default () => ({
             this.more = false
             this.$refs.moreButton?.focus()
         }
-        else if (this.$el.querySelector('[data-atom-navlist-group][data-menu-open]')) {
-            // a navlist.group dropdown closes itself and returns focus to its trigger
+        else if ((group = this.$el.querySelector('[data-atom-navlist-group][data-menu-open]'))) {
+            // a navlist.group dropdown: it closes and returns the focus to its trigger when asked
+            this.take(e)
+            group.dispatchEvent(new CustomEvent('atom-navlist-group-close'))
         }
         else if (this.menu && !window.matchMedia(LG).matches) {
             this.take(e)

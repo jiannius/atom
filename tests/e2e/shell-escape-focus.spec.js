@@ -171,3 +171,36 @@ test('an open modal has Escape first: a navlist.group open behind it stays', asy
   await expect(page.locator('dialog#zz')).toBeHidden()
   await expect(trigger).toHaveAttribute('aria-expanded', 'true')
 })
+
+test('a host that stops Escape above the page does not leave a navlist.group open', async ({ page }) => {
+  await open(page, 'header', 1280)
+  await page.evaluate(() => document.addEventListener('keydown', (e) => { if (e.key === 'Escape') e.stopPropagation() }))
+  const trigger = page.locator('[data-atom-navlist-group-trigger]', { hasText: 'Reports' })
+  await likeSafari(trigger)
+  await trigger.click()
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+  await page.keyboard.press('Escape')
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  await expect(trigger).toBeFocused()
+})
+
+test('an open group has the first Escape and the panel the next, deterministically', async ({ page }) => {
+  await open(page, 'header', 768)
+  const button = page.locator('[data-atom-header-menu-button]')
+  await button.click()
+  // below lg a group is a label over its items, not a dropdown: open its state by hand to see the order of the two layers
+  await page.evaluate(() => {
+    const group = document.querySelector('[data-atom-nav-shell] [data-atom-navlist-group]:not([data-atom-header-more])')
+    window.Alpine.$data(group).menu = true
+  })
+  await expect(page.locator('[data-atom-navlist-group][data-menu-open]')).toHaveCount(1)
+  await page.evaluate(() => { window.__heard = 0; document.addEventListener('keydown', (e) => { if (e.key === 'Escape') window.__heard++ }) })
+
+  await page.keyboard.press('Escape')
+  await expect(page.locator('[data-atom-navlist-group][data-menu-open]')).toHaveCount(0)
+  await expect(button).toHaveAttribute('aria-expanded', 'true')
+
+  await page.keyboard.press('Escape')
+  await expect(button).toHaveAttribute('aria-expanded', 'false')
+  expect(await page.evaluate(() => window.__heard)).toBe(0)
+})

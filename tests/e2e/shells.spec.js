@@ -265,8 +265,16 @@ for (const tw of ['floor', 'latest']) {
       }))
       const first = await where()
       expect(first).toMatchObject({ inPanel: true, isLink: true })
-      // Safari's Tab skips links unless the system setting says otherwise: Alt+Tab visits every control
-      await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab')
+      const landed = async () => {
+        const now = await where()
+        return now.inPanel && now.isLink && now.text !== first.text
+      }
+      // Tab to the next link: Safari on a Mac skips links with Tab (Alt+Tab visits every control), Linux WebKit and the others do not
+      for (const key of browserName === 'webkit' ? ['Tab', 'Alt+Tab'] : ['Tab']) {
+        for (let i = 0; i < 4 && !(await landed()); i++) {
+          await page.keyboard.press(key)
+        }
+      }
       const second = await where()
       expect(second).toMatchObject({ inPanel: true, isLink: true })
       expect(second.text).not.toBe(first.text)
