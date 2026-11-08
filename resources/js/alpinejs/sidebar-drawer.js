@@ -41,6 +41,7 @@ const shown = (el) => el.getClientRects().length > 0 && getComputedStyle(el).vis
 
 export default () => ({
     open: false,
+    modal: false,
 
     init () {
         let lg = window.matchMedia(LG)
@@ -63,9 +64,10 @@ export default () => ({
 
         document.addEventListener('livewire:navigating', leaving)
 
-        // DOM nodes on the root, not on the Alpine data: a set kept there is read back through a proxy
-        this.$el._atomDrawerApplied = new Set()
+        // a run of init() without destroy() stops the old listeners first and keeps the set: it holds what the first run made inert
         this.$el._atomDrawerStop?.()
+        // DOM nodes on the root, not on the Alpine data: a set kept there is read back through a proxy
+        this.$el._atomDrawerApplied ??= new Set()
         this.$el._atomDrawerStop = () => {
             observer.disconnect()
             lg.removeEventListener('change', sync)
@@ -87,11 +89,17 @@ export default () => ({
         // closed and staying closed: the common case, a mutation somewhere in the page
         if (!want && !wasOpen) return
 
+        let modal = want && modalOpen()
+        let modalClosed = this.modal && !modal
+
         this.open = want
-        this.setInert(want && !modalOpen())
+        this.modal = modal
+        this.setInert(want && !modal)
 
         if (want && !wasOpen) this.focusIn()
-        else if (want && this.lost()) this.focusIn() // a modal closed and gave the focus back to a page that is inert again
+        // a modal closed (or was removed while open) and the focus it gave back is on a page that is inert again; any other mutation
+        // (a poll, a stream, a toast) leaves the focus and the scroll where they are
+        else if (want && modalClosed && this.lost()) this.focusIn()
         else if (!want && wasOpen) this.focusOut()
     },
 

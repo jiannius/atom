@@ -286,6 +286,44 @@ test.describe('the stashed sidebar as a modal drawer', () => {
     await expect.poll(() => page.evaluate(() => getComputedStyle(document.querySelector('[data-atom-sidebar]')).visibility)).toBe('hidden')
   })
 
+  test('init() run again without destroy() does not forget what it made inert', async ({ page }) => {
+    await page.setViewportSize(PHONE)
+    await go(page)
+    await open(page)
+
+    await page.evaluate(() => window.Alpine.$data(document.querySelector('[x-data="sidebarDrawer"]')).init())
+    expect(await inertTags(page)).toEqual(PAGE_ALL)
+
+    await pressToggle(page)
+    await expect.poll(() => stashed(page)).toBe(false)
+    expect(await inertTags(page)).toEqual([])
+  })
+
+  test('an unrelated DOM insertion moves neither the focus nor the drawer\'s scroll', async ({ page }) => {
+    await page.setViewportSize(PHONE)
+    await go(page, '&tall=1')
+    await open(page)
+
+    // the user scrolled the drawer, then clicked empty space in it: the focus is on <body>
+    await page.evaluate(() => {
+      document.querySelector('[data-atom-sidebar-scroll]').scrollTop = 400
+      document.activeElement.blur()
+    })
+    const scrolled = await page.evaluate(() => document.querySelector('[data-atom-sidebar-scroll]').scrollTop)
+    expect(scrolled).toBeGreaterThan(0)
+
+    await page.evaluate(() => {
+      const row = document.createElement('p')
+      row.textContent = 'A streamed row'
+      document.querySelector('[data-atom-main]').appendChild(row)
+    })
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)))
+
+    expect(await where(page)).toBe('body')
+    expect(await page.evaluate(() => document.querySelector('[data-atom-sidebar-scroll]').scrollTop)).toBe(scrolled)
+    expect(await inertTags(page)).toEqual(PAGE_ALL)
+  })
+
   test('a Livewire morph under the open drawer keeps the page inert, and under the closed one makes nothing inert', async ({ page }) => {
     await page.setViewportSize(PHONE)
     await go(page, '&morph=1')
