@@ -366,7 +366,7 @@ test.describe('a long press on an item in the time grid', () => {
         expect(await picked(page)).toBeNull()
         expect(await resizes(page)).toEqual([])
 
-        // WebKit sends the click to the event under the finger, which is what was meant; Chromium sends it to the grip that was on top, and it is not forwarded
+        // The grips are gone by the time the click is dispatched, so the event under the finger gets it, which is what was meant (asserted on WebKit)
         if (browserName === 'webkit') await expect.poll(() => page.evaluate(() => window.__clicks)).toContain(22)
     })
 
