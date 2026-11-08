@@ -153,12 +153,12 @@ $trailEmpty = $crumbsOnly
     }"
     {{-- Escape closes the stashed sidebar (below lg, while it is open) and the focus goes back to the menu button. It listens in the capture
          phase, so a layer that stops Escape for itself (a modal, the command palette, a select) cannot hide the key from here; the layers are
-         asked instead: an open dialog or popover (a dropdown, a tooltip, a select's list; not a toast, which never takes Escape) has the key
+         asked instead: an open modal dialog or popover (a dropdown, a tooltip, a select's list; not a toast, which never takes Escape) has the key
          first, and the next press is the sidebar's. --}}
     x-on:keydown.escape.window.capture="(e) => {
         // a held key or an IME composition being cancelled is not a press for the sidebar (a held Escape that closed a layer must not go on to close it)
         if (screenLg || e.repeat || e.isComposing || e.defaultPrevented || !document.body.hasAttribute('data-show-stashed-sidebar')) return
-        if (document.querySelector('dialog[open], :popover-open:not([data-atom-toast])')) return
+        if (document.querySelector('dialog:modal, :popover-open:not([data-atom-toast])')) return
 
         // this press is the sidebar's: the Escape handlers of the page under it (a typed date's revert, the calendar's selection) do not also run
         e.preventDefault()

@@ -365,6 +365,145 @@ test.describe('the stashed sidebar as a modal drawer', () => {
     expect(await inertTags(page)).toEqual([])
   })
 
+  test('a modal that opens over the drawer takes the focus into itself', async ({ page }) => {
+    await page.setViewportSize(PHONE)
+    await go(page, '&layers=1')
+    await open(page)
+
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('atom-modal-show', { detail: { name: 'collapse-modal' } })))
+    await expect(page.locator('dialog[data-modal]')).toBeVisible()
+    await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('dialog[data-modal]'))).toBe(true)
+  })
+
+  test('an open modal taken out of the page (a re-render) gives the page back its containment', async ({ page }) => {
+    await page.setViewportSize(PHONE)
+    await go(page, '&layers=1')
+    await open(page)
+
+    await page.evaluate(() => document.activeElement.blur())
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('atom-modal-show', { detail: { name: 'collapse-modal' } })))
+    await expect(page.locator('dialog[data-modal]')).toBeVisible()
+    expect(await inertTags(page)).toEqual([])
+
+    // removed while open: no `open` change, no close event
+    await page.evaluate(() => document.querySelector('dialog[data-modal]').remove())
+    await expect.poll(() => inertTags(page)).toEqual(PAGE_ALL)
+    await expect.poll(() => where(page)).toBe('drawer')
+  })
+
+  test('a non-modal dialog, even a permanent one, neither lifts the inert nor keeps Escape from the drawer', async ({ page }) => {
+    await page.setViewportSize(PHONE)
+    await go(page)
+    await page.evaluate(() => {
+      const permanent = document.createElement('dialog')
+      permanent.setAttribute('open', '')
+      permanent.textContent = 'Always here'
+      document.querySelector('[data-atom-main]').appendChild(permanent)
+    })
+    await open(page)
+    expect(await inertTags(page)).toEqual(PAGE_ALL)
+
+    await page.evaluate(() => {
+      const shown = document.createElement('dialog')
+      shown.id = 'non-modal'
+      document.querySelector('[data-atom-main]').appendChild(shown)
+      shown.show()
+    })
+    await page.evaluate(() => document.body.setAttribute('data-x', '1'))
+    expect(await inertTags(page)).toEqual(PAGE_ALL)
+
+    await page.keyboard.press('Escape')
+    expect(await stashed(page)).toBe(false)
+    await expect(toggle(page)).toBeFocused()
+    expect(await inertTags(page)).toEqual([])
+  })
+
+  test('an inert the host put on the page is not taken off by the drawer, a dialog or a details toggle', async ({ page }) => {
+    await page.setViewportSize(PHONE)
+    await go(page)
+    await page.evaluate(() => {
+      document.querySelector('[data-atom-main]').inert = true
+      const details = document.createElement('details')
+      details.id = 'probe'
+      details.innerHTML = '<summary>More</summary>x'
+      document.querySelector('[data-atom-header]').appendChild(details)
+    })
+
+    await open(page)
+    await page.evaluate(() => { document.getElementById('probe').open = true })
+    await page.evaluate(() => { document.getElementById('probe').open = false })
+    await pressToggle(page)
+    await expect.poll(() => stashed(page)).toBe(false)
+
+    // it was the host's: still there after the drawer has been and gone
+    expect(await inertTags(page)).toEqual(['main'])
+    // and a details toggle with the drawer closed changes nothing either
+    await page.evaluate(() => { document.getElementById('probe').open = true })
+    expect(await inertTags(page)).toEqual(['main'])
+  })
+
+  test('an instance that is destroyed gives back only what it made inert, not the page another one holds', async ({ page }) => {
+    await page.setViewportSize(PHONE)
+    await go(page)
+    await open(page)
+
+    await page.evaluate(() => {
+      const second = document.createElement('div')
+      second.id = 'second-drawer'
+      second.setAttribute('x-data', 'sidebarDrawer')
+      document.body.appendChild(second)
+    })
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 50)))
+    await page.evaluate(() => document.getElementById('second-drawer').remove())
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 50)))
+
+    expect(await inertTags(page)).toEqual(PAGE_ALL)
+  })
+
+  test('Back after leaving through the drawer comes back to a closed page', async ({ page }) => {
+    await page.setViewportSize(PHONE)
+    await go(page)
+    await page.evaluate(() => { window.__same = true })
+
+    await open(page)
+    await page.getByRole('link', { name: 'Page two' }).click()
+    await expect(page.locator('[data-fixture-page="two"]')).toBeVisible()
+
+    await page.goBack()
+    await expect(page.locator('[data-fixture-page="one"]')).toBeVisible()
+    expect(await page.evaluate(() => window.__same)).toBe(true)
+    await page.waitForTimeout(200)
+    expect(await stashed(page)).toBe(false)
+    expect(await inertTags(page)).toEqual([])
+    await expect.poll(() => sidebarShown(page)).toBe(false)
+    expect(await where(page)).not.toBe('drawer')
+
+    // and the restored page's drawer works; Back again and forward do the same
+    await open(page)
+    expect(await inertTags(page)).toEqual(PAGE_ALL)
+    await page.keyboard.press('Escape')
+    await page.goForward()
+    await expect(page.locator('[data-fixture-page="two"]')).toBeVisible()
+    expect(await stashed(page)).toBe(false)
+    expect(await inertTags(page)).toEqual([])
+  })
+
+  test('the closed-drawer rule is the exact complement of lg, so no fractional width is neither', async ({ page }) => {
+    await go(page)
+    const media = await page.evaluate(() => {
+      const rules = [...document.styleSheets].flatMap((sheet) => { try { return [...sheet.cssRules] } catch { return [] } })
+      return rules.filter((rule) => rule.media && rule.cssText.includes('body:not([data-show-stashed-sidebar]) [data-atom-sidebar]')).map((rule) => rule.media.mediaText)
+    })
+
+    expect(media).toHaveLength(1)
+    // not a max-width: 63.999rem, which leaves 63.9995rem in no media query
+    expect(media[0]).not.toContain('max-width')
+    for (const width of [1023, 1024]) {
+      await page.setViewportSize({ width, height: 800 })
+      expect(await page.evaluate((m) => window.matchMedia(m).matches !== window.matchMedia('(min-width: 64rem)').matches, media[0])).toBe(true)
+    }
+  })
+
   test('a toast shown while the drawer is open is on screen, not inert, and can be clicked', async ({ page }) => {
     await page.setViewportSize(PHONE)
     await go(page)

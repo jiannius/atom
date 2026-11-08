@@ -276,8 +276,9 @@ dialog,
 /* The stashed sidebar below lg is translated off the screen when it is closed, which leaves its links in the tab order and the
    accessibility tree: hidden with `visibility` instead, so no script has to keep it right (a resize, a navigation and a morph
    cannot leave it wrong). It stays visible for the length of the slide out (visibility is delayed, never on the way in, where the
-   new style's transition has no delay). From lg up the sidebar is in the page and none of this applies. */
-@media (max-width: 63.999rem) {
+   new style's transition has no delay). From lg up the sidebar is in the page and none of this applies. `not all and (min-width: 64rem)` is the exact
+   complement of Tailwind's `lg` (a fractional width is in one or the other, never in neither). */
+@media not all and (min-width: 64rem) {
     body:not([data-show-stashed-sidebar]) [data-atom-sidebar] {
         visibility: hidden;
         transition-property: transform, translate, scale, rotate, visibility;

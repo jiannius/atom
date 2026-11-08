@@ -10,14 +10,32 @@
 // What is inert is chosen by data attributes the layout puts on its own nodes (PAGE below): <main>, the footer, the
 // crumbs and the host's `actions` slot. They are written by the layout, outside any Livewire component, so a morph
 // does not reach them; the menu button, the account menu and the dark toggle are left out on purpose. `inert` is
-// not set from lg up (a stale flag must never lock the page), and not while a dialog is open: a modal dialog
-// blocks the rest of the document itself, and a dialog inside <main> would be dead under an inert <main>.
+// not set from lg up (a stale flag must never lock the page), and not while a modal dialog is open: it blocks the
+// rest of the document itself, and a dialog inside <main> would be dead under an inert <main>. A non-modal dialog
+// (show(), a permanent <dialog open>) blocks nothing and lifts nothing.
+//
+// Only the `inert` this instance wrote is ever removed: a host's own `inert` on one of these nodes, or another
+// instance's, is left alone. A wire:navigate (or Back) caches the page as it is when it navigates away, so the flag
+// and the inert are cleared on `livewire:navigating`, which fires before that snapshot is taken; Back then restores
+// a closed drawer.
 //
 // The closed drawer needs none of this: atom.css hides it with `visibility` below lg.
 const LG = '(min-width: 64rem)'
 const FLAG = 'data-show-stashed-sidebar'
 const PAGE = '[data-atom-main], [data-atom-footer], [data-atom-shell-crumbs], [data-atom-shell-page-actions]'
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+/**
+ * A modal dialog is open (showModal()): the document is blocked by the browser itself.
+ */
+const modalOpen = () => {
+    try {
+        return !!document.querySelector('dialog[open]:modal')
+    }
+    catch (e) {
+        return !!document.querySelector('dialog[open]')
+    }
+}
 
 const shown = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'
 
@@ -28,17 +46,30 @@ export default () => ({
         let lg = window.matchMedia(LG)
         let sync = () => this.sync(lg.matches)
 
-        // the flag, and a dialog opening or closing anywhere (its `open` attribute)
+        // the flag, a dialog opening or closing anywhere (its `open` attribute), and a dialog taken out of the page while it is open
+        // (a re-render removes it with no `open` change); sync() is cheap and does nothing when nothing changed
         let observer = new MutationObserver(sync)
 
         // one call: a second observe() on the same node replaces the options of the first
-        observer.observe(document.body, { attributes: true, attributeFilter: [FLAG, 'open'], subtree: true })
+        observer.observe(document.body, { attributes: true, attributeFilter: [FLAG, 'open'], subtree: true, childList: true })
         lg.addEventListener('change', sync)
 
+        // the page is cached for Back as it is when it is left: leave it closed
+        let leaving = () => {
+            this.open = false
+            this.setInert(false)
+            document.body.removeAttribute(FLAG)
+        }
+
+        document.addEventListener('livewire:navigating', leaving)
+
+        // DOM nodes on the root, not on the Alpine data: a set kept there is read back through a proxy
+        this.$el._atomDrawerApplied = new Set()
         this.$el._atomDrawerStop?.()
         this.$el._atomDrawerStop = () => {
             observer.disconnect()
             lg.removeEventListener('change', sync)
+            document.removeEventListener('livewire:navigating', leaving)
         }
 
         sync()
@@ -53,16 +84,37 @@ export default () => ({
         let want = !atLg && document.body.hasAttribute(FLAG)
         let wasOpen = this.open
 
+        // closed and staying closed: the common case, a mutation somewhere in the page
+        if (!want && !wasOpen) return
+
         this.open = want
-        this.setInert(want && !document.querySelector('dialog[open]'))
+        this.setInert(want && !modalOpen())
 
         if (want && !wasOpen) this.focusIn()
         else if (want && this.lost()) this.focusIn() // a modal closed and gave the focus back to a page that is inert again
         else if (!want && wasOpen) this.focusOut()
     },
 
+    /**
+     * Make the page inert, or give back what this instance made inert (an `inert` that was there already is not ours).
+     */
     setInert (on) {
-        document.querySelectorAll(PAGE).forEach((el) => el.toggleAttribute('inert', on))
+        let applied = this.$el._atomDrawerApplied
+
+        if (!applied) return
+
+        if (on) {
+            document.querySelectorAll(PAGE).forEach((el) => {
+                if (el.hasAttribute('inert')) return
+
+                el.setAttribute('inert', '')
+                applied.add(el)
+            })
+        }
+        else {
+            applied.forEach((el) => el.removeAttribute('inert'))
+            applied.clear()
+        }
     },
 
     /**
