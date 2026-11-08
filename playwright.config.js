@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test'
 
 // The calendar's engine-dependent specs run again in WebKit and in Firefox, for what the engine decides and Chromium does not: the pointer events that
 // moving, resizing and selecting are written on (a touch, in iOS, is WebKit's), and where a title breaks between words (Safari broke what Chromium did not).
-// `<browser>-a11y` is the keyboard and accessibility spec; `-select` and `-move` are the gestures; `-look` is only the look spec's two word-boundary tests,
+// `<browser>-a11y` is the keyboard and accessibility spec; `-select` and `-move` are the gestures (WebKit's `-move` has the phone's touch spec too:
+// a touch on an iPhone is WebKit's, and Firefox has no mobile emulation to run it in); `-look` is only the look spec's two word-boundary tests,
 // not the rest of it: its contrast sweep and its container-rule test fail in WebKit for reasons of the harness, with or without a change to the calendar,
 // and Firefox runs the same two and no more, until a run says the rest holds there.
 //
@@ -21,7 +22,7 @@ const calendarProjects = engines.flatMap(({ browser, device }) => [
   // the selection runs on pointer events by hand
   { name: `${browser}-select`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /calendar-select\.spec\.js$/ },
   // moving and resizing run on the same pointer events
-  { name: `${browser}-move`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /calendar-move\.spec\.js$/ },
+  { name: `${browser}-move`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: browser === 'webkit' ? /calendar-(move|touch)\.spec\.js$/ : /calendar-move\.spec\.js$/ },
   {
     name: `${browser}-look`,
     dependencies: ['chromium'],

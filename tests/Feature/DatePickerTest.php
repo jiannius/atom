@@ -26,6 +26,29 @@ describe('date-picker', function () {
             ->toContain('Last 7 Days');   // a preset shortcut
     });
 
+    it('hands the timezone prop to the factory, and leaves it null when unset', function () {
+        expect(renderBlade('<atom:date-picker variant="range" timezone="Asia/Kuala_Lumpur" />'))
+            ->toContain('dateRange({ time: false, add: false, timezone: \'Asia\\/Kuala_Lumpur\' })')
+            ->not->toContain('timezone="');
+
+        expect(renderBlade('<atom:date-picker timezone="America/New_York" />'))
+            ->toContain('datePicker({ time: false, timezone: \'America\\/New_York\' })');
+
+        expect(renderBlade('<atom:date-picker variant="range" />'))->toContain('timezone: null');
+        expect(renderBlade('<atom:date-picker />'))->toContain('timezone: null');
+    });
+
+    it('forwards the timezone to the time picker inside a date-time picker, and only then', function () {
+        expect(renderBlade('<atom:date-picker time timezone="Asia/Kuala_Lumpur" />'))
+            ->toContain('timePicker({ timezone: &#039;Asia\\/Kuala_Lumpur&#039; })');
+
+        expect(renderBlade('<atom:date-picker variant="range" time timezone="Asia/Kuala_Lumpur" />'))
+            ->toContain('timePicker({ timezone: ');
+
+        expect(renderBlade('<atom:date-picker time />'))->toContain('x-data="timePicker()"');
+        expect(renderBlade('<atom:time-picker />'))->toContain('x-data="timePicker()"');
+    });
+
     it('wraps with a label via the field', function () {
         $html = renderBlade('<atom:date-picker label="When" wire:model="d" />');
 

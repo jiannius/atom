@@ -1,15 +1,19 @@
 import Pikaday from 'pikaday'
 import dayjs from 'dayjs'
 import { parseTypedDate } from '../helpers/typed-date'
+import { zoneOf } from '../helpers/zone'
 
 export default (config) => {
+    // With `config.timezone` the picker reads and writes the wall clock in that zone (helpers/zone.js); without one, the browser's.
+    const zone = zoneOf(config.timezone)
+
     return {
         pikaday: null,
         visible: false,
         datePickerValue: null,
 
         get datePickerObject () {
-            return this.datePickerValue ? dayjs(this.datePickerValue) : null
+            return this.datePickerValue ? zone.read(this.datePickerValue) : null
         },
 
         get datePickerString () {
@@ -65,7 +69,7 @@ export default (config) => {
                     .set('date', parsed.date.get('date'))
                 : parsed.date
 
-            this.setTypedValue(value.toISOString())
+            this.setTypedValue(zone.write(value))
             // The display re-renders only if the formatted string differs, so a
             // re-spelling of the same date (`1/10/2024`) is tidied by hand.
             this.$nextTick(() => input.value = this.datePickerString ?? '')
@@ -110,14 +114,13 @@ export default (config) => {
                     let obj = dayjs(value)
 
                     if (this.datePickerObject) {
-                        this.datePickerValue = this.datePickerObject
+                        this.datePickerValue = zone.write(this.datePickerObject
                             .set('year', obj.get('year'))
                             .set('month', obj.get('month'))
-                            .set('date', obj.get('date'))
-                            .toISOString()
+                            .set('date', obj.get('date')))
                     }
                     else {
-                        this.datePickerValue = obj.toISOString()
+                        this.datePickerValue = zone.write(obj)
                     }
 
                     this.$nextTick(() => this.$dispatch('input', this.datePickerValue))

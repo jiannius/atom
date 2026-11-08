@@ -3,6 +3,7 @@
     'invalid' => false,
     'placeholder' => 'Select date range',
     'add' => false,
+    'timezone' => null,
 ])
 
 @php
@@ -32,7 +33,7 @@ $pillClasses = Arr::toCssClasses([
 
 <div
 wire:ignore
-x-data="dateRange({ time: @js($time), add: @js((bool) $add) })"
+x-data="dateRange({ time: @js($time), add: @js((bool) $add), timezone: @js($timezone) })"
 x-modelable="dateRangeValue"
 class="group/date-range relative"
 @if ($add)
@@ -130,7 +131,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
                     @if ($time)
                         <div x-show="startValue" class="px-4 pb-4">
                             <div class="text-xs font-medium text-fg-muted mb-2">{{ t('Time') }}</div>
-                            <atom:time-picker x-model="startValue" />
+                            <atom:time-picker x-model="startValue" :timezone="$timezone" />
                         </div>
                     @endif
                 </div>
@@ -143,7 +144,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
                     @if ($time)
                         <div x-show="endValue" class="px-4 pb-4">
                             <div class="text-xs font-medium text-fg-muted mb-2">{{ t('Time') }}</div>
-                            <atom:time-picker x-model="endValue" />
+                            <atom:time-picker x-model="endValue" :timezone="$timezone" />
                         </div>
                     @endif
                 </div>

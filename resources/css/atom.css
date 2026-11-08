@@ -1220,8 +1220,9 @@ html.dark [data-atom-calendar-chip="block"][data-atom-calendar-hex] {
 }
 
 /* An item that can be picked up shows it, and has a handle on its end for the pointer to pull: a bar's right edge, a block's bottom edge. The handle
-   is no wider than a few px, and sits inside the item, so what is left of it is the item's own click. While a gesture is on, the whole body shows what
-   it does (`data-atom-calendar-gesture` is on the body, which a render never touches), and no text is selected under the pointer. */
+   is no wider than a few px, and sits inside the item, so what is left of it is the item's own click. A finger has no handle (the engine does not
+   read one for a touch): it has the grips below. While a gesture is on, the whole body shows what it does (`data-atom-calendar-gesture` is on the
+   body, which a render never touches), and no text is selected under the pointer. */
 [data-atom-calendar-chip] {
     position: relative;
 }
@@ -1248,6 +1249,89 @@ html.dark [data-atom-calendar-chip="block"][data-atom-calendar-hex] {
     left: 0;
     height: 6px;
     cursor: ns-resize;
+}
+
+/* The grips of an item a finger has picked up (chip.blade.php), and of its ghost: a dot on each end it can be pulled by, in a box a finger can
+   hold (2rem), centred on that edge and over what is around it. A block's are at opposite corners (the start's at the top right, the end's at the
+   bottom left), so a short block keeps its middle for a long press that moves it; a bar's are on its two ends. They sit beside the chip in its
+   block or its slot, not in it (a block clips what overflows it), and the block or the slot is raised over its neighbours while it has them.
+   The grip takes no touch of the browser's, so a finger pulls it at once. On a ghost, and on the original while its ghost is up, they take no pointer. */
+[data-atom-calendar-grips] {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+[data-atom-calendar-grip] {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    pointer-events: auto;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+[data-atom-calendar-grips][data-kind="block"] > [data-atom-calendar-grip="start"] {
+    top: 0;
+    right: 0.25rem;
+    transform: translateY(-50%);
+}
+
+[data-atom-calendar-grips][data-kind="block"] > [data-atom-calendar-grip="end"] {
+    bottom: 0;
+    left: 0.25rem;
+    transform: translateY(50%);
+}
+
+[data-atom-calendar-grips][data-kind="bar"] > [data-atom-calendar-grip="start"] {
+    top: 50%;
+    left: 0;
+    transform: translate(-50%, -50%);
+}
+
+[data-atom-calendar-grips][data-kind="bar"] > [data-atom-calendar-grip="end"] {
+    top: 50%;
+    right: 0;
+    transform: translate(50%, -50%);
+}
+
+[data-atom-calendar-grip-dot] {
+    box-sizing: border-box;
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 2px solid;
+    border-radius: 9999px;
+}
+
+[data-atom-calendar-grips][data-atom-calendar-hex] [data-atom-calendar-grip-dot] {
+    border-color: var(--atom-calendar-edge, var(--atom-calendar-hue));
+}
+
+html.dark [data-atom-calendar-grips][data-atom-calendar-hex] [data-atom-calendar-grip-dot] {
+    border-color: var(--atom-calendar-edge-dark, var(--atom-calendar-hue));
+}
+
+[data-atom-calendar-ghost] [data-atom-calendar-grip],
+[data-atom-calendar-preview] [data-atom-calendar-grip] {
+    pointer-events: none;
+}
+
+[data-atom-calendar-chip][data-lifted] ~ [data-atom-calendar-grips] {
+    visibility: hidden;
+}
+
+[data-atom-calendar-slot]:has(> [data-atom-calendar-grips]) {
+    position: relative;
+}
+
+[data-atom-calendar-block]:has(> [data-atom-calendar-grips]):not(:has(> [data-lifted])),
+[data-atom-calendar-slot]:has(> [data-atom-calendar-grips]):not(:has(> [data-lifted])) {
+    z-index: 3;
 }
 
 [data-atom-calendar-body][data-atom-calendar-gesture] {
@@ -1361,20 +1445,13 @@ html.dark [data-atom-calendar-ghost-body][data-atom-calendar-hex] {
         user-select: text;
     }
 
-    /* an item that a long press picks up is not a text to select, and has no callout for a link: the press is the item's */
-    [data-atom-calendar-chip][data-draggable] {
+    /* an item that a long press picks up is not a text to select, and has no callout for a link: the press is the item's (a row of the day list
+       that a finger picks up too). A finger pulls an end by the grips above, not by the handle, which stays a pointer's few px. */
+    [data-atom-calendar-chip][data-draggable],
+    [data-atom-calendar-chip][data-pickable] {
         -webkit-user-select: none;
         user-select: none;
         -webkit-touch-callout: none;
-    }
-
-    /* a finger needs more of an edge to pull than a pointer does */
-    [data-atom-calendar-chip="bar"] > [data-atom-calendar-handle] {
-        width: 14px;
-    }
-
-    [data-atom-calendar-chip="block"] > [data-atom-calendar-handle] {
-        height: 14px;
     }
 }
 

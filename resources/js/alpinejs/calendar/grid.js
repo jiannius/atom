@@ -145,6 +145,9 @@ export const previewBlocks = (preview, items, date, { slotDuration = 30 } = {}) 
         compact: part.end - part.start < COMPACT_MINUTES,
         before: part.before,
         after: part.after,
+        // what a finger has picked up shows its grips on its ghost, and the pull of a start its start time (see show() in pointer.js)
+        ...(preview.grips ? { grips: true } : {}),
+        ...(preview.edge === 'start' ? { edge: 'start' } : {}),
     }]
 }
 
@@ -326,5 +329,6 @@ export const allDayGhost = (days, items, preview) => {
         row: 1,
         before: first < from,
         after: last > to,
+        ...(preview.grips ? { grips: true } : {}),
     }
 }

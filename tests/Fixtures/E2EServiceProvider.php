@@ -91,6 +91,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/date-range-morph', fn () => view('atom::e2e.date-range-morph'));
         Route::middleware('web')->get('/atom/e2e/date-picker-time-morph', fn () => view('atom::e2e.date-picker-time-morph'));
         Route::middleware('web')->get('/atom/e2e/date-picker-typed', fn () => view('atom::e2e.date-picker-typed'));
+        Route::middleware('web')->get('/atom/e2e/date-picker-timezone', fn () => view('atom::e2e.date-picker-timezone'));
         Route::middleware('web')->get('/atom/e2e/dropdown-morph', fn () => view('atom::e2e.dropdown-morph'));
         Route::middleware('web')->get('/atom/e2e/chart-morph', fn () => view('atom::e2e.chart-morph'));
         Route::middleware('web')->get('/atom/e2e/dropdown-trigger', fn () => view('atom::e2e.dropdown-trigger'));

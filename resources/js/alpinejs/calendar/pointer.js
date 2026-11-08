@@ -1,5 +1,5 @@
 import { addDays, diffDays } from './dates.js'
-import { addMinutes, dayCell, hasMoved, indexAtX, LONG_PRESS, minuteAt, minutesBetween, momentAt, movedRange, resizedRange, scrollSpeed, selectionRange } from './gestures.js'
+import { addMinutes, dayCell, hasMoved, indexAtX, LONG_PRESS, minuteAt, minutesBetween, momentAt, movedRange, resizedRange, resizedStart, scrollSpeed, selectionRange } from './gestures.js'
 import { dayEntries, span } from './layout.js'
 
 // The pointer half of <atom:calendar>'s engine, as methods the factory in ../calendar.js takes in: selecting to create, and moving and resizing an
@@ -20,6 +20,9 @@ const KEEPS_SELECTION = '[popover], dialog, form'
 
 // How long after a drag lets go the click that follows it is still the drag's, in ms
 const CLICK_WINDOW = 100
+
+// Where an item is drawn on a grid, from the element pressed: a week of the month, the all-day row, a column of the time grid; or nowhere (the day list)
+const areaOf = (el) => el.closest('[data-atom-calendar-week]') ? 'month' : (el.closest('[data-atom-calendar-allday-area]') ? 'allday' : (el.closest('[data-atom-calendar-column]') ? 'grid' : null))
 
 export default {
     // What presses start a gesture. A press with a key held is not one: Ctrl with the button is the context-menu click of a Mac, which sends a
@@ -55,28 +58,69 @@ export default {
     // pointer would put it as soon as the press has gone far enough to be a drag (a mouse or a pen) or been held long enough (a touch); a press that
     // does neither is a click, which the browser delivers to the item as it always did (see itemClick). Whether the item may be dragged or resized
     // is the payload's, which has the component's props and the item's own flags in it.
+    //
+    // A finger has no handle: on a phone a handle a finger can hit is half of a short block, and a press there that was meant to move it pulled its end
+    // instead. A long press anywhere on an item moves it, and picks it up (see pick()): it shows a grip on each end, which a finger then pulls (gripPress).
+    // A row of the month's day list is picked up by a finger too (on a phone the month's days show dots, and the list is the only place an item is):
+    // the list closes and the item is put on a day of the grid, as a chip of the month is.
     itemPress (chip, event) {
         if (!this.pressable(event)) return
 
         let el = event.currentTarget
-        let area = el.closest('[data-atom-calendar-week]') ? 'month' : (el.closest('[data-atom-calendar-allday-area]') ? 'allday' : (el.closest('[data-atom-calendar-column]') ? 'grid' : null))
+        let touch = event.pointerType === 'touch'
+        let list = Boolean(el.closest('[data-atom-calendar-popover]'))
+        let area = list ? (touch && chip.pickable && this.view === 'month' ? 'month' : null) : areaOf(el)
 
-        // an item in the day list is not on a grid to be put somewhere on
+        // an item in the day list is not on a grid to be put somewhere on, but for a finger's in the month's
         if (!area) return
 
         let item = this.items.find((candidate) => String(candidate.id) === String(chip.id))
 
         if (!item) return
 
-        let resize = Boolean(event.target.closest?.('[data-atom-calendar-handle]'))
+        let resize = !touch && Boolean(event.target.closest?.('[data-atom-calendar-handle]'))
 
-        if (resize ? !this.canResize(chip) : !this.canDrag(chip)) return
+        if (resize ? !this.canResize(chip) : !(list || this.canDrag(chip))) return
 
-        let grab = this.cellAt(area, event.clientX, event.clientY)
+        // a row of the list is held by the day the list is of
+        let grab = list ? this.popoverDate : this.cellAt(area, event.clientX, event.clientY)
 
         if (!grab) return
 
-        this.beginGesture(event, { kind: resize ? 'resize' : 'move', area, el, item: { ...item }, grab, current: grab })
+        this.beginGesture(event, {
+            kind: resize ? 'resize' : 'move',
+            area,
+            el,
+            item: { ...item },
+            grab,
+            current: grab,
+            day: el.closest('[data-atom-calendar-column]')?.dataset.date ?? null,
+            list,
+            // what a finger picks up shows its grips, on its ghost too, where it has an end to pull
+            grips: touch && !list && (this.canResize(chip) || this.canResizeStart(chip)),
+        })
+    },
+
+    // Resizing a picked-up item by a grip (see pick()): `edge` is 'start', the top of a block or the first day of a bar, or 'end', the bottom or the last
+    // day. The grip takes no touch of the browser's (`touch-action: none`), so it follows a finger at once, past the threshold a mouse has, with no long press.
+    gripPress (chip, edge, event) {
+        if (!this.pressable(event)) return
+
+        let el = event.currentTarget
+        let area = areaOf(el)
+
+        if (!area || !(edge === 'start' ? this.canResizeStart(chip) : this.canResize(chip))) return
+
+        let item = this.items.find((candidate) => String(candidate.id) === String(chip.id))
+
+        if (!item) return
+
+        let day = el.closest('[data-atom-calendar-column]')?.dataset.date ?? null
+        let grab = this.cellAt(area, event.clientX, event.clientY, day)
+
+        if (!grab) return
+
+        this.beginGesture(event, { kind: 'resize', edge, area, el, item: { ...item }, grab, current: grab, day, grips: true, immediate: true })
     },
 
     // Whether an item may be picked up, and whether it has an end to be pulled. A row of the day list is neither, and a bar or a block that
@@ -87,6 +131,40 @@ export default {
 
     canResize (chip) {
         return !chip.static && chip.resizable !== false && chip.kind !== 'dot' && !chip.after
+    },
+
+    // and its start, which only a grip pulls: a bar or a block that carries on from before the part of it that is drawn here (`before`) has its start elsewhere
+    canResizeStart (chip) {
+        return !chip.static && chip.resizable !== false && chip.kind !== 'dot' && !chip.before
+    },
+
+    // A finger's long press picks an item up, and it stays picked up once it is let go: its grips are shown (see chip.blade.php) for a finger to pull an
+    // end by. A press anywhere else, or Escape, puts it down; a press on the item or on its grips does not. The id, not the chip: the item is drawn again
+    // where it is put.
+    pick (id) {
+        this.unpick()
+        this.picked = String(id)
+
+        let abort = this.pickAbort = new AbortController()
+        let { signal } = abort
+
+        document.addEventListener('pointerdown', (event) => {
+            let target = event.target
+            let own = this.rootEl?.contains(target) && (target.closest?.('[data-atom-calendar-grip]') || target.closest?.('[data-atom-calendar-chip]')?.getAttribute('data-atom-calendar-item') === this.picked)
+
+            if (!own) this.unpick()
+        }, { signal, capture: true })
+
+        // Escape is a gesture's first (see beginGesture), whichever of the two heard it first
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !this.gesture && !event.defaultPrevented) this.unpick()
+        }, { signal, capture: true })
+    },
+
+    unpick () {
+        this.pickAbort?.abort()
+        this.pickAbort = null
+        this.picked = null
     },
 
     // Start following the pointer: on the document, so a pointer that leaves the calendar (or the window) is still followed and can be let go anywhere
@@ -134,10 +212,20 @@ export default {
 
             // Once the long press has come the finger is the gesture's, and the page must not scroll under it. Listened to on the calendar and not the
             // document, where a listener is passive by default and cannot prevent anything.
-            this.rootEl.addEventListener('touchmove', (move) => {
+            let hold = (move) => {
                 if (gesture.active && move.cancelable) move.preventDefault()
-            }, { signal, passive: false })
+            }
 
+            this.rootEl.addEventListener('touchmove', hold, { signal, passive: false })
+
+            // A touch's moves go to the element it began on, wherever that is by then. A row of the day list is taken off the page when the press
+            // becomes a drag (activate() closes the list), so the moves that follow reach the detached row and never bubble to the calendar: the page
+            // would pan and the browser cancel the pointer. The row holds the finger itself.
+            if (spec.el && spec.list) spec.el.addEventListener('touchmove', hold, { signal, passive: false })
+        }
+
+        // a grip is pulled at once, by a finger too: it takes no scroll of the browser's to be told apart from
+        if (touch && !spec.immediate) {
             gesture.timer = setTimeout(() => {
                 this.activate(gesture)
                 this.show(gesture)
@@ -157,7 +245,7 @@ export default {
 
         if (!gesture.active) {
             // a finger that moves before the long press is scrolling, which is not a gesture
-            if (gesture.touch) {
+            if (gesture.touch && !gesture.immediate) {
                 if (hasMoved(gesture.origin, gesture.point, TOUCH_SLOP)) this.endGesture()
 
                 return
@@ -176,6 +264,12 @@ export default {
     activate (gesture) {
         gesture.active = true
 
+        // the day list is over the days a row of it is put on, and goes
+        if (gesture.list) this.closeDay(false)
+
+        // what a finger moves is picked up, and stays so when it is let go (see pick())
+        if (gesture.touch && gesture.kind === 'move') this.pick(gesture.item.id)
+
         let body = this.rootEl.querySelector('[data-atom-calendar-body]')
 
         if (gesture.kind !== 'select') body?.setAttribute('data-atom-calendar-gesture', gesture.kind === 'move' ? 'move' : (gesture.area === 'grid' ? 'resize-y' : 'resize-x'))
@@ -190,7 +284,7 @@ export default {
 
     // The place the pointer is over, now, is where the gesture stands
     track (gesture) {
-        let cell = this.cellAt(gesture.area, gesture.point.x, gesture.point.y)
+        let cell = this.gestureCell(gesture, gesture.point.x, gesture.point.y)
 
         if (cell) {
             gesture.current = cell
@@ -251,11 +345,26 @@ export default {
 
         if (gesture.kind === 'move') return movedRange(gesture.item, shift)
 
-        let { item } = gesture
+        // A pull of an end in the time grid stays on the day it was pulled on (see gestureCell): it changes a time, never the date, and runs from that
+        // day's midnight to the next.
+        let { item, day } = gesture
+
+        if (gesture.edge === 'start') {
+            return resizedStart(item, grid ? addMinutes(item.start, shift.minutes) : addDays(span(item).first, shift.days), {
+                slotDuration,
+                earliest: grid && day ? day + 'T00:00' : null,
+            })
+        }
 
         return resizedRange(item, grid
             ? addMinutes(item.end ?? addMinutes(item.start, slotDuration), shift.minutes)
-            : addDays(span(item).last, shift.days), { slotDuration })
+            : addDays(span(item).last, shift.days), { slotDuration, latest: grid && day ? addDays(day, 1) + 'T00:00' : null })
+    },
+
+    // Where a gesture is, from a point: the cell under it, but for a pull of an end in the time grid, which is read in the column it was pressed in,
+    // whatever column the pointer has gone on to, so that a finger or a mouse that drifts sideways changes the time and not the day.
+    gestureCell (gesture, x, y) {
+        return this.cellAt(gesture.area, x, y, gesture.kind === 'resize' && gesture.area === 'grid' ? gesture.day : null)
     },
 
     // Draw what the gesture covers, when it is not what is up. An item moved or resized is drawn as its ghost, and the original stays, lifted.
@@ -270,7 +379,14 @@ export default {
 
         // a gesture made while a selection waits for the host is the one on screen: the placeholder of the selection is not taken down when its promise settles
         this.pendingToken = null
-        this.preview = { kind: gesture.kind, id: gesture.item.id, ...range }
+        // what a finger has picked up has its grips on its ghost too, and the pull of a start says so, for the time it shows beside it
+        this.preview = {
+            kind: gesture.kind,
+            id: gesture.item.id,
+            ...range,
+            ...(gesture.grips ? { grips: true } : {}),
+            ...(gesture.kind === 'resize' && gesture.edge === 'start' ? { edge: 'start' } : {}),
+        }
     },
 
     // Let go: where the pointer is now ends the gesture, a click or a drag alike
@@ -279,10 +395,9 @@ export default {
 
         if (!gesture || event.pointerId !== gesture.id) return
 
-        if (gesture.active) {
-            gesture.point = { x: event.clientX, y: event.clientY }
-            gesture.current = this.cellAt(gesture.area, event.clientX, event.clientY) ?? gesture.current
-        }
+        gesture.point = { x: event.clientX, y: event.clientY }
+
+        if (gesture.active) gesture.current = this.gestureCell(gesture, event.clientX, event.clientY) ?? gesture.current
 
         this.finish(gesture)
     },
@@ -299,7 +414,11 @@ export default {
         this.endGesture(true, true)
 
         if (kind !== 'select') {
-            if (!active) return null
+            if (!active) {
+                if (gesture.immediate && gesture.grips) this.releaseGrip(gesture)
+
+                return null
+            }
 
             this.commitChange(gesture, range)
 
@@ -315,6 +434,17 @@ export default {
         }
 
         this.commitSelect(range)
+    },
+
+    // A grip that was pressed and let go without a pull is a tap. Its hit box is a finger's, 2rem square, and overhangs what is beside the edge it
+    // sits on (the title of the event below a block's end, the one above its start), so a tap meant for that event lands on the grip, and the
+    // press on a grip is not a press elsewhere (see pick()). What the tap was on is what is under the grip at the release point: the picked item
+    // itself keeps it picked up; another event, or an empty hour, puts it down (WebKit then sends the click on to that event).
+    releaseGrip (gesture) {
+        let under = document.elementsFromPoint(gesture.point.x, gesture.point.y).find((el) => !el.closest('[data-atom-calendar-grips]'))
+        let own = this.rootEl.contains(under) && under.closest('[data-atom-calendar-chip]')?.getAttribute('data-atom-calendar-item') === this.picked
+
+        if (!own) this.unpick()
     },
 
     // Whether the month is laid out narrow. Not measured here: the stylesheet is asked, through a probe that its own container query shows (the
@@ -564,8 +694,9 @@ export default {
     },
 
     // The day or the slot under a point, read from where things are drawn now (a payload that arrives mid-gesture, or a scroll, moves them): a date
-    // (`Y-m-d`) in the month view and the all-day row, the start of a slot (`Y-m-dTH:i`) in the time grid. A point outside is on the nearest.
-    cellAt (area, x, y) {
+    // (`Y-m-d`) in the month view and the all-day row, the start of a slot (`Y-m-dTH:i`) in the time grid. A point outside is on the nearest. In the
+    // time grid `date` asks for the slot at that height in the column of that date, wherever the point is across.
+    cellAt (area, x, y, date = null) {
         let all = (selector) => [...this.rootEl.querySelectorAll(selector)]
 
         if (area === 'month') {
@@ -581,7 +712,9 @@ export default {
         }
 
         let columns = all('[data-atom-calendar-column]')
-        let at = indexAtX(columns.map((column) => column.getBoundingClientRect()), x)
+        let at = date ? columns.findIndex((column) => column.dataset.date === date) : -1
+
+        if (at === -1) at = indexAtX(columns.map((column) => column.getBoundingClientRect()), x)
 
         if (at === -1) return null
 

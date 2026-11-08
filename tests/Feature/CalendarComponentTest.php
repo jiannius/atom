@@ -807,8 +807,9 @@ describe('calendar accessibility markup', function () {
         foreach ($kinds as [, $kind, $markup]) {
             expect($markup)->toContain('x-on:pointerdown="itemPress(chip, $event)"', $kind)
                 ->toContain('x-bind:data-draggable="canDrag(chip)', $kind)
-                // a link is dragged by the engine, never by the browser: its own drag would take the pointer from the gesture
-                ->toContain('x-bind:draggable="canDrag(chip) ? \'false\' : null"', $kind);
+                // a link is dragged by the engine, never by the browser: its own drag would take the pointer from the gesture (a bar and a dot are rows of
+                // the day list too, which a finger picks up in the month: `pickable`)
+                ->toContain($kind === 'block' ? 'x-bind:draggable="canDrag(chip) ? \'false\' : null"' : 'x-bind:draggable="canDrag(chip) || chip.pickable ? \'false\' : null"', $kind);
 
             // an end to pull: a bar's right edge and a block's bottom edge; a dot is a point in time and has none
             if ($kind === 'dot') {
@@ -819,6 +820,15 @@ describe('calendar accessibility markup', function () {
         }
 
         expect($kinds)->toHaveCount(3);
+
+        // a finger pulls an end by the grips of an item it has picked up, which are beside the chip, for the pointer alone too
+        preg_match('/<template x-if="chip.picked && \(canResize\(chip\) \|\| canResizeStart\(chip\)\)">(.*?)<\/template>/s', $chips, $grips);
+
+        expect($grips)->toHaveCount(2)
+            ->and($grips[1])->toContain('aria-hidden="true"')
+            ->toContain('x-on:pointerdown="gripPress(chip, \'start\', $event)"')
+            ->toContain('x-on:pointerdown="gripPress(chip, \'end\', $event)"')
+            ->not->toContain('tabindex');
     });
 
     it('gives each day of the month one roving tab stop, a key handler, and what a day with a list says about it', function () {

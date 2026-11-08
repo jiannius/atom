@@ -208,7 +208,7 @@ export const monthLayout = (days, items, { max = 3, today = null, preview = null
             let box = { key: first + ':preview', kind: preview.kind, title: preview.title ?? '', start: preview.start, end: preview.end, left: startCol / week.length * 100, width: place.span / week.length * 100, ...place }
 
             if (moved || lifted !== null) {
-                ghost = { ...(moved ?? {}), title: preview.title ?? moved?.title ?? '', start: preview.start, end: preview.end, key: first + ':preview', kind: preview.kind, row: 2, ...place }
+                ghost = { ...(moved ?? {}), title: preview.title ?? moved?.title ?? '', start: preview.start, end: preview.end, key: first + ':preview', kind: preview.kind, row: 2, ...place, ...(preview.grips ? { grips: true } : {}) }
             } else {
                 selection = box
 
