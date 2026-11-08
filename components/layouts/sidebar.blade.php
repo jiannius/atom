@@ -150,6 +150,18 @@ $trailEmpty = $crumbsOnly
         e.preventDefault()
         isHidden = !isHidden
     }"
+    {{-- Escape closes the stashed sidebar (below lg, while it is open) and the focus goes back to the menu button. It listens in the capture
+         phase, so a layer that stops Escape for itself (a modal, the command palette, a select) cannot hide the key from here; the layers are
+         asked instead: an open dialog or popover (a dropdown, a tooltip, a select's list; not a toast, which never takes Escape) has the key
+         first, and the next press is the sidebar's. --}}
+    x-on:keydown.escape.window.capture="(e) => {
+        if (screenLg || e.defaultPrevented || !document.body.hasAttribute('data-show-stashed-sidebar')) return
+        if (document.querySelector('dialog[open], :popover-open:not([data-atom-toast])')) return
+
+        e.preventDefault()
+        document.body.removeAttribute('data-show-stashed-sidebar')
+        document.querySelector('[data-atom-sidebar-toggle]')?.focus()
+    }"
     x-bind:data-stashed="!screenLg || isHidden"
     x-bind:style="{
         position: 'sticky',
