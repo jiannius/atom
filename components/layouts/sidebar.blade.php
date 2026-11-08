@@ -87,9 +87,10 @@ $trailEmpty = $crumbsOnly
         } catch (e) {}
     </script>
 
-    {{-- stashed sidebar backdrop --}}
+    {{-- stashed sidebar backdrop. It also holds the drawer's behaviour (sidebar-drawer.js): the page behind goes inert while the drawer is open,
+         the focus moves in and comes back to the menu button. --}}
     <div
-    x-data
+    x-data="sidebarDrawer"
     x-on:click="document.body.removeAttribute('data-show-stashed-sidebar')"
     class="z-10 fixed inset-0 bg-black/20 hidden [[data-show-stashed-sidebar]_&]:block lg:[[data-show-stashed-sidebar]_&]:hidden"></div>
 
@@ -152,12 +153,12 @@ $trailEmpty = $crumbsOnly
     }"
     {{-- Escape closes the stashed sidebar (below lg, while it is open) and the focus goes back to the menu button. It listens in the capture
          phase, so a layer that stops Escape for itself (a modal, the command palette, a select) cannot hide the key from here; the layers are
-         asked instead: an open dialog or popover (a dropdown, a tooltip, a select's list; not a toast, which never takes Escape) has the key
+         asked instead: an open modal dialog or popover (a dropdown, a tooltip, a select's list; not a toast, which never takes Escape) has the key
          first, and the next press is the sidebar's. --}}
     x-on:keydown.escape.window.capture="(e) => {
         // a held key or an IME composition being cancelled is not a press for the sidebar (a held Escape that closed a layer must not go on to close it)
         if (screenLg || e.repeat || e.isComposing || e.defaultPrevented || !document.body.hasAttribute('data-show-stashed-sidebar')) return
-        if (document.querySelector('dialog[open], :popover-open:not([data-atom-toast])')) return
+        if (document.querySelector('dialog:modal, :popover-open:not([data-atom-toast])')) return
 
         // this press is the sidebar's: the Escape handlers of the page under it (a typed date's revert, the calendar's selection) do not also run
         e.preventDefault()
@@ -371,9 +372,12 @@ $trailEmpty = $crumbsOnly
             </div>
 
             <div class="flex shrink-0 items-center gap-1.5" data-atom-shell-actions>
-                @isset ($actions)
-                    {{ $actions }}
-                @endisset
+                {{-- the host's actions are the page's (inert while the drawer is open); the dark toggle and the account menu after them are the shell's --}}
+                <div class="contents" data-atom-shell-page-actions>
+                    @isset ($actions)
+                        {{ $actions }}
+                    @endisset
+                </div>
 
                 {{-- <atom:html> only emits the darkmode bootstrap when $dark, so
                      window.darkmode() doesn't exist on a light-only app and the
@@ -427,7 +431,7 @@ $trailEmpty = $crumbsOnly
     </main>
 
     @isset ($footer)
-        <footer class="[grid-area:footer] z-10 border-t border-border p-4">
+        <footer class="[grid-area:footer] z-10 border-t border-border p-4" data-atom-footer>
             {{ $footer ?? '' }}
         </footer>
     @endisset
