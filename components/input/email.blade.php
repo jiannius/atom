@@ -17,6 +17,7 @@
 $classes = Arr::toCssClasses([
     'min-h-control w-full py-[3px] no-spinner rounded-control border bg-surface text-sm text-fg',
     'flex items-center gap-1 flex-wrap',
+    'has-disabled:cursor-not-allowed has-disabled:border-border has-disabled:bg-surface-sunken has-disabled:text-fg-subtle',
     $invalid ? 'has-[:focus-visible]:border-danger-fg' : 'has-[:focus-visible]:border-focus',
     'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
     $invalid ? 'border-danger-fg' : 'border-control-border',

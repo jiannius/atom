@@ -14,7 +14,7 @@ view="atom::docs.demos.input.affixes"/>
 
 <atom:docs.example
 title="States"
-description="required adds the asterisk. error accepts a message string; in Livewire it defaults to the validation error for the bound field. invalid alone draws the danger border. disabled is sunken. Every text control is the control token high (28px compact, 32 comfortable, 40 touch)."
+description="required adds the asterisk. error accepts a message string; in Livewire it defaults to the validation error for the bound field. invalid alone draws the danger border. disabled is sunken with the faint border, not the strong one (it reads as unavailable in dark too). Every text control is the control token high (28px compact, 32 comfortable, 40 touch)."
 view="atom::docs.demos.input.states"/>
 
 <atom:docs.example

@@ -38,7 +38,7 @@ $classes = Arr::toCssClasses([
     'border border-danger-fg' => $invalid,
     'border border-control-border' => !$invalid && !$transparent,
     'border-0 bg-transparent focus-visible:bg-surface-sunken' => $transparent,
-    'bg-surface focus-visible:outline-offset-0 disabled:bg-surface-sunken disabled:text-fg-subtle' => !$transparent,
+    'bg-surface focus-visible:outline-offset-0 disabled:border-border disabled:bg-surface-sunken disabled:text-fg-subtle' => !$transparent,
     'focus-visible:border-focus' => !$transparent && !$invalid,
     'focus-visible:border-danger-fg' => $invalid,
     'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
