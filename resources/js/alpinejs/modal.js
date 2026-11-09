@@ -37,19 +37,38 @@ export default (config) => {
                 || (!name && this.$root.contains(e.target))
             ) {
                 this.$root.close();
-                this.$root.removeAttribute('data-open');
-                this.$root.removeAttribute('data-atom-modal-slide-left');
-                this.$root.removeAttribute('data-atom-modal-slide-bottom');
-                this.$root.removeAttribute('data-atom-modal-slide');
-                this.$root.removeAttribute('data-atom-modal');
-                this.$dispatch('closed', config.name)
+                this.resetModal()
             }
         },
 
+        resetModal () {
+            this.$root.removeAttribute('data-open');
+            this.$root.removeAttribute('data-atom-modal-slide-left');
+            this.$root.removeAttribute('data-atom-modal-slide-bottom');
+            this.$root.removeAttribute('data-atom-modal-slide');
+            this.$root.removeAttribute('data-atom-modal');
+            this.$dispatch('closed', config.name)
+        },
+
+        // The browser closed the dialog without closeModal(): an Escape the dialog's own keydown handler never heard (the focus on
+        // <body>, a select that stops the key), a <form method="dialog">, a direct close(). `close` is queued, so after closeModal()
+        // it finds the state already clean, and after a close and a reopen in one tick it finds the dialog open again.
+        syncClosed () {
+            if (this.$root.open || !this.$root.hasAttribute('data-open')) return
+
+            this.resetModal()
+        },
+
+        // A non-escapable modal also refuses the cancel where closedby="none" does not exist (Safari). Chromium and Firefox let
+        // a page prevent only two cancels in a row, which is why this is not the only guard.
+        cancelModal (e) {
+            if (!this.escapable) e.preventDefault()
+        },
+
         escapeClose () {
-            // keydown.escape is always prevented in the template so the native
-            // cancel/close never bypasses our attribute cleanup; only close
-            // when the modal is escapable.
+            // The keydown only arrives while the focus is inside the dialog; with the focus on <body>, or in a
+            // control that stops the key, the browser's own cancel is what Escape does (see cancelModal and
+            // syncClosed). Only close when the modal is escapable.
             if (this.escapable) this.closeModal()
         },
 

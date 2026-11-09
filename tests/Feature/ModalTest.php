@@ -78,12 +78,25 @@ describe('modal', function () {
 
         expect($html)
             ->toContain('escapable: false')
-            // the keydown stays bound (and prevented) so the native dialog
-            // cancel can't bypass cleanup; the JS side gates the close
+            // the keydown stays bound (and prevented) for the focus inside the
+            // dialog; the JS side gates the close
             ->toContain('x-on:keydown.escape.stop.prevent="escapeClose"')
             // the other two switches are independent
             ->toContain('x-on:click="backdropClick"')
             ->toContain('aria-label="Close"');
+    });
+
+    it('sets closedby="none" only when escapable is false (#174)', function () {
+        // the dialog's own guard against Escape pressed with the focus outside it; WebKit has no closedby, so the cancel listener is the other
+        expect(renderBlade('<atom:modal name="m" :escapable="false">Body</atom:modal>'))
+            ->toContain('closedby="none"')
+            ->toContain('x-on:cancel.self="cancelModal"')
+            ->toContain('x-on:close.self="syncClosed"');
+
+        expect(renderBlade('<atom:modal name="m">Body</atom:modal>'))
+            ->not->toContain('closedby')
+            ->toContain('x-on:cancel.self="cancelModal"')
+            ->toContain('x-on:close.self="syncClosed"');
     });
 
     it('renders a labelled close button by default', function () {

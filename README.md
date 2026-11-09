@@ -638,7 +638,7 @@ A suggested mapping when a heading *is* structural: `xl` → `level="1"` (only o
 
 | Tag | Notable props |
 | --- | ------------- |
-| `<atom:modal>` | `name` (required for `atom()->modal($name)` to find it), `inset`, `dismissible`, `closeable`. Trigger via `<atom:modal.trigger name="...">` or `$this->modal('name')->show()` from PHP. |
+| `<atom:modal>` | `name` (required for `atom()->modal($name)` to find it), `inset`, `dismissible`, `escapable`, `closeable`. Trigger via `<atom:modal.trigger name="...">` or `$this->modal('name')->show()` from PHP. `:escapable="false"` holds wherever the focus is (on `<body>` after a morph removed the focused button, in a select); a dialog the browser closes by itself (Escape, `<form method="dialog">`, `close()`) is reset like any other close and fires `closed`. |
 | `<atom:alert>` | Window-bound. Triggered by `atom()->alert(...)`. Config keys: `heading`, `subheading`, `message`, `variant`, `button`, `onDismissed`. |
 | `<atom:toast>` | Window-bound. Triggered by `atom()->toast(...)`. Config keys: `message`, `variant` (`success`, `warning`, `danger`), `delay` (default 3000), `position` (`top`, `bottom`, `center`), `align`. A bottom toast sits above a pinned save bar that is on screen (`form.actions bar`), so it never covers Save. |
 | `<atom:confirm>` | Window-bound. Triggered by `atom()->confirm(...)`. Supports `password`, `passphrase` (Confirm accepts only that exact text, surrounding whitespace ignored, and shows an error otherwise; `onAccepted` gets the trimmed text), optional reason field. Wires `onAccepted` / `onRejected` to Livewire methods. The passphrase check runs in the browser only, so a Livewire `onAccepted` that does anything destructive must compare the `passphrase` it receives itself. |

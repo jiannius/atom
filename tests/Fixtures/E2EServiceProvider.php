@@ -60,6 +60,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-date-picker-typed', DatePickerTypedFixture::class);
         Livewire::component('atom-e2e-confirm-passphrase', ConfirmPassphraseFixture::class);
         Livewire::component('atom-e2e-select-sibling-sync', SelectSiblingSyncFixture::class);
+        Livewire::component('atom-e2e-modal-escape', ModalEscapeFixture::class);
         Livewire::component('atom-e2e-safe-url-breadcrumbs', SafeUrlBreadcrumbsFixture::class);
         Livewire::component('atom-e2e-form-error-toast', FormErrorToastFixture::class);
         Livewire::component('atom-e2e-form-toast-bar', FormToastBarFixture::class);
@@ -86,6 +87,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/attr-sweep', fn () => view('atom::e2e.attr-sweep'));
         Route::middleware('web')->get('/atom/e2e/select-xss', fn () => view('atom::e2e.select-xss'));
         Route::middleware('web')->get('/atom/e2e/select-sibling-sync', fn () => view('atom::e2e.select-sibling-sync'));
+        Route::middleware('web')->get('/atom/e2e/modal-escape', fn () => view('atom::e2e.modal-escape'));
         Route::middleware('web')->get('/atom/e2e/select-native-reopen', fn () => view('atom::e2e.select-native-reopen'));
         Route::middleware('web')->get('/atom/e2e/input-morph', fn () => view('atom::e2e.input-morph'));
         Route::middleware('web')->get('/atom/e2e/date-range-morph', fn () => view('atom::e2e.date-range-morph'));

@@ -63,7 +63,7 @@ $suffix = request()->getQueryString() ? '?'.request()->getQueryString() : '';
         @if ($morph)
             <div data-morph="page"><livewire:atom-e2e-shell-actions /></div>
         @endif
-        {{-- ?layers=1: a modal and a dropdown to hold Escape for themselves --}}
+        {{-- ?layers=1: a modal and a dropdown to hold Escape for themselves (?modalescape=0: a modal Escape does not close) --}}
         @if (request()->query('layers') === '1')
             <button type="button" x-data x-on:click="$dispatch('atom-modal-show', { name: 'collapse-modal' })" data-open-modal>Open modal</button>
 
@@ -77,7 +77,7 @@ $suffix = request()->getQueryString() ? '?'.request()->getQueryString() : '';
 
             <div data-select-wrap><atom:select variant="listbox" :options="[['value' => 'a', 'label' => 'Draft'], ['value' => 'b', 'label' => 'Sent']]"/></div>
 
-            <atom:modal name="collapse-modal" data-modal>
+            <atom:modal name="collapse-modal" :escapable="request()->query('modalescape') !== '0'" data-modal>
                 <p>A modal</p>
                 <input type="text" class="border" data-modal-field>
             </atom:modal>
