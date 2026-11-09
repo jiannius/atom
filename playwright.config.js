@@ -30,6 +30,10 @@ const calendarProjects = engines.flatMap(({ browser, device }) => [
     testMatch: /calendar-look\.spec\.js$/,
     grep: /a narrow block breaks its title between words|the title of a narrow block is clamped/,
   },
+  // The disabled-state rig (tests/e2e/disabled-behaviour.spec.js and disabled-morph.spec.js), for what an engine decides: a click on a child of a disabled
+  // button (it still reaches the child's own listener), the controls Tab reaches (Safari's Tab skips buttons, so the rig walks with Alt+Tab there), a file
+  // chooser, a drop, a selection. CI runs them in a job of their own (`e2e-disabled`), and Firefox is in it too: its disabled-button children were never probed.
+  { name: `${browser}-disabled`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /disabled-(behaviour|morph)\.spec\.js$/ },
 ])
 
 // The shells' keyboard and focus specs run again in WebKit, for what Safari does and Chromium does not: it does not focus a button on click
