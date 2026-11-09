@@ -16,12 +16,17 @@ test.describe('clearable input reaches the model', () => {
     return (await page.locator(`[data-server="${prop}"]`).textContent()).trim()
   }
 
+  // heard: wait until the server has "hello" before clearing, or an empty readout afterwards proves nothing. A .live field tells it while
+  // typing; a field bound to `change` only when it is left (heard: 'blur'), and it is then focused again to use its Clear button.
   async function typeThenClear(page, probe, { heard = false } = {}) {
     const input = page.locator(`input[data-probe="${probe}"]`)
     await input.click()
     await input.pressSequentially('hello')
     await expect(input).toHaveValue('hello')
-    // a .live field has told the server by now; wait for that, or an empty readout afterwards proves nothing
+    if (heard === 'blur') {
+      await page.locator('[data-elsewhere]').click()
+      await input.click()
+    }
     if (heard) await expect(page.locator(`[data-server="${probe}"]`)).toHaveText('hello')
     // the clear button sits in the same wrapper as the input
     const clear = input.locator('xpath=..').getByRole('button', { name: 'Clear' })
@@ -46,17 +51,29 @@ test.describe('clearable input reaches the model', () => {
     await expect(page.locator('[data-server="live"]')).toHaveText('')
   })
 
-  test('behind an ancestor with x-on:input.stop: the property is still empty after clear', async ({ page }) => {
-    await typeThenClear(page, 'stopped', { heard: true })
-    await expect(page.locator('[data-server="stopped"]')).toHaveText('')
-    await expect.poll(() => clientValue(page, 'stopped')).toBe('')
+  test('wire:model.live: one clear sends one request', async ({ page }) => {
+    const input = page.locator('input[data-probe="live"]')
+    await input.click()
+    await input.pressSequentially('hello')
+    await expect(page.locator('[data-server="live"]')).toHaveText('hello')
+    // input and change both fire on a clear: they must not each send an update
+    const posts = []
+    page.on('request', r => { if (r.method() === 'POST' && r.url().includes('livewire')) posts.push(r) })
+    await input.locator('xpath=..').getByRole('button', { name: 'Clear' }).click()
+    await expect(page.locator('[data-server="live"]')).toHaveText('')
+    await page.waitForTimeout(800)
+    expect(posts).toHaveLength(1)
   })
 
-  test('wire:model.lazy: the property is empty after clear', async ({ page }) => {
-    await typeThenClear(page, 'lazy')
-    await expect.poll(() => clientValue(page, 'lazy')).toBe('')
-    await expect.poll(() => serverValue(page, 'lazy')).toBe('')
-  })
+  // .lazy and .change listen for `change` only, which a script setting the value never fires: the clear has to send it. The server is read
+  // without a $refresh (it would send the client's state anyway and hide a missing event).
+  for (const [probe, binding] of [['lazy', 'wire:model.lazy'], ['changed', 'wire:model.live.change']]) {
+    test(`${binding}: the server hears the clear without another nudge`, async ({ page }) => {
+      await typeThenClear(page, probe, { heard: 'blur' })
+      await expect(page.locator(`[data-server="${probe}"]`)).toHaveText('')
+      expect(await clientValue(page, probe)).toBe('')
+    })
+  }
 
   test('wire:model.blur: the property is empty once the field is left', async ({ page }) => {
     await typeThenClear(page, 'blur')

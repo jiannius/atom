@@ -14,7 +14,7 @@ class ClearableInputFixture extends Component
 
     public ?string $lazy = null;
 
-    public ?string $stopped = null;
+    public ?string $changed = null;
 
     /**
      * Render the fixture view.
