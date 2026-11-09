@@ -159,7 +159,7 @@ for (const route of ROUTES) {
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // A Livewire child inside a disabled <atom:form>. A form hands its disabled state to a field by the view factory's component stack, which is there
 // while the PARENT renders the child for the first time and is not there when the child updates and renders on its own. So: does the child keep its
-// read-only state after an update of its own? (Section 11 of the plan; the answer is in the ledger when it does not.)
+// read-only state after an update of its own? (the answer is in the ledger when it does not.)
 
 const child = {
   id: () => document.querySelector('[data-child]').closest('[wire\\:id]').getAttribute('wire:id'),

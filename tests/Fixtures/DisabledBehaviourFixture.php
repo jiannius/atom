@@ -8,7 +8,7 @@ use Livewire\Component;
 
 /**
  * Renders ONE case of tests/Fixtures/disabled-controls-cases.json per page (`?case=<id>`), so a Livewire morph on one control can never
- * detach the locator of the next (the audit's baseline died on exactly that: one test walked many controls on one page).
+ * detach the locator of the next (a test that walks many controls on one page loses its next locator to a `.live` morph).
  *
  * Query: `case` (an id), `route` (`prop`: the control carries `:disabled="$off"`; `form`: it sits in `<atom:form :disabled="$off">` and
  * carries nothing), `off=1` (start disabled: the static render a morph is compared with), `bind=x` (the value lives in the page's Alpine

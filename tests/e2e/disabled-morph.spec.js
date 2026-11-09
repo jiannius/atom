@@ -4,7 +4,7 @@ import { LEDGER } from './disabled-ledger.js'
 
 // A Livewire morph that flips a control disabled, then enabled again, through the server (`flip()` on the fixture): the control must end up exactly as
 // a page that was rendered in that state, behave as it does in that state, and an open popup must close when it is disabled under it.
-// Findings 11 (the autoresize textarea does not follow) and 12 (an open popover stays open) were found here by hand.
+// Two things it was written for: the autoresize textarea did not follow a morph, and an open popover stayed open when a morph disabled its control.
 //
 // The pair is serial like disabled-behaviour.spec.js's: the first test proves the fixture can flip the case at all; the second, in the ledger while
 // it is known to fail, asserts the three things above.
