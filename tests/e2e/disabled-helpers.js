@@ -313,7 +313,7 @@ export async function ledgerRow(test, expect, info, key, probe, { ledger = LEDGE
   }
 
   // an engine that differs from Chromium in a way that is its own has its own list: `engines: { webkit: { violations: [...] } }` (empty: it keeps the contract there)
-  const engine = info.project.use.browserName ?? 'chromium'
+  const engine = info.project.use.browserName ?? info.project.use.defaultBrowserType ?? 'chromium'
   const expected = entry ? [...(entry.engines?.[engine]?.violations ?? entry.violations)].sort() : []
 
   if (!expected.length) {
