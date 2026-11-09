@@ -103,7 +103,7 @@ Requires `config('services.recaptcha.site_key' / 'secret_key' / 'min_score')` an
 @verbatim
 - When `<atom:modal>` is the **root** of a single-file Livewire component, omit `name` — methods auto-resolve to the component name.
 - For multiple modals in one component, give each `name="..."` and target with `$this->modal('confirm')->show()` — modals are matched by name only.
-- Three independent close switches, all default true: `:dismissible="false"` blocks backdrop-close, `:escapable="false"` blocks ESC, `:closeable="false"` hides the × button. Combine the first two for a persistent modal.
+- Three independent close switches, all default true: `:dismissible="false"` blocks backdrop-close, `:escapable="false"` blocks ESC (wherever the focus is), `:closeable="false"` hides the × button. Combine the first two for a persistent modal. A dialog the browser closes itself (Escape, `<form method="dialog">`) still resets and fires `closed`.
 - `<atom:modal.trigger name="...">` wraps any clickable to open the modal on click; `name` defaults to the component name like the modal itself. Optional `slide` (`left`/`bottom`, or empty for right) and `shortcut` (e.g. `meta.k`) props.
 @endverbatim
 - Close client-side:
