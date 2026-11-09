@@ -27,5 +27,5 @@ $merges = [
 ];
 @endphp
 
-{{-- No whitespace inside the anchor: it would be underlined, and a link in a sentence would run on past its last letter. --}}
-<a {{ $attributes->class($classes)->merge($merges) }}>@if ($icon)<x-dynamic-component :component="'atom::icon.'.$icon" class="size-4 shrink-0"/>@endif{{ $slot->isEmpty() ? $href : $slot }}@if ($iconSuffix)<x-dynamic-component :component="'atom::icon.'.$iconSuffix" class="size-4 shrink-0"/>@endif</a>
+{{-- No whitespace inside the anchor: it would be underlined, and a link in a sentence would run on past its last letter. For the same reason nothing follows the closing tag: a newline there is a space before the full stop in "Use <atom:link>Settings</atom:link>." (#179). --}}
+<a {{ $attributes->class($classes)->merge($merges) }}>@if ($icon)<x-dynamic-component :component="'atom::icon.'.$icon" class="size-4 shrink-0"/>@endif{{ $slot->isEmpty() ? $href : $slot }}@if ($iconSuffix)<x-dynamic-component :component="'atom::icon.'.$iconSuffix" class="size-4 shrink-0"/>@endif</a>@php /* the file's last newline stays out of the output */ @endphp

@@ -8,7 +8,7 @@
 
 {{-- A borderless pill: a tone's tint with its own ink (4.5:1 or more, both themes), the same recipe as <atom:status> without
      the dot. `color` is a tone (neutral, info, success, warning, danger, accent), a colour name a host plausibly passes
-     (Color::tone() maps it: red is danger, amber is warning, indigo is info...), `black` (a solid fg pill) or a strict hex. --}}
+     (Color::tone() maps it: red is danger, amber is warning, indigo is info...), `black` (a solid fg pill) or a strict hex. Inline: no newline after a closing tag (`</div>@else`), or text after the badge gets a space (#179). --}}
 @php
 $color ??= (is_enum($status) ? $status->color() : data_get($status, 'color'));
 
@@ -71,8 +71,7 @@ $classes = Arr::toCssClasses([
                 @endif
             </div>
         @endif
-    </div>
-@else
+    </div>@else
     <div
     @class([
         $classes,
@@ -94,5 +93,4 @@ $classes = Arr::toCssClasses([
                 @endif
             </div>
         @endif
-    </div>
-@endif
+    </div>@endif
