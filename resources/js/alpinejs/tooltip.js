@@ -106,7 +106,7 @@ export default (config) => {
             this._atomOnNavigate = () => this._atomHide()
             this._atomOnKeydown = (e) => { if (e.key === 'Escape') this._atomHide() }
             document.addEventListener('livewire:navigating', this._atomOnNavigate)
-            document.addEventListener('keydown', this._atomOnKeydown)
+            document.addEventListener('keydown', this._atomOnKeydown, true)
         },
 
         destroy () {
@@ -118,7 +118,7 @@ export default (config) => {
             this._atomCancelHide()
             this._atomHide()
             document.removeEventListener('livewire:navigating', this._atomOnNavigate)
-            document.removeEventListener('keydown', this._atomOnKeydown)
+            document.removeEventListener('keydown', this._atomOnKeydown, true)
         },
 
         _atomShow () {

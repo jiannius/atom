@@ -1,5 +1,6 @@
 import helpers from './helpers'
 import formErrors from './helpers/form-errors'
+import dialogEscape from './helpers/dialog-escape'
 import accordion from './alpinejs/accordion'
 import command from './alpinejs/command'
 import modal from './alpinejs/modal'
@@ -73,3 +74,4 @@ document.addEventListener('alpine:init', () => {
 window.atom = helpers
 
 formErrors()
+dialogEscape()

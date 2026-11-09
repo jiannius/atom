@@ -30,7 +30,8 @@ export default (config = {}) => ({
 
     keydown (props) {
         const key = props.event.key
-        if (key === 'Escape') { this.exit(); return true }
+        // the list took this press: not the dialog's around the editor (ProseMirror prevents every Escape, so the key alone does not say so)
+        if (key === 'Escape') { props.event.stopPropagation(); this.exit(); return true }
         if (key === 'Enter' && this.filteredOptions.length) {
             props.event.preventDefault()
             props.event.stopPropagation()

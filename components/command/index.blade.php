@@ -21,7 +21,7 @@ wire:ignore.self
 x-data="command({ name: @js($name) })"
 x-on:atom-command-show.window="showCommand"
 x-on:atom-command-close.window="closeCommand"
-x-on:keydown.escape.stop.prevent="closeCommand"
+x-on:keydown.escape.stop="escapeClose"
 x-on:close.self="syncClosed"
 @if ($shortcut) x-on:keydown.{{ $shortcut }}.window.prevent="toggle" @endif
 x-on:click="backdropClick"
