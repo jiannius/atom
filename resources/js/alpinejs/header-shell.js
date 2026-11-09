@@ -1,4 +1,5 @@
 import onMorphed from '../helpers/morphed'
+import modalLayer from '../helpers/modal-layer'
 
 // layouts.header: the menu panel below lg, the search field, and the priority-plus nav from lg up.
 //
@@ -16,6 +17,8 @@ import onMorphed from '../helpers/morphed'
 // current item is inside it.
 const LG = '(min-width: 64rem)'
 const XL = '(min-width: 80rem)'
+// the page behind the open menu panel: the layout's own nodes, outside any Livewire component (the bar itself stays live)
+const PAGE = '[data-atom-main], [data-atom-footer], [data-atom-shell-crumbs]'
 const REFERENCES = ['aria-describedby', 'aria-labelledby', 'aria-controls', 'for']
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 const FIELD = 'input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable=""], [contenteditable="true"]'
@@ -30,6 +33,34 @@ export default () => ({
 
     init () {
         this.destroyed = false
+
+        // The panel below lg is a modal layer (helpers/modal-layer.js, as layouts.sidebar's drawer): the page behind is inert while it
+        // is open, and the focus moves into it. Closing returns no focus by itself: the menu button and Escape do it
+        // (toggleMenu(), escape()), a click elsewhere or a navigation must leave it where the user put it. The layer is kept on the root,
+        // not on the Alpine data (a re-run of init() keeps what it made inert).
+        this.$el._atomMenuLayer ??= modalLayer({
+            isOpen: () => this.menu && !window.matchMedia(LG).matches,
+            page: PAGE,
+            container: () => this.$refs.nav,
+            scroll: '[data-atom-header-nav]',
+            close: () => this.closeAll(),
+            listen: (sync) => {
+                let lg = window.matchMedia(LG)
+
+                lg.addEventListener('change', sync)
+
+                return () => lg.removeEventListener('change', sync)
+            },
+        })
+
+        this.$el._atomMenuLayer.start()
+
+        // the panel is drawn from `menu` by an effect that has not run yet: write it, then the layer measures it
+        this.$watch('menu', () => {
+            this.sync()
+            this.$el._atomMenuLayer?.sync()
+        })
+
         this.fit()
 
         this.observer?.disconnect()
@@ -73,6 +104,8 @@ export default () => ({
 
     destroy () {
         this.destroyed = true
+        this.$el._atomMenuLayer?.stop()
+        this.$el._atomMenuLayer?.release()
         this.observer?.disconnect()
         this.$el._atomHeaderStopMorph?.()
         this.$el._atomHeaderStopListening?.()
@@ -133,6 +166,15 @@ export default () => ({
         this.$refs.more?.toggleAttribute('data-menu-open', this.more)
     },
 
+    /**
+     * The menu button: it opens the panel, or closes it and keeps the focus on itself (a click does not focus a button in Safari).
+     */
+    toggleMenu () {
+        this.menu = !this.menu
+
+        if (!this.menu) this.$refs.menuButton?.focus()
+    },
+
     toggleSearch () {
         // one layer at a time, and not by waiting for a focusout: Safari and Firefox do not focus a button on click
         if (!this.search) {
@@ -165,28 +207,49 @@ export default () => ({
     },
 
     /**
-     * Escape closes the innermost thing that is open and nothing else: a dropdown inside the bar or the panel
-     * (a context switcher, the account menu) is a native popover that closes itself on this same keypress, so
-     * the capture phase asks before it has. Then the search field, then "More", then the menu panel.
+     * Escape closes the innermost thing that is open and nothing else. It is heard on the window, in the capture phase, not on the
+     * header: a click on something that takes no focus (Safari does not focus a button on click; blank space in the panel, the search
+     * popover's edge, the bar) leaves the focus on <body>, and an Escape that only the header heard would be dead. So the layers are
+     * asked instead, as layouts.sidebar does: a modal dialog or a popover (a dropdown in the bar or the panel, a tooltip; not a toast,
+     * which never takes Escape) has the key first and the next press is ours. Then the search field, then "More", then a navlist.group
+     * dropdown (asked to close with an event, so one place decides and a host's own Escape listener cannot leave it open), then the menu panel. Only a press that
+     * closes one of those is prevented and stopped, so a host's own Escape listener still runs when nothing here is open.
      */
     escape (e) {
-        if (this.$el.querySelector(':popover-open')) return
+        let group
+
+        // a held key or an IME composition being cancelled is not a press for us
+        if (e.repeat || e.isComposing || e.defaultPrevented) return
+        if (document.querySelector('dialog:modal, :popover-open:not([data-atom-toast])')) return
 
         if (this.search) {
+            this.take(e)
             this.search = false
             this.$refs.searchButton?.focus()
         }
         else if (this.more) {
+            this.take(e)
             this.more = false
             this.$refs.moreButton?.focus()
         }
-        else if (this.$el.querySelector('[data-atom-navlist-group][data-menu-open]')) {
-            // a navlist.group dropdown closes itself and returns focus to its trigger
+        else if ((group = this.$el.querySelector('[data-atom-navlist-group][data-menu-open]'))) {
+            // a navlist.group dropdown: it closes and returns the focus to its trigger when asked
+            this.take(e)
+            group.dispatchEvent(new CustomEvent('atom-navlist-group-close'))
         }
-        else if (this.menu) {
+        else if (this.menu && !window.matchMedia(LG).matches) {
+            this.take(e)
             this.menu = false
             this.$refs.menuButton?.focus()
         }
+    },
+
+    /**
+     * This press is ours: the Escape handlers of the page under it do not also run.
+     */
+    take (e) {
+        e.preventDefault()
+        e.stopPropagation()
     },
 
     /**

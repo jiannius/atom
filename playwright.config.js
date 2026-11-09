@@ -32,6 +32,16 @@ const calendarProjects = engines.flatMap(({ browser, device }) => [
   },
 ])
 
+// The shells' keyboard and focus specs run again in WebKit, for what Safari does and Chromium does not: it does not focus a button on click
+// (so an Escape heard only inside the header was dead after a click on More), its Tab skips links (Alt+Tab visits every control), and its
+// `inert` and resize events are its own. WebKit only: Firefox has no project here. After Chromium, as the calendar's, and `--no-deps` on CI.
+const shellProject = {
+  name: 'webkit-shell',
+  dependencies: ['chromium'],
+  use: { ...devices['Desktop Safari'] },
+  testMatch: /(shells|shell-escape|shell-escape-focus|shell-drawer|shell-menu-panel)\.spec\.js$/,
+}
+
 export default defineConfig({
   testDir: './tests/e2e',
   // trace on the retry, so a failure that only happens on CI leaves its trace in test-results/ (the workflow uploads that folder)
@@ -39,7 +49,7 @@ export default defineConfig({
   // The served app is PHP's one-request-at-a-time server: on CI two workers queue behind each other and a drag
   // or a page load can run out of time. One worker there, and one retry for what still flakes.
   ...(process.env.CI ? { workers: 1, retries: 1 } : {}),
-  projects: [{ name: 'chromium' }, ...calendarProjects],
+  projects: [{ name: 'chromium' }, ...calendarProjects, shellProject],
   webServer: {
     command: 'vendor/bin/testbench serve',
     url: 'http://127.0.0.1:8000/atom/docs',

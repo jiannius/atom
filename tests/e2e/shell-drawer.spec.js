@@ -88,7 +88,8 @@ test.describe('the stashed sidebar as a modal drawer', () => {
     expect(await page.evaluate(() => [window.scrollX, window.scrollY, document.querySelector('[data-atom-sidebar]').scrollLeft])).toEqual([0, 0, 0])
   })
 
-  test('the page behind is inert while the drawer is open and not after it closes; the menu button and the account menu are not', async ({ page }) => {
+  test('the page behind is inert while the drawer is open and not after it closes; the menu button and the account menu are not', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'reads the accessibility tree over CDP, which only Chromium has')
     await page.setViewportSize(PHONE)
     await go(page)
     expect(await inertTags(page)).toEqual([])

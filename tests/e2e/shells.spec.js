@@ -227,7 +227,7 @@ for (const tw of ['floor', 'latest']) {
   test.describe(`header shell at 390px, ${tw} consumer build`, () => {
     test.use({ viewport: { width: 390, height: 800 } })
 
-    test('the nav moves into a menu that opens by keyboard and closes with Escape', async ({ page }) => {
+    test('the nav moves into a menu that opens by keyboard and closes with Escape', async ({ page, browserName }) => {
       await open(page, 'header', { tw })
 
       const button = page.locator('[data-atom-header-menu-button]')
@@ -257,10 +257,29 @@ for (const tw of ['floor', 'latest']) {
       await expect(page.locator('[data-atom-navlist-group-trigger]').first()).toBeHidden()
       await expect(link(page, 'Sales')).toBeVisible()
 
-      // Tab reaches the links in the panel (the brand link and the account trigger beside it sit between the button and the panel)
-      for (let i = 0; i < 5 &&!(await dashboard.evaluate((el) => el === document.activeElement)); i++) {
-        await page.keyboard.press('Tab')
+      // opening moved the focus into the panel (the page behind is inert, see shell-menu-panel.spec.js); Tab goes on to the next link of the panel
+      const where = () => page.evaluate(() => ({
+        text: document.activeElement.textContent.trim(),
+        inPanel: !!document.activeElement.closest('[data-atom-header-nav]'),
+        isLink: document.activeElement.matches('a[data-atom-navlist-item]'),
+      }))
+      const first = await where()
+      expect(first).toMatchObject({ inPanel: true, isLink: true })
+      const landed = async () => {
+        const now = await where()
+        return now.inPanel && now.isLink && now.text !== first.text
       }
+      // Tab to the next link: Safari on a Mac skips links with Tab (Alt+Tab visits every control), Linux WebKit and the others do not
+      for (const key of browserName === 'webkit' ? ['Tab', 'Alt+Tab'] : ['Tab']) {
+        for (let i = 0; i < 4 && !(await landed()); i++) {
+          await page.keyboard.press(key)
+        }
+      }
+      const second = await where()
+      expect(second).toMatchObject({ inPanel: true, isLink: true })
+      expect(second.text).not.toBe(first.text)
+
+      await dashboard.focus()
       await expect(dashboard).toBeFocused()
 
       await page.keyboard.press('Escape')
@@ -1065,6 +1084,8 @@ for (const tw of ['floor', 'latest']) {
 
       await page.setViewportSize({ width: 1100, height: 800 })
       await expect(button).toBeHidden()
+      // WebKit reports the lg media query's `change` a little after the layout; resizing back at once misses it
+      await page.waitForTimeout(150)
       await page.setViewportSize({ width: 768, height: 800 })
       await expect(button).toBeVisible()
 
@@ -1099,6 +1120,8 @@ for (const tw of ['floor', 'latest']) {
 
       await page.setViewportSize({ width: 1300, height: 800 })
       await expect(page.locator('[data-atom-shell-search]')).toBeVisible()
+      // WebKit reports the xl media query's `change` a little after the layout; resizing back at once misses it
+      await page.waitForTimeout(150)
       await page.setViewportSize({ width: 1100, height: 800 })
 
       await expect(button).toBeVisible()

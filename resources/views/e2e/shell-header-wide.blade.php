@@ -7,6 +7,9 @@ $page = is_string($page) ? $page : 'purchase-orders';
 
 // Switches for the specs: ?hide=<page>,<page> hides those units, ?lw=1 puts a Livewire counter in the actions slot,
 // ?refs=1 gives one item aria-describedby / aria-controls / a label that point at ids.
+// For the menu panel's focus spec: ?wire=1 makes the nav links wire:navigate, ?crumbs=1 and ?footer=1 fill those slots, ?layers=1 adds a field,
+// a modal and a toast trigger to the page, ?lwmain=1 puts a Livewire counter in the page (?lw=1 is the one in the bar). ?page=none marks no item current.
+$wire = new \Illuminate\View\ComponentAttributeBag(request()->query('wire') ? ['wire:navigate' => true] : []);
 $hide = explode(',', (string) request()->query('hide', ''));
 $hidden = fn (string $key) => in_array($key, $hide, true) ? 'display: none' : null;
 @endphp
@@ -38,10 +41,10 @@ $hidden = fn (string $key) => in_array($key, $hide, true) ? 'display: none' : nu
 
     <x-slot:nav>
         <atom:navlist>
-            <atom:navlist.item href="?page=purchase-orders" :style="$hidden('purchase-orders')" count="12" :current="$page === 'purchase-orders'">Purchase orders</atom:navlist.item>
-            <atom:navlist.item href="?page=work-orders" :style="$hidden('work-orders')" count="8" :current="$page === 'work-orders'">Work orders</atom:navlist.item>
-            <atom:navlist.item href="?page=sales-invoices" :style="$hidden('sales-invoices')" count="31" :current="$page === 'sales-invoices'">Sales invoices</atom:navlist.item>
-            <atom:navlist.item href="?page=delivery-orders" :style="$hidden('delivery-orders')" count="4" :current="$page === 'delivery-orders'">Delivery orders</atom:navlist.item>
+            <atom:navlist.item :attributes="$wire" href="?page=purchase-orders" :style="$hidden('purchase-orders')" count="12" :current="$page === 'purchase-orders'">Purchase orders</atom:navlist.item>
+            <atom:navlist.item :attributes="$wire" href="?page=work-orders" :style="$hidden('work-orders')" count="8" :current="$page === 'work-orders'">Work orders</atom:navlist.item>
+            <atom:navlist.item :attributes="$wire" href="?page=sales-invoices" :style="$hidden('sales-invoices')" count="31" :current="$page === 'sales-invoices'">Sales invoices</atom:navlist.item>
+            <atom:navlist.item :attributes="$wire" href="?page=delivery-orders" :style="$hidden('delivery-orders')" count="4" :current="$page === 'delivery-orders'">Delivery orders</atom:navlist.item>
             <atom:navlist.item href="?page=stock-transfers" count="2" :style="$hidden('stock-transfers')" :current="$page === 'stock-transfers'" :aria-describedby="request()->query('refs') ? 'shell-hint' : null" :aria-controls="request()->query('refs') ? 'shell-hint' : null">Stock transfers @if (request()->query('refs'))<label for="shell-hint" aria-labelledby="shell-hint" data-testid="shell-ref-label">hint</label>@endif</atom:navlist.item>
 
             <atom:navlist.group heading="Financial reports" :style="$hidden('financial-reports')">
@@ -69,8 +72,34 @@ $hidden = fn (string $key) => in_array($key, $hide, true) ? 'display: none' : nu
         <atom:menu.item icon="logout">Sign out</atom:menu.item>
     </x-slot>
 
+    @if (request()->query('crumbs'))
+        <x-slot:crumbs>
+            <span data-crumb>Crumb</span>
+        </x-slot>
+    @endif
+
+    @if (request()->query('footer'))
+        <x-slot:footer>
+            <a href="#footer" data-footer-link>Footer link</a>
+        </x-slot>
+    @endif
+
     <div class="px-7 pb-24 pt-6 max-lg:px-4" data-testid="pattern-page">
         <div class="text-2xl font-semibold" data-testid="pattern-title">{{ $page }}</div>
+        <input type="text" class="border" data-field>
+
+        @if (request()->query('lwmain'))
+            <div data-morph="page"><livewire:atom-e2e-shell-actions /></div>
+        @endif
+
+        @if (request()->query('layers'))
+            <button type="button" x-data x-on:click="$dispatch('atom-modal-show', { name: 'header-modal' })" data-open-modal>Open modal</button>
+
+            <atom:modal name="header-modal" data-modal>
+                <p>A modal</p>
+                <input type="text" class="border" data-modal-field>
+            </atom:modal>
+        @endif
     </div>
 
     <span id="shell-hint" class="sr-only">hint</span>

@@ -195,6 +195,12 @@ jobs:
 
       - run: node_modules/.bin/playwright test --no-deps --project=${{ matrix.browser }}-a11y --project=${{ matrix.browser }}-select --project=${{ matrix.browser }}-move --project=${{ matrix.browser }}-look
 
+      # The shells' keyboard and focus specs, in WebKit only (Safari does not focus a button on click and its Tab skips links); Firefox has no
+      # such project. This job's name stays "Playwright calendar (...)" so required checks do not change, but the webkit leg also gates these
+      # specs, and the step runs after a calendar failure too (everything but a cancelled run).
+      - if: ${{ !cancelled() && matrix.browser == 'webkit' }}
+        run: node_modules/.bin/playwright test --no-deps --project=webkit-shell
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

@@ -72,7 +72,7 @@ $trailEmpty = isset($crumbs)
          travel inside its own grid area). Not `relative`: below lg the nav panel is positioned against this element. --}}
     <header
     x-data="headerShell"
-    x-on:keydown.escape.capture="escape($event)"
+    x-on:keydown.escape.window.capture="escape($event)"
     x-on:click.outside="closeAll()"
     x-on:focusout="if (search && $event.relatedTarget && !$refs.search.contains($event.relatedTarget) && $event.relatedTarget !== $refs.searchButton) search = false"
     x-on:livewire:navigate.window="closeAll()"
@@ -83,7 +83,7 @@ $trailEmpty = isset($crumbs)
             <button
             type="button"
             x-ref="menuButton"
-            x-on:click="menu = !menu"
+            x-on:click="toggleMenu()"
             x-bind:aria-expanded="menu ? 'true' : 'false'"
             aria-controls="atom-header-nav"
             aria-label="{{ t('Menu') }}"
@@ -266,7 +266,7 @@ $trailEmpty = isset($crumbs)
     </main>
 
     @isset ($footer)
-        <footer class="[grid-area:footer] z-10 mx-auto w-full max-w-[1248px] px-6 py-4">
+        <footer class="[grid-area:footer] z-10 mx-auto w-full max-w-[1248px] px-6 py-4" data-atom-footer>
             {{ $footer ?? '' }}
         </footer>
     @endisset
