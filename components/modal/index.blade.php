@@ -96,7 +96,7 @@ x-data="modal({
 })"
 x-on:atom-modal-show.window="showModal"
 x-on:atom-modal-close.window="closeModal"
-x-on:keydown.escape.stop.prevent="escapeClose"
+x-on:keydown.escape.stop="escapeClose"
 x-on:cancel.self="cancelModal"
 x-on:close.self="syncClosed"
 @if (! $escapable) closedby="none" @endif

@@ -1,4 +1,5 @@
 import onMorphed from '../helpers/morphed'
+import { tookEscape } from '../helpers/dialog-escape'
 
 export default (config) => {
     return {
@@ -67,6 +68,14 @@ export default (config) => {
             if (this.$root.open || !this.open) return
 
             this.resetCommand()
+        },
+
+        escapeClose (e) {
+            // A popover inside took this press (helpers/dialog-escape.js).
+            if (tookEscape(e)) return
+
+            e.preventDefault()
+            this.closeCommand()
         },
 
         backdropClick (e) {

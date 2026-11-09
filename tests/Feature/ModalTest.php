@@ -32,7 +32,7 @@ describe('modal', function () {
             ->toContain("name: 'test-modal'")
             ->toContain('x-on:atom-modal-show.window="showModal"')
             ->toContain('x-on:atom-modal-close.window="closeModal"')
-            ->toContain('x-on:keydown.escape.stop.prevent="escapeClose"')
+            ->toContain('x-on:keydown.escape.stop="escapeClose"')
             ->toContain('wire:ignore.self')
             ->toContain('Body')
             ->not->toContain('scope:'); // targeting is by name only
@@ -78,9 +78,9 @@ describe('modal', function () {
 
         expect($html)
             ->toContain('escapable: false')
-            // the keydown stays bound (and prevented) for the focus inside the
+            // the keydown stays bound (modal.js prevents it) for the focus inside the
             // dialog; the JS side gates the close
-            ->toContain('x-on:keydown.escape.stop.prevent="escapeClose"')
+            ->toContain('x-on:keydown.escape.stop="escapeClose"')
             // the other two switches are independent
             ->toContain('x-on:click="backdropClick"')
             ->toContain('aria-label="Close"');

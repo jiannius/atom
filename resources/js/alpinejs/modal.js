@@ -1,3 +1,5 @@
+import { tookEscape } from '../helpers/dialog-escape'
+
 export default (config) => {
     return {
         name: config.name,
@@ -65,7 +67,13 @@ export default (config) => {
             if (!this.escapable) e.preventDefault()
         },
 
-        escapeClose () {
+        escapeClose (e) {
+            // A popover inside took this press (helpers/dialog-escape.js). A dialog already closed: the browser moves the focus out
+            // of a closed dialog at its next frame, so a key before that still lands here and would say `closed` again.
+            if (tookEscape(e) || !this.$root.open) return
+
+            e.preventDefault()
+
             // The keydown only arrives while the focus is inside the dialog; with the focus on <body>, or in a
             // control that stops the key, the browser's own cancel is what Escape does (see cancelModal and
             // syncClosed). Only close when the modal is escapable.
