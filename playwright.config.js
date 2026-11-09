@@ -35,12 +35,12 @@ const calendarProjects = engines.flatMap(({ browser, device }) => [
 // The shells' keyboard and focus specs run again in WebKit, for what Safari does and Chromium does not: it does not focus a button on click
 // (so an Escape heard only inside the header was dead after a click on More), its Tab skips links (Alt+Tab visits every control), and its
 // `inert` and resize events are its own. `modal-escape` is here for `closedby`, which WebKit does not have (its `cancel` stays cancelable
-// on every press, where Chromium stops allowing a prevented one after two). WebKit only: Firefox has no project here. After Chromium, as the calendar's, and `--no-deps` on CI.
+// on every press, where Chromium stops allowing a prevented one after two); `command-escape` is the palette's native-close path (#176). WebKit only: Firefox has no project here. After Chromium, as the calendar's, and `--no-deps` on CI.
 const shellProject = {
   name: 'webkit-shell',
   dependencies: ['chromium'],
   use: { ...devices['Desktop Safari'] },
-  testMatch: /(shells|shell-escape|shell-escape-focus|shell-drawer|shell-menu-panel|modal-escape)\.spec\.js$/,
+  testMatch: /(shells|shell-escape|shell-escape-focus|shell-drawer|shell-menu-panel|modal-escape|command-escape)\.spec\.js$/,
 }
 
 export default defineConfig({

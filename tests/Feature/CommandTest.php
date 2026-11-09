@@ -9,10 +9,20 @@ describe('command', function () {
             ->toContain('x-data="command({ name: \'palette\' })"')
             ->toContain('x-on:atom-command-show.window="showCommand"')
             ->toContain('x-on:atom-command-close.window="closeCommand"')
+            ->toContain('x-on:close.self="syncClosed"')
             ->toContain('data-atom-command-search')
             ->toContain('role="combobox"')
             ->toContain('data-atom-command-list')
             ->toContain('data-atom-command-empty');
+    });
+
+    it('lays the open palette out on the native open attribute, never on data-open', function () {
+        $html = renderBlade('<atom:command name="palette"/>');
+
+        expect($html)
+            ->toContain('[&amp;[open]]:flex')
+            ->toContain('[&amp;[open]]:flex-col')
+            ->not->toContain('[data-open]]:flex');
     });
 
     it('gives the listbox an accessible name and binds the combobox expanded state', function () {
