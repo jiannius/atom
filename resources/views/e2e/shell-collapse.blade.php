@@ -80,6 +80,15 @@ $suffix = request()->getQueryString() ? '?'.request()->getQueryString() : '';
             <atom:modal name="collapse-modal" :escapable="request()->query('modalescape') !== '0'" data-modal>
                 <p>A modal</p>
                 <input type="text" class="border" data-modal-field>
+
+                {{-- a dropdown inside the modal (#177): Escape closes it before the modal --}}
+                <atom:dropdown>
+                    <button type="button" data-open-modal-dropdown>Open dropdown in the modal</button>
+
+                    <atom:menu popover>
+                        <atom:menu.item href="#in-modal">Modal item</atom:menu.item>
+                    </atom:menu>
+                </atom:dropdown>
             </atom:modal>
         @endif
         <a href="/atom/e2e/shell-collapse/{{ $page === 'one' ? 'two' : 'one' }}{{ $suffix }}" wire:navigate data-go>Go to the other page</a>

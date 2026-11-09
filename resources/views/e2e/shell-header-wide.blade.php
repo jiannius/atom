@@ -98,6 +98,15 @@ $hidden = fn (string $key) => in_array($key, $hide, true) ? 'display: none' : nu
             <atom:modal name="header-modal" data-modal>
                 <p>A modal</p>
                 <input type="text" class="border" data-modal-field>
+
+                {{-- a dropdown inside the modal (#177): Escape closes it before the modal --}}
+                <atom:dropdown>
+                    <button type="button" data-open-modal-dropdown>Open dropdown in the modal</button>
+
+                    <atom:menu popover>
+                        <atom:menu.item href="#in-modal">Modal item</atom:menu.item>
+                    </atom:menu>
+                </atom:dropdown>
             </atom:modal>
         @endif
     </div>

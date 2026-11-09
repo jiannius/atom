@@ -29,8 +29,31 @@
             </atom:menu>
         </atom:dropdown>
 
+        {{-- what a press of Escape has to close before the modal (#177) --}}
+        <atom:context-menu>
+            <div data-context-area>Right-click here</div>
+
+            <x-slot:menu>
+                <atom:menu.item>Context one</atom:menu.item>
+            </x-slot:menu>
+        </atom:context-menu>
+
+        <atom:tooltip content="A tip" data-tip>
+            <button type="button" data-tip-trigger>Tip</button>
+        </atom:tooltip>
+
         <form method="dialog"><button data-submit-dialog>Submit</button></form>
     </atom:modal>
+
+    <atom:command name="palette" shortcut="" data-palette>
+        <atom:dropdown>
+            <button type="button" data-open-palette-dropdown>Open dropdown</button>
+
+            <atom:menu popover>
+                <atom:menu.item href="#palette">Palette item</atom:menu.item>
+            </atom:menu>
+        </atom:dropdown>
+    </atom:command>
 
     <atom:modal name="outer" :escapable="$outerEscapable" data-modal="outer">
         <p>Outer</p>

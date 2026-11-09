@@ -6,6 +6,11 @@ import { test, expect } from '@playwright/test'
 // `cancel` listener (Safari, which has no closedby), plus a `close` listener that resets what the browser closed. Fixture:
 // tests/Fixtures/ModalEscapeFixture.php at /atom/e2e/modal-escape, and the sidebar shell at /atom/e2e/shell-collapse for the drawer.
 //
+// #177 adds the other half: Escape closes the topmost layer only, so a dropdown, a context menu, a tooltip or a select list inside the dialog
+// (the command palette, a dropdown over the sidebar drawer or the header's menu panel) takes the first press and the dialog the next, wherever the
+// focus is and in every engine (WebKit closes a popover and its dialog on one native Escape). That is helpers/dialog-escape.js; the rest of the
+// layers (date pickers, filters, the column picker, a dialog inside a popover, an editor) are in modal-escape-layers.spec.js.
+//
 // Chromium and Firefox let a page prevent only two cancels in a row, so a `cancel` listener alone passes two presses and fails the
 // third: the hold tests press three times and read the state AFTER the last press, with no page.evaluate between presses
 // (Playwright's evaluate counts as user activation in Chromium, which re-arms the cancel; a real user's Escape does not).
@@ -37,9 +42,6 @@ const state = (page, name = 'esc') => page.evaluate((n) => {
     attributes: [...el.attributes].map((a) => a.name).filter((a) => a === 'data-open' || a.startsWith('data-atom-modal')).sort(),
   }
 }, name)
-// WebKit closes an open popover AND an escapable modal dialog on one Escape (the same on the code before #174, only the state it
-// leaves is what changed), so "one layer per press" is not asserted there; a modal that holds Escape is, since it prevents the cancel
-const WEBKIT_ONE_ESCAPE = 'WebKit cancels the modal dialog together with an open popover on one Escape'
 const CLOSED = { open: false, attributes: [] }
 const OPEN = { open: true, attributes: ['data-atom-modal', 'data-open'] }
 
@@ -87,6 +89,76 @@ for (const escapable of [false, true]) {
       }
     })
 
+    // #177: one layer per press wherever the focus is, in every engine, the popover first (helpers/dialog-escape.js).
+    for (const focus of ['trigger', 'menu', 'dialog', 'body']) {
+      test(`a dropdown with the focus on the ${focus}: it closes alone, then the modal`, async ({ page }) => {
+        await go(page, query)
+        await show(page)
+        await activate(page, '[data-open-dropdown]')
+        const item = page.getByRole('menuitem', { name: 'Item one' })
+        await expect(item).toBeVisible()
+
+        if (focus === 'menu') await item.evaluate((el) => el.focus())
+        if (focus === 'dialog') await dialog(page).evaluate((el) => { el.tabIndex = -1; el.focus() })
+        if (focus === 'body') await blur(page)
+
+        await escape(page)
+        await expect(item).toBeHidden()
+        expect(await state(page)).toEqual(OPEN)
+
+        if (focus === 'menu') await expect(page.locator('[data-open-dropdown]')).toBeFocused()
+
+        await escape(page, 3)
+
+        if (escapable) {
+          await expect(dialog(page)).toBeHidden()
+          await expect.poll(() => state(page)).toEqual(CLOSED)
+          await expect.poll(() => closedEvents(page)).toEqual(['esc'])
+        }
+        else {
+          await settle(page)
+          expect(await state(page)).toEqual(OPEN)
+        }
+      })
+    }
+
+    test('a context menu takes the first Escape, then the modal', async ({ page }) => {
+      await go(page, query)
+      await show(page)
+      await page.locator('[data-context-area]').click({ button: 'right' })
+      const item = page.getByRole('menuitem', { name: 'Context one' })
+      await expect(item).toBeVisible()
+      await item.evaluate((el) => el.focus())
+
+      await escape(page)
+      await expect(item).toBeHidden()
+      expect(await state(page)).toEqual(OPEN)
+
+      await escape(page, 3)
+
+      if (escapable) await expect.poll(() => state(page)).toEqual(CLOSED)
+      else {
+        await settle(page)
+        expect(await state(page)).toEqual(OPEN)
+      }
+    })
+
+    test('a tooltip is dismissed by Escape, and only an escapable modal goes with it (a tooltip does not take the press)', async ({ page }) => {
+      await go(page, query)
+      await show(page)
+      await page.locator('[data-tip-trigger]').evaluate((el) => el.focus())
+      const tip = page.locator('[data-atom-tooltip-content]')
+      await expect(tip).toBeVisible()
+
+      await escape(page)
+
+      if (escapable) await expect.poll(() => state(page)).toEqual(CLOSED)
+      else {
+        await expect(tip).toBeHidden()
+        expect(await state(page)).toEqual(OPEN)
+      }
+    })
+
     test('Escape in a select whose list is closed (the select stops the key)', async ({ page }) => {
       await go(page, query)
       await show(page)
@@ -105,8 +177,7 @@ for (const escapable of [false, true]) {
       }
     })
 
-    test('an open select list takes the first Escape, then the modal', async ({ page, browserName }) => {
-      test.skip(escapable && browserName === 'webkit', WEBKIT_ONE_ESCAPE)
+    test('an open select list takes the first Escape, then the modal', async ({ page }) => {
       await go(page, query)
       await show(page)
       await activate(page, '[data-select-wrap] [role="combobox"]')
@@ -189,8 +260,7 @@ for (const escapable of [false, true]) {
       }
     })
 
-    test('an open dropdown takes the first Escape and the modal stays', async ({ page, browserName }) => {
-      test.skip(escapable && browserName === 'webkit', WEBKIT_ONE_ESCAPE)
+    test('an open dropdown takes the first Escape and the modal stays', async ({ page }) => {
       await go(page, query)
       await show(page)
       await activate(page, '[data-open-dropdown]')
@@ -362,6 +432,81 @@ test.describe('stacked modals', () => {
   })
 })
 
+test.describe('the command palette (#177)', () => {
+  for (const focus of ['search', 'menu', 'body']) {
+    test(`a dropdown in it with the focus on the ${focus}: it closes alone, then the palette`, async ({ page }) => {
+      await go(page)
+      await page.evaluate(() => window.dispatchEvent(new CustomEvent('atom-command-show', { detail: { name: 'palette' } })))
+      const palette = page.locator('[data-palette]')
+      await expect(palette).toBeVisible()
+      await activate(page, '[data-open-palette-dropdown]')
+      const item = page.getByRole('menuitem', { name: 'Palette item' })
+      await expect(item).toBeVisible()
+
+      if (focus === 'search') await page.locator('[data-palette] [data-atom-command-search]').evaluate((el) => el.focus())
+      if (focus === 'menu') await item.evaluate((el) => el.focus())
+      if (focus === 'body') await blur(page)
+
+      await escape(page)
+      await expect(item).toBeHidden()
+      await expect(palette).toBeVisible()
+
+      await escape(page)
+      await expect(palette).toBeHidden()
+    })
+  }
+})
+
+test.describe('the header menu panel under a modal', () => {
+  test.use({ viewport: { width: 390, height: 800 } })
+
+  const goHeader = async (page) => {
+    const css = await page.request.get('/atom/e2e/consumer-css/latest')
+    expect(css.status(), 'run `node tests/consumer/build.mjs` first').toBe(200)
+
+    await page.goto('/atom/e2e/shell-header-wide?tw=latest&layers=1')
+    await page.waitForFunction(() => window.Alpine !== undefined)
+  }
+  const panelOpen = (page) => page.evaluate(() => document.querySelector('[data-atom-header-nav]').hasAttribute('data-open'))
+
+  test('a dropdown in the modal over the panel: dropdown, then modal, one a press (a click outside the panel closes it, as it does)', async ({ page }) => {
+    await goHeader(page)
+    await page.locator('[data-atom-header-menu-button]').click()
+    await expect.poll(() => panelOpen(page)).toBe(true)
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('atom-modal-show', { detail: { name: 'header-modal' } })))
+    const dlg = page.locator('dialog[data-modal]')
+    await expect(dlg).toBeVisible()
+    await activate(page, '[data-open-modal-dropdown]')
+    const item = page.getByRole('menuitem', { name: 'Modal item' })
+    await expect(item).toBeVisible()
+    await expect.poll(() => panelOpen(page)).toBe(false)
+
+    await escape(page)
+    await expect(item).toBeHidden()
+    await expect(dlg).toBeVisible()
+
+    await escape(page)
+    await expect(dlg).toBeHidden()
+  })
+
+  test('the panel open, a modal over it: Escape closes the modal, then the panel', async ({ page }) => {
+    await goHeader(page)
+    await page.locator('[data-atom-header-menu-button]').click()
+    await expect.poll(() => panelOpen(page)).toBe(true)
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('atom-modal-show', { detail: { name: 'header-modal' } })))
+    const dlg = page.locator('dialog[data-modal]')
+    await expect(dlg).toBeVisible()
+    await blur(page)
+
+    await escape(page)
+    await expect(dlg).toBeHidden()
+    expect(await panelOpen(page)).toBe(true)
+
+    await escape(page)
+    await expect.poll(() => panelOpen(page)).toBe(false)
+  })
+})
+
 test.describe('the sidebar drawer under a modal', () => {
   const goShell = async (page, query = '') => {
     const css = await page.request.get('/atom/e2e/consumer-css/latest')
@@ -407,6 +552,25 @@ test.describe('the sidebar drawer under a modal', () => {
     await escape(page)
     expect(await stashed(page)).toBe(false)
     await expect.poll(() => drawerShown(page)).toBe(false)
+  })
+
+  test('a dropdown in the modal over the drawer: dropdown, then modal, then drawer, one a press', async ({ page }) => {
+    await goShell(page)
+    await openBoth(page)
+    await activate(page, '[data-open-modal-dropdown]')
+    await expect(page.locator('[data-modal] [data-atom-menu]')).toBeVisible()
+
+    await escape(page)
+    await expect(page.locator('[data-modal] [data-atom-menu]')).toBeHidden()
+    await expect(modal(page)).toBeVisible()
+    expect(await stashed(page)).toBe(true)
+
+    await escape(page)
+    await expect(modal(page)).toBeHidden()
+    expect(await stashed(page)).toBe(true)
+
+    await escape(page)
+    expect(await stashed(page)).toBe(false)
   })
 
   test('not escapable: both hold for three presses', async ({ page }) => {
