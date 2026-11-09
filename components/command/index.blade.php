@@ -12,7 +12,7 @@ $placeholder ??= t('Search...');
 $classes = Arr::toCssClasses([
     'group/command m-auto mt-[10vh] w-full max-w-xl overflow-hidden rounded-modal p-0 shadow-pop',
     'bg-surface-raised text-fg border border-border-strong',
-    '[&[data-open]]:flex [&[data-open]]:flex-col',
+    '[&[open]]:flex [&[open]]:flex-col',
 ]);
 @endphp
 
@@ -22,6 +22,7 @@ x-data="command({ name: @js($name) })"
 x-on:atom-command-show.window="showCommand"
 x-on:atom-command-close.window="closeCommand"
 x-on:keydown.escape.stop.prevent="closeCommand"
+x-on:close.self="syncClosed"
 @if ($shortcut) x-on:keydown.{{ $shortcut }}.window.prevent="toggle" @endif
 x-on:click="backdropClick"
 data-atom-command

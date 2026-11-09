@@ -50,9 +50,23 @@ export default (config) => {
             if (e?.detail?.name && e.detail.name !== config.name) return
 
             this.$root.close()
+            this.resetCommand()
+        },
+
+        resetCommand () {
             this.$root.removeAttribute('data-open')
             this.open = false
             this.text = ''
+        },
+
+        // The browser closed the dialog without closeCommand(): an Escape the dialog's own keydown handler never heard (the focus on
+        // <body>, because a morph took out the focused item or a Tab walked off the end; a control in the slot that stops the key), a
+        // <form method="dialog">, a direct close(). `close` is queued, so after closeCommand() it finds the state already clean, and
+        // after a close and a reopen in one tick it finds the dialog open again.
+        syncClosed () {
+            if (this.$root.open || !this.open) return
+
+            this.resetCommand()
         },
 
         backdropClick (e) {
