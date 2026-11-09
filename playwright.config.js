@@ -17,6 +17,10 @@ const engines = [
   ...(process.env.CI || process.env.PW_FIREFOX ? [{ browser: 'firefox', device: 'Desktop Firefox' }] : []),
 ]
 
+// The disabled-state rig's behaviour and morph specs, one file per route. Their names start apart on purpose: CI shards the Chromium project by cutting the
+// file-name-ordered list into equal chunks, and files that sort together would land in one shard (see tests/e2e/disabled-behaviour-rows.js).
+const disabledRigSpecs = /(controls-disabled-behaviour-prop|disabled-behaviour-form|morph-disabled-prop|morph-disabled-form)\.spec\.js$/
+
 const calendarProjects = engines.flatMap(({ browser, device }) => [
   { name: `${browser}-a11y`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /calendar-a11y\.spec\.js$/ },
   // the selection runs on pointer events by hand
@@ -30,10 +34,10 @@ const calendarProjects = engines.flatMap(({ browser, device }) => [
     testMatch: /calendar-look\.spec\.js$/,
     grep: /a narrow block breaks its title between words|the title of a narrow block is clamped/,
   },
-  // The disabled-state rig (tests/e2e/disabled-behaviour.spec.js and disabled-morph.spec.js), for what an engine decides: a click on a child of a disabled
+  // The disabled-state rig (tests/e2e/*disabled-behaviour-*.spec.js and morph-disabled-*.spec.js), for what an engine decides: a click on a child of a disabled
   // button (it still reaches the child's own listener), the controls Tab reaches (Safari's Tab skips buttons, so the rig walks with Alt+Tab there), a file
   // chooser, a drop, a selection. CI runs them in a job of their own (`e2e-disabled`), and Firefox is in it too: its disabled-button children were never probed.
-  { name: `${browser}-disabled`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /disabled-(behaviour|morph)\.spec\.js$/ },
+  { name: `${browser}-disabled`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: disabledRigSpecs },
 ])
 
 // The shells' keyboard and focus specs run again in WebKit, for what Safari does and Chromium does not: it does not focus a button on click

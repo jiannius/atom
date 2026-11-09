@@ -124,3 +124,8 @@ export const LOOK_LEDGER = {
   "tiptap": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "uploader": { pr: 5, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
 }
+
+// The pairs of tokens-disabled-looks.spec.js that can be in LOOK_LEDGER: controls whose disabled copy must look unlike the enabled one, and fields that,
+// in a disabled <atom:form>, must look as the same field with its own `disabled` (their key is `form-<name>`). The ledger check holds every key to this list.
+export const LOOK_DIFFERS = ['time', 'range', 'filter', 'color', 'rating', 'uploader', 'dropzone', 'tiptap', 'chat']
+export const LOOK_FORM_MATCHES = ['input', 'textarea', 'select-native', 'select-listbox']
