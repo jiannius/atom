@@ -13,12 +13,16 @@ dataset('inline components', [
     'link with icons' => ['link', 'link', '<atom:link href="/settings" icon="add" icon-suffix="add">Settings</atom:link>', '</a>'],
     'link with no href' => ['link', 'link', '<atom:link>Settings</atom:link>', '</a>'],
     'badge' => ['badge/index', 'badge', '<atom:badge>New</atom:badge>', '</div>'],
+    'badge with a hex colour' => ['badge/index', 'badge', '<atom:badge color="#ff0000">New</atom:badge>', '</div>'],
     'badge with an icon' => ['badge/index', 'badge', '<atom:badge icon="add">New</atom:badge>', '</div>'],
     'kbd' => ['kbd/index', 'kbd', '<atom:kbd>K</atom:kbd>', '</kbd>'],
     'kbd with several keys' => ['kbd/index', 'kbd', '<atom:kbd keys="cmd+k"/>', '</span>'],
     'status' => ['status', 'status', '<atom:status>Paid</atom:status>', '</span>'],
     'button' => ['button/index', 'button', '<atom:button>Save</atom:button>', '</button>'],
     'button as a link' => ['button/index', 'button', '<atom:button href="/save">Save</atom:button>', '</a>'],
+    'button with a tooltip' => ['button/index', 'button', '<atom:button tooltip="Save it">Save</atom:button>', '</div>'],
+    'tooltip' => ['tooltip/index', 'tooltip', '<atom:tooltip content="Save it"><span>Save</span></atom:tooltip>', '</div>'],
+    'copy' => ['copy', 'copy', '<atom:copy value="x">Copy</atom:copy>', '</div>'],
     'icon' => ['icon/add', 'icon.add', '<atom:icon.add/>', '</span>'],
 ]);
 
@@ -50,28 +54,34 @@ it('is the same through <x-atom::...>', function () {
         ->and($html)->toStartWith('(<a');
 });
 
-// A copy of the component with the final newline an editor adds back must hold too: the guard is in the file, not in
-// the file ending without a newline.
+// The files that end on a `@php ... @endphp` guard: a copy with the final newline an editor adds back (a bare newline
+// after the guard is swallowed; the guard is what keeps it out). The other components glue their closing tag to
+// `@else` / `@endif` / `@php` instead, which the render cases above pin: they fail if a newline goes back in.
+// It does not hold a file that ends in two newlines: the second one is output.
+dataset('guarded files', [
+    'link' => ['link', 'link', '<atom:link href="/settings">Settings</atom:link>', '</a>'],
+    'status' => ['status', 'status', '<atom:status>Paid</atom:status>', '</span>'],
+    'copy' => ['copy', 'copy', '<atom:copy value="x">Copy</atom:copy>', '</div>'],
+]);
+
 it('survives an editor putting a newline back at the end of the file', function (string $file, string $name, string $template, string $closing) {
     $directory = sys_get_temp_dir().'/atom-inline-'.bin2hex(random_bytes(4));
     $target = $directory.'/'.$file.'.blade.php';
     $source = file_get_contents(dirname(__DIR__, 2).'/components/'.$file.'.blade.php');
 
-    mkdir(dirname($target), 0777, true);
+    mkdir($directory, 0777, true);
     Blade::anonymousComponentPath($directory, 'inline-copy');
 
     try {
         foreach (["\n", "\r\n"] as $ending) {
             file_put_contents($target, rtrim($source).$ending);
 
-            $copy = str_replace(['<atom:', '</atom:'], ['<x-inline-copy::', '</x-inline-copy::'], $template);
-            $copy = preg_replace('/<x-inline-copy::([a-z.]+)/', '<x-inline-copy::'.$name, $copy);
+            $copy = str_replace(['<atom:'.$name, '</atom:'.$name], ['<x-inline-copy::'.$name, '</x-inline-copy::'.$name], $template);
 
             expect(renderBlade('Use '.$copy.'.'))->toContain($closing.'.');
         }
     } finally {
         @unlink($target);
-        @rmdir(dirname($target));
         @rmdir($directory);
     }
-})->with('inline components');
+})->with('guarded files');

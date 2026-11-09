@@ -27,4 +27,4 @@ x-on:click.stop.prevent="() => {
     @else
         <atom:icon.copy class="size-4" />
     @endif
-</div>
+</div>@php /* the file's last newline stays out of the output (#179) */ @endphp
