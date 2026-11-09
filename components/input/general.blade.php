@@ -67,6 +67,8 @@ $classes = Arr::toCssClasses([
                     </atom:copy>
                 </atom:tooltip>
             @elseif ($clearable)
+                {{-- The clear is told from the input itself: wire:model and x-model listen on the input, and an event started on this button never
+                     passes it. `change` is for .lazy and .change, which listen for nothing else. --}}
                 <button
                 type="button"
                 x-cloak
@@ -82,7 +84,8 @@ $classes = Arr::toCssClasses([
                 x-on:click.stop="() => {
                     show = false
                     input.value = ''
-                    $dispatch('input', '')
+                    input.dispatchEvent(new Event('input', { bubbles: true }))
+                    input.dispatchEvent(new Event('change', { bubbles: true }))
                     $nextTick(() => input.focus())
                 }"
                 aria-label="{{ t('Clear') }}"
