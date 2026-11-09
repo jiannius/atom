@@ -36,7 +36,7 @@ $classes = Arr::toCssClasses([
     'w-full rounded-control border bg-surface text-sm flex items-center gap-1 flex-wrap pr-8',
     $invalid ? 'has-[:focus-visible]:border-danger-fg' : 'has-[:focus-visible]:border-focus',
     'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
-    'has-disabled:cursor-not-allowed has-disabled:bg-surface-sunken has-disabled:text-fg-subtle',
+    'has-[select:disabled]:cursor-not-allowed has-[select:disabled]:border-border has-[select:disabled]:bg-surface-sunken has-[select:disabled]:text-fg-subtle',
     '[&_select]:w-full [&_select]:flex-1 [&_select]:appearance-none [&_select]:bg-transparent',
     '[&_select]:text-fg [&_select]:text-left',
     '[&_select]:has-[option.placeholder:checked]:text-fg-subtle',

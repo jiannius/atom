@@ -17,7 +17,7 @@ $step = $type === 'number' ? 'any' : null;
 $classes = Arr::toCssClasses([
     'h-control w-full no-spinner rounded-control border bg-surface text-sm text-fg',
     'placeholder:text-fg-subtle',
-    'disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-fg-subtle',
+    'disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-sunken disabled:text-fg-subtle',
     $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
     'focus-visible:outline-offset-0',
     $invalid ? 'border-danger-fg' : 'border-control-border',

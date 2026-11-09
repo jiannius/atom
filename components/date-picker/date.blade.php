@@ -15,8 +15,8 @@ $classes = Arr::toCssClasses([
     $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
     'focus-visible:outline-offset-0',
     $disabled ? 'bg-surface-sunken text-fg-subtle cursor-not-allowed' : '',
-    $invalid ? 'border-danger-fg' : 'border-control-border',
-    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
+    $disabled ? 'border-border' : ($invalid ? 'border-danger-fg' : 'border-control-border'),
+    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg' => ! $disabled,
 ]);
 @endphp
 

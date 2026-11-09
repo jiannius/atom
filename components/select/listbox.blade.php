@@ -32,13 +32,14 @@ $filterLabel = $filterKey
 
 /* The field recipe (see input/general); the trigger grows with its chips, never below the control token. */
 $classes = Arr::toCssClasses([
-    'min-h-control appearance-none w-full rounded-control border bg-surface text-sm text-fg text-left pr-8',
+    'min-h-control appearance-none w-full rounded-control border text-sm text-left pr-8',
+    $disabled ? 'cursor-not-allowed bg-surface-sunken text-fg-subtle' : 'bg-surface text-fg',
     $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
     'focus-visible:outline-offset-0',
-    $invalid ? 'border-danger-fg' : 'border-control-border',
+    $disabled ? 'border-border' : ($invalid ? 'border-danger-fg' : 'border-control-border'),
     $multiple === true ? 'py-1' : 'py-0.5',
     $icon ? 'pl-8' : 'pl-2.5',
-    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
+    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg' => ! $disabled,
 ]);
 
 // role=option rows: hover and the virtual-focus "active" state share the same

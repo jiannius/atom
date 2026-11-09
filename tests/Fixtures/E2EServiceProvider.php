@@ -177,6 +177,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/tokens', fn () => view('atom::e2e.tokens'));
         // The restyled controls (V4-3a), on the consumer's Tailwind: ?tw, ?density, ?dark=1, ?accent, ?section
         Route::middleware('web')->get('/atom/e2e/controls', fn () => view('atom::e2e.controls'));
+        // Every form control's disabled state beside its enabled one (issue #178), on the consumer's Tailwind: ?tw, ?dark=1
+        Route::middleware('web')->get('/atom/e2e/disabled-controls', fn () => view('atom::e2e.disabled-controls'));
         // The restyled data display (V4-3b), on the consumer's Tailwind: ?tw, ?density, ?dark=1, ?accent, ?section
         Route::middleware('web')->get('/atom/e2e/display', fn () => view('atom::e2e.display'));
         // The restyled overlays and navigation (V4-3c), on the consumer's Tailwind: ?tw, ?density, ?dark=1, ?accent, ?section
