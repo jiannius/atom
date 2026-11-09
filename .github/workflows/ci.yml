@@ -220,10 +220,11 @@ jobs:
     needs: consumer
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    # Neither engine has had a green CI run of this rig yet. Firefox has never run it (it does not launch on the Mac it was written on), and WebKit
-    # was only run on macOS, where it can differ from Linux's. A first run is information: it may show a place where an engine legitimately differs, to be
-    # marked per engine in disabled-ledger.js or ENGINE_SKIPS with the reason. Drop this line once both engines have a green run.
-    continue-on-error: true
+    # WebKit passes this rig on Linux CI. Firefox has never had a green run (it does not launch on the Mac the rig was written on, and CI's first run
+    # showed a native <select> is not seen open there, now a per-engine skip in disabled-helpers.js): a failure is information until it has one. It may show
+    # another place where Firefox legitimately differs, to be marked per engine in disabled-ledger.js or ENGINE_SKIPS with the reason. Drop this line once
+    # Firefox is green.
+    continue-on-error: ${{ matrix.browser == 'firefox' }}
     strategy:
       fail-fast: false
       matrix:

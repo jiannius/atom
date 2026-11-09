@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { CORPUS, ROUTES, ENGINE_SKIPS } from './disabled-helpers.js'
+import { CORPUS, ROUTES, ENGINE_SKIPS, ENGINE_GESTURE_SKIPS } from './disabled-helpers.js'
 import { LEDGER, LOOK_LEDGER, LOOK_DIFFERS, LOOK_FORM_MATCHES } from './disabled-ledger.js'
 
 // The ledger names rows by string. A case renamed in the corpus, a route dropped from it, or a row that stops existing would leave an entry that no row
@@ -56,6 +56,15 @@ test.describe('the ledger names rows that exist', () => {
       for (const [engine, e] of overrides) {
         expect(engines, `${key}: engine ${engine}`).toContain(engine)
         expect(Array.isArray(e.violations), `${key}: ${engine} violations is a list`).toBe(true)
+      }
+    }
+  })
+
+  test('every engine gesture skip names a gesture that exists', () => {
+    for (const [engine, cases] of Object.entries(ENGINE_GESTURE_SKIPS)) {
+      for (const [id, gestures] of Object.entries(cases)) {
+        const names = (byId[id]?.gestures ?? []).map((g) => g.name)
+        for (const name of Object.keys(gestures)) expect(names, `${engine} skips "${id}" / "${name}", which is not a gesture of a case`).toContain(name)
       }
     }
   })

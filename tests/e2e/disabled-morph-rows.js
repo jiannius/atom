@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { engineSkip, standardCases, openCase, root, flip, domOf, calm, lookDiff, observe, runGestures, resetValue, ledgerRow, saw } from './disabled-helpers.js'
+import { engineSkip, standardCases, openCase, root, flip, gestureSkip, domOf, calm, lookDiff, observe, runGestures, resetValue, ledgerRow, saw } from './disabled-helpers.js'
 import { LEDGER } from './disabled-ledger.js'
 
 // The morph rows of one route: morph-disabled-prop.spec.js and morph-disabled-form.spec.js each call this (two files, with names that sort apart, so CI can shard them;
@@ -18,7 +18,8 @@ export function morphRows(only) {
       const key = `morph:${def.id}/${route}`
       // the mouse gestures a static disabled render of this row is already known to fail (disabled-behaviour's ledger): a morph may not add to them
       const known = new Set((LEDGER[`${def.id}/${route}`]?.violations ?? []))
-      const popupGesture = (def.gestures ?? []).find((g) => g.effect.includes('popup'))
+      // the gesture that opens a popup, if this engine can see it open (see ENGINE_GESTURE_SKIPS)
+      const popupGestureFor = (page) => (def.gestures ?? []).find((g) => g.effect.includes('popup') && !gestureSkip(page, def, g))
 
       test.describe(`morph ${route}: ${def.id}`, () => {
         test.describe.configure({ mode: 'serial' })
@@ -39,6 +40,7 @@ export function morphRows(only) {
           if (def.gestures?.length) await runGestures(page, { ...def, gestures: def.gestures.slice(0, 1) }, { enabled: true })
 
           // the popup check of the disabled test below needs a gesture that opens a popup: prove it does, enabled, so that check cannot pass by opening nothing
+          const popupGesture = popupGestureFor(page)
           if (popupGesture) {
             await openCase(page, def, { route })
             await runGestures(page, { ...def, gestures: [popupGesture] }, { enabled: true, keepOpen: true })
@@ -61,6 +63,7 @@ export function morphRows(only) {
 
             // 1. a popup that is open when the control is disabled closes
             await openCase(page, def, { route })
+            const popupGesture = popupGestureFor(page)
             if (popupGesture) {
               // enabled, the gesture must open its popup: a gesture that opens nothing would skip the check below and read as "it closed"
               await runGestures(page, { ...def, gestures: [popupGesture] }, { enabled: true, keepOpen: true })

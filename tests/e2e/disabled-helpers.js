@@ -30,6 +30,24 @@ export const ENGINE_SKIPS = {
 /** The reason a case cannot run in this engine, or null. */
 export const engineSkip = (browserName, def) => ENGINE_SKIPS[browserName]?.[def.id] ?? null
 
+/**
+ * Where an engine cannot SEE what a single gesture does, and why: `{ <browserName>: { <case id>: { <gesture name>: reason } } }`. The gesture is left out of
+ * every run in that engine, enabled and disabled alike; the rest of the case still runs. Only a probe's own blind spot belongs here, never a control's failure.
+ */
+export const ENGINE_GESTURE_SKIPS = {
+  firefox: {
+    input_tel: {
+      'open the dial codes': 'a native <select> opened by a click is seen through the `select:open` pseudo-class, which Firefox did not report on CI (run 42703566608); the number box and the keyboard walk over the dial codes still run',
+    },
+  },
+}
+
+/** The engine a page runs in: `chromium`, `webkit` or `firefox`. */
+export const engineOf = (page) => page.context().browser()?.browserType().name() ?? 'chromium'
+
+/** The reason a gesture cannot be judged in this page's engine, or null. */
+export const gestureSkip = (page, def, gesture) => ENGINE_GESTURE_SKIPS[engineOf(page)]?.[def.id]?.[gesture.name] ?? null
+
 /** A case by id. */
 export const caseOf = (id) => CORPUS.find((c) => c.id === id)
 
@@ -185,6 +203,7 @@ export async function runGestures(page, def, { enabled, bind = null, keepOpen = 
   const out = {}
 
   for (const g of def.gestures ?? []) {
+    if (gestureSkip(page, def, g)) continue
     const before = await observe(page, def, { bind })
     const choosers = page.choosers
     for (const st of g.steps) await step(page, def, st, { enabled })

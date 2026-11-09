@@ -6,7 +6,8 @@
 //
 // Keys: `<case id>/<route>` (behaviour), `morph:<case id>/<route>`, `noWrite:<case id>/<route>`, `child/first` and `child/update`. `violations` are the names the
 // probe reports. `engines.<name>.violations` is the list in an engine that differs from Chromium (empty: it keeps the contract there). A `pr` that is not a
-// number is a row that needs a decision first.
+// number is a row that needs a decision first. The firefox entries of input_tel follow from a native <select> never being seen open there (see
+// ENGINE_GESTURE_SKIPS in disabled-helpers.js); like all of Firefox's, they are inferred from CI's one run and not yet checked against a green one.
 export const LEDGER = {
   // ---- PR 2
   "morph:select_filter/form": { pr: 2, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
@@ -44,12 +45,12 @@ export const LEDGER = {
   "input_email_multiple/prop": { pr: 3, why: "chip remove and clear all are live (#186)", violations: ["chip remove: popup", "chip remove: value", "clear all: value", "server: value", "tab stops"] },
   "input_email_options/form": { pr: 3, why: "chip remove is live, and Enter adds the first option in a disabled form (#186)", violations: ["add by Enter: popup", "add by Enter: value", "chip remove: popup", "chip remove: value", "keyboard: value", "open: popup", "server: value", "tab stops"] },
   "input_email_options/prop": { pr: 3, why: "chip remove is live, and Enter adds the first option in a disabled form (#186)", violations: ["chip remove: value", "keyboard: value", "server: value", "tab stops"] },
-  "input_tel/form": { pr: 3, why: "the dial code select is never disabled (#186)", violations: ["keyboard: popup", "keyboard: value", "open the dial codes: popup", "server: value", "tab stops"] },
-  "input_tel/prop": { pr: 3, why: "the dial code select is never disabled (#186)", violations: ["keyboard: popup", "keyboard: value", "open the dial codes: popup", "server: value", "tab stops"] },
+  "input_tel/form": { pr: 3, why: "the dial code select is never disabled (#186)", violations: ["keyboard: popup", "keyboard: value", "open the dial codes: popup", "server: value", "tab stops"], engines: { firefox: { violations: ["keyboard: value", "server: value", "tab stops"] } } },
+  "input_tel/prop": { pr: 3, why: "the dial code select is never disabled (#186)", violations: ["keyboard: popup", "keyboard: value", "open the dial codes: popup", "server: value", "tab stops"], engines: { firefox: { violations: ["keyboard: value", "server: value", "tab stops"] } } },
   "morph:input_email_options/form": { pr: 3, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
   "morph:input_email_options/prop": { pr: 3, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "morph:input_tel/form": { pr: 3, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "morph:input_tel/prop": { pr: 3, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
+  "morph:input_tel/form": { pr: 3, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"], engines: { firefox: { violations: [] } } },
+  "morph:input_tel/prop": { pr: 3, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"], engines: { firefox: { violations: [] } } },
   "noWrite:input_tel/form": { pr: 3, why: "a number without a dial code is given one and sent on load", violations: ["server value rewritten", "writes on load"] },
   "noWrite:input_tel/prop": { pr: 3, why: "a number without a dial code is given one and sent on load", violations: ["server value rewritten", "writes on load"] },
   // ---- PR 4
