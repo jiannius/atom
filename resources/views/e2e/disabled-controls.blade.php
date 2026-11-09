@@ -141,6 +141,62 @@ $options = [['value' => 'a', 'label' => 'Draft'], ['value' => 'b', 'label' => 'S
         <div data-testid="plain"><atom:select><atom:select.option value="a">Draft</atom:select.option><atom:select.option value="b">Locked</atom:select.option></atom:select></div>
     </div>
 
+    {{-- controls with no disabled look today (the ledger in tests/e2e/disabled-ledger.js names the pull request that gives each one): enabled beside disabled --}}
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-time">
+        <div data-testid="on"><atom:time-picker/></div>
+        <div data-testid="off"><atom:time-picker disabled/></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-range">
+        <div data-testid="on"><atom:date-picker variant="range"/></div>
+        <div data-testid="off"><atom:date-picker variant="range" disabled/></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-filter">
+        <div data-testid="on"><atom:select variant="filter" label="Status" :options="$options"/></div>
+        <div data-testid="off"><atom:select variant="filter" label="Status" :options="$options" disabled/></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-color">
+        <div data-testid="on"><atom:input type="color"/></div>
+        <div data-testid="off"><atom:input type="color" disabled/></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-rating">
+        <div data-testid="on"><atom:rating label="Rate" value="3"/></div>
+        <div data-testid="off"><atom:rating label="Rate" value="3" disabled/></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-uploader">
+        <div data-testid="on"><atom:uploader/></div>
+        <div data-testid="off"><atom:uploader disabled/></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-dropzone">
+        <div data-testid="on"><atom:uploader.dropzone/></div>
+        <div data-testid="off"><atom:uploader.dropzone disabled/></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-tiptap">
+        <div data-testid="on"><atom:tiptap/></div>
+        <div data-testid="off"><atom:tiptap disabled/></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-chat">
+        <div data-testid="on"><atom:tiptap.chat/></div>
+        <div data-testid="off"><atom:tiptap.chat disabled/></div>
+    </div>
+
+    {{-- a field inside a disabled <atom:form> beside the same field with its own `disabled`: "on" is the reference, "off" is the form's --}}
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-form-input">
+        <atom:input data-testid="on" value="Locked value" disabled/>
+        <atom:form disabled inset><atom:input data-testid="off" value="Locked value"/></atom:form>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-form-textarea">
+        <atom:textarea data-testid="on" rows="2" disabled>Locked</atom:textarea>
+        <atom:form disabled inset><atom:textarea data-testid="off" rows="2">Locked</atom:textarea></atom:form>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-form-select-native">
+        <div data-testid="on"><atom:select :options="$options" disabled/></div>
+        <atom:form disabled inset><div data-testid="off"><atom:select :options="$options"/></div></atom:form>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-form-select-listbox">
+        <div data-testid="on"><atom:select variant="listbox" :options="$options" disabled/></div>
+        <atom:form disabled inset><div data-testid="off"><atom:select variant="listbox" :options="$options"/></div></atom:form>
+    </div>
+
     {{-- listboxes holding a value: one, and several as chips --}}
     <div class="grid grid-cols-2 gap-4" x-data="{ one: 'a', many: ['a', 'b'] }">
         <div data-testid="listbox-one-on"><atom:select variant="listbox" :options="$options" x-model="one"/></div>
