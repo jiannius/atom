@@ -27,4 +27,4 @@ $classes = Arr::toCssClasses([
 <span {{ $attributes->class($classes) }} data-atom-status data-tone="{{ $tone }}" @if ($running) data-running @endif>
     <span class="size-1.5 shrink-0 rounded-full bg-current" data-atom-status-dot aria-hidden="true"></span>
     <span class="truncate">{{ $slot->isNotEmpty() ? $slot : (filled($label) ? t($label) : t(ucfirst($tone))) }}</span>
-</span>
+</span>@php /* the file's last newline stays out of the output (#179) */ @endphp

@@ -2,6 +2,8 @@
     'keys' => null,
 ])
 
+{{-- Inline: no newline after a closing tag (`</kbd>@endif`), or text after the key gets a space (#179). --}}
+
 @php
 $map = [
     'cmd' => '⌘', 'command' => '⌘', 'meta' => '⌘', 'super' => '⌘', 'win' => '⊞',
@@ -41,7 +43,5 @@ $cap = Arr::toCssClasses([
         @foreach ($tokens as $token)
             <kbd class="{{ $cap }}" data-atom-kbd-key>{{ $render($token) }}</kbd>
         @endforeach
-    </span>
-@else
-    <kbd {{ $attributes->class($cap) }} data-atom-kbd data-atom-kbd-key>{{ $slot }}</kbd>
-@endif
+    </span>@else
+    <kbd {{ $attributes->class($cap) }} data-atom-kbd data-atom-kbd-key>{{ $slot }}</kbd>@endif

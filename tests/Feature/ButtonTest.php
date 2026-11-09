@@ -281,11 +281,11 @@ describe('button tooltip', function () {
             ->and(domQuery($html, '//*[@data-atom-tooltip-content]')[0]->textContent)->toContain('"><img src=x onerror=alert(1)>');
     });
 
-    it('adds nothing to a button without a tooltip: the markup ends with the one newline it always did', function (string $tag) {
+    it('adds nothing to a button without a tooltip: the markup is the tag and no whitespace around it (#179)', function (string $tag) {
         $html = renderBlade($tag);
 
-        // a stray newline after the closing tag (an inline sibling then gets a space) is what a wrapper added once
-        expect($html)->toStartWith('<')->toEndWith('>'."\n")->not->toEndWith("\n\n")
+        // a newline after the closing tag (an inline sibling then gets a space) is what a wrapper added once, and the file's own was one too
+        expect($html)->toStartWith('<')->toEndWith('>')->not->toEndWith("\n")
             ->and($html)->not->toContain('data-atom-tooltip');
     })->with([
         'button' => '<atom:button>Save</atom:button>',

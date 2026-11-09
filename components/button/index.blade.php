@@ -222,6 +222,5 @@ if ($slot->isEmpty() && data_get($icon, 'start')) {
             <x-dynamic-component :component="'atom::icon.'.data_get($icon, 'end')" class="shrink-0 -ml-0.5 {{ data_get($icon, 'class') }}"/>
         @endif
     </div>
-</{{ $el }}>
-@php $button = ob_get_clean(); @endphp
+</{{ $el }}>@php /* no newline after the tag: the button can sit in a sentence (#179) */ $button = ob_get_clean(); @endphp
 @if ($tooltip)<atom:tooltip :content="$tooltip" :class="$block ? 'flex w-full' : 'inline-flex max-w-full min-w-0'" :wire:key="$attributes->get('wire:key')">{!! $button !!}</atom:tooltip>@else{!! $button !!}@endif
