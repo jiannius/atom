@@ -21,7 +21,7 @@
     "read": {"selector": "input", "prop": "value"},
     "gestures": [
       {"name": "type", "steps": [{"click": "input"}, {"type": "zq7"}], "effect": ["value", "dom"]},
-      {"name": "clear", "steps": [{"click": "button[aria-label=\"Clear\"]"}], "effect": ["dom"]}
+      {"name": "clear", "steps": [{"click": "button[aria-label=\"Clear\"]", "mayHide": true}], "effect": ["dom"]}
     ],
     "walk": {"effect": ["value"]},
     "tabStops": {"prop": [], "form": ["input:text"]}
@@ -119,7 +119,7 @@
     "value": "a",
     "read": {"selector": "select", "prop": "value"},
     "gestures": [
-      {"name": "clear", "steps": [{"click": "[data-atom-select-clear]"}], "effect": ["value"]}
+      {"name": "clear", "steps": [{"click": "[data-atom-select-clear]", "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": [["popup", "value"]]},
     "tabStops": {"prop": [], "form": []},
@@ -132,7 +132,7 @@
     "blade": "<atom:select multiple {model} :options=\"$options\" {disabled}/>",
     "value": ["a"],
     "gestures": [
-      {"name": "chip remove", "steps": [{"click": "[data-atom-select-native] .border-r .cursor-pointer"}], "effect": ["value"]}
+      {"name": "chip remove", "steps": [{"click": "[data-atom-select-native] .border-r .cursor-pointer", "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": [["popup", "value"]]},
     "tabStops": {"prop": [], "form": []}
@@ -145,7 +145,7 @@
     "read": {"selector": "[data-atom-select-combobox]", "prop": "text"},
     "gestures": [
       {"name": "open", "steps": [{"click": "button[aria-haspopup]"}], "effect": ["popup"]},
-      {"name": "pick", "steps": [{"click": "button[aria-haspopup]"}, {"click": "[data-atom-option]", "nth": 2}], "effect": ["value"]}
+      {"name": "pick", "steps": [{"click": "button[aria-haspopup]"}, {"click": "[data-atom-option]", "nth": 2, "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["popup", "value"]},
     "tabStops": {"prop": [], "form": []},
@@ -158,7 +158,7 @@
     "blade": "<atom:select variant=\"listbox\" placeholder=\"Pick one\" {model} :options=\"$options\" {disabled}/>",
     "value": "a",
     "gestures": [
-      {"name": "clear", "steps": [{"click": "[data-atom-select-affix] > div:last-of-type"}], "effect": ["value"]}
+      {"name": "clear", "steps": [{"click": "[data-atom-select-affix] > div:last-of-type", "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["popup"]},
     "tabStops": {"prop": [], "form": []}
@@ -170,7 +170,7 @@
     "value": "a",
     "gestures": [
       {"name": "open", "steps": [{"click": "button[aria-haspopup]"}], "effect": ["popup"]},
-      {"name": "pick", "steps": [{"click": "button[aria-haspopup]"}, {"click": "[data-atom-option]", "nth": 2}], "effect": ["value"]}
+      {"name": "pick", "steps": [{"click": "button[aria-haspopup]"}, {"click": "[data-atom-option]", "nth": 2, "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["popup"]},
     "tabStops": {"prop": [], "form": []}
@@ -182,8 +182,8 @@
     "value": ["a", "b"],
     "gestures": [
       {"name": "open", "steps": [{"click": "button[aria-haspopup]"}], "effect": ["popup"]},
-      {"name": "pick", "steps": [{"click": "button[aria-haspopup]"}, {"click": "[data-atom-option]", "nth": 2}], "effect": ["value"]},
-      {"name": "chip remove", "steps": [{"click": "button[aria-haspopup] .border-r .cursor-pointer"}], "effect": ["value"]}
+      {"name": "pick", "steps": [{"click": "button[aria-haspopup]"}, {"click": "[data-atom-option]", "nth": 2, "mayHide": true}], "effect": ["value"]},
+      {"name": "chip remove", "steps": [{"click": "button[aria-haspopup] .border-r .cursor-pointer", "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["popup", "value"]},
     "tabStops": {"prop": [], "form": []}
@@ -195,8 +195,8 @@
     "value": ["a"],
     "gestures": [
       {"name": "open", "steps": [{"click": "button[aria-haspopup]"}], "effect": ["popup"]},
-      {"name": "pick", "steps": [{"click": "button[aria-haspopup]"}, {"click": "[data-atom-option]", "nth": 2}], "effect": ["value"]},
-      {"name": "row remove", "steps": [{"click": "[data-atom-select-listbox] button.shrink-0"}], "effect": ["value"]}
+      {"name": "pick", "steps": [{"click": "button[aria-haspopup]"}, {"click": "[data-atom-option]", "nth": 2, "mayHide": true}], "effect": ["value"]},
+      {"name": "row remove", "steps": [{"click": "[data-atom-select-listbox] button.shrink-0", "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["popup", "value"]},
     "tabStops": {"prop": [], "form": []}
@@ -208,7 +208,7 @@
     "value": "MY",
     "gestures": [
       {"name": "open", "steps": [{"click": "button[aria-haspopup]"}], "effect": ["popup"]},
-      {"name": "pick", "steps": [{"click": "button[aria-haspopup]"}, {"click": "[data-atom-option]", "nth": 2}], "effect": ["value"]}
+      {"name": "pick", "steps": [{"click": "button[aria-haspopup]"}, {"click": "[data-atom-option]", "nth": 2, "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["popup"]},
     "tabStops": {"prop": [], "form": []}
@@ -219,7 +219,7 @@
     "blade": "<atom:select variant=\"listbox\" {model} :options=\"$options\" wire:add=\"submit\" {disabled}/>",
     "value": "a",
     "gestures": [
-      {"name": "add", "steps": [{"click": "[data-atom-select-affix] div.px-1.cursor-pointer"}], "effect": ["submit"]}
+      {"name": "add", "steps": [{"click": "[data-atom-select-affix] div.px-1.cursor-pointer", "mayHide": true}], "effect": ["submit"]}
     ],
     "walk": {"effect": ["popup"]},
     "tabStops": {"prop": [], "form": []}
@@ -231,7 +231,7 @@
     "value": "a",
     "gestures": [
       {"name": "open", "steps": [{"click": "button[role=combobox]"}], "effect": ["popup"]},
-      {"name": "pick", "steps": [{"click": "button[role=combobox]"}, {"click": "[data-atom-option]", "nth": 2}], "effect": ["value"]}
+      {"name": "pick", "steps": [{"click": "button[role=combobox]"}, {"click": "[data-atom-option]", "nth": 2, "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["popup", "value"]},
     "tabStops": {"prop": [], "form": []},
@@ -246,7 +246,7 @@
     "read": {"selector": "input", "prop": "value"},
     "gestures": [
       {"name": "open", "steps": [{"click": "input"}], "effect": ["popup"]},
-      {"name": "pick a day", "steps": [{"click": "input"}, {"click": ".pika-table td:not(.is-disabled):not(.is-selected) button"}], "effect": ["value"]},
+      {"name": "pick a day", "steps": [{"click": "input"}, {"click": ".pika-table td:not(.is-disabled):not(.is-selected) button", "mayHide": true}], "effect": ["value"]},
       {"name": "type a date", "steps": [{"click": "input"}, {"press": "ControlOrMeta+A"}, {"type": "05 Apr 2026"}, {"press": "Enter"}], "effect": ["value"]}
     ],
     "walk": {"effect": ["popup"]},
@@ -262,7 +262,7 @@
     "read": {"selector": "input", "prop": "value"},
     "gestures": [
       {"name": "open", "steps": [{"click": "input"}], "effect": ["popup"]},
-      {"name": "pick a day", "steps": [{"click": "input"}, {"click": ".pika-table td:not(.is-disabled):not(.is-selected) button"}], "effect": ["value"]}
+      {"name": "pick a day", "steps": [{"click": "input"}, {"click": ".pika-table td:not(.is-disabled):not(.is-selected) button", "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["popup"]},
     "tabStops": {"prop": [], "form": ["input:text"]},
@@ -276,7 +276,7 @@
     "read": {"selector": "input", "prop": "value"},
     "gestures": [
       {"name": "open", "steps": [{"click": "input"}], "effect": ["popup"]},
-      {"name": "pick a preset", "steps": [{"click": "input"}, {"click": "text=Last 7 Days"}], "effect": ["value"]}
+      {"name": "pick a preset", "steps": [{"click": "input"}, {"click": "text=Last 7 Days", "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["popup"]},
     "tabStops": {"prop": [], "form": ["input:text"]},
@@ -290,7 +290,7 @@
     "value": null,
     "gestures": [
       {"name": "open", "steps": [{"click": "[data-atom-date-range-add]"}], "effect": ["popup"]},
-      {"name": "pick a preset", "steps": [{"click": "[data-atom-date-range-add]"}, {"click": "text=Today"}], "effect": ["value"]}
+      {"name": "pick a preset", "steps": [{"click": "[data-atom-date-range-add]"}, {"click": "text=Today", "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": [], "stops": false},
     "tabStops": {"prop": [], "form": []}
@@ -344,9 +344,9 @@
     "blade": "<atom:input type=\"email\" multiple {model} {disabled}/>",
     "value": [{"name": "a@b.com", "email": "a@b.com"}, {"name": "c@d.com", "email": "c@d.com"}],
     "gestures": [
-      {"name": "add an address", "steps": [{"click": "input[type=email]"}, {"type": "x@y.com"}, {"press": "Enter"}], "effect": ["value"]},
-      {"name": "chip remove", "steps": [{"click": "[data-atom-chip-remove]"}], "effect": ["value"]},
-      {"name": "clear all", "steps": [{"click": "button[aria-label=\"Clear all\"]"}], "effect": ["value"]}
+      {"name": "add an address", "steps": [{"click": "input[type=email]", "mayHide": true}, {"type": "x@y.com"}, {"press": "Enter"}], "effect": ["value"]},
+      {"name": "chip remove", "steps": [{"click": "[data-atom-chip-remove]", "mayHide": true}], "effect": ["value"]},
+      {"name": "clear all", "steps": [{"click": "button[aria-label=\"Clear all\"]", "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["value"]},
     "tabStops": {"prop": [], "form": ["input:email"]}
@@ -358,8 +358,8 @@
     "value": [{"name": "a@b.com", "email": "a@b.com"}],
     "gestures": [
       {"name": "open", "steps": [{"click": "input[type=email]"}], "effect": ["popup"]},
-      {"name": "add by Enter", "steps": [{"click": "input[type=email]"}, {"press": "Enter"}], "effect": ["value"]},
-      {"name": "chip remove", "steps": [{"click": "[data-atom-chip-remove]"}], "effect": ["value"]}
+      {"name": "add by Enter", "steps": [{"click": "input[type=email]", "mayHide": true}, {"press": "Enter"}], "effect": ["value"]},
+      {"name": "chip remove", "steps": [{"click": "[data-atom-chip-remove]", "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["value"]},
     "tabStops": {"prop": [], "form": ["input:email"]}
@@ -386,7 +386,7 @@
     "read": {"selector": "input", "prop": "value"},
     "gestures": [
       {"name": "open", "steps": [{"click": "input"}], "effect": ["popup"]},
-      {"name": "pick a swatch", "steps": [{"click": "input"}, {"click": "[data-atom-scroll-region] > div", "nth": 5}], "effect": ["value"]}
+      {"name": "pick a swatch", "steps": [{"click": "input"}, {"click": "[data-atom-scroll-region] > div", "nth": 5, "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": []},
     "tabStops": {"prop": [], "form": ["input:text"]},
@@ -483,8 +483,8 @@
     "read": {"selector": ".ProseMirror", "prop": "text"},
     "gestures": [
       {"name": "type", "steps": [{"click": ".ProseMirror"}, {"type": "zq7"}], "effect": ["value", "dom"]},
-      {"name": "open the toolbar menu", "steps": [{"click": "button[aria-label=\"Text Formatting\"]"}], "effect": ["popup"]},
-      {"name": "bold the text", "steps": [{"click": ".ProseMirror"}, {"press": "ControlOrMeta+A"}, {"click": "button[aria-label=\"Text Formatting\"]"}, {"click": "[role=menuitem]:has-text(\"Bold\")"}], "effect": ["value"]}
+      {"name": "open the toolbar menu", "steps": [{"click": "button[aria-label=\"Text Formatting\"]", "mayHide": true}], "effect": ["popup"]},
+      {"name": "bold the text", "steps": [{"click": ".ProseMirror"}, {"press": "ControlOrMeta+A"}, {"click": "button[aria-label=\"Text Formatting\"]", "mayHide": true}, {"click": "[role=menuitem]:has-text(\"Bold\")", "mayHide": true}], "effect": ["value"]}
     ],
     "walk": {"effect": ["value"]},
     "tabStops": {"prop": [], "form": []},
@@ -499,7 +499,7 @@
     "gestures": [
       {"name": "type", "steps": [{"click": ".ProseMirror"}, {"type": "zq7"}], "effect": ["dom"]},
       {"name": "send with Enter", "steps": [{"click": ".ProseMirror"}, {"type": "zq8"}, {"press": "Enter"}], "effect": ["sent"]},
-      {"name": "send with the button", "steps": [{"click": ".ProseMirror"}, {"type": "zq9"}, {"click": "button[aria-label=\"Submit\"]"}], "effect": ["sent"]}
+      {"name": "send with the button", "steps": [{"click": ".ProseMirror"}, {"type": "zq9"}, {"click": "button[aria-label=\"Submit\"]", "mayHide": true}], "effect": ["sent"]}
     ],
     "walk": {"effect": ["dom"]},
     "tabStops": {"prop": [], "form": []}

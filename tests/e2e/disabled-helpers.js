@@ -48,8 +48,9 @@ export async function openCase(page, def, { route = 'prop', off = false, bind = 
   page.choosers = 0
   if (!page.__disabledRig) {
     page.__disabledRig = true
-    // a request cut off by a navigation is reported by the old page as this (WebKit's wording): not an error of the case
-    page.on('pageerror', (e) => { if (!/Fetch API cannot load .* due to access control checks|Load failed/.test(String(e))) page.errors.push(String(e)) })
+    // a request cut off by a navigation is reported by the old page as this in WebKit (its wording), and only there: not an error of the case
+    const webkit = page.context().browser()?.browserType().name() === 'webkit'
+    page.on('pageerror', (e) => { if (!(webkit && /Fetch API cannot load .* due to access control checks|Load failed/.test(String(e)))) page.errors.push(String(e)) })
     // a Livewire update request is a POST to the component update endpoint
     page.on('request', (r) => {
       if (r.method() === 'POST' && /\/livewire[^/]*\/update/.test(r.url())) page.updates.push(r.postData() ?? '')
@@ -118,8 +119,10 @@ async function step(page, def, st, { enabled }) {
     const loc = scope.locator(st.click ?? st.dblclick).nth(st.nth ?? 0)
     const there = (await loc.count()) > 0 && (await loc.isVisible())
     if (!there) {
-      // enabled, a target that is not there is a broken probe; disabled, a control may hide what it must not offer
+      // enabled, a target that is not there is a broken probe. Disabled, only a step the corpus marks `mayHide` may find its target gone (a control may hide
+      // what it must not offer, or the popup it sits in did not open); any other absence is a selector that matches nothing and would read as "blocked"
       if (enabled) throw new Error(`probe target "${st.click ?? st.dblclick}" is not on the page, enabled`)
+      if (!st.mayHide) throw new Error(`probe target "${st.click ?? st.dblclick}" is not on the page, disabled, and its step is not marked mayHide in the corpus`)
       return 'absent'
     }
     await loc.scrollIntoViewIfNeeded()
@@ -307,6 +310,7 @@ export async function ledgerRow(test, expect, info, key, probe, { ledger = LEDGE
 
   // `DISABLED_LEDGER_DUMP=<file>` writes what every row finds instead of judging it: the way a ledger entry is drafted for a new row, never on CI
   if (process.env.DISABLED_LEDGER_DUMP) {
+    if (process.env.CI) throw new Error('DISABLED_LEDGER_DUMP judges nothing, so it must never be set on CI')
     const { violations } = await probe()
     appendFileSync(process.env.DISABLED_LEDGER_DUMP, `${JSON.stringify({ key, ledger: ledger === LEDGER ? 'behaviour' : 'look', violations: [...violations].sort() })}\n`)
     return
