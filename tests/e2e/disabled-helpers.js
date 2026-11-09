@@ -45,8 +45,9 @@ export async function openCase(page, def, { route = 'prop', off = false, bind = 
 
   const extra = `&case=${encodeURIComponent(def.id)}&route=${route}${off ? '&off=1' : ''}${bind ? `&bind=${bind}` : ''}${value !== undefined ? `&value=${encodeURIComponent(JSON.stringify(value))}` : ''}`
   await open(page, { path: 'disabled-behaviour', tw, extra })
-  await page.waitForFunction(() => window.Livewire && window.Livewire.first() && window.Alpine)
-  await page.waitForSelector('[data-testid="root"]')
+  // a page that did not render (a 500, a case the fixture refuses) fails here, in seconds, with the row's name: it must not read as a control that does nothing
+  await page.waitForFunction(() => window.Livewire && window.Livewire.first() && window.Alpine, null, { timeout: 15_000 })
+  await page.waitForSelector('[data-testid="root"]', { timeout: 5_000 })
   // Alpine's init of the controls, then the first paint
   await page.waitForTimeout(350)
 }
@@ -103,7 +104,11 @@ async function step(page, def, st, { enabled }) {
       return 'absent'
     }
     await loc.scrollIntoViewIfNeeded()
-    const box = await loc.boundingBox()
+    // a person's pointer arrives before the click, and what a hover opens (a tooltip, a hover state) can move the target: aim at where it ends up
+    let box = await loc.boundingBox()
+    await page.mouse.move(box.x + box.width * (st.pos ?? 0.5), box.y + box.height / 2)
+    await page.waitForTimeout(120)
+    box = await loc.boundingBox()
     const [x, y] = [box.x + box.width * (st.pos ?? 0.5), box.y + box.height / 2]
     if (st.dblclick !== undefined) await page.mouse.dblclick(x, y)
     else await page.mouse.click(x, y)
