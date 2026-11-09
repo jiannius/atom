@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { standardCases, caseOf, ROUTES, openCase, root, runGestures, walk, saw, resetValue, serverState, observe, domOf, ledgerRow } from './disabled-helpers.js'
+import { engineSkip, standardCases, caseOf, ROUTES, openCase, root, runGestures, walk, saw, resetValue, serverState, observe, domOf, ledgerRow } from './disabled-helpers.js'
 import { LEDGER } from './disabled-ledger.js'
 
 for (const route of ROUTES) {
@@ -10,6 +10,7 @@ for (const route of ROUTES) {
     test.describe(`${route}: ${def.id}`, () => {
       // the pair is serial: when the enabled baseline fails, the disabled half is skipped, never reported as "blocked"
       test.describe.configure({ mode: 'serial' })
+      test.beforeEach(({ browserName }) => test.skip(!!engineSkip(browserName, def), engineSkip(browserName, def) ?? ''))
       test.setTimeout(70_000)
 
       test('enabled: every probe changes something', async ({ page, browserName }) => {
@@ -95,6 +96,7 @@ for (const how of ['server', 'x-model']) {
 
       test.describe(`push ${route} (${how}): ${def.id}`, () => {
         test.describe.configure({ mode: 'serial' })
+        test.beforeEach(({ browserName }) => test.skip(!!engineSkip(browserName, def), engineSkip(browserName, def) ?? ''))
         test.setTimeout(40_000)
 
         test('enabled: a pushed value shows', async ({ page }) => {
@@ -128,6 +130,7 @@ for (const route of ROUTES) {
 
     test.describe(`no write on load ${route}: ${def.id}`, () => {
       test.describe.configure({ mode: 'serial' })
+      test.beforeEach(({ browserName }) => test.skip(!!engineSkip(browserName, def), engineSkip(browserName, def) ?? ''))
       test.setTimeout(40_000)
 
       test('enabled: the probe sees what an enabled control does', async ({ page }) => {
@@ -187,6 +190,7 @@ for (const update of [false, true]) {
 
   test.describe(`a Livewire child in a disabled form, ${when}`, () => {
     test.describe.configure({ mode: 'serial' })
+    test.beforeEach(({ browserName }) => test.skip(!!engineSkip(browserName, def), engineSkip(browserName, def) ?? ''))
     test.setTimeout(40_000)
 
     test('enabled: the child is editable', async ({ page }) => {

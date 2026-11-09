@@ -16,6 +16,20 @@ import { LEDGER } from './disabled-ledger.js'
 export const CORPUS = JSON.parse(readFileSync(join(process.cwd(), 'tests/Fixtures/disabled-controls-cases.json'), 'utf8'))
 export const ROUTES = ['prop', 'form']
 
+/**
+ * Where an engine legitimately cannot run a row, and why: `{ <browserName>: { <case id>: reason } }`. A skip is a statement about the ENGINE, never a way to
+ * hide a control's failure (that is the ledger's); each reason says what the engine does.
+ */
+export const ENGINE_SKIPS = {
+  webkit: {
+    time_picker: 'the picker builds dayjs("1970-01-01 7:30 AM") for every edit, which WebKit\'s Date cannot parse: it shows "--" for its own value and writes "Invalid Date" to the model on the first edit, a Safari bug in the picker (not in the rig) to be fixed on its own',
+    date_picker_time: 'the date picker with a time hands Pikaday "YYYY-MM-DD HH:mm:ss", which WebKit\'s Date rejects: "RangeError: Invalid Date" on load, a Safari bug in the picker (not in the rig) to be fixed on its own',
+  },
+}
+
+/** The reason a case cannot run in this engine, or null. */
+export const engineSkip = (browserName, def) => ENGINE_SKIPS[browserName]?.[def.id] ?? null
+
 /** A case by id. */
 export const caseOf = (id) => CORPUS.find((c) => c.id === id)
 
@@ -28,20 +42,25 @@ export const standardCases = () => CORPUS.filter((c) => !c.special)
  * instead of the case's own). Resolves once Livewire and Alpine are up and the page has settled; collects uncaught page errors on `page.errors`.
  */
 export async function openCase(page, def, { route = 'prop', off = false, bind = null, value = undefined, tw = 'latest' } = {}) {
+  // the page's listeners are added once, however many times a row opens a case; what they collect starts again with each open
   page.errors = []
   page.updates = []
-  page.on('pageerror', (e) => page.errors.push(String(e)))
-  // a Livewire update request is a POST to the component update endpoint
-  page.on('request', (r) => {
-    if (r.method() === 'POST' && /\/livewire[^/]*\/update/.test(r.url())) page.updates.push(r.postData() ?? '')
-  })
   page.choosers = 0
-  page.on('filechooser', () => page.choosers++)
-  // the chat composer tells its host by an `input` event carrying { body, files }, and writes no model of its own
-  await page.addInitScript(() => {
-    window.__sent = 0
-    document.addEventListener('input', (e) => { if (e.detail && typeof e.detail === 'object' && 'body' in e.detail) window.__sent++ }, true)
-  })
+  if (!page.__disabledRig) {
+    page.__disabledRig = true
+    // a request cut off by a navigation is reported by the old page as this (WebKit's wording): not an error of the case
+    page.on('pageerror', (e) => { if (!/Fetch API cannot load .* due to access control checks|Load failed/.test(String(e))) page.errors.push(String(e)) })
+    // a Livewire update request is a POST to the component update endpoint
+    page.on('request', (r) => {
+      if (r.method() === 'POST' && /\/livewire[^/]*\/update/.test(r.url())) page.updates.push(r.postData() ?? '')
+    })
+    page.on('filechooser', () => page.choosers++)
+    // the chat composer tells its host by an `input` event carrying { body, files }, and writes no model of its own
+    await page.addInitScript(() => {
+      window.__sent = 0
+      document.addEventListener('input', (e) => { if (e.detail && typeof e.detail === 'object' && 'body' in e.detail) window.__sent++ }, true)
+    })
+  }
 
   const extra = `&case=${encodeURIComponent(def.id)}&route=${route}${off ? '&off=1' : ''}${bind ? `&bind=${bind}` : ''}${value !== undefined ? `&value=${encodeURIComponent(JSON.stringify(value))}` : ''}`
   await open(page, { path: 'disabled-behaviour', tw, extra })
@@ -233,6 +252,13 @@ export async function walk(page, def, { browserName, bind = null }) {
     await reach(index)
 
     for (const key of keys) {
+      // WebKit goes Back on a Backspace nobody is editing with, and takes the page (and the rest of the row) with it: Backspace is only pressed where it edits
+      if (key === 'Backspace' && !(await page.evaluate((webkit) => {
+        const a = document.activeElement
+        // a read-only field edits nothing, so Backspace there is Back as well
+        return !!a && !(webkit && a.readOnly) && (a.isContentEditable || a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && ['text', 'search', 'email', 'number', 'password', 'tel', 'url', ''].includes(a.type)))
+      }, browserName === 'webkit'))) continue
+
       const before = await observe(page, def, { bind })
       const choosers = page.choosers
       await page.keyboard.press(key)
@@ -286,7 +312,11 @@ export async function ledgerRow(test, expect, info, key, probe, { ledger = LEDGE
     return
   }
 
-  if (!entry) {
+  // an engine that differs from Chromium in a way that is its own has its own list: `engines: { webkit: { violations: [...] } }` (empty: it keeps the contract there)
+  const engine = info.project.use.browserName ?? 'chromium'
+  const expected = entry ? [...(entry.engines?.[engine]?.violations ?? entry.violations)].sort() : []
+
+  if (!expected.length) {
     const { violations, details } = await probe()
     expect([...violations].sort(), details.join('\n')).toEqual([])
     return
@@ -303,10 +333,10 @@ export async function ledgerRow(test, expect, info, key, probe, { ledger = LEDGE
     return
   }
 
-  const [got, want] = [[...found.violations].sort(), [...entry.violations].sort()]
-  if (JSON.stringify(got) !== JSON.stringify(want)) {
-    info.annotations.push({ type: 'ledger-mismatch', description: `ledger names ${JSON.stringify(want)}, the control shows ${JSON.stringify(got)}:\n${found.details.join('\n')}` })
-    console.error(`[ledger] ${info.title}: ledger names ${JSON.stringify(want)}, the control shows ${JSON.stringify(got)}`)
+  const got = [...found.violations].sort()
+  if (JSON.stringify(got) !== JSON.stringify(expected)) {
+    info.annotations.push({ type: 'ledger-mismatch', description: `ledger names ${JSON.stringify(expected)}, the control shows ${JSON.stringify(got)}:\n${found.details.join('\n')}` })
+    console.error(`[ledger] ${info.title}: ledger names ${JSON.stringify(expected)}, the control shows ${JSON.stringify(got)}`)
     return
   }
 

@@ -218,6 +218,9 @@ jobs:
     needs: consumer
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # Firefox has never run this rig (it does not launch on the Mac the rig was written on), so its first CI run is information: it may show a place
+    # where Firefox legitimately differs, to be marked per engine in disabled-ledger.js or ENGINE_SKIPS with the reason. Drop this line once it is green.
+    continue-on-error: ${{ matrix.browser == 'firefox' }}
     strategy:
       fail-fast: false
       matrix:

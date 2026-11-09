@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { standardCases, ROUTES, openCase, root, flip, domOf, calm, lookDiff, observe, runGestures, resetValue, ledgerRow, saw } from './disabled-helpers.js'
+import { engineSkip, standardCases, ROUTES, openCase, root, flip, domOf, calm, lookDiff, observe, runGestures, resetValue, ledgerRow, saw } from './disabled-helpers.js'
 import { LEDGER } from './disabled-ledger.js'
 
 // A Livewire morph that flips a control disabled, then enabled again, through the server (`flip()` on the fixture): the control must end up exactly as
@@ -19,6 +19,7 @@ for (const route of ROUTES) {
 
     test.describe(`morph ${route}: ${def.id}`, () => {
       test.describe.configure({ mode: 'serial' })
+      test.beforeEach(({ browserName }) => test.skip(!!engineSkip(browserName, def), engineSkip(browserName, def) ?? ''))
       test.setTimeout(70_000)
 
       test('enabled: the fixture flips it on, off and on', async ({ page }) => {

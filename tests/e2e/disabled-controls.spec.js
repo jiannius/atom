@@ -140,6 +140,12 @@ for (const tw of ['floor', 'latest']) {
         test(name, async ({ page }, info) => {
           await ledgerRow(test, expect, info, pair, async () => {
             await open(page, { path: 'disabled-controls', tw, dark })
+            // the editors draw a skeleton until they have started: read them once both have (or one is read mid-start and the pair differs by that)
+            if (['tiptap', 'chat'].includes(pair)) {
+              await expect(page.getByTestId(`pair-${pair}`).locator('.ProseMirror')).toHaveCount(2)
+              await page.waitForTimeout(400)
+            }
+            await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => null))))
 
             const [on, off] = [await lookOf(page.getByTestId(`pair-${pair}`).getByTestId('on')), await lookOf(page.getByTestId(`pair-${pair}`).getByTestId('off'))]
             // an empty look is a locator that found nothing, which is an error and not a verdict

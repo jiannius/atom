@@ -302,7 +302,7 @@
     "value": "10:30:00",
     "read": {"selector": "input[aria-label=\"Hour\"]", "prop": "value"},
     "gestures": [
-      {"name": "type the hour", "steps": [{"click": "input[aria-label=\"Hour\"]"}, {"type": "7"}, {"press": "Tab"}], "effect": ["value"]},
+      {"name": "type the hour", "steps": [{"click": "input[aria-label=\"Hour\"]"}, {"press": "ControlOrMeta+A"}, {"type": "7"}, {"press": "Tab"}], "effect": ["value"]},
       {"name": "click AM/PM", "steps": [{"click": "input[aria-label=\"AM or PM\"]"}], "effect": ["value"]}
     ],
     "walk": {"effect": ["value"]},
@@ -371,7 +371,7 @@
     "value": "1234",
     "read": {"selector": "input[aria-label=\"Digit 1\"]", "prop": "value"},
     "gestures": [
-      {"name": "type a digit", "steps": [{"click": "input[aria-label=\"Digit 1\"]"}, {"type": "9"}], "effect": ["value"]}
+      {"name": "type a digit", "steps": [{"click": "input[aria-label=\"Digit 1\"]"}, {"press": "ControlOrMeta+A"}, {"type": "9"}], "effect": ["value"]}
     ],
     "walk": {"effect": ["value"]},
     "tabStops": {"prop": [], "form": ["input:text(Digit 1)", "input:text(Digit 2)", "input:text(Digit 3)", "input:text(Digit 4)"]},
