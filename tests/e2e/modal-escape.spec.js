@@ -457,6 +457,52 @@ test.describe('the command palette (#177)', () => {
   }
 })
 
+test.describe('the command palette: Escape and a native close together (#176, #177)', () => {
+  const palette = (page) => page.locator('[data-palette]')
+  const paletteState = (page) => palette(page).evaluate((el) => ({ open: el.open, dataOpen: el.hasAttribute('data-open'), alpine: window.Alpine.$data(el).open }))
+  const openWithDropdown = async (page) => {
+    await go(page)
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('atom-command-show', { detail: { name: 'palette' } })))
+    await expect(palette(page)).toBeVisible()
+    await activate(page, '[data-open-palette-dropdown]')
+    await expect(page.getByRole('menuitem', { name: 'Palette item' })).toBeVisible()
+  }
+
+  test('Escape closes the dropdown, the next Escape closes the palette through closeCommand(): the state is clean', async ({ page }) => {
+    await openWithDropdown(page)
+
+    await escape(page)
+    await expect(page.getByRole('menuitem', { name: 'Palette item' })).toBeHidden()
+    expect(await paletteState(page)).toEqual({ open: true, dataOpen: true, alpine: true })
+
+    await escape(page)
+    await expect(palette(page)).toBeHidden()
+    expect(await paletteState(page)).toEqual({ open: false, dataOpen: false, alpine: false })
+  })
+
+  test('the browser closing the palette with a dropdown open resets it', async ({ page }) => {
+    await openWithDropdown(page)
+
+    await palette(page).evaluate((el) => el.close())
+
+    await expect(palette(page)).toBeHidden()
+    await expect.poll(() => paletteState(page)).toEqual({ open: false, dataOpen: false, alpine: false })
+  })
+
+  test('a dropdown closed by Escape, then a native close: clean, and it opens again', async ({ page }) => {
+    await openWithDropdown(page)
+
+    await escape(page)
+    await expect(page.getByRole('menuitem', { name: 'Palette item' })).toBeHidden()
+    await palette(page).evaluate((el) => el.close())
+
+    await expect.poll(() => paletteState(page)).toEqual({ open: false, dataOpen: false, alpine: false })
+    await page.evaluate(() => window.dispatchEvent(new CustomEvent('atom-command-show', { detail: { name: 'palette' } })))
+    await expect(palette(page)).toBeVisible()
+    expect(await paletteState(page)).toEqual({ open: true, dataOpen: true, alpine: true })
+  })
+})
+
 test.describe('the header menu panel under a modal', () => {
   test.use({ viewport: { width: 390, height: 800 } })
 
