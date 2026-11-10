@@ -123,6 +123,8 @@ describe('atom:upgrade-check: the findings', function () {
             'button-variant-brand' => [$orders.':9'],
             'button-variant-primary' => [$orders.':10'],
             'button-size-prop' => [$orders.':8'],
+            // the toggle, slider and select filter that decide nothing between a disabled form and its end tag: not the ones with a disabled of their own, a listbox, one outside the form or in an enabled one; a form with a bound `:disabled` counts (line 19)
+            'disabled-form-view-control' => ['resources/views/livewire/locked.blade.php:4', 'resources/views/livewire/locked.blade.php:5', 'resources/views/livewire/locked.blade.php:6', 'resources/views/livewire/locked.blade.php:19'],
             'badge-color-name' => [$orders.':11'],
             'chart-color-unknown' => [$orders.':14'],
             'link-colour-override' => [$orders.':16'],
@@ -247,13 +249,13 @@ describe('atom:upgrade-check: the findings', function () {
             ->and($tags['editor.content']['count'])->toBe(2)
             ->and($tags['table']['restyled'])->toBe('Data display')
             ->and($tags['menu']['restyled'])->toBe('Overlays and navigation')
-            ->and($tags['form']['count'])->toBe(1)
+            ->and($tags['form']['count'])->toBe(4)
             ->and($tags)->not->toHaveKey('editor.content ')
             ->and(array_key_first($tags))->toBe('button');
     });
 
     it('reports test findings apart from the app ones', function () {
-        expect($this->result['scanned'])->toBe(['app' => 19, 'tests' => 2])
+        expect($this->result['scanned'])->toBe(['app' => 20, 'tests' => 2])
             ->and($this->result['checks']['date-pretty']['count'])->toBe(1)
             ->and($this->result['checks']['date-pretty']['tests_count'])->toBe(1)
             ->and($this->result['summary']['tests_findings'])->toBe(17);

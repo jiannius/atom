@@ -11,17 +11,25 @@
 
 @php
 $step = $type === 'number' ? 'any' : null;
+
+/* 'self', or 'inherited' from a disabled <atom:form> (a read-only field, not a disabled one), printed by the input tag as `data-atom-disabled`. The look
+   comes from that as plain utilities, so a form's field is drawn as one with its own `disabled` (the `disabled:` variants stay, for a client-driven `disabled`),
+   and a focus border still beats the faint one. */
+$disabledBy = $attributes->get('data-atom-disabled');
+
 /* The field recipe, shared by every text control (input, textarea, select, date and time pickers): the control token's height,
    the 7px radius, a strong hairline on the surface, no shadow. The ring is the base :focus-visible rule, hugging the border
    (offset 0) with the border in the focus colour, so a focused field reads as a 3px accent frame. */
 $classes = Arr::toCssClasses([
-    'h-control w-full no-spinner rounded-control border bg-surface text-sm text-fg',
+    'h-control w-full no-spinner rounded-control border text-sm',
+    $disabledBy ? 'cursor-not-allowed bg-surface-sunken text-fg-subtle' : 'bg-surface text-fg',
     'placeholder:text-fg-subtle',
     'disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-sunken disabled:text-fg-subtle',
     $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
     'focus-visible:outline-offset-0',
-    $invalid ? 'border-danger-fg' : 'border-control-border',
-    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
+    $disabledBy ? 'border-border' : ($invalid ? 'border-danger-fg' : 'border-control-border'),
+    'group-has-[[data-atom-error]]/field:border-danger-fg' => ! $disabledBy,
+    'group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
     $icon ? 'pl-8' : 'pl-2.5',
     $copyable || $clearable || $iconSuffix || $type === 'password' ? 'pr-8' : 'pr-2.5',
 ]);
@@ -66,8 +74,8 @@ $classes = Arr::toCssClasses([
                         </div>
                     </atom:copy>
                 </atom:tooltip>
-            @elseif ($clearable)
-                {{-- The clear is told from the input itself: wire:model and x-model listen on the input, and an event started on this button never
+            @elseif ($clearable && ! $disabledBy)
+                {{-- A disabled field has no clear: it would change the value. The clear is told from the input itself: wire:model and x-model listen on the input, and an event started on this button never
                      passes it. `change` is for .lazy and .change, which listen for nothing else. --}}
                 <button
                 type="button"

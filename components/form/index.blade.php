@@ -23,8 +23,8 @@ $merges = [
 ];
 
 if ($disabled) {
-    // Read-only form: fields render themselves readonly/disabled via @aware
-    // (so values stay selectable + links clickable — unlike `inert`). Drop
+    // Read-only form: each field reads it (Attributes::disabledBy()) and renders itself readonly or
+    // disabled (so values stay selectable + links clickable — unlike `inert`). Drop
     // wire:submit and hard-block native submission so a stray submit button or
     // Enter can't post. The reCAPTCHA branch is skipped for the same reason.
     $attributes = $attributes->whereDoesntStartWith('wire:submit');
@@ -59,7 +59,6 @@ if ($errorToast) {
 <form {{ $attributes->class([
     'group/form relative',
     'flex flex-col gap-6' => !$inset,
-    'opacity-70' => $disabled,
 ])->merge($merges) }}
 data-atom-form>
     @if ($cols)

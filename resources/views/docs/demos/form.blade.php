@@ -5,7 +5,7 @@ view="atom::docs.demos.form.basic"/>
 
 <atom:docs.example
 title="Disabled (read-only)"
-description="Pass disabled to make the whole form inert (no focus, pointer or keyboard) and dimmed, and to drop wire:submit so it can't be submitted. Use for records that are locked / read-only."
+description="Pass disabled to make the whole form read-only: each field is drawn as a disabled one (sunken, a faint border, subtle text), keeps its value selectable and its links clickable, and cannot be edited. A submit button inside is disabled, wire:submit is dropped so the form can't be submitted, and labels and the rest of the content stay at full strength. Use for records that are locked. A field's own disabled wins over the form's: giving it :disabled with a false value makes it editable, and a control that changes the view rather than the record (a toggle that switches a layout, a filter) needs that. A Livewire child component inside the form does not inherit disabled: give it its own :disabled."
 view="atom::docs.demos.form.disabled"/>
 
 <atom:docs.example

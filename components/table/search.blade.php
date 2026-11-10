@@ -75,6 +75,8 @@ x-on:table-filter:do-clear.window="
     if ($event.detail.key === @js($filterKey)) {
         const input = $el.querySelector('input')
 
+        if (input.hasAttribute('data-atom-disabled')) return
+
         input.value = ''
         input.dispatchEvent(new Event('input', { bubbles: true }))
         emit()

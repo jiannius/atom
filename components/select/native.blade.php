@@ -97,7 +97,7 @@ x-init="
     $nextTick(emit);
     $watch('value', () => { $nextTick(emit); $dispatch('table-filter:changed') });
 "
-x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (value = multiple ? [] : null)"
+x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && !$el.closest('[data-atom-disabled]') && (value = multiple ? [] : null)"
 @endif
 x-on:input="() => {
     if (multiple) {

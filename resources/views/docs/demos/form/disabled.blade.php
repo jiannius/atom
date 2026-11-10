@@ -3,6 +3,7 @@
         <atom:input label="Name" value="Ada Lovelace"/>
         <atom:input type="email" label="Email" value="ada@example.com"/>
         <atom:textarea label="Message" rows="3">Read-only form.</atom:textarea>
+        <atom:toggle label="Compact view" :disabled="false"/>
 
         <atom:button.group>
             <atom:button type="submit">Save</atom:button>

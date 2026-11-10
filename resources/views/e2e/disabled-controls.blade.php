@@ -28,6 +28,14 @@ $options = [['value' => 'a', 'label' => 'Draft'], ['value' => 'b', 'label' => 'S
         <atom:textarea data-testid="on" rows="2">Locked</atom:textarea>
         <atom:textarea data-testid="off" rows="2" disabled>Locked</atom:textarea>
     </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-textarea-transparent">
+        <atom:textarea data-testid="on" variant="transparent" rows="2">Locked</atom:textarea>
+        <atom:textarea data-testid="off" variant="transparent" rows="2" disabled>Locked</atom:textarea>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-form-textarea-transparent">
+        <atom:textarea data-testid="on" variant="transparent" rows="2" disabled>Locked</atom:textarea>
+        <atom:form disabled inset><atom:textarea data-testid="off" variant="transparent" rows="2">Locked</atom:textarea></atom:form>
+    </div>
     <div class="grid grid-cols-2 gap-4" data-testid="pair-select-native">
         <div data-testid="on"><atom:select placeholder="Pick one" :options="$options"/></div>
         <div data-testid="off"><atom:select placeholder="Pick one" :options="$options" disabled/></div>
@@ -195,6 +203,34 @@ $options = [['value' => 'a', 'label' => 'Draft'], ['value' => 'b', 'label' => 'S
     <div class="grid grid-cols-2 gap-4" data-testid="pair-form-select-listbox">
         <div data-testid="on"><atom:select variant="listbox" :options="$options" disabled/></div>
         <atom:form disabled inset><div data-testid="off"><atom:select variant="listbox" :options="$options"/></div></atom:form>
+    </div>
+
+    {{-- the prefix box beside a disabled field, and a host's own `readonly` (which is not a disabled state) against an enabled field --}}
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-prefix">
+        <div data-testid="on"><atom:input prefix="https://" suffix=".test" value="Locked value" disabled/></div>
+        <atom:form disabled inset><div data-testid="off"><atom:input prefix="https://" suffix=".test" value="Locked value"/></div></atom:form>
+    </div>
+    {{-- a host's own `group` around an enabled prefixed field and a disabled one: the prefix box must not read the sibling --}}
+    <div class="group grid grid-cols-2 gap-4" data-testid="pair-prefix-leak">
+        <div data-testid="on"><atom:input prefix="https://" value="Enabled"/></div>
+        <div data-testid="off"><atom:input value="Locked" disabled/></div>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-readonly-input">
+        <atom:input data-testid="on" value="Host value"/>
+        <atom:input data-testid="off" value="Host value" readonly/>
+    </div>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-readonly-textarea">
+        <atom:textarea data-testid="on" rows="2">Host value</atom:textarea>
+        <atom:textarea data-testid="off" rows="2" readonly>Host value</atom:textarea>
+    </div>
+    <atom:form disabled inset data-testid="form-buttons" class="flex gap-4">
+        <atom:button type="submit" data-testid="submit">Save</atom:button>
+        <atom:button data-testid="plain">Download</atom:button>
+        <atom:button type="submit" :disabled="false" data-testid="own">Save anyway</atom:button>
+    </atom:form>
+    <div class="grid grid-cols-2 gap-4" data-testid="pair-form-label">
+        <div data-testid="on"><atom:input label="Name" caption="A caption" value="Locked value"/></div>
+        <atom:form disabled inset><div data-testid="off"><atom:input label="Name" caption="A caption" value="Locked value"/></div></atom:form>
     </div>
 
     {{-- listboxes holding a value: one, and several as chips --}}

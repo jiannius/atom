@@ -120,7 +120,7 @@ describe('B1: components that never printed the bag', function () {
         $html = renderBlade('<atom:input.prefix prefix="RM" id="amt" class="max-w-xs"><input></atom:input.prefix>');
         $root = domQuery($html, '//*[@id="amt"]')[0];
 
-        expect(domClasses($root))->toContain('max-w-xs', 'group', 'flex', 'w-full');
+        expect(domClasses($root))->toContain('max-w-xs', 'group/prefix', 'flex', 'w-full');
     });
 
     it('prints the bag on the sharer root', function () {
