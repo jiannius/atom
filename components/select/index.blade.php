@@ -1,5 +1,5 @@
+{{-- 'self', 'inherited' from a disabled <atom:form>, or null. The variants read it as `data-atom-disabled`, and their JS reads that at event time. --}}
 @php
-// 'self', 'inherited' from a disabled <atom:form>, or null. The variants read it as `data-atom-disabled`, and their JS reads that at event time.
 $disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
 @endphp
 
