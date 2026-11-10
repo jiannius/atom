@@ -250,6 +250,12 @@ class UpgradeCheck
                 'kinds' => ['blade'],
                 'tag' => ['button', fn (array $a) => static::value($a, 'variant') === 'primary' ? 'follows --color-accent' : null],
             ],
+            'disabled-form-view-control' => [
+                'title' => 'A toggle, slider or select filter inside a disabled form is disabled now (it used to ignore the form)',
+                'section' => 'Controls', 'severity' => static::REVIEW, 'codemod' => 'report',
+                'detect' => '<atom:toggle>, <atom:slider> or <atom:select variant="filter"> with no disabled of its own, between a disabled <atom:form> and its end tag; a control that only changes the view (a layout switch, a filter) needs :disabled="false"',
+                'kinds' => ['blade'], 'custom' => 'disabledFormViewControls',
+            ],
             'button-size-prop' => [
                 'title' => 'Button sizes come from the control token (the default is the field height)',
                 'section' => 'Controls', 'severity' => static::VISUAL, 'codemod' => 'report',
@@ -2098,6 +2104,46 @@ class UpgradeCheck
     protected function atomComponentSites(string $kind, array $prepared, string $source): array
     {
         return array_map(fn (array $use) => [$use['offset'], null], static::atomComponentUses($source));
+    }
+
+    /**
+     * A toggle, a slider or a select filter that sits inside a disabled `<atom:form>` and decides nothing itself: they ignored the form before, so a
+     * control that changes the view rather than the record was usable in a read-only form and is not now. Text, not types: a form is disabled by a
+     * bare or bound `disabled` (not `:disabled="false"`), it ends at the next `</atom:form>` (forms do not nest), and a control with a `disabled` of
+     * its own (`:disabled="false"` included) has chosen.
+     *
+     * @param  array{full: string, markup: string, tags: string}  $prepared
+     * @return array<int, array{0: int, 1: string|null}>
+     */
+    protected function disabledFormViewControls(string $kind, array $prepared, string $source): array
+    {
+        $sites = [];
+        $from = null;
+        $until = null;
+
+        foreach ($this->parseTags($prepared['tags']) as $tag) {
+            if ($tag['name'] === 'form') {
+                $bound = isset($tag['attributes'][':disabled']) ? strtolower(trim((string) $tag['attributes'][':disabled'])) : null;
+                $disabled = static::has($tag['attributes'], 'disabled') && $bound !== 'false';
+
+                if ($disabled) {
+                    $from = $tag['offset'];
+                    $until = preg_match('/<\/(?:x-atom::|atom:)form\s*>/i', $prepared['tags'], $end, PREG_OFFSET_CAPTURE, $tag['offset']) ? $end[0][1] : PHP_INT_MAX;
+                }
+
+                continue;
+            }
+
+            if ($from === null || $tag['offset'] < $from || $tag['offset'] > $until || static::has($tag['attributes'], 'disabled')) {
+                continue;
+            }
+
+            if (in_array($tag['name'], ['toggle', 'slider'], true) || ($tag['name'] === 'select' && static::value($tag['attributes'], 'variant') === 'filter')) {
+                $sites[] = [$tag['offset'], 'disabled by the form now: pass :disabled="false" if it only changes the view'];
+            }
+        }
+
+        return $sites;
     }
 
     /**
