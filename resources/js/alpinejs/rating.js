@@ -1,10 +1,14 @@
 export default (config = {}) => ({
     count: Number(config.count ?? 5),
     half: !!config.half,
-    readonly: !!config.readonly,
     clearable: !!config.clearable,
     value: Number(config.value ?? 0),
     hover: null,
+
+    /** Disabled, or a display-only rating: the server draws both from the markup (`data-atom-disabled` on the root, `data-atom-rating-readonly` on the track), read when the user acts and never held in x-data. */
+    get locked () {
+        return this.$root.hasAttribute('data-atom-disabled') || this.$refs.track?.hasAttribute('data-atom-rating-readonly')
+    },
 
     /** The value to paint — the hovered preview while pointing, else the committed value. */
     get display () {
@@ -27,9 +31,7 @@ export default (config = {}) => ({
     },
 
     onMove (e) {
-        if (!this.readonly) {
-            this.hover = this.fromPointer(e)
-        }
+        this.hover = this.locked ? null : this.fromPointer(e)
     },
 
     onLeave () {
@@ -37,7 +39,7 @@ export default (config = {}) => ({
     },
 
     onClick (e) {
-        if (this.readonly) {
+        if (this.locked) {
             return
         }
 
@@ -46,7 +48,7 @@ export default (config = {}) => ({
     },
 
     onKey (e) {
-        if (this.readonly) {
+        if (this.locked) {
             return
         }
 

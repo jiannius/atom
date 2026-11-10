@@ -15,6 +15,9 @@ $triggerId = $ariaLabelledby ? $ariaLabelledby.'-trigger' : null;
 
 /* Content beside the button (a size or type hint, a link to the rules). A slot made of false @if blocks is not content. */
 $hasEnd = isset($end) && $end->hasActualContent();
+
+/* 'self', 'inherited' from a disabled form, or null. The file input is really disabled then, so no chooser opens, whoever clicks it: the button below, or a trigger the host slots in. */
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
 @endphp
 
 <div
@@ -25,8 +28,11 @@ x-on:livewire-upload-finish="uploading = false"
 x-on:livewire-upload-cancel="uploading = false"
 x-on:livewire-upload-error="uploading = false"
 x-on:livewire-upload-progress="progress = $event.detail.progress"
+@if ($disabledBy)
+data-atom-disabled="{{ $disabledBy }}"
+@endif
 {{ $attributes->only('class')->class('group/uploader [:where(&)]:relative') }}>
-    <input  type="file" x-ref="fileinput" class="hidden" {{ $attributes->except('class') }}>
+    <input  type="file" x-ref="fileinput" class="hidden" {{ $attributes->except(['class', 'disabled']) }} @if ($disabledBy) disabled @endif>
 
     @if ($slot->isNotEmpty())
         {{ $slot }}
@@ -37,6 +43,7 @@ x-on:livewire-upload-progress="progress = $event.detail.progress"
             :variant="$variant"
             :size="$size"
             :class="$size === 'sm' ? '[&_[data-atom-icon]]:size-4' : null"
+            :disabled="$disabledBy ? true : null"
             :id="$triggerId"
             :aria-labelledby="$triggerId ? $triggerId.' '.$ariaLabelledby : null"
             x-bind:class="uploading && 'opacity-50 pointer-events-none'"

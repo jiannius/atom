@@ -11,21 +11,6 @@ export const LEDGER = {
   // ---- PR 3
   "morph:input_tel/form": { pr: 3, why: "WebKit keeps `select:open` true on a native dial code list that was open when a morph disabled the select (it stays so through blur, Escape and a click away; Chromium closes it): the engine's list, not the control's. The select is disabled, which is all the markup can do", violations: [], engines: { webkit: { violations: ["popup stays open"] } } },
   "morph:input_tel/prop": { pr: 3, why: "WebKit keeps `select:open` true on a native dial code list that was open when a morph disabled the select (it stays so through blur, Escape and a click away; Chromium closes it): the engine's list, not the control's. The select is disabled, which is all the markup can do", violations: [], engines: { webkit: { violations: ["popup stays open"] } } },
-  // ---- PR 5
-  "input_color/form": { pr: 5, why: "no disabled state: the palette opens and picks a colour", violations: ["open: popup", "pick a swatch: dom", "pick a swatch: value", "server: value"] },
-  "input_color/prop": { pr: 5, why: "no disabled state: the palette opens and picks a colour", violations: ["open: popup", "pick a swatch: dom", "pick a swatch: value", "server: value", "tab stops"] },
-  "input_file/form": { pr: 5, why: "a disabled form opens the chooser", violations: ["keyboard: chooser", "open the chooser: chooser", "tab stops"] },
-  "input_file/prop": { pr: 5, why: "a disabled form opens the chooser", violations: ["tab stops"] },
-  "input_file_slot/form": { pr: 5, why: "a host trigger opens the chooser in a disabled form", violations: ["keyboard: chooser", "open the chooser from the slot: chooser", "tab stops"] },
-  "input_file_slot/prop": { pr: 5, why: "a host trigger opens the chooser in a disabled form", violations: ["tab stops"] },
-  "morph:input_color/form": { pr: 5, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "morph:input_color/prop": { pr: 5, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "rating/form": { pr: 5, why: "no disabled state", violations: ["click the fifth star: dom", "click the fifth star: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops"] },
-  "rating/prop": { pr: 5, why: "no disabled state", violations: ["click the fifth star: dom", "click the fifth star: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops"] },
-  "uploader/form": { pr: 5, why: "the button stays a tab stop, and a disabled form opens the chooser", violations: ["keyboard: chooser", "open the chooser: chooser", "tab stops"] },
-  "uploader/prop": { pr: 5, why: "the button stays a tab stop, and a disabled form opens the chooser", violations: ["tab stops"] },
-  "uploader_dropzone/form": { pr: 5, why: "a drop uploads, and a disabled form opens the chooser", violations: ["drop a file: value", "keyboard: chooser", "open the chooser: chooser", "server: file", "tab stops"] },
-  "uploader_dropzone/prop": { pr: 5, why: "a drop uploads, and a disabled form opens the chooser", violations: ["drop a file: value", "server: file", "tab stops"] },
   // ---- PR 7
   "morph:tiptap/form": { pr: 7, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
   "morph:tiptap/prop": { pr: 7, why: "an open popup stays open when a morph disables the control; its DOM after the morph is not the DOM of a static render (the control is wire:ignore'd)", violations: ["disabled DOM differs from a static render", "popup stays open"] },
@@ -39,15 +24,11 @@ export const LEDGER = {
 // The look rows of disabled-controls.spec.js, keyed by the pair's test id (the same on both builds, in light and dark).
 export const LOOK_LEDGER = {
   "chat": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
-  "color": { pr: 5, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
-  "dropzone": { pr: 5, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "form-input": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-select-listbox": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-select-native": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-textarea": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
-  "rating": { pr: 5, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "tiptap": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
-  "uploader": { pr: 5, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
 }
 
 // The pairs of tokens-disabled-looks.spec.js that can be in LOOK_LEDGER: controls whose disabled copy must look unlike the enabled one, and fields that,

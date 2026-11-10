@@ -6,7 +6,7 @@
     "isDynamicEntry": true
   },
   "resources/css/atom.css": {
-    "file": "assets/atom-BjMyJ32_.css",
+    "file": "assets/atom-ChNE96UQ.css",
     "src": "resources/css/atom.css",
     "isEntry": true
   },
@@ -24,7 +24,7 @@
     "src": "resources/fonts/GeistMono-Variable.woff2"
   },
   "resources/js/atom.js": {
-    "file": "assets/atom-0moBKy6x.js",
+    "file": "assets/atom-Bbq9o7H5.js",
     "name": "atom",
     "src": "resources/js/atom.js",
     "isEntry": true,
@@ -36,7 +36,7 @@
     ]
   },
   "resources/js/tiptap.js": {
-    "file": "assets/tiptap-BntM27m6.js",
+    "file": "assets/tiptap-BJ1reGRK.js",
     "name": "tiptap",
     "src": "resources/js/tiptap.js",
     "isDynamicEntry": true,
