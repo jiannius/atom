@@ -58,6 +58,7 @@ data-atom-disabled="{{ $disabledBy }}"
     data-atom-rating-track
     x-ref="track"
     @if ($display)
+    data-atom-rating-readonly
     role="img"
     :aria-label="`${value} out of {{ $count }}`"
     @else

@@ -43,7 +43,8 @@ describe('rating', function () {
 
         expect($html)
             ->toContain('role="img"')
-            ->not->toContain('readonly')
+            ->toContain('data-atom-rating-readonly')
+            ->not->toContain('readonly: ')
             ->not->toContain('data-atom-disabled')
             ->not->toContain('role="slider"')
             ->not->toContain('tabindex');
@@ -59,6 +60,7 @@ describe('rating', function () {
             ->toContain(':aria-valuenow="value"')
             ->not->toContain('tabindex')
             ->not->toContain('role="img"')
+            ->not->toContain('data-atom-rating-readonly')
             ->toContain('x-data="rating({ count: 5, half: false, clearable: false, value: 3 })"');
 
         // the wrapper does not carry the prop as an attribute of its own

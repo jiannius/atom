@@ -5,9 +5,9 @@ export default (config = {}) => ({
     value: Number(config.value ?? 0),
     hover: null,
 
-    /** Disabled, or a display-only rating: the server draws both from the markup (`data-atom-disabled`, `role="img"`), read when the user acts and never held in x-data. */
+    /** Disabled, or a display-only rating: the server draws both from the markup (`data-atom-disabled` on the root, `data-atom-rating-readonly` on the track), read when the user acts and never held in x-data. */
     get locked () {
-        return this.$root.hasAttribute('data-atom-disabled') || this.$refs.track?.getAttribute('role') === 'img'
+        return this.$root.hasAttribute('data-atom-disabled') || this.$refs.track?.hasAttribute('data-atom-rating-readonly')
     },
 
     /** The value to paint — the hovered preview while pointing, else the committed value. */

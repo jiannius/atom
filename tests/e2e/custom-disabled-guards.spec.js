@@ -7,6 +7,14 @@ import { caseOf, openCase, observe, root, serverState } from './disabled-helpers
 
 const ROUTES = ['prop', 'form']
 
+/** Run `fn` in the page inside a real click (WebKit and Firefox open a file chooser only for a user gesture, which `evaluate` is not). */
+async function inGesture(page, fn, arg) {
+  await page.evaluate(([src, a]) => {
+    window.addEventListener('click', () => new Function('a', `return (${src})(a)`)(a), { once: true, capture: true })
+  }, [fn.toString(), arg])
+  await page.mouse.click(2, 2)
+}
+
 // ---- rating
 
 const percent = (loc) => loc.evaluate((el) => el.style.getPropertyValue('--atom-rating-percent'))
@@ -112,7 +120,7 @@ for (const route of ROUTES) {
   for (const id of ['uploader', 'uploader_dropzone', 'input_file', 'input_file_slot']) {
     test(`${route}: ${id}: no chooser opens, whoever calls the file input, when disabled`, async ({ page }) => {
       const def = caseOf(id)
-      const direct = () => root(page, def).locator('input[type=file]').evaluate((el) => el.click())
+      const direct = () => inGesture(page, (id) => document.querySelector(`[data-case="${id}"] input[type=file]`).click(), def.id)
 
       await openCase(page, def, { route })
       await direct()
@@ -129,6 +137,22 @@ for (const route of ROUTES) {
     })
   }
 
+  test(`${route}: uploader_dropzone: the zone, not its disabled button, is what a drag or a click lands on, and shows the not-allowed cursor`, async ({ page }) => {
+    const def = caseOf('uploader_dropzone')
+    const hit = () => root(page, def).locator('button').evaluate((button) => {
+      const box = button.getBoundingClientRect()
+      const el = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+      const zone = button.closest('[x-data]')
+      return { onZone: el === zone, onButton: button.contains(el), cursor: getComputedStyle(el).cursor }
+    })
+
+    await openCase(page, def, { route })
+    expect(await hit()).toMatchObject({ onZone: false, onButton: true })
+
+    await openCase(page, def, { route, off: true })
+    expect(await hit()).toEqual({ onZone: true, onButton: false, cursor: 'not-allowed' })
+  })
+
   test(`${route}: uploader_dropzone: a drop is cancelled, uploads nothing and does not leave the page when disabled`, async ({ page }) => {
     const def = caseOf('uploader_dropzone')
     const drop = (target) => root(page, def).locator(target).first().evaluate((el) => {
@@ -136,16 +160,23 @@ for (const route of ROUTES) {
       dt.items.add(new File(['abc'], 'a.txt', { type: 'text/plain' }))
       const result = {}
       for (const type of ['dragenter', 'dragover', 'drop']) {
+        // a script-made DataTransfer ignores a write to dropEffect, so the writes are recorded: the zone says "none" when it is disabled, and says nothing when enabled
+        if (type === 'dragover') {
+          result.dropEffectWrites = []
+          Object.defineProperty(dt, 'dropEffect', { configurable: true, get: () => 'copy', set: (v) => result.dropEffectWrites.push(v) })
+        }
         result[type] = !el.dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true }))
-        // the zone's highlight while a file is held over it
-        if (type === 'dragover') result.highlighted = Alpine.$data(el.closest('[x-data]')).dragging
+        if (type === 'dragover') {
+          // the zone's highlight and the cursor's drop effect while a file is held over it
+          result.highlighted = Alpine.$data(el.closest('[x-data]')).dragging
+        }
       }
       return result
     })
     const files = () => root(page, def).locator('input[type=file]').evaluate((el) => el.files.length)
 
     await openCase(page, def, { route })
-    expect(await drop('button')).toEqual({ dragenter: false, dragover: true, highlighted: true, drop: true })
+    expect(await drop('button')).toEqual({ dragenter: false, dragover: true, highlighted: true, dropEffectWrites: [], drop: true })
     expect(await files(), 'enabled: the drop reaches the input').toBe(1)
 
     await openCase(page, def, { route, off: true })
@@ -154,7 +185,7 @@ for (const route of ROUTES) {
 
     // on the zone, and on the disabled button inside it: every drag event a browser fires for a file from the desktop
     for (const target of ['button', '[x-data]']) {
-      expect(await drop(target), `${target}: the page's own handling of a file drop is cancelled, and no drop highlight`).toEqual({ dragenter: false, dragover: true, highlighted: false, drop: true })
+      expect(await drop(target), `${target}: the page's own handling of a file drop is cancelled, with no drop highlight and no drop cursor`).toEqual({ dragenter: false, dragover: true, highlighted: false, dropEffectWrites: ['none'], drop: true })
     }
 
     await page.waitForTimeout(1500)
@@ -168,11 +199,12 @@ for (const route of ROUTES) {
 
 // Chromium only: a drop from the desktop through the browser's own input pipeline, which is what a real user's drop is; a disabled <button> is a
 // control Chromium has treated differently for mouse events before.
-test('uploader_dropzone: a real file drop on the disabled button is cancelled by the zone', async ({ page, browserName }) => {
+test('uploader_dropzone: a real file drop over the disabled zone is refused or cancelled, and the page stays', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'Input.dispatchDragEvent is a Chromium protocol call')
 
   const def = caseOf('uploader_dropzone')
   await openCase(page, def, { route: 'prop', off: true })
+  const url = page.url()
   await page.evaluate(() => {
     window.__drops = []
     document.addEventListener('drop', (e) => window.__drops.push(e.defaultPrevented), false)
@@ -188,6 +220,9 @@ test('uploader_dropzone: a real file drop on the disabled button is cancelled by
   await cdp.send('Input.dispatchDragEvent', { type: 'drop', x, y, data })
   await page.waitForTimeout(500)
 
-  expect(await page.evaluate(() => window.__drops), 'a drop reached the page, and it was cancelled').toEqual([true])
+  // the zone answers the drag with a cancelled dragover and the drop effect "none", so a browser may refuse the drop outright; one that is delivered is cancelled
+  expect(await page.evaluate(() => window.__over), 'the dragover was cancelled').toBe(true)
+  expect((await page.evaluate(() => window.__drops)).every(Boolean), 'a drop that reached the page was cancelled').toBe(true)
+  expect(page.url(), 'the page did not navigate to the file').toBe(url)
   expect(await root(page, def).locator('input[type=file]').evaluate((el) => el.files.length)).toBe(0)
 })
