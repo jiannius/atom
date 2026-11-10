@@ -6,32 +6,11 @@
 //
 // Keys: `<case id>/<route>` (behaviour), `morph:<case id>/<route>`, `noWrite:<case id>/<route>`, `child/first` and `child/update`. `violations` are the names the
 // probe reports. `engines.<name>.violations` is the list in an engine that differs from Chromium (empty: it keeps the contract there). A `pr` that is not a
-// number is a row that needs a decision first. The firefox entries of input_tel follow from a native <select> never being seen open there (see
-// ENGINE_GESTURE_SKIPS in disabled-helpers.js); like all of Firefox's, they are inferred from CI's one run and not yet checked against a green one.
+// number is a row that needs a decision first.
 export const LEDGER = {
   // ---- PR 3
-  "input_email_multiple/form": { pr: 3, why: "chip remove and clear all are live (#186)", violations: ["add an address: popup", "chip remove: popup", "chip remove: value", "clear all: value", "server: value", "tab stops"] },
-  "input_email_multiple/prop": { pr: 3, why: "chip remove and clear all are live (#186)", violations: ["chip remove: popup", "chip remove: value", "clear all: value", "server: value", "tab stops"] },
-  "input_email_options/form": { pr: 3, why: "chip remove is live, and Enter adds the first option in a disabled form (#186)", violations: ["add by Enter: popup", "add by Enter: value", "chip remove: popup", "chip remove: value", "keyboard: value", "open: popup", "server: value", "tab stops"] },
-  "input_email_options/prop": { pr: 3, why: "chip remove is live, and Enter adds the first option in a disabled form (#186)", violations: ["chip remove: value", "keyboard: value", "server: value", "tab stops"] },
-  "input_tel/form": { pr: 3, why: "the dial code select is never disabled (#186)", violations: ["keyboard: popup", "keyboard: value", "open the dial codes: popup", "server: value", "tab stops"], engines: { firefox: { violations: ["keyboard: value", "server: value", "tab stops"] } } },
-  "input_tel/prop": { pr: 3, why: "the dial code select is never disabled (#186)", violations: ["keyboard: popup", "keyboard: value", "open the dial codes: popup", "server: value", "tab stops"], engines: { firefox: { violations: ["keyboard: value", "server: value", "tab stops"] } } },
-  "morph:input_email_options/form": { pr: 3, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "morph:input_email_options/prop": { pr: 3, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "morph:input_tel/form": { pr: 3, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"], engines: { firefox: { violations: [] } } },
-  "morph:input_tel/prop": { pr: 3, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"], engines: { firefox: { violations: [] } } },
-  "noWrite:input_tel/form": { pr: 3, why: "a number without a dial code is given one and sent on load", violations: ["server value rewritten", "writes on load"] },
-  "noWrite:input_tel/prop": { pr: 3, why: "a number without a dial code is given one and sent on load", violations: ["server value rewritten", "writes on load"] },
-  // ---- PR 4
-  "input_otp/form": { pr: 4, why: "a form-disabled OTP writes its digits past readonly", violations: ["keyboard: dom", "keyboard: value", "server: value", "type a digit: dom", "type a digit: value"] },
-  "noWrite:slider/form": { pr: 4, why: "a value outside the range is clamped and sent on load", violations: ["server value rewritten", "writes on load"] },
-  "noWrite:slider/prop": { pr: 4, why: "a value outside the range is clamped and sent on load", violations: ["server value rewritten", "writes on load"] },
-  "noWrite:time_picker/form": { pr: 4, why: "a value with seconds is rewritten and sent on load", violations: ["server value rewritten", "writes on load"] },
-  "noWrite:time_picker/prop": { pr: 4, why: "a value with seconds is rewritten and sent on load", violations: ["server value rewritten", "writes on load"] },
-  "slider/form": { pr: 4, why: "it ignores a disabled form (#184)", violations: ["click the track: dom", "click the track: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops"] },
-  "time_picker/form": { pr: 4, why: "no disabled state: typing, arrows and AM/PM change the value (#184)", violations: ["click AM/PM: value", "keyboard: dom", "keyboard: value", "server: value", "type the hour: dom", "type the hour: value"] },
-  "time_picker/prop": { pr: 4, why: "no disabled state: typing, arrows and AM/PM change the value (#184)", violations: ["click AM/PM: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops", "type the hour: dom", "type the hour: value"] },
-  "toggle/form": { pr: 4, why: "it ignores a disabled form (#184)", violations: ["click the label: dom", "click the label: value", "click the switch: dom", "click the switch: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops"] },
+  "morph:input_tel/form": { pr: 3, why: "WebKit keeps `select:open` true on a native dial code list that was open when a morph disabled the select (it stays so through blur, Escape and a click away; Chromium closes it): the engine's list, not the control's. The select is disabled, which is all the markup can do", violations: [], engines: { webkit: { violations: ["popup stays open"] } } },
+  "morph:input_tel/prop": { pr: 3, why: "WebKit keeps `select:open` true on a native dial code list that was open when a morph disabled the select (it stays so through blur, Escape and a click away; Chromium closes it): the engine's list, not the control's. The select is disabled, which is all the markup can do", violations: [], engines: { webkit: { violations: ["popup stays open"] } } },
   // ---- PR 6
   "date_picker/prop": { pr: 6, why: "a prop-disabled date picker is a readonly tab stop; it should be a real disabled (#185)", violations: ["tab stops"] },
   "date_picker_time/prop": { pr: 6, why: "a prop-disabled date picker is a readonly tab stop; the date-time value is also rewritten on load", violations: ["tab stops"] },
@@ -69,7 +48,6 @@ export const LOOK_LEDGER = {
   "form-select-native": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-textarea": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "range": { pr: 6, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
-  "time": { pr: 4, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "tiptap": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
 }
 

@@ -6,6 +6,12 @@ export default (config) => {
         pointer: null,
         emailInputValue: [],
 
+        // Disabled is the marker the server prints on the root, read when a handler runs (never x-data: a morph does not rebuild it).
+        // A disabled control writes nothing to its model on any gesture: every way to add, remove or clear asks first.
+        get disabled () {
+            return this.$root.hasAttribute('data-atom-disabled')
+        },
+
         get options () {
             return config.options
                 .map(opt => (typeof opt === 'string' ? { name: opt, email: opt } : opt))
@@ -18,6 +24,8 @@ export default (config) => {
         },
 
         select (opt) {
+            if (this.disabled) return
+
             if (typeof opt === 'string') {
                 opt.split(';')
                     .map(str => str.trim())
@@ -32,12 +40,22 @@ export default (config) => {
         },
 
         remove (email) {
+            if (this.disabled) return
+
             let index = this.emailInputValue.findIndex(val => (val.email === email))
             if (index > -1) this.emailInputValue.splice(index, 1)
             this.$root.querySelector('input').focus()
         },
 
+        clear () {
+            if (this.disabled) return
+
+            this.emailInputValue = []
+        },
+
         keyEnter () {
+            if (this.disabled) return
+
             if (this.text) {
                 this.select(this.text)
             }

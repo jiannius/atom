@@ -5,6 +5,14 @@ export default (config = {}) => ({
     digits: [],
     _completed: null,
 
+    /**
+     * Whether the server marked this field disabled (its own `disabled`, or a disabled form's). Read from the DOM at event time, never held in `x-data`:
+     * a morph re-renders the marker and does not rebuild the factory. Not reactive, so a binding must not read it.
+     */
+    get disabled () {
+        return this.$root.hasAttribute('data-atom-disabled')
+    },
+
     init () {
         this.digits = Array.from({ length: this.length }, () => '')
         // wire:model hydrates `code` via x-modelable after init — defer the split.
@@ -21,6 +29,8 @@ export default (config = {}) => ({
 
     /** Recompute the bound code from the boxes and fire completion once full. */
     collect () {
+        if (this.disabled) return
+
         this.code = this.digits.join('')
 
         if (this.digits.every(d => d !== '') && this.digits.length === this.length) {
@@ -32,6 +42,8 @@ export default (config = {}) => ({
 
     /** Keep a single digit per box and advance focus. */
     onInput (index, event) {
+        if (this.disabled) return this.split()
+
         const digit = (event.target.value.match(/\d/g) || []).pop() || ''
 
         this.digits[index] = digit
@@ -55,6 +67,9 @@ export default (config = {}) => ({
     },
 
     onPaste (event) {
+        // `readOnly` is a host's own `readonly`, which blocks typing natively and must block a paste as well
+        if (this.disabled || event.target.readOnly) return
+
         const pasted = (event.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, this.length)
         if (!pasted) return
 

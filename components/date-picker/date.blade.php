@@ -67,7 +67,7 @@ data-atom-date-picker
             @if ($time)
                 <div x-bind:class="!datePickerString && 'opacity-50 pointer-events-none'" class="px-2 pb-2">
                     <div class="text-xs font-medium text-fg-muted mb-2">{{ t('Time') }}</div>
-                    <atom:time-picker x-model="datePickerValue" :timezone="$timezone" />
+                    <atom:time-picker x-model="datePickerValue" :timezone="$timezone" :disabled="false" />
                 </div>
             @endif
         </atom:menu>

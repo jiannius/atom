@@ -9,7 +9,15 @@
 @php
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
-$merges = ['name' => $name];
+
+// 'self', 'inherited' from a disabled form, or null; a toggle's own `disabled` (`:disabled="false"` too) wins over the form's.
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
+
+$merges = [
+    'name' => $name,
+    'disabled' => $disabledBy ? true : null,
+    'data-atom-disabled' => $disabledBy,
+];
 @endphp
 
 <label {{ $attributes->only('class')->class('group/toggle inline-block space-y-2') }} data-atom-toggle>
