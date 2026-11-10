@@ -115,7 +115,7 @@ input.no-spinner::-webkit-inner-spin-button {
     -webkit-appearance: none;
 }
 
-button {
+button:not(:disabled) {
     cursor: pointer;
 }
 

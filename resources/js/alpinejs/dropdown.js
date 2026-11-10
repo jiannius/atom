@@ -22,6 +22,12 @@ export default (config) => {
                 || [...this.$root.children].find(outside)
         },
 
+        // A control that holds this dropdown marks itself `data-atom-disabled`, and a disabled one opens nothing, whatever trigger the host slotted.
+        // Read from the DOM when asked (never x-data): the server rewrites the marker on a morph.
+        get disabled() {
+            return !!this.$root.closest('[data-atom-disabled]')
+        },
+
         get popover() {
             return this.$root.querySelector(':scope >[popover]')
                 || this.$root.querySelector('[data-atom-dropdown-popover]')
@@ -113,7 +119,12 @@ export default (config) => {
             // the previous registration.
             this.$root._atomDropdownStopMorph?.()
             this.$root._atomDropdownStopMorph = onMorphed((el) => {
-                if (!el || el.contains(this.$root)) this.syncState()
+                if (!el || el.contains(this.$root)) {
+                    // an open popup closes when a morph disables the control around it
+                    if (this.disabled) this.hide()
+
+                    this.syncState()
+                }
             })
         },
 
@@ -150,7 +161,7 @@ export default (config) => {
         },
 
         show() {
-            if (this.popover?.matches(':popover-open')) return
+            if (this.disabled || this.popover?.matches(':popover-open')) return
 
             this.popover.showPopover()
             this.$root.setAttribute('data-open', '')
