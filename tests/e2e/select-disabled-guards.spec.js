@@ -40,7 +40,7 @@ for (const route of ['prop', 'form']) {
   }
 }
 
-// atom.css gave every button `cursor: pointer` outside any layer, which beat the `cursor-not-allowed` utility a disabled control carries (finding 16):
+// atom.css gave every button `cursor: pointer` outside any layer, which beat the `cursor-not-allowed` utility a disabled control carries:
 // it now applies to an enabled button only.
 for (const route of ['prop', 'form']) {
   for (const id of ['select_listbox', 'select_filter']) {
@@ -53,6 +53,51 @@ for (const route of ['prop', 'form']) {
 
       await openCase(page, def, { route, off: true })
       expect(await cursor()).toBe('not-allowed')
+    })
+  }
+}
+
+// The trailing affix of a filled, clearable listbox holds an x (clear) and a caret (shown instead of the x while disabled). Exactly one has a box at a time:
+// visibility sits on plain wrapper divs, because an icon's own `inline-flex` sorts after `hidden` in the consumer's CSS and would draw both. Measured as the
+// browser draws it (a box), on both Tailwind builds the hosts use.
+for (const tw of ['floor', 'latest']) {
+  for (const route of ['prop', 'form']) {
+    test(`${tw} build, ${route}: select_listbox_clear: the affix draws one icon, enabled with a value and disabled`, async ({ page }) => {
+      const def = caseOf('select_listbox_clear')
+      const drawn = () => page.locator(`[data-case="${def.id}"] [data-atom-select-affix] [data-atom-icon]`).evaluateAll((icons) => icons.filter((el) => {
+        const box = el.getBoundingClientRect()
+        return box.width > 0 && box.height > 0
+      }).length)
+
+      await openCase(page, def, { route, tw })
+      expect(await drawn(), 'enabled: the x only').toBe(1)
+
+      await openCase(page, def, { route, off: true, tw })
+      expect(await drawn(), 'disabled: the caret only').toBe(1)
+    })
+  }
+}
+
+// The removes are hidden by a variant on an element that also has a display class of its own (`flex`): the variant must win in the consumer's CSS, which
+// a class string cannot tell. Computed `display`, on both builds.
+const removes = [
+  { id: 'select_listbox_multiple', what: 'a chip remove', selector: 'button[aria-haspopup] .border-r .cursor-pointer' },
+  { id: 'select_listbox_list', what: 'a list row remove', selector: '[data-atom-select-listbox] button.shrink-0' },
+  { id: 'select_native_multiple', what: 'a chip remove', selector: '[data-atom-select-native] .border-r .cursor-pointer' },
+  { id: 'select_filter', what: 'the clear x', selector: 'button[role=combobox] .cursor-pointer' },
+]
+
+for (const tw of ['floor', 'latest']) {
+  for (const r of removes) {
+    test(`${tw} build: ${r.id}: ${r.what} is drawn enabled and display: none disabled`, async ({ page }) => {
+      const def = caseOf(r.id)
+      const display = () => page.locator(`[data-case="${def.id}"] ${r.selector}`).first().evaluate((el) => getComputedStyle(el).display)
+
+      await openCase(page, def, { route: 'prop', tw })
+      expect(await display(), 'enabled').not.toBe('none')
+
+      await openCase(page, def, { route: 'prop', off: true, tw })
+      expect(await display(), 'disabled').toBe('none')
     })
   }
 }

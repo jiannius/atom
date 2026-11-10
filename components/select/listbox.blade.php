@@ -194,8 +194,13 @@ class="group/select w-full"
                         <template x-if="!isEmpty" hidden>
                             {{-- the node is Alpine's, so the server cannot swap it for the caret when the control is disabled: the marker on the root does --}}
                             <div x-on:click.stop="clear()" class="cursor-pointer flex items-center justify-center pl-2.5 pr-2 last:pr-2.5 hover:text-fg [[data-atom-disabled]_&]:pointer-events-none">
-                                <atom:icon.close class="size-4 [[data-atom-disabled]_&]:hidden" />
-                                <atom:icon.dropdown class="hidden size-4 [[data-atom-disabled]_&]:inline-flex" />
+                                {{-- visibility on plain wrappers: an icon's own inline-flex would win over `hidden` --}}
+                                <div class="flex items-center justify-center [[data-atom-disabled]_&]:hidden">
+                                    <atom:icon.close class="size-4" />
+                                </div>
+                                <div class="hidden items-center justify-center [[data-atom-disabled]_&]:flex">
+                                    <atom:icon.dropdown class="size-4" />
+                                </div>
                             </div>
                         </template>
                     @else
