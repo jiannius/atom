@@ -1,6 +1,8 @@
 import dayjs from 'dayjs'
 import { zoneOf } from '../helpers/zone'
 
+const pad = (n) => String(n).padStart(2, '0')
+
 export default (config = {}) => {
     // A full date-time value is read and written as the wall clock in `config.timezone` (a date-picker's); a bare time never is.
     const zone = zoneOf(config.timezone)
@@ -11,6 +13,14 @@ export default (config = {}) => {
         am: null,
         timePickerValue: null,
 
+        /**
+         * Whether the server marked this picker disabled (its own `disabled`, or a disabled form's). Read from the DOM at event time, never held in `x-data`:
+         * a morph re-renders the marker and does not rebuild the factory. Not reactive, so a binding must not read it.
+         */
+        get disabled () {
+            return this.$root.hasAttribute('data-atom-disabled')
+        },
+
         get format () {
             if (!this.timePickerValue) return null
             return /^\d{2}:\d{2}:\d{2}$/.test(this.timePickerValue) ? 'time' : 'datetime'
@@ -18,7 +28,12 @@ export default (config = {}) => {
 
         get timePickerObject () {
             if (!this.timePickerValue) return null
-            let obj = this.format === 'time' ? dayjs('1970-01-01 '+this.timePickerValue) : zone.read(this.timePickerValue)
+
+            // A bare time is built from its numbers: a date is never parsed from a string here, since WebKit's Date reads far less than Chrome's.
+            const obj = this.format === 'time'
+                ? dayjs(new Date(1970, 0, 1, ...this.timePickerValue.split(':').map(Number)))
+                : zone.read(this.timePickerValue)
+
             return obj.isValid() ? obj : null
         },
 
@@ -47,7 +62,11 @@ export default (config = {}) => {
             if (el.value !== clean) el.value = clean
         },
 
+        // The picker's only write to its model, and the one the hour, minute and AM/PM watchers all end in, so a disabled picker stops here: showing a value
+        // (parse) goes through the same watchers and must not turn a value the server sent into another one.
         setTime () {
+            if (this.disabled) return
+
             let hr = this.digits(this.hr)
             let min = this.digits(this.min)
 
@@ -58,16 +77,17 @@ export default (config = {}) => {
             this.hr = !+hr || hr > 12 ? '12' : hr.padStart(2, '0')
             this.min = !+min || min > 59 ? '00' : min.padStart(2, '0')
 
-            let obj = dayjs(`1970-01-01 ${this.hr}:${this.min} ${this.am}`)
+            // the 24-hour clock from the numbers on screen (12 AM is 0, 12 PM is 12)
+            const hour = (+this.hr % 12) + (this.am === 'PM' ? 12 : 0)
 
             if (!this.format || this.format === 'time') {
-                this.timePickerValue = obj.format('HH:mm:ss')
+                this.timePickerValue = `${pad(hour)}:${this.min}:00`
             }
             else if (this.timePickerObject) {
                 this.timePickerValue = zone.write(this.timePickerObject
-                    .set('hour', obj.get('hour'))
-                    .set('minute', obj.get('minute'))
-                    .set('second', obj.get('second')))
+                    .set('hour', hour)
+                    .set('minute', +this.min)
+                    .set('second', 0))
             }
         },
 
@@ -76,6 +96,8 @@ export default (config = {}) => {
         // is lazy (it commits on change), so it is stale until the field is left, and the
         // arrow keys must step from what is on screen.
         up (key, typed) {
+            if (this.disabled) return
+
             let hr = +this.digits(key === 'hr' ? typed ?? this.hr : this.hr) || 0
             let min = +this.digits(key === 'min' ? typed ?? this.min : this.min) || 0
 
@@ -89,6 +111,8 @@ export default (config = {}) => {
         },
 
         down (key, typed) {
+            if (this.disabled) return
+
             let hr = +this.digits(key === 'hr' ? typed ?? this.hr : this.hr) || 0
             let min = +this.digits(key === 'min' ? typed ?? this.min : this.min) || 0
 

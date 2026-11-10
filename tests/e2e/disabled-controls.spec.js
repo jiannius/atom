@@ -5,7 +5,7 @@ import { open, contrastOf } from './controls-helpers.js'
 // border and nothing to show in an empty one. Every text control's disabled state now also drops its strong hairline
 // (--atom-control-border) for the faint one (--atom-border), and keeps the sunken fill. Run `node tests/consumer/build.mjs` first.
 //
-// [pair, what draws the box, whether the pair's test id is on the box itself]. Time-picker and date-range have no disabled state.
+// [pair, what draws the box, whether the pair's test id is on the box itself]. Date-range has no disabled state yet.
 const fields = [
   ['input-empty', null, true],
   ['input-filled', null, true],

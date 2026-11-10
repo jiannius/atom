@@ -22,16 +22,6 @@ export const LEDGER = {
   "morph:input_tel/prop": { pr: 3, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"], engines: { firefox: { violations: [] } } },
   "noWrite:input_tel/form": { pr: 3, why: "a number without a dial code is given one and sent on load", violations: ["server value rewritten", "writes on load"] },
   "noWrite:input_tel/prop": { pr: 3, why: "a number without a dial code is given one and sent on load", violations: ["server value rewritten", "writes on load"] },
-  // ---- PR 4
-  "input_otp/form": { pr: 4, why: "a form-disabled OTP writes its digits past readonly", violations: ["keyboard: dom", "keyboard: value", "server: value", "type a digit: dom", "type a digit: value"] },
-  "noWrite:slider/form": { pr: 4, why: "a value outside the range is clamped and sent on load", violations: ["server value rewritten", "writes on load"] },
-  "noWrite:slider/prop": { pr: 4, why: "a value outside the range is clamped and sent on load", violations: ["server value rewritten", "writes on load"] },
-  "noWrite:time_picker/form": { pr: 4, why: "a value with seconds is rewritten and sent on load", violations: ["server value rewritten", "writes on load"] },
-  "noWrite:time_picker/prop": { pr: 4, why: "a value with seconds is rewritten and sent on load", violations: ["server value rewritten", "writes on load"] },
-  "slider/form": { pr: 4, why: "it ignores a disabled form (#184)", violations: ["click the track: dom", "click the track: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops"] },
-  "time_picker/form": { pr: 4, why: "no disabled state: typing, arrows and AM/PM change the value (#184)", violations: ["click AM/PM: value", "keyboard: dom", "keyboard: value", "server: value", "type the hour: dom", "type the hour: value"] },
-  "time_picker/prop": { pr: 4, why: "no disabled state: typing, arrows and AM/PM change the value (#184)", violations: ["click AM/PM: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops", "type the hour: dom", "type the hour: value"] },
-  "toggle/form": { pr: 4, why: "it ignores a disabled form (#184)", violations: ["click the label: dom", "click the label: value", "click the switch: dom", "click the switch: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops"] },
   // ---- PR 5
   "input_color/form": { pr: 5, why: "no disabled state: the palette opens and picks a colour", violations: ["open: popup", "pick a swatch: dom", "pick a swatch: value", "server: value"] },
   "input_color/prop": { pr: 5, why: "no disabled state: the palette opens and picks a colour", violations: ["open: popup", "pick a swatch: dom", "pick a swatch: value", "server: value", "tab stops"] },
@@ -87,7 +77,6 @@ export const LOOK_LEDGER = {
   "form-textarea": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "range": { pr: 6, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "rating": { pr: 5, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
-  "time": { pr: 4, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "tiptap": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "uploader": { pr: 5, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
 }
