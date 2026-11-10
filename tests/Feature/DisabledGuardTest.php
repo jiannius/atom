@@ -303,3 +303,29 @@ it('keeps the nested time-pickers of the date pickers enabled inside a disabled 
     'date' => '<atom:date-picker time/>',
     'range' => '<atom:date-picker variant="range" time/>',
 ]);
+
+it('lets disabled win over invalid in the look of an OTP and a time-picker, in both routes', function (string $tag, string $target) {
+    $classes = function (string $html) use ($target) {
+        $found = domQuery($html, $target);
+        expect($found)->not->toBeEmpty();
+
+        return domClasses($found[0]);
+    };
+
+    $own = $classes(renderBlade(str_replace('%s', 'invalid disabled', $tag)));
+    $inherited = $classes(renderBlade('<atom:form disabled>'.str_replace('%s', 'invalid', $tag).'</atom:form>'));
+    $enabled = $classes(renderBlade(str_replace('%s', 'invalid', $tag)));
+
+    expect($enabled)->toContain('border-danger-fg');
+
+    foreach ([$own, $inherited] as $disabled) {
+        expect($disabled)->toContain('border-border')
+            ->and($disabled)->not->toContain('border-danger-fg')
+            ->and($disabled)->not->toContain('group-has-[[data-atom-error]]/field:border-danger-fg');
+    }
+
+    expect($own)->toEqual($inherited);
+})->with([
+    'otp' => ['<atom:input.otp length="4" %s/>', '//input[@data-atom-input-otp-box]'],
+    'time-picker' => ['<atom:time-picker %s/>', '//div[@x-modelable="timePickerValue"]'],
+]);

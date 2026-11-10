@@ -30,9 +30,16 @@ export default (config = {}) => {
             if (!this.timePickerValue) return null
 
             // A bare time is built from its numbers: a date is never parsed from a string here, since WebKit's Date reads far less than Chrome's.
-            const obj = this.format === 'time'
-                ? dayjs(new Date(1970, 0, 1, ...this.timePickerValue.split(':').map(Number)))
-                : zone.read(this.timePickerValue)
+            if (this.format === 'time') {
+                const [h, m, s] = this.timePickerValue.split(':').map(Number)
+
+                // Date would roll 25:99:99 over to the next day and show it as 02:40: an out-of-range time is no time, as it was
+                if (h > 23 || m > 59 || s > 59) return null
+
+                return dayjs(new Date(1970, 0, 1, h, m, s))
+            }
+
+            const obj = zone.read(this.timePickerValue)
 
             return obj.isValid() ? obj : null
         },

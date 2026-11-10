@@ -15,6 +15,7 @@ $groups = $groups ? (int) $groups : null;
 $disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
 $readonly = $disabledBy === 'inherited' || (bool) $attributes->get('readonly');
 
+// A disabled box is not also invalid: the disabled look wins over `invalid` and over a field error, in both routes, and only the focus border stays.
 // The look is picked here from the state rather than by a `disabled:` variant, so a readonly box in a disabled form looks the same and a focused
 // one still draws its focus border (the plain border sorts below the variant).
 $box = Arr::toCssClasses([
@@ -23,8 +24,9 @@ $box = Arr::toCssClasses([
     'disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-sunken disabled:text-fg-subtle',
     $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
     'focus-visible:outline-offset-0',
-    $invalid ? 'border-danger-fg' : ($disabledBy ? 'border-border' : 'border-control-border'),
-    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
+    $disabledBy ? 'border-border' : ($invalid ? 'border-danger-fg' : 'border-control-border'),
+    'group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
+    'group-has-[[data-atom-error]]/field:border-danger-fg' => ! $disabledBy,
 ]);
 @endphp
 

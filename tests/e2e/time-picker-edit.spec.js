@@ -57,3 +57,13 @@ test('time-picker: a server value is shown, in both halves of the day', async ({
   await expect(minute(page)).toHaveValue('45')
   await expect(meridiem(page)).toHaveValue('PM')
 })
+
+test('time-picker: a server time out of range shows "--" and is left alone, not rolled over to the next day', async ({ page }) => {
+  await openCase(page, def, { value: '25:99:99' })
+  await expect(hour(page)).toHaveValue('--')
+  await expect(minute(page)).toHaveValue('--')
+  await page.waitForTimeout(400)
+
+  expect(await model(page)).toBe('25:99:99')
+  expect(page.updates, 'nothing is written on load').toEqual([])
+})

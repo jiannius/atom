@@ -45,8 +45,9 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
         $disabledBy ? 'bg-surface-sunken text-fg-subtle cursor-not-allowed' : 'bg-surface text-fg cursor-default',
         $invalid ? 'has-[:focus-visible]:border-danger-fg' : 'has-[:focus-visible]:border-focus',
         'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
-        $invalid ? 'border-danger-fg' : ($disabledBy ? 'border-border' : 'border-control-border'),
-        'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
+        $disabledBy ? 'border-border' : ($invalid ? 'border-danger-fg' : 'border-control-border'),
+        'group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
+        'group-has-[[data-atom-error]]/field:border-danger-fg' => ! $disabledBy,
     ]);
     @endphp
 
