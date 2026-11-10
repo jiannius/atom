@@ -137,14 +137,15 @@ for (const route of ROUTES) {
       const result = {}
       for (const type of ['dragenter', 'dragover', 'drop']) {
         result[type] = !el.dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true }))
+        // the zone's highlight while a file is held over it
+        if (type === 'dragover') result.highlighted = Alpine.$data(el.closest('[x-data]')).dragging
       }
       return result
     })
     const files = () => root(page, def).locator('input[type=file]').evaluate((el) => el.files.length)
-    const dragging = () => root(page, def).locator('button').evaluate((el) => el.className.includes('border-accent-ink'))
 
     await openCase(page, def, { route })
-    expect(await drop('button')).toEqual({ dragenter: false, dragover: true, drop: true })
+    expect(await drop('button')).toEqual({ dragenter: false, dragover: true, highlighted: true, drop: true })
     expect(await files(), 'enabled: the drop reaches the input').toBe(1)
 
     await openCase(page, def, { route, off: true })
@@ -153,8 +154,7 @@ for (const route of ROUTES) {
 
     // on the zone, and on the disabled button inside it: every drag event a browser fires for a file from the desktop
     for (const target of ['button', '[x-data]']) {
-      expect(await drop(target), `${target}: the page's own handling of a file drop is cancelled`).toEqual({ dragenter: false, dragover: true, drop: true })
-      expect(await dragging(), `${target}: no drop highlight`).toBe(false)
+      expect(await drop(target), `${target}: the page's own handling of a file drop is cancelled, and no drop highlight`).toEqual({ dragenter: false, dragover: true, highlighted: false, drop: true })
     }
 
     await page.waitForTimeout(1500)
