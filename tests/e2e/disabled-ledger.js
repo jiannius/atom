@@ -11,25 +11,6 @@ export const LEDGER = {
   // ---- PR 3
   "morph:input_tel/form": { pr: 3, why: "WebKit keeps `select:open` true on a native dial code list that was open when a morph disabled the select (it stays so through blur, Escape and a click away; Chromium closes it): the engine's list, not the control's. The select is disabled, which is all the markup can do", violations: [], engines: { webkit: { violations: ["popup stays open"] } } },
   "morph:input_tel/prop": { pr: 3, why: "WebKit keeps `select:open` true on a native dial code list that was open when a morph disabled the select (it stays so through blur, Escape and a click away; Chromium closes it): the engine's list, not the control's. The select is disabled, which is all the markup can do", violations: [], engines: { webkit: { violations: ["popup stays open"] } } },
-  // ---- PR 6
-  "date_picker/prop": { pr: 6, why: "a prop-disabled date picker is a readonly tab stop; it should be a real disabled (#185)", violations: ["tab stops"] },
-  "date_picker_time/prop": { pr: 6, why: "a prop-disabled date picker is a readonly tab stop; the date-time value is also rewritten on load", violations: ["tab stops"] },
-  "date_range/form": { pr: 6, why: "no disabled state: it opens, presets and keys change the value (#185)", violations: ["keyboard: dom", "keyboard: popup", "open: popup", "pick a preset: dom", "pick a preset: popup", "pick a preset: value", "server: value"] },
-  "date_range/prop": { pr: 6, why: "no disabled state: it opens, presets and keys change the value (#185)", violations: ["keyboard: dom", "keyboard: popup", "open: popup", "pick a preset: dom", "pick a preset: popup", "pick a preset: value", "server: value", "tab stops"] },
-  "date_range_add/form": { pr: 6, why: "no disabled state: the add pill opens and changes the value (#185)", violations: ["keyboard: popup", "open: popup", "pick a preset: popup", "pick a preset: value", "server: value", "tab stops"] },
-  "date_range_add/prop": { pr: 6, why: "no disabled state: the add pill opens and changes the value (#185)", violations: ["keyboard: popup", "open: popup", "pick a preset: popup", "pick a preset: value", "server: value", "tab stops"] },
-  "morph:date_picker/form": { pr: 6, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "morph:date_picker/prop": { pr: 6, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "morph:date_picker_time/form": { pr: 6, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "morph:date_picker_time/prop": { pr: 6, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "morph:date_range/form": { pr: 6, why: "an open popup stays open when a morph disables the control; its DOM after the morph is not the DOM of a static render (the control is wire:ignore'd)", violations: ["disabled DOM differs from a static render", "popup stays open", "re-enabled DOM differs from a static render"] },
-  "morph:date_range/prop": { pr: 6, why: "an open popup stays open when a morph disables the control; its DOM after the morph is not the DOM of a static render (the control is wire:ignore'd)", violations: ["disabled DOM differs from a static render", "popup stays open", "re-enabled DOM differs from a static render"] },
-  "morph:date_range_add/form": { pr: 6, why: "an open popup stays open when a morph disables the control; its DOM after the morph is not the DOM of a static render (the control is wire:ignore'd)", violations: ["disabled DOM differs from a static render", "popup stays open", "re-enabled DOM differs from a static render"] },
-  "morph:date_range_add/prop": { pr: 6, why: "an open popup stays open when a morph disables the control; its DOM after the morph is not the DOM of a static render (the control is wire:ignore'd)", violations: ["disabled DOM differs from a static render", "popup stays open", "re-enabled DOM differs from a static render"] },
-  "morph:textarea_autoresize/form": { pr: 6, why: "its DOM after the morph is not the DOM of a static render (the control is wire:ignore'd); it stays editable after the morph", violations: ["after the morph: type: dom", "after the morph: type: value", "disabled DOM differs from a static render"] },
-  "morph:textarea_autoresize/prop": { pr: 6, why: "its DOM after the morph is not the DOM of a static render (the control is wire:ignore'd); it stays editable after the morph", violations: ["after the morph: type: dom", "after the morph: type: value", "disabled DOM differs from a static render"] },
-  "noWrite:date_picker_time/form": { pr: 6, why: "a date-time is turned into an ISO instant and sent on load", violations: ["server value rewritten", "writes on load"] },
-  "noWrite:date_picker_time/prop": { pr: 6, why: "a date-time is turned into an ISO instant and sent on load", violations: ["server value rewritten", "writes on load"] },
   // ---- PR 7
   "morph:tiptap/form": { pr: 7, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
   "morph:tiptap/prop": { pr: 7, why: "an open popup stays open when a morph disables the control; its DOM after the morph is not the DOM of a static render (the control is wire:ignore'd)", violations: ["disabled DOM differs from a static render", "popup stays open"] },
@@ -47,7 +28,6 @@ export const LOOK_LEDGER = {
   "form-select-listbox": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-select-native": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-textarea": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
-  "range": { pr: 6, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "tiptap": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
 }
 

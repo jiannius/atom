@@ -1,5 +1,3 @@
-@aware(['disabled' => false])
-
 @props([
     'name' => null,
     'variant' => 'date',
@@ -20,10 +18,13 @@ $error ??= $errors?->first($name);
 // Derived, not minted per render: see Services\Attributes::fieldId().
 $inputId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-date-picker', $name, $label, $variant) : null;
 
+// 'self', 'inherited' from a disabled <atom:form>, or null; the picker's own `disabled` (`:disabled="false"` too) wins over the form's. The
+// variants print the marker and pick the real `disabled` (its own) or `readonly` (a form's) from it, and their JS reads it at event time.
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
+
 $merges = [
     'required' => $required,
-    // Inherit a read-only state from an enclosing <atom:form disabled>.
-    'disabled' => ($disabled ?? false) ?: null,
+    'data-atom-disabled' => $disabledBy,
 ];
 
 if ($inputId) {

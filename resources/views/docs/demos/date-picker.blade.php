@@ -12,3 +12,9 @@ view="atom::docs.demos.date-picker.range"/>
 title="Timezone"
 description="Pass an IANA zone (the app's) and the picker reads, picks, presets and types in that zone, whatever the browser's is. The value is still an ISO UTC instant."
 view="atom::docs.demos.date-picker.timezone"/>
+
+
+<atom:docs.example
+title="Disabled"
+description="Neither opens, types or clears. In a disabled form the input is read-only instead: the date stays selectable and copyable."
+view="atom::docs.demos.date-picker.disabled"/>

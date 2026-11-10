@@ -1,6 +1,7 @@
 import Pikaday from 'pikaday'
 import dayjs from 'dayjs'
 import { drawsOwnChip } from '../helpers/filter-chip'
+import onMorphed from '../helpers/morphed'
 import { parseTypedDate, splitTypedRange } from '../helpers/typed-date'
 import { zoneOf } from '../helpers/zone'
 
@@ -15,6 +16,19 @@ export default (config) => {
         dateRangeValue: null,
         // an `add` range in an inline filter bar draws its own chip (helpers/filter-chip.js); set when it starts
         selfChip: false,
+        // `self`, `inherited` or null: the marker the server prints, copied here for what Alpine binds (the input's disabled and readonly, the x that clears).
+        // The root is wire:ignore'd, so a morph never reaches its attributes: helpers/morphed.js carries the marker, and the callback below reads it again.
+        // Bindings read this; handlers read `disabled`, the DOM at event time.
+        off: null,
+
+        /**
+         * Whether the server marked this range disabled (its own `disabled`, or a disabled form's). Read from the DOM at event time, never held in `x-data`.
+         * Not reactive, so a binding reads `off`. The dropdown reads the same marker and opens nothing; this keeps the range from writing through the paths
+         * that do not need the panel (typing, the clear x, a preset, a Pikaday select, the filter bar's clear).
+         */
+        get disabled () {
+            return this.$root.hasAttribute('data-atom-disabled')
+        },
 
         get chipState () {
             return this.selfChip && !!this.dateRangeValue
@@ -57,6 +71,13 @@ export default (config) => {
         },
 
         init () {
+            this.off = this.$root.getAttribute('data-atom-disabled')
+
+            this.$root._atomDateRangeStopMorph?.()
+            this.$root._atomDateRangeStopMorph = onMorphed((el) => {
+                if (!el || el.contains(this.$root)) this.off = this.$root.getAttribute('data-atom-disabled')
+            })
+
             this.selfChip = !!config.add && drawsOwnChip(this.$root)
 
             this.parse()
@@ -78,12 +99,24 @@ export default (config) => {
 
         // The own chip's x: clear the range and put the focus on the add pill that comes back (it is the same button).
         clearChip () {
+            if (this.disabled) return
+
             this.dateRangeValue = null
             this.parse()
             this.$nextTick(() => this.$root.querySelector('[data-atom-filter-chip-body]')?.focus())
         },
 
+        // The clear x, and the filter bar's clear for this range.
+        clear () {
+            if (this.disabled) return
+
+            this.dateRangeValue = null
+            this.parse()
+        },
+
         preset (name) {
+            if (this.disabled) return
+
             let now = zone.now()
             let lastMonth = now.startOf('month').subtract(1, 'day')
             let lastYear = now.startOf('year').subtract(1, 'day')
@@ -116,6 +149,12 @@ export default (config) => {
         // before the start) is put back to the last good value, so it never
         // wipes the model. Returns 'unchanged', 'committed' or 'reverted'.
         commitTyped (input) {
+            // a disabled range takes nothing typed: the input shows the value again, and the model is left as the server sent it
+            if (this.disabled) {
+                this.revertTyped(input)
+                return 'unchanged'
+            }
+
             let text = input.value.trim()
             if (text === this.dateRangeString) return 'unchanged'
 
@@ -172,7 +211,11 @@ export default (config) => {
             if (this.commitTyped(event.target) !== 'unchanged') event.preventDefault()
         },
 
+        // The one write to the range from the two ends, and where a nested time-picker's edit, a preset and a Pikaday select all end, so a disabled
+        // range stops here (its ends are only ever read from the value it shows).
         updateValue () {
+            if (this.disabled) return
+
             let start = this.startValue || ''
             let end = this.endValue || ''
             if (!start || !end) return
@@ -182,6 +225,7 @@ export default (config) => {
         },
 
         destroy () {
+            this.$root._atomDateRangeStopMorph?.()
             this.destroyCalendar()
         },
 
@@ -196,10 +240,14 @@ export default (config) => {
 
             // Pikaday hands back a local date whose year, month and day are the ones clicked (the zone's, since it was given the wall clock).
             this.pikaday[0] = new Pikaday({ keyboardInput: false, onSelect: (value) => {
+                if (this.disabled) return
+
                 this.startValue = zone.start(dayjs(value))
             }})
 
             this.pikaday[1] = new Pikaday({ keyboardInput: false, onSelect: (value) => {
+                if (this.disabled) return
+
                 this.endValue = zone.end(dayjs(value))
             }})
 

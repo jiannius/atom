@@ -145,7 +145,8 @@ data-atom-calendar
                     <atom:button variant="ghost" icon="right" :aria-label="t('Next')" x-on:click="next()" />
                 </div>
 
-                <atom:date-picker x-model="jump">
+                {{-- the toolbar is wire:ignore'd, so a disabled form around the calendar must not freeze its month picker in a disabled state --}}
+                <atom:date-picker x-model="jump" :disabled="false">
                     <button type="button" x-bind:aria-label="title.text + ', ' + (labels.ui?.choose_date ?? '')" data-atom-calendar-title class="flex items-center gap-1.5 rounded-sm text-base @2xl:text-lg outline-offset-2">
                         <span x-text="title.month" class="font-semibold text-fg"></span>
                         <span x-cloak x-show="title.year" x-text="title.year" data-atom-calendar-title-year class="font-normal text-fg-muted"></span>

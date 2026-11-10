@@ -7,6 +7,12 @@
 ])
 
 @php
+/* 'self' (its own `disabled`: a real `disabled` on the input and the pill), 'inherited' (a disabled form: the input is `readonly`, so the range stays
+   selectable; the pill, a button, is `disabled` too) or null. It comes from the entry component (date-picker/index) as `data-atom-disabled`. The root is
+   wire:ignore'd, so a morph never reaches its attributes: helpers/morphed.js carries the marker onto it, and the factory's `off` follows it for what
+   Alpine binds. The look is picked from the marker by CSS (`[[data-atom-disabled]_&]:`) for the same reason. */
+$disabledBy = $attributes->get('data-atom-disabled');
+
 $filterKey = $attributes->wire('model')->value() ?: $attributes->get('data-filter-key');
 
 /* The field recipe (see input/general); two 16px icons (clear, calendar) sit at the end. */
@@ -18,6 +24,9 @@ $classes = Arr::toCssClasses([
     'focus-visible:outline-offset-0',
     $invalid ? 'border-danger-fg' : 'border-control-border',
     'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
+    '[[data-atom-disabled]_&]:bg-surface-sunken [[data-atom-disabled]_&]:text-fg-subtle [[data-atom-disabled]_&]:cursor-not-allowed [[data-atom-disabled]_&]:border-border',
+    /* the faint border of the marker sorts above the focus variant, so a focused field in a disabled form gets its focus border back, one step more specific */
+    $invalid ? '[[data-atom-disabled]_&]:focus-visible:border-danger-fg' : '[[data-atom-disabled]_&]:focus-visible:border-focus',
 ]);
 
 /* The add-filter pill: the same button as the select filter's, a 26px dashed pill that reads "+ Label" until a range is set. It
@@ -28,6 +37,8 @@ $pillClasses = Arr::toCssClasses([
     'inline-flex h-[26px] items-center gap-1 appearance-none rounded-pill border border-dashed border-control-border bg-transparent px-2.5 text-xs text-fg-muted',
     'hover:bg-surface-sunken hover:text-fg',
     '[&[data-chip]]:gap-1.5 [&[data-chip]]:rounded-e-none [&[data-chip]]:border-transparent [&[data-chip]]:bg-neutral-bg [&[data-chip]]:pe-2 [&[data-chip]]:text-fg [&[data-chip]]:hover:bg-border-strong',
+    'disabled:cursor-not-allowed disabled:text-fg-subtle disabled:hover:bg-transparent disabled:hover:text-fg-subtle',
+    '[&[data-chip]:disabled]:text-fg-subtle [&[data-chip]:disabled]:hover:bg-neutral-bg [&[data-chip]:disabled]:hover:text-fg-subtle',
 ]);
 @endphp
 
@@ -48,9 +59,9 @@ x-init="
     $nextTick(emit);
     $watch('dateRangeValue', () => { $nextTick(emit); $dispatch('table-filter:changed') });
 "
-x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dateRangeValue = null, parse())"
+x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clear()"
 @endif
-{{ $attributes->except(['class', 'placeholder']) }}>
+{{ $attributes->except(['class', 'placeholder', 'disabled']) }}>
     <atom:dropdown x-on:open="setCalendarDates(); setCalendarRange();" locked :class="$add ? 'flex items-center' : ''" x-bind:data-atom-table-filter-chip="chipState ? '' : null">
         @if ($add)
         <button
@@ -59,6 +70,8 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
         x-bind:aria-label="chipState ? @js(t($placeholder).' '.t('is')) + ' ' + dateRangeString : null"
         x-bind:data-chip="chipState ? '' : null"
         {{ $attributes->class($pillClasses)->only('class') }}
+        @if ($disabledBy) disabled @endif
+        x-bind:disabled="!!off"
         data-atom-dropdown-trigger
         data-atom-date-range-add
         data-atom-filter-chip-body>
@@ -72,7 +85,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
         {{-- the own chip's x, split from the chip by a hairline (see select/filter.blade.php) --}}
         <button
         type="button"
-        x-show="chipState"
+        x-show="chipState && !off"
         x-cloak
         x-on:click="clearChip()"
         x-bind:aria-label="@js(t('Remove filter')) + ': ' + @js(t($placeholder))"
@@ -90,19 +103,22 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
             x-on:keydown.enter="typedEnter($event)"
             x-on:keydown.escape="revertTyped($el)"
             x-on:keydown.down.prevent="show()"
+            x-bind:disabled="off === 'self'"
+            x-bind:readonly="off === 'inherited'"
             autocomplete="off"
             spellcheck="false"
-            {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}>
+            {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}
+            @if ($disabledBy === 'self') disabled @elseif ($disabledBy) readonly @endif>
 
             <div x-cloak class="z-1 absolute top-0 bottom-0 right-0 flex items-center gap-2 pr-2.5 text-fg-subtle">
-                <div x-show="dateRangeValue" x-on:click.stop="dateRangeValue = null; parse()" class="flex items-center justify-center h-full hover:text-fg">
+                <div x-show="dateRangeValue && !off" x-on:click.stop="clear()" class="flex items-center justify-center h-full hover:text-fg">
                     <atom:icon.close class="size-4" />
                 </div>
 
                 {{-- A tap target of its own, so a touch user can open the calendar without
                      focusing the input (which would raise the soft keyboard). Not in the tab
                      order: keyboard users open it with ArrowDown from the input. --}}
-                <button type="button" tabindex="-1" aria-label="{{ t('Open calendar') }}" class="flex items-center justify-center h-full hover:text-fg">
+                <button type="button" tabindex="-1" @if ($disabledBy) disabled @endif x-bind:disabled="!!off" aria-label="{{ t('Open calendar') }}" class="flex items-center justify-center h-full hover:text-fg">
                     <atom:icon.calendar class="size-4" />
                 </button>
             </div>
