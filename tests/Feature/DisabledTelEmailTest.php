@@ -80,7 +80,7 @@ it('keeps readonly off a file input and still marks it', function () {
     $form = renderBlade('<atom:form disabled><atom:input type="file" wire:model="file" /></atom:form>');
 
     expect(domQuery($form, '//input[@type="file"][@readonly]'))->toHaveCount(0);
-    expect(telEmailMarkers($form))->toBe(['input=inherited']);
+    expect(telEmailMarkers($form))->toBe(['div=inherited', 'input=inherited'], 'the uploader root and the file input both carry it');
 });
 
 it('guards every way an email input adds, removes or clears', function () {
