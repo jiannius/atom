@@ -207,3 +207,25 @@ describe('uploader trigger', function () {
             ->and(domClasses($end[0]))->toContain('mt-1');
     });
 });
+
+describe('dropzone content', function () {
+    $zone = '//button[@*[name()="x-on:click"][contains(., "$refs.fileinput.click()")]]';
+
+    it('draws its default zone when the slot is only false blocks, and keeps the not-allowed cursor when disabled', function () use ($zone) {
+        $html = renderInLivewire('<atom:uploader.dropzone wire:model="file">'.FALSE_BLOCKS.'</atom:uploader.dropzone>');
+        $disabled = renderInLivewire('<atom:uploader.dropzone wire:model="file" disabled>'.FALSE_BLOCKS.'</atom:uploader.dropzone>');
+
+        expect(domQuery($html, $zone))->toHaveCount(1)
+            ->and(domQuery($disabled, $zone))->toHaveCount(1)
+            ->and(domClasses(domQuery($disabled, '//*[@data-atom-disabled]')[0]))->toContain('cursor-not-allowed');
+    });
+
+    it('still uses a slot with real content in place of the default zone', function () use ($zone) {
+        $html = renderInLivewire('<atom:uploader.dropzone wire:model="file">@if (true)<span id="mine">Drop here</span>@endif</atom:uploader.dropzone>');
+        $disabled = renderInLivewire('<atom:uploader.dropzone wire:model="file" disabled>@if (true)<span id="mine">Drop here</span>@endif</atom:uploader.dropzone>');
+
+        expect(domQuery($html, '//*[@id="mine"]'))->toHaveCount(1)
+            ->and(domQuery($html, $zone))->toBeEmpty()
+            ->and(domClasses(domQuery($disabled, '//*[@data-atom-disabled]')[0]))->not->toContain('cursor-not-allowed');
+    });
+});
