@@ -11,8 +11,8 @@
 //    morphed (a component root, or the container of a re-rendered island) and returns nothing. It
 //    returns a function that stops listening, for the component's destroy().
 // 3. A control behind `wire:ignore` takes no attribute from the server, and what says whether it is
-//    disabled is one: a date range, and an autosize textarea (the autosize plugin sets `wire:ignore` on a
-//    `wire:model` textarea itself). Livewire fires `morph.updating` with the new markup (`toEl`) before it
+//    disabled is one: a date range, a tiptap editor (its `readonly` follows a morph too), and an autosize textarea
+//    (the autosize plugin sets `wire:ignore` on a `wire:model` textarea itself). Livewire fires `morph.updating` with the new markup (`toEl`) before it
 //    checks the ignore, so the state is carried by hand here, and the control's own factory reads it again
 //    from its `morphed` callback. Only `data-atom-disabled`, `disabled` and `readonly` are carried, and they
 //    are server-owned on these roots: a host `x-bind:disabled` or `x-bind:readonly` on an autoresize
@@ -20,7 +20,7 @@
 //    added must survive, so the disabled look of such a control comes from the marker
 //    (`[[data-atom-disabled]_&]:` utilities), not from a carried class. Add a control to `ignoredControls`
 //    only when its server markup holds nothing else that changes between renders.
-const ignoredControls = '[data-atom-date-range], [data-atom-textarea]'
+const ignoredControls = '[data-atom-date-range], [data-atom-tiptap], [data-atom-textarea]'
 const carried = ['data-atom-disabled', 'disabled', 'readonly']
 
 const callbacks = new Set()

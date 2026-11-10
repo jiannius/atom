@@ -30,11 +30,13 @@ x-data="{
     },
 
     remove () {
+        if (isLocked()) return
         editor().chain().focus().extendMarkRange('link').unsetLink().run()
         this.link = null
     },
 
     save () {
+        if (isLocked()) return
         if (!this.href.startsWith('https://') && !this.href.startsWith('http://')) {
             this.$dispatch('alert', {
                 message: {{ js(t('Invalid URL')) }},
@@ -74,14 +76,14 @@ class="link-menu bg-surface-raised rounded-panel border-border-strong has-[>div]
 
     <template x-if="isEditing">
         <div x-on:keydown.enter.prevent="save()" class="p-4 flex flex-col gap-2 w-80">
-            <atom:input x-model="href" placeholder="Link URL">
+            <atom:input x-model="href" placeholder="Link URL" :disabled="false">
                 <x-slot:actions>
                     <button type="button" x-on:click="save()">
                         <atom:icon.check class="size-4" />
                     </button>
                 </x-slot:actions>
             </atom:input>
-            <atom:checkbox x-model="newtab">{{ t('Open in new tab') }}</atom:checkbox>
+            <atom:checkbox x-model="newtab" :disabled="false">{{ t('Open in new tab') }}</atom:checkbox>
         </div>
     </template>
 </div>

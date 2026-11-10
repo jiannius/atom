@@ -12,3 +12,8 @@ view="atom::docs.demos.tiptap.chat"/>
 title="Mentions"
 description="Type @ to trigger a mention dropdown. Pass a static array for inline filtering, or a Livewire callback string for server-side search."
 view="atom::docs.demos.tiptap.mention"/>
+
+<atom:docs.example
+title="Disabled"
+description="Not editable, no toolbar, no menus; the text stays selectable and a link still opens. It follows a disabled atom:form too. The composer hides its buttons and sends nothing."
+view="atom::docs.demos.tiptap.disabled"/>

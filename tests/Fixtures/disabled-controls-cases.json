@@ -502,7 +502,42 @@
     ],
     "walk": {"effect": ["value"]},
     "tabStops": {"prop": [], "form": []},
-    "push": {"value": "<p>pushed</p>", "show": "pushed"}
+    "push": {"value": "<p>pushed</p>", "show": "pushed"},
+    "xmodel": true,
+    "noWrite": {"value": "{\"type\":\"doc\",\"content\":[{\"type\":\"heading\",\"attrs\":{\"level\":1},\"content\":[{\"type\":\"text\",\"text\":\"x\"}]}]}", "enabled": "quiet"}
+  },
+  {
+    "id": "tiptap_readonly",
+    "components": ["tiptap/index"],
+    "blade": "<atom:tiptap {model} :readonly=\"$off\"/>",
+    "value": "<p>hello</p>",
+    "gestures": [],
+    "walk": {"effect": []},
+    "tabStops": {"prop": [], "form": []},
+    "special": "readonly",
+    "routes": ["prop"]
+  },
+  {
+    "id": "tiptap_chat_readonly",
+    "components": ["tiptap/chat"],
+    "blade": "<atom:tiptap.chat {model} :readonly=\"$off\"/>",
+    "value": "",
+    "gestures": [],
+    "walk": {"effect": []},
+    "tabStops": {"prop": [], "form": []},
+    "special": "readonly",
+    "routes": ["prop"]
+  },
+  {
+    "id": "tiptap_mention",
+    "components": ["tiptap/index"],
+    "blade": "<atom:tiptap {model} {disabled} :mention=\"['Alice', 'Bob']\"/>",
+    "value": "<p>hi </p>",
+    "gestures": [],
+    "walk": {"effect": []},
+    "tabStops": {"prop": [], "form": []},
+    "special": "mention",
+    "routes": ["prop"]
   },
   {
     "id": "tiptap_chat",
