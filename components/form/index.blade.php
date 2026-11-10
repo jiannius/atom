@@ -59,7 +59,6 @@ if ($errorToast) {
 <form {{ $attributes->class([
     'group/form relative',
     'flex flex-col gap-6' => !$inset,
-    'opacity-70' => $disabled,
 ])->merge($merges) }}
 data-atom-form>
     @if ($cols)

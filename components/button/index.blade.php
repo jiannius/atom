@@ -158,6 +158,12 @@ if (
 else {
     $el = 'button';
     $merges = ['type' => $type === 'submit' ? 'submit' : 'button'];
+
+    /* A submit inside a disabled <atom:form> is disabled (the form posts nothing, so a live Save would be a no-op); every other button there stays
+       live, a host's download or refresh among them. The button's own `disabled` wins, `:disabled="false"` included. */
+    if ($type === 'submit' && \Jiannius\Atom\Services\Attributes::disabledBy($attributes)) {
+        $merges['disabled'] = true;
+    }
 }
 
 if (!$attributes->wire('loading')->value()) {

@@ -40,10 +40,26 @@ $moreButtonContent = new \Illuminate\Support\HtmlString(ob_get_clean());
 x-data="{
     chips: {},
     expanded: false,
+    {{-- A chip's control is disabled when it, or the element holding it, carries `data-atom-disabled` (its own `disabled`, or a disabled form's; the search
+         prints it on its input). The marker is the DOM's, which a binding cannot watch, so `stamp` counts the marker's changes for the bindings below to
+         depend on. What hides a chip's x is backed by the guards in clear() and clearAll(), and by the controls' own do-clear handlers. --}}
+    stamp: 0,
+    observer: null,
+    init() {
+        this.observer = new MutationObserver(() => this.stamp++)
+        this.observer.observe(this.scope(), { subtree: true, attributes: true, attributeFilter: ['data-atom-disabled'] })
+    },
+    destroy() { this.observer?.disconnect() },
+    off(chip) {
+        this.stamp
+
+        return !!chip?.source?.isConnected && !!(chip.source.closest('[data-atom-disabled]') ?? chip.source.querySelector('[data-atom-disabled]'))
+    },
+    get clearable() { return this.active.some(chip => !this.off(chip)) },
     set(event) {
         const { key, label, display, operator, self } = event.detail
         const empty = display === null || display === '' || (Array.isArray(display) && display.length === 0)
-        if (empty) { delete this.chips[key] } else { this.chips[key] = { label, display, operator: operator ?? @js(t('is')), self: !!self, more: !!event.target?.closest?.('[data-atom-table-filters-more]') && this.$root.contains(event.target) } }
+        if (empty) { delete this.chips[key] } else { this.chips[key] = { label, display, operator: operator ?? @js(t('is')), self: !!self, source: event.target, more: !!event.target?.closest?.('[data-atom-table-filters-more]') && this.$root.contains(event.target) } }
     },
     get active() { return Object.entries(this.chips).map(([key, v]) => ({ key, ...v })) },
     get shown() { return this.active.filter(chip => !chip.self) },
@@ -64,13 +80,15 @@ x-data="{
     search() { return this.scope().querySelector('[data-atom-table-search] input') },
     refocus(find) { requestAnimationFrame(() => this.$nextTick(() => find()?.focus())) },
     clear(key) {
+        if (this.off(this.chips[key])) return
+
         this.$dispatch('table-filter:do-clear', { key })
         this.refocus(() => this.reach([...this.scope().querySelectorAll('[data-atom-filter-key]')].find(el => el.dataset.atomFilterKey === key))
             ?? [...this.$root.querySelectorAll('[data-atom-table-filter-chip]')].filter(chip => chip.dataset.chipKey !== key).map(chip => chip.querySelector('button')).find(el => this.visible(el))
             ?? this.search())
     },
     clearAll() {
-        Object.keys(this.chips).forEach(k => this.$dispatch('table-filter:do-clear', { key: k }))
+        this.active.filter(chip => !this.off(chip)).forEach(chip => this.$dispatch('table-filter:do-clear', { key: chip.key }))
         this.refocus(() => this.controls().map(el => this.reach(el)).find(Boolean) ?? this.search())
     },
 }"
@@ -88,7 +106,7 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
                 <span class="font-medium" x-text="chip.label"></span>
                 <span class="text-fg-muted" x-text="chip.operator" x-bind:class="chip.operator === ':' && '-ms-1.5'"></span>
                 <span x-text="chip.display"></span>
-                <button type="button" x-on:click="clear(chip.key)" x-bind:aria-label="@js(t('Remove filter')) + ': ' + chip.label" class="flex size-4 items-center justify-center rounded-pill text-fg-muted transition-colors hover:text-fg">
+                <button type="button" x-show="!off(chip)" x-on:click="clear(chip.key)" x-bind:aria-label="@js(t('Remove filter')) + ': ' + chip.label" class="flex size-4 items-center justify-center rounded-pill text-fg-muted transition-colors hover:text-fg">
                     <atom:icon.close class="size-3.5" />
                 </button>
             </div>
@@ -144,20 +162,20 @@ data-chips="{{ $inline ? 'inline' : 'below' }}">
     @endif
 
     @if ($inline)
-        <atom:button variant="ghost" size="sm" class="order-3" x-show="active.length" x-cloak x-on:click="clearAll()">{{ t('Clear all') }}</atom:button>
+        <atom:button variant="ghost" size="sm" class="order-3" x-show="clearable" x-cloak x-on:click="clearAll()">{{ t('Clear all') }}</atom:button>
     @else
         <div x-show="active.length" x-cloak class="flex flex-wrap items-center gap-2">
             <template x-for="chip in active" x-bind:key="chip.key" hidden>
                 <div class="inline-flex h-[26px] items-center gap-1.5 rounded-pill bg-neutral-bg px-2.5 text-xs text-fg" data-atom-table-filter-chip>
                     <span class="text-fg-muted" x-text="chip.label + ':'"></span>
                     <span x-text="chip.display"></span>
-                    <button type="button" x-on:click="clear(chip.key)" x-bind:aria-label="@js(t('Remove filter')) + ': ' + chip.label" class="text-fg-muted transition-colors hover:text-fg">
+                    <button type="button" x-show="!off(chip)" x-on:click="clear(chip.key)" x-bind:aria-label="@js(t('Remove filter')) + ': ' + chip.label" class="text-fg-muted transition-colors hover:text-fg">
                         <atom:icon.close class="size-3.5" />
                     </button>
                 </div>
             </template>
 
-            <atom:button variant="ghost" size="sm" x-on:click="clearAll()">{{ t('Clear all') }}</atom:button>
+            <atom:button variant="ghost" size="sm" x-show="clearable" x-on:click="clearAll()">{{ t('Clear all') }}</atom:button>
         </div>
     @endif
 </div>

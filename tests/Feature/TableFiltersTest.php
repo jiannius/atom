@@ -170,7 +170,7 @@ describe('inline chips', function () {
             // the active filters LEAD the row: the chips come before the controls that are not set
             ->and(domQuery($html, '//*[@data-atom-table-filters]/template/following-sibling::div[1][contains(@class, "contents")]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-atom-table-filters]/div[@x-show="active.length"]'))->toBeEmpty()
-            ->and(domQuery($html, '//*[@data-atom-table-filters]/button[@x-show="active.length"]'))->toHaveCount(1);
+            ->and(domQuery($html, '//*[@data-atom-table-filters]/button[@x-show="clearable"]'))->toHaveCount(1);
     });
 
     it('keeps a search that sits inside the filters first, with the chips and Clear all ordered after it', function () {
@@ -181,7 +181,7 @@ describe('inline chips', function () {
         // the controls are ordered after the chips, a search in the slot before them, and Clear all last
         expect(domClasses($bar))->toContain('[&>.contents>*]:order-2', '[&>.contents>[data-atom-table-search]]:order-0')
             ->and(domClasses($chip))->toContain('order-1')
-            ->and(domClasses(domQuery($html, '//*[@data-atom-table-filters]/button[@x-show="active.length"]')[0]))->toContain('order-3')
+            ->and(domClasses(domQuery($html, '//*[@data-atom-table-filters]/button[@x-show="clearable"]')[0]))->toContain('order-3')
             ->and(domQuery($html, '//*[@data-atom-table-filters]/div[contains(@class, "contents")]/*[@data-atom-table-search]'))->toHaveCount(1);
     });
 

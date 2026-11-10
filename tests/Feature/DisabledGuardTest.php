@@ -172,7 +172,7 @@ it('renders an x-data for most of the corpus, so the comparison above is not an 
  *
  * @var list<string>
  */
-const HELPER_ADOPTERS = ['select/index', 'input/index', 'input/tel', 'input/email', 'toggle/index', 'slider/index', 'input/otp', 'time-picker', 'rating/index', 'input/color', 'uploader/index', 'uploader/dropzone', 'date-picker/date', 'date-picker/range'];
+const HELPER_ADOPTERS = ['select/index', 'input/index', 'input/tel', 'input/email', 'toggle/index', 'slider/index', 'input/otp', 'time-picker', 'rating/index', 'input/color', 'uploader/index', 'uploader/dropzone', 'date-picker/date', 'date-picker/range', 'textarea'];
 
 /**
  * The corpus cases that sit on an adopter, and the routes each has.

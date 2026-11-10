@@ -24,10 +24,6 @@ export const LEDGER = {
 // The look rows of disabled-controls.spec.js, keyed by the pair's test id (the same on both builds, in light and dark).
 export const LOOK_LEDGER = {
   "chat": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
-  "form-input": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
-  "form-select-listbox": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
-  "form-select-native": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
-  "form-textarea": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "tiptap": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
 }
 

@@ -1,5 +1,3 @@
-@aware(['disabled' => false])
-
 @props([
     'name' => null,
     'label' => null,
@@ -17,6 +15,12 @@
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
 $transparent = $variant === 'transparent';
+
+/* 'self' (its own `disabled`, `:disabled="false"` included, which wins), 'inherited' from a disabled <atom:form> (the textarea is then `readonly`, so the text stays
+   selectable), or null. Printed as `data-atom-disabled`, which is also what the carry in helpers/morphed.js writes onto an autoresize textarea (the plugin makes it
+   `wire:ignore`, so its class is never patched): the look below reads the marker from the element itself, never from a class the server picked per render. A marker
+   border would outrank the focus one, so the focus variants are stacked after it. */
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
 
 // Same association as <atom:input>: without an id to point at, the label is decoration
 // and a screen reader announces the field unnamed. Derived, never random — see
@@ -41,6 +45,10 @@ $classes = Arr::toCssClasses([
     'bg-surface focus-visible:outline-offset-0 disabled:border-border disabled:bg-surface-sunken disabled:text-fg-subtle' => !$transparent,
     'focus-visible:border-focus' => !$transparent && !$invalid,
     'focus-visible:border-danger-fg' => $invalid,
+    '[&[data-atom-disabled]]:cursor-not-allowed [&[data-atom-disabled]]:text-fg-subtle',
+    '[&[data-atom-disabled]]:border-border [&[data-atom-disabled]]:bg-surface-sunken' => !$transparent,
+    '[&[data-atom-disabled]]:focus-visible:border-focus' => !$transparent && !$invalid,
+    '[&[data-atom-disabled]]:focus-visible:border-danger-fg' => !$transparent && $invalid,
     'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
 ]);
 @endphp
@@ -63,6 +71,7 @@ $classes = Arr::toCssClasses([
         'x-init' => $autoresize ? '$autosize()' : null,
         'required' => $required,
         'placeholder' => t($placeholder),
-        'readonly' => ($disabled ?? false) ?: null,
+        'readonly' => $disabledBy === 'inherited' ? true : null,
+        'data-atom-disabled' => $disabledBy,
     ]) }} data-atom-textarea>{{ $slot }}</textarea>
 @endif

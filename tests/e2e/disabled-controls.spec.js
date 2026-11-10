@@ -3,7 +3,8 @@ import { open, contrastOf } from './controls-helpers.js'
 
 // Issue #178: in dark a disabled field was told from an enabled one by its fill alone (#111110 against #1c1b19, 1.1:1), the same
 // border and nothing to show in an empty one. Every text control's disabled state now also drops its strong hairline
-// (--atom-control-border) for the faint one (--atom-border), and keeps the sunken fill. Run `node tests/consumer/build.mjs` first.
+// (--atom-control-border) for the faint one (--atom-border), and keeps the sunken fill. A field of a disabled <atom:form> is drawn the same way (the "form-*" rows
+// of tokens-disabled-looks.spec.js, and form-disabled-look.spec.js). Run `node tests/consumer/build.mjs` first.
 //
 // [pair, what draws the box, whether the pair's test id is on the box itself].
 const fields = [
