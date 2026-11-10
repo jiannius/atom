@@ -85,7 +85,7 @@ it('reads a corpus that is well formed', function () {
         $ids[] = $id;
 
         // a standard case with no {disabled} could not be disabled by the prop route, and its rows would test an enabled control twice (a special case,
-        // a Livewire child, is a component of its own that the form route disables from outside)
+        // a Livewire child, is a component of its own that takes `:disabled` as a prop)
         if (empty($case['special'])) {
             expect(str_contains($case['blade'], '{disabled}'))->toBeTrue("{$id} must carry {disabled} for the prop route");
 

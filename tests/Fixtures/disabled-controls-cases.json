@@ -21,7 +21,7 @@
     "read": {"selector": "input", "prop": "value"},
     "gestures": [
       {"name": "type", "steps": [{"click": "input"}, {"type": "zq7"}], "effect": ["value", "dom"]},
-      {"name": "clear", "steps": [{"click": "button[aria-label=\"Clear\"]", "mayHide": true}], "effect": ["dom"]}
+      {"name": "clear", "steps": [{"click": "button[aria-label=\"Clear\"]", "mayHide": true}], "effect": ["value", "dom"]}
     ],
     "walk": {"effect": ["value"]},
     "tabStops": {"prop": [], "form": ["input:text"]}
@@ -568,12 +568,12 @@
   {
     "id": "livewire_child",
     "components": ["input/general"],
-    "blade": "<livewire:atom-e2e-disabled-child />",
+    "blade": "<livewire:atom-e2e-disabled-child {disabled} />",
     "value": null,
     "gestures": [],
     "walk": {"effect": []},
     "tabStops": {"prop": [], "form": []},
     "special": "child",
-    "routes": ["form"]
+    "routes": ["prop"]
   }
 ]

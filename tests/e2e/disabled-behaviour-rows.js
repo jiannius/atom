@@ -162,9 +162,9 @@ export function behaviourRows(only) {
   }
 
   // ---------------------------------------------------------------------------------------------------------------------------------------------
-  // A Livewire child inside a disabled <atom:form>. A form hands its disabled state to a field by the view factory's component stack, which is there
-  // while the PARENT renders the child for the first time and is not there when the child updates and renders on its own. So: does the child keep its
-  // read-only state after an update of its own? (the answer is in the ledger when it does not.)
+  // A Livewire child given `:disabled` by its parent. A disabled <atom:form> hands its state to a field by the view factory's component stack, which is
+  // not there when a child updates and renders on its own, so a child takes its own `:disabled` (documented). This holds that it keeps it, on its first
+  // render and after an update of its own.
 
   const child = {
     id: () => document.querySelector('[data-child]').closest('[wire\\:id]').getAttribute('wire:id'),
@@ -189,25 +189,25 @@ export function behaviourRows(only) {
     return { readonly, changed: before !== (await valueOf()) }
   }
 
-  for (const update of only === 'form' ? [false, true] : []) {
+  for (const update of only === 'prop' ? [false, true] : []) {
     const def = caseOf('livewire_child')
     const when = update ? 'after an update of its own' : 'on its first render'
 
-    test.describe(`a Livewire child in a disabled form, ${when}`, () => {
+    test.describe(`a Livewire child given :disabled, ${when}`, () => {
       test.describe.configure({ mode: 'serial' })
       test.beforeEach(({ browserName }) => test.skip(!!engineSkip(browserName, def), engineSkip(browserName, def) ?? ''))
       test.setTimeout(40_000)
 
       test('enabled: the child is editable', async ({ page }) => {
-        await openCase(page, def, { route: 'form' })
+        await openCase(page, def, { route: 'prop' })
         const result = await childProbe(page, { update })
         expect(result.readonly, 'the child is not read-only, enabled').toBe(false)
         expect(result.changed, 'typing changes the child, enabled').toBe(true)
       })
 
-      test('disabled: the child keeps the form\'s read-only state', async ({ page }, info) => {
+      test('disabled: the child stays disabled', async ({ page }, info) => {
         await ledgerRow(test, expect, info, `child/${update ? 'update' : 'first'}`, async () => {
-          await openCase(page, def, { route: 'form', off: true })
+          await openCase(page, def, { route: 'prop', off: true })
           const result = await childProbe(page, { update })
           const violations = new Set()
           if (!result.readonly) violations.add('child is editable')

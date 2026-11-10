@@ -5,12 +5,14 @@ namespace Jiannius\Atom\Tests\Fixtures;
 use Livewire\Component;
 
 /**
- * A Livewire child rendered inside a disabled <atom:form> (the corpus case `livewire-child`): a child's own update renders it alone, with no
- * form around it in that request, so whether it keeps its read-only state after an update is the question this exists to ask.
+ * A Livewire child given `:disabled` by its parent (the corpus case `livewire_child`). A child's own update renders it alone, with no parent or
+ * form around it, so a disabled `<atom:form>` cannot reach it then: a child takes its own `:disabled`, and this holds that it keeps it after an update.
  */
 class DisabledChildFixture extends Component
 {
     public ?string $v = 'child';
+
+    public bool $disabled = false;
 
     public int $renders = 0;
 
