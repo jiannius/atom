@@ -128,11 +128,8 @@ export default (config) => {
             applied = key
 
             tiptap.setOptions({ editable: !isLocked(), editorProps: { ...tiptap.options.editorProps, attributes: attributes() } })
-            if (isLocked()) {
-                // a bubble menu that was showing stays up (the state did not change, so its plugin is not asked), and its commands would still change the document
-                for (const key of ['linkMenu', 'imageMenu', 'tableMenu', 'youtubeMenu']) tiptap.view.dispatch(tiptap.state.tr.setMeta(key, 'hide'))
-                if (tiptap.isFocused) tiptap.commands.blur()
-            }
+            // the bubble menus close with it (their shouldShow reads isEditable)
+            if (isLocked() && tiptap.isFocused) tiptap.commands.blur()
             this.ts++
         },
 

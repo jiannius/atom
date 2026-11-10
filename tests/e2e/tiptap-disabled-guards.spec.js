@@ -57,6 +57,12 @@ for (const route of ROUTES) {
     const surface = () => root(page, def).locator('.ProseMirror')
 
     await openCase(page, def, { route, value: DOC })
+    // the document starts in a link, so the link menu is up on load with nothing focused: a morph that disables the editor has to close it (a focused menu closes on blur)
+    const linkMenu = () => root(page, def).evaluate((el) => [...el.querySelectorAll('.link-menu')].some((m) => m.textContent.includes('/atom/docs') && m.getBoundingClientRect().height > 0 && getComputedStyle(m).visibility === 'visible'))
+    await expect.poll(linkMenu, { message: 'enabled: the link menu shows on load' }).toBe(true)
+    await flip(page)
+    await expect.poll(linkMenu, { message: 'the link menu that was showing is gone' }).toBe(false)
+    await flip(page)
     await surface().locator('td p').click()
     await expect(root(page, def).locator('.table-menu')).toBeVisible()
 
@@ -104,6 +110,9 @@ for (const route of ROUTES) {
       // the bubble menu moves out of `.tiptap-menu` when it shows (a document that starts in a link shows it on load): it is the last one in the editor
       const menu = window.Alpine.$data([...el.querySelectorAll('.link-menu')].pop())
       d.editor().commands.setTextSelection(2)
+      menu.href = 'https://changed.test/'
+      menu.save()
+      seen.push(d.editor().getHTML())
       menu.remove()
       seen.push(d.editor().getHTML())
       el.querySelector('button[aria-label="Horizontal Rule"]').click()
@@ -115,7 +124,8 @@ for (const route of ROUTES) {
     })
 
     await openCase(page, def, { route, value: DOC })
-    const [unlinked, ruled, replaced] = await act()
+    const [relinked, unlinked, ruled, replaced] = await act()
+    expect(relinked, 'enabled: the link menu saves a new address').toContain('href="https://changed.test/"')
     expect(unlinked, 'enabled: the link menu removes the link').not.toContain('href=')
     expect(ruled, 'enabled: the toolbar button inserts a rule').toContain('<hr')
     expect(replaced, 'enabled: commands() replaces the content').toBe('<p>replaced</p>')
@@ -124,7 +134,7 @@ for (const route of ROUTES) {
     const before = await html(page, def)
     const after = await act()
     await page.waitForTimeout(300)
-    expect(after).toEqual([before, before, before])
+    expect(after).toEqual([before, before, before, before])
     expect(before).toContain('href="/atom/docs"')
     expect((await serverState(page)).v, 'the model').toBe(DOC)
     expect(page.errors).toEqual([])
