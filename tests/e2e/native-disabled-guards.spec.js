@@ -20,6 +20,7 @@ for (const route of ['prop', 'form']) {
       el.value = '8'
       el.dispatchEvent(new Event('input', { bubbles: true }))
     })
+    const shown = () => page.locator(`[data-case="${def.id}"] input[data-atom-input-otp-box]`).evaluateAll((boxes) => boxes.map((el) => el.value))
     const collect = () => page.locator(`[data-case="${def.id}"] [x-data]`).first().evaluate((el) => {
       const data = window.Alpine.$data(el)
       data.digits = ['7', '7', '7', '7']
@@ -35,9 +36,12 @@ for (const route of ['prop', 'form']) {
 
       await openCase(page, def, { route, off: true })
       const initial = (await observe(page, def)).value
+      const boxes = await shown()
       await gesture()
       await page.waitForTimeout(250)
       expect((await observe(page, def)).value, `${gesture.name}: changed the value of a disabled field`).toBe(initial)
+      // the boxes show what the model holds: a handler that lets a digit into them leaves the screen and the model apart
+      if (gesture !== collect) expect(await shown(), `${gesture.name}: changed what a disabled field shows`).toEqual(boxes)
       expect(page.errors).toEqual([])
     }
   })
@@ -53,6 +57,8 @@ for (const route of ['prop', 'form']) {
     const typed = () => page.locator(`[data-case="${def.id}"] [x-data]`).first().evaluate((el) => {
       window.Alpine.$data(el).hr = '07'
     })
+
+    const shown = () => page.locator(`[data-case="${def.id}"] input`).evaluateAll((inputs) => inputs.map((el) => el.value))
 
     const gestures = {
       'ArrowUp on the hour': key('Hour', 'ArrowUp'),
@@ -73,9 +79,12 @@ for (const route of ['prop', 'form']) {
 
       await openCase(page, def, { route, off: true })
       const initial = (await observe(page, def)).value
+      const boxes = await shown()
       await gesture()
       await page.waitForTimeout(250)
       expect((await observe(page, def)).value, `${name}: changed the value of a disabled picker`).toBe(initial)
+      // the boxes show what the model holds: an arrow that moves them alone leaves the screen and the model apart
+      if (name !== 'a typed hour reaching setTime()') expect(await shown(), `${name}: changed what a disabled picker shows`).toEqual(boxes)
       expect(page.errors).toEqual([])
     }
   })
