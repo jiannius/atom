@@ -11,24 +11,14 @@ export const LEDGER = {
   // ---- PR 3
   "morph:input_tel/form": { pr: 3, why: "WebKit keeps `select:open` true on a native dial code list that was open when a morph disabled the select (it stays so through blur, Escape and a click away; Chromium closes it): the engine's list, not the control's. The select is disabled, which is all the markup can do", violations: [], engines: { webkit: { violations: ["popup stays open"] } } },
   "morph:input_tel/prop": { pr: 3, why: "WebKit keeps `select:open` true on a native dial code list that was open when a morph disabled the select (it stays so through blur, Escape and a click away; Chromium closes it): the engine's list, not the control's. The select is disabled, which is all the markup can do", violations: [], engines: { webkit: { violations: ["popup stays open"] } } },
-  // ---- PR 7
-  "morph:tiptap/form": { pr: 7, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "morph:tiptap/prop": { pr: 7, why: "an open popup stays open when a morph disables the control; its DOM after the morph is not the DOM of a static render (the control is wire:ignore'd)", violations: ["disabled DOM differs from a static render", "popup stays open"] },
-  "morph:tiptap_chat/prop": { pr: 7, why: "its DOM after the morph is not the DOM of a static render (the control is wire:ignore'd)", violations: ["disabled DOM differs from a static render"] },
-  "tiptap/form": { pr: 7, why: "no disabled state: typing, the toolbar and its image input work", violations: ["bold the text: value", "keyboard: chooser", "keyboard: dom", "keyboard: value", "open the toolbar menu: popup", "server: value", "tab stops", "type: dom", "type: value"], engines: { webkit: { violations: ["bold the text: value", "keyboard: dom", "keyboard: value", "open the toolbar menu: popup", "server: value", "tab stops", "type: dom", "type: value"] } } },
-  "tiptap/prop": { pr: 7, why: "no disabled state: typing, the toolbar and its image input work", violations: ["bold the text: value", "keyboard: chooser", "keyboard: dom", "keyboard: value", "open the toolbar menu: popup", "server: value", "tab stops", "type: dom", "type: value"], engines: { webkit: { violations: ["bold the text: value", "keyboard: dom", "keyboard: value", "open the toolbar menu: popup", "server: value", "tab stops", "type: dom", "type: value"] } } },
-  "tiptap_chat/form": { pr: 7, why: "no disabled state: typing, Enter and the buttons work", violations: ["keyboard: chooser", "keyboard: dom", "keyboard: sent", "send with Enter: dom", "send with Enter: sent", "send with the button: popup", "send with the button: sent", "tab stops", "type: dom"], engines: { webkit: { violations: ["keyboard: dom", "keyboard: sent", "send with Enter: dom", "send with Enter: sent", "send with the button: popup", "send with the button: sent", "tab stops", "type: dom"] } } },
-  "tiptap_chat/prop": { pr: 7, why: "no disabled state: typing, Enter and the buttons work", violations: ["keyboard: chooser", "keyboard: dom", "keyboard: sent", "send with Enter: dom", "send with Enter: sent", "send with the button: popup", "send with the button: sent", "tab stops", "type: dom"], engines: { webkit: { violations: ["keyboard: dom", "keyboard: sent", "send with Enter: dom", "send with Enter: sent", "send with the button: popup", "send with the button: sent", "tab stops", "type: dom"] } } },
 }
 
 // The look rows of disabled-controls.spec.js, keyed by the pair's test id (the same on both builds, in light and dark).
 export const LOOK_LEDGER = {
-  "chat": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "form-input": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-select-listbox": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-select-native": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-textarea": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
-  "tiptap": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
 }
 
 // The pairs of tokens-disabled-looks.spec.js that can be in LOOK_LEDGER: controls whose disabled copy must look unlike the enabled one, and fields that,

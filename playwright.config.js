@@ -19,7 +19,7 @@ const engines = [
 
 // The disabled-state rig's behaviour and morph specs, one file per route. Their names start apart on purpose: CI shards the Chromium project by cutting the
 // file-name-ordered list into equal chunks, and files that sort together would land in one shard (see tests/e2e/disabled-behaviour-rows.js).
-const disabledRigSpecs = /(controls-disabled-behaviour-prop|disabled-behaviour-form|morph-disabled-prop|morph-disabled-form|time-picker-edit|date-picker-time-edit|custom-disabled-guards)\.spec\.js$/
+const disabledRigSpecs = /(controls-disabled-behaviour-prop|disabled-behaviour-form|morph-disabled-prop|morph-disabled-form|time-picker-edit|date-picker-time-edit|custom-disabled-guards|tiptap-disabled-guards)\.spec\.js$/
 
 const calendarProjects = engines.flatMap(({ browser, device }) => [
   { name: `${browser}-a11y`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /calendar-a11y\.spec\.js$/ },

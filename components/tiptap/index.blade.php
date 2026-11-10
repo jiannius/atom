@@ -32,6 +32,11 @@ $presets = [
 // Derived, not minted per render: see Services\Attributes::fieldId().
 $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'atom-tiptap', $name, $label).'-label' : null;
 
+/* 'self', 'inherited' from a disabled form, or null. It is printed on the root as `data-atom-disabled`, with `disabled` and `readonly` as attributes
+   (not through the bag: the lazy path below drops it), because the root is wire:ignore'd: helpers/morphed.js carries these onto it when a morph lands,
+   and the factory reads them again at event time, never from x-data. A host `readonly` alone stays a display-only editor, not drawn disabled. */
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
+
 $hasToolbarSlot = $toolbar instanceof \Illuminate\View\ComponentSlot;
 $buttons = $hasToolbarSlot ? [] : (is_array($toolbar) ? $toolbar : ($presets[$toolbar] ?? $presets['full']));
 $menus = $hasToolbarSlot ? ['link', 'table', 'image', 'youtube'] : $buttons;
@@ -57,26 +62,29 @@ $menus = $hasToolbarSlot ? ['link', 'table', 'image', 'youtube'] : $buttons;
     x-data="tiptap({
         lazy: @js($lazy),
         placeholder: @js($placeholder),
-        readonly: @js($readonly),
         autofocus: @js($autofocus),
-        class: @js(Arr::toCssClasses(['editor-content m-3 focus-visible:outline-none', $attributes->get('class', 'min-h-10')])),
+        class: @js(Arr::toCssClasses(['editor-content m-3 focus-visible:outline-none [[data-atom-disabled]_&]:text-fg-subtle', $attributes->get('class', 'min-h-10')])),
         labelledby: @js($attributes->get('aria-labelledby')),
     })"
     x-modelable="editorContent"
     class="group/editor"
-    @if ($model && $lazy) wire:model.live="{{ $model }}" @else {{ $attributes->except(['class', 'aria-labelledby']) }} @endif>
+    data-atom-tiptap
+    @if ($disabledBy) data-atom-disabled="{{ $disabledBy }}" disabled @endif
+    @if ($readonly) readonly @endif
+    @if ($model && $lazy) wire:model.live="{{ $model }}" @else {{ $attributes->except(['class', 'aria-labelledby', 'disabled']) }} @endif>
         <div x-show="loading"><atom:skeleton /></div>
 
         <div x-show="!loading" @class([
             'editor relative rounded-control',
             'bg-surface border border-control-border' => !$transparent,
+            '[[data-atom-disabled]_&]:bg-surface-sunken [[data-atom-disabled]_&]:border-border [[data-atom-disabled]_&]:cursor-not-allowed' => !$transparent,
             'has-[[contenteditable]:focus-visible]:border-focus has-[[contenteditable]:focus-visible]:outline-2 has-[[contenteditable]:focus-visible]:outline-focus has-[[contenteditable]:focus-visible]:outline-offset-0' => !$transparent,
             'border-0 bg-transparent' => $transparent,
         ])>
             @if (!$readonly && ($hasToolbarSlot || count($buttons)))
                 {{-- The toolbar is flat: no box of its own. The sticky strip is the frame's surface with the one hairline between it and the text,
                      and its top corners follow the inside of the frame's (a sticky fill must cover what scrolls under it, and must not square off the corner). --}}
-                <div class="sticky top-[var(--atom-shell-bar-h,0px)] z-1 p-1 bg-surface border-b border-border rounded-t-[calc(var(--radius-control)-1px)]">
+                <div x-show="!locked" class="sticky top-[var(--atom-shell-bar-h,0px)] z-1 p-1 bg-surface border-b border-border rounded-t-[calc(var(--radius-control)-1px)]">
                     <div role="toolbar" aria-label="{{ t('Formatting') }}" class="flex gap-1 items-center flex-wrap">
                         @if ($hasToolbarSlot)
                             {{ $toolbar }}
@@ -89,7 +97,8 @@ $menus = $hasToolbarSlot ? ['link', 'table', 'image', 'youtube'] : $buttons;
                 </div>
             @endif
 
-            <div class="tiptap-menu">
+            {{-- the menus are tab stops of their own (tiptap gives each tabindex 0), so a locked editor takes them out of the page --}}
+            <div x-show="!locked" class="tiptap-menu">
                 @if (in_array('link', $menus)) <atom:tiptap.menu.link/> @endif
                 @if (in_array('table', $menus)) <atom:tiptap.menu.table/> @endif
                 @if (in_array('image', $menus)) <atom:tiptap.menu.image/> @endif
@@ -100,7 +109,7 @@ $menus = $hasToolbarSlot ? ['link', 'table', 'image', 'youtube'] : $buttons;
                 <atom:tiptap.mention :options="$mention" />
             @endif
 
-            <div x-ref="editor" class="grow"></div>
+            <div x-ref="editor" x-on:drop="isLocked() && $event.preventDefault()" class="grow"></div>
         </div>
     </div>
 @endif
