@@ -1,5 +1,3 @@
-@aware(['disabled' => false])
-
 @props([
     'name' => null,
     'type' => 'text',
@@ -37,11 +35,17 @@ if ($inputId) {
     $merges['id'] = $inputId;
 }
 
-// Inherit a read-only state from an enclosing <atom:form disabled> so the value
-// stays selectable/copyable (unlike a disabled field), but can't be edited.
-// `?? false` keeps it safe where @aware has no parent to read (e.g. isolated
-// component renders).
-if ($disabled ?? false) {
+// A disabled control prints why (`self`, or `inherited` from a disabled form): the variants and their JS read the
+// marker. An inherited field is read-only, so the value stays selectable and copyable but cannot be edited; its own `disabled`
+// (`:disabled="false"` included) wins over the form, and a self-disabled field already carries the attribute. `color` keeps its own
+// handling, and `file` takes no `readonly` (it means nothing on a file input).
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
+
+if ($type !== 'color') {
+    $merges['data-atom-disabled'] = $disabledBy;
+}
+
+if ($disabledBy === 'inherited' && $type !== 'file') {
     $merges['readonly'] = true;
 }
 @endphp

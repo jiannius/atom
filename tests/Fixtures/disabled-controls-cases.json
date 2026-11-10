@@ -335,7 +335,9 @@
     ],
     "walk": {"effect": ["value"]},
     "tabStops": {"prop": [], "form": ["input:tel"]},
-    "noWrite": {"value": "0123456789", "enabled": "writes"}
+    "push": {"value": "+60198765432", "show": "198765432"},
+    "xmodel": true,
+    "noWrite": {"value": "0123456789", "enabled": "quiet"}
   },
   {
     "id": "input_email",
