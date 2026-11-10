@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\ViewErrorBag;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\View\ComponentAttributeBag;
 use Jiannius\Atom\Services\Attributes;
 
@@ -146,5 +147,51 @@ describe('hasWidth()', function () {
 
         expect(Attributes::hasWidth($max, false))->toBeFalse()
             ->and(Attributes::hasWidth($both, false))->toBeTrue();
+    });
+});
+
+describe('disabledBy()', function () {
+    beforeEach(function () {
+        Blade::anonymousComponentPath(__DIR__.'/../Fixtures/AnonComponents');
+    });
+
+    /** The answers of every probe in the markup, in document order. */
+    function disabledAnswers(string $template): array
+    {
+        return array_map(fn (DOMElement $el) => $el->getAttribute('data-by'), domQuery(renderBlade($template), '//i[@data-by]'));
+    }
+
+    it('answers null with no ancestor and no attribute', function () {
+        expect(disabledAnswers('<x-disabled-probe />'))->toBe(['none']);
+    });
+
+    it('answers self for its own true, and null for its own false or null', function () {
+        expect(disabledAnswers('<x-disabled-probe disabled /><x-disabled-probe :disabled="true" /><x-disabled-probe :disabled="false" /><x-disabled-probe :disabled="null" />'))
+            ->toBe(['self', 'self', 'none', 'none']);
+    });
+
+    it('answers inherited from a disabled ancestor, and null from an enabled one', function () {
+        expect(disabledAnswers('<x-disabled-wrapper disabled><x-disabled-probe /></x-disabled-wrapper><x-disabled-wrapper><x-disabled-probe /></x-disabled-wrapper>'))
+            ->toBe(['inherited', 'none']);
+    });
+
+    it('answers inherited through a form and a plain card between', function () {
+        expect(disabledAnswers('<atom:form disabled><atom:card><x-disabled-probe /></atom:card></atom:form>'))->toBe(['inherited'])
+            ->and(disabledAnswers('<atom:form><atom:card><x-disabled-probe /></atom:card></atom:form>'))->toBe(['none']);
+    });
+
+    it('lets its own disabled win over a disabled ancestor, in both directions', function () {
+        expect(disabledAnswers('<atom:form disabled><x-disabled-probe :disabled="false" /><x-disabled-probe disabled /></atom:form>'))->toBe(['none', 'self'])
+            ->and(disabledAnswers('<atom:form><x-disabled-probe disabled /></atom:form>'))->toBe(['self']);
+    });
+
+    it('stops at a wrapper with :disabled="false", the boundary a control can use', function () {
+        expect(disabledAnswers('<atom:form disabled><x-disabled-wrapper :disabled="false"><x-disabled-probe /></x-disabled-wrapper><x-disabled-probe /></atom:form>'))
+            ->toBe(['none', 'inherited']);
+    });
+
+    it('leaves nothing behind for a sibling that follows a disabled form', function () {
+        expect(disabledAnswers('<atom:form disabled><x-disabled-probe /></atom:form><x-disabled-probe /><atom:form><x-disabled-probe /></atom:form>'))
+            ->toBe(['inherited', 'none', 'none']);
     });
 });

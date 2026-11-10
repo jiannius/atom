@@ -75,4 +75,19 @@ class Attributes
 
         return $prefix.'-'.substr(md5(collect($parts)->join('|')), 0, 8);
     }
+
+    /**
+     * Why a control is disabled: `'self'` for its own `disabled`, `'inherited'` from a disabled ancestor (`<atom:form disabled>`, a group), or null.
+     * A control's own `disabled` always wins, `:disabled="false"` included, and as a wrapper it ends the inheritance below it. The result is what
+     * a control prints as `data-atom-disabled`, which its JS reads at event time. Call it where `disabled` is still in the bag (a control that
+     * declares `disabled` in `@props` reads the marker from its bag instead).
+     */
+    public static function disabledBy(ComponentAttributeBag $attributes) : ?string
+    {
+        if ($attributes->has('disabled')) {
+            return $attributes->get('disabled') ? 'self' : null;
+        }
+
+        return app('view')->getConsumableComponentData('disabled', false) ? 'inherited' : null;
+    }
 }
