@@ -34,6 +34,12 @@ export default (config) => {
         // an `add` filter in an inline bar draws its own chip (helpers/filter-chip.js); set when the select starts
         selfChip: false,
 
+        // Disabled is the marker the server prints on the root, read when a handler runs: it is not in x-data (a morph does not rebuild
+        // that), and it is not reactive, so a binding must not read it. A disabled control writes nothing to its model, on any gesture.
+        get disabled () {
+            return this.$root.hasAttribute('data-atom-disabled')
+        },
+
         get isEmpty () {
             return !this.selectedOptions || (Array.isArray(this.selectedOptions) && !this.selectedOptions.length)
         },
@@ -146,6 +152,8 @@ export default (config) => {
         },
 
         show () {
+            if (this.disabled) return
+
             this.$root.querySelector('[data-atom-dropdown] > button').click()
         },
 
@@ -169,12 +177,16 @@ export default (config) => {
         },
 
         clear () {
+            if (this.disabled) return
+
             this.selectValue = config.multiple ? [] : null
             this.$dispatch('input', this.selectValue)
         },
 
         // The own chip's x: clear the value and put the focus on the add pill that comes back (it is the same button).
         clearChip () {
+            if (this.disabled) return
+
             this.clear()
             this.$nextTick(() => this.$root.querySelector('[data-atom-filter-chip-body]')?.focus())
         },
@@ -227,6 +239,8 @@ export default (config) => {
         },
 
         select (opt) {
+            if (this.disabled) return
+
             if (config.multiple) {
                 if (this.isSelected(opt)) return this.deselect(opt)
                 else this.selectValue = [...(this.selectValue || []), ...[opt.value]]
@@ -241,6 +255,8 @@ export default (config) => {
         },
 
         deselect (opt) {
+            if (this.disabled) return
+
             let values = [...this.selectValue]
             let index = values.findIndex(val => (val == opt.value))
 
@@ -345,6 +361,8 @@ export default (config) => {
         },
 
         move (dir) {
+            if (this.disabled) return
+
             this.ensureOpen()
 
             let els = this.getOptionsElements()
@@ -366,16 +384,21 @@ export default (config) => {
         },
 
         home () {
+            if (this.disabled) return
+
             this.ensureOpen()
             this.setActive(0)
         },
 
         end () {
+            if (this.disabled) return
+
             this.ensureOpen()
             this.setActive(this.getOptionsElements().length - 1)
         },
 
         enterKey () {
+            if (this.disabled) return
             if (!this.open) return this.show()
             if (this.activeIndex < 0) return
 
@@ -387,6 +410,8 @@ export default (config) => {
         // label starts with the buffered keystrokes.
         typeAhead (e) {
             if (e.key.length !== 1 || e.metaKey || e.ctrlKey || e.altKey) return
+
+            if (this.disabled) return
 
             // Space on a button is a click, and the browser fires it on keyup. This handler
             // has dealt with the key already (it opens the list, or types a space into the

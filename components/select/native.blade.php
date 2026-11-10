@@ -131,6 +131,8 @@ data-atom-select-native>
                 },
 
                 deselect (item) {
+                    if (this.$el.closest('[data-atom-disabled]')) return
+
                     let index = value.findIndex(val => (val == item.value))
                     if (index > -1) value.splice(index, 1)
                 },
@@ -139,7 +141,7 @@ data-atom-select-native>
                 <template x-for="item in selected" hidden>
                     <div class="shrink-0 max-w-56 flex items-center text-sm border-r border-border-strong last:border-0">
                         <div x-text="item.label" class="grow truncate text-fg"></div>
-                        <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center cursor-pointer text-fg-subtle hover:text-fg pl-2 pr-2.5">
+                        <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center cursor-pointer text-fg-subtle hover:text-fg pl-2 pr-2.5 [[data-atom-disabled]_&]:hidden">
                             <atom:icon.minus-circle class="size-4" />
                         </div>
                     </div>

@@ -153,6 +153,18 @@
     "xmodel": true
   },
   {
+    "id": "select_listbox_slot",
+    "components": ["select/index", "select/listbox"],
+    "blade": "<atom:select variant=\"listbox\" {model} :options=\"$options\" {disabled}><button type=\"button\">Pick</button></atom:select>",
+    "value": "a",
+    "gestures": [
+      {"name": "open", "steps": [{"click": "button"}], "effect": ["popup"]},
+      {"name": "pick", "steps": [{"click": "button"}, {"click": "[data-atom-option]", "nth": 2, "mayHide": true}], "effect": ["value"]}
+    ],
+    "walk": {"effect": ["popup"]},
+    "tabStops": {"prop": ["button:button"], "form": ["button:button"]}
+  },
+  {
     "id": "select_listbox_clear",
     "components": ["select/index", "select/listbox"],
     "blade": "<atom:select variant=\"listbox\" placeholder=\"Pick one\" {model} :options=\"$options\" {disabled}/>",

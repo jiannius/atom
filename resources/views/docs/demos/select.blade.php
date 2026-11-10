@@ -16,3 +16,8 @@ view="atom::docs.demos.select.filter"/>
 <atom:docs.example
 title="Grouped options"
 view="atom::docs.demos.select.groups"/>
+
+<atom:docs.example
+title="Disabled"
+description="Blocked for the mouse and the keyboard: no tab stop, no popup, nothing to clear or remove. Inside a disabled form a select is disabled too, unless it has its own :disabled set to false."
+view="atom::docs.demos.select.disabled"/>

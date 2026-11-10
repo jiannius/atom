@@ -1,7 +1,10 @@
-@aware(['disabled' => false])
+{{-- 'self', 'inherited' from a disabled <atom:form>, or null. The variants read it as `data-atom-disabled`, and their JS reads that at event time. --}}
+@php
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
+@endphp
 
 @if ($attributes->get('variant') === 'filter')
-    <atom:select.filter :attributes="$attributes">
+    <atom:select.filter :attributes="$attributes->merge(['disabled' => $disabledBy ? true : null, 'data-atom-disabled' => $disabledBy])">
         {{ $slot }}
     </atom:select.filter>
 @else
@@ -31,8 +34,9 @@
     $merges = [
         'name' => $name,
         'required' => $required,
-        // Inherit a read-only state from an enclosing <atom:form disabled>.
-        'disabled' => ($disabled ?? false) ?: null,
+        // A disabled form disables its fields, and a field's own `disabled` (`:disabled="false"` too) wins over it.
+        'disabled' => $disabledBy ? true : null,
+        'data-atom-disabled' => $disabledBy,
     ];
 
     if ($fieldId && $variant === 'native') {

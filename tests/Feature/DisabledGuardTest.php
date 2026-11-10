@@ -166,8 +166,87 @@ it('renders an x-data for most of the corpus, so the comparison above is not an 
     expect($with)->toBeGreaterThan(20);
 });
 
-// Left to PR 2, which adds the helper these name: nothing to assert before it exists.
-it('Attributes::disabledBy answers self, inherited or null for every route')->todo('PR 2: needs Attributes::disabledBy()');
-it('keeps pointer-events-none off the wrapper of every control, so the keyboard and the mouse meet the same guard')->todo('PR 2: the listbox and date wrappers carry it today');
-it('lets a control\'s own :disabled="false" beat a disabled form')->todo('PR 2: the helper decides it for every control');
-it('keeps the internal controls of a panel enabled inside a disabled control')->todo('PR 2/6: needs the panels\' :disabled="false"');
+/**
+ * The components that print `data-atom-disabled` from Attributes::disabledBy(). Each pull request that moves a control onto the helper adds its entry
+ * (the corpus names a case's components), and its rows below start to hold for it.
+ *
+ * @var list<string>
+ */
+const HELPER_ADOPTERS = ['select/index'];
+
+/**
+ * The corpus cases that sit on an adopter, and the routes each has.
+ *
+ * @return array<string, array{string, string}>
+ */
+function adoptedCases(): array
+{
+    $rows = [];
+
+    foreach (disabledCorpus() as $case) {
+        if (empty($case['special']) && array_intersect($case['components'], HELPER_ADOPTERS)) {
+            foreach (['prop', 'form'] as $route) {
+                if (! isset($case['routes']) || in_array($route, $case['routes'], true)) {
+                    $rows["{$case['id']} ({$route})"] = [$case['id'], $route];
+                }
+            }
+        }
+    }
+
+    return $rows;
+}
+
+/**
+ * The elements of a rendered case that carry the marker.
+ *
+ * @return list<DOMElement>
+ */
+function markedElements(string $caseId, string $route, bool $off): array
+{
+    $component = Livewire::withQueryParams(['case' => $caseId, 'route' => $route, 'off' => $off ? '1' : '0'])->test(DisabledBehaviourFixture::class);
+
+    return domQuery($component->html(), '//*[@data-atom-disabled]');
+}
+
+it('Attributes::disabledBy answers self, inherited or null for every route', function (string $caseId, string $route) {
+    $marked = markedElements($caseId, $route, true);
+
+    expect($marked)->not->toBeEmpty("{$caseId}: the disabled render carries no data-atom-disabled");
+
+    foreach ($marked as $el) {
+        expect($el->getAttribute('data-atom-disabled'))->toBe($route === 'prop' ? 'self' : 'inherited');
+    }
+
+    expect(markedElements($caseId, $route, false))->toBe([], "{$caseId}: the enabled render carries a marker");
+})->with(adoptedCases());
+
+it('keeps pointer-events-none and aria-disabled off the wrapper of every control, so the keyboard and the mouse meet the same guard', function (string $caseId, string $route) {
+    foreach (markedElements($caseId, $route, true) as $el) {
+        expect(domClasses($el))->not->toContain('pointer-events-none', "{$caseId}: the marked wrapper blocks the mouse by CSS");
+        expect($el->hasAttribute('aria-disabled'))->toBeFalse("{$caseId}: aria-disabled on a role-less wrapper");
+    }
+})->with(adoptedCases());
+
+it('keeps pointer-events-none off the date picker wrappers too')->todo('PR 6: the date wrapper carries it today');
+
+it('lets a control\'s own :disabled="false" beat a disabled form, and its own disabled beat an enabled one', function (string $variant) {
+    $options = [['value' => 'a', 'label' => 'A'], ['value' => 'b', 'label' => 'B']];
+    $select = "<atom:select variant=\"{$variant}\" label=\"Pick\" :options=\"\$options\" %s/>";
+
+    $markers = fn (string $html) => collect(domQuery($html, '//*[@data-atom-disabled]'))->map(fn (DOMElement $el) => $el->getAttribute('data-atom-disabled'))->all();
+    $disabledControls = fn (string $html) => count(domQuery($html, '//button[@aria-haspopup and @disabled] | //select[@disabled]'));
+
+    $inside = renderBlade('<atom:form disabled>'.sprintf($select, ':disabled="false"').'</atom:form>', ['options' => $options]);
+    expect($markers($inside))->toBe([])->and($disabledControls($inside))->toBe(0);
+
+    $inherits = renderBlade('<atom:form disabled>'.sprintf($select, '').'</atom:form>', ['options' => $options]);
+    expect($markers($inherits))->toBe(['inherited'])->and($disabledControls($inherits))->toBe(1);
+
+    $own = renderBlade('<atom:form :disabled="false">'.sprintf($select, 'disabled').'</atom:form>', ['options' => $options]);
+    expect($markers($own))->toBe(['self'])->and($disabledControls($own))->toBe(1);
+
+    $after = renderBlade('<atom:form disabled>'.sprintf($select, '').'</atom:form>'.sprintf($select, ''), ['options' => $options]);
+    expect($markers($after))->toBe(['inherited'], 'a select after a disabled form is not left disabled');
+})->with(['native', 'listbox', 'filter']);
+
+it('keeps the internal controls of a panel enabled inside a disabled control')->todo('PR 6: the range and date panels hold atom controls; the select panels hold none');

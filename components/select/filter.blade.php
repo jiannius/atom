@@ -4,6 +4,7 @@
     'options' => null,
     'filters' => null,
     'multiple' => false,
+    'disabled' => false,
     'searchable' => false,
     'clearable' => true,
     'add' => false,
@@ -20,8 +21,8 @@ $options = is_array($options) || $options instanceof \Illuminate\Support\Collect
    and the chosen value in a chip beside it. */
 $classes = Arr::toCssClasses([
     'inline-flex items-center gap-1.5',
-    'min-h-control py-0.5 appearance-none rounded-control border border-control-border bg-surface text-sm text-fg text-left pr-2',
-    'hover:bg-surface-sunken',
+    'min-h-control py-0.5 appearance-none rounded-control text-sm text-left pr-2',
+    $disabled ? 'border border-border cursor-not-allowed bg-surface-sunken text-fg-subtle' : 'border border-control-border bg-surface text-fg hover:bg-surface-sunken',
     $icon ? 'pl-8' : 'pl-2.5',
 ]);
 
@@ -32,10 +33,10 @@ $classes = Arr::toCssClasses([
    it has a value (a multiple one stays, to add more). */
 if ($add) {
     $classes = Arr::toCssClasses([
-        'inline-flex h-[26px] items-center gap-1 appearance-none rounded-pill border border-dashed border-control-border bg-transparent px-2.5 text-xs text-fg-muted',
-        'hover:bg-surface-sunken hover:text-fg',
-        '[&[data-chip]]:gap-1.5 [&[data-chip]]:border-transparent [&[data-chip]]:bg-neutral-bg [&[data-chip]]:text-fg [&[data-chip]]:hover:bg-border-strong',
-        '[&[data-chip]]:rounded-e-none [&[data-chip]]:pe-2',
+        'inline-flex h-[26px] items-center gap-1 appearance-none rounded-pill bg-transparent px-2.5 text-xs',
+        $disabled ? 'border border-dashed border-border cursor-not-allowed text-fg-subtle' : 'border border-dashed border-control-border text-fg-muted hover:bg-surface-sunken hover:text-fg',
+        '[&[data-chip]]:gap-1.5 [&[data-chip]]:border-transparent [&[data-chip]]:bg-neutral-bg [&[data-chip]]:rounded-e-none [&[data-chip]]:pe-2',
+        $disabled ? '[&[data-chip]]:text-fg-subtle' : '[&[data-chip]]:text-fg [&[data-chip]]:hover:bg-border-strong',
     ]);
 }
 
@@ -98,6 +99,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
         <button
         type="button"
         aria-haspopup="listbox"
+        @if ($disabled) disabled @endif
         @if (!$searchable)
             {{-- aria-expanded on this trigger is managed by dropdown.js --}}
             role="combobox"
@@ -167,7 +169,7 @@ x-on:keyup.space.prevent=""
 
             @if ($clearable)
                 <template x-if="!isEmpty" hidden>
-                    <div class="shrink-0 cursor-pointer flex items-center justify-center text-fg-subtle hover:text-fg" x-on:click.stop="clear()">
+                    <div class="shrink-0 cursor-pointer flex items-center justify-center text-fg-subtle hover:text-fg [[data-atom-disabled]_&]:hidden" x-on:click.stop="clear()">
                         <atom:icon.close class="size-4" />
                     </div>
                 </template>
@@ -183,12 +185,16 @@ x-on:keyup.space.prevent=""
                  an inline filter that no chip can clear. --}}
             <button
             type="button"
+            @if ($disabled) disabled @endif
             x-show="chipState"
             x-cloak
             x-on:click="clearChip()"
             x-on:keydown.enter.stop=""
             x-bind:aria-label="@js(t('Remove filter')) + ': ' + @js(t($label))"
-            class="inline-flex h-[26px] w-6 shrink-0 items-center justify-center rounded-e-pill border-s border-border-strong bg-neutral-bg text-fg-muted transition-colors hover:bg-border-strong hover:text-fg"
+            @class([
+                'inline-flex h-[26px] w-6 shrink-0 items-center justify-center rounded-e-pill border-s border-border-strong bg-neutral-bg transition-colors',
+                $disabled ? 'cursor-not-allowed text-fg-subtle' : 'text-fg-muted hover:bg-border-strong hover:text-fg',
+            ])
             data-atom-filter-chip-clear>
                 <atom:icon.close class="size-3.5" />
             </button>

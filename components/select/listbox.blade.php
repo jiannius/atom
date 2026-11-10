@@ -88,8 +88,7 @@ x-init="
 "
 x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clear()"
 @endif
-@if ($disabled) aria-disabled="true" @endif
-@class(['group/select w-full', 'pointer-events-none' => $disabled])
+class="group/select w-full"
 {{ $attributes->except(['class', 'aria-labelledby']) }}>
     @if ($multiple === 'list')
         <template x-if="!isEmpty" hidden>
@@ -110,6 +109,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
             <button
             type="button"
             aria-haspopup="listbox"
+            @if ($disabled) disabled @endif
             @if (!$searchable)
                 {{-- aria-expanded on this trigger is managed by dropdown.js --}}
                 role="combobox"
@@ -154,7 +154,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
 
                                         <div x-text="item.label" class="grow truncate"></div>
                                     </div>
-                                    <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center text-fg-subtle hover:text-fg pl-2 pr-2.5 cursor-pointer">
+                                    <div x-on:click.stop="deselect(item)" class="shrink-0 flex items-center justify-center text-fg-subtle hover:text-fg pl-2 pr-2.5 cursor-pointer [[data-atom-disabled]_&]:hidden">
                                         <atom:icon.minus-circle class="size-4" />
                                     </div>
                                 </div>
@@ -192,8 +192,15 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                         </template>
 
                         <template x-if="!isEmpty" hidden>
-                            <div x-on:click.stop="clear()" class="cursor-pointer flex items-center justify-center pl-2.5 pr-2 last:pr-2.5 hover:text-fg">
-                                <atom:icon.close class="size-4" />
+                            {{-- the node is Alpine's, so the server cannot swap it for the caret when the control is disabled: the marker on the root does --}}
+                            <div x-on:click.stop="clear()" class="cursor-pointer flex items-center justify-center pl-2.5 pr-2 last:pr-2.5 hover:text-fg [[data-atom-disabled]_&]:pointer-events-none">
+                                {{-- visibility on plain wrappers: an icon's own inline-flex would win over `hidden` --}}
+                                <div class="flex items-center justify-center [[data-atom-disabled]_&]:hidden">
+                                    <atom:icon.close class="size-4" />
+                                </div>
+                                <div class="hidden items-center justify-center [[data-atom-disabled]_&]:flex">
+                                    <atom:icon.dropdown class="size-4" />
+                                </div>
                             </div>
                         </template>
                     @else
@@ -202,7 +209,9 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                         </div>
                     @endif
 
-                    @if (isset($addButton) && $addButton->isNotEmpty())
+                    @if ($disabled)
+                        {{-- no add: it opens an editor for a new option --}}
+                    @elseif (isset($addButton) && $addButton->isNotEmpty())
                         <div x-on:click.stop class="px-1 cursor-pointer">
                             {{ $addButton }}
                         </div>
