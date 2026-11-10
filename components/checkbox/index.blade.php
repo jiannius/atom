@@ -1,5 +1,3 @@
-@aware(['disabled' => false])
-
 @props([
     'name' => null,
     'label' => null,
@@ -14,9 +12,13 @@ $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
 $merges = ['name' => $name];
 
-// Inherit a read-only state from an enclosing <atom:form disabled>.
-if ($disabled ?? false) {
+// 'self', or 'inherited' from a disabled <atom:form> or group; its own `disabled` wins (`:disabled="false"` included). A checkbox is a
+// native choice, so both are a real `disabled` input, which also carries the marker for a test or a selector.
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
+
+if ($disabledBy) {
     $merges['disabled'] = true;
+    $merges['data-atom-disabled'] = $disabledBy;
 }
 @endphp
 

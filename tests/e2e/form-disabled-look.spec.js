@@ -113,6 +113,15 @@ for (const tw of ['floor', 'latest']) {
 
       })
 
+      test('an enabled prefixed field keeps the strong border inside a host group that holds a disabled field', async ({ page }) => {
+        await open(page, { path: 'disabled-controls', tw, dark })
+
+        const strong = await colourOf(page, 'border-control-border')
+        const box = page.getByTestId('pair-prefix-leak').getByTestId('on').locator('.rounded-l-control')
+        await expect(box).toHaveCount(1)
+        expect(await border(box), 'the prefix box').toBe(strong)
+      })
+
       test('a submit button in a disabled form is disabled, another button is not, and its own :disabled="false" wins', async ({ page }) => {
         await open(page, { path: 'disabled-controls', tw, dark })
 

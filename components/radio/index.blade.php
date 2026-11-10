@@ -1,10 +1,14 @@
-@aware(['disabled' => false])
-
 @props([
     'label' => null,
     'caption' => null,
     'align' => 'center',
 ])
+
+@php
+// 'self', or 'inherited' from a disabled <atom:form> or group; its own `disabled` wins (`:disabled="false"` included). A radio is a native choice,
+// so both are a real `disabled` input, which also carries the marker for a test or a selector.
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
+@endphp
 
 <label {{ $attributes->only('class')->class('group/radio inline-block') }} data-atom-radio>
     <div @class([
@@ -17,7 +21,7 @@
             'shrink-0',
             'pt-1' => $align === 'start',
         ])>
-            <input type="radio" class="sr-only peer" {{ $attributes->except('class')->merge(['disabled' => ($disabled ?? false) ?: null]) }}>
+            <input type="radio" class="sr-only peer" {{ $attributes->except('class')->merge(['disabled' => $disabledBy ? true : null, 'data-atom-disabled' => $disabledBy]) }}>
 
             <div
             aria-hidden="true"

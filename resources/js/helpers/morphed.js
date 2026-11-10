@@ -18,7 +18,7 @@
 //    are server-owned on these roots: a host `x-bind:disabled` or `x-bind:readonly` on an autoresize
 //    textarea is overridden by the server's state at the next morph. Never `class`: a class a host or JS
 //    added must survive, so the disabled look of such a control comes from the marker
-//    (`[[data-atom-disabled]_&]:` utilities), not from a carried class. Add a control to `ignoredControls`
+//    (`[[data-atom-disabled]_&]:` utilities for what sits inside the root, `[&[data-atom-disabled]]:` for the root itself), not from a carried class. Add a control to `ignoredControls`
 //    only when its server markup holds nothing else that changes between renders.
 const ignoredControls = '[data-atom-date-range], [data-atom-textarea]'
 const carried = ['data-atom-disabled', 'disabled', 'readonly']

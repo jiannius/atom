@@ -49,7 +49,8 @@ $classes = Arr::toCssClasses([
     '[&[data-atom-disabled]]:border-border [&[data-atom-disabled]]:bg-surface-sunken' => !$transparent,
     '[&[data-atom-disabled]]:focus-visible:border-focus' => !$transparent && !$invalid,
     '[&[data-atom-disabled]]:focus-visible:border-danger-fg' => !$transparent && $invalid,
-    'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
+    'group-has-[[data-atom-error]]/field:border group-has-[[data-atom-error]]/field:border-danger-fg' => ! $disabledBy,
+    'group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
 ]);
 @endphp
 

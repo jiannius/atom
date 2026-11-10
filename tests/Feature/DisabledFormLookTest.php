@@ -38,11 +38,53 @@ it('does not leave a submit button after a disabled form disabled', function () 
     expect(domQuery($html, '//button[@type="submit" and @disabled]'))->toHaveCount(0);
 });
 
-it('disables the default Save of form.actions and form.modal in a disabled form', function () {
+it('keeps a submit button with an action of its own live in a disabled form: it is not the form\'s Save', function (string $attribute) {
+    $html = renderBlade('<atom:form disabled><atom:button type="submit" '.$attribute.'>Approve</atom:button><atom:button type="submit">Save</atom:button></atom:form>');
+
+    expect(domQuery($html, '//button[@type="submit" and @disabled]'))->toHaveCount(1)
+        ->and(domQuery($html, '//button[@type="submit" and not(@disabled)]'))->toHaveCount(1);
+})->with(['wire:click="approve"', 'x-on:click="approve()"', '@click="approve()"']);
+
+it('disables the default Save of form.actions in a disabled form', function () {
     $html = renderBlade('<atom:form disabled><atom:form.actions/></atom:form>');
 
     expect(domQuery($html, '//button[@type="submit"]'))->not->toBeEmpty()
         ->and(domQuery($html, '//button[@type="submit" and not(@disabled)]'))->toHaveCount(0);
+});
+
+it('makes <atom:form.modal disabled> a disabled form: no wire:submit, a disabled Save, marked fields', function () {
+    $html = renderBlade('<atom:form.modal name="m" disabled><atom:input label="Name" value="x"/><atom:checkbox label="Opt"/></atom:form.modal>');
+
+    $form = domQuery($html, '//form')[0];
+    expect($form->getAttribute('onsubmit'))->toBe('return false')
+        ->and($form->hasAttribute('wire:submit'))->toBeFalse()
+        ->and(domQuery($html, '//button[@type="submit"]'))->not->toBeEmpty()
+        ->and(domQuery($html, '//button[@type="submit" and not(@disabled)]'))->toHaveCount(0)
+        ->and(domQuery($html, '//input[@data-atom-disabled="inherited"]'))->toHaveCount(2);
+
+    $enabled = renderBlade('<atom:form.modal name="m"><atom:input label="Name"/></atom:form.modal>');
+    expect(domQuery($enabled, '//form')[0]->hasAttribute('wire:submit'))->toBeTrue()
+        ->and(domQuery($enabled, '//button[@type="submit" and @disabled]'))->toHaveCount(0)
+        ->and(domQuery($enabled, '//*[@data-atom-disabled]'))->toHaveCount(0);
+});
+
+it('prints the marker on a checkbox and a radio, inherited from a form or group, own, and not at all when opted out', function (string $tag, string $type) {
+    $markers = fn (string $html) => collect(domQuery($html, "//input[@type=\"{$type}\"]"))->map(fn (DOMElement $el) => [$el->getAttribute('data-atom-disabled'), $el->hasAttribute('disabled')])->all();
+
+    expect($markers(renderBlade(str_replace('%s', 'disabled', $tag))))->toBe([['self', true]])
+        ->and($markers(renderBlade('<atom:form disabled>'.str_replace('%s', '', $tag).'</atom:form>')))->toBe([['inherited', true]])
+        ->and($markers(renderBlade('<atom:form disabled>'.str_replace('%s', ':disabled="false"', $tag).'</atom:form>')))->toBe([['', false]])
+        ->and($markers(renderBlade('<atom:form :disabled="false">'.str_replace('%s', 'disabled', $tag).'</atom:form>')))->toBe([['self', true]])
+        ->and($markers(renderBlade('<atom:form disabled>'.str_replace('%s', '', $tag).'</atom:form>'.str_replace('%s', '', $tag))))->toBe([['inherited', true], ['', false]]);
+})->with([
+    'checkbox' => ['<atom:checkbox label="A" %s/>', 'checkbox'],
+    'radio' => ['<atom:radio label="A" value="a" %s/>', 'radio'],
+]);
+
+it('disables every checkbox and radio of a disabled group', function () {
+    $html = renderBlade('<atom:checkbox.group disabled><atom:checkbox label="A"/><atom:checkbox label="B"/></atom:checkbox.group><atom:radio.group disabled><atom:radio label="A" value="a"/><atom:radio label="B" value="b"/></atom:radio.group>');
+
+    expect(domQuery($html, '//input[@data-atom-disabled="inherited" and @disabled]'))->toHaveCount(4);
 });
 
 it('draws no clear button on a disabled clearable input, in either route, and one on an enabled field', function () {
@@ -104,7 +146,11 @@ it('prints a textarea\'s state as a marker, readonly only when inherited, and dr
 it('gives the prefix and suffix boxes the faint border beside a disabled field, and the focus border when it is focused', function () {
     $box = domClasses(domQuery(renderBlade('<atom:input prefix="https://" disabled/>'), '//div[contains(@class, "rounded-l-control")]')[0]);
 
-    expect($box)->toContain('group-has-[[data-atom-disabled]]:border-border', 'group-has-[:focus-visible]:border-focus', 'group-has-[:focus-visible]:group-has-[[data-atom-disabled]]:border-focus');
+    expect($box)->toContain('group-has-[[data-atom-disabled]]/prefix:border-border', 'group-has-[:focus-visible]/prefix:border-focus', 'group-has-[:focus-visible]/prefix:group-has-[[data-atom-disabled]]/prefix:border-focus');
+
+    // the group is the prefix's own: an unnamed one would be a host's `.group` around the field
+    $root = domClasses(domQuery(renderBlade('<atom:input prefix="https://"/>'), '//div[contains(@class, "group/prefix")]')[0]);
+    expect($root)->toContain('group/prefix')->and($root)->not->toContain('group');
 });
 
 it('does not draw a label or heading dimmer in a disabled form', function () {

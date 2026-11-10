@@ -53,7 +53,7 @@ x-data="{
     off(chip) {
         this.stamp
 
-        return !!chip?.source?.isConnected && !!(chip.source.closest('[data-atom-disabled]') ?? chip.source.querySelector('[data-atom-disabled]'))
+        return !!chip?.source?.isConnected && !!(chip.source.closest?.('[data-atom-disabled]') ?? chip.source.querySelector?.('[data-atom-disabled]'))
     },
     get clearable() { return this.active.some(chip => !this.off(chip)) },
     set(event) {

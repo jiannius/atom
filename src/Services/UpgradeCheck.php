@@ -253,7 +253,7 @@ class UpgradeCheck
             'disabled-form-view-control' => [
                 'title' => 'A toggle, slider or select filter inside a disabled form is disabled now (it used to ignore the form)',
                 'section' => 'Controls', 'severity' => static::REVIEW, 'codemod' => 'report',
-                'detect' => '<atom:toggle>, <atom:slider> or <atom:select variant="filter"> with no disabled of its own, between a disabled <atom:form> and its end tag; a control that only changes the view (a layout switch, a filter) needs :disabled="false"',
+                'detect' => '<atom:toggle>, <atom:slider> or <atom:select variant="filter"> with no disabled of its own, between a disabled <atom:form> and its end tag; a control that only changes the view (a layout switch, a filter) needs :disabled="false"; a partial and form.modal are not seen',
                 'kinds' => ['blade'], 'custom' => 'disabledFormViewControls',
             ],
             'button-size-prop' => [

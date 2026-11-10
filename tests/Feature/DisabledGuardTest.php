@@ -172,7 +172,7 @@ it('renders an x-data for most of the corpus, so the comparison above is not an 
  *
  * @var list<string>
  */
-const HELPER_ADOPTERS = ['select/index', 'input/index', 'input/tel', 'input/email', 'toggle/index', 'slider/index', 'input/otp', 'time-picker', 'rating/index', 'input/color', 'uploader/index', 'uploader/dropzone', 'date-picker/date', 'date-picker/range', 'textarea'];
+const HELPER_ADOPTERS = ['select/index', 'input/index', 'input/tel', 'input/email', 'toggle/index', 'slider/index', 'input/otp', 'time-picker', 'rating/index', 'input/color', 'uploader/index', 'uploader/dropzone', 'date-picker/date', 'date-picker/range', 'textarea', 'checkbox/index', 'radio/index'];
 
 /**
  * The corpus cases that sit on an adopter, and the routes each has.
@@ -213,8 +213,11 @@ it('Attributes::disabledBy answers self, inherited or null for every route', fun
 
     expect($marked)->not->toBeEmpty("{$caseId}: the disabled render carries no data-atom-disabled");
 
+    // a group case puts `disabled` on the group, which its checkboxes and radios inherit in either route
+    $expected = $route === 'prop' && ! str_ends_with($caseId, '_group') ? 'self' : 'inherited';
+
     foreach ($marked as $el) {
-        expect($el->getAttribute('data-atom-disabled'))->toBe($route === 'prop' ? 'self' : 'inherited');
+        expect($el->getAttribute('data-atom-disabled'))->toBe($expected);
     }
 
     expect(markedElements($caseId, $route, false))->toBe([], "{$caseId}: the enabled render carries a marker");

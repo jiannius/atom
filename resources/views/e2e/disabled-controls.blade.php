@@ -210,6 +210,11 @@ $options = [['value' => 'a', 'label' => 'Draft'], ['value' => 'b', 'label' => 'S
         <div data-testid="on"><atom:input prefix="https://" suffix=".test" value="Locked value" disabled/></div>
         <atom:form disabled inset><div data-testid="off"><atom:input prefix="https://" suffix=".test" value="Locked value"/></div></atom:form>
     </div>
+    {{-- a host's own `group` around an enabled prefixed field and a disabled one: the prefix box must not read the sibling --}}
+    <div class="group grid grid-cols-2 gap-4" data-testid="pair-prefix-leak">
+        <div data-testid="on"><atom:input prefix="https://" value="Enabled"/></div>
+        <div data-testid="off"><atom:input value="Locked" disabled/></div>
+    </div>
     <div class="grid grid-cols-2 gap-4" data-testid="pair-readonly-input">
         <atom:input data-testid="on" value="Host value"/>
         <atom:input data-testid="off" value="Host value" readonly/>

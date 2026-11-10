@@ -159,9 +159,15 @@ else {
     $el = 'button';
     $merges = ['type' => $type === 'submit' ? 'submit' : 'button'];
 
-    /* A submit inside a disabled <atom:form> is disabled (the form posts nothing, so a live Save would be a no-op); every other button there stays
-       live, a host's download or refresh among them. The button's own `disabled` wins, `:disabled="false"` included. */
-    if ($type === 'submit' && \Jiannius\Atom\Services\Attributes::disabledBy($attributes)) {
+    /* A bare submit inside a disabled <atom:form> is disabled (the form posts nothing, so a live Save would be a no-op); every other button there stays
+       live, a host's download or refresh among them. A submit with a click action of its own (`wire:click`, `x-on:click`, `@click`) is an action, not
+       the form's Save, so it stays live too. The button's own `disabled` wins, `:disabled="false"` included. */
+    if (
+        $type === 'submit'
+        && ! $attributes->wire('click')->value()
+        && ! \Jiannius\Atom\Services\Attributes::hasLike($attributes, 'x-on:click*', '@click*')
+        && \Jiannius\Atom\Services\Attributes::disabledBy($attributes)
+    ) {
         $merges['disabled'] = true;
     }
 }
