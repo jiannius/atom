@@ -78,6 +78,8 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-calendar-parent', CalendarParentFixture::class);
         Livewire::component('atom-e2e-calendar-look', CalendarLookFixture::class);
         Livewire::component('atom-e2e-job-progress', JobProgressFixture::class);
+        Livewire::component('atom-e2e-disabled-behaviour', DisabledBehaviourFixture::class);
+        Livewire::component('atom-e2e-disabled-child', DisabledChildFixture::class);
 
         // Job progress (#115): the served app has the array cache store, which cannot carry an entry from one request to the next
         // (and the page polls), so its entries live in the file store, under one tenant.
@@ -181,6 +183,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/controls', fn () => view('atom::e2e.controls'));
         // Every form control's disabled state beside its enabled one (issue #178), on the consumer's Tailwind: ?tw, ?dark=1
         Route::middleware('web')->get('/atom/e2e/disabled-controls', fn () => view('atom::e2e.disabled-controls'));
+        // One corpus case per page, to drive its gestures enabled and then disabled (tests/e2e/disabled-behaviour.spec.js): ?case=<id>, ?route=prop|form, ?off=1, ?bind=x, ?value=<json>
+        Route::middleware('web')->get('/atom/e2e/disabled-behaviour', fn () => view('atom-test::disabled-behaviour-page'));
         // The restyled data display (V4-3b), on the consumer's Tailwind: ?tw, ?density, ?dark=1, ?accent, ?section
         Route::middleware('web')->get('/atom/e2e/display', fn () => view('atom::e2e.display'));
         // The restyled overlays and navigation (V4-3c), on the consumer's Tailwind: ?tw, ?density, ?dark=1, ?accent, ?section
