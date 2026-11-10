@@ -165,3 +165,45 @@ it('draws no result row for a finished job whose end slot is only false blocks a
     expect(domQuery($html, '//*[@data-atom-progress-job]'))->toHaveCount(1)
         ->and(domQuery($html, '//*[@data-atom-progress-result]'))->toBeEmpty();
 });
+
+// <atom:input type="file"> hands the uploader its default slot plus an `@if` for the `end` slot, which is there whether or not the caller passed one. Under
+// Livewire that `@if` prints markers, so the uploader's slot is "not empty" to isNotEmpty() and it drew an empty custom slot instead of its button (#200).
+describe('uploader trigger', function () {
+    /** The trigger button the uploader draws by default. */
+    $trigger = '//*[@*[name()="x-on:click"][contains(., "$refs.fileinput.click()")]]';
+
+    it('draws its upload button for a file input in a Livewire component', function () use ($trigger) {
+        $labelled = renderInLivewire('<atom:input type="file" wire:model="file" label="Receipt" />');
+        $bare = renderInLivewire('<atom:input type="file" wire:model="file" />');
+
+        expect(domQuery($labelled, $trigger))->toHaveCount(1)
+            ->and(domQuery($bare, $trigger))->toHaveCount(1);
+    });
+
+    it('draws the button and the end text beside it, not below, for a file input with an end slot', function () use ($trigger) {
+        $html = renderInLivewire('<atom:input type="file" wire:model="file" label="Receipt"><x-slot:end>PDF only</x-slot:end></atom:input>');
+        $end = domQuery($html, '//*[@data-atom-uploader-end]');
+
+        expect(domQuery($html, $trigger))->toHaveCount(1)
+            ->and($end)->toHaveCount(1)
+            ->and(trim($end[0]->textContent))->toBe('PDF only')
+            ->and(domClasses($end[0]))->not->toContain('mt-1');
+    });
+
+    it('draws its upload button when the slot is only false blocks', function () use ($trigger) {
+        $html = renderInLivewire('<atom:uploader wire:model="file">'.FALSE_BLOCKS.'</atom:uploader>');
+
+        expect(domQuery($html, $trigger))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-uploader-end]'))->toBeEmpty();
+    });
+
+    it('still lets a slot with real content replace the button, and puts the end text below it', function () use ($trigger) {
+        $html = renderInLivewire('<atom:uploader wire:model="file">@if (true)<span id="mine">Browse</span>@endif<x-slot:end>PDF only</x-slot:end></atom:uploader>');
+        $end = domQuery($html, '//*[@data-atom-uploader-end]');
+
+        expect(domQuery($html, '//*[@id="mine"]'))->toHaveCount(1)
+            ->and(domQuery($html, $trigger))->toBeEmpty()
+            ->and($end)->toHaveCount(1)
+            ->and(domClasses($end[0]))->toContain('mt-1');
+    });
+});
