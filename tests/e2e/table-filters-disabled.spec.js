@@ -38,7 +38,13 @@ for (const tw of ['floor', 'latest']) {
 
         await expect(all, 'one control can still be cleared').toBeVisible()
 
+        // the bar sends the clear to the control that can take it only
+        await page.evaluate(() => {
+          window.__cleared = []
+          window.addEventListener('table-filter:do-clear', (e) => window.__cleared.push(e.detail.key))
+        })
         await all.click()
+        expect(await page.evaluate(() => window.__cleared), 'Clear all asks the enabled control only').toEqual(['filters.free'])
         await expect.poll(async () => (await model(page)).free, 'the enabled control was cleared').toBeNull()
         const after = await model(page)
         expect({ ...after, free: before.free }, 'the disabled ones were not').toEqual(before)
@@ -55,9 +61,15 @@ for (const tw of ['floor', 'latest']) {
         const before = await model(page)
 
         await page.evaluate(() => {
+          window.__cleared = []
+          window.addEventListener('table-filter:do-clear', (e) => window.__cleared.push(e.detail.key))
           const bar = window.Alpine.$data(document.querySelector('[data-testid="off"] [data-atom-table-filters]'))
           for (const key of ['filters.search', 'filters.status', 'filters.issued', 'filters.tags']) bar.clear(key)
-          // and the controls themselves, told by the event the bar sends
+        })
+        expect(await page.evaluate(() => window.__cleared), 'the bar sends nothing for a disabled control').toEqual([])
+
+        // and the controls themselves, told by the event the bar would send
+        await page.evaluate(() => {
           for (const key of ['filters.search', 'filters.status', 'filters.issued', 'filters.tags']) window.dispatchEvent(new CustomEvent('table-filter:do-clear', { detail: { key } }))
         })
         await page.waitForTimeout(300)

@@ -25,6 +25,8 @@ for (const tw of ['floor', 'latest']) {
 
         const form = page.getByTestId('pair-form-label').locator('form')
         expect(await form.evaluate((el) => getComputedStyle(el).opacity), 'the form').toBe('1')
+        // a stale consumer build has no `opacity-70` rule, so the computed value alone would not tell
+        expect(await form.evaluate((el) => [...el.classList].filter((c) => c.startsWith('opacity-'))), 'no opacity class on the form').toEqual([])
 
         const [on, off] = [await lookOf(page.getByTestId('pair-form-label').getByTestId('on')), await lookOf(page.getByTestId('pair-form-label').getByTestId('off'))]
         // everything but the field itself (the input's own row differs, so it is held by the look rows): label, caption and wrappers
