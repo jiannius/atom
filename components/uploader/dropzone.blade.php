@@ -53,10 +53,11 @@ x-on:drop.prevent="drop($event)"
 @if ($disabledBy)
 data-atom-disabled="{{ $disabledBy }}"
 @endif
-{{ $attributes->only('class')->class(['group/uploader [:where(&)]:relative', 'cursor-not-allowed' => $disabledBy && $slot->isEmpty()]) }}>
+{{ $attributes->only('class')->class(['group/uploader [:where(&)]:relative', 'cursor-not-allowed' => $disabledBy && ! $slot->hasActualContent()]) }}>
     <input type="file" x-ref="fileinput" class="hidden" {{ $attributes->except(['class', 'disabled']) }} @if ($disabledBy) disabled @endif>
 
-    @if ($slot->isNotEmpty())
+    {{-- a slot of false @if blocks is not a custom zone: under Livewire it holds only morph markers --}}
+    @if ($slot->hasActualContent())
         {{ $slot }}
     @else
         <button

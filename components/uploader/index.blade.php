@@ -34,7 +34,8 @@ data-atom-disabled="{{ $disabledBy }}"
 {{ $attributes->only('class')->class('group/uploader [:where(&)]:relative') }}>
     <input  type="file" x-ref="fileinput" class="hidden" {{ $attributes->except(['class', 'disabled']) }} @if ($disabledBy) disabled @endif>
 
-    @if ($slot->isNotEmpty())
+    {{-- a slot of false @if blocks is not a custom trigger: under Livewire it holds only morph markers (<atom:input type="file"> passes one) --}}
+    @if ($slot->hasActualContent())
         {{ $slot }}
     @else
         <div class="flex items-center gap-2">
@@ -71,7 +72,7 @@ data-atom-disabled="{{ $disabledBy }}"
         </div>
     @endif
 
-    @if ($hasEnd && $slot->isNotEmpty())
+    @if ($hasEnd && $slot->hasActualContent())
         <div {{ $end->attributes->class('mt-1 min-w-0 text-sm text-fg-muted') }} data-atom-uploader-end>{{ $end }}</div>
     @endif
 </div>
