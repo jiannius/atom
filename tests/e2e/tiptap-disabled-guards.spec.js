@@ -210,6 +210,18 @@ test('tiptap_mention: a mention list does not open on a disabled editor, however
   expect(page.errors).toEqual([])
 })
 
+test('tiptap_mention: a morph that disables the editor while the list is open throws nothing', async ({ page }) => {
+  const def = caseOf('tiptap_mention')
+  const popup = () => root(page, def).locator('.tiptap-mention [x-ref="dropdown"]').evaluate((el) => !el.classList.contains('invisible'))
+
+  await openCase(page, def, { route: 'prop' })
+  await data(page, def, (d) => { d.editor().chain().focus('end').insertContent(' @Al').run() })
+  await expect.poll(popup, { message: 'the list is open' }).toBe(true)
+  await flip(page)
+  await page.waitForTimeout(600)
+  expect(page.errors, 'a script error when the list was open under the morph').toEqual([])
+})
+
 // ---- readonly follows a morph (decision D6)
 
 test('tiptap_readonly: a host readonly that a morph changes takes effect, and is not drawn disabled', async ({ page }) => {
@@ -236,12 +248,14 @@ test('tiptap_readonly: a host readonly that a morph changes takes effect, and is
   await expect(surface()).not.toHaveAttribute('aria-readonly', /.*/)
   await expect(root(page, def).locator('[role="toolbar"]')).toBeVisible()
 
-  // read-only first: it becomes editable, and has no toolbar (it was never drawn; the limit is documented)
+  // read-only first: the toolbar is drawn and hidden, and shows when a morph makes the editor editable
   await openCase(page, def, { route: 'prop', off: true })
   expect(await editable()).toBe('false')
-  await expect(root(page, def).locator('[role="toolbar"]')).toHaveCount(0)
+  await expect(root(page, def).locator('[role="toolbar"]')).toHaveCount(1)
+  await expect(root(page, def).locator('[role="toolbar"]')).toBeHidden()
   await flip(page)
   expect(await editable()).toBe('true')
+  await expect(root(page, def).locator('[role="toolbar"]')).toBeVisible()
   await surface().click()
   await page.keyboard.type('zq8')
   await expect(surface()).toContainText('zq8')
@@ -322,4 +336,18 @@ test('tiptap_chat: a morph that disables the composer hides its buttons, and the
   await flip(page)
   await expect(submit()).toBeVisible()
   await expect(root(page, def).locator('.ProseMirror')).toHaveAttribute('contenteditable', 'true')
+})
+
+test('tiptap_chat: a host readonly locks the composer, and a morph that lifts it unlocks it', async ({ page }) => {
+  const def = caseOf('tiptap_chat_readonly')
+  const surface = () => root(page, def).locator('.ProseMirror')
+  const submit = () => root(page, def).locator('button[aria-label="Submit"]')
+
+  await openCase(page, def, { route: 'prop', off: true })
+  await expect(surface()).toHaveAttribute('contenteditable', 'false')
+  await expect(surface()).toHaveAttribute('aria-readonly', 'true')
+  await expect(submit()).toBeHidden()
+  await flip(page)
+  await expect(surface()).toHaveAttribute('contenteditable', 'true')
+  await expect(submit()).toBeVisible()
 })

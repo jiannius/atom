@@ -88,7 +88,7 @@ export default (config = {}) => ({
 
         this.$nextTick(() => {
             if (!this.filteredOptions.length || !this.props?.clientRect) { this.show = false; return }
-            const anchor = { getBoundingClientRect: () => this.props.clientRect() }
+            const anchor = { getBoundingClientRect: () => this.props?.clientRect?.() ?? new DOMRect() }
             this.cleanup = floatingui(anchor, this.$refs.dropdown, { placement: 'bottom-start', offset: 6 })
             this.show = true
         })

@@ -518,6 +518,17 @@
     "routes": ["prop"]
   },
   {
+    "id": "tiptap_chat_readonly",
+    "components": ["tiptap/chat"],
+    "blade": "<atom:tiptap.chat {model} :readonly=\"$off\"/>",
+    "value": "",
+    "gestures": [],
+    "walk": {"effect": []},
+    "tabStops": {"prop": [], "form": []},
+    "special": "readonly",
+    "routes": ["prop"]
+  },
+  {
     "id": "tiptap_mention",
     "components": ["tiptap/index"],
     "blade": "<atom:tiptap {model} {disabled} :mention=\"['Alice', 'Bob']\"/>",
