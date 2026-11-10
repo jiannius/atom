@@ -269,22 +269,24 @@ for (const route of ROUTES) {
       d.sync()
       d.$el.querySelector('button[aria-label="Submit"]').click()
     })
-    const file = () => `(() => { const dt = new DataTransfer(); dt.items.add(new File(['abc'], 'a.txt', { type: 'text/plain' })); return dt })()`
-    const paste = () => surface().evaluate((el, src) => {
-      const e = new ClipboardEvent('paste', { clipboardData: new Function(`return ${src}`)(), bubbles: true, cancelable: true })
+    // A plain Event with the transfer object defined on it, and the transfer a plain object: engines differ in what a script-built ClipboardEvent, DragEvent
+    // or DataTransfer carries (Firefox ignores `clipboardData` in the ClipboardEvent init and may hold no files in a script-made DataTransfer), and the
+    // handlers only read `items`, `files` and `getData`
+    const fire = (type, prop) => surface().evaluate((el, [type, prop]) => {
+      const file = new File(['abc'], 'a.txt', { type: 'text/plain' })
+      const e = new Event(type, { bubbles: true, cancelable: true })
+      Object.defineProperty(e, prop, { value: { items: [{ kind: 'file', getAsFile: () => file }], files: [file], getData: () => '' } })
       el.dispatchEvent(e)
       return e.defaultPrevented
-    }, file())
-    const drop = () => surface().evaluate((el, src) => {
-      const e = new DragEvent('drop', { dataTransfer: new Function(`return ${src}`)(), bubbles: true, cancelable: true })
-      el.dispatchEvent(e)
-      return e.defaultPrevented
-    }, file())
+    }, [type, prop])
+    const paste = () => fire('paste', 'clipboardData')
+    const drop = () => fire('drop', 'dataTransfer')
 
     await openCase(page, def, { route })
     await paste()
+    expect(await files(), 'enabled: a pasted file is attached').toBe(1)
     await drop()
-    expect(await files(), 'enabled: a pasted file and a dropped file are attached').toBe(2)
+    expect(await files(), 'enabled: a dropped file is attached').toBe(2)
     await send()
     await page.waitForTimeout(200)
     expect((await observe(page, def)).sent, 'enabled: Enter, sync() and the button send').toBeGreaterThan(0)
