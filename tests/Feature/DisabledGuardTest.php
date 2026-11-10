@@ -33,9 +33,9 @@ const NOT_VALUE_CONTROLS = [
     'table/pagination' => '"Go to page" box in a navigation popover: moves the page, changes no record data',
     'table/views' => '`x-modelable` carries which saved view is open: navigation, not record data',
     'tabs/index' => '`x-modelable` carries which tab is open: navigation, not record data',
-    'tiptap/toolbar/font-size' => 'an input inside the tiptap toolbar, not a value of its own: the tiptap rows drive the toolbar (its menus, bold, the keyboard walk) disabled, and record that it is live today',
-    'tiptap/toolbar/image' => 'an input inside the tiptap toolbar, not a value of its own: the tiptap rows drive the toolbar (its menus, bold, the keyboard walk) disabled, and record that it is live today',
-    'tiptap/toolbar/youtube' => 'an input inside the tiptap toolbar, not a value of its own: the tiptap rows drive the toolbar (its menus, bold, the keyboard walk) disabled, and record that it is live today',
+    'tiptap/toolbar/font-size' => 'an input inside the tiptap toolbar, not a value of its own: the tiptap rows drive the toolbar (its menus, bold, the keyboard walk) disabled, and tests/e2e/tiptap-disabled-guards.spec.js calls its handlers directly',
+    'tiptap/toolbar/image' => 'an input inside the tiptap toolbar, not a value of its own: the tiptap rows drive the toolbar (its menus, bold, the keyboard walk) disabled, and tests/e2e/tiptap-disabled-guards.spec.js calls its handlers directly',
+    'tiptap/toolbar/youtube' => 'an input inside the tiptap toolbar, not a value of its own: the tiptap rows drive the toolbar (its menus, bold, the keyboard walk) disabled, and tests/e2e/tiptap-disabled-guards.spec.js calls its handlers directly',
     'tiptap/chat/upload' => 'the chat composer\'s attach input: the chat rows drive the composer (Enter, the buttons, the keyboard walk) disabled',
 ];
 
@@ -172,7 +172,7 @@ it('renders an x-data for most of the corpus, so the comparison above is not an 
  *
  * @var list<string>
  */
-const HELPER_ADOPTERS = ['select/index', 'input/index', 'input/tel', 'input/email', 'toggle/index', 'slider/index', 'input/otp', 'time-picker', 'rating/index', 'input/color', 'uploader/index', 'uploader/dropzone', 'date-picker/date', 'date-picker/range', 'textarea', 'checkbox/index', 'radio/index'];
+const HELPER_ADOPTERS = ['select/index', 'input/index', 'input/tel', 'input/email', 'toggle/index', 'slider/index', 'input/otp', 'time-picker', 'rating/index', 'input/color', 'uploader/index', 'uploader/dropzone', 'date-picker/date', 'date-picker/range', 'textarea', 'checkbox/index', 'radio/index', 'tiptap/index', 'tiptap/chat'];
 
 /**
  * The corpus cases that sit on an adopter, and the routes each has.

@@ -10,6 +10,10 @@
 @php
 $transparent = $variant === 'transparent';
 
+/* 'self', 'inherited' from a disabled form, or null; printed on the root as `data-atom-disabled` and carried across a morph by helpers/morphed.js (the root is
+   wire:ignore'd), and read again at event time by the factory. See components/tiptap/index.blade.php. */
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
+
 // Same as <atom:tiptap>: ProseMirror creates the contenteditable, so it takes no
 // <label for> and is named through the editor config instead. Derived, not minted per
 // render — see Services\Attributes::fieldId().
@@ -31,17 +35,20 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
         chat: true,
         placeholder: @js($placeholder),
         autofocus: @js($autofocus),
-        class: @js(Arr::toCssClasses(['editor-content editor-chat-content m-3 focus-visible:outline-none', $attributes->get('class')])),
+        class: @js(Arr::toCssClasses(['editor-content editor-chat-content m-3 focus-visible:outline-none [[data-atom-disabled]_&]:text-fg-subtle', $attributes->get('class')])),
         labelledby: @js($attributes->get('aria-labelledby')),
     })"
     x-modelable="editorContent"
     class="group/editor"
-    {{ $attributes->except(['class', 'aria-labelledby']) }}>
+    data-atom-tiptap
+    @if ($disabledBy) data-atom-disabled="{{ $disabledBy }}" disabled @endif
+    {{ $attributes->except(['class', 'aria-labelledby', 'disabled']) }}>
         <div x-show="loading"><atom:skeleton /></div>
 
         <div x-show="!loading" @class([
             'editor relative rounded-control',
             'bg-surface border border-control-border' => !$transparent,
+            '[[data-atom-disabled]_&]:bg-surface-sunken [[data-atom-disabled]_&]:border-border [[data-atom-disabled]_&]:cursor-not-allowed' => !$transparent,
             'has-[[contenteditable]:focus-visible]:border-focus has-[[contenteditable]:focus-visible]:outline-2 has-[[contenteditable]:focus-visible]:outline-focus has-[[contenteditable]:focus-visible]:outline-offset-0' => !$transparent,
             'border-0 bg-transparent' => $transparent,
         ])>
@@ -52,7 +59,7 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
             <div class="flex items-end">
                 <div x-ref="editor" x-on:input.stop="" x-on:paste="paste($event)" x-on:drop.prevent="drop($event)" class="grow"></div>
 
-                <div class="shrink-0 p-2 flex items-center group-[.is-loading]/editor:hidden">
+                <div x-show="!locked" class="shrink-0 p-2 flex items-center group-[.is-loading]/editor:hidden">
                     <atom:tiptap.chat.formatting />
                     <atom:tiptap.chat.upload />
                     <atom:tiptap.toolbar.button label="Submit" x-on:click="sync()">

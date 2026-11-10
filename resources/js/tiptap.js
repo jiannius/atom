@@ -60,7 +60,8 @@ const ImageExtended = Image.extend({
 const BubbleMenuConfiguration = (element, key) => ({
     pluginKey: key,
     element,
-    shouldShow: ({ editor }) => element.shouldShow(editor),
+    // a non-editable editor still shows these menus (their commands would change the document), so a locked one shows none
+    shouldShow: ({ editor }) => editor.isEditable && element.shouldShow(editor),
     options: { placement: 'top', offset: 8 },
 })
 
@@ -69,8 +70,8 @@ const MentionConfiguration = (element) => ({
     renderText ({ options, node }) { return `${options.suggestion.char} ${node.attrs.label ?? node.attrs.id}` },
     suggestion: {
         render: () => ({
-            onStart: props => { if (props.clientRect) element.start(props) },
-            onUpdate: props => { if (props.clientRect) element.update(props) },
+            onStart: props => { if (props.clientRect && props.editor.isEditable) element.start(props) },
+            onUpdate: props => { if (props.clientRect && props.editor.isEditable) element.update(props) },
             onKeyDown: props => element.keydown(props),
             onExit: props => element.exit(props),
         }),

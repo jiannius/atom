@@ -7,6 +7,7 @@ x-data="{
     uploading: false,
     progress: 0,
     read (files) {
+        if (isLocked()) return
         this.uploading = true
         this.$wire.uploadMultiple('_editor.images', Array.from(files),
             () => this.finish(true),
