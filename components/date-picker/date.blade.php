@@ -1,7 +1,6 @@
 @props([
     'time' => false,
     'invalid' => false,
-    'disabled' => false,
     'placeholder' => 'Select date',
     'timezone' => null,
 ])
