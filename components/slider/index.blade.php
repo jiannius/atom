@@ -14,6 +14,9 @@
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
 
+// 'self', 'inherited' from a disabled form, or null; a slider's own `disabled` (`:disabled="false"` too) wins over the form's.
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
+
 $min = is_numeric($min) ? $min + 0 : 0;
 $max = is_numeric($max) ? $max + 0 : 100;
 $step = is_numeric($step) ? $step + 0 : 1;
@@ -27,6 +30,7 @@ $wrapper = $attributes->except(['id', 'name', 'value', 'min', 'max', 'step', 're
 
 <div
 data-atom-slider
+@if ($disabledBy) data-atom-disabled="{{ $disabledBy }}" @endif
 x-data="slider({ min: {{ $min }}, max: {{ $max }}, step: {{ $step }}, value: @js($value) })"
 x-modelable="value"
 :style="{ '--atom-slider-percent': percent + '%' }"
@@ -59,7 +63,8 @@ x-modelable="value"
         x-model="value"
         @if ($name) name="{{ $name }}" @endif
         class="w-full"
-        {{ $attributes->only(['required', 'disabled']) }}
+        @if ($disabledBy) disabled @endif
+        {{ $attributes->only('required') }}
         data-atom-slider-input/>
     </div>
 

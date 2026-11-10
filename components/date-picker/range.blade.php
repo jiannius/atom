@@ -131,7 +131,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
                     @if ($time)
                         <div x-show="startValue" class="px-4 pb-4">
                             <div class="text-xs font-medium text-fg-muted mb-2">{{ t('Time') }}</div>
-                            <atom:time-picker x-model="startValue" :timezone="$timezone" />
+                            <atom:time-picker x-model="startValue" :timezone="$timezone" :disabled="false" />
                         </div>
                     @endif
                 </div>
@@ -144,7 +144,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && (dat
                     @if ($time)
                         <div x-show="endValue" class="px-4 pb-4">
                             <div class="text-xs font-medium text-fg-muted mb-2">{{ t('Time') }}</div>
-                            <atom:time-picker x-model="endValue" :timezone="$timezone" />
+                            <atom:time-picker x-model="endValue" :timezone="$timezone" :disabled="false" />
                         </div>
                     @endif
                 </div>

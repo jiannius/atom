@@ -172,7 +172,7 @@ it('renders an x-data for most of the corpus, so the comparison above is not an 
  *
  * @var list<string>
  */
-const HELPER_ADOPTERS = ['select/index', 'input/index', 'input/tel', 'input/email'];
+const HELPER_ADOPTERS = ['select/index', 'input/index', 'input/tel', 'input/email', 'toggle/index', 'slider/index', 'input/otp', 'time-picker'];
 
 /**
  * The corpus cases that sit on an adopter, and the routes each has.
@@ -250,3 +250,82 @@ it('lets a control\'s own :disabled="false" beat a disabled form, and its own di
 })->with(['native', 'listbox', 'filter']);
 
 it('keeps the internal controls of a panel enabled inside a disabled control')->todo('PR 6: the range and date panels hold atom controls; the select panels hold none');
+
+it('lets a native-backed control\'s own :disabled="false" beat a disabled form, and its own disabled beat an enabled one', function (string $tag, string $realDisabled, string $readonlyBox) {
+    $markers = fn (string $html) => collect(domQuery($html, '//*[@data-atom-disabled]'))->map(fn (DOMElement $el) => $el->getAttribute('data-atom-disabled'))->all();
+    $count = fn (string $html, string $xpath) => count(domQuery($html, $xpath));
+    $render = fn (string $attributes, string $form = 'disabled') => renderBlade("<atom:form {$form}>".str_replace('%s', $attributes, $tag).'</atom:form>'.str_replace('%s', '', $tag));
+
+    $inside = $render(':disabled="false"');
+    expect($markers($inside))->toBe([])->and($count($inside, $realDisabled))->toBe(0)->and($count($inside, $readonlyBox))->toBe(0);
+
+    $inherits = $render('');
+    expect($markers($inherits))->toBe(['inherited'], 'only the control inside the form, not the one after it');
+
+    $own = $render('disabled', ':disabled="false"');
+    expect($markers($own))->toBe(['self'])->and($count($own, $realDisabled))->toBeGreaterThan(0);
+})->with([
+    'toggle' => ['<atom:toggle label="On" %s/>', '//input[@type="checkbox" and @disabled]', '//input[@type="checkbox" and @readonly]'],
+    'slider' => ['<atom:slider label="Vol" %s/>', '//input[@type="range" and @disabled]', '//input[@type="range" and @readonly]'],
+    'otp' => ['<atom:input.otp length="4" %s/>', '//input[@data-atom-input-otp-box and @disabled]', '//input[@data-atom-input-otp-box and @readonly]'],
+    'time-picker' => ['<atom:time-picker %s/>', '//input[@aria-label="Hour" and @disabled]', '//input[@aria-label="Hour" and @readonly]'],
+]);
+
+it('gives a native-backed control a real disabled of its own, and a readonly (not disabled) box from a disabled form', function () {
+    $boxes = fn (string $html, string $attribute) => count(domQuery($html, "//input[@data-atom-input-otp-box and @{$attribute}]"));
+
+    $own = renderBlade('<atom:input.otp length="4" disabled/>');
+    expect($boxes($own, 'disabled'))->toBe(4)->and($boxes($own, 'readonly'))->toBe(0);
+
+    $inherited = renderBlade('<atom:form disabled><atom:input.otp length="4"/></atom:form>');
+    expect($boxes($inherited, 'readonly'))->toBe(4)->and($boxes($inherited, 'disabled'))->toBe(0);
+
+    $time = fn (string $html, string $attribute) => collect(['Hour', 'Minute', 'AM or PM'])->map(fn ($label) => count(domQuery($html, "//input[@aria-label=\"{$label}\" and @{$attribute}]")))->all();
+
+    $own = renderBlade('<atom:time-picker disabled/>');
+    expect($time($own, 'disabled'))->toBe([1, 1, 1]);
+
+    $inherited = renderBlade('<atom:form disabled><atom:time-picker/></atom:form>');
+    expect($time($inherited, 'disabled'))->toBe([0, 0, 0])->and($time($inherited, 'readonly'))->toBe([1, 1, 1]);
+
+    // the label branch wraps the picker in a field and calls it again: the state must come out once, the same
+    $labelled = renderBlade('<atom:time-picker label="Opens" disabled/>');
+    expect($time($labelled, 'disabled'))->toBe([1, 1, 1])->and(domQuery($labelled, '//*[@data-atom-disabled]'))->toHaveCount(1);
+});
+
+it('keeps the nested time-pickers of the date pickers enabled inside a disabled form: the panel is frozen at its first render', function (string $tag) {
+    $html = renderBlade('<atom:form disabled>'.$tag.'</atom:form>');
+
+    expect(domQuery($html, '//input[@aria-label="Hour"]'))->not->toBeEmpty('the picker draws a time-picker')
+        ->and(domQuery($html, '//input[@aria-label="Hour" and (@readonly or @disabled)]'))->toBe([])
+        ->and(domQuery($html, '//*[@aria-label="Hour"]/ancestor::*[@data-atom-disabled and @x-data="timePicker()"]'))->toBe([]);
+})->with([
+    'date' => '<atom:date-picker time/>',
+    'range' => '<atom:date-picker variant="range" time/>',
+]);
+
+it('lets disabled win over invalid in the look of an OTP and a time-picker, in both routes', function (string $tag, string $target) {
+    $classes = function (string $html) use ($target) {
+        $found = domQuery($html, $target);
+        expect($found)->not->toBeEmpty();
+
+        return domClasses($found[0]);
+    };
+
+    $own = $classes(renderBlade(str_replace('%s', 'invalid disabled', $tag)));
+    $inherited = $classes(renderBlade('<atom:form disabled>'.str_replace('%s', 'invalid', $tag).'</atom:form>'));
+    $enabled = $classes(renderBlade(str_replace('%s', 'invalid', $tag)));
+
+    expect($enabled)->toContain('border-danger-fg');
+
+    foreach ([$own, $inherited] as $disabled) {
+        expect($disabled)->toContain('border-border')
+            ->and($disabled)->not->toContain('border-danger-fg')
+            ->and($disabled)->not->toContain('group-has-[[data-atom-error]]/field:border-danger-fg');
+    }
+
+    expect($own)->toEqual($inherited);
+})->with([
+    'otp' => ['<atom:input.otp length="4" %s/>', '//input[@data-atom-input-otp-box]'],
+    'time-picker' => ['<atom:time-picker %s/>', '//div[@x-modelable="timePickerValue"]'],
+]);

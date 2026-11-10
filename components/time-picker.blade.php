@@ -32,21 +32,30 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
     </atom:input.field>
 @else
     @php
+    // 'self', 'inherited' from a disabled form, or null; the picker's own `disabled` (`:disabled="false"` too) wins over the form's.
+    // Its own is a real `disabled` on all three inputs. A form's leaves the hour and minute `readonly` (the time stays selectable, the
+    // inputs tab-stop) and the AM/PM box, which is always readonly, is guarded by its handlers, which read the marker.
+    $disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
+
     /* The field recipe (see input/general). Hour, minute and meridiem are three inputs in one box, so the ring belongs to the
-       box and the inputs inside it draw none. */
+       box and the inputs inside it draw none. The disabled look is picked from the state: a plain border sorts below the focus
+       variant, so a focused readonly picker still draws its focus border. */
     $classes = Arr::toCssClasses([
-        'h-control relative flex w-full items-center pl-2.5 pr-8 no-spinner rounded-control border bg-surface text-sm text-fg cursor-default',
+        'h-control relative flex w-full items-center pl-2.5 pr-8 no-spinner rounded-control border text-sm',
+        $disabledBy ? 'bg-surface-sunken text-fg-subtle cursor-not-allowed' : 'bg-surface text-fg cursor-default',
         $invalid ? 'has-[:focus-visible]:border-danger-fg' : 'has-[:focus-visible]:border-focus',
         'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
-        $invalid ? 'border-danger-fg' : 'border-control-border',
-        'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
+        $disabledBy ? 'border-border' : ($invalid ? 'border-danger-fg' : 'border-control-border'),
+        'group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
+        'group-has-[[data-atom-error]]/field:border-danger-fg' => ! $disabledBy,
     ]);
     @endphp
 
     <div
     x-data="{{ filled($timezone) ? 'timePicker({ timezone: '.\Illuminate\Support\Js::from($timezone).' })' : 'timePicker()' }}"
     x-modelable="timePickerValue"
-    {{ $attributes->class($classes) }}>
+    {{ $attributes->except('disabled')->class($classes) }}
+    @if ($disabledBy) data-atom-disabled="{{ $disabledBy }}" @endif>
         <div
         {{-- only a NAMED group is worth announcing; without a label this would be a
              boundary carrying nothing, and the three inputs name themselves anyway --}}
@@ -65,6 +74,7 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
             x-on:keydown.left.stop.prevent="down('hr', $el.value)"
             x-on:keydown.right.stop.prevent="up('hr', $el.value)"
             maxlength="2"
+            @if ($disabledBy === 'self') disabled @elseif ($disabledBy) readonly @endif
             aria-label="{{ t('Hour') }}"
             class="appearance-none w-6 text-center no-spinner bg-transparent focus-visible:outline-none">
 
@@ -82,6 +92,7 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
             x-on:keydown.left.stop.prevent="down('min', $el.value)"
             x-on:keydown.right.stop.prevent="up('min', $el.value)"
             maxlength="2"
+            @if ($disabledBy === 'self') disabled @elseif ($disabledBy) readonly @endif
             aria-label="{{ t('Minute') }}"
             class="appearance-none w-6 text-center no-spinner bg-transparent focus-visible:outline-none">
 
@@ -91,6 +102,7 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
             x-on:click.stop="up('am')"
             x-on:keydown.up.stop.prevent="up('am')"
             x-on:keydown.down.stop.prevent="down('am')"
+            @if ($disabledBy === 'self') disabled @endif
             aria-label="{{ t('AM or PM') }}"
             class="appearance-none w-8 text-center bg-transparent focus-visible:outline-none" readonly>
         </div>

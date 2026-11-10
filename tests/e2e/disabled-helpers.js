@@ -22,7 +22,6 @@ export const ROUTES = ['prop', 'form']
  */
 export const ENGINE_SKIPS = {
   webkit: {
-    time_picker: 'the picker builds dayjs("1970-01-01 7:30 AM") for every edit, which WebKit\'s Date cannot parse: it shows "--" for its own value and writes "Invalid Date" to the model on the first edit, a Safari bug in the picker (not in the rig) to be fixed on its own',
     date_picker_time: 'the date picker with a time hands Pikaday "YYYY-MM-DD HH:mm:ss", which WebKit\'s Date rejects: "RangeError: Invalid Date" on load, a Safari bug in the picker (not in the rig) to be fixed on its own',
   },
 }
