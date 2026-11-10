@@ -1,7 +1,7 @@
 <?php
 
-use Illuminate\Support\ViewErrorBag;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\ViewErrorBag;
 use Illuminate\View\ComponentAttributeBag;
 use Jiannius\Atom\Services\Attributes;
 
@@ -193,5 +193,13 @@ describe('disabledBy()', function () {
     it('leaves nothing behind for a sibling that follows a disabled form', function () {
         expect(disabledAnswers('<atom:form disabled><x-disabled-probe /></atom:form><x-disabled-probe /><atom:form><x-disabled-probe /></atom:form>'))
             ->toBe(['inherited', 'none', 'none']);
+    });
+
+    it('lets a disabled component\'s own view see its disabled before a nearer boundary, as @aware did', function () {
+        // Laravel merges the data of the component being rendered with its parent's and reads that before the stack, so a
+        // `:disabled="false"` wrapper inside the view of a disabled component does not end the inheritance for what that view
+        // renders; the boundary holds for what a template puts under it (the test above), not for a component's own view
+        expect(disabledAnswers('<x-disabled-host disabled />'))->toBe(['inherited'])
+            ->and(disabledAnswers('<x-disabled-host />'))->toBe(['none']);
     });
 });

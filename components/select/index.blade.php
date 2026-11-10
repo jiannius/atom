@@ -34,7 +34,7 @@ $disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
     $merges = [
         'name' => $name,
         'required' => $required,
-        // A disabled <atom:form> disables its fields, and a field's own `disabled` (`:disabled="false"` too) wins over it.
+        // A disabled form disables its fields, and a field's own `disabled` (`:disabled="false"` too) wins over it.
         'disabled' => $disabledBy ? true : null,
         'data-atom-disabled' => $disabledBy,
     ];
