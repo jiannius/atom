@@ -254,3 +254,24 @@ for (const route of ['prop', 'form']) {
     expect(page.errors).toEqual([])
   })
 }
+
+// What the carry hook leaves alone: a class that JS or a host put on the wire:ignore'd textarea survives a flip both ways (only the marker, `disabled` and
+// `readonly` are server-owned on such a root).
+for (const route of ['prop', 'form']) {
+  test(`${route}: textarea_autoresize: a class added by JS survives the morph in both directions`, async ({ page }) => {
+    const def = caseOf('textarea_autoresize')
+    const area = page.locator(`[data-case="${def.id}"] textarea`)
+
+    await openCase(page, def, { route })
+    await area.evaluate((el) => el.classList.add('host-added-class'))
+
+    await flip(page)
+    await expect(area).not.toBeEditable()
+    await expect(area).toHaveClass(/host-added-class/)
+
+    await flip(page)
+    await expect(area).toBeEditable()
+    await expect(area).toHaveClass(/host-added-class/)
+    expect(page.errors).toEqual([])
+  })
+}
