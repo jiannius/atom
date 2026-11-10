@@ -12,3 +12,8 @@ view="atom::docs.demos.uploader.dropzone"/>
 title="Hint beside the button"
 description="The default slot replaces the upload button; the end slot adds content beside it (a size or type hint) and keeps the button. The dropzone has the same slot, under the zone, and so does a file input (atom:input type=file)."
 view="atom::docs.demos.uploader.end"/>
+
+<atom:docs.example
+title="Disabled"
+description="A disabled uploader opens no file chooser, from its button or from a trigger in the slot, and a disabled dropzone ignores a drop. Both follow a disabled atom:form."
+view="atom::docs.demos.uploader.disabled"/>

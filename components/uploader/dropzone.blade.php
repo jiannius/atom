@@ -5,6 +5,9 @@
 @php
 /* Content under the zone (a size or type hint). A slot made of false @if blocks is not content. */
 $hasEnd = isset($end) && $end->hasActualContent();
+
+/* 'self', 'inherited' from a disabled form, or null. The file input is really disabled then, a drop is ignored, and the zone takes the disabled field's look. */
+$disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
 @endphp
 
 <div
@@ -13,10 +16,16 @@ x-data="{
     uploading: false,
     progress: 0,
     dragging: false,
+
+    /** Read from the markup when the user acts: the server rewrites the marker on a morph. */
+    get disabled () {
+        return this.$root.hasAttribute('data-atom-disabled')
+    },
+
     drop (e) {
         this.dragging = false
 
-        if (! e.dataTransfer?.files?.length) {
+        if (this.disabled || ! e.dataTransfer?.files?.length) {
             return
         }
 
@@ -29,25 +38,32 @@ x-on:livewire-upload-finish="uploading = false; progress = 0"
 x-on:livewire-upload-cancel="uploading = false; progress = 0"
 x-on:livewire-upload-error="uploading = false; progress = 0"
 x-on:livewire-upload-progress="progress = $event.detail.progress"
-x-on:dragover.prevent="dragging = true"
+x-on:dragover.prevent="dragging = ! disabled"
 x-on:dragleave.prevent="dragging = false"
 x-on:drop.prevent="drop($event)"
+@if ($disabledBy)
+data-atom-disabled="{{ $disabledBy }}"
+@endif
 {{ $attributes->only('class')->class('group/uploader [:where(&)]:relative') }}>
-    <input type="file" x-ref="fileinput" class="hidden" {{ $attributes->except('class') }}>
+    <input type="file" x-ref="fileinput" class="hidden" {{ $attributes->except(['class', 'disabled']) }} @if ($disabledBy) disabled @endif>
 
     @if ($slot->isNotEmpty())
         {{ $slot }}
     @else
         <button
         type="button"
+        @if ($disabledBy) disabled @endif
         x-on:click="$refs.fileinput.click()"
         x-bind:class="{
             'opacity-50 pointer-events-none': uploading,
             'border-accent-ink bg-accent-soft': dragging,
-            'border-control-border': !dragging,
+            '{{ $disabledBy ? 'border-border' : 'border-control-border' }}': !dragging,
         }"
         x-bind:aria-busy="uploading"
-        class="relative flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-control border border-dashed p-6 text-center text-sm text-fg-muted transition-colors hover:bg-surface-sunken">
+        class="{{ Arr::toCssClasses([
+            'relative flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-control border border-dashed p-6 text-center text-sm transition-colors',
+            $disabledBy ? 'cursor-not-allowed bg-surface-sunken text-fg-subtle' : 'text-fg-muted hover:bg-surface-sunken',
+        ]) }}">
             <span x-show="!uploading" class="flex flex-col items-center gap-2">
                 <atom:icon.upload class="size-5" />
                 <span>{{ t($label) }}</span>

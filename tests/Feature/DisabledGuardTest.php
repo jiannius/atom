@@ -172,7 +172,7 @@ it('renders an x-data for most of the corpus, so the comparison above is not an 
  *
  * @var list<string>
  */
-const HELPER_ADOPTERS = ['select/index'];
+const HELPER_ADOPTERS = ['select/index', 'rating/index', 'input/color', 'uploader/index', 'uploader/dropzone'];
 
 /**
  * The corpus cases that sit on an adopter, and the routes each has.
@@ -250,3 +250,51 @@ it('lets a control\'s own :disabled="false" beat a disabled form, and its own di
 })->with(['native', 'listbox', 'filter']);
 
 it('keeps the internal controls of a panel enabled inside a disabled control')->todo('PR 6: the range and date panels hold atom controls; the select panels hold none');
+
+it('disables the file input of an uploader, a dropzone and <atom:input type="file"> for its own disabled and for a disabled form, and leaves an enabled one alone', function (string $snippet) {
+    $inputs = fn (string $html) => domQuery($html, '//input[@type="file"]');
+    $disabled = fn (string $html) => collect($inputs($html))->filter(fn (DOMElement $el) => $el->hasAttribute('disabled'))->count();
+
+    foreach (['<atom:form disabled>%s</atom:form>', '%s'] as $i => $wrap) {
+        $off = renderBlade(sprintf($wrap, $i === 0 ? sprintf($snippet, '') : sprintf($snippet, 'disabled')));
+        expect(count($inputs($off)))->toBe(1)->and($disabled($off))->toBe(1);
+        expect(count(domQuery($off, '//*[@data-atom-disabled="'.($i === 0 ? 'inherited' : 'self').'"]')))->toBeGreaterThanOrEqual(1);
+    }
+
+    $on = renderBlade(sprintf($snippet, ''));
+    expect($disabled($on))->toBe(0)->and(count(domQuery($on, '//*[@data-atom-disabled]')))->toBe(0);
+
+    $optOut = renderBlade('<atom:form disabled>'.sprintf($snippet, ':disabled="false"').'</atom:form>');
+    expect($disabled($optOut))->toBe(0)->and(count(domQuery($optOut, '//*[@data-atom-disabled]')))->toBe(0);
+})->with([
+    'uploader' => '<atom:uploader wire:model="file" %s/>',
+    'dropzone' => '<atom:uploader.dropzone wire:model="file" %s/>',
+    'input type=file' => '<atom:input type="file" label="Attach" wire:model="file" %s/>',
+]);
+
+it('disables the button of an uploader and the button of a dropzone, and nothing else on the page', function () {
+    $uploader = renderBlade('<atom:uploader wire:model="file" disabled/>');
+    expect(count(domQuery($uploader, '//button[@disabled]')))->toBe(1);
+
+    $dropzone = renderBlade('<atom:uploader.dropzone wire:model="file" disabled/>');
+    expect(count(domQuery($dropzone, '//button[@disabled]')))->toBe(1);
+
+    // the cancel of an upload in flight stays live (it stops work, sets no value)
+    $cancel = domQuery($uploader, '//button[@aria-label="Cancel upload"]');
+    expect($cancel)->toHaveCount(1)->and($cancel[0]->hasAttribute('disabled'))->toBeFalse();
+});
+
+it('draws a disabled colour input as a really disabled box for its own disabled, a readonly one for a disabled form, and never opens a palette either way', function () {
+    $own = renderBlade('<atom:input type="color" disabled/>');
+    expect(count(domQuery($own, '//input[@readonly and @disabled]')))->toBe(1);
+
+    $form = renderBlade('<atom:form disabled><atom:input type="color"/></atom:form>');
+    expect(count(domQuery($form, '//input[@readonly and not(@disabled)]')))->toBe(1);
+    expect(count(domQuery($form, '//*[@data-atom-color-input and @data-atom-disabled="inherited"]')))->toBe(1);
+
+    // the swatches check the marker themselves, so a palette that was opened by other means picks nothing
+    expect($own)->toContain("closest('[data-atom-disabled]')");
+
+    $enabled = renderBlade('<atom:input type="color"/>');
+    expect(count(domQuery($enabled, '//input[@disabled]')))->toBe(0);
+});

@@ -562,7 +562,7 @@
       {"name": "open the chooser from the slot", "steps": [{"click": "button"}], "effect": ["chooser"]}
     ],
     "walk": {"effect": ["chooser"]},
-    "tabStops": {"prop": [], "form": []},
+    "tabStops": {"prop": ["button:button"], "form": ["button:button"]},
     "model": "file"
   },
   {

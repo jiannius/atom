@@ -32,21 +32,6 @@ export const LEDGER = {
   "time_picker/form": { pr: 4, why: "no disabled state: typing, arrows and AM/PM change the value (#184)", violations: ["click AM/PM: value", "keyboard: dom", "keyboard: value", "server: value", "type the hour: dom", "type the hour: value"] },
   "time_picker/prop": { pr: 4, why: "no disabled state: typing, arrows and AM/PM change the value (#184)", violations: ["click AM/PM: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops", "type the hour: dom", "type the hour: value"] },
   "toggle/form": { pr: 4, why: "it ignores a disabled form (#184)", violations: ["click the label: dom", "click the label: value", "click the switch: dom", "click the switch: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops"] },
-  // ---- PR 5
-  "input_color/form": { pr: 5, why: "no disabled state: the palette opens and picks a colour", violations: ["open: popup", "pick a swatch: dom", "pick a swatch: value", "server: value"] },
-  "input_color/prop": { pr: 5, why: "no disabled state: the palette opens and picks a colour", violations: ["open: popup", "pick a swatch: dom", "pick a swatch: value", "server: value", "tab stops"] },
-  "input_file/form": { pr: 5, why: "a disabled form opens the chooser", violations: ["keyboard: chooser", "open the chooser: chooser", "tab stops"] },
-  "input_file/prop": { pr: 5, why: "a disabled form opens the chooser", violations: ["tab stops"] },
-  "input_file_slot/form": { pr: 5, why: "a host trigger opens the chooser in a disabled form", violations: ["keyboard: chooser", "open the chooser from the slot: chooser", "tab stops"] },
-  "input_file_slot/prop": { pr: 5, why: "a host trigger opens the chooser in a disabled form", violations: ["tab stops"] },
-  "morph:input_color/form": { pr: 5, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "morph:input_color/prop": { pr: 5, why: "an open popup stays open when a morph disables the control", violations: ["popup stays open"] },
-  "rating/form": { pr: 5, why: "no disabled state", violations: ["click the fifth star: dom", "click the fifth star: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops"] },
-  "rating/prop": { pr: 5, why: "no disabled state", violations: ["click the fifth star: dom", "click the fifth star: value", "keyboard: dom", "keyboard: value", "server: value", "tab stops"] },
-  "uploader/form": { pr: 5, why: "the button stays a tab stop, and a disabled form opens the chooser", violations: ["keyboard: chooser", "open the chooser: chooser", "tab stops"] },
-  "uploader/prop": { pr: 5, why: "the button stays a tab stop, and a disabled form opens the chooser", violations: ["tab stops"] },
-  "uploader_dropzone/form": { pr: 5, why: "a drop uploads, and a disabled form opens the chooser", violations: ["drop a file: value", "keyboard: chooser", "open the chooser: chooser", "server: file", "tab stops"] },
-  "uploader_dropzone/prop": { pr: 5, why: "a drop uploads, and a disabled form opens the chooser", violations: ["drop a file: value", "server: file", "tab stops"] },
   // ---- PR 6
   "date_picker/prop": { pr: 6, why: "a prop-disabled date picker is a readonly tab stop; it should be a real disabled (#185)", violations: ["tab stops"] },
   "date_picker_time/prop": { pr: 6, why: "a prop-disabled date picker is a readonly tab stop; the date-time value is also rewritten on load", violations: ["tab stops"] },
@@ -79,17 +64,13 @@ export const LEDGER = {
 // The look rows of disabled-controls.spec.js, keyed by the pair's test id (the same on both builds, in light and dark).
 export const LOOK_LEDGER = {
   "chat": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
-  "color": { pr: 5, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
-  "dropzone": { pr: 5, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "form-input": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-select-listbox": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-select-native": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "form-textarea": { pr: 8, why: "a field in a disabled form does not look as one with its own disabled", violations: ["looks different"] },
   "range": { pr: 6, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
-  "rating": { pr: 5, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "time": { pr: 4, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
   "tiptap": { pr: 7, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
-  "uploader": { pr: 5, why: "the disabled control looks like the enabled one", violations: ["looks enabled"] },
 }
 
 // The pairs of tokens-disabled-looks.spec.js that can be in LOOK_LEDGER: controls whose disabled copy must look unlike the enabled one, and fields that,

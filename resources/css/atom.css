@@ -824,6 +824,11 @@ html:not([data-atom-sidebar-collapsed]) [data-atom-sidebar-glyph="expand"] {
     cursor: default;
 }
 
+[data-atom-rating-track][aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 [data-atom-rating-base],
 [data-atom-rating-fill] {
     display: flex;

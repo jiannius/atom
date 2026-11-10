@@ -25,3 +25,8 @@ view="atom::docs.demos.rating.icon"/>
 <atom:docs.example
 title="Custom count"
 view="atom::docs.demos.rating.count"/>
+
+<atom:docs.example
+title="Disabled"
+description="A disabled rating shows its value, dimmed, and cannot be changed or focused. It also follows a disabled atom:form. Readonly is a different thing: a plain display value with no disabled look."
+view="atom::docs.demos.rating.disabled"/>
