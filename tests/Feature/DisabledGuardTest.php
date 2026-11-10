@@ -172,7 +172,7 @@ it('renders an x-data for most of the corpus, so the comparison above is not an 
  *
  * @var list<string>
  */
-const HELPER_ADOPTERS = ['select/index', 'input/index', 'input/tel', 'input/email', 'toggle/index', 'slider/index', 'input/otp', 'time-picker'];
+const HELPER_ADOPTERS = ['select/index', 'input/index', 'input/tel', 'input/email', 'toggle/index', 'slider/index', 'input/otp', 'time-picker', 'date-picker/date', 'date-picker/range'];
 
 /**
  * The corpus cases that sit on an adopter, and the routes each has.
@@ -227,7 +227,7 @@ it('keeps pointer-events-none and aria-disabled off the wrapper of every control
     }
 })->with(adoptedCases());
 
-it('keeps pointer-events-none off the date picker wrappers too')->todo('PR 6: the date wrapper carries it today');
+// The date pickers sit on the helper now, so the test above also walks their wrappers: a date picker's root carries neither pointer-events-none nor aria-disabled.
 
 it('lets a control\'s own :disabled="false" beat a disabled form, and its own disabled beat an enabled one', function (string $variant) {
     $options = [['value' => 'a', 'label' => 'A'], ['value' => 'b', 'label' => 'B']];
@@ -249,7 +249,7 @@ it('lets a control\'s own :disabled="false" beat a disabled form, and its own di
     expect($markers($after))->toBe(['inherited'], 'a select after a disabled form is not left disabled');
 })->with(['native', 'listbox', 'filter']);
 
-it('keeps the internal controls of a panel enabled inside a disabled control')->todo('PR 6: the range and date panels hold atom controls; the select panels hold none');
+// The internal controls of a panel (the time-pickers of the date and range panels) are held by the test about nested time-pickers further down.
 
 it('lets a native-backed control\'s own :disabled="false" beat a disabled form, and its own disabled beat an enabled one', function (string $tag, string $realDisabled, string $readonlyBox) {
     $markers = fn (string $html) => collect(domQuery($html, '//*[@data-atom-disabled]'))->map(fn (DOMElement $el) => $el->getAttribute('data-atom-disabled'))->all();
@@ -293,16 +293,86 @@ it('gives a native-backed control a real disabled of its own, and a readonly (no
     expect($time($labelled, 'disabled'))->toBe([1, 1, 1])->and(domQuery($labelled, '//*[@data-atom-disabled]'))->toHaveCount(1);
 });
 
-it('keeps the nested time-pickers of the date pickers enabled inside a disabled form: the panel is frozen at its first render', function (string $tag) {
+it('keeps the nested time-pickers of the date pickers free of a state of their own, and the picker around them marked', function (string $tag, string $root) {
+    // The panel is wire:ignore'd: a state the nested picker was rendered with would stick through a morph. So it carries no marker and no readonly or disabled
+    // (`:disabled="false"`), and follows the marker of the picker that holds it, which a morph does update (time-picker.js `disabled`). The picker around it IS
+    // disabled: its marker is on the root, which is what keeps the dropdown shut, so the panel is never open to edit.
     $html = renderBlade('<atom:form disabled>'.$tag.'</atom:form>');
 
     expect(domQuery($html, '//input[@aria-label="Hour"]'))->not->toBeEmpty('the picker draws a time-picker')
         ->and(domQuery($html, '//input[@aria-label="Hour" and (@readonly or @disabled)]'))->toBe([])
-        ->and(domQuery($html, '//*[@aria-label="Hour"]/ancestor::*[@data-atom-disabled and @x-data="timePicker()"]'))->toBe([]);
+        ->and(domQuery($html, '//*[@aria-label="Hour"]/ancestor::*[@data-atom-disabled and @x-data="timePicker()"]'))->toBe([])
+        ->and(domQuery($html, "//*[@aria-label=\"Hour\"]/ancestor::*[@{$root} and @data-atom-disabled=\"inherited\"]"))->toHaveCount(1);
 })->with([
-    'date' => '<atom:date-picker time/>',
-    'range' => '<atom:date-picker variant="range" time/>',
+    'date' => ['<atom:date-picker time/>', 'data-atom-date-picker'],
+    'range' => ['<atom:date-picker variant="range" time/>', 'data-atom-date-range'],
 ]);
+
+it('gives a date picker and a range a real disabled of their own, and a readonly (not disabled) input from a disabled form', function (string $tag) {
+    $input = fn (string $html, string $attribute) => count(domQuery($html, "//input[@type=\"text\" and not(@aria-label) and @{$attribute}]"));
+    $marker = fn (string $html) => collect(domQuery($html, '//*[@data-atom-disabled]'))->map(fn (DOMElement $el) => $el->getAttribute('data-atom-disabled'))->all();
+
+    $own = renderBlade(str_replace('%s', 'disabled', $tag));
+    expect($input($own, 'disabled'))->toBe(1)->and($input($own, 'readonly'))->toBe(0)->and($marker($own))->toBe(['self']);
+
+    $inherited = renderBlade('<atom:form disabled>'.str_replace('%s', '', $tag).'</atom:form>');
+    expect($input($inherited, 'readonly'))->toBe(1)->and($input($inherited, 'disabled'))->toBe(0)->and($marker($inherited))->toBe(['inherited']);
+
+    // its own `disabled` wins over the form, `:disabled="false"` included; and the picker after a disabled form is not left disabled
+    $inside = renderBlade('<atom:form disabled>'.str_replace('%s', ':disabled="false"', $tag).'</atom:form>'.str_replace('%s', '', $tag));
+    expect($input($inside, 'readonly'))->toBe(0)->and($input($inside, 'disabled'))->toBe(0)->and($marker($inside))->toBe([]);
+
+    $enabledForm = renderBlade('<atom:form :disabled="false">'.str_replace('%s', 'disabled', $tag).'</atom:form>');
+    expect($input($enabledForm, 'disabled'))->toBe(1)->and($marker($enabledForm))->toBe(['self']);
+
+    // the label branch wraps the picker in a field and calls it again: the state must come out once, the same
+    $labelled = renderBlade(str_replace('%s', 'label="When" disabled', $tag));
+    expect($input($labelled, 'disabled'))->toBe(1)->and($marker($labelled))->toBe(['self']);
+})->with([
+    'date' => '<atom:date-picker %s/>',
+    'date and time' => '<atom:date-picker time %s/>',
+    'range' => '<atom:date-picker variant="range" %s/>',
+]);
+
+it('draws no way to change a disabled date picker: no clear x, a disabled calendar opener, and no disabled attribute on the root', function () {
+    $count = fn (string $html, string $xpath) => count(domQuery($html, $xpath));
+    $clear = '//*[@*[name()="x-on:click.stop"] = "clear()"]';
+    $opener = '//button[@aria-label="Open calendar" and @disabled]';
+
+    expect($count(renderBlade('<atom:date-picker/>'), $clear))->toBe(1);
+
+    foreach ([renderBlade('<atom:date-picker disabled/>'), renderBlade('<atom:form disabled><atom:date-picker/></atom:form>')] as $html) {
+        expect($count($html, $clear))->toBe(0)
+            ->and($count($html, $opener))->toBe(1)
+            ->and($count($html, '//*[@data-atom-date-picker and @disabled]'))->toBe(0);
+    }
+
+    // the range's root is wire:ignore'd: its `disabled` must not leak onto it, and the pill is a real disabled button in both routes
+    foreach ([renderBlade('<atom:date-picker variant="range" add disabled/>'), renderBlade('<atom:form disabled><atom:date-picker variant="range" add/></atom:form>')] as $html) {
+        expect($count($html, '//*[@data-atom-date-range and @disabled]'))->toBe(0)
+            ->and($count($html, '//button[@data-atom-date-range-add and @disabled]'))->toBe(1);
+    }
+});
+
+it('keeps the toolbar date picker of a calendar enabled in a disabled form: the toolbar is wire:ignore\'d', function () {
+    view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+
+    $component = new class
+    {
+        public string $date = '2026-10-14';
+
+        public function getName(): string
+        {
+            return 'calendar-test';
+        }
+    };
+
+    $html = withLivewireContext($component, fn () => renderBlade('<atom:form disabled><atom:calendar wire:model="date"/></atom:form>'));
+
+    expect(domQuery($html, '//*[@data-atom-calendar-title]'))->not->toBeEmpty('the toolbar draws its month picker');
+
+    expect(domQuery($html, '//*[@data-atom-date-picker and @data-atom-disabled]'))->toBe([]);
+});
 
 it('lets disabled win over invalid in the look of an OTP and a time-picker, in both routes', function (string $tag, string $target) {
     $classes = function (string $html) use ($target) {

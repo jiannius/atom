@@ -5,7 +5,7 @@ import { open, contrastOf } from './controls-helpers.js'
 // border and nothing to show in an empty one. Every text control's disabled state now also drops its strong hairline
 // (--atom-control-border) for the faint one (--atom-border), and keeps the sunken fill. Run `node tests/consumer/build.mjs` first.
 //
-// [pair, what draws the box, whether the pair's test id is on the box itself]. Date-range has no disabled state yet.
+// [pair, what draws the box, whether the pair's test id is on the box itself].
 const fields = [
   ['input-empty', null, true],
   ['input-filled', null, true],
@@ -15,6 +15,7 @@ const fields = [
   ['select-native', '[data-atom-select-native] > div:first-of-type'],
   ['select-listbox', '[data-atom-select-combobox]'],
   ['date', 'input'],
+  ['range', 'input'],
   ['tel', 'input[type=tel]'],
   ['otp', '[data-atom-input-otp-box]'],
   ['email', '[data-atom-dropdown-trigger]'],

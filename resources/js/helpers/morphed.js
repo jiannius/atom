@@ -1,4 +1,4 @@
-// Two things about a Livewire morph, kept in one place.
+// Three things about a Livewire morph, kept in one place.
 //
 // 1. A morph that lands while an atom popover (a menu, a tooltip) is open must not touch the node's own
 //    attributes: floating-ui wrote an inline style on it, which the morph would strip, and the panel
@@ -10,6 +10,13 @@
 // is gone once it lands, and the component has to write it again. The callback gets the element that
 // was morphed (a component root, or the container of a re-rendered island) and returns nothing.
 // Returns a function that stops listening, for the component's destroy().
+// 3. A control behind `wire:ignore` takes no attribute from the server, and what says whether it is disabled is one: a date range, and an autosize
+//    textarea (the autosize plugin sets `wire:ignore` on a `wire:model` textarea itself). Livewire fires `morph.updating` with the new markup
+//    (`toEl`) before it checks the ignore, so the state is carried by hand here, and the control's own factory reads it again from its `morphed`
+//    callback. Add a control to `ignoredControls` only when its server markup holds nothing else that changes between renders.
+const ignoredControls = '[data-atom-date-range], [data-atom-textarea]'
+const carried = ['data-atom-disabled', 'disabled', 'readonly', 'class']
+
 const callbacks = new Set()
 let hooked = false
 
@@ -28,7 +35,14 @@ const hook = () => {
         }
     })
 
-    window.Livewire.hook('morph.updating', ({ el, childrenOnly }) => {
+    window.Livewire.hook('morph.updating', ({ el, toEl, childrenOnly }) => {
+        if (toEl && el.matches(`[wire\\:ignore]:is(${ignoredControls})`)) {
+            for (const name of carried) {
+                if (toEl.hasAttribute(name)) el.setAttribute(name, toEl.getAttribute(name))
+                else el.removeAttribute(name)
+            }
+        }
+
         if (el.matches('[data-atom-menu][popover], [data-atom-tooltip-content]') && el.matches(':popover-open')) {
             childrenOnly()
         }

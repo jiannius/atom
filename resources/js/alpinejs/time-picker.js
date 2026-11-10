@@ -15,10 +15,13 @@ export default (config = {}) => {
 
         /**
          * Whether the server marked this picker disabled (its own `disabled`, or a disabled form's). Read from the DOM at event time, never held in `x-data`:
-         * a morph re-renders the marker and does not rebuild the factory. Not reactive, so a binding must not read it.
+         * a morph re-renders the marker and does not rebuild the factory. Not reactive, so a binding must not read it. The picker a date picker or a range
+         * holds in its panel carries no state of its own (the panel is wire:ignore'd, so it would keep the state of the first render): it follows the marker of
+         * the picker around it, which a morph does update.
          */
         get disabled () {
             return this.$root.hasAttribute('data-atom-disabled')
+                || !!this.$root.closest('[data-atom-date-picker][data-atom-disabled], [data-atom-date-range][data-atom-disabled]')
         },
 
         get format () {

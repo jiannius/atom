@@ -20,11 +20,7 @@ export const ROUTES = ['prop', 'form']
  * Where an engine legitimately cannot run a row, and why: `{ <browserName>: { <case id>: reason } }`. A skip is a statement about the ENGINE, never a way to
  * hide a control's failure (that is the ledger's); each reason says what the engine does.
  */
-export const ENGINE_SKIPS = {
-  webkit: {
-    date_picker_time: 'the date picker with a time hands Pikaday "YYYY-MM-DD HH:mm:ss", which WebKit\'s Date rejects: "RangeError: Invalid Date" on load, a Safari bug in the picker (not in the rig) to be fixed on its own',
-  },
-}
+export const ENGINE_SKIPS = {}
 
 /** The reason a case cannot run in this engine, or null. */
 export const engineSkip = (browserName, def) => ENGINE_SKIPS[browserName]?.[def.id] ?? null
