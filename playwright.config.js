@@ -44,12 +44,12 @@ const calendarProjects = engines.flatMap(({ browser, device }) => [
 // (so an Escape heard only inside the header was dead after a click on More), its Tab skips links (Alt+Tab visits every control), and its
 // `inert` and resize events are its own. `modal-escape` is here for `closedby`, which WebKit does not have (its `cancel` stays cancelable
 // on every press, where Chromium stops allowing a prevented one after two), and for WebKit closing a popover and its dialog on one Escape (#177; `modal-escape-layers`
-// too); `command-escape` is the palette's native-close path (#176). WebKit only: Firefox has no project here. After Chromium, as the calendar's, and `--no-deps` on CI.
+// too); `command-escape` is the palette's native-close path (#176), `command-morph` its morph keeping the highlighted item and its focus (#202). WebKit only: Firefox has no project here. After Chromium, as the calendar's, and `--no-deps` on CI.
 const shellProject = {
   name: 'webkit-shell',
   dependencies: ['chromium'],
   use: { ...devices['Desktop Safari'] },
-  testMatch: /(shells|shell-escape|shell-escape-focus|shell-drawer|shell-menu-panel|modal-escape|modal-escape-layers|command-escape)\.spec\.js$/,
+  testMatch: /(shells|shell-escape|shell-escape-focus|shell-drawer|shell-menu-panel|modal-escape|modal-escape-layers|command-escape|command-morph)\.spec\.js$/,
 }
 
 export default defineConfig({

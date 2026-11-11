@@ -4,6 +4,9 @@ export default (config) => {
         number: null,
         telValue: null,
 
+        // the dial code the control last stood for, so a pick that reaches a disabled select can be put back
+        shownCode: config.code,
+
         // the value the boxes stand for: what `format()` last wrote, or `split()` last read. A model that differs from it was pushed (a server `$set`,
         // an `x-model` parent) and is shown; one that equals it is the echo of an edit, and splitting it would fight the user's typing.
         formatted: undefined,
@@ -33,6 +36,7 @@ export default (config) => {
             if (!this.telValue) {
                 this.number = null
                 this.code = config.code
+                this.shownCode = this.code
                 return
             }
 
@@ -41,6 +45,17 @@ export default (config) => {
 
             this.number = number || null
             this.code = code || config.code
+            this.shownCode = this.code
+        },
+
+        // A pick from the native list of a select that a morph disabled while the list was open still changes the select and fires input and
+        // change (WebKit keeps the list and its callback has no disabled check), and `x-model` would show the new code, which the next digit
+        // typed after the control is enabled again would write into the model. Put the code back, and the select with it.
+        keepCode (e) {
+            if (!this.disabled) return
+
+            this.code = this.shownCode
+            e.target.value = this.shownCode
         },
 
         // Boxes -> model, from an edit of the number or the dial code only (a user gesture), never on load.
@@ -52,6 +67,7 @@ export default (config) => {
             let value = code && number ? `${code}${number}` : null
 
             this.formatted = value
+            this.shownCode = code
             this.telValue = value
         },
     }

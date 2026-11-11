@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { caseOf, openCase, observe } from './disabled-helpers.js'
+import { caseOf, openCase, observe, flip } from './disabled-helpers.js'
 
 // The tel and email inputs under the disabled-state contract (issues #186 and #190). The rig's rows drive the mouse and the keyboard; this spec calls the
 // listeners of the nodes the rig cannot reach (hidden by CSS, as a click on a child of a disabled button reaches its own listener) and proves the guards hold the
@@ -38,6 +38,32 @@ for (const route of ['prop', 'form']) {
     expect(await model(page)).toBe('+60123456789')
     expect(page.updates).toEqual([])
   })
+
+  // A pick from a native list a morph disabled while it was open still changes the select and fires input and change (WebKit's list outlives the disable
+  // and its callback has no disabled check; #204). The dial code shown went with it, and the next digit typed once the control was enabled wrote it into the model.
+  for (const event of ['change', 'input']) {
+    test(`${route}: input_tel: ${event === 'input' ? 'an' : 'a'} ${event} that reaches a disabled dial code select puts the code back, so no digit writes it later`, async ({ page }) => {
+      const def = caseOf('input_tel')
+      const shownCode = () => page.evaluate(() => window.Alpine.$data(document.querySelector('[data-case="input_tel"] [data-atom-input-tel]')).code)
+
+      await openCase(page, def, { route, off: true })
+      await expect(dial(page)).toHaveValue('+60')
+      await dial(page).evaluate((el, type) => { el.value = '+65'; el.dispatchEvent(new Event(type, { bubbles: true })) }, event)
+      await page.waitForTimeout(250)
+      await expect(dial(page)).toHaveValue('+60')
+      expect(await shownCode()).toBe('+60')
+      expect(await model(page)).toBe('+60123456789')
+      expect(page.updates).toEqual([])
+
+      await flip(page)
+      await expect(dial(page)).toBeEnabled()
+      await expect(dial(page)).toHaveValue('+60')
+      await phone(page).click()
+      await page.keyboard.press('End')
+      await page.keyboard.type('9', { delay: 20 })
+      await expect.poll(() => model(page)).toBe('+601234567899')
+    })
+  }
 }
 
 // #190: a push reached the number box only when the page loaded with it

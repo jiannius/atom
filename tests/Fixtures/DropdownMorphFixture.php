@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom\Tests\Fixtures;
 
+use Livewire\Attributes\Url;
 use Livewire\Component;
 
 class DropdownMorphFixture extends Component
@@ -13,6 +14,12 @@ class DropdownMorphFixture extends Component
     public ?string $filter = null;
 
     public int $renders = 0;
+
+    /**
+     * `?hostids=1` adds two palette items that carry the host's own id and wire:key (#202); off by default so the other specs see three items.
+     */
+    #[Url]
+    public bool $hostids = false;
 
     public string $menuClass = 'menu-a';
 

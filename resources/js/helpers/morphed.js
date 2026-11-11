@@ -1,4 +1,4 @@
-// Three things about a Livewire morph, kept in one place.
+// What atom does on a Livewire morph, kept in one place (five things).
 //
 // 1. A morph that lands while an atom popover (a menu, a tooltip) is open must not touch the node's own
 //    attributes: floating-ui wrote an inline style on it, which the morph would strip, and the panel
@@ -20,6 +20,8 @@
 //    added must survive, so the disabled look of such a control comes from the marker
 //    (`[[data-atom-disabled]_&]:` utilities for what sits inside the root, `[&[data-atom-disabled]]:` for the root itself), not from a carried class. Add a control to `ignoredControls`
 //    only when its server markup holds nothing else that changes between renders.
+// 4. A morph that disables a focused native select blurs it first, so WebKit closes its open list (see the hook).
+// 5. A morph takes off the ids the command palette wrote on its items, so Livewire patches them instead of replacing them (see the hook).
 const ignoredControls = '[data-atom-date-range], [data-atom-tiptap], [data-atom-textarea]'
 const carried = ['data-atom-disabled', 'disabled', 'readonly']
 
@@ -47,6 +49,25 @@ const hook = () => {
                 if (toEl.hasAttribute(name)) el.setAttribute(name, toEl.getAttribute(name))
                 else el.removeAttribute(name)
             }
+        }
+
+        // WebKit hides a native <select> list only from the blur's default action, which it skips on a disabled select: a morph that
+        // disables a focused (so possibly open) select would leave its list drawn, and a pick from it still changes the value. Blur it
+        // first, while it is still enabled, which closes the list; the select loses its focus to the disable anyway. Livewire fires this hook
+        // before it checks the ignore, so a select it will not morph (`wire:ignore`, or `wire:ignore.self`, which freezes its own attributes) is
+        // left alone: it would be blurred and still enabled.
+        if (toEl && el.tagName === 'SELECT' && toEl.hasAttribute('disabled') && !el.disabled && el === document.activeElement
+            && el.__livewire_ignore !== true && el.__livewire_ignore_self !== true) {
+            el.blur()
+        }
+
+        // The palette writes an id on the item it highlights, and the server renders none. Livewire keys a morph by id, so the
+        // item would be replaced, not patched, and its focus lost. Take off only the ids the palette wrote (`_atomCommandId`, set by
+        // command.js): a host's own id or wire:key stays. The onMorphed() callback of the palette writes it again.
+        if (el.matches('[data-atom-command]')) {
+            el.querySelectorAll('[data-atom-command-item]').forEach((item) => {
+                if (item._atomCommandId && item._atomCommandId === item.id) item.removeAttribute('id')
+            })
         }
 
         if (el.matches('[data-atom-menu][popover], [data-atom-tooltip-content]') && el.matches(':popover-open')) {
