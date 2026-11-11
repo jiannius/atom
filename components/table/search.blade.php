@@ -37,7 +37,7 @@ $onEnter = ($filterKey ? 'emit(); ' : '')."\$dispatch('table-filter:changed'); \
 @endphp
 
 <div
-class="relative"
+{{ $attributes->only('class')->class('relative') }}
 @if ($filterKey)
 x-data="{
     unwatch: null,
@@ -89,7 +89,7 @@ x-on:table-filter:do-clear.window="
 data-atom-table-search>
     <atom:input
         icon="search"
-        {{ $attributes->merge($merges) }}
+        {{ $attributes->except('class')->merge($merges) }}
         x-on:keyup.enter.prevent="{!! $onEnter !!}" />
 
     {{-- Scoped to the search's own $refresh so it only spins on search, not on

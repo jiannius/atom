@@ -105,3 +105,19 @@ it('renders a scoped loading spinner that keeps rows visible', function () {
         ->and($html)->toContain('wire:target="$refresh"')
         ->and($html)->toContain('data-atom-table-search');
 });
+
+// A host's `class` on the search is the width it wants (`sm:w-96`): it sits on the element that carries data-atom-table-search,
+// which the toolbar's 240px default reaches through :where() so it never outranks it.
+it('puts a host class on the search root, not on the input', function () {
+    view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+    $html = Blade::render('<atom:table.search class="sm:w-96" placeholder="Search order number" />');
+
+    expect(domClasses(domQuery($html, '//*[@data-atom-table-search]')[0]))->toContain('relative', 'sm:w-96')
+        ->and(domClasses(domQuery($html, '//*[@data-atom-table-search]//input')[0]))->not->toContain('sm:w-96');
+});
+
+it('gives the toolbar default width no specificity, so a class on the search wins', function () {
+    $start = domQuery(renderBlade('<atom:table.toolbar>x</atom:table.toolbar>'), '//*[@data-atom-table-toolbar-start]')[0];
+
+    expect(domClasses($start))->toContain('[:where(&_[data-atom-table-search])]:w-full', 'sm:[:where(&_[data-atom-table-search])]:w-60');
+});

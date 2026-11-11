@@ -8,7 +8,7 @@
 {{-- The bar above a list's rows, for the table's `header` slot: the search and the filters on the start side, then
      the row count and whatever else sits at the end (an export, the archived toggle). Put it in <x-slot:header> so the
      table swaps it for the bulk-action bar while rows are ticked (the table, not this bar, does that). The default
-     slot is the controls: <atom:table.search> (240px wide from sm, full width below), <atom:table.filters> (which
+     slot is the controls: <atom:table.search> (240px wide from sm, full width below, both at zero specificity so a `class` on the search, which lands on its root, sets its own width: `sm:w-96`), <atom:table.filters> (which
      grows to fill the row and brings its own chips) and any other control. The `actions` slot is the trailing group: the
      host's own buttons (an export, an import). `end` is the same place under its older name and keeps working all through 4.x: both
      print, `actions` first. The `menu` slot holds <atom:menu.item>s for the overflow menu: atom draws the ⋯ ghost button (tooltip "More
@@ -49,7 +49,7 @@ $hasBeforeColumns = $hasActions || $hasEnd || $hasMenu || $trashed;
 @endphp
 
 <div {{ $attributes->class(['flex min-w-0 grow basis-full flex-wrap items-start gap-2', 'border-b px-3 py-2.5' => $strip]) }} data-atom-table-toolbar>
-    <div @class(['flex min-w-0 grow flex-wrap items-start gap-2 sm:basis-0 sm:min-w-48 [&_[data-atom-table-search]]:w-full sm:[&_[data-atom-table-search]]:w-60', 'basis-full' => ! ($hasGroup || $trashed), 'basis-48' => $hasGroup || $trashed]) data-atom-table-toolbar-start>
+    <div @class(['flex min-w-0 grow flex-wrap items-start gap-2 sm:basis-0 sm:min-w-48 [:where(&_[data-atom-table-search])]:w-full sm:[:where(&_[data-atom-table-search])]:w-60', 'basis-full' => ! ($hasGroup || $trashed), 'basis-48' => $hasGroup || $trashed]) data-atom-table-toolbar-start>
         {{ $slot }}
     </div>
 
