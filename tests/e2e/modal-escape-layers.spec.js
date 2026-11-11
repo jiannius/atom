@@ -235,3 +235,95 @@ test.describe('a press has one owner', () => {
     expect(await closedEvents(page)).toEqual(['layers'])
   })
 })
+
+// Holding Escape (#203): the first keydown is a press, the rest come with `repeat`. A held key is one press, so it closes one layer: by the first
+// repeat the layer is closed, and the repeat used to read as a new press and close the modal under it. One `down`, six more, then `up`, with no
+// page.evaluate in between (it counts as user activation in Chromium).
+const hold = async (page, repeats = 6) => {
+  await page.keyboard.down('Escape')
+  for (let i = 0; i < repeats; i++) {
+    await page.waitForTimeout(35)
+    await page.keyboard.down('Escape')
+  }
+  await page.keyboard.up('Escape')
+  await page.waitForTimeout(200)
+}
+const isOpen = (page, name = 'layers') => modal(page, name).evaluate((el) => el.open)
+
+const heldLayers = {
+  'a filter select (focus on its chip)': async (page) => {
+    await page.locator('[data-filter-key="status"] [data-atom-filter-chip-body]').click()
+    return (p) => popoverOpen(p.locator('[data-filter-key="status"] [popover]'))
+  },
+  'a searchable select (focus in its search)': async (page) => {
+    await activate(page, '[data-searchable] button[aria-haspopup="listbox"]')
+    return (p) => popoverOpen(p.locator('[data-searchable] [popover]'))
+  },
+  'a dropdown (focus on its trigger)': async (page) => {
+    await activate(page, '[data-open-nested-date]')
+    return (p) => popoverOpen(p.locator('[data-nested-date]').locator('xpath=ancestor::*[@popover][1]'))
+  },
+  'a date range (focus in its field)': async (page) => {
+    await page.locator('[data-range] input[type="text"]').first().click()
+    return (p) => popoverOpen(p.locator('[data-range] [popover]'))
+  },
+  'a mention list (focus in the editor)': async (page) => {
+    await page.locator('[data-editor] .editor-content').first().click()
+    await page.keyboard.type('hi @')
+    const list = page.locator('[data-editor] .tiptap-mention').getByText('Alice')
+    await expect(list).toBeVisible()
+    return () => list.isVisible()
+  },
+}
+
+for (const escapable of [true, false]) {
+  test.describe(escapable ? 'holding Escape in an escapable modal' : 'holding Escape in a modal with escapable false', () => {
+    for (const [name, open] of Object.entries(heldLayers)) {
+      test(`over ${name} closes that layer only`, async ({ page }) => {
+        await go(page, escapable ? '' : '?escapable=0')
+        await show(page)
+        const layerOpen = await open(page)
+        await expect.poll(() => layerOpen(page)).toBe(true)
+
+        await hold(page)
+
+        expect(await layerOpen(page)).toBe(false)
+        expect(await isOpen(page)).toBe(true)
+
+        // a fresh press is the modal's
+        await press(page)
+        if (escapable) await expect.poll(() => isOpen(page)).toBe(false)
+        else {
+          await settle(page)
+          expect(await isOpen(page)).toBe(true)
+        }
+      })
+    }
+  })
+}
+
+test('holding Escape in a dialog inside a popover closes that dialog only', async ({ page }) => {
+  await go(page)
+  await show(page)
+  await activate(page, '[data-open-host]')
+  const host = page.locator('[data-host-menu]')
+  await expect.poll(() => popoverOpen(host)).toBe(true)
+  await activate(page, '[data-open-inside]')
+  await expect(modal(page, 'inside')).toBeVisible()
+
+  await hold(page)
+
+  expect(await isOpen(page, 'inside')).toBe(false)
+  expect(await popoverOpen(host)).toBe(true)
+  expect(await isOpen(page)).toBe(true)
+})
+
+test('holding Escape with no layer over the modal closes the modal', async ({ page }) => {
+  await go(page)
+  await show(page)
+  await focus(page, '[data-open-host]')
+
+  await hold(page)
+
+  expect(await isOpen(page)).toBe(false)
+})

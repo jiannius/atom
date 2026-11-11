@@ -20,7 +20,20 @@ export const tookEscape = (e) => taken.has(e)
 
 export default () => {
     window.addEventListener('keydown', (e) => {
-        if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing) return
+        if (e.key !== 'Escape' || e.isComposing) return
+
+        // A held key is one press, and the shells skip `e.repeat` for the same reason. By the first repeat the layer that took the press is
+        // closed, so the repeat would read as a new press: escapeClose() would close the modal under it, or, with the focus on <body> or a
+        // select that stops the key, the browser's own cancel would (Chromium closes a dialog on a repeat natively). Taken and prevented, not
+        // stopped, so neither the dialog's handler nor the native close acts on it. Before the `defaultPrevented` check, and that check never
+        // guards a press in a dialog: ProseMirror prevents every Escape in an editor.
+        if (e.repeat && document.querySelector('dialog:modal')) {
+            taken.add(e)
+            e.preventDefault()
+            return
+        }
+
+        if (e.defaultPrevented) return
 
         const popover = [...document.querySelectorAll(OPEN)].at(-1)
 
