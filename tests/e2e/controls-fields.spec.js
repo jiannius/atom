@@ -185,6 +185,64 @@ for (const tw of ['floor', 'latest']) {
       await expect.poll(async () => (await style(row, 'background-color'))['background-color']).not.toBe('rgba(0, 0, 0, 0)')
     })
 
+    // The range popover is as wide as its three columns (presets + two 300px calendars) from lg, and stacked below it. It was a fixed 740px
+    // box that clipped the End calendar's Saturday column and scrolled sideways, and a 384px box around 760px of content on a phone.
+    // Utility widths only exist on the consumer's Tailwind, so the plain rig would pass by accident.
+    // the menu, and every descendant that can scroll (the pikaday header hides its prev/next text inside 24px buttons: clipped by design, not a scroller)
+    const noScroller = (menu) => menu.evaluate((el) => [el, ...el.querySelectorAll('*')].filter((n) => n.scrollWidth > n.clientWidth && (n === el || ['auto', 'scroll'].includes(getComputedStyle(n).overflowX))).map((n) => `${n.tagName}.${n.className} ${n.scrollWidth}>${n.clientWidth}`))
+    const saturdayInside = async (menu, calendar) => {
+      const sat = (await calendar.locator('.pika-table th').last().boundingBox())
+      const box = await menu.boundingBox()
+      expect(sat.x + sat.width, 'Saturday is inside the menu').toBeLessThanOrEqual(box.x + box.width - 1)
+    }
+
+    for (const [width, height] of [[1440, 900], [1024, 768], [390, 844]]) {
+      test(`the date range popover fits its content at ${width}px, no sideways scroll`, async ({ page }) => {
+        await page.setViewportSize({ width, height })
+        await open(page, { tw, section: 'fields' })
+
+        await page.getByTestId('f-date-range').getByRole('button', { name: 'Open calendar' }).click()
+        const menu = page.locator('[data-atom-menu][popover]:popover-open, [data-atom-menu][popover]:visible').first()
+        await expect(menu).toBeVisible()
+
+        expect(await noScroller(menu), 'nothing in the menu scrolls sideways').toEqual([])
+
+        const calendars = menu.locator('[data-atom-date-picker-calendar]')
+        await expect(calendars).toHaveCount(2)
+        await saturdayInside(menu, calendars.last())
+        await saturdayInside(menu, calendars.first())
+
+        const right = (await menu.boundingBox()).x + (await menu.boundingBox()).width
+        expect(right, 'the menu is inside the viewport').toBeLessThanOrEqual(await page.evaluate(() => document.documentElement.clientWidth))
+
+        const presets = await menu.locator('[data-atom-menu-item]').first().boundingBox()
+        const start = await calendars.first().boundingBox()
+        const end = await calendars.last().boundingBox()
+        if (width >= 1024) {
+          expect(Math.abs(presets.y - start.y), 'presets and Start are side by side').toBeLessThan(50)
+          expect(Math.abs(start.y - end.y), 'Start and End are side by side').toBeLessThan(1)
+          expect(start.x).toBeGreaterThan(presets.x)
+          expect(end.x).toBeGreaterThan(start.x)
+        } else {
+          expect(presets.y, 'presets above Start').toBeLessThan(start.y)
+          expect(start.y, 'Start above End').toBeLessThan(end.y)
+        }
+      })
+    }
+
+    for (const [id, section] of [['f-date', 'fields'], ['m-date-time', 'more']]) {
+      test(`the ${id} popover holds its calendar with no sideways scroll`, async ({ page }) => {
+        await open(page, { tw, section })
+
+        await page.getByTestId(id).locator('input').first().click()
+        const menu = page.locator('[data-atom-menu][popover]:visible, [popover]:popover-open').filter({ has: page.locator('[data-atom-date-picker-calendar]') }).first()
+        await expect(menu).toBeVisible()
+
+        expect(await noScroller(menu), 'nothing in the popover scrolls sideways').toEqual([])
+        await saturdayInside(menu, menu.locator('[data-atom-date-picker-calendar]').first())
+      })
+    }
+
     test('otp boxes are square, 40px, on the same recipe', async ({ page }) => {
       await open(page, { tw, section: 'fields' })
 
