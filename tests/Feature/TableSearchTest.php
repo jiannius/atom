@@ -130,6 +130,16 @@ it('keeps a background or border class on the input and sends only the layout on
         ->and($input)->not->toContain('max-w-sm', 'ms-auto');
 });
 
+it('takes a bound :class array: the width on the root, the rest on the input', function () {
+    view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+    $html = Blade::render('<atom:table.search :class="[\'sm:w-96\' => true, \'bg-red-100\']" placeholder="Search" />');
+
+    expect(domClasses(domQuery($html, '//*[@data-atom-table-search]')[0]))->toContain('relative', 'sm:w-96')
+        ->and(domClasses(domQuery($html, '//*[@data-atom-table-search]')[0]))->not->toContain('bg-red-100')
+        ->and(domClasses(domQuery($html, '//*[@data-atom-table-search]//input')[0]))->toContain('bg-red-100')
+        ->and(domClasses(domQuery($html, '//*[@data-atom-table-search]//input')[0]))->not->toContain('sm:w-96');
+});
+
 it('gives the toolbar default width no specificity, so a class on the search wins', function () {
     $start = domQuery(renderBlade('<atom:table.toolbar>x</atom:table.toolbar>'), '//*[@data-atom-table-toolbar-start]')[0];
 

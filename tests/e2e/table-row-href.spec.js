@@ -282,6 +282,16 @@ test.describe('an interactive element inside a cell is not the row\'s click', ()
     await expect(page.getByTestId('alpine-div')).toHaveAttribute('data-clicked', '1')
   })
 
+  // the clicked node can be gone by the time the row hears the click (an icon swapped by x-if): the guard reads the path fixed at dispatch
+  test('a control whose handler removes the clicked node still stops the row', async ({ page }) => {
+    await open(page)
+
+    await page.getByTestId('remove-span').click()
+    await expect(page.getByTestId('remove-span')).toHaveCount(0)
+    await expect(page.getByTestId('remove-div')).toHaveAttribute('data-clicked', '1')
+    await expect(page).not.toHaveURL(/go=/)
+  })
+
   // a modifier on the directive (`.prevent`, `.stop`) or the shorthand (`@click`) is the same control: the guard reads attribute names by prefix
   test('wire:click.prevent, @click and x-on:click.stop elements still run their handler and do not open the row', async ({ page }) => {
     await open(page)
@@ -298,8 +308,9 @@ test.describe('an interactive element inside a cell is not the row\'s click', ()
   })
 })
 
-// The actions cell and the checkbox cell stop a click so it never reaches the row; a middle click is a separate event and has to be stopped too,
-// on the cell's padding, on the open menu panel (a DOM descendant of the actions cell) and on the checkbox cell's non-input box.
+// The actions cell and the checkbox cell carry `x-on:click.stop` (and `x-on:auxclick.stop`, kept as defence in depth), so the row's own walk
+// guards everything inside them: the cell's padding, the open menu panel (a DOM descendant of the actions cell) and the checkbox cell's
+// non-input box. A middle click is a separate event from a click, so it is checked here too.
 test.describe('a middle click inside the actions and checkbox cells opens no tab', () => {
   const noTab = async (page, act) => {
     const popups = []

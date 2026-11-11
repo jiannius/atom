@@ -15,6 +15,7 @@
                 <td class="p-2"><div wire:click.prevent="ping" data-testid="wire-prevent-div" class="p-2">Wire prevent div</div></td>
                 <td class="p-2"><div @click="$el.dataset.clicked = '1'" data-testid="at-click-div" class="p-2">At click div</div></td>
                 <td class="p-2"><div x-on:click.stop="$el.dataset.clicked = '1'" data-testid="stop-div" class="p-2">Stop div</div></td>
+                <td class="p-2"><div x-on:click="$el.dataset.clicked = '1'; $el.querySelector('span').remove()" data-testid="remove-div" class="p-2"><span data-testid="remove-span">Swap me</span></div></td>
                 <td class="p-2"><div role="button" data-testid="role-div" class="p-2">Role button</div></td>
                 <td class="p-2"><div tabindex="-1" data-testid="tabindex-div" class="p-2">Tabindex div</div></td>
                 <td class="p-2"><div data-atom-row-ignore data-testid="ignore-div" class="p-2">Ignored div</div></td>

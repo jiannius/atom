@@ -11,7 +11,8 @@ $clickable = $href || \Jiannius\Atom\Services\Attributes::hasLike($attributes, '
 // - Enter on the focused row itself opens it (`.self`: Enter inside an input or on a button belongs to that control);
 // - Ctrl or Cmd with a click or Enter, and a middle click, open it in a new tab (`noopener`);
 // - a click that lands on an interactive descendant is that control's, not the row's. The guard walks from the event target up to
-//   the row (never the row itself, which has a tabindex of its own) and stops at the first element that is a link, button, field,
+//   the row along the event's composed path (never the row itself, which has a tabindex of its own; the path is fixed at dispatch, so a
+//   control whose handler removes the clicked node still counts) and stops at the first element that is a link, button, field,
 //   label, summary, contenteditable, an element with an interactive role (button, link, menuitem, checkbox, switch), one with a
 //   `tabindex` or `data-atom-row-ignore`, or one with an attribute whose NAME starts with `wire:click`, `x-on:click` or `@click`
 //   (`wire:click.prevent`, `x-on:click.outside`, `@click.stop`): CSS cannot match an attribute-name prefix, so that part is a walk.
@@ -19,7 +20,7 @@ if ($href) {
     $target = \Illuminate\Support\Js::from($href)->toHtml();
     $go = $attributes->has('wire:navigate') ? "Livewire.navigate($target)" : "window.location.href = $target";
     $interactive = 'a, button, input, select, textarea, label, summary, [contenteditable], [role=button], [role=link], [role=menuitem], [role=checkbox], [role=switch], [tabindex], [data-atom-row-ignore]';
-    $guard = "for (let n = e.target; n && n !== e.currentTarget; n = n.parentElement) { if (n.matches('$interactive') || [...n.attributes].some((a) => ['wire:click', 'x-on:click', '@click'].some((p) => a.name.startsWith(p)))) return }";
+    $guard = "for (const n of e.composedPath()) { if (n === e.currentTarget) break; if (n.matches('$interactive') || n.getAttributeNames().some((a) => ['wire:click', 'x-on:click', '@click'].some((p) => a.startsWith(p)))) return }";
     $open = "(e) => { $guard if (e.ctrlKey || e.metaKey) { window.open($target, '_blank', 'noopener'); return } $go }";
     $aux = "(e) => { if (e.button !== 1) return; $guard e.preventDefault(); window.open($target, '_blank', 'noopener') }";
 }

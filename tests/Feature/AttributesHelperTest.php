@@ -184,6 +184,10 @@ describe('splitLayoutClasses()', function () {
         'margin right' => 'mr-1',
         'margin bottom' => 'mb-1',
         'margin left' => 'ml-auto',
+        'grow, important last' => 'grow!',
+        'flex none, important last' => 'flex-none!',
+        'flex auto, important last' => 'flex-auto!',
+        'shrink, important last' => 'shrink!',
         'a negative margin' => '-mt-2',
         'a negative margin under a variant' => 'md:-mx-4',
     ]);
@@ -208,6 +212,11 @@ describe('splitLayoutClasses()', function () {
         'a growing word' => 'grower',
         'rounded' => 'rounded-lg',
     ]);
+
+    it('takes a :class array, as Arr::toCssClasses() reads it', function () {
+        expect(Attributes::splitLayoutClasses(['sm:w-96' => true, 'bg-red-100', 'ms-auto' => false, 'font-mono' => true]))->toBe(['sm:w-96', 'bg-red-100 font-mono'])
+            ->and(Attributes::splitLayoutClasses([]))->toBe(['', '']);
+    });
 
     it('splits a mixed string in order, and takes null or empty', function () {
         expect(Attributes::splitLayoutClasses("bg-surface  sm:w-96\tfont-mono ms-auto"))->toBe(['sm:w-96 ms-auto', 'bg-surface font-mono'])

@@ -477,8 +477,8 @@ describe('row with an href', function () {
             expect($click)->toContain($needle);
         }
 
-        // it walks from the target up to the row and never tests the row itself: the row has a tabindex of its own
-        expect($click)->toContain('n !== e.currentTarget')->toContain('n = n.parentElement');
+        // it walks the composed path (fixed at dispatch, so a removed target still counts) up to the row and never tests the row itself: the row has a tabindex of its own
+        expect($click)->toContain('e.composedPath()')->toContain('n === e.currentTarget');
     });
 
     it('stops a middle click on the actions and checkbox cells, as it stops a click', function () {
