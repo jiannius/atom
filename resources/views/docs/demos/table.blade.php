@@ -10,7 +10,7 @@ view="atom::docs.demos.table.empty"/>
 
 <atom:docs.example
 title="Search"
-description="atom:table.search is the standard listing search: a search-icon input bound to a filter key, Enter to run ($wire.$refresh). Replaces the per-page boilerplate. Bound with wire:model inside atom:table.filters it also joins the bar: its text shows as a chip named by the placeholder, and Clear all (or the chip's x) empties the box and refreshes. Shown here unbound, so no chip."
+description="atom:table.search is the standard listing search: a search-icon input bound to a filter key, Enter to run ($wire.$refresh). Replaces the per-page boilerplate. Bound with wire:model inside atom:table.filters it also joins the bar: its text shows as a chip named by the placeholder, and Clear all (or the chip's x) empties the box and refreshes. Shown here unbound, so no chip. In atom:table.toolbar it is 240px from sm up and the full row below; a class on the tag (class=sm:w-96) is its width."
 view="atom::docs.demos.table.search"/>
 
 <atom:docs.example
