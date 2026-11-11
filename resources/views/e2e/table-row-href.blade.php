@@ -16,5 +16,15 @@ $go = preg_replace('/[^a-z-]/', '', (string) request()->query('go'));
     <button type="button" data-testid="after">After the table</button>
 </div>
 
+{{-- an element with an open shadow root: a click inside it has a ShadowRoot (not an element) in its composed path --}}
+<script>
+customElements.define('atom-shadow-host', class extends HTMLElement {
+    constructor() {
+        super()
+        this.attachShadow({ mode: 'open' }).innerHTML = '<span data-shadow-inner>Inside shadow</span>'
+    }
+})
+</script>
+
 @livewireScripts
 </atom:html>

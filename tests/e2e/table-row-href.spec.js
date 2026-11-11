@@ -253,6 +253,18 @@ test.describe('a click on a plain cell still opens the row', () => {
   })
 })
 
+// an open shadow root is in the composed path of a click inside it, and it is not an element: the guard skips it and the row still opens
+test('a click inside an open shadow root in a plain cell opens the row, with no script error', async ({ page }) => {
+  const errors = []
+  page.on('pageerror', (e) => errors.push(e.message))
+  await open(page)
+
+  await page.getByTestId('shadow-host').locator('[data-shadow-inner]').click()
+
+  await expect(page).toHaveURL(/go=plain$/)
+  expect(errors).toEqual([])
+})
+
 test.describe('an interactive element inside a cell is not the row\'s click', () => {
   const guarded = ['wire-div', 'alpine-div', 'wire-prevent-div', 'at-click-div', 'stop-div', 'role-div', 'tabindex-div', 'ignore-div']
 
