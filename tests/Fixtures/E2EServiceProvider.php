@@ -106,6 +106,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/navlist-persist', fn () => view('atom::e2e.navlist-persist'));
         Route::middleware('web')->get('/atom/e2e/sticky-selection', fn () => view('atom::e2e.sticky-selection'));
         Route::middleware('web')->get('/atom/e2e/table-checked', fn () => view('atom::e2e.table-checked'));
+        Route::middleware('web')->get('/atom/e2e/table-row-href', fn () => view('atom::e2e.table-row-href'));
         Route::middleware('web')->get('/atom/e2e/table-columns', fn () => view('atom::e2e.table-columns'));
         Route::middleware('web')->get('/atom/e2e/table-columns-pair', fn () => view('atom::e2e.table-columns-pair'));
         Route::middleware('web')->get('/atom/e2e/table-column-picker', fn () => view('atom::e2e.table-column-picker'));
