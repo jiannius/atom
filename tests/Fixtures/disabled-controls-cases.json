@@ -119,7 +119,8 @@
     "value": "a",
     "read": {"selector": "select", "prop": "value"},
     "gestures": [
-      {"name": "clear", "steps": [{"click": "[data-atom-select-clear]", "mayHide": true}], "effect": ["value"]}
+      {"name": "clear", "steps": [{"click": "[data-atom-select-clear]", "mayHide": true}], "effect": ["value"]},
+      {"name": "open the list", "steps": [{"click": "select"}], "effect": ["popup"]}
     ],
     "walk": {"effect": [["popup", "value"]]},
     "tabStops": {"prop": [], "form": []},

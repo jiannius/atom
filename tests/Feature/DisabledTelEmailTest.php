@@ -48,7 +48,7 @@ it('disables the dial code in both routes, and the number box as the text-field 
 it('hands a tel input the dial code and number handlers a user gesture runs, and no watcher that writes on load', function () {
     $html = renderBlade('<atom:input type="tel" wire:model="phone" />');
 
-    expect($html)->toContain('x-on:input.stop="format()"')->toContain('x-on:change="format()"');
+    expect($html)->toContain('x-on:input.stop="format()"')->toContain('x-on:change="keepCode($event); format()"')->toContain('x-on:input.stop="keepCode"');
     expect(file_get_contents(__DIR__.'/../../resources/js/alpinejs/tel-input.js'))
         ->not->toContain("\$watch('code'")
         ->not->toContain("\$watch('number'");

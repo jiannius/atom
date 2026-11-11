@@ -8,9 +8,6 @@
 // probe reports. `engines.<name>.violations` is the list in an engine that differs from Chromium (empty: it keeps the contract there). A `pr` that is not a
 // number is a row that needs a decision first.
 export const LEDGER = {
-  // ---- PR 3
-  "morph:input_tel/form": { pr: 3, why: "WebKit keeps `select:open` true on a native dial code list that was open when a morph disabled the select (it stays so through blur, Escape and a click away; Chromium closes it): the engine's list, not the control's. The select is disabled, which is all the markup can do", violations: [], engines: { webkit: { violations: ["popup stays open"] } } },
-  "morph:input_tel/prop": { pr: 3, why: "WebKit keeps `select:open` true on a native dial code list that was open when a morph disabled the select (it stays so through blur, Escape and a click away; Chromium closes it): the engine's list, not the control's. The select is disabled, which is all the markup can do", violations: [], engines: { webkit: { violations: ["popup stays open"] } } },
 }
 
 // The look rows of disabled-controls.spec.js, keyed by the pair's test id (the same on both builds, in light and dark).

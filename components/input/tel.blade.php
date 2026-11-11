@@ -35,8 +35,8 @@ data-atom-input-tel>
         <div class="relative w-full">
             <select
             x-model="code"
-            x-on:input.stop
-            x-on:change="format()"
+            x-on:input.stop="keepCode"
+            x-on:change="keepCode($event); format()"
             @disabled($disabledBy)
             data-atom-input-tel-country
             class="h-control appearance-none bg-transparent pl-2.5 pr-6 w-full rounded-s-control text-sm focus-visible:outline-offset-[-2px] {{ $disabledBy ? 'cursor-not-allowed text-fg-subtle' : 'text-fg' }}">

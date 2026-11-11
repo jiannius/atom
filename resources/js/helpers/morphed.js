@@ -52,6 +52,13 @@ const hook = () => {
         // The palette writes an id on the item it highlights, and the server renders none. Livewire keys a morph by id, so the
         // item would be replaced, not patched, and its focus lost. Take off only the ids the palette wrote (`_atomCommandId`, set by
         // command.js): a host's own id or wire:key stays. The onMorphed() callback of the palette writes it again.
+        // WebKit hides a native <select> list only from the blur's default action, which it skips on a disabled select: a morph that
+        // disables a focused (so possibly open) select would leave its list drawn, and a pick from it still changes the value. Blur it
+        // first, while it is still enabled, which closes the list; the select loses its focus to the disable anyway.
+        if (toEl && el.tagName === 'SELECT' && toEl.hasAttribute('disabled') && !el.disabled && el === document.activeElement) {
+            el.blur()
+        }
+
         if (el.matches('[data-atom-command]')) {
             el.querySelectorAll('[data-atom-command-item]').forEach((item) => {
                 if (item._atomCommandId && item._atomCommandId === item.id) item.removeAttribute('id')

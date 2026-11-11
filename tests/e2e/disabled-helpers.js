@@ -34,6 +34,9 @@ export const ENGINE_GESTURE_SKIPS = {
     input_tel: {
       'open the dial codes': 'a native <select> opened by a click is seen through the `select:open` pseudo-class, which Firefox did not report on CI (run 42703566608); the number box and the keyboard walk over the dial codes still run',
     },
+    select_native: {
+      'open the list': 'a native <select> opened by a click is seen through the `select:open` pseudo-class, which Firefox did not report on CI (run 42703566608); the clear gesture and the keyboard walk still run',
+    },
   },
 }
 
