@@ -83,6 +83,13 @@ describe('form', function () {
         expect(domQuery($html, '//form')[0]->hasAttribute('novalidate'))->toBeTrue();
     });
 
+    it('takes native validation back in a form.modal with :novalidate="false"', function () {
+        $html = renderBlade('<atom:form.modal name="m" :novalidate="false"><input name="x" required /></atom:form.modal>');
+
+        expect(domQuery($html, '//form')[0]->hasAttribute('novalidate'))->toBeFalse()
+            ->and($html)->not->toContain('novalidate');
+    });
+
     it('wires submit and drives loading off the submit method', function () {
         $html = renderBlade('<atom:form><input name="x"/></atom:form>');
 

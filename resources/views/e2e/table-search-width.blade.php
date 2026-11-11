@@ -17,6 +17,10 @@ $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->q
     <atom:table.toolbar data-testid="base">
         <atom:table.search placeholder="Search" class="w-72" data-testid="search-base" />
     </atom:table.toolbar>
+
+    <atom:table.toolbar data-testid="mixed">
+        <atom:table.search placeholder="Search" class="font-mono bg-red-100 border-red-500 sm:w-[28rem]" data-testid="search-mixed" />
+    </atom:table.toolbar>
 </div>
 
 @livewireScripts

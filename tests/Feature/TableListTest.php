@@ -470,6 +470,22 @@ describe('row with an href', function () {
         expect(rowHtml())->toContain('a, button, input, select, textarea, label');
     });
 
+    it('skips every interactive descendant, with the colons of wire:click and x-on:click escaped for the selector', function () {
+        $click = domQuery(rowHtml(), '//tr')[0]->getAttribute('x-on:click');
+
+        foreach (['[role=button]', '[role=link]', '[role=menuitem]', '[role=checkbox]', '[role=switch]', '[tabindex]', '[contenteditable]', '[data-atom-row-ignore]', '[wire\\\\:click]', '[x-on\\\\:click]'] as $selector) {
+            expect($click)->toContain($selector);
+        }
+
+        // only an element strictly inside the row counts: the row has a tabindex of its own
+        expect($click)->toContain('hit !== e.currentTarget && e.currentTarget.contains(hit)');
+    });
+
+    it('stops a middle click on the actions and checkbox cells, as it stops a click', function () {
+        expect(renderBlade('<table><tbody><tr><atom:table.actions>x</atom:table.actions></tr></tbody></table>'))
+            ->toContain('x-on:click.stop x-on:auxclick.stop');
+    });
+
     it('is not focusable without an href, or with one that is blocked', function (string $attributes) {
         $html = rowHtml($attributes);
 

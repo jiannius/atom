@@ -48,6 +48,20 @@ for (const tw of ['floor', 'latest']) {
       }
     })
 
+    test('only layout classes go to the root: a background, border or font class stays on the input and still draws there', async ({ page }) => {
+      await page.setViewportSize({ width: 1024, height: 700 })
+      const input = search(page, 'mixed').locator('input')
+
+      await expect(search(page, 'mixed')).toHaveClass(/sm:w-\[28rem\]/)
+      await expect(search(page, 'mixed')).not.toHaveClass(/bg-red-100|border-red-500|font-mono/)
+      await expect(input).toHaveClass(/font-mono/)
+      await expect(input).toHaveClass(/bg-red-100/)
+      await expect(input).toHaveClass(/border-red-500/)
+      await expect(input).not.toHaveClass(/sm:w-\[28rem\]/)
+      expect(await width(search(page, 'mixed'))).toBe(448)
+      expect(await input.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/mono/i)
+    })
+
     test('the class sits on the search root, not on the input', async ({ page }) => {
       await expect(search(page, 'wide')).toHaveClass(/sm:w-\[28rem\]/)
       await expect(search(page, 'wide').locator('input')).not.toHaveClass(/sm:w-\[28rem\]/)

@@ -118,6 +118,7 @@ test.describe('a new tab', () => {
     const realTab = await real
     await realTab.waitForLoadState()
     expect(realTab.url()).toMatch(/go=plain$/)
+    expect(await realTab.evaluate(() => window.opener)).toBeNull()
     await realTab.close()
 
     // both modifiers, as the click event they set
@@ -129,6 +130,7 @@ test.describe('a new tab', () => {
 
       await tab.waitForLoadState()
       expect(tab.url()).toMatch(/go=plain$/)
+      expect(await tab.evaluate(() => window.opener)).toBeNull()
       await tab.close()
     }
 
@@ -145,6 +147,7 @@ test.describe('a new tab', () => {
 
     await tab.waitForLoadState()
     expect(tab.url()).toMatch(/go=plain$/)
+    expect(await tab.evaluate(() => window.opener)).toBeNull()
     await expect(page).not.toHaveURL(/go=/)
   })
 
@@ -158,6 +161,7 @@ test.describe('a new tab', () => {
 
       await tab.waitForLoadState()
       expect(tab.url()).toMatch(new RegExp(`go=${go}$`))
+      expect(await tab.evaluate(() => window.opener)).toBeNull()
       await tab.close()
     }
 
@@ -220,6 +224,112 @@ test.describe('controls inside the row do not open it', () => {
     await page.getByTestId('checkbox').check()
 
     await expect(page.getByTestId('checkbox')).toBeChecked()
+  })
+})
+
+// The guard looks only at what is strictly inside the row: the row has a tabindex of its own, and a click on a plain cell is still the row's.
+test.describe('a click on a plain cell still opens the row', () => {
+  test('a click', async ({ page }) => {
+    await open(page)
+
+    await page.getByTestId('plain-cell').click()
+
+    await expect(page).toHaveURL(/go=plain$/)
+  })
+
+  test('a middle click and Ctrl-click, in a new page', async ({ page, context }) => {
+    await open(page)
+
+    for (const click of [{ button: 'middle' }, { modifiers: [newTabModifier] }]) {
+      const opened = context.waitForEvent('page')
+      await page.getByTestId('plain-cell').click(click)
+      const tab = await opened
+      await tab.waitForLoadState()
+      expect(tab.url()).toMatch(/go=plain$/)
+      await tab.close()
+    }
+
+    await expect(page).not.toHaveURL(/go=/)
+  })
+})
+
+test.describe('an interactive element inside a cell is not the row\'s click', () => {
+  const guarded = ['wire-div', 'alpine-div', 'role-div', 'tabindex-div', 'ignore-div']
+
+  for (const id of guarded) {
+    test(`a click, a Ctrl-click and a middle click on [data-testid=${id}]`, async ({ page }) => {
+      await open(page)
+      const popups = []
+      page.context().on('page', (p) => popups.push(p))
+
+      await page.getByTestId(id).click()
+      await page.getByTestId(id).click({ modifiers: [newTabModifier] })
+      await page.getByTestId(id).click({ button: 'middle' })
+      await page.waitForTimeout(300)
+
+      await expect(page).not.toHaveURL(/go=/)
+      expect(popups).toHaveLength(0)
+    })
+  }
+
+  test('the wire:click and x-on:click handlers still run', async ({ page }) => {
+    await open(page)
+
+    await page.getByTestId('wire-div').click()
+    await expect(page.getByTestId('pings')).toHaveText('1')
+
+    await page.getByTestId('alpine-div').click()
+    await expect(page.getByTestId('alpine-div')).toHaveAttribute('data-clicked', '1')
+  })
+})
+
+// The actions cell and the checkbox cell stop a click so it never reaches the row; a middle click is a separate event and has to be stopped too,
+// on the cell's padding, on the open menu panel (a DOM descendant of the actions cell) and on the checkbox cell's non-input box.
+test.describe('a middle click inside the actions and checkbox cells opens no tab', () => {
+  const noTab = async (page, act) => {
+    const popups = []
+    page.context().on('page', (p) => popups.push(p))
+    await act()
+    await page.waitForTimeout(300)
+
+    await expect(page).not.toHaveURL(/go=/)
+    expect(popups).toHaveLength(0)
+  }
+
+  test('on the actions cell padding', async ({ page }) => {
+    await open(page)
+
+    await noTab(page, () => page.getByTestId('actions-cell').click({ button: 'middle', position: { x: 2, y: 2 } }))
+  })
+
+  test('on the open menu panel padding', async ({ page }) => {
+    await open(page)
+    await page.locator('[data-atom-table-actions] [aria-haspopup="menu"]').click()
+    const panel = page.locator('[data-atom-table-actions] [data-atom-menu]')
+    await expect(panel).toBeVisible()
+
+    await noTab(page, () => panel.click({ button: 'middle', position: { x: 2, y: 2 } }))
+  })
+
+  test('on the checkbox cell padding and on its checkbox, which is a div', async ({ page }) => {
+    await open(page)
+
+    expect(await page.locator('[data-atom-table-checkbox]').evaluate((el) => el.tagName)).toBe('DIV')
+    await noTab(page, async () => {
+      await page.getByTestId('checkbox-cell').click({ button: 'middle', position: { x: 2, y: 2 } })
+      await page.locator('[data-atom-table-checkbox]').click({ button: 'middle' })
+    })
+  })
+
+  test('a plain click on them still opens nothing, and the checkbox still toggles', async ({ page }) => {
+    await open(page)
+
+    await expect(page.locator('[data-atom-table-checkbox]')).not.toHaveAttribute('data-checked', /.*/)
+    await page.getByTestId('checkbox-cell').click({ position: { x: 2, y: 2 } })
+    await page.locator('[data-atom-table-checkbox]').click()
+
+    await expect(page).not.toHaveURL(/go=/)
+    await expect(page.locator('[data-atom-table-checkbox]')).toHaveAttribute('data-checked', /.*/)
   })
 })
 

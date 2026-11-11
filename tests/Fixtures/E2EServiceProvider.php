@@ -46,6 +46,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-breadcrumbs-trail', BreadcrumbsTrailFixture::class);
         Livewire::component('atom-e2e-sticky-selection', StickySelectionFixture::class);
         Livewire::component('atom-e2e-table-checked', TableCheckedFixture::class);
+        Livewire::component('atom-e2e-table-row-href', TableRowHrefFixture::class);
         Livewire::component('atom-e2e-table-server-slots', TableServerSlotsFixture::class);
         Livewire::component('atom-e2e-table-columns', TableColumnsFixture::class);
         Livewire::component('atom-e2e-input-morph', InputMorphFixture::class);
