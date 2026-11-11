@@ -85,6 +85,10 @@
             <atom:command.item wire:click="bump">Dashboard</atom:command.item>
             <atom:command.item wire:click="bump">Billing</atom:command.item>
             <atom:command.item wire:click="bump">Settings</atom:command.item>
+            @if ($hostids)
+                <atom:command.item id="host-item" wire:click="bump">Host id</atom:command.item>
+                <atom:command.item wire:key="host-key" wire:click="bump">Host key</atom:command.item>
+            @endif
         </atom:command.group>
     </atom:command>
 </div>

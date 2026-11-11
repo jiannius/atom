@@ -90,3 +90,39 @@ test('a mouse click on an item keeps the focus on it', async ({ page, browserNam
   expect(after.same).toEqual([true, true, true])
   expect(after.focus).toBe('Dashboard')
 })
+
+// A host's own `id` and `wire:key` on an item (#202). Only the ids the palette wrote are taken off before a morph; one the host rendered stays, and
+// the item is patched, not replaced. Fixture: `?hostids=1` adds `Host id` (id="host-item") and `Host key` (wire:key="host-key") after the three items.
+test('a host id and a wire:key on an item survive a morph, and the item is the same node', async ({ page }) => {
+  await page.goto('/atom/e2e/dropdown-morph?hostids=1')
+  await page.waitForFunction(() => window.Livewire !== undefined && window.Alpine !== undefined)
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('atom-command-show', { detail: { name: 'morph-palette' } })))
+  await page.waitForFunction(() => document.activeElement?.hasAttribute('data-atom-command-search'))
+  await expect(page.locator(ITEM)).toHaveCount(5)
+
+  const hostId = page.locator(`${ITEM}[data-label="Host id"]`)
+  const hostKey = page.locator(`${ITEM}[data-label="Host key"]`)
+  await expect(hostId).toHaveAttribute('id', 'host-item')
+
+  // highlight each host item in turn (End = the last one, ArrowUp = the one before it), so the palette's own id logic has run on both
+  for (const [key, active] of [['End', hostKey], ['ArrowUp', hostId]]) {
+    await page.keyboard.press(key)
+    await expect(active).toHaveAttribute('data-active', '')
+    await tag(page)
+
+    await bump(page)
+
+    const after = await report(page)
+    expect(after.same).toEqual([true, true, true, true, true])
+    expect(after.ids[3]).toBe('host-item')
+    expect(after.ids[after.active.indexOf(true)]).not.toBe('')
+    expect(await hostId.getAttribute('id')).toBe('host-item')
+    expect(await hostKey.getAttribute('wire:key')).toBe('host-key')
+    expect(after.focus).toBe('search')
+  }
+
+  // the palette's id on an item without one is still written again after the morph (the item before is not a host item)
+  await page.keyboard.press('ArrowUp')
+  await bump(page)
+  expect((await report(page)).ids[2]).not.toBe('')
+})
