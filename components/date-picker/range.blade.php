@@ -126,8 +126,8 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
         @endif
 
         <atom:menu class="max-w-full" popover>
-            <div class="w-sm md:w-[740px] overflow-auto flex divide-x divide-border">
-                <div class="shrink-0 w-40">
+            <div class="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-border">
+                <div class="lg:w-40 lg:shrink-0 grid grid-cols-3 lg:block max-lg:[&>*]:my-0">
                     <atom:menu.item x-on:click.stop="preset('today')">{{ t('Today') }}</atom:menu.item>
                     <atom:menu.item x-on:click.stop="preset('yesterday')">{{ t('Yesterday') }}</atom:menu.item>
                     <atom:menu.item x-on:click.stop="preset('last-7-days')">{{ t('Last 7 Days') }}</atom:menu.item>
@@ -139,7 +139,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                     <atom:menu.item x-on:click.stop="preset('last-year')">{{ t('Last Year') }}</atom:menu.item>
                 </div>
 
-                <div class="shrink-0 w-[300px]">
+                <div class="w-[300px] lg:shrink-0 mx-auto lg:mx-0">
                     <div class="pt-3 px-3 text-xs font-medium text-fg-muted">{{ t('Start') }}</div>
 
                     <atom:date-picker.calendar />
@@ -152,7 +152,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
                     @endif
                 </div>
 
-                <div class="shrink-0 w-[300px]">
+                <div class="w-[300px] lg:shrink-0 mx-auto lg:mx-0">
                     <div class="pt-3 px-3 text-xs font-medium text-fg-muted">{{ t('End') }}</div>
 
                     <atom:date-picker.calendar />

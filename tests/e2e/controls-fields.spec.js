@@ -185,6 +185,122 @@ for (const tw of ['floor', 'latest']) {
       await expect.poll(async () => (await style(row, 'background-color'))['background-color']).not.toBe('rgba(0, 0, 0, 0)')
     })
 
+    // The range popover is as wide as its three columns (presets + two 300px calendars) from lg, and stacked below it. It was a fixed 740px
+    // box that clipped the End calendar's Saturday column and scrolled sideways, and a 384px box around 760px of content on a phone.
+    // Utility widths only exist on the consumer's Tailwind, so the plain rig would pass by accident.
+    // the menu, and every descendant that can scroll (the pikaday header hides its prev/next text inside 24px buttons: clipped by design, not a scroller)
+    const noScroller = (menu) => menu.evaluate((el) => [el, ...el.querySelectorAll('*')].filter((n) => n.scrollWidth > n.clientWidth && (n === el || ['auto', 'scroll'].includes(getComputedStyle(n).overflowX))).map((n) => `${n.tagName}.${n.className} ${n.scrollWidth}>${n.clientWidth}`))
+    const saturdayInside = async (menu, calendar) => {
+      const sat = (await calendar.locator('.pika-table th').last().boundingBox())
+      const box = await menu.boundingBox()
+      expect(sat.x + sat.width, 'Saturday is inside the menu').toBeLessThanOrEqual(box.x + box.width - 1)
+    }
+
+    // wait for floating-ui to place the menu: its box is the same across two animation frames
+    const placed = (menu) => menu.evaluate((el) => new Promise((resolve) => {
+      const box = () => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].join() }
+      let last = box()
+      const tick = () => requestAnimationFrame(() => requestAnimationFrame(() => {
+        const now = box()
+        if (now === last) return resolve(true)
+        last = now
+        tick()
+      }))
+      tick()
+    }))
+
+    // lg is 1024px: at 1023 the popover is still stacked. The dark runs pin the same geometry on the dark theme.
+    for (const [width, height, dark = false] of [[1440, 900], [1024, 768], [1023, 768], [390, 844], [1024, 768, true], [390, 844, true]]) {
+      test(`the date range popover fits its content at ${width}px${dark ? ', dark' : ''}, no sideways scroll`, async ({ page }) => {
+        await page.setViewportSize({ width, height })
+        await open(page, { tw, section: 'fields', dark })
+
+        await page.getByTestId('f-date-range').getByRole('button', { name: 'Open calendar' }).click()
+        const menu = page.locator('[data-atom-menu][popover]:popover-open, [data-atom-menu][popover]:visible').first()
+        await expect(menu).toBeVisible()
+        await expect(menu.locator('[data-atom-date-picker-calendar]')).toHaveCount(2)
+        await placed(menu)
+
+        expect(await noScroller(menu), 'nothing in the menu scrolls sideways').toEqual([])
+
+        // every box in one evaluate, so nothing moves between two reads
+        const m = await menu.evaluate((el) => {
+          const box = (n) => { const r = n.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height } }
+          const items = [...el.querySelectorAll('[data-atom-menu-item]')].map(box)
+          const calendars = [...el.querySelectorAll('[data-atom-date-picker-calendar]')]
+          // the column that carries the divider: the calendar's ancestor that is a direct child of the flex wrapper
+          const column = (cal) => { let n = cal; while (n.parentElement && n.parentElement !== el.firstElementChild) n = n.parentElement; return n }
+          const border = getComputedStyle(column(calendars[0]))
+          return {
+            menu: box(el),
+            items,
+            starts: calendars.map(box),
+            saturdays: calendars.map((cal) => box(cal.querySelector('.pika-table th:last-child'))),
+            // divide-x / divide-y draw the line on the far edge of every column but the last
+            border: [border.borderLeftWidth, border.borderRightWidth, border.borderBottomWidth],
+            clientWidth: document.documentElement.clientWidth,
+          }
+        })
+
+        for (const sat of m.saturdays) {
+          expect(sat.x + sat.width, 'Saturday is inside the menu').toBeLessThanOrEqual(m.menu.x + m.menu.width - 1)
+        }
+        expect(m.menu.x + m.menu.width, 'the menu is inside the viewport').toBeLessThanOrEqual(m.clientWidth)
+
+        const [presets] = m.items
+        const [start, end] = m.starts
+        if (width >= 1024) {
+          expect(Math.abs(presets.y - start.y), 'presets and Start are side by side').toBeLessThan(50)
+          expect(Math.abs(start.y - end.y), 'Start and End are side by side').toBeLessThan(1)
+          expect(start.x).toBeGreaterThan(presets.x)
+          expect(end.x).toBeGreaterThan(start.x)
+          expect(m.border, 'the divider is a vertical line at the first column\'s right edge: [left, right, bottom]').toEqual(['0px', '1px', '0px'])
+        } else {
+          expect(presets.y, 'presets above Start').toBeLessThan(start.y)
+          expect(start.y, 'Start above End').toBeLessThan(end.y)
+          expect(m.border, 'the divider is a horizontal line under the first column: [left, right, bottom]').toEqual(['0px', '0px', '1px'])
+          // three presets to a row on the same line: the item margin does not push one a pixel off its row-mates
+          expect(m.items.slice(0, 3).map((i) => i.y), 'the first row of presets shares a top').toEqual([presets.y, presets.y, presets.y])
+        }
+      })
+    }
+
+    test('the presets are a plain vertical list from lg: one column, items stacked with their 1px gaps', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await open(page, { tw, section: 'fields' })
+
+      await page.getByTestId('f-date-range').getByRole('button', { name: 'Open calendar' }).click()
+      const menu = page.locator('[data-atom-menu][popover]:popover-open, [data-atom-menu][popover]:visible').first()
+      await expect(menu).toBeVisible()
+      await placed(menu)
+
+      const items = await menu.evaluate((el) => [...el.querySelectorAll('[data-atom-menu-item]')].slice(0, 9).map((n) => {
+        const r = n.getBoundingClientRect()
+        const s = getComputedStyle(n)
+        return { x: r.x, y: r.y, height: r.height, mt: s.marginTop, mb: s.marginBottom }
+      }))
+      expect(new Set(items.map((i) => i.x)).size, 'one column').toBe(1)
+      for (let i = 1; i < items.length; i++) {
+        expect(items[i].y, `item ${i} sits 1px under item ${i - 1}`).toBeCloseTo(items[i - 1].y + items[i - 1].height + 1, 1)
+      }
+      expect([items[0].mt, items[0].mb], 'first item').toEqual(['0px', '1px'])
+      expect([items[4].mt, items[4].mb], 'a middle item keeps the 1px menu margin').toEqual(['1px', '1px'])
+      expect([items[8].mt, items[8].mb], 'last item').toEqual(['1px', '0px'])
+    })
+
+    for (const [id, section] of [['f-date', 'fields'], ['m-date-time', 'more']]) {
+      test(`the ${id} popover holds its calendar with no sideways scroll`, async ({ page }) => {
+        await open(page, { tw, section })
+
+        await page.getByTestId(id).locator('input').first().click()
+        const menu = page.locator('[data-atom-menu][popover]:visible, [popover]:popover-open').filter({ has: page.locator('[data-atom-date-picker-calendar]') }).first()
+        await expect(menu).toBeVisible()
+
+        expect(await noScroller(menu), 'nothing in the popover scrolls sideways').toEqual([])
+        await saturdayInside(menu, menu.locator('[data-atom-date-picker-calendar]').first())
+      })
+    }
+
     test('otp boxes are square, 40px, on the same recipe', async ({ page }) => {
       await open(page, { tw, section: 'fields' })
 
