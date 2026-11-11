@@ -127,7 +127,7 @@ x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clea
 
         <atom:menu class="max-w-full" popover>
             <div class="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-border">
-                <div class="lg:w-40 lg:shrink-0 grid grid-cols-3 lg:block">
+                <div class="lg:w-40 lg:shrink-0 grid grid-cols-3 lg:block max-lg:[&>*]:my-0">
                     <atom:menu.item x-on:click.stop="preset('today')">{{ t('Today') }}</atom:menu.item>
                     <atom:menu.item x-on:click.stop="preset('yesterday')">{{ t('Yesterday') }}</atom:menu.item>
                     <atom:menu.item x-on:click.stop="preset('last-7-days')">{{ t('Last 7 Days') }}</atom:menu.item>
