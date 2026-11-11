@@ -61,7 +61,7 @@ export default (config) => {
         },
 
         // The browser closed the dialog without closeCommand(): an Escape the dialog's own keydown handler never heard (the focus on
-        // <body>, because a morph took out the focused item or a Tab walked off the end; a control in the slot that stops the key), a
+        // <body>, because a Tab walked off the end, or a morph replaced the focused item; a control in the slot that stops the key), a
         // <form method="dialog">, a direct close(). `close` is queued, so after closeCommand() it finds the state already clean, and
         // after a close and a reopen in one tick it finds the dialog open again.
         syncClosed () {
@@ -131,7 +131,12 @@ export default (config) => {
                 return
             }
 
-            if (!el.id) el.id = `${config.name || 'command'}-item-${this.items().indexOf(el)}`
+            // The server never renders an id on an item, and Livewire keys a morph by id when there is no wire:key, so an id written here makes a
+            // morph replace the item (and drop its focus). It is marked, and helpers/morphed.js takes it off before the palette is morphed.
+            if (!el.id) {
+                el.id = `${config.name || 'command'}-item-${this.items().indexOf(el)}`
+                el._atomCommandId = el.id
+            }
             el.setAttribute('data-active', '')
             search?.setAttribute('aria-activedescendant', el.id)
             el.scrollIntoView({ block: 'nearest' })

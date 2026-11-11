@@ -49,6 +49,15 @@ const hook = () => {
             }
         }
 
+        // The palette writes an id on the item it highlights, and the server renders none. Livewire keys a morph by id, so the
+        // item would be replaced, not patched, and its focus lost. Take off only the ids the palette wrote (`_atomCommandId`, set by
+        // command.js): a host's own id or wire:key stays. The onMorphed() callback of the palette writes it again.
+        if (el.matches('[data-atom-command]')) {
+            el.querySelectorAll('[data-atom-command-item]').forEach((item) => {
+                if (item._atomCommandId && item._atomCommandId === item.id) item.removeAttribute('id')
+            })
+        }
+
         if (el.matches('[data-atom-menu][popover], [data-atom-tooltip-content]') && el.matches(':popover-open')) {
             childrenOnly()
         }

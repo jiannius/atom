@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 // Escape and the command palette (#176). A <dialog> that the browser closes itself (Escape pressed with the focus on <body>, because a
-// morph took out the focused item or a Tab walked off the end; a control in the slot that stops the key; `close()`, `requestClose()`,
+// Tab walked off the end; a control in the slot that stops the key; `close()`, `requestClose()`,
 // `<form method="dialog">`, `<button command="close">`) used to leave `data-open`, Alpine's `open` and the search text behind, and
 // `data-open` kept `display: flex` on the closed dialog: the palette stayed painted with no backdrop and the page behind was not blocked.
 // The layout is keyed on `[open]` now and a `close` listener resets the rest. On the consumer Tailwind build (`node tests/consumer/build.mjs`
@@ -101,7 +101,7 @@ for (const tw of ['latest', 'floor']) {
   })
 }
 
-test('Tab to the highlighted item, a morph takes it out, Escape', async ({ page }) => {
+test('Tab to the highlighted item, a morph patches it, Escape', async ({ page }) => {
   await morphPage(page)
   await show(page, 'morph-palette')
   await settle(page)
