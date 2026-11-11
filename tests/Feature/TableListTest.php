@@ -470,15 +470,15 @@ describe('row with an href', function () {
         expect(rowHtml())->toContain('a, button, input, select, textarea, label');
     });
 
-    it('skips every interactive descendant, with the colons of wire:click and x-on:click escaped for the selector', function () {
+    it('skips every interactive descendant, and any wire:click*, x-on:click* or @click* element, walking up to the row', function () {
         $click = domQuery(rowHtml(), '//tr')[0]->getAttribute('x-on:click');
 
-        foreach (['[role=button]', '[role=link]', '[role=menuitem]', '[role=checkbox]', '[role=switch]', '[tabindex]', '[contenteditable]', '[data-atom-row-ignore]', '[wire\\\\:click]', '[x-on\\\\:click]'] as $selector) {
-            expect($click)->toContain($selector);
+        foreach (['[role=button]', '[role=link]', '[role=menuitem]', '[role=checkbox]', '[role=switch]', '[tabindex]', '[contenteditable]', '[data-atom-row-ignore]', "'wire:click'", "'x-on:click'", "'@click'"] as $needle) {
+            expect($click)->toContain($needle);
         }
 
-        // only an element strictly inside the row counts: the row has a tabindex of its own
-        expect($click)->toContain('hit !== e.currentTarget && e.currentTarget.contains(hit)');
+        // it walks from the target up to the row and never tests the row itself: the row has a tabindex of its own
+        expect($click)->toContain('n !== e.currentTarget')->toContain('n = n.parentElement');
     });
 
     it('stops a middle click on the actions and checkbox cells, as it stops a click', function () {

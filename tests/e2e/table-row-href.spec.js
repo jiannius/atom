@@ -254,7 +254,7 @@ test.describe('a click on a plain cell still opens the row', () => {
 })
 
 test.describe('an interactive element inside a cell is not the row\'s click', () => {
-  const guarded = ['wire-div', 'alpine-div', 'role-div', 'tabindex-div', 'ignore-div']
+  const guarded = ['wire-div', 'alpine-div', 'wire-prevent-div', 'at-click-div', 'stop-div', 'role-div', 'tabindex-div', 'ignore-div']
 
   for (const id of guarded) {
     test(`a click, a Ctrl-click and a middle click on [data-testid=${id}]`, async ({ page }) => {
@@ -280,6 +280,21 @@ test.describe('an interactive element inside a cell is not the row\'s click', ()
 
     await page.getByTestId('alpine-div').click()
     await expect(page.getByTestId('alpine-div')).toHaveAttribute('data-clicked', '1')
+  })
+
+  // a modifier on the directive (`.prevent`, `.stop`) or the shorthand (`@click`) is the same control: the guard reads attribute names by prefix
+  test('wire:click.prevent, @click and x-on:click.stop elements still run their handler and do not open the row', async ({ page }) => {
+    await open(page)
+
+    await page.getByTestId('wire-prevent-div').click()
+    await expect(page.getByTestId('pings')).toHaveText('1')
+
+    for (const id of ['at-click-div', 'stop-div']) {
+      await page.getByTestId(id).click()
+      await expect(page.getByTestId(id)).toHaveAttribute('data-clicked', '1')
+    }
+
+    await expect(page).not.toHaveURL(/go=/)
   })
 })
 
