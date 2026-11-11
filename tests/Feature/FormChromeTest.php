@@ -64,6 +64,25 @@ describe('caption', function () {
 });
 
 describe('form', function () {
+    it('is novalidate by default, so atom\'s errors show instead of the browser bubble', function () {
+        $html = renderBlade('<atom:form><input name="x" required /></atom:form>');
+
+        expect(domQuery($html, '//form')[0]->hasAttribute('novalidate'))->toBeTrue();
+    });
+
+    it('takes native validation back with :novalidate="false"', function () {
+        $html = renderBlade('<atom:form :novalidate="false"><input name="x" required /></atom:form>');
+
+        expect(domQuery($html, '//form')[0]->hasAttribute('novalidate'))->toBeFalse()
+            ->and($html)->not->toContain('novalidate');
+    });
+
+    it('is novalidate in a form.modal too', function () {
+        $html = renderBlade('<atom:form.modal name="m"><input name="x" required /></atom:form.modal>');
+
+        expect(domQuery($html, '//form')[0]->hasAttribute('novalidate'))->toBeTrue();
+    });
+
     it('wires submit and drives loading off the submit method', function () {
         $html = renderBlade('<atom:form><input name="x"/></atom:form>');
 

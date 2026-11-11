@@ -92,6 +92,20 @@
         <atom:button type="submit" data-submit="controls">Save controls</atom:button>
     </atom:form>
 
+    {{-- `required` and `type="email"` are hints: the form is novalidate, so a submit with these empty or malformed still reaches the server rule --}}
+    <atom:form wire:submit="saveHints" data-form="hints">
+        <atom:input label="Must" wire:model="mustField" data-probe="must" required />
+        <atom:input label="Mail" type="email" wire:model="hintMail" data-probe="hint-mail" />
+        <atom:button type="submit" data-submit="hints">Save hints</atom:button>
+    </atom:form>
+
+    {{-- opted back in to the browser's own validation: an empty required field never submits --}}
+    <atom:form wire:submit="saveNative" :novalidate="false" data-form="native">
+        <atom:input label="Native" wire:model="nativeField" data-probe="native" required />
+        <atom:button type="submit" data-submit="native">Save native</atom:button>
+    </atom:form>
+    <div>Native submits: <span data-natives>{{ $natives }}</span></div>
+
     <atom:form.modal name="fixture-modal">
         <atom:input label="Modal field" wire:model="modalField" data-probe="modal-field" />
     </atom:form.modal>
