@@ -376,6 +376,7 @@ it('never throws or builds a mismatched query whatever shape the value has', fun
         'bare date range' => '2025-01-01 to 2025-01-31', 'open bare range' => 'to 2025-01-31', 'one bare date' => '2025-01-31',
         'instant range' => '2025-01-01T00:00:00.000Z to 2025-01-31T23:59:59.999Z', 'bare and instant' => '2025-01-01 to 2025-01-31T23:59:59.999Z',
         'no such day' => '2025-02-30 to 2025-13-01', 'no day after' => '2025-01-01 to 9999-12-31',
+        'first supported day' => '1000-01-01 to 1000-01-02', 'last day with a day after' => '9998-12-30 to 9998-12-31', 'both limits' => '1000-01-01 to 9998-12-31',
         'like pattern' => '%a*', 'long' => str_repeat('a', 5000),
     ];
     $keys = ['claim_date', 'starts_at', 'amount', 'name', 'meta', 'meta.lang', 'kind', 'no_such_column'];

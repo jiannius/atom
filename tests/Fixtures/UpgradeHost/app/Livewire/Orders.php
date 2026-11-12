@@ -52,5 +52,9 @@ class Orders extends Component
         $n = Carbon::getRange($request->range);
         $o = explode(',', $request->range);
         // $order->range = Carbon::getRange($x) is commented out
+        $p = str($request->range)->explode(' to ');
+        $q = Str::before($request->range, ' to ');
+        $r = Str::after($request->range, ' to ');
+        $s = Str::before($request->range, ',');
     }
 }

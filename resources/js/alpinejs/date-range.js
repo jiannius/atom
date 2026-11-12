@@ -54,10 +54,13 @@ export default (config) => {
         get dateObjects () {
             let split = (this.dateRangeValue || '').split('to').map(str => str.trim()).filter(Boolean)
 
-            return [
-                split[0] ? zone.read(split[0]) : null,
-                split[1] ? zone.read(split[1]) : null,
-            ]
+            let read = (value) => {
+                let day = value ? zone.read(value) : null
+
+                return day?.isValid() ? day : null
+            }
+
+            return [read(split[0]), read(split[1])]
         },
 
         // The model's two ends as they were stored: ISO strings with a time (never a round trip through the zone's wall clock), else plain dates.
@@ -66,7 +69,14 @@ export default (config) => {
 
             // With no time each end is the day it stands for, so a seeded date stays itself and an old instant stays the right day in the zone
             // when the other end is edited.
-            let one = (value) => config.time ? zone.instant(value) : zone.read(value).format('YYYY-MM-DD')
+            // A seed that is not a date is an empty end, as a missing one is, never the text "Invalid Date".
+            let one = (value) => {
+                if (config.time) return zone.instant(value)
+
+                let day = zone.read(value)
+
+                return day.isValid() ? day.format('YYYY-MM-DD') : undefined
+            }
 
             return [
                 split[0] ? one(split[0]) : undefined,

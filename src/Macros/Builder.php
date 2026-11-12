@@ -26,15 +26,18 @@ class Builder
             if (
                 (DateRange::isDate($from) || DateRange::isDate($to))
                 && $this instanceof \Illuminate\Database\Eloquent\Builder
+                // `show columns` is MySQL's: on another driver no statement is sent (a failed one aborts a Postgres transaction)
+                && in_array($this->getConnection()->getDriverName(), ['mysql', 'mariadb'], true)
                 && is_string($column)
                 && preg_match('/^(?:([A-Za-z_][A-Za-z0-9_]*)\.)?([A-Za-z_][A-Za-z0-9_]*)$/D', $column, $parts)
                 && ($parts[1] === '' || $parts[1] === $this->getModel()->getTable())
             ) {
                 try {
+                    // asks the default connection, as filter() does
                     $wholeDays = preg_match('/^(datetime|timestamp)(\(\d+\))?$/', strtolower((string) $this->tableColumnType($parts[2]))) === 1;
                 }
                 catch (\Throwable) {
-                    // the column cannot be introspected (`show columns` is MySQL's): compare dates
+                    // the column cannot be described: compare dates
                 }
             }
 

@@ -64,12 +64,13 @@ class Carbon extends \Carbon\CarbonImmutable
     }
 
     /**
-     * Get local timezone: the signed-in user's, else `config('atom.timezone')` (atom's config/atom.php reads `env('TIMEZONE')`; the host's own
-     * config/atom.php wins), else Asia/Kuala_Lumpur. `env()` is never read here: it returns null at runtime once the config is cached.
+     * Get local timezone: the signed-in user's, else `config('atom.timezone')` (atom's config/atom.php reads `env('TIMEZONE')` when the config is
+     * loaded, so it survives `config:cache`; the host's own config/atom.php wins), else `env('TIMEZONE')` (null at runtime once the config is cached,
+     * unless TIMEZONE is a real process variable, as when the config is cached at image build time), else Asia/Kuala_Lumpur.
      */
     public static function getLocalTimezone()
     {
-        return optional(Auth::user())->timezone ?? config('atom.timezone') ?? 'Asia/Kuala_Lumpur';
+        return optional(Auth::user())->timezone ?? config('atom.timezone') ?? env('TIMEZONE') ?? 'Asia/Kuala_Lumpur';
     }
 
     /**

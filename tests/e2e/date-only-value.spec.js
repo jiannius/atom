@@ -257,6 +257,33 @@ test.describe('the timezone prop, in a browser on UTC', () => {
   })
 })
 
+test.describe('a seed that is not a date, in a browser on UTC', () => {
+  test.use({ timezoneId: 'UTC' })
+
+  test('is an empty end, never the text "Invalid Date"', async ({ page }) => {
+    await open(page, { range: '2026-09-01 to garbage' })
+    await expect(input(page, 'range')).toHaveValue('01 Sep 2026 to ∞')
+    await expect(input(page, 'range')).not.toHaveValue(/Invalid/)
+
+    // editing the start leaves the end empty: nothing is written until both ends are
+    await pickRange(page, 0, 2026, 9, 2)
+    await page.waitForTimeout(200)
+    await expect(out(page, 'range')).not.toContainText('Invalid')
+
+    // and picking the end completes it
+    await pickRange(page, 1, 2026, 9, 30)
+    await expect(out(page, 'range')).toHaveText('2026-09-02 to 2026-09-30')
+  })
+
+  test('a garbage start is an empty start', async ({ page }) => {
+    await open(page, { range: 'garbage to 2026-09-30' })
+    await expect(input(page, 'range')).toHaveValue('∞ to 30 Sep 2026')
+
+    await pickRange(page, 0, 2026, 9, 2)
+    await expect(out(page, 'range')).toHaveText('2026-09-02 to 2026-09-30')
+  })
+})
+
 // The calendar's title jump picker is a date-only picker: it holds the day it was given and hands back the day picked, west of UTC too.
 test.describe('the calendar\'s jump picker, in a browser on America/New_York', () => {
   test.use({ timezoneId: 'America/New_York' })

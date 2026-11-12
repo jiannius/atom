@@ -82,7 +82,7 @@ function seedAround(string $viewer, string $app): void
 }
 
 it('reads a bare date as a date, and nothing else', function () {
-    foreach (['2026-09-01', '2024-02-29', '1000-01-01'] as $date) {
+    foreach (['2026-09-01', '2024-02-29', '1000-01-01', '9998-12-31'] as $date) {
         expect(DateRange::isDate($date))->toBeTrue($date);
     }
 
@@ -258,6 +258,35 @@ describe('whereDateBetween()', function () {
             ->and($query->getBindings())->toBe(['2026-09-01', '2026-09-30']);
     });
 
+    it('sends no statement to a database that is not MySQL, even with the columns known', function (string $driver) {
+        viewer('Asia/Kuala_Lumpur');
+        seedRangeColumns();
+        config()->set('database.connections.other_dry', ['driver' => $driver, 'host' => '127.0.0.1', 'database' => 'dry', 'username' => 'dry', 'password' => '']);
+
+        $queries = [];
+        DB::connection('other_dry')->listen(function ($query) use (&$queries) { $queries[] = $query->sql; });
+
+        // cached or not: the driver decides, so the bare dates are compared as dates
+        $query = DateRangeRow::on('other_dry')->whereDateBetween('at', '2026-09-01 to 2026-09-30');
+        cache()->forget('table_range_rows_columns');
+        $uncached = DateRangeRow::on('other_dry')->whereDateBetween('at', '2026-09-01 to 2026-09-30');
+
+        foreach ([$query, $uncached] as $each) {
+            // bare dates, not the Carbon instants of a whole-day comparison
+            expect($each->getBindings())->toBe(['2026-09-01', '2026-09-30']);
+        }
+
+        expect($queries)->toBe([]);
+    })->with(['postgres' => 'pgsql', 'sqlite' => 'sqlite', 'sql server' => 'sqlsrv']);
+
+    it('asks MariaDB as it asks MySQL', function () {
+        viewer('Asia/Kuala_Lumpur');
+        seedRangeColumns();
+        config()->set('database.connections.maria_dry', ['driver' => 'mariadb', 'host' => '127.0.0.1', 'database' => 'dry', 'username' => 'dry', 'password' => '']);
+
+        expect(wall(DateRangeRow::on('maria_dry')->whereDateBetween('at', '2026-09-01 to 2026-09-30')))->toBe(['2026-08-31 16:00:00', '2026-09-30 16:00:00']);
+    });
+
     it('compares an instant range exactly as it always did', function () {
         viewer('Asia/Kuala_Lumpur');
         $query = mysqlRows()->whereDateBetween('at', '2026-08-31T16:00:00.000Z to 2026-09-30T15:59:59.999Z');
@@ -330,8 +359,8 @@ describe('against a database', function () {
         }
 
         foreach ([
+            // whereDateBetween() asks MySQL and MariaDB only (its SQL is checked on their grammar above), so on sqlite it compares dates
             'filter at' => DateRangeRow::query()->filter(['at' => '2026-09-01 to 2026-09-30']),
-            'whereDateBetween at' => DateRangeRow::query()->whereDateBetween('at', '2026-09-01 to 2026-09-30'),
         ] as $label => $query) {
             expect($query->orderBy('id')->pluck('name')->all())->toBe($moments, $label);
         }
@@ -377,18 +406,28 @@ describe('the viewer\'s timezone', function () {
         expect(Carbon::getLocalTimezone())->toBe('America/New_York');
     });
 
-    it('never reads env(): a TIMEZONE in the environment that did not reach the config is not the zone', function () {
-        // with the config cached no .env is loaded: env() answers null whatever the file says, so the zone has to come from the config
+    it('prefers the config to a TIMEZONE in the environment', function () {
         $_ENV['TIMEZONE'] = $_SERVER['TIMEZONE'] = 'America/Chicago';
 
         try {
             expect(env('TIMEZONE'))->toBe('America/Chicago');
 
-            config()->set('atom.timezone', null);
-            expect(Carbon::getLocalTimezone())->toBe('Asia/Kuala_Lumpur');
-
             config()->set('atom.timezone', 'Asia/Tokyo');
             expect(Carbon::getLocalTimezone())->toBe('Asia/Tokyo');
+
+            viewer('America/New_York');
+            expect(Carbon::getLocalTimezone())->toBe('America/New_York');
+        } finally {
+            unset($_ENV['TIMEZONE'], $_SERVER['TIMEZONE']);
+        }
+    });
+
+    it('uses a real TIMEZONE process variable when the config has none, as when the config was cached at image build time', function () {
+        $_ENV['TIMEZONE'] = $_SERVER['TIMEZONE'] = 'America/Chicago';
+
+        try {
+            config()->set('atom.timezone', null);
+            expect(Carbon::getLocalTimezone())->toBe('America/Chicago');
         } finally {
             unset($_ENV['TIMEZONE'], $_SERVER['TIMEZONE']);
         }
@@ -401,6 +440,9 @@ describe('the viewer\'s timezone', function () {
 
         config()->set('atom.timezone', 'Asia/Tokyo');
         expect(Carbon::getLocalTimezone())->toBe('Asia/Tokyo');
+
+        config()->set('atom.timezone', null);
+        expect(Carbon::getLocalTimezone())->toBe('Asia/Kuala_Lumpur');
     });
 
     it('ships a config/atom.php that the service provider merges, and fills timezone from TIMEZONE', function () {
@@ -435,14 +477,17 @@ describe('the viewer\'s timezone', function () {
         }
     });
 
-    it('prefers atom.timezone to a TIMEZONE in the environment', function () {
-        putenv('TIMEZONE=America/Chicago');
+    it('is overridden by a host\'s explicit null (a shallow merge), which leaves the environment', function () {
+        $_ENV['TIMEZONE'] = $_SERVER['TIMEZONE'] = 'Asia/Seoul';
 
         try {
-            config()->set('atom.timezone', 'Asia/Tokyo');
-            expect(Carbon::getLocalTimezone())->toBe('Asia/Tokyo');
+            config()->set('atom', ['timezone' => null]);
+            (new Jiannius\Atom\AtomServiceProvider($this->app))->register();
+
+            expect(config('atom.timezone'))->toBeNull()
+                ->and(Carbon::getLocalTimezone())->toBe('Asia/Seoul');
         } finally {
-            putenv('TIMEZONE');
+            unset($_ENV['TIMEZONE'], $_SERVER['TIMEZONE']);
         }
     });
 });
