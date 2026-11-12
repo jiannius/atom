@@ -44,7 +44,7 @@ $classes = Arr::toCssClasses([
 @endphp
 
 @if ($checkbox)
-    <td x-on:click.stop {{ $attributes->class($classes) }}>
+    <td x-on:click.stop x-on:auxclick.stop {{ $attributes->class($classes) }}>
         <atom:table.checkbox
         data-checkbox-id="{{ $checkbox }}"
         x-on:click="

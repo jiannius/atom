@@ -117,6 +117,16 @@ class FormErrorToastFixture extends Component
 
     public int $saves = 0;
 
+    // the form that keeps the browser's validation: how many times it submitted
+    public ?string $nativeField = null;
+
+    public int $natives = 0;
+
+    // the form whose `required` and `type="email"` are only hints
+    public ?string $mustField = null;
+
+    public ?string $hintMail = null;
+
     /**
      * Validate the first form; a pass raises the app's own "Saved" toast. The other two forms succeed quietly.
      */
@@ -136,6 +146,25 @@ class FormErrorToastFixture extends Component
 
         $this->saves++;
         $this->toast('Saved');
+    }
+
+    /**
+     * The form whose browser constraints are only hints: the server rules are the validation.
+     */
+    public function saveHints(): void
+    {
+        $this->validate(['mustField' => 'required', 'hintMail' => 'nullable|email'], [
+            'mustField.required' => 'Must is required.',
+            'hintMail.email' => 'Mail must be valid.',
+        ]);
+    }
+
+    /**
+     * The form that opted back in to native validation: only a submit the browser let through gets here.
+     */
+    public function saveNative(): void
+    {
+        $this->natives++;
     }
 
     /**

@@ -434,3 +434,62 @@ describe('saved views', function () {
         expect(domClasses(domQuery(viewsHtml(), '//button')[0]))->toContain('whitespace-nowrap');
     });
 });
+
+describe('row with an href', function () {
+    function rowHtml(string $attributes = 'href="/invoices/1"'): string
+    {
+        return renderBlade('<table><tbody><atom:table.row '.$attributes.'><td>x</td></atom:table.row></tbody></table>');
+    }
+
+    it('is reachable by Tab, and keeps its row semantics', function () {
+        $row = domQuery(rowHtml(), '//tr')[0];
+
+        expect($row->getAttribute('tabindex'))->toBe('0')
+            ->and($row->getAttribute('data-href'))->toBe('/invoices/1')
+            ->and($row->hasAttribute('role'))->toBeFalse()
+            ->and(domClasses($row))->toContain('cursor-pointer', 'focus-visible:outline-2', 'focus-visible:outline-focus');
+    });
+
+    it('opens from Enter on the row itself, a click, a middle click and Ctrl or Cmd', function () {
+        $html = rowHtml();
+
+        expect($html)
+            ->toContain('x-on:keydown.enter.self=')
+            ->toContain('x-on:click=')
+            ->toContain('x-on:auxclick=')
+            ->toContain('e.ctrlKey || e.metaKey')
+            ->toContain('window.open(')
+            ->toContain('window.location.href = ');
+    });
+
+    it('goes through Livewire for a wire:navigate row', function () {
+        expect(rowHtml('wire:navigate href="/invoices/1"'))->toContain('Livewire.navigate(')->not->toContain('window.location.href');
+    });
+
+    it('leaves clicks on its own controls to them', function () {
+        expect(rowHtml())->toContain('a, button, input, select, textarea, label');
+    });
+
+    it('skips every interactive descendant, and any wire:click*, x-on:click* or @click* element, walking up to the row', function () {
+        $click = domQuery(rowHtml(), '//tr')[0]->getAttribute('x-on:click');
+
+        foreach (['[role=button]', '[role=link]', '[role=menuitem]', '[role=checkbox]', '[role=switch]', '[tabindex]', '[contenteditable]', '[data-atom-row-ignore]', "'wire:click'", "'x-on:click'", "'@click'"] as $needle) {
+            expect($click)->toContain($needle);
+        }
+
+        // it walks the composed path (fixed at dispatch, so a removed target still counts) up to the row and never tests the row itself: the row has a tabindex of its own
+        expect($click)->toContain('e.composedPath()')->toContain('n === e.currentTarget')->toContain('n.nodeType !== 1');
+    });
+
+    it('stops a middle click on the actions and checkbox cells, as it stops a click', function () {
+        expect(renderBlade('<table><tbody><tr><atom:table.actions>x</atom:table.actions></tr></tbody></table>'))
+            ->toContain('x-on:click.stop x-on:auxclick.stop');
+    });
+
+    it('is not focusable without an href, or with one that is blocked', function (string $attributes) {
+        $html = rowHtml($attributes);
+
+        expect(domQuery($html, '//tr')[0]->hasAttribute('tabindex'))->toBeFalse()
+            ->and($html)->not->toContain('data-href')->not->toContain('x-on:keydown')->not->toContain('x-on:auxclick')->not->toContain('window.open');
+    })->with(['none' => '', 'blocked' => 'href="javascript:alert(1)"']);
+});

@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom\Services;
 
+use Illuminate\Support\Arr;
 use Illuminate\View\ComponentAttributeBag;
 
 /**
@@ -42,6 +43,36 @@ class Attributes
         }
 
         return false;
+    }
+
+    /**
+     * Split a `class` string into the tokens that place a box in its parent (width, flex item and margin utilities) and the rest.
+     * The layout ones are `w-*`, `min-w-*`, `max-w-*`, `basis-*`, `grow`, `shrink`, the flex item `flex-1|auto|none|initial|grow|shrink|[..]`,
+     * `order-*`, `self-*`, `justify-self-*` and every margin (`m-*`, `mx-*`, `ms-*`, `me-*`, negative `-m*`), under any variant (`md:w-96`,
+     * `max-sm:w-full`, `!w-96`, `grow!`). A utility for a child (`[&_svg]:w-4`, `*:w-4`), and every other class, stays in the rest, in order.
+     *
+     * @param string|array<int|string, mixed>|null $class a class string, or a `:class` array (run through `Arr::toCssClasses()`)
+     * @return array{0: string, 1: string} [layout classes, other classes], each space-joined
+     */
+    public static function splitLayoutClasses(string|array|null $class) : array
+    {
+        $class = is_array($class) ? Arr::toCssClasses($class) : $class;
+
+        $pattern = '/^(?:(?![\[*])(?:[^\s:\[\]]|\[[^\]\s]*\])+:)*!?(?:'
+            .'(?:min-|max-)?w-|basis-|order-|self-|justify-self-|-?m[xytrblse]?-|(?:grow|shrink)(?:-|!?$)|flex-(?:\d|auto!?$|initial!?$|none!?$|grow|shrink|\[|\())/';
+
+        $layout = [];
+        $rest = [];
+
+        foreach (preg_split('/\s+/', trim((string) $class), -1, PREG_SPLIT_NO_EMPTY) as $token) {
+            if (preg_match($pattern, $token)) {
+                $layout[] = $token;
+            } else {
+                $rest[] = $token;
+            }
+        }
+
+        return [implode(' ', $layout), implode(' ', $rest)];
     }
 
     /**

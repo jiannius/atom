@@ -8,6 +8,14 @@
 // <label> and the announced name would stop matching the visible one (WCAG 2.5.3).
 $merges = ['placeholder' => $placeholder];
 
+// Width and margin classes on the tag (`sm:w-96`, `max-w-sm`, `ms-auto`) size and place the search box, so they sit on its root; every
+// other class (a background, a border, a font) still styles the input, as it always did (see Attributes::splitLayoutClasses()).
+[$rootClass, $inputClass] = \Jiannius\Atom\Services\Attributes::splitLayoutClasses($attributes->get('class'));
+
+if ($inputClass !== '') {
+    $merges['class'] = $inputClass;
+}
+
 if (!filled($attributes->get('label'))) {
     $merges['aria-label'] = t($placeholder);
 }
@@ -37,7 +45,7 @@ $onEnter = ($filterKey ? 'emit(); ' : '')."\$dispatch('table-filter:changed'); \
 @endphp
 
 <div
-class="relative"
+{{ (new \Illuminate\View\ComponentAttributeBag(['class' => $rootClass]))->class('relative') }}
 @if ($filterKey)
 x-data="{
     unwatch: null,
@@ -89,7 +97,7 @@ x-on:table-filter:do-clear.window="
 data-atom-table-search>
     <atom:input
         icon="search"
-        {{ $attributes->merge($merges) }}
+        {{ $attributes->except('class')->merge($merges) }}
         x-on:keyup.enter.prevent="{!! $onEnter !!}" />
 
     {{-- Scoped to the search's own $refresh so it only spins on search, not on

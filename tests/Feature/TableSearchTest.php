@@ -105,3 +105,43 @@ it('renders a scoped loading spinner that keeps rows visible', function () {
         ->and($html)->toContain('wire:target="$refresh"')
         ->and($html)->toContain('data-atom-table-search');
 });
+
+// Width and margin classes on the search are its size and place (`sm:w-96`): they sit on the element that carries
+// data-atom-table-search, which the toolbar's 240px default reaches through :where() so it never outranks them. Any other
+// class still styles the input, as it did before.
+it('puts a width class on the search root, not on the input', function () {
+    view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+    $html = Blade::render('<atom:table.search class="sm:w-96" placeholder="Search order number" />');
+
+    expect(domClasses(domQuery($html, '//*[@data-atom-table-search]')[0]))->toContain('relative', 'sm:w-96')
+        ->and(domClasses(domQuery($html, '//*[@data-atom-table-search]//input')[0]))->not->toContain('sm:w-96');
+});
+
+it('keeps a background or border class on the input and sends only the layout ones to the root', function () {
+    view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+    $html = Blade::render('<atom:table.search class="bg-surface border-accent font-mono max-w-sm ms-auto" placeholder="Search" />');
+
+    $root = domClasses(domQuery($html, '//*[@data-atom-table-search]')[0]);
+    $input = domClasses(domQuery($html, '//*[@data-atom-table-search]//input')[0]);
+
+    expect($root)->toContain('relative', 'max-w-sm', 'ms-auto')
+        ->and($root)->not->toContain('bg-surface', 'border-accent', 'font-mono')
+        ->and($input)->toContain('bg-surface', 'border-accent', 'font-mono')
+        ->and($input)->not->toContain('max-w-sm', 'ms-auto');
+});
+
+it('takes a bound :class array: the width on the root, the rest on the input', function () {
+    view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+    $html = Blade::render('<atom:table.search :class="[\'sm:w-96\' => true, \'bg-red-100\']" placeholder="Search" />');
+
+    expect(domClasses(domQuery($html, '//*[@data-atom-table-search]')[0]))->toContain('relative', 'sm:w-96')
+        ->and(domClasses(domQuery($html, '//*[@data-atom-table-search]')[0]))->not->toContain('bg-red-100')
+        ->and(domClasses(domQuery($html, '//*[@data-atom-table-search]//input')[0]))->toContain('bg-red-100')
+        ->and(domClasses(domQuery($html, '//*[@data-atom-table-search]//input')[0]))->not->toContain('sm:w-96');
+});
+
+it('gives the toolbar default width no specificity, so a class on the search wins', function () {
+    $start = domQuery(renderBlade('<atom:table.toolbar>x</atom:table.toolbar>'), '//*[@data-atom-table-toolbar-start]')[0];
+
+    expect(domClasses($start))->toContain('[:where(&_[data-atom-table-search])]:w-full', 'sm:[:where(&_[data-atom-table-search])]:w-60');
+});

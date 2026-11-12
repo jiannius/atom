@@ -1,6 +1,6 @@
 <atom:docs.example
 title="Basic"
-description="Wraps a form and auto-wires the submit button's loading state. In Livewire, use wire:submit on the form."
+description="Wraps a form and auto-wires the submit button's loading state. In Livewire, use wire:submit on the form. The form is novalidate: a required or type=email field does not raise the browser's own bubble, so the server rules run and atom's inline errors and error toast show; pass :novalidate="false" to take the browser's validation back."
 view="atom::docs.demos.form.basic"/>
 
 <atom:docs.example

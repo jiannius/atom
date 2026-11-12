@@ -150,6 +150,81 @@ describe('hasWidth()', function () {
     });
 });
 
+describe('splitLayoutClasses()', function () {
+    it('sends width, flex item and margin utilities, under any variant, to the layout half', function (string $class) {
+        expect(Attributes::splitLayoutClasses($class))->toBe([$class, '']);
+    })->with([
+        'width' => 'w-96',
+        'min width' => 'min-w-0',
+        'max width' => 'max-w-sm',
+        'a breakpoint' => 'sm:w-96',
+        'a max breakpoint' => 'max-sm:w-full',
+        'stacked variants' => 'dark:md:w-4',
+        'important first' => '!w-96',
+        'important last' => 'w-96!',
+        'arbitrary' => 'w-[28rem]',
+        'basis' => 'basis-1/2',
+        'grow' => 'grow',
+        'grow zero' => 'grow-0',
+        'shrink' => 'shrink',
+        'shrink zero' => 'md:shrink-0',
+        'flex 1' => 'flex-1',
+        'flex auto' => 'flex-auto',
+        'flex none' => 'flex-none',
+        'flex arbitrary' => 'flex-[2_1_0%]',
+        'order' => 'order-last',
+        'self' => 'self-end',
+        'justify self' => 'justify-self-end',
+        'margin' => 'm-4',
+        'margin x' => 'mx-auto',
+        'margin y' => 'my-2',
+        'margin start' => 'ms-2',
+        'margin end' => 'me-2',
+        'margin top' => 'mt-1',
+        'margin right' => 'mr-1',
+        'margin bottom' => 'mb-1',
+        'margin left' => 'ml-auto',
+        'grow, important last' => 'grow!',
+        'flex none, important last' => 'flex-none!',
+        'flex auto, important last' => 'flex-auto!',
+        'shrink, important last' => 'shrink!',
+        'a negative margin' => '-mt-2',
+        'a negative margin under a variant' => 'md:-mx-4',
+    ]);
+
+    it('leaves everything else, and what styles a child, in the rest half', function (string $class) {
+        expect(Attributes::splitLayoutClasses($class))->toBe(['', $class]);
+    })->with([
+        'a background' => 'bg-surface',
+        'a border' => 'border-accent',
+        'a font' => 'font-mono',
+        'padding' => 'px-4',
+        'a height' => 'h-10',
+        'size' => 'size-8',
+        'a flex container class' => 'flex-col',
+        'flex wrap' => 'flex-wrap',
+        'flex' => 'flex',
+        'a grid class' => 'gap-2',
+        'a text class that starts with m' => 'mono',
+        'min height' => 'min-h-0',
+        'a width for a child' => '[&_svg]:w-4',
+        'the star variant' => '*:w-4',
+        'a growing word' => 'grower',
+        'rounded' => 'rounded-lg',
+    ]);
+
+    it('takes a :class array, as Arr::toCssClasses() reads it', function () {
+        expect(Attributes::splitLayoutClasses(['sm:w-96' => true, 'bg-red-100', 'ms-auto' => false, 'font-mono' => true]))->toBe(['sm:w-96', 'bg-red-100 font-mono'])
+            ->and(Attributes::splitLayoutClasses([]))->toBe(['', '']);
+    });
+
+    it('splits a mixed string in order, and takes null or empty', function () {
+        expect(Attributes::splitLayoutClasses("bg-surface  sm:w-96\tfont-mono ms-auto"))->toBe(['sm:w-96 ms-auto', 'bg-surface font-mono'])
+            ->and(Attributes::splitLayoutClasses(null))->toBe(['', ''])
+            ->and(Attributes::splitLayoutClasses('  '))->toBe(['', '']);
+    });
+});
+
 describe('disabledBy()', function () {
     beforeEach(function () {
         Blade::anonymousComponentPath(__DIR__.'/../Fixtures/AnonComponents');

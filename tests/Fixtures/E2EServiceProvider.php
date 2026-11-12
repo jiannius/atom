@@ -46,6 +46,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-breadcrumbs-trail', BreadcrumbsTrailFixture::class);
         Livewire::component('atom-e2e-sticky-selection', StickySelectionFixture::class);
         Livewire::component('atom-e2e-table-checked', TableCheckedFixture::class);
+        Livewire::component('atom-e2e-table-row-href', TableRowHrefFixture::class);
         Livewire::component('atom-e2e-table-server-slots', TableServerSlotsFixture::class);
         Livewire::component('atom-e2e-table-columns', TableColumnsFixture::class);
         Livewire::component('atom-e2e-input-morph', InputMorphFixture::class);
@@ -106,6 +107,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/navlist-persist', fn () => view('atom::e2e.navlist-persist'));
         Route::middleware('web')->get('/atom/e2e/sticky-selection', fn () => view('atom::e2e.sticky-selection'));
         Route::middleware('web')->get('/atom/e2e/table-checked', fn () => view('atom::e2e.table-checked'));
+        Route::middleware('web')->get('/atom/e2e/table-row-href', fn () => view('atom::e2e.table-row-href'));
+        Route::middleware('web')->get('/atom/e2e/table-search-width', fn () => view('atom::e2e.table-search-width'));
         Route::middleware('web')->get('/atom/e2e/table-columns', fn () => view('atom::e2e.table-columns'));
         Route::middleware('web')->get('/atom/e2e/table-columns-pair', fn () => view('atom::e2e.table-columns-pair'));
         Route::middleware('web')->get('/atom/e2e/table-column-picker', fn () => view('atom::e2e.table-column-picker'));

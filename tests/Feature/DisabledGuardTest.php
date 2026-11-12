@@ -31,6 +31,7 @@ const NOT_VALUE_CONTROLS = [
     'command/index' => 'the palette\'s search box: it filters a list and writes no model',
     'pagination' => '"Go to page" box in a navigation popover: moves the page, changes no record data',
     'table/pagination' => '"Go to page" box in a navigation popover: moves the page, changes no record data',
+    'table/row' => 'its click guard names `[contenteditable]` (and fields, buttons) only to skip a click that lands on one inside the row; the row holds no value of its own',
     'table/views' => '`x-modelable` carries which saved view is open: navigation, not record data',
     'tabs/index' => '`x-modelable` carries which tab is open: navigation, not record data',
     'tiptap/toolbar/font-size' => 'an input inside the tiptap toolbar, not a value of its own: the tiptap rows drive the toolbar (its menus, bold, the keyboard walk) disabled, and tests/e2e/tiptap-disabled-guards.spec.js calls its handlers directly',

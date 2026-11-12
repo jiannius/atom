@@ -4,6 +4,7 @@
     'recaptcha' => false,
     'disabled' => false,
     'errorToast' => true,
+    'novalidate' => true,
 ])
 
 @php
@@ -21,6 +22,13 @@ $merges = [
     'wire:target' => $submit,
     'wire:loading.class' => 'is-loading',
 ];
+
+// The browser's own validation bubble ("Please fill out this field") would stop a submit before Livewire ever
+// sees it, so atom's inline errors and the error toast never show. Off by default, so a `required`, `type="email"`,
+// `min` or `pattern` on a field is a hint to the server rule, not a second validator; `:novalidate="false"` opts back in.
+if ($novalidate) {
+    $merges['novalidate'] = true;
+}
 
 if ($disabled) {
     // Read-only form: each field reads it (Attributes::disabledBy()) and renders itself readonly or
