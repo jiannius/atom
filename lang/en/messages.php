@@ -17,6 +17,7 @@ return [
     'are-you-sure-to-delete-this-record' => 'Are you sure to DELETE this record? This action CANNOT BE UNDONE.',
     'selected' => 'Selected',
     'select-all' => 'Select all',
+    'select-row' => 'Select row',
     'deselect-all' => 'Deselect all',
     'clear-selection' => 'Clear selection',
     'show-selected' => 'Show selected',

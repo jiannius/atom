@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom;
 
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Arr;
 use Jiannius\Atom\Contracts\WebAction;
 use Jiannius\Atom\Services\Asset;
@@ -235,6 +236,44 @@ class Atom
     }
 
     /**
+     * Translate a host-supplied heading, subheading or message exactly once.
+     *
+     * A plain string is a lang key (or the text itself) and goes through `__()`: never `trans_choice()`, which cuts a `|` in the text
+     * and, with no count, still runs. A `[key, replacements]` pair is translated with those replacements and nothing else, so the
+     * values (user data) are never translated, pluralised or searched for `:word` a second time. An Htmlable is passed through untranslated, for compatibility; these components show the text, they never render it as HTML.
+     *
+     * @param  string|\Illuminate\Contracts\Support\Htmlable|array{0: string, 1: array<string, mixed>}|null  $text
+     */
+    public function translateOnce(mixed $text) : string
+    {
+        if ($text instanceof Htmlable) return (string) $text->toHtml();
+
+        if ($this->isTranslationPair($text)) return (string) __($text[0], $text[1]);
+
+        if ($text === null || $text === '') return '';
+
+        return (string) __((string) $text);
+    }
+
+    /**
+     * Whether a value is a `[key, replacements]` pair for translateOnce().
+     */
+    protected function isTranslationPair(mixed $value) : bool
+    {
+        return is_array($value) && count($value) === 2 && array_is_list($value) && is_string($value[0]) && is_array($value[1]);
+    }
+
+    /**
+     * A toast, alert or confirm `message` as a list: one string, one pair or a list of either.
+     *
+     * @return array<int|string, mixed>
+     */
+    protected function messageList(mixed $message) : array
+    {
+        return $this->isTranslationPair($message) ? [$message] : (array) $message;
+    }
+
+    /**
      * Trigger toast from anywhere in the application
      */
     public function toast(
@@ -262,9 +301,9 @@ class Atom
             'url',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = (string) t($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = (string) t($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => (string) t($m));
+        if (data_get($params, 'heading')) $params['heading'] = $this->translateOnce($params['heading']);
+        if (data_get($params, 'subheading')) $params['subheading'] = $this->translateOnce($params['subheading']);
+        if (data_get($params, 'message')) $params['message'] = Arr::map($this->messageList($params['message']), fn ($m) => $this->translateOnce($m));
 
         app('livewire')->current()->dispatch('atom-toast-show', ...$params);
     }
@@ -291,9 +330,9 @@ class Atom
             'onDismissed',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = (string) t($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = (string) t($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => (string) t($m));
+        if (data_get($params, 'heading')) $params['heading'] = $this->translateOnce($params['heading']);
+        if (data_get($params, 'subheading')) $params['subheading'] = $this->translateOnce($params['subheading']);
+        if (data_get($params, 'message')) $params['message'] = Arr::map($this->messageList($params['message']), fn ($m) => $this->translateOnce($m));
 
         $component = app('livewire')->current();
 
@@ -341,9 +380,9 @@ class Atom
             'onRejected',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = (string) t($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = (string) t($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map((array) $params['message'], fn ($m) => (string) t($m));
+        if (data_get($params, 'heading')) $params['heading'] = $this->translateOnce($params['heading']);
+        if (data_get($params, 'subheading')) $params['subheading'] = $this->translateOnce($params['subheading']);
+        if (data_get($params, 'message')) $params['message'] = Arr::map($this->messageList($params['message']), fn ($m) => $this->translateOnce($m));
 
         $component = app('livewire')->current();
 

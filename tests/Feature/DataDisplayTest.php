@@ -307,7 +307,7 @@ describe('table, the rest of its parts', function () {
     it('draws the row checkbox as the 16px box of the checkbox control, on the accent ink when checked', function () {
         $classes = domClasses(displayElement('<atom:table.checkbox />', 'data-atom-table-checkbox'));
 
-        expect($classes)->toContain('size-4', 'rounded', 'bg-surface', 'border-fg-subtle', 'data-[checked]:border-accent-ink', 'data-[checked]:bg-accent-ink', 'data-[checked]:*:opacity-100', '*:opacity-0');
+        expect($classes)->toContain('size-4', 'rounded', 'bg-surface', 'border-fg-subtle', 'data-[checked]:border-accent-ink', 'data-[checked]:bg-accent-ink', 'data-[mixed]:bg-accent-ink');
     });
 
     it('draws a filter chip as a 26px pill on the neutral tone, with a muted name', function () {

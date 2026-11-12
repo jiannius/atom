@@ -288,6 +288,14 @@ macro, so `$wire.toast(...)` and a crafted `calls` payload are refused with a "m
 error. From JavaScript use `atom.toast(...)`, `atom.alert(...)` or dispatch `atom-toast-show`;
 reach an action through `atom.action(...)` with the action opted into `WebAction`.
 
+**Toast, alert and confirm translate `heading`, `subheading` and each `message` once**: a plain string is a lang key or the text itself, looked up with `__()` (never pluralised, so a `|` stays). Text you have already interpolated, `t('Block :name?', ['name' => $user->name])`, would be looked up a second time, and a string that equals a lang key is swapped for its translation. Hand atom the key and its replacements instead, and the values are never translated, searched for `:word` or swapped:
+
+```php
+$this->confirm(heading: ['Block :name?', ['name' => $user->name]], onAccepted: 'block');
+```
+
+The pair works for `subheading`, for an entry of `message`, and in the props of `<atom:toast.trigger>`, `<atom:alert.trigger>` and `<atom:confirm.trigger>` (`:heading="['Block :name?', ['name' => $name]]"`). An `Htmlable` is passed through untranslated, for compatibility, and is displayed as plain text like any other value (these three show `heading`, `subheading` and `message` as text, never as HTML, so its tags show). For markup use the `html` option.
+
 A component takes only the state it uses, each from its own trait in `Jiannius\Atom\Traits\`:
 
 | Trait | Brings | Use it for |
@@ -1023,6 +1031,12 @@ Add `checkbox` to a header column and `:checkbox="$item->id"` to the matching ce
 <atom:table.column checkbox />
 ...
 <atom:table.cell :checkbox="$item->id" />
+```
+
+Each checkbox is a `role="checkbox"` box in the tab order: Tab reaches it, Space toggles it, and its `aria-checked` follows `$_table.checkboxes` (and `select_all`). A row's is named "Select row" and the header's "Select all"; name a row's after the record with `checkbox-label` on the cell, which lands on the checkbox, not the `<td>`:
+
+```blade
+<atom:table.cell :checkbox="$order->id" :checkbox-label="'Select '.$order->number" />
 ```
 
 Ticked ids collect in `$_table.checkboxes` and **survive pagination and sorting**, so a

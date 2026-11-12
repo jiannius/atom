@@ -16,7 +16,7 @@
         <x-slot:rows>
             @foreach ($this->rows as $row)
                 <atom:table.row wire:key="row-{{ $row['id'] }}">
-                    <atom:table.cell :checkbox="$row['id']" />
+                    <atom:table.cell :checkbox="$row['id']" :checkbox-label="'Select '.$row['name']" />
                     <atom:table.cell data-name="{{ $row['name'] }}">{{ $row['name'] }}</atom:table.cell>
                 </atom:table.row>
             @endforeach
