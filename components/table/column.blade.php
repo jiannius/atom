@@ -101,6 +101,7 @@ $classes = Arr::toCssClasses([
         <div class="grow">
             @if ($checkbox)
                 <atom:table.checkbox
+                :label="t('atom::messages.select-all')"
                 x-data="{
                     get rowCheckboxes () {
                         return [...this.$el.closest('table').querySelectorAll('tbody [data-atom-table-checkbox]')]
@@ -133,7 +134,8 @@ $classes = Arr::toCssClasses([
                     },
                 }"
                 x-on:click="toggle()"
-                x-bind:data-checked="allChecked" />
+                x-bind:data-checked="allChecked"
+                x-bind:aria-checked="!!allChecked" />
             @else
                 {{ $slot }}
             @endif
