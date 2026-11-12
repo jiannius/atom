@@ -431,8 +431,11 @@ for (const tw of ['floor', 'latest']) {
 
         expect((await style(page.getByTestId('tcb-off'), 'background-color'))['background-color']).toBe(await token(page, 'surface'))
         expect((await style(page.getByTestId('tcb-on'), 'background-color'))['background-color']).toBe(await token(page, 'accent-ink'))
-        await expect(page.getByTestId('tcb-off').locator('[data-atom-icon]')).toHaveCSS('opacity', '0')
-        await expect(page.getByTestId('tcb-on').locator('[data-atom-icon]')).toHaveCSS('opacity', '1')
+        // the box holds a tick and a dash (the dash is for the select-all box's mixed state); a normal row shows the tick only when checked, never the dash
+        await expect(page.getByTestId('tcb-off').locator('[data-atom-checkbox-tick]')).toHaveCSS('opacity', '0')
+        await expect(page.getByTestId('tcb-on').locator('[data-atom-checkbox-tick]')).toHaveCSS('opacity', '1')
+        await expect(page.getByTestId('tcb-off').locator('[data-atom-checkbox-dash]')).toHaveCSS('opacity', '0')
+        await expect(page.getByTestId('tcb-on').locator('[data-atom-checkbox-dash]')).toHaveCSS('opacity', '0')
       })
 
       test('a filter chip is a 26px pill on the neutral tone, and "clear" removes it', async ({ page }) => {
@@ -574,7 +577,7 @@ for (const tw of ['floor', 'latest']) {
 
           // the checked box: its fill against the surface, its mark against its fill (both are shapes, 3:1)
           await gate(page.getByTestId('tcb-on'), GRAPHIC, 'fill', 'checked box on the surface')
-          await gate(page.getByTestId('tcb-on').locator('[data-atom-icon]'), GRAPHIC, 'text', 'check mark on the fill')
+          await gate(page.getByTestId('tcb-on').locator('[data-atom-checkbox-tick]'), GRAPHIC, 'text', 'check mark on the fill')
           await gate(page.getByTestId('tcb-off'), GRAPHIC, 'border', 'empty box edge')
 
           // the bulk bar's words: a muted count and clear link, and the select-all link in the accent ink

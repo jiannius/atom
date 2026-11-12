@@ -101,6 +101,7 @@ $classes = Arr::toCssClasses([
         <div class="grow">
             @if ($checkbox)
                 <atom:table.checkbox
+                :label="t('atom::messages.select-all')"
                 x-data="{
                     get rowCheckboxes () {
                         return [...this.$el.closest('table').querySelectorAll('tbody [data-atom-table-checkbox]')]
@@ -112,15 +113,25 @@ $classes = Arr::toCssClasses([
                         return this.rowCheckboxes.map(cb => cb.dataset.checkboxId).filter(id => id != null)
                     },
 
+                    // the header's state for the CURRENT page: 'true' when every row is
+                    // selected (or select-all is on), 'mixed' when some are, else 'false'.
+                    // Rows selected on other pages (sticky selection) do not count.
+                    get state () {
+                        if ($wire._table.select_all) return 'true'
+                        let selected = ($wire._table.checkboxes || []).map(String)
+                        let count = this.pageIds.filter(id => selected.includes(String(id))).length
+                        return count === 0 ? 'false' : (count === this.pageIds.length ? 'true' : 'mixed')
+                    },
+
                     // checked when every current-page row is selected, so the
                     // indicator no longer lies across pages (it used to compare
                     // the total selected count to the current page's row count)
                     get allChecked () {
-                        if ($wire._table.select_all) return true
-                        let selected = ($wire._table.checkboxes || []).map(String)
-                        return this.pageIds.length > 0 && this.pageIds.every(id => selected.includes(String(id)))
+                        return this.state === 'true'
                     },
 
+                    // a click in the mixed state selects the rest of the page (target is
+                    // !allChecked); a click when all are selected clears the page
                     toggle () {
                         // leaving select-all clears everything in one go
                         if ($wire._table.select_all) return $wire.resetTableCheckboxes()
@@ -133,7 +144,9 @@ $classes = Arr::toCssClasses([
                     },
                 }"
                 x-on:click="toggle()"
-                x-bind:data-checked="allChecked" />
+                x-bind:data-checked="allChecked"
+                x-bind:data-mixed="state === 'mixed'"
+                x-bind:aria-checked="state" />
             @else
                 {{ $slot }}
             @endif

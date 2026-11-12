@@ -6,6 +6,7 @@
     'truncate' => false,
     'numeric' => false,
     'column' => null,
+    'checkboxLabel' => null,
 ])
 
 @php
@@ -46,12 +47,14 @@ $classes = Arr::toCssClasses([
 @if ($checkbox)
     <td x-on:click.stop x-on:auxclick.stop {{ $attributes->class($classes) }}>
         <atom:table.checkbox
+        :label="$checkboxLabel"
         data-checkbox-id="{{ $checkbox }}"
         x-on:click="
             if ($wire._table.select_all) $wire.set('_table.select_all', false)
             atom.arr.toggle($wire._table.checkboxes, {{ js($checkbox) }})
         "
-        x-bind:data-checked="$wire._table.select_all || $wire._table.checkboxes.includes({{ js($checkbox) }})" />
+        x-bind:data-checked="$wire._table.select_all || $wire._table.checkboxes.includes({{ js($checkbox) }})"
+        x-bind:aria-checked="!!($wire._table.select_all || $wire._table.checkboxes.includes({{ js($checkbox) }}))" />
     </td>
 @else
     <td {{ $attributes->class($classes) }}>
