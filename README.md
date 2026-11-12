@@ -1033,6 +1033,12 @@ Add `checkbox` to a header column and `:checkbox="$item->id"` to the matching ce
 <atom:table.cell :checkbox="$item->id" />
 ```
 
+Each checkbox is a `role="checkbox"` box in the tab order: Tab reaches it, Space toggles it, and its `aria-checked` follows `$_table.checkboxes` (and `select_all`). A row's is named "Select row" and the header's "Select all"; name a row's after the record with `checkbox-label` on the cell, which lands on the checkbox, not the `<td>`:
+
+```blade
+<atom:table.cell :checkbox="$order->id" :checkbox-label="'Select '.$order->number" />
+```
+
 Ticked ids collect in `$_table.checkboxes` and **survive pagination and sorting**, so a
 selection can span pages. The header checkbox selects or deselects the current page only.
 Bulk-action buttons go in the `checked` slot — that bar replaces the table header while
