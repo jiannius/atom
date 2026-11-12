@@ -47,5 +47,10 @@ class Orders extends Component
         $i = str('a.b')->dotpath();
         $j = Order::query()->tableHasColumn('x');
         $k = SiteDomain::factory()->count(2)->subdomain()->create();
+        $l = explode(' to ', $request->range);
+        $m = Order::query()->whereDateBetween('placed_at', $request->range);
+        $n = Carbon::getRange($request->range);
+        $o = explode(',', $request->range);
+        // $order->range = Carbon::getRange($x) is commented out
     }
 }

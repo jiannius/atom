@@ -368,6 +368,14 @@ class UpgradeCheck
                 'detect' => '->toDateRangeString( in PHP and Blade',
                 'kinds' => ['php', 'blade'], 'pattern' => '/->\s*toDateRangeString\s*\(/',
             ],
+            'date-range-value' => [
+                'title' => 'A date-only picker now writes Y-m-d: check code that parses the range value itself',
+                'section' => 'Controls', 'severity' => static::REVIEW, 'codemod' => 'report',
+                'detect' => "explode(' to ', preg_split on \"to\", ->before(' to ') / ->after(' to '), getRange( and whereDateBetween( in PHP and Blade (candidates: a call that hands the range on, as the picker wrote it, is fine)",
+                'kinds' => ['php', 'blade'],
+                'pattern' => '/explode\(\s*[\'"]\s*to\s*[\'"]|preg_split\(\s*[\'"][^\'"]*\bto\b|->\s*(?:before|after)\(\s*[\'"]\s*to\s*[\'"]|\bgetRange\s*\(|\bwhereDateBetween\s*\(/',
+                'note' => fn (string $match) => 'a date-only picker now writes Y-m-d: check code that parses the range value itself',
+            ],
             'date-printed-bare' => [
                 'title' => 'A date printed without ->format() changes string form (ISO with a Z) when Date::use is not added',
                 'section' => 'PHP globals: dates and macros', 'severity' => static::REVIEW, 'codemod' => 'report',

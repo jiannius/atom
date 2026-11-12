@@ -145,6 +145,8 @@ describe('atom:upgrade-check: the findings', function () {
             'date-local' => [$php.':39'],
             'date-recent' => [$php.':40'],
             'date-range-string' => [$php.':41'],
+            // a date-only picker writes Y-m-d: the explode on ' to ', whereDateBetween( and getRange( (a candidate each), not the explode on a comma or the comment
+            'date-range-value' => [$php.':50', $php.':51', $php.':52'],
             'date-printed-bare' => [$orders.':26'],
             'carbon-import' => [$php.':5'],
             'carbon-typed' => [$php.':31', $php.':31', $php.':33'],
@@ -192,6 +194,8 @@ describe('atom:upgrade-check: the findings', function () {
         foreach ([
             'date-local app/Livewire/Orders.php:43',
             'date-pretty app/Livewire/Orders.php:42',
+            'date-range-value app/Livewire/Orders.php:53',
+            'date-range-value app/Livewire/Orders.php:54',
             'macro-request app/Livewire/Orders.php:44',
             'js-empty resources/views/components/widget.blade.php:5',
             'js-empty resources/views/components/widget.blade.php:7',
