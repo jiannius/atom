@@ -195,7 +195,7 @@ Rules the patterns follow (apply them to any new screen):
 
 ### Toast / Alert / Confirm
 
-From PHP, `$this->toast(...)` / `$this->alert(...)` / `$this->confirm(...)` (or `app('atom')->...()` outside Livewire). All translate `heading`, `subheading`, `message` through `t()`.
+From PHP, `$this->toast(...)` / `$this->alert(...)` / `$this->confirm(...)` (or `app('atom')->...()` outside Livewire). All translate `heading`, `subheading`, `message` once, as a lang key or plain text (`__()`, never pluralised: a `|` stays). **Text you have already interpolated with user data (`t('Block :name?', ['name' => $user->name])`) is translated a second time, so hand atom the key and its replacements instead: `heading: ['Block :name?', ['name' => $user->name]]`**. atom translates the key once and the values are never translated, cut at a `|`, searched for `:word` or swapped for a lang key. The same pair works for `subheading`, each entry of `message`, and the `heading`/`subheading`/`message` props of `<atom:toast.trigger>`, `<atom:alert.trigger>` and `<atom:confirm.trigger>` (`:heading="['Block :name?', ['name' => $name]]"`). A plain finished string is still looked up as a key, so one that equals a lang key is swapped; an `Htmlable` (`new HtmlString(e($x))`) is passed through untouched and unescaped.
 
 - `toast`: `message`, `variant` (`success|danger|warning|...`), `heading`, `subheading`, `html`, `position`, `delay`, `navigate`, `url`.
 - `alert`: `variant`, `heading`, `subheading`, `message`, `html`, `button`, `onDismissed`.

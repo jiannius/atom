@@ -11,8 +11,8 @@
 x-data
 x-on:click="$el.querySelector('button[disabled]') || atom.alert(@js(array_filter([
     'variant' => $variant,
-    'heading' => t($heading),
-    'subheading' => t($subheading ?? $message),
+    'heading' => app('atom')->translateOnce($heading),
+    'subheading' => app('atom')->translateOnce($subheading ?? $message),
     'html' => $html,
     'button' => t($button),
 ]))).then(() => $dispatch('dismissed'))"

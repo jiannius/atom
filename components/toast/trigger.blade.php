@@ -15,8 +15,8 @@
 x-data
 x-on:click="$el.querySelector('button[disabled]') || atom.toast(@js(array_filter([
     'variant' => $variant,
-    'heading' => t($heading),
-    'subheading' => t($subheading ?? $message),
+    'heading' => app('atom')->translateOnce($heading),
+    'subheading' => app('atom')->translateOnce($subheading ?? $message),
     'html' => $html,
     'position' => $position,
     'align' => $align,

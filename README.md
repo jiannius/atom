@@ -288,6 +288,14 @@ macro, so `$wire.toast(...)` and a crafted `calls` payload are refused with a "m
 error. From JavaScript use `atom.toast(...)`, `atom.alert(...)` or dispatch `atom-toast-show`;
 reach an action through `atom.action(...)` with the action opted into `WebAction`.
 
+**Toast, alert and confirm translate `heading`, `subheading` and each `message` once**: a plain string is a lang key or the text itself, looked up with `__()` (never pluralised, so a `|` stays). Text you have already interpolated, `t('Block :name?', ['name' => $user->name])`, would be looked up a second time, and a string that equals a lang key is swapped for its translation. Hand atom the key and its replacements instead, and the values are never translated, searched for `:word` or swapped:
+
+```php
+$this->confirm(heading: ['Block :name?', ['name' => $user->name]], onAccepted: 'block');
+```
+
+The pair works for `subheading`, for an entry of `message`, and in the props of `<atom:toast.trigger>`, `<atom:alert.trigger>` and `<atom:confirm.trigger>` (`:heading="['Block :name?', ['name' => $name]]"`). An `Htmlable` (`new HtmlString(e($x))`) is passed through untouched; the caller owns its escaping.
+
 A component takes only the state it uses, each from its own trait in `Jiannius\Atom\Traits\`:
 
 | Trait | Brings | Use it for |
