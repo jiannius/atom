@@ -60,13 +60,17 @@ export default (config) => {
             ]
         },
 
-        // The ISO strings of the model's two ends, as they were stored (never a round trip through the zone's wall clock).
+        // The model's two ends as they were stored: ISO strings with a time (never a round trip through the zone's wall clock), else plain dates.
         get isoValues () {
             let split = (this.dateRangeValue || '').split('to').map(str => str.trim()).filter(Boolean)
 
+            // With no time each end is the day it stands for, so a seeded date stays itself and an old instant stays the right day in the zone
+            // when the other end is edited.
+            let one = (value) => config.time ? zone.instant(value) : zone.read(value).format('YYYY-MM-DD')
+
             return [
-                split[0] ? zone.instant(split[0]) : undefined,
-                split[1] ? zone.instant(split[1]) : undefined,
+                split[0] ? one(split[0]) : undefined,
+                split[1] ? one(split[1]) : undefined,
             ]
         },
 
@@ -134,8 +138,8 @@ export default (config) => {
             }
 
             if (presets[name]) {
-                this.startValue = zone.start(presets[name][0])
-                this.endValue = zone.end(presets[name][1])
+                this.startValue = this.writeStart(presets[name][0])
+                this.endValue = this.writeEnd(presets[name][1])
                 this.$nextTick(() => {
                     this.setCalendarDates()
                     this.setCalendarRange()
@@ -176,11 +180,12 @@ export default (config) => {
                 return 'reverted'
             }
 
-            // Like a calendar pick: a date-only end covers its whole day.
-            let startValue = start.hasTime ? zone.write(start.date) : zone.start(start.date)
-            let endValue = end.hasTime ? zone.write(end.date) : zone.end(end.date)
+            // Like a calendar pick: a date-only end covers its whole day (with no time, it is the day itself).
+            let startValue = start.hasTime ? zone.write(start.date) : this.writeStart(start.date)
+            let endValue = end.hasTime ? zone.write(end.date) : this.writeEnd(end.date)
 
-            if (new Date(endValue) < new Date(startValue)) {
+            // two plain dates compare as strings; instants as times
+            if (config.time ? new Date(endValue) < new Date(startValue) : endValue < startValue) {
                 this.revertTyped(input)
                 return 'reverted'
             }
@@ -199,6 +204,16 @@ export default (config) => {
             })
 
             return 'committed'
+        },
+
+        // A day picked or typed becomes the range's start or end: with a time, the first or last instant of the day in the zone; without,
+        // the day itself.
+        writeStart (wall) {
+            return config.time ? zone.start(wall) : zone.date(wall)
+        },
+
+        writeEnd (wall) {
+            return config.time ? zone.end(wall) : zone.date(wall)
         },
 
         revertTyped (input) {
@@ -242,13 +257,13 @@ export default (config) => {
             this.pikaday[0] = new Pikaday({ keyboardInput: false, onSelect: (value) => {
                 if (this.disabled) return
 
-                this.startValue = zone.start(dayjs(value))
+                this.startValue = this.writeStart(dayjs(value))
             }})
 
             this.pikaday[1] = new Pikaday({ keyboardInput: false, onSelect: (value) => {
                 if (this.disabled) return
 
-                this.endValue = zone.end(dayjs(value))
+                this.endValue = this.writeEnd(dayjs(value))
             }})
 
             this.calendarElements[0].prepend(this.pikaday[0].el)

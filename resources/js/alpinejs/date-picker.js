@@ -25,6 +25,12 @@ export default (config) => {
             return this.datePickerValue ? zone.read(this.datePickerValue) : null
         },
 
+        // Whether the value holds a time of day. With `time` off, an empty value or a plain YYYY-MM-DD gets a plain date back; a value that
+        // already carries a time (an instant, an old bookmark) keeps it, so a pick never drops a time it was given.
+        get carriesTime () {
+            return !!this.datePickerValue && !/^\d{4}-\d{2}-\d{2}$/.test(String(this.datePickerValue).trim())
+        },
+
         get datePickerString () {
             return config.time
                 ? this.datePickerObject?.format('DD MMM YYYY hh:mm A')
@@ -78,15 +84,20 @@ export default (config) => {
                 return 'reverted'
             }
 
-            // Like a calendar pick: a date-only entry keeps the time already set.
-            let value = this.datePickerObject && !parsed.hasTime
-                ? this.datePickerObject
-                    .set('year', parsed.date.get('year'))
-                    .set('month', parsed.date.get('month'))
-                    .set('date', parsed.date.get('date'))
-                : parsed.date
+            // With no time and nothing but a day set (or nothing), the day is the value. Otherwise a date-only entry keeps the time already set.
+            if (!config.time && !parsed.hasTime && !this.carriesTime) {
+                this.setTypedValue(zone.date(parsed.date))
+            }
+            else {
+                let value = this.datePickerObject && !parsed.hasTime
+                    ? this.datePickerObject
+                        .set('year', parsed.date.get('year'))
+                        .set('month', parsed.date.get('month'))
+                        .set('date', parsed.date.get('date'))
+                    : parsed.date
 
-            this.setTypedValue(zone.write(value))
+                this.setTypedValue(zone.write(value))
+            }
             // The display re-renders only if the formatted string differs, so a
             // re-spelling of the same date (`1/10/2024`) is tidied by hand.
             this.$nextTick(() => input.value = this.datePickerString ?? '')
@@ -146,7 +157,10 @@ export default (config) => {
 
                     let obj = dayjs(value)
 
-                    if (this.datePickerObject) {
+                    if (!config.time && !this.carriesTime) {
+                        this.datePickerValue = zone.date(obj)
+                    }
+                    else if (this.datePickerObject) {
                         this.datePickerValue = zone.write(this.datePickerObject
                             .set('year', obj.get('year'))
                             .set('month', obj.get('month'))

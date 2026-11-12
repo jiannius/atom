@@ -5,6 +5,9 @@ import { validZone, zoneInstant, zoneOf, zoneParts } from '../../resources/js/he
 // The `timezone` prop of <atom:date-picker> (helpers/zone.js): the pickers read and write the day in the APP's zone, not the browser's.
 // Drives /atom/e2e/date-picker-timezone (resources/views/e2e/date-picker-timezone.blade.php), with the browser held in UTC so that
 // "the browser's day" and "the zone's day" are far apart. Without the prop, the picker stays on the browser's day.
+//
+// With `time` off a range writes the days picked (`2026-09-01 to 2026-09-30`) and a single picker with no time of day writes a plain date; a
+// single picker holding an instant keeps its time of day (#218; the rest of that rule is in date-only-value.spec.js).
 
 const KL = 'Asia/Kuala_Lumpur'
 const NY = 'America/New_York'
@@ -64,7 +67,7 @@ test.describe('in a browser on UTC', () => {
       await pickRange(page, 0, 2026, 9, 1)
       await pickRange(page, 1, 2026, 10, 31)
 
-      await expect(out(page, 'range')).toHaveText('2026-08-31T16:00:00.000Z to 2026-10-31T15:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-09-01 to 2026-10-31')
       await expect(input(page, 'range')).toHaveValue('01 Sep 2026 to 31 Oct 2026')
     })
 
@@ -77,25 +80,25 @@ test.describe('in a browser on UTC', () => {
       await expect(start.locator('td.is-selected button')).toHaveText('1')
 
       await pickRange(page, 1, 2026, 10, 15)
-      await expect(out(page, 'range')).toHaveText('2026-08-31T16:00:00.000Z to 2026-10-15T15:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-09-01 to 2026-10-15')
     })
 
     test('a preset is today and its bounds in the zone', async ({ page }) => {
       // 2026-10-31 20:00 UTC is already 1 Nov 04:00 in Kuala Lumpur.
       await open(page, { tz: KL })
       await preset(page, 'Today')
-      await expect(out(page, 'range')).toHaveText('2026-10-31T16:00:00.000Z to 2026-11-01T15:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-11-01 to 2026-11-01')
       await expect(input(page, 'range')).toHaveValue('01 Nov 2026 to 01 Nov 2026')
 
       await preset(page, 'This Month')
-      await expect(out(page, 'range')).toHaveText('2026-10-31T16:00:00.000Z to 2026-11-30T15:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-11-01 to 2026-11-30')
     })
 
     test('a typed range is the zone\'s days', async ({ page }) => {
       await open(page, { tz: KL })
       await type(page, 'range', '01/09/2026 - 31/10/2026')
 
-      await expect(out(page, 'range')).toHaveText('2026-08-31T16:00:00.000Z to 2026-10-31T15:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-09-01 to 2026-10-31')
       await expect(input(page, 'range')).toHaveValue('01 Sep 2026 to 31 Oct 2026')
     })
 
@@ -111,10 +114,10 @@ test.describe('in a browser on UTC', () => {
       await expect(out(page, 'date')).toHaveText('2026-09-01T16:00:00.000Z')
     })
 
-    test('a single date with no value starts its day at midnight in the zone', async ({ page }) => {
+    test('a single date with no value is the day picked', async ({ page }) => {
       await open(page, { tz: KL })
       await pickDate(page, 'date', 2026, 9, 1)
-      await expect(out(page, 'date')).toHaveText('2026-08-31T16:00:00.000Z')
+      await expect(out(page, 'date')).toHaveText('2026-09-01')
     })
   })
 
@@ -124,41 +127,41 @@ test.describe('in a browser on UTC', () => {
       await expect(input(page, 'range')).toHaveValue('25 Oct 2026 to 05 Nov 2026')
     })
 
-    test('a range over the change starts in EDT and ends in EST', async ({ page }) => {
+    test('a range over the change is the days picked', async ({ page }) => {
       await open(page, { tz: NY })
       await pickRange(page, 0, 2026, 10, 25)
       await pickRange(page, 1, 2026, 11, 5)
 
-      await expect(out(page, 'range')).toHaveText('2026-10-25T04:00:00.000Z to 2026-11-06T04:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-10-25 to 2026-11-05')
       await expect(input(page, 'range')).toHaveValue('25 Oct 2026 to 05 Nov 2026')
     })
 
-    test('the day the clocks go back is 25 hours long', async ({ page }) => {
+    test('the day the clocks go back is one day', async ({ page }) => {
       await open(page, { tz: NY })
       await pickRange(page, 0, 2026, 11, 1)
       await pickRange(page, 1, 2026, 11, 1)
 
-      await expect(out(page, 'range')).toHaveText('2026-11-01T04:00:00.000Z to 2026-11-02T04:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-11-01 to 2026-11-01')
     })
 
     test('a rolling preset crosses the change', async ({ page }) => {
       // 3 Nov 07:00 in New York: the last 7 days start on 28 Oct (EDT).
       await open(page, { tz: NY }, '2026-11-03T12:00:00Z')
       await preset(page, 'Last 7 Days')
-      await expect(out(page, 'range')).toHaveText('2026-10-28T04:00:00.000Z to 2026-11-04T04:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-10-28 to 2026-11-03')
       await expect(input(page, 'range')).toHaveValue('28 Oct 2026 to 03 Nov 2026')
 
       await preset(page, 'This Month')
-      await expect(out(page, 'range')).toHaveText('2026-11-01T04:00:00.000Z to 2026-12-01T04:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-11-01 to 2026-11-30')
 
       await preset(page, 'This Year')
-      await expect(out(page, 'range')).toHaveText('2026-01-01T05:00:00.000Z to 2027-01-01T04:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-01-01 to 2026-12-31')
     })
 
-    test('a typed day on the change day is the whole 25 hours', async ({ page }) => {
+    test('a typed day on the change day is that day', async ({ page }) => {
       await open(page, { tz: NY })
       await type(page, 'range', '01/11/2026')
-      await expect(out(page, 'range')).toHaveText('2026-11-01T04:00:00.000Z to 2026-11-02T04:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-11-01 to 2026-11-01')
     })
 
     test('a date and time keeps the wall clock in the zone', async ({ page }) => {
@@ -190,18 +193,18 @@ test.describe('in a browser on UTC', () => {
       await expect(input(page, 'range')).toHaveValue('31 Aug 2026 to 31 Oct 2026')
 
       await pickRange(page, 0, 2026, 9, 1)
-      await expect(out(page, 'range')).toHaveText('2026-09-01T00:00:00.000Z to 2026-10-31T15:59:59.000Z')
-      await pickRange(page, 1, 2026, 10, 31)
-      await expect(out(page, 'range')).toHaveText('2026-09-01T00:00:00.000Z to 2026-10-31T23:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-09-01 to 2026-10-31')
+      await pickRange(page, 1, 2026, 10, 30)
+      await expect(out(page, 'range')).toHaveText('2026-09-01 to 2026-10-30')
 
       await type(page, 'range', '01/09/2026 - 31/10/2026')
-      await expect(out(page, 'range')).toHaveText('2026-09-01T00:00:00.000Z to 2026-10-31T23:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-09-01 to 2026-10-31')
     })
 
     test('a preset is the browser\'s today', async ({ page }) => {
       await open(page)
       await preset(page, 'Today')
-      await expect(out(page, 'range')).toHaveText('2026-10-31T00:00:00.000Z to 2026-10-31T23:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-10-31 to 2026-10-31')
     })
 
     test('a single date and time stay in the browser\'s zone', async ({ page }) => {
@@ -223,7 +226,7 @@ test.describe('in a browser on UTC', () => {
     await expect(input(page, 'range')).toHaveValue('31 Aug 2026 to 31 Oct 2026')
 
     await preset(page, 'Today')
-    await expect(out(page, 'range')).toHaveText('2026-10-31T00:00:00.000Z to 2026-10-31T23:59:59.999Z')
+    await expect(out(page, 'range')).toHaveText('2026-10-31 to 2026-10-31')
     expect(errors).toEqual([])
 
     // told once for the typo, though three pickers on the page carry it
@@ -249,7 +252,7 @@ test.describe('in a browser on Pacific/Auckland', () => {
     await expect(input(page, 'range')).toHaveValue('25 Oct 2026 to 05 Nov 2026')
 
     await pickRange(page, 0, 2026, 10, 26)
-    await expect(out(page, 'range')).toHaveText('2026-10-26T04:00:00.000Z to 2026-11-06T04:59:59.999Z')
+    await expect(out(page, 'range')).toHaveText('2026-10-26 to 2026-11-05')
   })
 
   test('a date or a date-time with no offset is a time in the zone, not in the browser', async ({ page }) => {
@@ -262,7 +265,7 @@ test.describe('in a browser on Pacific/Auckland', () => {
 
     // and the day picked on it is the zone's
     await pickRange(page, 1, 2026, 10, 15)
-    await expect(out(page, 'range')).toHaveText('2026-08-31T16:00:00.000Z to 2026-10-15T15:59:59.999Z')
+    await expect(out(page, 'range')).toHaveText('2026-09-01 to 2026-10-15')
   })
 
   test.describe('no timezone: the browser\'s days, as before', () => {
@@ -271,17 +274,18 @@ test.describe('in a browser on Pacific/Auckland', () => {
       await open(page, { range: '2026-08-31T16:00:00Z to 2026-10-31T15:59:59Z' })
       await expect(input(page, 'range')).toHaveValue('01 Sep 2026 to 01 Nov 2026')
 
-      await pickRange(page, 0, 2026, 9, 1)
-      await expect(out(page, 'range')).toHaveText('2026-08-31T12:00:00.000Z to 2026-10-31T15:59:59.000Z')
+      // picking the day it already shows is no edit: the stored instants stay as they were
+      await pickRange(page, 0, 2026, 9, 2)
+      await expect(out(page, 'range')).toHaveText('2026-09-02 to 2026-11-01')
       await pickRange(page, 1, 2026, 10, 31)
-      await expect(out(page, 'range')).toHaveText('2026-08-31T12:00:00.000Z to 2026-10-31T10:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-09-02 to 2026-10-31')
 
       await type(page, 'range', '01/09/2026 - 31/10/2026')
-      await expect(out(page, 'range')).toHaveText('2026-08-31T12:00:00.000Z to 2026-10-31T10:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-09-01 to 2026-10-31')
 
       // 2026-10-31 20:00 UTC is 1 Nov 09:00 in Auckland
       await preset(page, 'Today')
-      await expect(out(page, 'range')).toHaveText('2026-10-31T11:00:00.000Z to 2026-11-01T10:59:59.999Z')
+      await expect(out(page, 'range')).toHaveText('2026-11-01 to 2026-11-01')
     })
 
     test('a single date and time stay in the browser\'s zone', async ({ page }) => {
@@ -309,18 +313,18 @@ test.describe('through a Livewire re-render', () => {
     const server = (name) => probe(page, name).locator('[data-server]')
 
     await type(page, 'range', '01/09/2026 - 31/10/2026')
-    await expect(server('range')).toHaveText('2026-08-31T16:00:00.000Z to 2026-10-31T15:59:59.999Z')
+    await expect(server('range')).toHaveText('2026-09-01 to 2026-10-31')
 
     await type(page, 'date', '02/09/2026')
-    await expect(server('date')).toHaveText('2026-09-01T16:00:00.000Z')
+    await expect(server('date')).toHaveText('2026-09-02')
 
     await type(page, 'deferred-date', '03/09/2026')
     await type(page, 'deferred-range', '04/09/2026 - 05/09/2026')
     await input(page, 'deferred-range').press('Escape') // closes the panel the typing left open
     await page.locator('[data-save]').click()
     await expect(page.locator('[data-saves]')).toHaveText('1')
-    await expect(server('deferred-date')).toHaveText('2026-09-02T16:00:00.000Z')
-    await expect(server('deferred-range')).toHaveText('2026-09-03T16:00:00.000Z to 2026-09-05T15:59:59.999Z')
+    await expect(server('deferred-date')).toHaveText('2026-09-03')
+    await expect(server('deferred-range')).toHaveText('2026-09-04 to 2026-09-05')
 
     // the component has been rendered again: what is shown and held is as it was
     await expect(input(page, 'range')).toHaveValue('01 Sep 2026 to 31 Oct 2026')
@@ -330,7 +334,7 @@ test.describe('through a Livewire re-render', () => {
 
     // and it still picks in the zone afterwards
     await pickRange(page, 1, 2026, 10, 15)
-    await expect(server('range')).toHaveText('2026-08-31T16:00:00.000Z to 2026-10-15T15:59:59.999Z')
+    await expect(server('range')).toHaveText('2026-09-01 to 2026-10-15')
   })
 })
 

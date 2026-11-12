@@ -10,7 +10,7 @@ import dayjs from 'dayjs'
 // already speak. In a zone those objects are WALL CLOCKS: a dayjs whose browser-local
 // fields (year ... millisecond) read the time on the wall in the zone. `read()` turns
 // a stored instant into one, `write()` / `start()` / `end()` turn one back into an
-// ISO UTC string. Without a zone (or with one the browser does not know) every method
+// ISO UTC string (or `date()` into a plain YYYY-MM-DD, for a picker with no time). Without a zone (or with one the browser does not know) every method
 // is exactly what the pickers did before: plain browser-local dayjs.
 const DAY = 86400000
 const formatters = new Map()
@@ -124,6 +124,7 @@ export const zoneOf = (timezone) => {
             write: (wall) => wall.toISOString(),
             start: (wall) => wall.startOf('day').toISOString(),
             end: (wall) => wall.endOf('day').toISOString(),
+            date: (wall) => wall.format('YYYY-MM-DD'),
         }
     }
 
@@ -171,6 +172,11 @@ export const zoneOf = (timezone) => {
 
         end (wall) {
             return zoneInstant({ ...parts(wall), hour: 23, minute: 59, second: 59, millisecond: 999 }, zone).toISOString()
+        },
+
+        // The day the wall clock reads, as YYYY-MM-DD: a date-only picker's value, which carries no zone and no time.
+        date (wall) {
+            return wall.format('YYYY-MM-DD')
         },
     }
 }

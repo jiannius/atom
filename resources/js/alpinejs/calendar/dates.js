@@ -84,9 +84,11 @@ export const addMonths = (date, months) => {
     return pad(year, 4) + '-' + pad(month + 1) + '-' + pad(Math.min(d, last))
 }
 
-// The date picker's instant as the local calendar day the user clicked: the one place
-// the browser's own timezone is meant to be read.
+// The date picker's value as the calendar day the user clicked: a plain `Y-m-d` is that day (`new Date('2026-09-01')` is UTC midnight, the
+// day before west of UTC), an instant is the browser-local day, the one place the browser's own timezone is meant to be read.
 export const fromLocalDate = (value) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(value).trim()) && parseDate(value)) return String(value).trim()
+
     let date = new Date(value)
 
     if (Number.isNaN(date.getTime())) return null
@@ -94,15 +96,11 @@ export const fromLocalDate = (value) => {
     return pad(date.getFullYear(), 4) + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate())
 }
 
-// A calendar day as the browser-local midnight the date picker takes as its value; null when it is not a day the browser can hold.
+// A calendar day as the plain date the date picker takes as its value; null when it is not a day.
 export const toLocalDate = (date) => {
     let parsed = parseDate(date)
 
-    if (!parsed) return null
-
-    let local = new Date(parsed.y, parsed.m - 1, parsed.d)
-
-    return Number.isNaN(local.getTime()) ? null : local.toISOString()
+    return parsed ? toDate(parsed.time) : null
 }
 
 // A moment's time as minutes after midnight; a bare date is 0.

@@ -38,25 +38,25 @@ test('the inputs are no longer read-only', async ({ page }) => {
 test('a typed day-first date reaches a .live model on Enter', async ({ page }) => {
   await type(page, 'date', '01/10/2024')
 
-  await expect(server(page, 'date')).toHaveText(await iso(page, 2024, 10, 1))
+  await expect(server(page, 'date')).toHaveText('2024-10-01')
   await expect(input(page, 'date')).toHaveValue('01 Oct 2024')
 })
 
 test('the display format, in any case, reaches the model on blur', async ({ page }) => {
   await type(page, 'date', '15 mar 2025', 'Tab')
 
-  await expect(server(page, 'date')).toHaveText(await iso(page, 2025, 3, 15))
+  await expect(server(page, 'date')).toHaveText('2025-03-15')
   await expect(input(page, 'date')).toHaveValue('15 Mar 2025')
 })
 
 test('an ISO date is accepted', async ({ page }) => {
   await type(page, 'date', '2024-12-31')
-  await expect(server(page, 'date')).toHaveText(await iso(page, 2024, 12, 31))
+  await expect(server(page, 'date')).toHaveText('2024-12-31')
 })
 
 test('an invalid or partial entry is put back and never reaches the model', async ({ page }) => {
   await type(page, 'date', '01/10/2024')
-  const good = await iso(page, 2024, 10, 1)
+  const good = '2024-10-01'
   await expect(server(page, 'date')).toHaveText(good)
 
   for (const bad of ['01/10', '31/02/2024', 'next tuesday', '13/13/2024']) {
@@ -102,7 +102,7 @@ test('Tab reaches the input and typing works without opening anything first', as
 
   await page.keyboard.type('05/06/2024')
   await page.keyboard.press('Enter')
-  await expect(server(page, 'date')).toHaveText(await iso(page, 2024, 6, 5))
+  await expect(server(page, 'date')).toHaveText('2024-06-05')
 })
 
 test('the calendar still picks a date, and follows a typed one', async ({ page }) => {
@@ -114,7 +114,7 @@ test('the calendar still picks a date, and follows a typed one', async ({ page }
   await expect(calendar.locator('.pika-select-year')).toHaveValue('2024')
 
   await calendar.locator('button.pika-day[data-pika-day="15"]').click()
-  await expect(server(page, 'date')).toHaveText(await iso(page, 2024, 10, 15))
+  await expect(server(page, 'date')).toHaveText('2024-10-15')
   await expect(input(page, 'date')).toHaveValue('15 Oct 2024')
 })
 
@@ -176,8 +176,8 @@ test('a plain date picker refuses a time', async ({ page }) => {
 })
 
 test('a typed range reaches a .live model, with either separator', async ({ page }) => {
-  const start = await iso(page, 2024, 10, 1)
-  const end = await iso(page, 2024, 12, 31, 23, 59, 59, 999)
+  const start = '2024-10-01'
+  const end = '2024-12-31'
 
   await type(page, 'range', '01/10/2024 - 31/12/2024')
   await expect(server(page, 'range')).toHaveText(`${start} to ${end}`)
@@ -185,14 +185,14 @@ test('a typed range reaches a .live model, with either separator', async ({ page
 
   await type(page, 'range', '01 Nov 2024 to 30 nov 2024', 'Tab')
   await expect(server(page, 'range')).toHaveText(
-    `${await iso(page, 2024, 11, 1)} to ${await iso(page, 2024, 11, 30, 23, 59, 59, 999)}`,
+    '2024-11-01 to 2024-11-30',
   )
 })
 
 test('one typed date is a one-day range', async ({ page }) => {
   await type(page, 'range', '2024-10-01')
   await expect(server(page, 'range')).toHaveText(
-    `${await iso(page, 2024, 10, 1)} to ${await iso(page, 2024, 10, 1, 23, 59, 59, 999)}`,
+    '2024-10-01 to 2024-10-01',
   )
 })
 
@@ -232,9 +232,9 @@ test('typed values on deferred wire:model reach the server on submit', async ({ 
   await page.locator('[data-save]').click()
   await expect(page.locator('[data-saves]')).toHaveText('1')
 
-  await expect(server(page, 'deferred-date')).toHaveText(await iso(page, 2024, 10, 1))
+  await expect(server(page, 'deferred-date')).toHaveText('2024-10-01')
   await expect(server(page, 'deferred-range')).toHaveText(
-    `${await iso(page, 2024, 10, 1)} to ${await iso(page, 2024, 12, 31, 23, 59, 59, 999)}`,
+    '2024-10-01 to 2024-12-31',
   )
 })
 
@@ -245,7 +245,7 @@ test('Enter commits an edit without submitting the form; Enter again submits', a
 
   await input(page, 'deferred-date').press('Enter')
   await expect(page.locator('[data-saves]')).toHaveText('1')
-  await expect(server(page, 'deferred-date')).toHaveText(await iso(page, 2024, 10, 1))
+  await expect(server(page, 'deferred-date')).toHaveText('2024-10-01')
 })
 
 // On a phone, focusing the input raises the soft keyboard over the calendar. The
@@ -279,7 +279,7 @@ test.describe('touch', () => {
     await expect(input(page, 'date')).not.toBeFocused()
 
     await probe(page, 'date').locator('button.pika-day[data-pika-day="15"]').tap()
-    await expect(server(page, 'date')).toHaveText(await iso(page, 2024, 10, 15))
+    await expect(server(page, 'date')).toHaveText('2024-10-15')
   })
 
   test('tapping the input still focuses it and opens the calendar', async ({ page }) => {

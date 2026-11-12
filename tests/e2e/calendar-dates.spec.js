@@ -58,11 +58,15 @@ for (const zone of zones) {
             expect(addMonths('2026-10-09', 12)).toBe('2027-10-09')
         })
 
-        test('reads the picker instant as the local day the user clicked, and writes it back', () => {
-            // a picked local midnight, whatever the zone, is that day
+        test('reads the picker value as the day the user clicked, and writes it back', () => {
+            // the picker holds a plain date, whatever the zone: new Date('2026-11-01') is UTC midnight, the day before west of UTC
             for (const day of ['2026-03-08', '2026-11-01', '2026-10-09', '2026-01-01']) {
+                expect(toLocalDate(day)).toBe(day)
                 expect(fromLocalDate(toLocalDate(day))).toBe(day)
             }
+
+            // an instant (a picker that was handed one) is still the browser-local day
+            expect(fromLocalDate(new Date(2026, 10, 1).toISOString())).toBe('2026-11-01')
 
             expect(fromLocalDate('not a date')).toBeNull()
         })
