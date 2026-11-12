@@ -294,7 +294,7 @@ reach an action through `atom.action(...)` with the action opted into `WebAction
 $this->confirm(heading: ['Block :name?', ['name' => $user->name]], onAccepted: 'block');
 ```
 
-The pair works for `subheading`, for an entry of `message`, and in the props of `<atom:toast.trigger>`, `<atom:alert.trigger>` and `<atom:confirm.trigger>` (`:heading="['Block :name?', ['name' => $name]]"`). An `Htmlable` (`new HtmlString(e($x))`) is passed through untouched; the caller owns its escaping.
+The pair works for `subheading`, for an entry of `message`, and in the props of `<atom:toast.trigger>`, `<atom:alert.trigger>` and `<atom:confirm.trigger>` (`:heading="['Block :name?', ['name' => $name]]"`). An `Htmlable` is passed through untranslated, for compatibility, and is displayed as plain text like any other value (these three show `heading`, `subheading` and `message` as text, never as HTML, so its tags show). For markup use the `html` option.
 
 A component takes only the state it uses, each from its own trait in `Jiannius\Atom\Traits\`:
 

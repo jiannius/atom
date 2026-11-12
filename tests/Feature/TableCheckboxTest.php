@@ -71,7 +71,7 @@ it('names the header checkbox "Select all" and binds its state', function () {
     expect($box->getAttribute('role'))->toBe('checkbox')
         ->and($box->getAttribute('tabindex'))->toBe('0')
         ->and($box->getAttribute('aria-label'))->toBe('Select all')
-        ->and($box->getAttribute('x-bind:aria-checked'))->toBe('!!allChecked')
+        ->and($box->getAttribute('x-bind:aria-checked'))->toBe('state')
         ->and($box->hasAttribute('aria-checked'))->toBeFalse();
 });
 
@@ -87,4 +87,22 @@ it('does not read as a value control to the disabled guard (a div with a role, n
     $source = file_get_contents(__DIR__.'/../../components/table/checkbox.blade.php');
 
     expect(preg_match('/x-modelable|<input|<select|<textarea|contenteditable/', $source))->toBe(0);
+});
+
+it('gives the select-all box a three-way aria-checked and a data-mixed binding, with a tick and a dash', function () {
+    $box = checkboxElement(renderBlade('<atom:table.column checkbox />'));
+
+    expect($box->hasAttribute('aria-checked'))->toBeFalse()
+        ->and($box->getAttribute('x-bind:aria-checked'))->toBe('state')
+        ->and($box->getAttribute('x-bind:data-mixed'))->toBe("state === 'mixed'")
+        ->and($box->getAttribute('x-bind:data-checked'))->toBe('allChecked')
+        ->and($box->getAttribute('x-data'))->toContain("'mixed'")
+        ->and((new DOMXPath($box->ownerDocument))->query('.//*[@data-atom-checkbox-tick]', $box)->length)->toBe(1)
+        ->and((new DOMXPath($box->ownerDocument))->query('.//*[@data-atom-checkbox-dash]', $box)->length)->toBe(1);
+});
+
+it('reads a static data-mixed as aria-checked="mixed"', function () {
+    $box = checkboxElement(renderBlade('<atom:table.checkbox data-mixed />'));
+
+    expect($box->getAttribute('aria-checked'))->toBe('mixed');
 });

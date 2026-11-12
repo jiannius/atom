@@ -40,7 +40,7 @@ test.describe('on the list with a header checkbox', () => {
     await page.keyboard.press('Space')
     await expect(apple).toHaveAttribute('aria-checked', 'true')
     await expect(apple).toHaveAttribute('data-checked', /.+/)
-    await expect(page.getByRole('checkbox', { name: 'Select all' })).toHaveAttribute('aria-checked', 'false')
+    await expect(page.getByRole('checkbox', { name: 'Select all' })).toHaveAttribute('aria-checked', 'mixed')
     expect(await selectedIds(page)).toEqual(['1'])
 
     await page.keyboard.press('Space')
@@ -112,14 +112,47 @@ test.describe('on the list with a header checkbox', () => {
     expect((await selectedIds(page)).sort()).toEqual(['1', '2'])
   })
 
-  test('Tab focus is :focus-visible on a checkbox', async ({ page }) => {
+  test('the select-all box is mixed while some, not all, of the page is selected, true when all are, false when none', async ({ page }) => {
     await sticky(page)
-    const apple = page.getByRole('checkbox', { name: 'Select Apple' })
+    const all = page.getByRole('checkbox', { name: 'Select all' })
 
-    await page.getByRole('checkbox', { name: 'Select all' }).focus()
-    await page.keyboard.press('Tab')
-    await expect(apple).toBeFocused()
-    expect(await apple.evaluate((el) => el.matches(':focus-visible'))).toBe(true)
+    await expect(all).toHaveAttribute('aria-checked', 'false')
+    await expect(all).not.toHaveAttribute('data-mixed', /.*/)
+
+    await page.getByRole('checkbox', { name: 'Select Apple' }).click()
+    await expect(all).toHaveAttribute('aria-checked', 'mixed')
+    await expect(all).toHaveAttribute('data-mixed', /.*/)
+    await expect(all).not.toHaveAttribute('data-checked', /.*/)
+
+    // a click in the mixed state selects the rest of the page
+    await all.click()
+    await expect(all).toHaveAttribute('aria-checked', 'true')
+    await expect(all).not.toHaveAttribute('data-mixed', /.*/)
+    expect((await selectedIds(page)).sort()).toEqual(['1', '2', '3', '4', '5', '6'])
+
+    await page.getByRole('checkbox', { name: 'Select Cherry' }).click()
+    await expect(all).toHaveAttribute('aria-checked', 'mixed')
+
+    await page.getByRole('checkbox', { name: 'Select Cherry' }).click()
+    await expect(all).toHaveAttribute('aria-checked', 'true')
+
+    await all.click()
+    await expect(all).toHaveAttribute('aria-checked', 'false')
+    expect(await selectedIds(page)).toEqual([])
+  })
+
+  test('mixed counts only the rows on the page: a selection kept from another search is not "some of this page"', async ({ page }) => {
+    await sticky(page)
+    const all = page.getByRole('checkbox', { name: 'Select all' })
+    await page.getByRole('checkbox', { name: 'Select Apple' }).click()
+    await expect(all).toHaveAttribute('aria-checked', 'mixed')
+
+    const box = page.locator('[data-atom-table-search] input')
+    await box.fill('ban')
+    await box.press('Enter')
+    await expect(page.locator('[data-atom-table-row]')).toHaveCount(1)
+    expect(await selectedIds(page)).toEqual(['1'])
+    await expect(all).toHaveAttribute('aria-checked', 'false')
   })
 })
 
@@ -149,7 +182,9 @@ test.describe('in a row that opens an href', () => {
     await expect(box(page)).toHaveAttribute('aria-checked', 'false')
   })
 
-  test('a keyboard user sees a focus ring on the consumer\'s Tailwind, floor and latest', async ({ page }) => {
+  test('a keyboard user gets the base :focus-visible ring on the checkbox, on the consumer\'s Tailwind, floor and latest', async ({ page }) => {
+    // The checkbox carries no outline utilities of its own: the ring is the global `:focus-visible` rule in atom.tailwind.css
+    // (2px solid, 1px offset). This proves that rule reaches the checkbox on both Tailwind builds,.
     for (const tw of ['floor', 'latest']) {
       await page.goto(`/atom/e2e/table-row-href?tw=${tw}`)
       await page.waitForFunction(() => window.Livewire && window.Alpine)
@@ -159,8 +194,45 @@ test.describe('in a row that opens an href', () => {
       for (let i = 0; i < 12 && !(await box(page).evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press('Tab')
 
       await expect(box(page)).toBeFocused()
-      const ring = await box(page).evaluate((el) => { const s = getComputedStyle(el); return { style: s.outlineStyle, width: s.outlineWidth } })
-      expect(ring).toEqual({ style: 'solid', width: '2px' })
+      const ring = await box(page).evaluate((el) => { const s = getComputedStyle(el); return { style: s.outlineStyle, width: s.outlineWidth, offset: s.outlineOffset } })
+      expect(ring).toEqual({ style: 'solid', width: '2px', offset: '1px' })
     }
   })
+})
+
+test.describe('the mixed select-all box on the consumer\'s Tailwind', () => {
+  for (const tw of ['floor', 'latest']) {
+    test(`draws a dash on the accent background while mixed, a tick when all, nothing when none (${tw})`, async ({ page }) => {
+      await page.goto(`/atom/e2e/sticky-selection?tw=${tw}`)
+      await page.waitForFunction(() => window.Livewire && window.Alpine)
+      await page.waitForLoadState('networkidle')
+      const all = page.getByRole('checkbox', { name: 'Select all' })
+      const look = () => all.evaluate((el) => {
+        const op = (sel) => Number(getComputedStyle(el.querySelector(sel)).opacity)
+        return { bg: getComputedStyle(el).backgroundColor, tick: op('[data-atom-checkbox-tick]'), dash: op('[data-atom-checkbox-dash]') }
+      })
+
+      const none = await look()
+      expect(none.tick).toBe(0)
+      expect(none.dash).toBe(0)
+
+      await page.getByRole('checkbox', { name: 'Select Apple' }).click()
+      await expect(all).toHaveAttribute('aria-checked', 'mixed')
+      const mixed = await look()
+      expect(mixed.dash).toBe(1)
+      expect(mixed.tick).toBe(0)
+      expect(mixed.bg).not.toBe(none.bg)
+
+      await all.click()
+      await expect(all).toHaveAttribute('aria-checked', 'true')
+      const full = await look()
+      expect(full.tick).toBe(1)
+      expect(full.dash).toBe(0)
+      expect(full.bg).toBe(mixed.bg)
+
+      await all.click()
+      await expect(all).toHaveAttribute('aria-checked', 'false')
+      expect(await look()).toEqual(none)
+    })
+  }
 })

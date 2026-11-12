@@ -240,7 +240,7 @@ class Atom
      *
      * A plain string is a lang key (or the text itself) and goes through `__()`: never `trans_choice()`, which cuts a `|` in the text
      * and, with no count, still runs. A `[key, replacements]` pair is translated with those replacements and nothing else, so the
-     * values (user data) are never translated, pluralised or searched for `:word` a second time. Htmlable is passed through as it is.
+     * values (user data) are never translated, pluralised or searched for `:word` a second time. An Htmlable is passed through untranslated, for compatibility; these components show the text, they never render it as HTML.
      *
      * @param  string|\Illuminate\Contracts\Support\Htmlable|array{0: string, 1: array<string, mixed>}|null  $text
      */
@@ -258,7 +258,7 @@ class Atom
     /**
      * Whether a value is a `[key, replacements]` pair for translateOnce().
      */
-    public function isTranslationPair(mixed $value) : bool
+    protected function isTranslationPair(mixed $value) : bool
     {
         return is_array($value) && count($value) === 2 && array_is_list($value) && is_string($value[0]) && is_array($value[1]);
     }

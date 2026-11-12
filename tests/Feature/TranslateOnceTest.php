@@ -85,7 +85,8 @@ it('takes a list of messages, pairs and plain strings mixed', function (string $
     expect($params['message'])->toBe(['Blokir Ann?', 'Yakin?']);
 })->with('flows');
 
-it('leaves an Htmlable as it is', function (string $flow) {
+// An Htmlable is not translated and not escaped by atom; the components print heading, subheading and message with x-text, so the browser shows it as text.
+it('passes an Htmlable through untranslated', function (string $flow) {
     [, $params] = dispatchedBy($flow, ['heading' => new HtmlString('<b>Ann|Bob</b>')]);
 
     expect($params['heading'])->toBe('<b>Ann|Bob</b>');
