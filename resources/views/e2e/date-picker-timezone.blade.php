@@ -20,6 +20,11 @@ $tz = is_string($tz) && preg_match('~^[A-Za-z0-9_/+:-]{1,64}$~', $tz) ? $tz : nu
         <span data-out x-text="value"></span>
     </div>
 
+    <div data-probe="range-time" x-data="{ value: @js(request()->query('rangetime')) }">
+        <atom:date-picker variant="range" time :timezone="$tz" x-model="value" />
+        <span data-out x-text="value"></span>
+    </div>
+
     <div data-probe="date" x-data="{ value: @js(request()->query('date')) }">
         <atom:date-picker :timezone="$tz" x-model="value" />
         <span data-out x-text="value"></span>

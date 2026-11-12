@@ -10,7 +10,7 @@ view="atom::docs.demos.date-picker.range"/>
 
 <atom:docs.example
 title="Timezone"
-description="Pass an IANA zone (the app's) and the picker reads, picks, presets and types in that zone, whatever the browser's is. The value is still an ISO UTC instant."
+description="Pass an IANA zone (the app's) and the picker reads, picks, presets and types in that zone, whatever the browser's is. With no time on it the value is a plain date (2026-09-01, or 2026-09-01 to 2026-09-30 for a range), whatever the zone."
 view="atom::docs.demos.date-picker.timezone"/>
 
 

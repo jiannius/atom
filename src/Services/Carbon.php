@@ -64,11 +64,13 @@ class Carbon extends \Carbon\CarbonImmutable
     }
 
     /**
-     * Get local timezone
+     * Get local timezone: the signed-in user's, else `config('atom.timezone')` (atom's config/atom.php reads `env('TIMEZONE')` when the config is
+     * loaded, so it survives `config:cache`; the host's own config/atom.php wins), else `env('TIMEZONE')` (null at runtime once the config is cached,
+     * unless TIMEZONE is a real process variable, as when the config is cached at image build time), else Asia/Kuala_Lumpur.
      */
     public static function getLocalTimezone()
     {
-        return optional(Auth::user())->timezone ?? env('TIMEZONE') ?? 'Asia/Kuala_Lumpur';
+        return optional(Auth::user())->timezone ?? config('atom.timezone') ?? env('TIMEZONE') ?? 'Asia/Kuala_Lumpur';
     }
 
     /**
@@ -78,11 +80,13 @@ class Carbon extends \Carbon\CarbonImmutable
     {
         $range = $range ?? '1970-01-01 00:00:00 to '.now()->toDateTimeString();
 
+        // A bare `Y-m-d` end (what a date-only picker writes) is a whole day in the viewer's timezone: the range runs from the start of the
+        // first day to the last microsecond of the last. Anything else is an instant, read as it always was.
         $from = head(explode('to', $range));
-        $from = new self($from ?: '1970-01-01 00:00:00');
+        $from = DateRange::isDate(trim($from)) ? DateRange::dayStart(trim($from)) : new self($from ?: '1970-01-01 00:00:00');
 
         $to = last(explode('to', $range));
-        $to = $to ? new self($to) : now();
+        $to = DateRange::isDate(trim($to)) ? DateRange::nextDayStart(trim($to))->subMicrosecond() : ($to ? new self($to) : now());
 
         $diff = [
             'd' => round($from->diffInDays($to)),
