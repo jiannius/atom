@@ -28,6 +28,9 @@ class AtomServiceProvider extends ServiceProvider
     {
         $this->app->alias(Atom::class, 'atom');
 
+        // atom's defaults (config/atom.php) sit under the host's own config/atom.php, which wins; config:cache keeps the merged result
+        $this->mergeConfigFrom(__DIR__.'/../config/atom.php', 'atom');
+
         // Register the <atom:...> tag precompiler during register() (not boot()) so
         // it runs BEFORE Livewire's wire:key precompiler (registered in Livewire's
         // boot()). All register() run before all boot(), so atom converts its tags

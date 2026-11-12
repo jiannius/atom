@@ -377,21 +377,61 @@ describe('the viewer\'s timezone', function () {
         expect(Carbon::getLocalTimezone())->toBe('America/New_York');
     });
 
-    it('reads atom.timezone from the config, which php artisan config:cache keeps and env() does not', function () {
-        // with the config cached no .env is loaded: env() answers null whatever the file says
-        $kept = [getenv('TIMEZONE'), $_ENV['TIMEZONE'] ?? null, $_SERVER['TIMEZONE'] ?? null];
-        putenv('TIMEZONE');
-        unset($_ENV['TIMEZONE'], $_SERVER['TIMEZONE']);
+    it('never reads env(): a TIMEZONE in the environment that did not reach the config is not the zone', function () {
+        // with the config cached no .env is loaded: env() answers null whatever the file says, so the zone has to come from the config
+        $_ENV['TIMEZONE'] = $_SERVER['TIMEZONE'] = 'America/Chicago';
 
         try {
-            expect(env('TIMEZONE'))->toBeNull();
+            expect(env('TIMEZONE'))->toBe('America/Chicago');
+
+            config()->set('atom.timezone', null);
+            expect(Carbon::getLocalTimezone())->toBe('Asia/Kuala_Lumpur');
 
             config()->set('atom.timezone', 'Asia/Tokyo');
             expect(Carbon::getLocalTimezone())->toBe('Asia/Tokyo');
         } finally {
-            if ($kept[0] !== false) putenv('TIMEZONE='.$kept[0]);
-            if ($kept[1] !== null) $_ENV['TIMEZONE'] = $kept[1];
-            if ($kept[2] !== null) $_SERVER['TIMEZONE'] = $kept[2];
+            unset($_ENV['TIMEZONE'], $_SERVER['TIMEZONE']);
+        }
+    });
+
+    it('reads atom.timezone from the config with env() unset, as config:cache leaves it', function () {
+        unset($_ENV['TIMEZONE'], $_SERVER['TIMEZONE']);
+        putenv('TIMEZONE');
+        expect(env('TIMEZONE'))->toBeNull();
+
+        config()->set('atom.timezone', 'Asia/Tokyo');
+        expect(Carbon::getLocalTimezone())->toBe('Asia/Tokyo');
+    });
+
+    it('ships a config/atom.php that the service provider merges, and fills timezone from TIMEZONE', function () {
+        expect(config('atom'))->toHaveKey('timezone')
+            ->and(require __DIR__.'/../../config/atom.php')->toBe(['timezone' => env('TIMEZONE')]);
+
+        $_ENV['TIMEZONE'] = $_SERVER['TIMEZONE'] = 'Asia/Seoul';
+
+        try {
+            config()->set('atom', []);
+            (new Jiannius\Atom\AtomServiceProvider($this->app))->register();
+
+            expect(config('atom.timezone'))->toBe('Asia/Seoul')
+                ->and(Carbon::getLocalTimezone())->toBe('Asia/Seoul');
+        } finally {
+            unset($_ENV['TIMEZONE'], $_SERVER['TIMEZONE']);
+        }
+    });
+
+    it('lets the host\'s own config/atom.php win, and keeps its other keys', function () {
+        $_ENV['TIMEZONE'] = $_SERVER['TIMEZONE'] = 'Asia/Seoul';
+
+        try {
+            config()->set('atom', ['timezone' => 'Europe/London', 'editor' => ['disk' => 's3']]);
+            (new Jiannius\Atom\AtomServiceProvider($this->app))->register();
+
+            expect(config('atom.timezone'))->toBe('Europe/London')
+                ->and(config('atom.editor.disk'))->toBe('s3')
+                ->and(Carbon::getLocalTimezone())->toBe('Europe/London');
+        } finally {
+            unset($_ENV['TIMEZONE'], $_SERVER['TIMEZONE']);
         }
     });
 
