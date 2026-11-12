@@ -3,30 +3,50 @@
 namespace Jiannius\Atom\Macros;
 
 use Illuminate\Support\Facades\DB;
+use Jiannius\Atom\Services\DateRange;
 use Jiannius\Atom\Services\TableSort;
 
 class Builder
 {
     /**
      * Where date between
+     *
+     * A `Y-m-d` end is a whole calendar day in the viewer's timezone. On an Eloquent builder, against a DATETIME or TIMESTAMP column of the
+     * model's own table, that is `>=` the viewer's midnight of the first day and `<` the viewer's midnight after the last; anywhere else (a
+     * query builder, a DATE column, another table's column, a database that cannot say what the column is) it is a date comparison, and an
+     * end that is not a bare date is compared as it is.
      */
     public function whereDateBetween()
     {
         return function ($column, $range) {
-            $range = is_string($range)
-                ? collect(explode('to', $range))->map(fn ($val) => str($val)->replace('to', ''))->map(fn ($val) => trim($val))->toArray()
-                : $range;
+            [$from, $to] = DateRange::split($range);
 
-            $from = data_get($range, '0', '');
-            $to = data_get($range, '1', '');
+            $wholeDays = false;
+
+            if (
+                (DateRange::isDate($from) || DateRange::isDate($to))
+                && $this instanceof \Illuminate\Database\Eloquent\Builder
+                && is_string($column)
+                && preg_match('/^(?:([A-Za-z_][A-Za-z0-9_]*)\.)?([A-Za-z_][A-Za-z0-9_]*)$/D', $column, $parts)
+                && ($parts[1] === '' || $parts[1] === $this->getModel()->getTable())
+            ) {
+                try {
+                    $wholeDays = preg_match('/^(datetime|timestamp)(\(\d+\))?$/', strtolower((string) $this->tableColumnType($parts[2]))) === 1;
+                }
+                catch (\Throwable) {
+                    // the column cannot be introspected (`show columns` is MySQL's): compare dates
+                }
+            }
 
             if ($from) {
-                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) $this->whereDate($column, '>=', $from); // date in YYYY-MM-DD
+                if ($wholeDays && DateRange::isDate($from)) $this->where($column, '>=', DateRange::dayStart($from));
+                else if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) $this->whereDate($column, '>=', $from); // date in YYYY-MM-DD
                 else $this->where($column, '>=', $from);
             }
 
             if ($to) {
-                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) $this->whereDate($column, '<=', $to); // date in YYYY-MM-DD
+                if ($wholeDays && DateRange::isDate($to)) $this->where($column, '<', DateRange::nextDayStart($to));
+                else if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) $this->whereDate($column, '<=', $to); // date in YYYY-MM-DD
                 else $this->where($column, '<=', $to);
             }
 
@@ -268,8 +288,17 @@ class Builder
                             $from = $split->first();
                             $to = $split->count() > 1 ? $split->last() : null;
 
-                            if ($from) $compare('>=', $from);
-                            if ($to) $compare('<=', $to);
+                            // a bare date end is a whole day in the viewer's timezone; on a datetime column that is the half-open interval of
+                            // instants from its start to the start of the next day. A date column and an instant end compare as they always did.
+                            if ($from) {
+                                if ($coltype !== 'date' && DateRange::isDate($from)) $this->where($column, '>=', DateRange::dayStart($from));
+                                else $compare('>=', $from);
+                            }
+
+                            if ($to) {
+                                if ($coltype !== 'date' && DateRange::isDate($to)) $this->where($column, '<', DateRange::nextDayStart($to));
+                                else $compare('<=', $to);
+                            }
                         }
                         else if ($value) {
                             $compare($operator ?: '=', $value);
