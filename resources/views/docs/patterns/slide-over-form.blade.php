@@ -15,7 +15,7 @@
        modal's own form calls the component's `submit()` method (there is no `wire:submit` to pass). For the 448px width, use
        the plain composition shown here.
      - The pinned bar is the page save bar's shape: the status text ("Unsaved changes", "Saved") at the start (the `start` slot) and the
-       submit at the end. The submit is the one primary action of the slide-over; there is no Cancel button, the close button and
+       buttons at the end, the submit first. The submit is the one primary action of the slide-over; there is no Cancel button, the close button and
        Escape do that.
 
      Open it as ?open=1 to have the slide-over open on load. --}}
