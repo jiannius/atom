@@ -145,3 +145,14 @@ describe('menu.item', function () {
             ->not->toMatch('/<div[^>]*x-data="dropdown[^>]*wire:ignore/s');
     });
 });
+
+it('draws <atom:menu.separator> as a hairline separator that is not a menu item', function () {
+    $html = renderBlade('<atom:menu><atom:menu.item>A</atom:menu.item><atom:menu.separator class="x"/><atom:menu.item>B</atom:menu.item></atom:menu>');
+    $separator = domQuery($html, '//*[@role="menu"]/*[@role="separator"]');
+
+    expect($separator)->toHaveCount(1)
+        ->and($separator[0]->hasAttribute('data-atom-menu-separator'))->toBeTrue()
+        ->and($separator[0]->hasAttribute('data-atom-menu-item'))->toBeFalse()
+        ->and(domClasses($separator[0]))->toContain('h-px', 'bg-border', 'x')
+        ->and(domQuery($html, '//*[@role="menu"]/*[@data-atom-menu-item]'))->toHaveCount(2);
+});
