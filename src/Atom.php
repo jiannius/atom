@@ -346,7 +346,7 @@ class Atom
     /**
      * The click handler of a delete trigger (`<atom:button type="delete">`, `<atom:menu.item variant="delete">`): the delete confirm, then
      * `confirmed`. Inside a table's checked bar it counts what is ticked ("Delete 3 records?"; the total under select-all), with
-     * thousands separators like the bar's own count ("Delete 1,200 records?"). `delete-selected-records` is ONE string with a `:count`
+     * thousands separators like the select-all button ("Delete 1,200 records?"). `delete-selected-records` is ONE string with a `:count`
      * placeholder, not a plural `a|b` string: the handler replaces `:count` itself, and only for a count above one.
      *
      * @param  ?string  $passphrase  the plain text the user must type, or null/empty for none (escaped here: never pass JS)

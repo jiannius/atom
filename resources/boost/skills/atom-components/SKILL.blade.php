@@ -221,7 +221,7 @@ For confirm-before-action in Blade, use `<atom:confirm.trigger>`:
 @endverbatim
 
 @verbatim
-`<atom:button type="delete">` auto-wires a danger confirm dialog and dispatches `confirmed` → `$wire.delete()` by default. Override by setting your own `wire:click` or `x-on:click`. The confirm button says the trigger's plain-text label (up to 40 characters; "Delete invoice") instead of "Confirm"; `passphrase` (alias `phrase` on a menu item) makes the user type that text first. In a table's checked bar the heading counts the selection ("Delete 1,200 records?"): the `delete-selected-records` lang key is ONE string with a `:count` placeholder, not a plural `a|b` string.
+`<atom:button type="delete">` auto-wires a danger confirm dialog and dispatches `confirmed` → `$wire.delete()` by default. Override by setting your own `wire:click` or `x-on:click`. The confirm button says the trigger's plain-text label (up to 40 characters; "Delete invoice") instead of "Confirm"; `passphrase` (alias `phrase`, on the button and on a menu item) makes the user type that text first. In a table's checked bar the heading counts the selection ("Delete 1,200 records?"): the `delete-selected-records` lang key is ONE string with a `:count` placeholder, not a plural `a|b` string.
 
 **Button labels.** A plain-text label truncates with an ellipsis when it is longer than its container and the start and end icons stay in view (a workspace switcher: `<atom:button block variant="ghost" icon-suffix="dropdown" class="justify-between!">`: the `!` is needed, a plain `justify-between` loses to the button's `justify-center`, and it puts the icon at the right edge). Markup in the slot (a badge, a kbd) is not truncated.
 @endverbatim

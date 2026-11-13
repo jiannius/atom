@@ -38,6 +38,16 @@ describe('confirm', function () {
         expect($none)->toContain('passphrase: &#039;&#039;');
     });
 
+    it('hands a delete button\'s `phrase` alias to the dialog as `passphrase`, and does not print it as an attribute', function () {
+        $alias = renderBlade('<atom:button type="delete" phrase="remove-me">Delete</atom:button>');
+        $both = renderBlade('<atom:button type="delete" passphrase="first" phrase="second">Delete</atom:button>');
+
+        expect($alias)->toContain('passphrase: &#039;remove-me&#039;')
+            ->not->toContain('phrase="remove-me"')
+            ->not->toContain(' phrase: ');
+        expect($both)->toContain('passphrase: &#039;first&#039;');
+    });
+
     it('hands a delete button\'s passphrase to the dialog, escaped', function () {
         $html = renderBlade('<atom:button type="delete" passphrase="it\'s">Delete</atom:button>');
 

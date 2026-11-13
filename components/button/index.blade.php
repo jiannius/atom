@@ -6,6 +6,7 @@
     'rel' => 'noopener noreferrer',
     'newtab' => false,
     'passphrase' => '',
+    'phrase' => null,   // alias of passphrase
     'inverted' => null,
     'social' => null,
     'variant' => null,
@@ -17,6 +18,7 @@
 
 @php
 $href = safe_url($href);
+$passphrase = $passphrase ?: $phrase;
 
 $inverted ??= $type === 'delete';
 
