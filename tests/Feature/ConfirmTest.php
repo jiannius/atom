@@ -44,6 +44,14 @@ describe('confirm', function () {
         expect($html)->toContain('passphrase: &#039;it\\u0027s&#039;');
     });
 
+    it('maps a `phrase` in an atom.confirm() config to the dialog\'s passphrase', function () {
+        $xData = domQuery(renderBlade('<atom:confirm />'), '//form[@x-data]')[0]->getAttribute('x-data');
+
+        // showConfirm() copies `phrase` over `passphrase` when only the alias is given, so the typed-text field and the check both see it
+        expect($xData)->toContain('showConfirm (e)')
+            ->toContain('if (! this.config.passphrase && this.config.phrase) this.config.passphrase = this.config.phrase');
+    });
+
     it('forwards trigger props into the confirm call, html included', function () {
         $html = renderBlade('<atom:confirm.trigger heading="Delete?" html="<b>x</b>" passphrase="DELETE">Go</atom:confirm.trigger>');
 
@@ -145,5 +153,108 @@ describe('delete wording', function () {
         expect(renderBlade('<atom:menu.item variant="delete">Delete</atom:menu.item>'))
             ->toContain('Delete this record?')
             ->toContain('Delete :count records?');
+    });
+});
+
+/**
+ * The JS string literal a delete trigger's click handler passes for `$key` ("buttonConfirm", "passphrase"), decoded back to the text,
+ * or null when the handler has none.
+ */
+function confirmHandlerText(string $html, string $key): ?string
+{
+    foreach (domQuery($html, '//*') as $node) {
+        if ($node->hasAttribute('x-on:confirmed') && preg_match("/{$key}: '([^']*)'/", $node->getAttribute('x-on:click'), $m)) {
+            return json_decode('"'.$m[1].'"');
+        }
+    }
+
+    return null;
+}
+
+/**
+ * The click handler of the first element carrying a `confirmed` listener.
+ */
+function confirmHandlerOf(string $html): string
+{
+    foreach (domQuery($html, '//*') as $node) {
+        if ($node->hasAttribute('x-on:confirmed')) {
+            return $node->getAttribute('x-on:click');
+        }
+    }
+
+    return '';
+}
+
+describe('confirm button label rules', function () {
+    $triggers = [
+        'button' => fn (string $label) => renderBlade('<atom:button type="delete">'.$label.'</atom:button>'),
+        'menu item' => fn (string $label) => renderBlade('<atom:menu.item variant="delete">'.$label.'</atom:menu.item>'),
+    ];
+
+    foreach ($triggers as $name => $render) {
+        it("keeps a 40 character label and drops a 41 character one ({$name})", function () use ($render) {
+            expect(confirmHandlerText($render(str_repeat('a', 40)), 'buttonConfirm'))->toBe(str_repeat('a', 40));
+
+            $long = $render(str_repeat('a', 41));
+
+            expect($long)->not->toContain('buttonConfirm')
+                ->and(confirmHandlerText($long, 'buttonConfirm'))->toBeNull();
+        });
+
+        it("counts characters, not bytes, against the limit ({$name})", function () use ($render) {
+            expect(confirmHandlerText($render(str_repeat('é', 40)), 'buttonConfirm'))->toBe(str_repeat('é', 40))
+                ->and($render(str_repeat('é', 41)))->not->toContain('buttonConfirm');
+        });
+
+        it("decodes the entities a plain label was written with ({$name})", function () use ($render) {
+            expect(confirmHandlerText($render('Delete it&#039;s &amp; more'), 'buttonConfirm'))->toBe("Delete it's & more");
+        });
+
+        it("collapses a multi-line label to one line ({$name})", function () use ($render) {
+            expect(confirmHandlerText($render("\n    Delete\n        this   invoice\n"), 'buttonConfirm'))->toBe('Delete this invoice');
+        });
+
+        it("escapes a label with a quote or a script end tag ({$name})", function () use ($render) {
+            $quoted = $render('Say &quot;hi&quot; &#039;now&#039;');
+            $script = $render('Go &lt;/script&gt;&lt;b&gt;');
+
+            // decoded back, the text is what was written; in the markup, nothing can close the handler, the attribute or a script
+            expect(confirmHandlerText($quoted, 'buttonConfirm'))->toBe('Say "hi" \'now\'')
+                ->and(confirmHandlerText($script, 'buttonConfirm'))->toBe('Go </script><b>')
+                ->and($script)->not->toContain('</script>')->not->toContain('<b>')
+                ->and(confirmHandlerOf($script))->toContain('Go \\u003C\\/script\\u003E\\u003Cb\\u003E')
+                ->and(confirmHandlerOf($quoted))->toContain('Say \\u0022hi\\u0022 \\u0027now\\u0027');
+        });
+    }
+});
+
+describe('the delete handler', function () {
+    it('escapes the passphrase so it cannot break out of the handler', function () {
+        $passphrase = "it's </script> \"x\" \\ `\${1}`";
+        $handler = app('atom')->deleteConfirmHandler($passphrase, 'Delete it');
+
+        expect($handler)->not->toContain('</script>')
+            ->not->toContain($passphrase)
+            ->toContain("passphrase: 'it\\u0027s \\u003C\\/script\\u003E \\u0022x\\u0022 \\\\ `\${1}`',");
+
+        // and the same through the components, where the attribute is HTML-escaped on top
+        $html = renderBlade('<atom:button type="delete" :passphrase="$passphrase">Delete</atom:button>', ['passphrase' => $passphrase]);
+
+        expect(confirmHandlerText($html, 'passphrase'))->toBe($passphrase);
+    });
+
+    it('takes plain text, and null or an empty string for none', function () {
+        expect(app('atom')->deleteConfirmHandler())->toContain("passphrase: '',")
+            ->and(app('atom')->deleteConfirmHandler(null))->toContain("passphrase: '',")
+            ->and(app('atom')->deleteConfirmHandler(''))->toContain("passphrase: '',");
+    });
+
+    it('counts a bulk delete with thousands separators, as the bar does, in one :count string', function () {
+        $handler = app('atom')->deleteConfirmHandler();
+
+        // the heading is the single string with :count, filled with the count formatted like number_format()
+        expect($handler)->toContain("'Delete :count records?'.replace(':count', count.toLocaleString('en-US'))")
+            ->and($handler)->toContain('count > 1 ?')
+            ->and(trans('atom::messages.delete-selected-records'))->toBe('Delete :count records?')->not->toContain('|');
     });
 });

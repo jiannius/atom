@@ -20,7 +20,6 @@ $icons = [
 
 $href = safe_url($href);
 $passphrase = $passphrase ?? $phrase;
-$passphraseJs = (string) \Illuminate\Support\Js::from((string) $passphrase);
 
 /* A link is never `:disabled`, so `disabled` on a link item dimmed nothing and still navigated. A disabled item is a real
    disabled button: no href, out of the tab order. */
@@ -60,7 +59,7 @@ if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attribute
     $merges = [
         ...$merges,
 
-        'x-on:click' => app('atom')->deleteConfirmHandler($passphraseJs, $buttonConfirm),
+        'x-on:click' => app('atom')->deleteConfirmHandler($passphrase, $buttonConfirm),
 
         'x-on:confirmed' => "\$wire.delete()",
     ];

@@ -345,13 +345,16 @@ class Atom
 
     /**
      * The click handler of a delete trigger (`<atom:button type="delete">`, `<atom:menu.item variant="delete">`): the delete confirm, then
-     * `confirmed`. Inside a table's checked bar it counts what is ticked ("Delete 3 records?"; the total when select-all is on).
+     * `confirmed`. Inside a table's checked bar it counts what is ticked ("Delete 3 records?"; the total under select-all), with
+     * thousands separators like the bar's own count ("Delete 1,200 records?"). `delete-selected-records` is ONE string with a `:count`
+     * placeholder, not a plural `a|b` string: the handler replaces `:count` itself, and only for a count above one.
      *
-     * @param  string  $passphrase  a JS expression (Js::from), the text the user must type, or an empty string
+     * @param  ?string  $passphrase  the plain text the user must type, or null/empty for none (escaped here: never pass JS)
      * @param  string  $buttonConfirm  the confirm button's label, or an empty string for the dialog's default
      */
-    public function deleteConfirmHandler(string $passphrase, string $buttonConfirm = ''): string
+    public function deleteConfirmHandler(?string $passphrase = null, string $buttonConfirm = ''): string
     {
+        $passphraseJs = Js::from((string) $passphrase);
         $heading = Js::from(t('atom::messages.permanently-delete-record'));
         $message = Js::from(t('atom::messages.are-you-sure-to-delete-this-record'));
         $plural = Js::from(t('atom::messages.delete-selected-records', []));
@@ -362,9 +365,9 @@ class Atom
             let count = bar ? Number(\$wire._table?.select_all ? bar.dataset.total : \$wire._table?.checkboxes?.length) || 0 : 0
             return atom.confirm({
                 variant: 'danger',
-                heading: count > 1 ? $plural.replace(':count', count) : $heading,
+                heading: count > 1 ? $plural.replace(':count', count.toLocaleString('en-US')) : $heading,
                 message: $message,
-                passphrase: $passphrase,
+                passphrase: $passphraseJs,
                 $buttonConfirm
             })
         })().then(() => \$dispatch('confirmed')).catch(() => {})";
