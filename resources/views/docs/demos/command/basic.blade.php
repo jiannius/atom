@@ -11,7 +11,7 @@
         </atom:command.group>
 
         <atom:command.group heading="Actions">
-            <atom:command.item icon="close" shortcut="⌘K" x-on:click="$dispatch('command-demo-picked', 'new')">New record</atom:command.item>
+            <atom:command.item icon="close" shortcut="⌘K" x-on:click="$dispatch('command-demo-picked', 'new')">Create record</atom:command.item>
             <atom:command.item x-on:click="$dispatch('command-demo-picked', 'export')">Export</atom:command.item>
         </atom:command.group>
     </atom:command>

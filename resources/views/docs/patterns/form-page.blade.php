@@ -65,7 +65,7 @@ $money = fn (float $amount) => number_format($amount, 2);
     </x-slot>
 
     <atom:page width="narrow" data-testid="form-page">
-        <atom:page.header title="New invoice" :crumbs="[['label' => 'Invoices', 'href' => 'list-page'], ['label' => 'New invoice']]" :facts="[['label' => 'Number', 'value' => 'INV-0413', 'mono' => true]]">
+        <atom:page.header title="Create invoice" :crumbs="[['label' => 'Invoices', 'href' => 'list-page'], ['label' => 'Create invoice']]" :facts="[['label' => 'Number', 'value' => 'INV-0413', 'mono' => true]]">
             <x-slot:status>
                 <atom:status label="Draft · not saved"/>
             </x-slot:status>

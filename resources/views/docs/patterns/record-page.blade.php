@@ -24,6 +24,9 @@
        step is a plain button: the header's primary stays the one primary on the screen.
      - A person in a list is `<atom:avatar size="xs">` and their name. Something the reader has to act on, such as a blocked
        job, is one `<atom:callout>` under the header, in the tone of the status (warning here), never a hand-built box.
+     - Tone follows consequence in the menu: an action that stops or withdraws but keeps the record (cancel, archive, void) is a
+       `warning` item that confirms in warning (`<atom:confirm.trigger variant="warning">`), with no delete icon; only what destroys
+       data is `danger` (`variant="delete"`).
      - A process log is `<atom:timeline kind="step">` and a conversation is `<atom:timeline kind="message">`: the Log and Messages tabs.
 
      Open it with ?status=draft|in-progress|blocked|done to see the primary action and the stage path follow the status. --}}
@@ -144,7 +147,9 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
 
             <x-slot:menu>
                 <atom:menu.item icon="copy">Duplicate</atom:menu.item>
-                <atom:menu.item icon="delete">Cancel job</atom:menu.item>
+                <atom:confirm.trigger variant="warning" heading="Cancel this job?" message="The job stops here, and its record stays." button-confirm="Cancel job" button-cancel="Keep job">
+                    <atom:menu.item variant="warning" data-testid="record-cancel">Cancel job</atom:menu.item>
+                </atom:confirm.trigger>
             </x-slot:menu>
 
             <x-slot:primary>

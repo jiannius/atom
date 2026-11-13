@@ -60,7 +60,7 @@ $open = request()->query('open') === '1';
     <atom:page data-testid="slide-over-page">
         <atom:page.header title="Customers" :facts="[['value' => '4 customers']]">
             <x-slot:primary>
-                <atom:button variant="primary" icon="add" x-on:click="atom.modal('new-customer').slide()" data-testid="open-slide-over">New customer</atom:button>
+                <atom:button variant="primary" icon="add" x-on:click="atom.modal('new-customer').slide()" data-testid="open-slide-over">Create customer</atom:button>
             </x-slot:primary>
         </atom:page.header>
 
@@ -87,7 +87,7 @@ $open = request()->query('open') === '1';
 
         <atom:modal name="new-customer" class="w-[28rem]" data-testid="slide-over">
             <atom:form x-data="{ saved: false, changed: false }" x-on:submit.prevent="saved = true" x-on:input="changed = true" :error-toast="false">
-                <atom:page.header title="New customer" level="2" size="sm"/>
+                <atom:page.header title="Create customer" level="2" size="sm"/>
 
                 {{-- the sections in a box of their own, so the first one is a first child (no hairline under the title) --}}
                 <div class="grid gap-6">

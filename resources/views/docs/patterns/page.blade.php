@@ -1,5 +1,5 @@
 {{-- Placeholder page content for the two shell patterns. <main> is unpadded: <atom:page> pads the page. It follows the list page:
-     the page's ONE primary action ("New invoice") is the header's `primary` slot, never the shell's `actions` slot (that one is for
+     the page's ONE primary action ("Create invoice") is the header's `primary` slot, never the shell's `actions` slot (that one is for
      a secondary action or nothing); the table is a frameless one in a panel; a status is <atom:status>; money is `numeric` on the
      column and the cell, with the currency named once in the header ("Amount (RM)"). --}}
 @php
@@ -23,7 +23,7 @@ $tones = ['Paid' => 'success', 'Overdue' => 'danger', 'Sent' => 'neutral', 'Draf
         </x-slot:meta>
 
         <x-slot:primary>
-            <atom:button variant="primary" icon="add" data-testid="shell-primary">New invoice</atom:button>
+            <atom:button variant="primary" icon="add" data-testid="shell-primary">Create invoice</atom:button>
         </x-slot:primary>
     </atom:page.header>
 

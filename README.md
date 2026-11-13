@@ -145,7 +145,7 @@ class Create extends Component
         return $crumbs
             ->home('Dashboard', route('home'))
             ->push('Customers', route('customers.index'))
-            ->push('New Customer');
+            ->push('Create customer');
     }
 
     public function save()
@@ -768,7 +768,7 @@ Four pattern pages in `resources/views/docs/patterns/` (also at `/atom/docs/patt
 
 ```blade
 <atom:page width="narrow">
-    <atom:page.header title="New invoice" />
+    <atom:page.header title="Create invoice" />
 
     <atom:form wire:submit="save">
         <atom:form.section heading="Details" subheading="Dates and terms printed on the invoice.">

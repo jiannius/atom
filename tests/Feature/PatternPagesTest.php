@@ -1016,3 +1016,17 @@ describe('pattern page details', function () {
         expect(domQuery($html, '//*[@data-atom-page-meta]')[0]->textContent)->not->toContain('Customer Customer A');
     });
 });
+
+it('draws "Cancel job" as a warning item that confirms in warning, with no delete icon', function () {
+    $html = view('atom::docs.patterns.record-page')->render();
+    $item = domQuery($html, '//*[@data-testid="record-cancel"]');
+    $trigger = domQuery($html, '//*[@data-atom-confirm-trigger][.//*[@data-testid="record-cancel"]]');
+
+    expect($item)->toHaveCount(1)
+        ->and(domClasses($item[0]))->toContain('text-warning-fg')
+        ->and($item[0]->getElementsByTagName('svg')->length)->toBe(0)
+        ->and($trigger)->toHaveCount(1)
+        ->and($trigger[0]->getAttribute('x-on:click'))->toContain('\\u0022variant\\u0022:\\u0022warning\\u0022')
+        // the shell's layout holds the one dialog it opens
+        ->and(substr_count($html, 'x-on:atom-confirm-show.window'))->toBe(1);
+});

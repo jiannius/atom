@@ -116,7 +116,7 @@ for (const tw of ['floor', 'latest']) {
         const titleRow = await box(title(page).locator('..'))
 
         expect(titleRow.y - crumbBox.bottom).toBe(8)
-        await expect(crumbs.locator('[aria-current="page"]')).toHaveText('New invoice')
+        await expect(crumbs.locator('[aria-current="page"]')).toHaveText('Create invoice')
         await expect(crumbs.locator('a')).toHaveCount(1)
         expect(await crumbs.locator('a').getAttribute('href')).toBe('list-page')
       })
@@ -147,6 +147,19 @@ for (const tw of ['floor', 'latest']) {
         expect(more.height, 'the control token, 28px at the compact density').toBe(28)
         // the primary action ends at the page's right edge (less its gutter)
         expect(Math.abs(primary.right - (content.right - 28))).toBeLessThan(1)
+      })
+
+      test('"Cancel job" in the menu is a warning item that opens a warning confirm', async ({ page }) => {
+        await record(page, '', { tw })
+
+        await page.getByRole('button', { name: 'More actions' }).click()
+        await page.getByRole('menuitem', { name: 'Cancel job' }).click()
+
+        const dialog = page.locator('dialog[data-open]')
+        await expect(dialog).toBeVisible()
+        await expect(dialog.getByText('Cancel this job?')).toBeVisible()
+        await expect(dialog.getByRole('button', { name: 'Cancel job' })).toHaveClass(/bg-warning-fg/)
+        await expect(dialog.getByRole('button', { name: 'Keep job' })).toBeVisible()
       })
 
       test('the overflow menu opens from the ellipsis and closes on Escape', async ({ page }) => {
