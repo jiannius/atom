@@ -201,6 +201,19 @@ test.describe('controls inside the row do not open it', () => {
     })
   }
 
+  test('the row ⋯ trigger is named "More actions" and its menu opens aligned to the trigger\'s end', async ({ page }) => {
+    await open(page)
+
+    const trigger = page.locator('[data-atom-table-actions] [aria-haspopup="menu"]')
+    await expect(trigger).toHaveAccessibleName('More actions')
+    await trigger.click()
+
+    const menu = page.locator('[data-atom-table-actions] [role="menu"]')
+    await expect(menu).toBeVisible()
+    const [t, m] = await Promise.all([trigger.boundingBox(), menu.boundingBox()])
+    expect(Math.abs((m.x + m.width) - (t.x + t.width))).toBeLessThan(2)
+  })
+
   test('an item picked from the actions menu does not open the row', async ({ page }) => {
     await open(page)
 
