@@ -186,6 +186,8 @@ if (!$attributes->wire('loading')->value()) {
 }
 
 if ($type === 'delete' && !$attributes->wire('click')->value() && !$attributes->has('x-on:click')) {
+    $passphraseJs = \Illuminate\Support\Js::from((string) $passphrase);
+
     $merges = [
         ...$merges,
 
@@ -193,7 +195,7 @@ if ($type === 'delete' && !$attributes->wire('click')->value() && !$attributes->
             variant: 'danger',
             heading: '".t('atom::messages.permanently-delete-record')."',
             message: '".t('atom::messages.are-you-sure-to-delete-this-record')."',
-            passphrase: '$passphrase',
+            passphrase: {$passphraseJs},
         }).then(() => \$dispatch('confirmed')).catch(() => {})",
 
         'x-on:confirmed' => "\$wire.delete()",

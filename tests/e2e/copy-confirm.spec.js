@@ -289,6 +289,44 @@ test.describe('<atom:confirm> passphrase', () => {
     expect(JSON.parse(await received.textContent())).toEqual({ password: '', passphrase: 'example.com', reason: '' })
   })
 
+  // a menu item's `phrase` (the alias) and `passphrase`, and a delete button's `passphrase`, all ask for the text
+  for (const [label, text, typed] of [
+    ['Delete with phrase', 'remove-me', 'remove-me'],
+    ['Delete with passphrase', "it's ok", "it's ok"],
+    ['Delete button', 'btn-pass', 'btn-pass'],
+  ]) {
+    test(`"${label}" refuses wrong text and accepts the passphrase`, async ({ page }) => {
+      await open(page)
+      const received = page.getByTestId('received')
+
+      await page.getByRole('menuitem', { name: label }).or(page.getByRole('button', { name: label, exact: true })).first().click()
+      await expect(dialog(page)).toHaveAttribute('data-open', '')
+      await expect(passphrase(page)).toBeVisible()
+      await expect(dialog(page).locator('label[for="atom-confirm-passphrase"]')).toContainText(text)
+
+      await passphrase(page).fill('nope')
+      await dialog(page).getByRole('button', { name: 'Confirm' }).click()
+      await expect(error(page)).toBeVisible()
+      await expect(dialog(page)).toHaveAttribute('data-open', '')
+      await expect(received).toBeEmpty()
+
+      await passphrase(page).fill(typed)
+      await dialog(page).getByRole('button', { name: 'Confirm' }).click()
+      await expect(received).toHaveText('deleted')
+    })
+  }
+
+  test('`phrase` in an atom.confirm() call is read as the passphrase', async ({ page }) => {
+    await open(page)
+    await ask(page, { heading: 'Sure?', phrase: 'alias' })
+    await expect(passphrase(page)).toBeVisible()
+
+    await passphrase(page).fill('x')
+    await dialog(page).getByRole('button', { name: 'Confirm' }).click()
+    await expect(error(page)).toBeVisible()
+    expect(await answer(page)).toBeNull()
+  })
+
   test('a confirm with no passphrase still accepts at once', async ({ page }) => {
     await open(page)
     await ask(page, { heading: 'Sure?' })

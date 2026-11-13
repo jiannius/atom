@@ -28,6 +28,8 @@ $config = [
 
         showConfirm (e) {
             this.config = { ...@js($config), ...e.detail }
+            {{-- `phrase` is the documented alias of `passphrase` (the menu item's prop name) --}}
+            if (! this.config.passphrase && this.config.phrase) this.config.passphrase = this.config.phrase
             this.password = ''
             this.passphrase = ''
             this.reason = ''

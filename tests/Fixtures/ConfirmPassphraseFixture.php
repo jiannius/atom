@@ -25,6 +25,14 @@ class ConfirmPassphraseFixture extends Component
     }
 
     /**
+     * What `variant="delete"` on a menu item and `type="delete"` on a button call once the dialog accepts.
+     */
+    public function delete(): void
+    {
+        $this->received = 'deleted';
+    }
+
+    /**
      * Render the fixture view.
      */
     public function render()

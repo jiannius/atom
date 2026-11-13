@@ -6,7 +6,8 @@
     'newtab' => false,
     'target' => null,
     'variant' => 'default',  // default, danger, warning, delete, remove
-    'phrase' => null,   // phrase to input when delete
+    'passphrase' => null,   // text the user must type to confirm a delete
+    'phrase' => null,   // alias of passphrase
     'icon' => null,
     'iconSuffix' => null,
 ])
@@ -18,6 +19,8 @@ $icons = [
 ];
 
 $href = safe_url($href);
+$passphrase = $passphrase ?? $phrase;
+$passphraseJs = \Illuminate\Support\Js::from((string) $passphrase);
 
 /* A link is never `:disabled`, so `disabled` on a link item dimmed nothing and still navigated. A disabled item is a real
    disabled button: no href, out of the tab order. */
@@ -57,7 +60,7 @@ if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attribute
             variant: 'danger',
             heading: '".t('atom::messages.permanently-delete-record')."',
             message: '".t('atom::messages.are-you-sure-to-delete-this-record')."',
-            phrase: '$phrase',
+            passphrase: {$passphraseJs},
         }).then(() => \$dispatch('confirmed')).catch(() => {})",
 
         'x-on:confirmed' => "\$wire.delete()",

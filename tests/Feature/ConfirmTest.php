@@ -28,6 +28,22 @@ describe('confirm', function () {
             ->toContain('x-if="config.reason"');
     });
 
+    it('hands a menu item\'s typed confirmation to the dialog as `passphrase`, with `phrase` as the alias', function () {
+        $passphrase = renderBlade('<atom:menu.item variant="delete" passphrase="remove-me">Delete</atom:menu.item>');
+        $alias = renderBlade('<atom:menu.item variant="delete" phrase="remove-me">Delete</atom:menu.item>');
+        $none = renderBlade('<atom:menu.item variant="delete">Delete</atom:menu.item>');
+
+        expect($passphrase)->toContain('passphrase: &#039;remove-me&#039;')->not->toContain(' phrase: ');
+        expect($alias)->toContain('passphrase: &#039;remove-me&#039;');
+        expect($none)->toContain('passphrase: &#039;&#039;');
+    });
+
+    it('hands a delete button\'s passphrase to the dialog, escaped', function () {
+        $html = renderBlade('<atom:button type="delete" passphrase="it\'s">Delete</atom:button>');
+
+        expect($html)->toContain('passphrase: &#039;it\\u0027s&#039;');
+    });
+
     it('forwards trigger props into the confirm call, html included', function () {
         $html = renderBlade('<atom:confirm.trigger heading="Delete?" html="<b>x</b>" passphrase="DELETE">Go</atom:confirm.trigger>');
 
