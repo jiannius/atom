@@ -20,7 +20,7 @@ $icons = [
 
 $href = safe_url($href);
 $passphrase = $passphrase ?? $phrase;
-$passphraseJs = \Illuminate\Support\Js::from((string) $passphrase);
+$passphraseJs = (string) \Illuminate\Support\Js::from((string) $passphrase);
 
 /* A link is never `:disabled`, so `disabled` on a link item dimmed nothing and still navigated. A disabled item is a real
    disabled button: no href, out of the tab order. */
@@ -55,18 +55,12 @@ $merges = [
 if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attributes->has('x-on:click')) {
     /* The confirm button says what the item says ("Delete invoice"), when the item is plain text; else the dialog's own default. */
     $confirmLabel = str_contains((string) $slot, '<') ? '' : html_entity_decode(trim(preg_replace('/\s+/', ' ', (string) $slot)), ENT_QUOTES);
-    $buttonConfirm = $confirmLabel !== '' && mb_strlen($confirmLabel) <= 40 ? 'buttonConfirm: '.\Illuminate\Support\Js::from($confirmLabel).',' : '';
+    $buttonConfirm = mb_strlen($confirmLabel) <= 40 ? $confirmLabel : '';
 
     $merges = [
         ...$merges,
 
-        'x-on:click' => "atom.confirm({
-            variant: 'danger',
-            heading: '".t('atom::messages.permanently-delete-record')."',
-            message: '".t('atom::messages.are-you-sure-to-delete-this-record')."',
-            passphrase: {$passphraseJs},
-            {$buttonConfirm}
-        }).then(() => \$dispatch('confirmed')).catch(() => {})",
+        'x-on:click' => app('atom')->deleteConfirmHandler($passphraseJs, $buttonConfirm),
 
         'x-on:confirmed' => "\$wire.delete()",
     ];

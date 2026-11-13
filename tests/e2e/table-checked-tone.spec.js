@@ -69,3 +69,36 @@ for (const tw of ['floor', 'latest']) {
     }
   })
 }
+
+// The bulk delete counts what is ticked: "Delete this record?" for one, "Delete 2 records?" for two, the total for select-all.
+test.describe('table checked bar: the delete confirm counts the selection', () => {
+  const dialog = (page) => page.locator('dialog[x-data*="atom-confirm"]')
+  const heading = (page) => dialog(page).locator('.text-lg')
+
+  const ask = async (page) => {
+    await bar(page).getByRole('button', { name: 'Delete' }).click()
+    await expect(dialog(page)).toHaveAttribute('data-open', '')
+  }
+
+  test('one ticked row keeps the single wording, two say how many, select-all says the total', async ({ page }) => {
+    await open(page, { path: 'table-checked', tw: 'latest', extra: '&delete=1' })
+    await expect(bar(page)).toBeVisible()
+
+    await ask(page)
+    await expect(heading(page)).toHaveText('Delete this record?')
+    await expect(dialog(page)).toContainText("This can't be undone.")
+    await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog(page)).not.toHaveAttribute('data-open', '')
+
+    await page.getByRole('checkbox', { name: 'Select row' }).nth(1).click()
+    await ask(page)
+    await expect(heading(page)).toHaveText('Delete 2 records?')
+    await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog(page)).not.toHaveAttribute('data-open', '')
+
+    await bar(page).locator('[data-atom-table-select-all]').click()
+    await expect(bar(page)).toContainText('12 Selected')
+    await ask(page)
+    await expect(heading(page)).toHaveText('Delete 12 records?')
+  })
+})

@@ -127,3 +127,23 @@ describe('confirm tone and verb', function () {
             ->and(renderBlade('<atom:menu.item variant="delete"><b>Delete</b></atom:menu.item>'))->not->toContain('buttonConfirm');
     });
 });
+
+describe('delete wording', function () {
+    it('asks in sentence case, plainly, with a count-aware heading for a table\'s checked bar', function () {
+        $html = renderBlade('<atom:button type="delete">Delete</atom:button>');
+
+        expect($html)
+            ->toContain('Delete this record?')
+            ->toContain('This can\\u0027t be undone.')
+            ->toContain('Delete :count records?')
+            ->toContain('data-atom-table-checked')
+            ->not->toContain('Permanently')
+            ->not->toContain('CANNOT BE UNDONE');
+    });
+
+    it('uses the same wording for the delete menu item', function () {
+        expect(renderBlade('<atom:menu.item variant="delete">Delete</atom:menu.item>'))
+            ->toContain('Delete this record?')
+            ->toContain('Delete :count records?');
+    });
+});

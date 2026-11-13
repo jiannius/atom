@@ -25,6 +25,9 @@ class TableCheckedFixture extends Component
 
     public int $buttons = 1;
 
+    /** `?delete=1` adds a `type="delete"` bulk action, for the count in its confirm */
+    public bool $delete = false;
+
     /** A class a host puts on `<x-slot:checked>`: `gap-6` (a literal in the view, so the consumer build sees it) */
     public ?string $gap = null;
 
@@ -44,8 +47,17 @@ class TableCheckedFixture extends Component
         $this->tone = request()->query('tone') ?: null;
         $this->sticky = request()->boolean('sticky');
         $this->gap = request()->query('gap') === '6' ? request()->query('gap') : null;
+        $this->delete = request()->boolean('delete');
         $this->buttons = max(1, min(5, request()->integer('buttons', 1)));
         $this->_table['checkboxes'] = [1];
+    }
+
+    /**
+     * What the bulk delete button calls once its dialog is accepted.
+     */
+    public function delete(): void
+    {
+        $this->_table['checkboxes'] = [];
     }
 
     /**

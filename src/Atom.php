@@ -4,6 +4,7 @@ namespace Jiannius\Atom;
 
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Js;
 use Jiannius\Atom\Contracts\WebAction;
 use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\Broadcast;
@@ -340,6 +341,33 @@ class Atom
             ...$params,
             'wireId' => $component->getId(),
         ]);
+    }
+
+    /**
+     * The click handler of a delete trigger (`<atom:button type="delete">`, `<atom:menu.item variant="delete">`): the delete confirm, then
+     * `confirmed`. Inside a table's checked bar it counts what is ticked ("Delete 3 records?"; the total when select-all is on).
+     *
+     * @param  string  $passphrase  a JS expression (Js::from), the text the user must type, or an empty string
+     * @param  string  $buttonConfirm  the confirm button's label, or an empty string for the dialog's default
+     */
+    public function deleteConfirmHandler(string $passphrase, string $buttonConfirm = ''): string
+    {
+        $heading = Js::from(t('atom::messages.permanently-delete-record'));
+        $message = Js::from(t('atom::messages.are-you-sure-to-delete-this-record'));
+        $plural = Js::from(t('atom::messages.delete-selected-records', []));
+        $buttonConfirm = $buttonConfirm === '' ? '' : 'buttonConfirm: '.Js::from($buttonConfirm).',';
+
+        return "(() => {
+            let bar = \$el.closest('[data-atom-table-checked]')
+            let count = bar ? Number(\$wire._table?.select_all ? bar.dataset.total : \$wire._table?.checkboxes?.length) || 0 : 0
+            return atom.confirm({
+                variant: 'danger',
+                heading: count > 1 ? $plural.replace(':count', count) : $heading,
+                message: $message,
+                passphrase: $passphrase,
+                $buttonConfirm
+            })
+        })().then(() => \$dispatch('confirmed')).catch(() => {})";
     }
 
     /**
