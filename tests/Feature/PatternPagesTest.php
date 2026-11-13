@@ -673,6 +673,15 @@ describe('form page pattern', function () {
             ->and(domQuery($html, '//*[@data-testid="grand-total"]')[0]->textContent)->toContain('RM');
     });
 
+    it('puts the primary first in the save bar, then the secondary save, then Cancel', function () {
+        $html = view('atom::docs.patterns.form-page')->render();
+        $buttons = domQuery($html, '//*[@data-atom-form-actions-buttons]/*[@data-atom-button]');
+
+        expect($buttons)->toHaveCount(3)
+            ->and($buttons[0]->getAttribute('data-testid'))->toBe('form-primary')
+            ->and(domQuery($html, '//*[@data-atom-form-actions-buttons]/*[@data-atom-button][3]//*[@data-atom-button-label]')[0]->textContent)->toBe('Cancel');
+    });
+
     it('lists the lines as editable rows with money in numeric columns', function () {
         $html = view('atom::docs.patterns.form-page')->render();
         $rows = '//*[@data-testid="form-lines"]//tbody/tr';

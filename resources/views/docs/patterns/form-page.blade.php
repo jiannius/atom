@@ -9,7 +9,7 @@
        above them); `stacked` always puts it above, for a narrow place. Open this page as ?layout=stacked to see it. Fields are
        two across once their own box is wide enough; `class="@md:col-span-2"` makes one span the row.
      - The save bar is `<atom:form.actions bar>`, the LAST thing in the form. Its `start` slot is live totals (a <b> in it is the figure); `dirty` adds a muted "Unsaved changes" after it, shown only while the form has changes that were not saved;
-       its buttons are Cancel (ghost), a secondary save, and the submit, which is the screen's ONE primary action.
+       its buttons are the submit, which is the screen's ONE primary action, FIRST, then a secondary save, then Cancel (ghost).
      - Money is tabular and right-aligned, the currency named once in the heading or the column ("Amount (RM)"). Line items are
        EDITABLE: a frameless table whose cells hold inputs (the item, then the quantity and the unit price as right-aligned tabular
        inputs, a tax `<atom:select>` and a ghost remove x), with "Add line" and "Add from products" under it. The amount is read-only.
@@ -148,9 +148,9 @@ $money = fn (float $amount) => number_format($amount, 2);
                     <span>Total <b data-testid="grand-total">RM {{ $money($subtotal + $tax) }}</b></span>
                 </x-slot:start>
 
-                <atom:button type="button" variant="ghost">Cancel</atom:button>
-                <atom:button type="button">Save draft</atom:button>
                 <atom:button type="submit" data-testid="form-primary">Save and send</atom:button>
+                <atom:button type="button">Save draft</atom:button>
+                <atom:button type="button" variant="ghost">Cancel</atom:button>
             </atom:form.actions>
         </atom:form>
     </atom:page>

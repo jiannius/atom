@@ -227,7 +227,7 @@ describe('save bar', function () {
     });
 
     it('is the one primary: the submit button, and nothing else on a page form carries bg-accent', function () {
-        $html = renderBlade('<atom:form.actions bar><atom:button variant="ghost">Cancel</atom:button><atom:button>Save draft</atom:button><atom:button type="submit">Save and send</atom:button></atom:form.actions>');
+        $html = renderBlade('<atom:form.actions bar><atom:button type="submit">Save and send</atom:button><atom:button>Save draft</atom:button><atom:button variant="ghost">Cancel</atom:button></atom:form.actions>');
 
         $primaries = domQuery($html, '//*[@data-atom-button][not(ancestor::template)][contains(concat(" ", normalize-space(@class), " "), " bg-accent ")]');
 

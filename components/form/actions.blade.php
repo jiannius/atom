@@ -27,8 +27,9 @@
        (the bar itself is always there; without `dirty` there is no label at all). See resources/js/alpinejs/form-dirty.js for what counts as a
        change and what clears it.
        The `start` slot is what sits at its start (live totals): muted text, wrapping, with a <b> or <strong> in it
-       set as the figure (`text-fg`, semibold, tabular). The default slot is the buttons, at the end, in the order the host writes them (a
-       ghost Cancel, a secondary, then the submit, which is the screen's one primary action); full width on a phone, the submit growing.
+       set as the figure (`text-fg`, semibold, tabular). The default slot is the buttons, at the end, in the order the host writes them:
+       PRIMARY FIRST, as in <atom:form.modal> (the submit, which is the screen's one primary action; then a secondary save, then a ghost
+       Cancel, then a danger action); full width on a phone, the submit growing.
        Put it last inside the page's form, and give the page its own bottom room (<atom:page> does). A bottom <atom:toast> sits above
        the card while one is on screen (helpers/toast-lift.js).
      The bleed of `sticky` in a modal rests on the p-6 the modal draws: a sticky element is held inside its scroll

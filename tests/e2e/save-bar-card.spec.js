@@ -176,7 +176,7 @@ for (const tw of ['floor', 'latest']) {
         expect(strong['font-variant-numeric']).toContain('tabular-nums')
         expect(muted['font-size']).toBe((await styles(page.locator('body'), ['font-size']))['font-size'])
         expect(Math.abs(buttons.right - (barBox.right - 17))).toBeLessThan(1)
-        expect(labels.map((label) => label.trim())).toEqual(['Cancel', 'Save draft', 'Save and send'])
+        expect(labels.map((label) => label.trim())).toEqual(['Save and send', 'Save draft', 'Cancel'])
       })
 
       test('a page with its own bottom room (--atom-page-pb) is followed: the card still ends the page 12px above the bottom', async ({ page }) => {
