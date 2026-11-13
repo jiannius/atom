@@ -19,5 +19,7 @@ it('spaces each row of buttons by gap-2', function (string $blade, string $xpath
     'form actions' => ['<atom:form.actions><button>A</button><button>B</button></atom:form.actions>', '//*[@data-atom-form-actions]'],
     'form actions bar' => ['<atom:form.actions bar><button>A</button></atom:form.actions>', '//*[@data-atom-form-actions-buttons]'],
     'form modal actions' => ['<atom:form.modal name="m"><x-slot:actions><button>A</button></x-slot:actions></atom:form.modal>', '//*[@data-atom-form-modal-actions]'],
+    'sidebar shell actions' => ['<atom:layouts.sidebar :vite="false"><x-slot:actions><button>A</button><button>B</button></x-slot:actions></atom:layouts.sidebar>', '//*[@data-atom-shell-actions]'],
+    'header shell actions' => ['<atom:layouts.header :vite="false"><x-slot:actions><button>A</button><button>B</button></x-slot:actions></atom:layouts.header>', '//*[@data-atom-shell-actions]'],
     'button group with a gap' => ['<atom:button.group gap><button>A</button></atom:button.group>', '//*[@data-atom-button-group or contains(@class, "group/group")]'],
 ]);

@@ -371,7 +371,7 @@ $trailEmpty = $crumbsOnly
                 @endisset
             </div>
 
-            <div class="flex shrink-0 items-center gap-1.5" data-atom-shell-actions>
+            <div class="flex shrink-0 items-center gap-2" data-atom-shell-actions>
                 {{-- the host's actions are the page's (inert while the drawer is open); the dark toggle and the account menu after them are the shell's --}}
                 <div class="contents" data-atom-shell-page-actions>
                     @isset ($actions)
