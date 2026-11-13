@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
 
+// Outside hosts in the docs demos (the lightbox's picsum.photos thumbnails) hold up `load` and `networkidle` when they are down, and none of it
+// has to do with x-cloak: only the served app (the config's baseURL host, 127.0.0.1) is let through.
+test.beforeEach(async ({ page }) => {
+  await page.route('**/*', (route) => (new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort()))
+})
+
 // atom.css now carries [x-cloak]{display:none!important}. The whole point of the
 // change is that the rule REACHES the browser — asserting it exists in the source
 // file (XCloakTest) can't catch a build or manifest problem, which is exactly how
