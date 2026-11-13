@@ -53,6 +53,10 @@ $merges = [
 ];
 
 if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attributes->has('x-on:click')) {
+    /* The confirm button says what the item says ("Delete invoice"), when the item is plain text; else the dialog's own default. */
+    $confirmLabel = str_contains((string) $slot, '<') ? '' : html_entity_decode(trim(preg_replace('/\s+/', ' ', (string) $slot)), ENT_QUOTES);
+    $buttonConfirm = $confirmLabel !== '' && mb_strlen($confirmLabel) <= 40 ? 'buttonConfirm: '.\Illuminate\Support\Js::from($confirmLabel).',' : '';
+
     $merges = [
         ...$merges,
 
@@ -61,6 +65,7 @@ if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attribute
             heading: '".t('atom::messages.permanently-delete-record')."',
             message: '".t('atom::messages.are-you-sure-to-delete-this-record')."',
             passphrase: {$passphraseJs},
+            {$buttonConfirm}
         }).then(() => \$dispatch('confirmed')).catch(() => {})",
 
         'x-on:confirmed' => "\$wire.delete()",

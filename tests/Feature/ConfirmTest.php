@@ -98,3 +98,32 @@ describe('confirm', function () {
             ->and($params['reasonPlaceholder'])->toBe('e.g. duplicate');
     });
 });
+
+describe('confirm tone and verb', function () {
+    it('draws the confirm button in the dialog\'s tone', function () {
+        $html = renderBlade('<atom:confirm />');
+
+        foreach (['danger' => "config.variant === 'danger'", 'warning' => "config.variant === 'warning'", 'success' => "config.variant === 'success'"] as $tone => $condition) {
+            $template = domQuery($html, '//template[@x-if="'.$condition.'"]');
+
+            expect($template, $tone)->toHaveCount(1)
+                ->and($template[0]->ownerDocument->saveHTML($template[0]), $tone)->toContain('bg-'.$tone.'-fg');
+        }
+
+        // anything else keeps the accent button
+        $accent = domQuery($html, '//template[contains(@x-if, "includes(config.variant)")]');
+        expect($accent)->toHaveCount(1)
+            ->and($accent[0]->ownerDocument->saveHTML($accent[0]))->toContain('bg-accent');
+    });
+
+    it('names the confirm button after a delete button or menu item that has a plain label', function () {
+        expect(renderBlade('<atom:button type="delete">Delete invoice</atom:button>'))->toContain('buttonConfirm: &#039;Delete invoice&#039;')
+            ->and(renderBlade('<atom:menu.item variant="delete">Delete invoice</atom:menu.item>'))->toContain('buttonConfirm: &#039;Delete invoice&#039;');
+    });
+
+    it('leaves the dialog\'s default label when the trigger has no plain label', function () {
+        expect(renderBlade('<atom:button type="delete" icon="delete" />'))->not->toContain('buttonConfirm')
+            ->and(renderBlade('<atom:button type="delete"><b>Delete</b> it</atom:button>'))->not->toContain('buttonConfirm')
+            ->and(renderBlade('<atom:menu.item variant="delete"><b>Delete</b></atom:menu.item>'))->not->toContain('buttonConfirm');
+    });
+});

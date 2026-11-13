@@ -202,7 +202,7 @@ From PHP, `$this->toast(...)` / `$this->alert(...)` / `$this->confirm(...)` (or 
 
 - `toast`: `message`, `variant` (`success|danger|warning|...`), `heading`, `subheading`, `html`, `position`, `delay`, `navigate`, `url`.
 - `alert`: `variant`, `heading`, `subheading`, `message`, `html`, `button`, `onDismissed`.
-- `confirm`: `variant`, `heading`, `subheading`, `message`, `html`, `buttonConfirm`, `buttonCancel`, `password`, `passphrase` (the dialog accepts only that text, case-sensitive, surrounding whitespace ignored, and hands on the trimmed text; the check is browser-side, so a Livewire `onAccepted` that deletes or overwrites must compare the `passphrase` it receives itself), `reason` (with `reasonLabel`/`reasonPlaceholder`), `onAccepted`, `onRejected`.
+- `confirm`: `variant` (`danger`, `warning` or `success` draws the icon and the confirm button in that tone, anything else the accent button; a delete button or delete menu item names the button after its own plain-text label), `heading`, `subheading`, `message`, `html`, `buttonConfirm`, `buttonCancel`, `password`, `passphrase` (the dialog accepts only that text, case-sensitive, surrounding whitespace ignored, and hands on the trimmed text; the check is browser-side, so a Livewire `onAccepted` that deletes or overwrites must compare the `passphrase` it receives itself), `reason` (with `reasonLabel`/`reasonPlaceholder`), `onAccepted`, `onRejected`.
 
 @verbatim
 For confirm-before-action in Blade, use `<atom:confirm.trigger>`:

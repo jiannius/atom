@@ -139,13 +139,18 @@ $config = [
         <div class="flex justify-end space-x-2 rtl:space-x-reverse">
             <atom:button x-on:click="cancel"><span x-text="config.buttonCancel"></span></atom:button>
 
-            <template x-if="config.variant === 'danger'" hidden>
-                <atom:button type="submit" variant="danger" :icon="false"><span x-text="config.buttonConfirm"></span></atom:button>
-            </template>
-
-            <template x-if="config.variant !== 'danger'" hidden>
-                <atom:button type="submit" variant="accent" :icon="false"><span x-text="config.buttonConfirm"></span></atom:button>
-            </template>
+            {{-- the button is drawn in the dialog's own tone (the icon above is its tone too): danger, warning and success have their
+                 own button, anything else is the accent one --}}
+            @foreach ([
+                'danger' => "config.variant === 'danger'",
+                'warning' => "config.variant === 'warning'",
+                'success' => "config.variant === 'success'",
+                'accent' => "! ['danger', 'warning', 'success'].includes(config.variant)",
+            ] as $tone => $condition)
+                <template x-if="{{ $condition }}" hidden>
+                    <atom:button type="submit" variant="{{ $tone }}" :icon="false"><span x-text="config.buttonConfirm"></span></atom:button>
+                </template>
+            @endforeach
         </div>
     </form>
 </atom:modal>

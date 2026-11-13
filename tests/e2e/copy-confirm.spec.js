@@ -304,14 +304,16 @@ test.describe('<atom:confirm> passphrase', () => {
       await expect(passphrase(page)).toBeVisible()
       await expect(dialog(page).locator('label[for="atom-confirm-passphrase"]')).toContainText(text)
 
+      // the confirm button is named after the trigger
+      await expect(dialog(page).locator('button[type=submit]')).toContainText(label)
       await passphrase(page).fill('nope')
-      await dialog(page).getByRole('button', { name: 'Confirm' }).click()
+      await dialog(page).locator('button[type=submit]').click()
       await expect(error(page)).toBeVisible()
       await expect(dialog(page)).toHaveAttribute('data-open', '')
       await expect(received).toBeEmpty()
 
       await passphrase(page).fill(typed)
-      await dialog(page).getByRole('button', { name: 'Confirm' }).click()
+      await dialog(page).locator('button[type=submit]').click()
       await expect(received).toHaveText('deleted')
     })
   }
@@ -325,6 +327,28 @@ test.describe('<atom:confirm> passphrase', () => {
     await dialog(page).getByRole('button', { name: 'Confirm' }).click()
     await expect(error(page)).toBeVisible()
     expect(await answer(page)).toBeNull()
+  })
+
+  test('the confirm button is drawn in the dialog\'s tone (consumer Tailwind)', async ({ page }) => {
+    await open(page, 'resolve', '?tw=floor')
+
+    const background = async (config) => {
+      await ask(page, { heading: 'Sure?', ...config })
+      await expect(dialog(page)).toHaveAttribute('data-open', '')
+      const color = await dialog(page).locator('button[type=submit]').evaluate((el) => getComputedStyle(el).backgroundColor)
+      await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+      await expect(dialog(page)).not.toHaveAttribute('data-open', '')
+      return color
+    }
+
+    const colours = {
+      danger: await background({ variant: 'danger' }),
+      warning: await background({ variant: 'warning' }),
+      success: await background({ variant: 'success' }),
+      plain: await background({}),
+    }
+
+    expect(new Set(Object.values(colours)).size).toBe(4)
   })
 
   test('a confirm with no passphrase still accepts at once', async ({ page }) => {
