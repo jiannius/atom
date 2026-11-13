@@ -44,7 +44,7 @@ $stickyBar = $sticky && ! $bar;
 
 <div {{ $attributes->class([
     'flex items-center',
-    'justify-between gap-3 [&>:only-child]:ms-auto' => ! $bar,
+    'justify-between gap-2 [&>:only-child]:ms-auto' => ! $bar,
     'sticky isolate z-10 flex-wrap gap-2 rounded-panel border border-border bg-surface px-4 py-3 shadow-pop' => $bar,
     'bottom-[calc(0.75rem_+_env(safe-area-inset-bottom,0px))] mb-[calc((var(--atom-page-pb,0px)_-_0.75rem_-_env(safe-area-inset-bottom,0px))*-1)]' => $bar,
     'sticky -bottom-6 z-10 bg-surface -mx-6 px-6 pt-4 pb-6 -mb-6 border-t mt-auto' => $stickyBar,

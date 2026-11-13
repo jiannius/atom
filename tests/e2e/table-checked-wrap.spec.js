@@ -81,9 +81,9 @@ for (const tw of ['floor', 'latest']) {
       expect(fill.radius).toBeGreaterThan(0)
     })
 
-    // the gap is atom's `gap-3` unless the host puts a larger one on `<x-slot:checked>`; that wins on both axes. (A smaller one, `gap-0`,
+    // the gap is atom's `gap-2` unless the host puts a larger one on `<x-slot:checked>`; that wins on both axes. (A smaller one, `gap-0`,
     // does not: both are the same `gap` property and Tailwind writes the smaller value first, as it did before the bar wrapped.)
-    for (const [gap, expected] of [[null, 12], ['6', 24]]) {
+    for (const [gap, expected] of [[null, 8], ['6', 24]]) {
       test(`the actions' gap is ${expected}px both ways with ${gap === null ? 'no host gap class' : `a host gap-${gap}`}`, async ({ page }) => {
         const gaps = () => page.getByTestId('bulk-action').evaluateAll((all) => {
           const boxes = all.map((n) => n.getBoundingClientRect())

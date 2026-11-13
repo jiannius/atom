@@ -5,7 +5,7 @@
 {{-- Joined buttons share one hairline (`-ml-px`) and keep the radius only at the group's two ends. No overflow clip, so a
      focused button's ring is not cut off; a focused one is raised (`z-10`) so its ring sits over its neighbours. --}}
 <div {{ $attributes->class($gap
-    ? ['group/group flex items-center flex-wrap gap-3']
+    ? ['group/group flex items-center flex-wrap gap-2']
     : [
         'group/group flex items-center',
 

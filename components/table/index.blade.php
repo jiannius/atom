@@ -159,7 +159,7 @@ data-atom-table
                 </button>
             @endif
 
-            <div {{ $checked->attributes->except('tone')->class('grow flex flex-wrap items-center gap-3') }}>
+            <div {{ $checked->attributes->except('tone')->class('grow flex flex-wrap items-center gap-2') }}>
                 {{ $checked }}
             </div>
         </div>

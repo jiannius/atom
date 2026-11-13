@@ -114,7 +114,7 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
     </div>
 
     @if ($hasActions)
-        <div @class(['flex flex-wrap items-center gap-1.5', 'max-w-full shrink-0' => ! $small]) data-atom-page-actions>
+        <div @class(['flex flex-wrap items-center gap-2', 'max-w-full shrink-0' => ! $small]) data-atom-page-actions>
             @if ($has($actions ?? null))
                 {{ $actions }}
             @endif

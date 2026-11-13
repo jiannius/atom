@@ -498,7 +498,7 @@ describe('form.modal actions slot', function () {
 
         $classes = explode(' ', $children[1]->getAttribute('class'));
 
-        expect($classes)->toContain('min-w-0', 'flex-wrap', 'justify-end', 'gap-3');
+        expect($classes)->toContain('min-w-0', 'flex-wrap', 'justify-end', 'gap-2');
     });
 
     it('renders an empty group for an empty actions slot, as isset does for delete', function () {

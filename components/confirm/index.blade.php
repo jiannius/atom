@@ -136,7 +136,7 @@ $config = [
             </atom:input.field>
         </template>
 
-        <div class="flex justify-end space-x-2 rtl:space-x-reverse">
+        <div class="flex justify-end gap-2">
             <atom:button x-on:click="cancel"><span x-text="config.buttonCancel"></span></atom:button>
 
             {{-- the button is drawn in the dialog's own tone (the icon above is its tone too): danger, warning and success have their

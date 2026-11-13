@@ -130,7 +130,7 @@ for (const tw of ['floor', 'latest']) {
         await expect(page.getByRole('button', { name: 'Next job' })).toBeVisible()
       })
 
-      test('the actions are 6px apart on the right, and the primary one is the last', async ({ page }) => {
+      test('the actions are 8px apart on the right, and the primary one is the last', async ({ page }) => {
         await record(page, '', { tw })
 
         const actions = page.locator('[data-atom-page-actions]')
@@ -139,7 +139,7 @@ for (const tw of ['floor', 'latest']) {
         const more = await box(page.getByRole('button', { name: 'More actions' }))
         const content = await box(page.locator('[data-atom-page]'))
 
-        expect([s['column-gap'], s['row-gap']]).toEqual(['6px', '6px'])
+        expect([s['column-gap'], s['row-gap']]).toEqual(['8px', '8px'])
         expect(more.right).toBeLessThan(primary.x)
         // the overflow trigger is the same size as the buttons beside it (the control's own on a page, not an `sm` one)
         expect(more.height, 'the ellipsis is as tall as the primary button').toBe(primary.height)
