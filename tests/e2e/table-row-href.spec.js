@@ -201,6 +201,23 @@ test.describe('controls inside the row do not open it', () => {
     })
   }
 
+  test('the row ⋯ trigger is named "More actions" and its menu opens aligned to the trigger\'s end', async ({ page }) => {
+    // The fixture's 19-cell row is about as wide as 1280 (wider on Linux with DejaVu), so the trigger would sit at the viewport edge, where shift({ padding: 5 })
+    // rightly holds the menu 5px inside. A wider viewport keeps the trigger clear of that edge, so this checks the alignment and not the edge.
+    await page.setViewportSize({ width: 1600, height: 720 })
+    await open(page)
+
+    const trigger = page.locator('[data-atom-table-actions] [aria-haspopup="menu"]')
+    await expect(trigger).toHaveAccessibleName('More actions')
+    await trigger.click()
+
+    const menu = page.locator('[data-atom-table-actions] [role="menu"]')
+    await expect(menu).toBeVisible()
+    const [t, m] = await Promise.all([trigger.boundingBox(), menu.boundingBox()])
+    expect(t.x + t.width, 'the trigger is clear of the 5px edge where shift() takes over').toBeLessThan(1600 - 5)
+    expect(Math.abs((m.x + m.width) - (t.x + t.width))).toBeLessThan(2)
+  })
+
   test('an item picked from the actions menu does not open the row', async ({ page }) => {
     await open(page)
 

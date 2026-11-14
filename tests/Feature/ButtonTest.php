@@ -346,7 +346,7 @@ describe('button.group', function () {
         $html = renderBlade('<atom:button.group gap><atom:button>A</atom:button></atom:button.group>');
 
         expect($html)
-            ->toContain('gap-3')
+            ->toContain('gap-2')
             ->not->toContain('[&amp;_[data-atom-button]:not(:first-child)]:-ml-px');
     });
 

@@ -6,7 +6,8 @@
     'newtab' => false,
     'target' => null,
     'variant' => 'default',  // default, danger, warning, delete, remove
-    'phrase' => null,   // phrase to input when delete
+    'passphrase' => null,   // text the user must type to confirm a delete
+    'phrase' => null,   // alias of passphrase
     'icon' => null,
     'iconSuffix' => null,
 ])
@@ -18,6 +19,7 @@ $icons = [
 ];
 
 $href = safe_url($href);
+$passphrase = $passphrase ?: $phrase;
 
 /* A link is never `:disabled`, so `disabled` on a link item dimmed nothing and still navigated. A disabled item is a real
    disabled button: no href, out of the tab order. */
@@ -50,15 +52,14 @@ $merges = [
 ];
 
 if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attributes->has('x-on:click')) {
+    /* The confirm button says what the item says ("Delete invoice"), when the item is plain text; else the dialog's own default. */
+    $confirmLabel = str_contains((string) $slot, '<') ? '' : html_entity_decode(trim(preg_replace('/\s+/', ' ', (string) $slot)), ENT_QUOTES);
+    $buttonConfirm = mb_strlen($confirmLabel) <= 40 ? $confirmLabel : '';
+
     $merges = [
         ...$merges,
 
-        'x-on:click' => "atom.confirm({
-            variant: 'danger',
-            heading: '".t('atom::messages.permanently-delete-record')."',
-            message: '".t('atom::messages.are-you-sure-to-delete-this-record')."',
-            phrase: '$phrase',
-        }).then(() => \$dispatch('confirmed')).catch(() => {})",
+        'x-on:click' => app('atom')->deleteConfirmHandler($passphrase, $buttonConfirm),
 
         'x-on:confirmed' => "\$wire.delete()",
     ];

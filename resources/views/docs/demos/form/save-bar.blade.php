@@ -14,8 +14,8 @@
                 <span>Total <b>RM 4,231.20</b></span>
             </x-slot:start>
 
-            <atom:button type="button" variant="ghost">Cancel</atom:button>
             <atom:button type="submit">Save and send</atom:button>
+            <atom:button type="button" variant="ghost">Cancel</atom:button>
         </atom:form.actions>
     </atom:form>
 </div>

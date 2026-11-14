@@ -10,6 +10,10 @@ $slotGap = ['6' => 'gap-6'][$gap] ?? null;
                 @foreach (range(1, $buttons) as $n)
                     <atom:button size="sm" data-testid="bulk-action">Send reminders</atom:button>
                 @endforeach
+
+                @if ($delete)
+                    <atom:button type="delete" size="sm">Delete</atom:button>
+                @endif
             </x-slot:checked>
 
             <x-slot:columns>

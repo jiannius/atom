@@ -74,7 +74,7 @@ $show = fn (string $name) => $section === null || $section === $name;
                     <atom:menu.item disabled data-testid="item-end-disabled"><x-slot:end>Coming soon</x-slot:end> Billing</atom:menu.item>
                     <atom:menu.item data-testid="item-end-enabled"><x-slot:end>Ctrl K</x-slot:end> Search</atom:menu.item>
                     <atom:menu.item href="/atom/e2e/layers" disabled data-testid="item-link-disabled">Reports</atom:menu.item>
-                    <atom:separator class="my-1"/>
+                    <atom:menu.separator/>
                     <atom:menu.item variant="warning" icon="warning" data-testid="item-warning">Suspend</atom:menu.item>
                     <atom:menu.item variant="danger" icon="delete" data-testid="item-danger">Delete</atom:menu.item>
                 </atom:menu>

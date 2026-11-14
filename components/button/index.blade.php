@@ -6,6 +6,7 @@
     'rel' => 'noopener noreferrer',
     'newtab' => false,
     'passphrase' => '',
+    'phrase' => null,   // alias of passphrase
     'inverted' => null,
     'social' => null,
     'variant' => null,
@@ -17,6 +18,7 @@
 
 @php
 $href = safe_url($href);
+$passphrase = $passphrase ?: $phrase;
 
 $inverted ??= $type === 'delete';
 
@@ -186,15 +188,14 @@ if (!$attributes->wire('loading')->value()) {
 }
 
 if ($type === 'delete' && !$attributes->wire('click')->value() && !$attributes->has('x-on:click')) {
+    /* The confirm button says what the trigger says ("Delete invoice"), when the trigger is plain text; else the dialog's own default. */
+    $confirmLabel = $label ? html_entity_decode(trim(preg_replace('/\s+/', ' ', (string) $slot)), ENT_QUOTES) : '';
+    $buttonConfirm = mb_strlen($confirmLabel) <= 40 ? $confirmLabel : '';
+
     $merges = [
         ...$merges,
 
-        'x-on:click' => "atom.confirm({
-            variant: 'danger',
-            heading: '".t('atom::messages.permanently-delete-record')."',
-            message: '".t('atom::messages.are-you-sure-to-delete-this-record')."',
-            passphrase: '$passphrase',
-        }).then(() => \$dispatch('confirmed')).catch(() => {})",
+        'x-on:click' => app('atom')->deleteConfirmHandler($passphrase, $buttonConfirm),
 
         'x-on:confirmed' => "\$wire.delete()",
     ];

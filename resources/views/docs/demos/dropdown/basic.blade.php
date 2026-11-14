@@ -7,7 +7,7 @@
             <atom:menu.item icon="copy">Duplicate</atom:menu.item>
             <atom:menu.item icon="archive">Archive</atom:menu.item>
 
-            <atom:separator class="my-1"/>
+            <atom:menu.separator/>
 
             <atom:menu.item icon="delete" variant="danger">Delete</atom:menu.item>
         </atom:menu>

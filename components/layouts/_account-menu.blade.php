@@ -33,12 +33,12 @@
         </div>
     @endif
 
-    <atom:separator class="my-2"/>
+    <atom:menu.separator/>
 
     @if ($theme)
         <atom:layouts._theme-row/>
 
-        <atom:separator class="my-2"/>
+        <atom:menu.separator/>
     @endif
 
     {{ $slot }}

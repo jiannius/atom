@@ -145,7 +145,7 @@ class Create extends Component
         return $crumbs
             ->home('Dashboard', route('home'))
             ->push('Customers', route('customers.index'))
-            ->push('New Customer');
+            ->push('Create customer');
     }
 
     public function save()
@@ -687,7 +687,7 @@ The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped
 | `<atom:page.header>` | Crumbs, the title (`<h1>`, 22px) with its status beside it, key facts, actions. Props: `title`, `level` (`1`; use `2` in a modal or slide-over), `size` (`sm` for a modal or slide-over), `crumbs` (`[['label' => ..., 'href' => ...], ...]`; the last is the current page and prints as given, every other label goes through `t()`, so a parent crumb that holds record data should not contain a `|`), `facts` (strings or `['label' => ..., 'value' => ..., 'mono' => true]`). Slots: `status`, `meta` (more facts), `actions`, `menu` (the overflow menu's items), `primary` (the one action for the record's current status). Where the actions go depends on what fits, not on how long the title or meta line is: the title block has a fixed flex basis of 22rem (about the 370px a title needs beside three buttons) and the actions do not shrink, so the actions sit beside the title block (bottom-aligned, the title wraps in its column) while both fit the header's width, and on a row of their own below it, at the start, when they do not. One small action stays beside the title at 480px; five do not fit at 800px. `size="sm"` has no basis: the actions share the row when they fit. The header is no longer a size container (beta.18), so it sizes like any block or flex row: a container-query class (`@sm:`...) in the `actions` slot resolves against an outer container, not the header, and inside a `flex-col items-start` parent it shrink-wraps (add `w-full`); in a flex row give it `flex-1 min-w-0`, and in a modal or slide-over use `size="sm"`, as before. A slot made only of `@if` blocks that all come out false counts as empty (no ⋯ button, no actions wrapper), also in a Livewire view. |
 | `<atom:page.tabs>` | A record's sections as link tabs with counts. `tabs` (`['label' => ..., 'href' => ..., 'count' => ..., 'current' => true]`), `label` (the landmark's name). The current tab carries `aria-current="page"`. |
 | `<atom:list>` | `heading` (a 12px muted label), `scrollable` (default `true`). Child: `<atom:list.item>`. |
-| `<atom:menu>` | `popover`. Child: `<atom:menu.item>`: `icon`, `iconSuffix`, `badge`/`badgeColor`, `href`, `variant`, and an `end` slot (`<x-slot:end>Coming soon</x-slot:end>`) for plain muted text at the row's end, before the badge and the suffix icon. `disabled` makes a real disabled button, with or without an `href` (a disabled link item no longer navigates). |
+| `<atom:menu>` | `popover`. Child: `<atom:menu.item>`: `icon`, `iconSuffix`, `badge`/`badgeColor`, `href`, `variant`, and an `end` slot (`<x-slot:end>Coming soon</x-slot:end>`) for plain muted text at the row's end, before the badge and the suffix icon. `disabled` makes a real disabled button, with or without an `href` (a disabled link item no longer navigates). `<atom:menu.separator>` is the hairline between groups of items. |
 | `<atom:navlist>` | Nav container, drawn as a column in `layouts.sidebar` and as bar items in `layouts.header` (a group becomes a dropdown there). Children: `<atom:navlist.item>`, `<atom:navlist.group>`, `<atom:navlist.badge>`. Items carry `aria-current="page"` when current. |
 | `<atom:navlist.group>` | `heading`, `expandable`, `expanded` (default `true`), `hiddenIfEmpty` (default `true`), `persistKey`. See [Remembering collapsed groups](#remembering-collapsed-groups). |
 | `<atom:navlist.item>` | `href`, `icon`, `count`, `badge`, `current`. An item is current when the **path** of its `href` is the request's path: a query string, a fragment and a trailing slash are ignored, and a `*` in the path is a pattern (`/invoices/*`). An absolute `href` counts only when its host is the request's or `APP_URL`'s (the port is ignored), so a nav served from another domain than `APP_URL` still marks its item and an external link (`https://github.com/orders`) never does; `APP_URL`'s own path prefix is stripped. An `href` with no path (`?tab=x`, `#top`, none) is never current. `:current="true|false"` overrides it. |
@@ -768,7 +768,7 @@ Four pattern pages in `resources/views/docs/patterns/` (also at `/atom/docs/patt
 
 ```blade
 <atom:page width="narrow">
-    <atom:page.header title="New invoice" />
+    <atom:page.header title="Create invoice" />
 
     <atom:form wire:submit="save">
         <atom:form.section heading="Details" subheading="Dates and terms printed on the invoice.">
@@ -782,15 +782,15 @@ Four pattern pages in `resources/views/docs/patterns/` (also at `/atom/docs/patt
                 <span class="text-[17px] font-semibold">RM {{ number_format($this->total, 2) }}</span>
             </x-slot:start>
 
-            <atom:button type="button" variant="ghost">Cancel</atom:button>
             <atom:button type="submit">Save</atom:button>
+            <atom:button type="button" variant="ghost">Cancel</atom:button>
         </atom:form.actions>
     </atom:form>
 </atom:page>
 ```
 
 - `layout="aside"` (the default) puts the heading in a 220px column beside the fields once the section is 768px wide, and above them below that; `layout="stacked"` always puts it above (for a slide-over or a modal; use `level="3"` there). The fields are two across once their own box is 448px wide, one below that, whatever the screen: a 448px slide-over has one column, a 576px one two.
-- **The save bar** (`form.actions bar`) is the last thing in the page's form. It is a floating card (a solid `bg-surface`, a 1px border, the panel radius and the pop shadow), sticky 0.75rem above the bottom of the screen and as wide as the sections above it, inside the page's own padding (on a phone too). It takes the page's 120px of bottom room as a negative bottom margin less the 0.75rem it floats by, so at the end of the page it sits right under the last section and does not jump as it unsticks; outside an `<atom:page>` it is just its own box. Its `start` slot is live totals (a `<b>` in it is the figure: semibold, foreground, tabular); add `dirty` for a muted "Unsaved changes" after it while the form has unsaved changes. The submit is the screen's one primary action. In a modal or a slide-over use `sticky` (what `form.modal` draws, with its `actions` slot beside the submit); a lone Save in it sits at the end (a hidden `x-show` sibling still counts as a child).
+- **The save bar** (`form.actions bar`) is the last thing in the page's form. It is a floating card (a solid `bg-surface`, a 1px border, the panel radius and the pop shadow), sticky 0.75rem above the bottom of the screen and as wide as the sections above it, inside the page's own padding (on a phone too). It takes the page's 120px of bottom room as a negative bottom margin less the 0.75rem it floats by, so at the end of the page it sits right under the last section and does not jump as it unsticks; outside an `<atom:page>` it is just its own box. Its `start` slot is live totals (a `<b>` in it is the figure: semibold, foreground, tabular); add `dirty` for a muted "Unsaved changes" after it while the form has unsaved changes. The submit is the screen's one primary action and comes first in the bar, then a secondary save, then a ghost Cancel (as `form.modal` does). In a modal or a slide-over use `sticky` (what `form.modal` draws, with its `actions` slot beside the submit); a lone Save in it sits at the end (a hidden `x-show` sibling still counts as a child).
 - A section that saves on its own (a settings panel) is its own `<atom:form>` with a `footer` slot; do not mix that with a page save bar.
 
 **The timeline** is one component in four kinds: `<atom:timeline>` (events, the default), `<atom:timeline kind="step">`, `<atom:timeline kind="path">` (the horizontal stage path, for the stages a record moves through: `<atom:timeline.item title="In progress" state="current" time="1h 12m" actor="Ben"/>`; put it under the record's header, with the status matching the current segment) and `<atom:timeline kind="message">`, each with `<atom:timeline.item>` rows. Order is yours; atom never sorts or fetches. A timeline nested in another one (an event list inside a step's body) draws its own `kind`, the event one by default: that is done by the `<atom:timeline>` tag syntax, so with `<x-atom::timeline>` set `kind` on the nested timeline explicitly. A folded detail or step body is Alpine's state, which a Livewire re-render leaves alone.
@@ -2149,7 +2149,7 @@ t('Hello :name', ['name' => $user]);    // → __('Hello :name', ['name' => $use
 ## Conventions worth knowing
 
 - Window-level Livewire events are prefixed `atom-` (`atom-modal-show`, `atom-modal-close`, `atom-toast-show`, `atom-alert-show`, `atom-confirm-show`). Grep by this prefix when tracing overlay state.
-- `<atom:button type="delete">` auto-dispatches `confirmed` on accept, which (unless overridden) calls `$wire.delete()`.
+- `<atom:button type="delete">` auto-dispatches `confirmed` on accept, which (unless overridden) calls `$wire.delete()`. Its dialog asks "Delete this record?" / "This can't be undone." (the `atom::messages.permanently-delete-record` and `are-you-sure-to-delete-this-record` keys); inside a table's checked bar the heading counts the selection ("Delete 3 records?", "Delete 1,200 records?"; the total under select-all). `delete-selected-records` is ONE string with a `:count` placeholder, not a plural `a|b` string, and the count is formatted with thousands separators like the select-all button's. The confirm button says the trigger's label when that is plain text up to 40 characters ("Delete invoice"), else the dialog's "Confirm". `passphrase="..."` (or its alias `phrase`) on the button or on a delete menu item asks the user to type that text before it deletes.
 - Where atom builds a date itself (the calendar, the timeline, `carbon()`) it uses `Jiannius\Atom\Services\Carbon`. It does not swap the `Date` facade: add `Date::use(\Jiannius\Atom\Services\Carbon::class);` to `AppServiceProvider::boot()` if you want `now()` and model dates to be that immutable class, with `->pretty()` and `->local()`.
 - Components prefer `Arr::toCssClasses([...])` and `match` over conditional class strings. See `components/button/index.blade.php` for the canonical pattern.
 - The bundled `dist/` directory is **committed**; the package serves it itself. If you fork and edit JS/CSS sources, run `npm run build` and commit `dist/`.

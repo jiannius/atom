@@ -5,8 +5,8 @@
         <atom:textarea label="Message" rows="3"/>
 
         <atom:button.group>
-            <atom:button>Cancel</atom:button>
             <atom:button type="submit">Send</atom:button>
+            <atom:button>Cancel</atom:button>
         </atom:button.group>
     </atom:form>
 </div>

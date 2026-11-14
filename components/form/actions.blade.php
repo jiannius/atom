@@ -27,8 +27,9 @@
        (the bar itself is always there; without `dirty` there is no label at all). See resources/js/alpinejs/form-dirty.js for what counts as a
        change and what clears it.
        The `start` slot is what sits at its start (live totals): muted text, wrapping, with a <b> or <strong> in it
-       set as the figure (`text-fg`, semibold, tabular). The default slot is the buttons, at the end, in the order the host writes them (a
-       ghost Cancel, a secondary, then the submit, which is the screen's one primary action); full width on a phone, the submit growing.
+       set as the figure (`text-fg`, semibold, tabular). The default slot is the buttons, at the end, in the order the host writes them:
+       PRIMARY FIRST, as in <atom:form.modal> (the submit, which is the screen's one primary action; then a secondary save, then a ghost
+       Cancel, then a danger action); full width on a phone, the submit growing.
        Put it last inside the page's form, and give the page its own bottom room (<atom:page> does). A bottom <atom:toast> sits above
        the card while one is on screen (helpers/toast-lift.js).
      The bleed of `sticky` in a modal rests on the p-6 the modal draws: a sticky element is held inside its scroll
@@ -44,7 +45,7 @@ $stickyBar = $sticky && ! $bar;
 
 <div {{ $attributes->class([
     'flex items-center',
-    'justify-between gap-3 [&>:only-child]:ms-auto' => ! $bar,
+    'justify-between gap-2 [&>:only-child]:ms-auto' => ! $bar,
     'sticky isolate z-10 flex-wrap gap-2 rounded-panel border border-border bg-surface px-4 py-3 shadow-pop' => $bar,
     'bottom-[calc(0.75rem_+_env(safe-area-inset-bottom,0px))] mb-[calc((var(--atom-page-pb,0px)_-_0.75rem_-_env(safe-area-inset-bottom,0px))*-1)]' => $bar,
     'sticky -bottom-6 z-10 bg-surface -mx-6 px-6 pt-4 pb-6 -mb-6 border-t mt-auto' => $stickyBar,

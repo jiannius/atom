@@ -4,6 +4,7 @@ namespace Jiannius\Atom;
 
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Js;
 use Jiannius\Atom\Contracts\WebAction;
 use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\Broadcast;
@@ -340,6 +341,36 @@ class Atom
             ...$params,
             'wireId' => $component->getId(),
         ]);
+    }
+
+    /**
+     * The click handler of a delete trigger (`<atom:button type="delete">`, `<atom:menu.item variant="delete">`): the delete confirm, then
+     * `confirmed`. Inside a table's checked bar it counts what is ticked ("Delete 3 records?"; the total under select-all), with
+     * thousands separators like the select-all button ("Delete 1,200 records?"). `delete-selected-records` is ONE string with a `:count`
+     * placeholder, not a plural `a|b` string: the handler replaces `:count` itself, and only for a count above one.
+     *
+     * @param  ?string  $passphrase  the plain text the user must type, or null/empty for none (escaped here: never pass JS)
+     * @param  string  $buttonConfirm  the confirm button's label, or an empty string for the dialog's default
+     */
+    public function deleteConfirmHandler(?string $passphrase = null, string $buttonConfirm = ''): string
+    {
+        $passphraseJs = Js::from((string) $passphrase);
+        $heading = Js::from(t('atom::messages.permanently-delete-record'));
+        $message = Js::from(t('atom::messages.are-you-sure-to-delete-this-record'));
+        $plural = Js::from(t('atom::messages.delete-selected-records', []));
+        $buttonConfirm = $buttonConfirm === '' ? '' : 'buttonConfirm: '.Js::from($buttonConfirm).',';
+
+        return "(() => {
+            let bar = \$el.closest('[data-atom-table-checked]')
+            let count = bar ? Number(\$wire._table?.select_all ? bar.dataset.total : \$wire._table?.checkboxes?.length) || 0 : 0
+            return atom.confirm({
+                variant: 'danger',
+                heading: count > 1 ? $plural.replace(':count', count.toLocaleString('en-US')) : $heading,
+                message: $message,
+                passphrase: $passphraseJs,
+                $buttonConfirm
+            })
+        })().then(() => \$dispatch('confirmed')).catch(() => {})";
     }
 
     /**

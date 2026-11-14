@@ -41,7 +41,7 @@ $width = $hasOwnWidth ? '' : match ((string) $cols) {
             @if ($hasStart)
                 <x-slot:start :attributes="$start->attributes">{{ $start }}</x-slot:start>
 
-                <div class="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-3" data-atom-form-modal-actions>
+                <div class="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2" data-atom-form-modal-actions>
                     @isset($actions)
                         {{ $actions }}
                     @endisset
@@ -54,7 +54,7 @@ $width = $hasOwnWidth ? '' : match ((string) $cols) {
             @else
                 <atom:button type="submit">{{ t($submit) }}</atom:button>
                 @isset($actions)
-                    <div class="flex min-w-0 flex-wrap items-center justify-end gap-3" data-atom-form-modal-actions>
+                    <div class="flex min-w-0 flex-wrap items-center justify-end gap-2" data-atom-form-modal-actions>
                         {{ $actions }}
                         @isset($delete)
                             {{ $delete }}
