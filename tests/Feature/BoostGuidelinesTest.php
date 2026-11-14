@@ -107,15 +107,15 @@ it('points the always-on guideline at the skill by its real name', function () {
 
 // The guideline is resident in every turn of every consuming app; the PR that split it kept
 // only what applies to every view. Growing it back is a decision, not an accident: the design
-// rules checklist (v4 design rules, phase 2) took it from 700 to 850.
+// rules checklist (v4 design rules, phase 2) took it from 700 to 825.
 it('keeps the always-on guideline lean', function () {
     $words = str_word_count(strip_tags(boostFile('guidelines/core.blade.php')));
 
-    expect($words)->toBeLessThan(850);
+    expect($words)->toBeLessThan(825);
 });
 
 // v4 design rules, phase 2: the checklist in the guideline and the tables in the skill carry
-// TJ's decisions (tone by consequence, primary first, fixed caps, Create for a record, page or
+// the owner's decisions (tone by consequence, primary first, fixed caps, Create for a record, page or
 // modal by module), and the skill no longer teaches the rules they replaced.
 it('teaches the design rules in the guideline and the skill', function () {
     $guideline = boostFile('guidelines/core.blade.php');
@@ -129,6 +129,7 @@ it('teaches the design rules in the guideline and the skill', function () {
         ->and($guideline)->toContain("A main module's form is a page")
         ->and($guideline)->toContain('Never type `—` or `--`')
         ->and($guideline)->toContain('Edit if there is no workflow')
+        ->and($guideline)->toContain('(the header places its own `primary`)')
         ->and($skill)->toContain('### Design rules')
         ->and($skill)->toContain('| `page.header` | 1, from the status')
         ->and($skill)->toContain('| Bulk bar (`checked`) | none | at most 3; delete may stay visible')
@@ -139,7 +140,9 @@ it('teaches the design rules in the guideline and the skill', function () {
         ->and($skill)->not->toContain('Spacing scale.** Default to `6`')
         ->and($skill)->not->toContain('Save on the left (`<atom:button type="submit">`')
         ->and($skill)->not->toContain('variant="ghost" color="danger">`')
-        ->and($skill)->not->toContain('heading="Delete Conversation"');
+        ->and($skill)->not->toContain('heading="Delete Conversation"')
+        ->and($skill)->not->toContain('the primary last')
+        ->and($skill)->not->toContain('a Delete button, a status line) and Save last');
 });
 
 // This content is copied into consuming apps' AI guidelines, so a wrong prop here
@@ -550,7 +553,7 @@ describe('lists, forms and the timeline in the docs', function () {
 
         expect($guideline)->toContain('<atom:form.section>')
             ->and($guideline)->toContain('<atom:timeline>')
-            ->and(str_word_count(strip_tags($guideline)))->toBeLessThan(850);
+            ->and(str_word_count(strip_tags($guideline)))->toBeLessThan(825);
     });
 
     it('names every prop it documents on the components that have them', function () {

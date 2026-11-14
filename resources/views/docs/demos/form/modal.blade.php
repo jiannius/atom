@@ -12,7 +12,7 @@
         </x-slot:actions>
 
         <x-slot:delete>
-            <atom:button type="delete" variant="ghost" color="danger" x-on:click.prevent>Delete</atom:button>
+            <atom:button type="delete" x-on:click.prevent>Delete</atom:button>
         </x-slot:delete>
     </atom:form.modal>
 </div>

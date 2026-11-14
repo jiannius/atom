@@ -43,14 +43,14 @@ Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEdito
 
 - A screen is `<atom:page>` opening with `<atom:page.header>`; crumbs from the shell's `crumbs` slot or the header's `crumbs` prop, not both. Never hand-build a title, crumb strip, sidebar toggle or ⋯ dropdown.
 - One `variant="primary"` per screen: the next step for the status (Edit if there is no workflow) or the form's submit. None in an empty state, toolbar, bulk bar or row.
-- Tone follows the consequence: danger destroys or cannot be undone (`type="delete"`); warning stops or hides but keeps the record (archive, void, cancel: `variant="warning" inverted`). Both confirm in their tone. No `success` or `info` buttons.
-- Order: primary, default, danger, then ⋯. In a menu, warning then danger go last, after `<atom:menu.separator>`.
+- Tone follows the consequence: danger destroys or cannot be undone (`type="delete"`); warning stops or hides but keeps the record (archive, void, cancel an order: `variant="warning" inverted`). Both confirm in their tone. Avoid `success` and `info` buttons.
+- Footers, bars and `form.modal` order buttons primary, default, danger, then ⋯ (the header places its own `primary`). In a menu, warning then danger go last, after `<atom:menu.separator>`.
 - Caps: header `actions` 2 (`size="sm"` 1), toolbar 2, bulk bar 3, card heading 1 link, rows 0 (`<atom:table.actions>`); the rest in `menu`.
 - List filters live in `<atom:table.filters>` bound to `filters.*`. A state is `<atom:status>`, a tag or count `<atom:badge>`; an empty list `<atom:empty>` with one plain button.
-- Forms: `<atom:form.section>`, `<atom:form.grid>`, `<atom:form.actions>`, never bare `grid-cols-2`. A main module's form is a page; a secondary one `<atom:form.modal>` or a slide-over.
-- Toast = what the user just did; one `<atom:callout>` under the header = what they must know; alert = rare.
+- Forms: `<atom:form.section>`, `<atom:form.grid>`, `<atom:form.actions>`, never bare `grid-cols-2`. A main module's form is a page; a secondary one's (a tax rate, a tag) `<atom:form.modal>` or a slide-over.
+- Toast = what the user just did; one `<atom:callout>` under the header = what they must know.
 - Sentence case; buttons start with a verb ("Create …" a record, "Add …" a line). Never type `—` or `--` for a missing value.
-- Boxes and spacing come from atom (`<atom:card>`, `<atom:dd>`, `<atom:timeline>`, `<atom:navlist>` in `<atom:layouts.sidebar>` or `<atom:layouts.header>`, `<atom:separator>` not `<hr>`): no margins between page blocks, no `gap-[..]`, no `shadow-*`. Colour with role tokens (`bg-surface`, `text-fg-muted`, `border-border`), not `zinc-*` or `dark:` pairs. `type="submit"` and `"delete"` add no icon (`icon=`).
+- Use `<atom:card>`, `<atom:dd>`, `<atom:timeline>`, `<atom:navlist>` (in `<atom:layouts.sidebar>` or `<atom:layouts.header>`) and `<atom:separator>`, not hand-built boxes or `<hr>`; no margins between page blocks, no `gap-[..]`, no `shadow-*`. Colour with role tokens (`bg-surface`, `text-fg-muted`, `border-border`), not `zinc-*` or `dark:` pairs. `type="submit"` and `"delete"` add no icon (`icon=`).
 - Full tables: the skill's Design rules and Patterns section.
 @endverbatim
 
