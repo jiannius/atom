@@ -4,12 +4,10 @@ Atom (`jiannius/atom`) is a Tailwind + Alpine + Livewire component library for L
 
 ### Component directory & usage snippets
 
-Every component has a verified usage example:
-
 @verbatim
-- **Demo snippets:** `vendor/jiannius/atom/resources/views/docs/demos/<component>/*.blade.php` — each file is a tiny, copy-paste-ready Blade example (rendered and verified in `/atom/docs`, never stale). Read the relevant one before writing `<atom:...>` markup.
-- **Prop reference:** the `@props([...])` block at the top of `vendor/jiannius/atom/components/<component>/index.blade.php` (or `components/<component>.blade.php` for flat components) is the authoritative prop list.
-- **Browsable docs:** with `APP_ENV=local`, visit `/atom/docs` for live previews and prop tables.
+- **Demo snippets:** `vendor/jiannius/atom/resources/views/docs/demos/<component>/*.blade.php`, copy-paste examples verified in `/atom/docs`. Read one before writing `<atom:...>` markup.
+- **Props:** the `@props([...])` block at the top of `components/<component>/index.blade.php` (or `components/<component>.blade.php`).
+- **Docs:** with `APP_ENV=local`, `/atom/docs` has live previews and prop tables.
 @endverbatim
 
 @verbatim
@@ -25,11 +23,8 @@ Never write `<x-atom::name>`, `<x-icon />`, or bespoke equivalents when an Atom 
 
 ### Icons
 
-- Always `<atom:icon.name />`. Names live in `vendor/jiannius/atom/components/icon/`.
-- Default size is `size-5`. Override with `class="size-4"` etc.
-- Some icons accept `variant="solid"`. Pass any other Tailwind classes via `class`.
-- Icons are decorative by default and marked `aria-hidden`. For a meaningful standalone icon, pass `aria-label` (or `title`) to expose it to assistive tech.
-- An icon-only button (`<atom:button icon="..." />`, no slot) is auto-labelled from the icon name; override with `aria-label="..."`. Don't add a redundant `aria-label` to a button that already has visible text.
+- Always `<atom:icon.name />` (names in `vendor/jiannius/atom/components/icon/`), `size-5` by default (`class="size-4"`); some take `variant="solid"`.
+- Icons are `aria-hidden`; a meaningful standalone one takes `aria-label` (or `title`). An icon-only button is labelled from the icon name (override with `aria-label`); a button with visible text needs none.
 
 ### Security rules that always apply
 
@@ -44,25 +39,29 @@ Never write `<x-atom::name>`, `<x-icon />`, or bespoke equivalents when an Atom 
 
 Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEditor`, `WithRecaptcha`. `$this->toast()` and siblings are PHP-only (JS: `atom.toast()`). `AsEditorContent` and `<atom:editor*>` are gone: use `AsTiptapContent`; `atom:tiptap-migrate` converts old rows.
 
-### Keep the layout on Atom
+### Design rules
 
-- Forms: `<atom:form.section>`, `<atom:form.grid>`, `<atom:form.modal>` and `<atom:form.actions>`, never bare `grid-cols-2`.
-- Panels, label/value pairs, tags, notices, status and empty lists: `<atom:card>`, `<atom:dd>`, `<atom:badge>`, `<atom:callout>`, `<atom:status>`, `<atom:empty>`, never hand-built boxes.
-- Screens: `<atom:page>`, `<atom:page.header>`, `<atom:timeline>`; rules in the skill's Patterns section.
-- Navigation: `<atom:navlist>`, not hand-rolled links, in `<atom:layouts.sidebar>` or `<atom:layouts.header>`. Sections: `<atom:separator>`, not `<hr>`.
-- Colour with role tokens (`bg-surface`, `text-fg-muted`, `border-border`), not `zinc-*` or `dark:` pairs. One `variant="primary"` button per view; `type="submit"` and `"delete"` add no icon (`icon=`).
+- A screen is `<atom:page>` opening with `<atom:page.header>`; crumbs from the shell's `crumbs` slot or the header's `crumbs` prop, not both. Never hand-build a title, crumb strip, sidebar toggle or ⋯ dropdown.
+- One `variant="primary"` per screen: the next step for the status (Edit if there is no workflow) or the form's submit. None in an empty state, toolbar, bulk bar or row.
+- Tone follows the consequence: danger destroys or cannot be undone (`type="delete"`); warning stops or hides but keeps the record (archive, void, cancel an order: `variant="warning" inverted`). Both confirm in their tone. Avoid `success` and `info` buttons.
+- Footers, bars and `form.modal` order buttons primary, default, danger, then ⋯ (the header places its own `primary`). In a menu, warning then danger go last, after `<atom:menu.separator>`.
+- Caps: header `actions` 2 (`size="sm"` 1), toolbar 2, bulk bar 3, card heading 1 link, rows 0 (`<atom:table.actions>`); the rest in `menu`.
+- List filters live in `<atom:table.filters>` bound to `filters.*`. A state is `<atom:status>`, a tag or count `<atom:badge>`; an empty list `<atom:empty>` with one plain button.
+- Forms: `<atom:form.section>`, `<atom:form.grid>`, `<atom:form.actions>`, never bare `grid-cols-2`. A main module's form is a page; a secondary one's (a tax rate, a tag) `<atom:form.modal>` or a slide-over.
+- Toast = what the user just did; one `<atom:callout>` under the header = what they must know.
+- Sentence case; buttons start with a verb ("Create …" a record, "Add …" a line). Never type `—` or `--` for a missing value.
+- Use `<atom:card>`, `<atom:dd>`, `<atom:timeline>`, `<atom:navlist>` (in `<atom:layouts.sidebar>` or `<atom:layouts.header>`) and `<atom:separator>`, not hand-built boxes or `<hr>`; no margins between page blocks, no `gap-[..]`, no `shadow-*`. Colour with role tokens (`bg-surface`, `text-fg-muted`, `border-border`), not `zinc-*` or `dark:` pairs. `type="submit"` and `"delete"` add no icon (`icon=`).
+- Full tables: the skill's Design rules and Patterns section.
 @endverbatim
 
 
 @verbatim
 ### Going deeper
 
-The rules above apply to every view. The **`atom-components` skill** carries the rest: the
-component traits and the names they occupy, forms and reCAPTCHA, modals, tables,
-navigation, patterns, breadcrumbs, the calendar, notifications, dropdowns, option sets,
-Actions, enums, the editor, safe URLs, share buttons, mail and broadcasting.
-
-Activate it before writing non-trivial Atom markup or a Livewire component.
+The **`atom-components` skill** carries the rest: the traits, forms, modals, tables,
+navigation, patterns, the calendar, notifications, dropdowns, option sets, Actions,
+enums, the editor, safe URLs, mail and broadcasting. Activate it before writing
+non-trivial Atom markup or a Livewire component.
 The skill loads only if Boost skills are enabled (`boost.json`) and the agent supports
 skills (Claude Code, Codex, Cursor, Gemini, Amp). Otherwise run
 `php artisan boost:install` and enable skills.
