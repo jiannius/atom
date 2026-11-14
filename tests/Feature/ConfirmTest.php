@@ -38,6 +38,14 @@ describe('confirm', function () {
         expect($none)->toContain('passphrase: &#039;&#039;');
     });
 
+    it('honours a menu item\'s `phrase` when `passphrase` is empty, as the button does', function () {
+        $item = renderBlade('<atom:menu.item variant="delete" passphrase="" phrase="x">Delete</atom:menu.item>');
+        $button = renderBlade('<atom:button type="delete" passphrase="" phrase="x">Delete</atom:button>');
+
+        expect($item)->toContain('passphrase: &#039;x&#039;');
+        expect($button)->toContain('passphrase: &#039;x&#039;');
+    });
+
     it('hands a delete button\'s `phrase` alias to the dialog as `passphrase`, and does not print it as an attribute', function () {
         $alias = renderBlade('<atom:button type="delete" phrase="remove-me">Delete</atom:button>');
         $both = renderBlade('<atom:button type="delete" passphrase="first" phrase="second">Delete</atom:button>');

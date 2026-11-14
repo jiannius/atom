@@ -19,7 +19,7 @@ $icons = [
 ];
 
 $href = safe_url($href);
-$passphrase = $passphrase ?? $phrase;
+$passphrase = $passphrase ?: $phrase;
 
 /* A link is never `:disabled`, so `disabled` on a link item dimmed nothing and still navigated. A disabled item is a real
    disabled button: no href, out of the tab order. */
