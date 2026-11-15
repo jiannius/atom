@@ -120,14 +120,10 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
             @endif
 
             @if ($has($menu ?? null))
-                <atom:dropdown position="bottom" align="end">
-                    {{-- the trigger is the size of the header's other buttons: the control's own on a page, `sm` in a modal or slide-over --}}
-                    <atom:button :size="$small ? 'sm' : null" icon="more" :aria-label="t('More actions')" />
-
-                    <atom:menu class="w-[220px]" popover>
-                        {{ $menu }}
-                    </atom:menu>
-                </atom:dropdown>
+                {{-- the trigger is the size of the header's other buttons: the control's own on a page, `sm` in a modal or slide-over --}}
+                <atom:menu._more :size="$small ? 'sm' : null">
+                    {{ $menu }}
+                </atom:menu._more>
             @endif
 
             @if ($has($primary ?? null))
