@@ -55,6 +55,22 @@ class TagCompiler extends ComponentTagCompiler
             $attributes[FormMarker::KEY] = "\\Jiannius\\Atom\\Services\\FormMarker::publish('required')";
         }
 
+        // Whether a choice group draws tiles, for the radios and checkboxes in its slot: see ChoiceTile. EVERY group publishes, so a default or card group
+        // nested in a tile one masks it, and a component of the host's that has a `variant` of its own is no longer mistaken for the group.
+        if (in_array($component, ['atom::radio.group', 'atom::checkbox.group'], true)) {
+            if (isset($attributes['variant'])) {
+                $attributes['variant'] = "(\$__atomChoiceVariant = {$attributes['variant']})";
+                $variant = '$__atomChoiceVariant';
+            }
+            else {
+                $variant = $bag === null
+                    ? 'null'
+                    : "((({$bag}) instanceof \\Illuminate\\View\\ComponentAttributeBag) ? ({$bag})->get('variant') : null)";
+            }
+
+            $attributes[ChoiceTile::KEY] = "\\Jiannius\\Atom\\Services\\ChoiceTile::publish({$variant})";
+        }
+
         return parent::componentString($component, $attributes);
     }
 

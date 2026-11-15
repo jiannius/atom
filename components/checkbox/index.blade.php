@@ -1,3 +1,5 @@
+@aware(['atomChoiceTile' => null])
+
 @props([
     'name' => null,
     'label' => null,
@@ -8,6 +10,8 @@
 ])
 
 @php
+// a tile when the group around it (not any component with a `variant`) says so: see ChoiceTile
+$variant = \Jiannius\Atom\Services\ChoiceTile::resolve($atomChoiceTile) ? 'tile' : null;
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
 $merges = ['name' => $name];
@@ -22,6 +26,40 @@ if ($disabledBy) {
 }
 @endphp
 
+@if ($variant === 'tile')
+    {{-- A selectable tile: see components/radio/index.blade.php. The error prints inside the label, under the body, and draws the tile's border (atom.css). --}}
+    <label {{ $attributes->only('class')->class('group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3') }} data-atom-checkbox data-atom-tile>
+        <input type="checkbox" class="sr-only peer" {{ $attributes->except('class')->merge($merges) }}>
+
+        <div
+        aria-hidden="true"
+        data-atom-tile-indicator
+        @class([
+            'size-4 rounded flex items-center justify-center',
+            'bg-surface border border-fg-subtle text-surface',
+            'peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100',
+            'peer-disabled:opacity-50',
+        ])>
+            <div class="size-3 opacity-0 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            </div>
+        </div>
+
+        <div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body>
+            @if ($slot->isNotEmpty())
+                {{ $slot }}
+            @elseif ($label)
+                {{ t($label) }}
+            @endif
+        </div>
+
+        @if ($caption)
+            <atom:caption class="pe-6">{{ t($caption) }}</atom:caption>
+        @endif
+
+        <atom:error>{{ t($error) }}</atom:error>
+    </label>
+@else
 <label {{ $attributes->only('class')->class('group/checkbox inline-block space-y-2') }} data-atom-checkbox>
     <div>
         <div @class([
@@ -72,3 +110,4 @@ if ($disabledBy) {
 
     <atom:error>{{ t($error) }}</atom:error>
 </label>
+@endif

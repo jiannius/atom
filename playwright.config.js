@@ -45,6 +45,9 @@ const calendarProjects = engines.flatMap(({ browser, device }) => [
   // The table's totals lines: one colspan="100" cell per line, whose layout (spare columns, a hidden column, a trailing actions column, print) is the
   // engine's to decide. CI runs it in the calendar job (`e2e-engines`) after the confirm specs.
   { name: `${browser}-totals`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /table-totals\.spec\.js$/ },
+  // Selectable tiles (`variant="tile"`): the `:has()` states, the grid and `:focus-visible` on the tile are the engine's to draw. CI runs it in the calendar
+  // job (`e2e-engines`) after the totals specs.
+  { name: `${browser}-tiles`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /tiles\.spec\.js$/ },
 ])
 
 // The shells' keyboard and focus specs run again in WebKit, for what Safari does and Chromium does not: it does not focus a button on click
