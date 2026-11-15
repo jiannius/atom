@@ -50,6 +50,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-table-row-href', TableRowHrefFixture::class);
         Livewire::component('atom-e2e-table-server-slots', TableServerSlotsFixture::class);
         Livewire::component('atom-e2e-table-columns', TableColumnsFixture::class);
+        Livewire::component('atom-e2e-table-totals', TableTotalsFixture::class);
         Livewire::component('atom-e2e-input-morph', InputMorphFixture::class);
         Livewire::component('atom-e2e-clearable-input', ClearableInputFixture::class);
         Livewire::component('atom-e2e-table-loading', TableLoadingFixture::class);
@@ -123,6 +124,9 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/table-loading', fn () => view('atom::e2e.table-loading'));
         Route::middleware('web')->get('/atom/e2e/table-only', fn () => view('atom::e2e.table-only'));
         Route::middleware('web')->get('/atom/e2e/table-layout', fn () => view('atom::e2e.table-layout'));
+        // totals under a lines table, on the consumer's Tailwind: ?tw, ?density, ?dark=1
+        Route::middleware('web')->get('/atom/e2e/table-totals', fn () => view('atom::e2e.table-totals'));
+        Route::middleware('web')->get('/atom/e2e/table-totals-livewire', fn () => view('atom::e2e.table-totals-livewire'));
         Route::middleware('web')->get('/atom/e2e/table-search-chip', fn () => view('atom::e2e.table-search-chip'));
         Route::middleware('web')->get('/atom/e2e/table-search-chip-live', fn () => view('atom::e2e.table-search-chip-live'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs', fn () => view('atom::e2e.breadcrumbs'));

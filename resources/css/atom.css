@@ -1669,3 +1669,41 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
         stroke-dashoffset: 0;
     }
 }
+
+/* <atom:table.totals>: a line of figures under a table's rows, in the table's own tfoot. The cell spans far more columns than any table has
+   (colspan="100": the HTML table model adds empty zero-width columns for the spare span, and they take no room), so it covers every column
+   that is drawn, however many the user hid, and its content ends on the table's right edge: the same edge a `numeric` last column's text
+   ends on, because both cells pad their end with `px-row`. The figure is right-aligned and tabular with a floor width, so the labels of
+   one block end on one edge, and a label wraps, so a long one never widens the table. The floor is in `@layer base` so a host's utility can change it. */
+[data-atom-totals-line] {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    column-gap: 1.5rem;
+}
+
+[data-atom-totals-label] {
+    min-width: 0;
+    text-align: right;
+}
+
+[data-atom-totals-value] {
+    flex: none;
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+@layer base {
+    [data-atom-totals-value] {
+        min-width: 7rem;
+    }
+}
+
+/* A table footer is repeated at the foot of every printed page (it is `table-footer-group`), so the totals under a long list would print once per
+   page. In print it is an ordinary row group: once, after the last row. */
+@media print {
+    [data-atom-table-footer] {
+        display: table-row-group;
+    }
+}

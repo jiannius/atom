@@ -559,7 +559,7 @@ describe('lists, forms and the timeline in the docs', function () {
     it('names every prop it documents on the components that have them', function () {
         $readme = file_get_contents(__DIR__.'/../../README.md');
 
-        foreach (['table/index' => ['frameless'], 'table/column' => ['numeric'], 'table/cell' => ['numeric'], 'table/toolbar' => ['strip', 'trashed'], 'table/views' => ['counts', 'current'], 'form/section' => ['heading', 'subheading', 'layout', 'level'], 'form/actions' => ['sticky', 'bar'], 'timeline/index' => ['kind', 'label', 'collapsible']] as $component => $props) {
+        foreach (['table/index' => ['frameless'], 'table/column' => ['numeric'], 'table/cell' => ['numeric'], 'table/totals' => ['label', 'value', 'total', 'column'], 'table/toolbar' => ['strip', 'trashed'], 'table/views' => ['counts', 'current'], 'form/section' => ['heading', 'subheading', 'layout', 'level'], 'form/actions' => ['sticky', 'bar'], 'timeline/index' => ['kind', 'label', 'collapsible']] as $component => $props) {
             $source = file_get_contents(__DIR__.'/../../components/'.$component.'.blade.php');
 
             foreach ($props as $prop) {

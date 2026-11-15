@@ -54,6 +54,11 @@ description="numeric on a column and on its cells right-aligns the figures and m
 view="atom::docs.demos.table.numeric"/>
 
 <atom:docs.example
+title="Totals"
+description="atom:table.totals is one line of figures in the table's footer slot: label, value, and total for the grand total (semibold, a hairline above). The line spans every column that is drawn, so the figure ends on the table's right edge, under a numeric last column, and a column the user hides takes nothing out of line. column names the amount column, so the lines go when that column is hidden. Try Qty in the picker."
+view="atom::docs.demos.table.totals"/>
+
+<atom:docs.example
 title="Toolbar"
 description="atom:table.toolbar lays out the search and the filters at the start and an end group at the far side: the row count, the actions slot (your own buttons: an export; end is the older name of the same slot and still works), the archived toggle and, last, a ⋯ button that opens the menu slot (menu items; no items, no button). In a Livewire page it goes in the table's header slot, where the table draws the strip around it and swaps it for the bulk-action bar while rows are ticked; the table owns the paginator, so a count or a total of yours belongs below the table, not in it. A paginated table's row count ("1–50 of 128") opens the end group by itself, read from outside the template so it follows every filter and page change (count=false leaves it out); a table of one page or with no paginator, and a toolbar outside a table such as this one, show none. From sm up the end group stays at the top end however many rows the chips take. Outside a table, pass strip to draw its own hairline strip, as here."
 view="atom::docs.demos.table.toolbar"/>
