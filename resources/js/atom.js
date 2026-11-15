@@ -1,6 +1,7 @@
 import helpers from './helpers'
 import formErrors from './helpers/form-errors'
 import dialogEscape from './helpers/dialog-escape'
+import confirmGate from './helpers/confirm-gate'
 import accordion from './alpinejs/accordion'
 import command from './alpinejs/command'
 import modal from './alpinejs/modal'
@@ -75,3 +76,4 @@ window.atom = helpers
 
 formErrors()
 dialogEscape()
+confirmGate()

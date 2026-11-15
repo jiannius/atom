@@ -351,14 +351,17 @@ class Atom
      *
      * @param  ?string  $passphrase  the plain text the user must type, or null/empty for none (escaped here: never pass JS)
      * @param  string  $buttonConfirm  the confirm button's label, or an empty string for the dialog's default
+     * @param  array<string, mixed>  $options  dialog options of the host's own (the `confirm` prop), over the delete wording
      */
-    public function deleteConfirmHandler(?string $passphrase = null, string $buttonConfirm = ''): string
+    public function deleteConfirmHandler(?string $passphrase = null, string $buttonConfirm = '', array $options = []): string
     {
         $passphraseJs = Js::from((string) $passphrase);
         $heading = Js::from(t('atom::messages.permanently-delete-record'));
         $message = Js::from(t('atom::messages.are-you-sure-to-delete-this-record'));
         $plural = Js::from(t('atom::messages.delete-selected-records', []));
         $buttonConfirm = $buttonConfirm === '' ? '' : 'buttonConfirm: '.Js::from($buttonConfirm).',';
+        $options = Arr::except($options, ['plural']);
+        $options = $options ? '...'.Js::from($options).',' : '';
 
         return "(() => {
             let bar = \$el.closest('[data-atom-table-checked]')
@@ -369,6 +372,7 @@ class Atom
                 message: $message,
                 passphrase: $passphraseJs,
                 $buttonConfirm
+                $options
             })
         })().then(() => \$dispatch('confirmed')).catch(() => {})";
     }

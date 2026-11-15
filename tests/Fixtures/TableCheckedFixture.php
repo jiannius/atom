@@ -37,6 +37,9 @@ class TableCheckedFixture extends Component
     /** How many times the view has rendered: `bump()` forces one, for the morph spec */
     public int $renders = 0;
 
+    /** `?deleteclick=1` adds the same delete with a `wire:click` of its own, which the gate (not the delete handler) confirms */
+    public bool $deleteClick = false;
+
     /** A class a host puts on `<x-slot:checked>`: `gap-6` (a literal in the view, so the consumer build sees it) */
     public ?string $gap = null;
 
@@ -58,6 +61,7 @@ class TableCheckedFixture extends Component
         $this->gap = request()->query('gap') === '6' ? request()->query('gap') : null;
         $this->withDelete = request()->boolean('delete');
         $this->menu = request()->boolean('menu');
+        $this->deleteClick = request()->boolean('deleteclick');
         $this->buttons = max(1, min(5, request()->integer('buttons', 1)));
         $this->_table['checkboxes'] = [1];
     }

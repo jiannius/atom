@@ -121,9 +121,14 @@ describe('menu.item', function () {
             ->toContain('data-atom-icon'); // the delete icon
     });
 
-    it('does not auto-wire the confirm flow when the caller sets its own click', function () {
+    it('confirms a delete item that has its own click too, through the gate and not the delete handler', function () {
         expect(renderBlade('<atom:menu.item variant="delete" wire:click="remove">Delete</atom:menu.item>'))
-            ->not->toContain('atom.confirm({');
+            ->not->toContain('atom.confirm({')->not->toContain('x-on:confirmed')
+            ->toContain('wire:click="remove"')
+            ->toContain('data-atom-confirm=');
+
+        expect(renderBlade('<atom:menu.item variant="delete" wire:click="remove" :confirm="false">Delete</atom:menu.item>'))
+            ->not->toContain('data-atom-confirm');
     });
 
     it('renders a badge', function () {

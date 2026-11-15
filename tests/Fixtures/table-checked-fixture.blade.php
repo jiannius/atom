@@ -17,6 +17,10 @@ $slotGap = ['6' => 'gap-6'][$gap] ?? null;
                 @if ($withDelete)
                     <atom:button type="delete" size="sm">Delete</atom:button>
                 @endif
+
+                @if ($deleteClick)
+                    <atom:button type="delete" size="sm" wire:click="delete">Delete</atom:button>
+                @endif
             </x-slot:checked>
 
             @if ($menu)
