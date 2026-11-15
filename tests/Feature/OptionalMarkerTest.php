@@ -361,8 +361,8 @@ describe('an island', function () {
     it('draws a field of an island the same on its first render and when it is rendered on its own, a form outside it or not', function (string $where, string $first, string $alone) {
         $test = Livewire::test(MarkerIslandFixture::class, ['where' => $where]);
 
-        expect(preg_replace('/\s+/', ' ', trim(strip_tags($test->html()))))->toContain($first)
-            ->and(markerIslandAlone($test))->toContain($alone);
+        expect(preg_replace('/\s+/', ' ', trim(strip_tags($test->html()))))->toBe($first)
+            ->and(markerIslandAlone($test))->toBe($alone);
     })->with([
         // the form is around the island's first render only: the island reads the config on both
         'form outside' => ['outside', 'Beside (optional) Island', 'Island'],
