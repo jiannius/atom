@@ -12,7 +12,8 @@
      `crumbs` is a list of `['label' => ..., 'href' => ...]` (a string is a label with no link); the last one is the
      current page, printed as the record's own text; every other label goes through t(), which splits on a pipe, so a
      parent crumb holding record data must not contain one. `facts` is a list of strings or
-     `['label' => ..., 'value' => ..., 'mono' => true]`. `title`, labels and values print as text. It is pure Blade and CSS, so it also renders in a
+     `['label' => ..., 'value' => ..., 'mono' => true]`; a labelled fact whose value is blank stays as `Label —` (leave it out of the
+     array to hide it), a bare string that is blank is dropped, and `'0'` and `0` are values. `title`, labels and values print as text. It is pure Blade and CSS, so it also renders in a
      modal or a slide-over (a form, never a whole record): pass `size="sm"` and `level="2"` there (the overflow trigger follows it, and so should the buttons you pass: default size on a page, `sm` there). Use the shell's own
      `crumbs` slot OR `crumbs` here, not both.
      Where the actions go is decided by what fits, never by how long the title or the meta line is, so two pages of one app lay out
@@ -38,7 +39,7 @@ $trail = collect($crumbs)->values()->map(fn ($crumb) => [
 $items = collect($facts)->map(fn ($fact) => is_scalar($fact)
     ? ['label' => null, 'value' => (string) $fact, 'mono' => false, 'plain' => true]
     : ['label' => data_get($fact, 'label'), 'value' => data_get($fact, 'value'), 'mono' => (bool) data_get($fact, 'mono'), 'plain' => false]
-)->filter(fn ($fact) => filled($fact['value']))->values();
+)->filter(fn ($fact) => filled($fact['value']) || filled($fact['label']))->values();
 
 /* A slot counts only when it holds something other than comments and whitespace: in a Livewire component a slot made of `@if`
    blocks that all come out false is still `<!--[if BLOCK]><![endif]-->` markers, which isNotEmpty() takes for content and
@@ -102,7 +103,7 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
                         @if (filled($fact['label']))
                             {{ t($fact['label']) }}
                         @endif
-                        <b class="{{ $fact['plain'] ? 'font-normal' : 'font-medium text-fg' }} {{ $fact['mono'] ? 'font-id' : '' }}">{{ $fact['value'] }}</b>
+                        <b class="{{ $fact['plain'] ? 'font-normal' : 'font-medium text-fg' }} {{ $fact['mono'] ? 'font-id' : '' }}">@if (filled($fact['value'])){{ $fact['value'] }}@else<atom:_missing />@endif</b>
                     </span>
                 @endforeach
 

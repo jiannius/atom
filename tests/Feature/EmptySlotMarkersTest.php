@@ -229,3 +229,14 @@ describe('dropzone content', function () {
             ->and(domClasses(domQuery($disabled, '//*[@data-atom-disabled]')[0]))->not->toContain('cursor-not-allowed');
     });
 });
+
+it('draws the missing-value mark in a dd and a table cell whose slot is only false blocks', function () {
+    $dd = renderInLivewire('<atom:dd label="A">'.FALSE_BLOCKS.'</atom:dd>');
+    $cell = renderInLivewire('<table><tbody><tr><atom:table.cell>'.FALSE_BLOCKS.'</atom:table.cell></tr></tbody></table>');
+    $real = renderInLivewire('<atom:dd label="A">@if (true) Jane @endif</atom:dd>');
+
+    expect(domQuery($dd, '//dd//*[@data-atom-missing]'))->toHaveCount(1)
+        ->and(domQuery($cell, '//td//*[@data-atom-missing]'))->toHaveCount(1)
+        ->and(domQuery($real, '//dd//*[@data-atom-missing]'))->toBeEmpty()
+        ->and($real)->toContain('Jane');
+});

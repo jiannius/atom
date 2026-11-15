@@ -188,10 +188,10 @@ describe('dd', function () {
             ->toContain('Jane');
     });
 
-    it('shows the filler when empty', function () {
+    it('draws the missing-value mark when empty, never a typed dash', function () {
         $html = Blade::render('<atom:dd label="Empty" />');
 
-        expect($html)->toContain('--');
+        expect($html)->toContain('data-atom-missing')->toContain('—')->not->toContain('--');
     });
 
     it('lays the group out in columns', function () {

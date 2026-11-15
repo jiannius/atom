@@ -104,20 +104,31 @@ describe('page.header', function () use ($evil) {
         expect(domQuery(renderBlade('<atom:page.header title="T" />'), '//*[@data-atom-page-crumbs]'))->toBeEmpty();
     });
 
-    it('reads facts as strings or label and value, and skips an empty one', function () {
+    it('reads facts as strings or label and value, keeps a labelled blank one with the mark, and skips a bare blank string', function () {
         $html = renderBlade('<atom:page.header title="T" :facts="$f" />', ['f' => [
             'Customer A',
             ['label' => 'Due', 'value' => '29 Jul'],
             ['label' => 'Ref', 'value' => 'WO-1', 'mono' => true],
-            ['label' => 'Empty', 'value' => ''],
+            ['label' => 'Checked by', 'value' => ''],
+            ['label' => 'Cost centre', 'value' => null],
+            ['label' => 'Items', 'value' => '0'],
+            ['label' => 'Qty', 'value' => 0],
+            ['label' => '', 'value' => ''],
             '',
         ]]);
         $meta = domQuery($html, '//*[@data-atom-page-meta]')[0];
+        $facts = domQuery($html, '//*[@data-atom-page-meta]/span');
 
-        expect($meta->getElementsByTagName('span')->length)->toBe(3)
+        expect($facts)->toHaveCount(7)
             ->and($meta->textContent)->toContain('Customer A')->toContain('Due')->toContain('29 Jul')
-            ->and($meta->textContent)->not->toContain('Empty')
-            ->and(domClasses(domQuery($html, '//*[@data-atom-page-meta]//b[contains(., "WO-1")]')[0]))->toContain('font-id');
+            ->and(domClasses(domQuery($html, '//*[@data-atom-page-meta]//b[contains(., "WO-1")]')[0]))->toContain('font-id')
+            // a labelled blank value stays, as the mark
+            ->and(domQuery($html, '//*[@data-atom-page-meta]/span[contains(., "Checked by")]//*[@data-atom-missing]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-page-meta]/span[contains(., "Cost centre")]//*[@data-atom-missing]'))->toHaveCount(1)
+            // zero is a value
+            ->and(trim(domQuery($html, '//*[@data-atom-page-meta]/span[contains(., "Items")]/b')[0]->textContent))->toBe('0')
+            ->and(trim(domQuery($html, '//*[@data-atom-page-meta]/span[contains(., "Qty")]/b')[0]->textContent))->toBe('0')
+            ->and(domQuery($html, '//*[@data-atom-page-meta]//*[@data-atom-missing]'))->toHaveCount(2);
     });
 
     it('draws the meta slot after the facts, and no meta row when there is neither', function () {
