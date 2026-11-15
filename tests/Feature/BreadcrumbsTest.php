@@ -29,6 +29,140 @@ describe('breadcrumbs', function () {
     });
 });
 
+describe('a fixed trail (`items`)', function () {
+    // the JSON the tag prints for the engine, decoded from the attribute the way a browser reads it
+    $trail = function (string $html): ?array {
+        $nodes = domQuery($html, '//*[@data-atom-breadcrumbs][@data-atom-breadcrumbs-items]');
+
+        return count($nodes) === 1 ? json_decode($nodes[0]->getAttribute('data-atom-breadcrumbs-items'), true) : null;
+    };
+
+    beforeEach(function () {
+        // the shells' search input reads $errors, which the session middleware shares in an app
+        view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+        request()->attributes->remove(\Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE);
+    });
+    afterEach(fn () => request()->attributes->remove(\Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE));
+
+    it('prints no items attribute without `items`, so the component keeps its own trail', function () {
+        expect(domQuery(renderBlade('<atom:breadcrumbs />'), '//*[@data-atom-breadcrumbs-items]'))->toHaveCount(0);
+    });
+
+    it('prints the header\'s shape as JSON: the first item is the root, a string is a label with no link, the last has no link', function () use ($trail) {
+        $html = renderBlade('<atom:breadcrumbs :items="[[\'label\' => \'Jobs\', \'href\' => \'/jobs\'], \'Open\', [\'label\' => \'WO-1042\', \'href\' => \'/jobs/1\']]" />');
+
+        expect($trail($html))->toBe([
+            ['title' => 'Jobs', 'url' => '/jobs', 'home' => true],
+            ['title' => 'Open', 'url' => null, 'home' => false],
+            ['title' => 'WO-1042', 'url' => null, 'home' => false],
+        ])
+            // the component draws the same engine: the factory is still a constant and the list is there
+            ->and($html)->toContain('breadcrumbs({ heading: true })', 'data-atom-crumb-list');
+    });
+
+    it('escapes the JSON in the attribute: a label cannot close it or open a tag', function () use ($trail) {
+        $label = '"><script>alert(1)</script> \' & </ol>';
+        $html = renderBlade('<atom:breadcrumbs :items="$items" />', ['items' => [['label' => 'Home', 'href' => '/'], ['label' => $label]]]);
+
+        // the page holds exactly one such element, none of the label's markup is live, and the browser reads back the label as it was
+        expect(domQuery($html, '//script'))->toHaveCount(0)
+            ->and(substr_count($html, 'data-atom-breadcrumbs-items='))->toBe(1)
+            ->and($html)->not->toContain('<script>alert(1)</script>')
+            ->and($trail($html)[1]['title'])->toBe($label);
+    });
+
+    it('drops a javascript: href, leaving a crumb with no link', function () use ($trail) {
+        $html = renderBlade('<atom:breadcrumbs :items="[[\'label\' => \'Home\', \'href\' => \'javascript:alert(1)\'], [\'label\' => \'Mid\', \'href\' => \' JaVa&#09;script:alert(1)\'], [\'label\' => \'Safe\', \'href\' => \'/safe\'], [\'label\' => \'Now\']]" />');
+
+        expect($html)->not->toContain('javascript')->not->toContain('JaVa')
+            ->and(array_column($trail($html), 'url'))->toBe([null, null, '/safe', null]);
+    });
+
+    it('runs every label but the last through t(), and prints the last as data', function () use ($trail) {
+        // t() splits on a pipe: a parent label is a translation key, the current page is the record's own text
+        $html = renderBlade('<atom:breadcrumbs :items="[[\'label\' => \'Jobs|Many jobs\', \'href\' => \'/jobs\'], [\'label\' => \'WO|1042\']]" />');
+
+        expect(array_column($trail($html), 'title'))->toBe(['Jobs', 'WO|1042']);
+    });
+
+    it('translates a parent crumb with the app\'s translations', function () use ($trail) {
+        app('translator')->setLoaded(['*' => ['*' => [app()->getLocale() => ['Jobs' => 'Kerja']]]]);
+
+        expect(array_column($trail(renderBlade('<atom:breadcrumbs :items="[[\'label\' => \'Jobs\', \'href\' => \'/jobs\'], [\'label\' => \'Jobs\']]" />')), 'title'))->toBe(['Kerja', 'Jobs']);
+    });
+
+    it('takes a Stringable label (a Str, an HtmlString) and a number as text, never drops it', function () use ($trail) {
+        $html = renderBlade('<atom:breadcrumbs :items="$items" />', ['items' => [
+            ['label' => str('Jobs'), 'href' => '/jobs'],
+            new \Illuminate\Support\HtmlString('Open <b>jobs</b>'),
+            ['label' => new \Illuminate\Support\HtmlString('WO-<i>1042</i>')],
+        ]]);
+
+        // text in the attribute, escaped there, and printed by x-text: markup in a label is never markup
+        expect(array_column($trail($html), 'title'))->toBe(['Jobs', 'Open <b>jobs</b>', 'WO-<i>1042</i>'])
+            ->and(array_column($trail($html), 'url'))->toBe(['/jobs', null, null])
+            ->and($html)->not->toContain('<b>jobs</b>');
+
+        expect(array_column($trail(renderBlade('<atom:breadcrumbs :items="[[\'label\' => 7, \'href\' => \'/a\'], 5, [\'label\' => 12]]" />')), 'title'))->toBe(['7', '5', '12']);
+    });
+
+    it('reads a model or a collection item for its label and href, never as the text of its JSON', function () use ($trail) {
+        $model = new class () extends \Illuminate\Database\Eloquent\Model {
+            protected $guarded = [];
+        };
+        $model->forceFill(['label' => 'Jobs', 'href' => '/jobs', 'secret_note' => 'TOP-SECRET-VALUE']);
+
+        $html = renderBlade('<atom:breadcrumbs :items="$items" />', ['items' => [$model, collect(['label' => 'Open', 'href' => '/open', 'secret_note' => 'TOP-SECRET-VALUE']), ['label' => 'Now']]]);
+
+        expect(array_column($trail($html), 'title'))->toBe(['Jobs', 'Open', 'Now'])
+            ->and(array_column($trail($html), 'url'))->toBe(['/jobs', '/open', null])
+            ->and($html)->not->toContain('TOP-SECRET-VALUE')->not->toContain('secret_note');
+    });
+
+    it('drops blank labels and a nothing-trail, and accepts a collection', function () use ($trail) {
+        $html = renderBlade('<atom:breadcrumbs :items="$items" />', ['items' => collect([['label' => 'Home', 'href' => '/'], ['label' => ''], ['href' => '/x'], ['label' => 'Now']])]);
+
+        expect(array_column($trail($html), 'title'))->toBe(['Home', 'Now'])
+            ->and($trail(renderBlade('<atom:breadcrumbs :items="[]" />')))->toBe([])
+            ->and($trail(renderBlade('<atom:breadcrumbs :items="\'not a list\'" />')))->toBe([]);
+    });
+
+    it('tells the layouts how long the trail is, like WithBreadcrumbs does (the first writer wins)', function () {
+        $key = \Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE;
+
+        renderBlade('<atom:breadcrumbs :items="[[\'label\' => \'Home\', \'href\' => \'/\'], [\'label\' => \'A\', \'href\' => \'/a\'], [\'label\' => \'B\']]" />');
+        expect(request()->attributes->get($key))->toBe(3);
+
+        renderBlade('<atom:breadcrumbs :items="[[\'label\' => \'Only\']]" />');
+        expect(request()->attributes->get($key))->toBe(3);
+
+        request()->attributes->remove($key);
+        renderBlade('<atom:breadcrumbs :items="[]" />');
+        expect(request()->attributes->get($key))->toBe(0);
+
+        // a component's trail leaves the count alone
+        request()->attributes->remove($key);
+        renderBlade('<atom:breadcrumbs />');
+        expect(request()->attributes->has($key))->toBeFalse();
+    });
+
+    it('is what the shell reads to leave out the empty bar for one crumb above a page.header, with no component', function (string $layout) {
+        $render = fn (array $items, bool $pageHeader) => renderBlade('<atom:'.$layout." :vite=\"false\">\n<x-slot:crumbs>\n<atom:breadcrumbs :items=\"\$items\" />\n</x-slot>\n"
+            .($pageHeader ? '<atom:page.header title="Invoices" />' : '<p>Body</p>').'</atom:'.$layout.'>', ['items' => $items]);
+        $node = $layout === 'layouts.sidebar' ? '//header[@data-atom-header]' : '//*[@data-atom-header-crumbs]';
+        $empty = fn (string $html) => count(domQuery($html, $node.'[@data-atom-header-empty]')) === 1;
+
+        request()->attributes->remove(\Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE);
+        expect($empty($render([['label' => 'Invoices']], true)))->toBeTrue();
+
+        request()->attributes->remove(\Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE);
+        expect($empty($render([['label' => 'Invoices']], false)))->toBeFalse();
+
+        request()->attributes->remove(\Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE);
+        expect($empty($render([['label' => 'Sales', 'href' => '/sales'], ['label' => 'Invoices']], true)))->toBeFalse();
+    })->with(['layouts.sidebar', 'layouts.header']);
+});
+
 describe('the trail length the layout reads', function () {
     $key = \Jiannius\Atom\Atom::CRUMB_COUNT_ATTRIBUTE;
 

@@ -311,31 +311,33 @@ for (const tw of ['floor', 'latest']) {
       expect(await main(), 'collapsed from the start').toBe(top)
     })
 
-    test('a hostile URL in the trail: the phone back link has no href and does nothing', async ({ page }) => {
+    test('a hostile URL in the trail: the phone back link skips it, to the nearest crumb with a safe address', async ({ page }) => {
       await open(page, 'hostile-parent', { tw, width: 390 })
 
       const back = page.locator('[data-atom-crumb-back]')
-      await expect(back).toContainText('Hostile Parent')
-      await expect(back).not.toHaveAttribute('href', /.*/)
+      await expect(back).toContainText('Sales and Marketing Operations')
+      await expect(back).not.toContainText('Hostile Parent')
+      await expect(back).toHaveAttribute('href', /\/breadcrumbs-trail\/sales$/)
 
-      const url = page.url()
       await back.click()
 
       expect(await page.evaluate(() => window.__pwned)).toBeUndefined()
-      expect(page.url()).toBe(url)
+      await expect(page).toHaveURL(/\/breadcrumbs-trail\/sales/)
     })
 
-    test('a hostile URL in the trail: its row in the "..." menu has no href and does nothing', async ({ page }) => {
+    test('a hostile URL in the trail: its row in the "..." menu is text, not a link, and does nothing', async ({ page }) => {
       await open(page, 'hostile', { tw, width: 1100 })
       await expect.poll(() => hiddenCount(page)).toBeGreaterThan(0)
 
       await more(page).click()
-      const row = menu(page).locator('[data-atom-menu-item]', { hasText: 'Hostile Crumb' })
+      const row = menu(page).locator('[data-atom-menu-text]', { hasText: 'Hostile Crumb' })
       await expect(row).toBeVisible()
       await expect(row).not.toHaveAttribute('href', /.*/)
+      await expect(menu(page).locator('[data-atom-menu-item]', { hasText: 'Hostile Crumb' })).toHaveCount(0)
 
       const url = page.url()
-      await row.click()
+      // aria-disabled: Playwright does not click what is disabled, a user can
+      await row.click({ force: true })
 
       expect(await page.evaluate(() => window.__pwned)).toBeUndefined()
       expect(page.url()).toBe(url)

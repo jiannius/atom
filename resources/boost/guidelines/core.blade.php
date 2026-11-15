@@ -41,7 +41,7 @@ Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEdito
 
 ### Design rules
 
-- A screen is `<atom:page>` opening with `<atom:page.header>`; crumbs from the shell's `crumbs` slot or the header's `crumbs` prop, not both. Never hand-build a title, crumb strip, sidebar toggle or ⋯ dropdown.
+- A screen is `<atom:page>` opening with `<atom:page.header>`; crumbs: <atom:breadcrumbs :items> in the shell's `crumbs` slot, or the header's `crumbs` prop, not both. Never hand-build a title, crumb strip, sidebar toggle or ⋯ dropdown.
 - One `variant="primary"` per screen: the next step for the status (Edit if there is no workflow) or the form's submit. None in an empty state, toolbar, bulk bar or row.
 - Tone follows the consequence: danger destroys or cannot be undone (`type="delete"`); warning stops or hides but keeps the record (archive, void, cancel an order: `variant="warning" inverted`). Both confirm in tone (`confirm`). Avoid `success` and `info` buttons.
 - Footers, bars and `form.modal` order buttons primary, default, danger, then ⋯ (the header places its own `primary`). In a menu, warning then danger go last, after `<atom:menu.separator>`.
