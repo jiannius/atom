@@ -7,3 +7,8 @@ view="atom::docs.demos.status.tones"/>
 title="Running"
 description="running pulses the dot while something is in progress. Under prefers-reduced-motion the dot stays still and the word says it."
 view="atom::docs.demos.status.running"/>
+
+<atom:docs.example
+title="From an enum"
+description="Pass the state as value. The tone is the enum's tone(), else its color() (green success, yellow warning, red danger, blue info, gray neutral), and the word is its label(). An array with label and color (or tone) works the same; atom ships no enum of its own, so this demo uses arrays. The tone and label props win over the value."
+view="atom::docs.demos.status.value"/>
