@@ -517,6 +517,39 @@ test.describe('the confirm prop: a menu item', () => {
     await expect(page.getByTestId('more-trigger')).toBeFocused()
   })
 
+  // The browser returns the focus to the element the click was on, which sat in a menu that is closed now, and Safari never focused it:
+  // the gate puts it back on the dropdown's trigger (helpers/confirm-gate.js `returnFocus()`)
+  test('Escape runs nothing, and focus goes back to the trigger', async ({ page }) => {
+    await open(page)
+    await openMenu(page)
+
+    await page.getByTestId('item-warning').click()
+    await expect(dialog(page)).toHaveAttribute('data-open', '')
+    await page.keyboard.press('Escape')
+    await expect(dialog(page)).not.toHaveAttribute('data-open', '')
+    await settled(page)
+
+    expect(await log(page)).toEqual([])
+    await expect(page.getByTestId('more-trigger')).toBeFocused()
+  })
+
+  test('Cancel leaves the focus alone when something already has it', async ({ page }) => {
+    await open(page)
+    await openMenu(page)
+
+    await page.getByTestId('item-warning').click()
+    await expect(dialog(page)).toHaveAttribute('data-open', '')
+    await page.getByTestId('bare').evaluate((el) => {
+      let dlg = document.querySelector('dialog[x-data*="atom-confirm"]')
+
+      dlg.addEventListener('close', () => el.focus(), { once: true })
+    })
+    await reject(page)
+    await settled(page)
+
+    await expect(page.getByTestId('bare')).toBeFocused()
+  })
+
   test('a plain item still runs at once and closes the menu', async ({ page }) => {
     await open(page)
     await openMenu(page)

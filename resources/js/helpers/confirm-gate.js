@@ -40,6 +40,46 @@ const closePopovers = (el) => {
 }
 
 /**
+ * The trigger of the dropdown whose menu the element sits in (the outermost one, when menus nest: the inner triggers go with the outer popover), or null.
+ * Read before the menu closes, from the dropdown's own `trigger`, so it is the control that dropdown treats as its trigger.
+ */
+const menuTriggerOf = (el) => {
+    let trigger = null
+
+    for (let root = el.closest('[data-atom-dropdown]'); root; root = root.parentElement?.closest('[data-atom-dropdown]')) {
+        trigger = window.Alpine?.$data(root)?.trigger ?? trigger
+    }
+
+    return el.closest('[popover]') ? trigger : null
+}
+
+/**
+ * Put the focus back on the trigger once the dialog is gone, when nothing meaningful has it. The browser returns it to the element the click
+ * was on, which sat in a menu that is closed now (and Safari never focused it: a press on a button does not focus it there), so it ends on <body>.
+ * Cancel and Escape only: an Accept runs something that may navigate or re-render, and its own result decides where the focus goes.
+ */
+const returnFocus = (trigger, accepted) => {
+    let onClosed = (e) => {
+        if (e.detail !== 'atom-confirm') return
+
+        window.removeEventListener('closed', onClosed)
+
+        // The next task: the dialog's own `close` handling is done. WebKit has not yet moved the focus off the closed dialog (or the button in it),
+        // so that counts as nothing: it is the dialog's leftover, and it is the browser's move away from it that must not land on <body>.
+        setTimeout(() => {
+            let active = document.activeElement
+            let meaningful = active && active !== document.body && active !== document.documentElement && active.isConnected && !active.closest('dialog:not([open])')
+
+            if (accepted() || !trigger.isConnected || meaningful) return
+
+            trigger.focus()
+        })
+    }
+
+    window.addEventListener('closed', onClosed)
+}
+
+/**
  * The dialog options of the element: only the keys atom writes, and a delete in a table's checked bar counts what is ticked (the same rule as
  * Atom::deleteConfirmHandler()).
  */
@@ -85,9 +125,16 @@ const ask = (e, el, newTab) => {
 
     if (!options) return
 
+    let trigger = menuTriggerOf(el)
+    let accepted = false
+
     closePopovers(el)
 
+    if (trigger) returnFocus(trigger, () => accepted)
+
     confirm(options).then((answer) => {
+        accepted = true
+
         if (!el.isConnected || el.matches(':disabled, [aria-disabled="true"]')) return
 
         // For a host that asked for a password or a reason: `x-on:confirmed="..."` on the element itself hears what was typed
