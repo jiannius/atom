@@ -1,3 +1,5 @@
+@aware(['marker' => null])
+
 @props([
     'label' => null,
     'inline' => false,
@@ -6,11 +8,17 @@
     'error' => null,
     'for' => null,
     'labelId' => null,
+    'marker' => null,
 ])
 
 @php
 /* "(optional)" at the end of a label is a note, not part of the name: it prints in the muted tone at the regular weight. The
-   words stay in the label, so the field's accessible name is unchanged. */
+   words stay in the label, so the field's accessible name is unchanged.
+   `marker` (read from the form that holds the field, `config('atom.form.marker')` outside one; only `optional` or `required` count) says which
+   fields are marked: `required` (the default) draws the asterisk on a required one; `optional` draws none and adds the same "(optional)" note
+   to a field that is not required, unless the label already ends with it. A label slot is the host's own markup and is left as it is. */
+$marker = in_array($marker, ['optional', 'required'], true) ? $marker : config('atom.form.marker', 'required');
+$markOptional = $marker === 'optional';
 $optional = null;
 $labelText = $label ? t($label) : null;
 
@@ -18,6 +26,10 @@ if (is_string($labelText)) {
     if (preg_match('/^(.*?)\s*(\((?:optional|'.preg_quote(t('optional'), '/').')\))$/iu', $labelText, $found) && trim($found[1]) !== '') {
         [$labelText, $optional] = [$found[1], $found[2]];
     }
+}
+
+if ($markOptional && !$required && !$optional && $labelText) {
+    $optional = '('.t('optional').')';
 }
 @endphp
 
@@ -32,7 +44,7 @@ if (is_string($labelText)) {
                 <div class="inline-flex items-center justify-center gap-2">
                     <span>{{ $labelText }}@if ($optional) <span class="font-normal text-fg-muted" data-atom-label-optional>{{ $optional }}</span>@endif</span>
 
-                    @if ($required)
+                    @if ($required && !$markOptional)
                         <atom:icon.asterisk class="text-danger-fg shrink-0 size-3"/>
                     @endif
                 </div>

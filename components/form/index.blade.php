@@ -5,6 +5,7 @@
     'disabled' => false,
     'errorToast' => true,
     'novalidate' => true,
+    'marker' => null,
 ])
 
 @php
@@ -64,6 +65,7 @@ if ($errorToast) {
 }
 @endphp
 
+{{-- `marker` is read by the fields inside (input.field, through @aware), not by the form: it is declared here so it stays off the <form> tag. --}}
 <form {{ $attributes->class([
     'group/form relative',
     'flex flex-col gap-6' => !$inset,

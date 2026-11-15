@@ -21,7 +21,8 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
 @endphp
 
 @if ($label || $caption)
-    <atom:input.field :label="$label" :caption="$caption" :label-id="$labelId">
+    {{-- A composer has no `required`, so a form that marks the optional fields must not mark it. --}}
+    <atom:input.field :label="$label" :caption="$caption" :label-id="$labelId" marker="required">
         {{-- mention passed as an explicit prop, not merged into the bag: an array value would render as an attribute and e() would choke on it --}}
         <atom:tiptap.chat :mention="$mention" :aria-labelledby="$labelId" :attributes="$attributes->merge(compact('autofocus', 'placeholder', 'variant'))" />
     </atom:input.field>

@@ -8,6 +8,7 @@
     'method' => 'submit',
     'disabled' => false,
     'novalidate' => true,
+    'marker' => null,
 ])
 
 {{-- A width the caller sets (`w-*` or `max-w-*`, under any variant, not `min-w-*`; see Attributes::hasWidth()) replaces the one `cols`
@@ -32,7 +33,7 @@ $width = $hasOwnWidth ? '' : match ((string) $cols) {
 @endphp
 
 <atom:modal :name="$name" :dismissible="$dismissible" :escapable="$escapable" :closeable="$closeable" {{ $attributes->class($width) }}>
-    <atom:form wire:submit="{{ $method }}" :disabled="$disabled" :novalidate="$novalidate">
+    <atom:form wire:submit="{{ $method }}" :disabled="$disabled" :novalidate="$novalidate" :marker="$marker">
         <atom:form.grid :cols="$cols">
             {{ $slot }}
         </atom:form.grid>
