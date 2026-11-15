@@ -187,7 +187,7 @@ JS;
     }
 
     /**
-     * One rule per hideable column. It is `!important` and unlayered, like [x-cloak] in atom.css, so a utility such as
+     * Two rules per hideable column: the one that hides its cells, and the one that drops the divider above a footer left with none. It is `!important` and unlayered, like [x-cloak] in atom.css, so a utility such as
      * `lg:table-cell` (in Tailwind's layer) cannot show a cell again. The selector walks the table's own structure with child
      * combinators (scroll box, table, section, row, cell), so a table nested in a cell, with a column of the same name, is not
      * reached by the outer table's list. Every name here has passed NAME.
@@ -201,6 +201,9 @@ JS;
         foreach ($payload as $column) {
             if ($column['hideable'] && preg_match(static::NAME, $column['name'])) {
                 $rules[] = '[data-atom-column-hide~="'.$column['name'].'"]>table>:is(thead,tbody,tfoot)>tr>[data-atom-column="'.$column['name'].'"]{display:none!important}';
+                // a footer made only of this column's cells (the totals lines) has nothing left to draw (`:has()` cannot nest, hence `:has()` and `:not(:has())` side by side): the table's divider under the
+                // rows, which only separates them from the footer, goes with it, or it doubles the border of the box around the table
+                $rules[] = '[data-atom-column-hide~="'.$column['name'].'"]>table>tbody:has(+tfoot):not(:has(+tfoot>tr>:not([data-atom-column="'.$column['name'].'"]))){border-bottom-width:0!important}';
             }
         }
 

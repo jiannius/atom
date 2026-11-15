@@ -73,7 +73,7 @@ it('marks the scroll box and lists the columns hidden by default on it', functio
     expect($box->getAttribute('data-atom-column-hide'))->toBe('phone');
 });
 
-it('prints exactly one rule per hideable column and none for a locked one', function () {
+it('prints exactly two rules per hideable column (its cells, the divider above a footer it empties) and none for a locked one', function () {
     $html = columnsTable(COLUMNS);
 
     preg_match('/<style data-atom-column-css>(.*?)<\/style>/s', $html, $style);
@@ -81,7 +81,9 @@ it('prints exactly one rule per hideable column and none for a locked one', func
 
     expect($rules)->toBe([
         '[data-atom-column-hide~="email"]>table>:is(thead,tbody,tfoot)>tr>[data-atom-column="email"]{display:none!important}',
+        '[data-atom-column-hide~="email"]>table>tbody:has(+tfoot):not(:has(+tfoot>tr>:not([data-atom-column="email"]))){border-bottom-width:0!important}',
         '[data-atom-column-hide~="phone"]>table>:is(thead,tbody,tfoot)>tr>[data-atom-column="phone"]{display:none!important}',
+        '[data-atom-column-hide~="phone"]>table>tbody:has(+tfoot):not(:has(+tfoot>tr>:not([data-atom-column="phone"]))){border-bottom-width:0!important}',
     ]);
     expect(substr_count($html, '<style data-atom-column-css'))->toBe(1);
 });

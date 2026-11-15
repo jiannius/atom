@@ -42,6 +42,9 @@ const calendarProjects = engines.flatMap(({ browser, device }) => [
   // and Enter on a gated link, where the focus lands when a menu closes under a dialog (Safari does not focus a button on click), and the popover and dialog
   // layers closing together. CI runs them in the calendar job (`e2e-engines`), after its calendar projects.
   { name: `${browser}-confirm`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /(confirm-prop|table-checked-menu)\.spec\.js$/ },
+  // The table's totals lines: one colspan="100" cell per line, whose layout (spare columns, a hidden column, a trailing actions column, print) is the
+  // engine's to decide. CI runs it in the calendar job (`e2e-engines`) after the confirm specs.
+  { name: `${browser}-totals`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /table-totals\.spec\.js$/ },
 ])
 
 // The shells' keyboard and focus specs run again in WebKit, for what Safari does and Chromium does not: it does not focus a button on click
