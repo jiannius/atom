@@ -9,7 +9,7 @@ class Docs
     const CATEGORIES = [
         'Form inputs' => ['input', 'textarea', 'select', 'checkbox', 'radio', 'toggle', 'date-picker', 'time-picker', 'uploader', 'tiptap'],
         'Buttons & links' => ['button', 'link'],
-        'Display & typography' => ['heading', 'subheading', 'caption', 'label', 'avatar', 'badge', 'status', 'stat', 'timeline', 'card', 'callout', 'skeleton', 'placeholder-bar', 'empty', 'profile', 'icon', 'logo'],
+        'Display & typography' => ['heading', 'subheading', 'caption', 'label', 'avatar', 'badge', 'status', 'stat', 'timeline', 'card', 'panel', 'callout', 'skeleton', 'placeholder-bar', 'empty', 'profile', 'icon', 'logo'],
         'Feedback & overlays' => ['modal', 'alert', 'toast', 'confirm', 'tooltip', 'dropdown', 'lightbox'],
         'Layout & navigation' => ['form', 'table', 'tabs', 'list', 'menu', 'navlist', 'breadcrumbs', 'page', 'calendar', 'separator', 'layouts'],
     ];

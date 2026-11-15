@@ -4,6 +4,7 @@
     'divided' => false,
     'variant' => null,
     'heading' => null,
+    'level' => 2,
     'data' => null,
     'indicator' => null,
     'trend' => null,
@@ -13,8 +14,13 @@
     'min' => null,
 ])
 
+{{-- A card: a fill and a hairline (the base border colour), no shadow. `subtle` is the sunken fill. On the default variant `heading` (a
+     string through t(), or an `<x-slot:heading>` for markup) draws the box's title, a 12px muted one, at `level` 2, 3 or 4 (default 2),
+     with an `actions` slot (one link or ghost button, 12px) and a `menu` slot (`<atom:menu.item>`s behind a ghost ⋯) at the end of the
+     row. The row is drawn only with one of the three. It is the first row of a `divided` card and keeps the card's 16px of padding on an
+     `inset` one. The `stats` and `chart` variants print `heading` as their own label and take none of this. A full-bleed box (a list)
+     is `<atom:panel>`. --}}
 @php
-/* A panel: a fill and a hairline (the base border colour), no shadow. `subtle` is the sunken fill. */
 $classes = Arr::toCssClasses([
     '[:where(&)]:relative rounded-panel border overflow-auto',
     $divided
@@ -28,6 +34,17 @@ $classes = Arr::toCssClasses([
         'chart' => 'h-[350px]',
         default => '',
     },
+]);
+
+/* the heading row's own edge: the card's padding on an inset card, 12px to the body otherwise (a divided card pads and rules its child
+   divs). The 12px is only there when the card does not space its children itself: a `grid` or `flex` card (its own `gap-*` is then the
+   space) or a card with a `space-y-*` class (any variant of it, `md:space-y-4` too) gets its own spacing and not that plus 12px. The
+   margin is a variant of the row, scoped to a parent without those classes, because a margin at no specificity ties with a space-y rule
+   and wins by order, so the host's `space-y-6` would read 12px. */
+$headingClasses = Arr::toCssClasses([
+    'px-4 pt-4 [:not(.grid,.flex,[class*=space-y-])>&]:pb-3' => $inset && ! $divided,
+    'p-4' => $inset && $divided,
+    '[:not(.grid,.flex,[class*=space-y-])>&]:mb-3' => ! $inset && ! $divided,
 ]);
 
 $merges = [
@@ -84,6 +101,15 @@ $merges = [
                 {{ $cover }}
             </figure>
         @endisset
+
+        <atom:_heading-row
+            variant="card"
+            :level="$level"
+            :title="$heading"
+            :actions="$actions ?? null"
+            :menu="$menu ?? null"
+            :class="$headingClasses"
+        />
 
         {{ $slot }}
     @endif

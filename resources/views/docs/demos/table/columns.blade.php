@@ -2,7 +2,7 @@
      here, as in the list-page pattern, so `columns` names the table's id and `strip` draws the toolbar's own strip. In a Livewire
      page the toolbar goes in the table's header slot (no `strip`, and `columns` alone: <atom:table.toolbar columns>).
      Name a column and say it is `hideable`; its cells follow with `column`. `persist-key` keeps the user's choices in localStorage. --}}
-<div class="overflow-hidden rounded-panel border bg-surface">
+<atom:panel>
     <atom:table.toolbar strip :count="false" columns="contacts-demo">
         <atom:table.search placeholder="Search contacts"/>
 
@@ -30,4 +30,4 @@
             @endforeach
         </x-slot:rows>
     </atom:table>
-</div>
+</atom:panel>
