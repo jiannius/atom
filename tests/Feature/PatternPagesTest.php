@@ -781,6 +781,7 @@ describe('new component docs', function () {
         ['form', 'form.section-stacked'],
         ['form', 'form.section-footer'],
         ['form', 'form.save-bar'],
+        ['form', 'form.marker'],
         ['timeline', 'timeline.event'],
         ['timeline', 'timeline.step'],
         ['timeline', 'timeline.message'],
@@ -792,7 +793,7 @@ describe('new component docs', function () {
         $html = view('atom::docs.demos.'.$demo)->render();
 
         expect($html)->toContain('data-atom-');
-    })->with(['table.frameless', 'table.numeric', 'table.toolbar', 'table.views', 'form.section', 'form.section-stacked', 'form.section-footer', 'form.save-bar', 'timeline.event', 'timeline.step', 'timeline.message']);
+    })->with(['table.frameless', 'table.numeric', 'table.toolbar', 'table.views', 'form.section', 'form.section-stacked', 'form.section-footer', 'form.save-bar', 'form.marker', 'timeline.event', 'timeline.step', 'timeline.message']);
 
     it('lists the props of the new components', function () {
         $docs = new Docs;
