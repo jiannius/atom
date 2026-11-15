@@ -10,8 +10,25 @@ import confirm from './confirm'
 // A re-click keeps the element's own behaviour as it is: `wire:click` (with its `wire:loading` and `wire:target`), `x-on:click`, an `href` with or without
 // `wire:navigate`, `target="_blank"` (the Accept press is still a user gesture), a submit. A keyboard press is a click too, so Enter and Space come through here.
 //
-// The open menu closes first: the confirm is a modal dialog, and a popover left open would sit under it.
+// Three presses reach a link without a plain click. `wire:navigate` navigates on mousedown and mouseup and on a keydown of Enter, never waiting for the click,
+// so those two events are stopped on a gated `wire:navigate` link (the click that follows asks; the re-click is a script's, which Livewire navigates on at
+// once). A middle click (auxclick), and a click with Ctrl, Meta or Shift, open a new tab natively: they are stopped and asked about like a click, and Accept
+// opens the link in a new tab. The browser's own context menu ("Open link in new tab") is not a click and cannot be gated.
+//
+// What the markup says is not trusted: only the dialog options atom writes are read (never `html`, which the dialog prints as markup).
+const OPTIONS = ['variant', 'heading', 'subheading', 'message', 'buttonConfirm', 'buttonCancel', 'passphrase', 'password', 'reason', 'reasonLabel', 'reasonPlaceholder', 'plural']
+
 let passing = null
+
+/**
+ * The gated element a press landed on, or null.
+ */
+const gated = (e) => (e.target instanceof Element ? e.target.closest('[data-atom-confirm]') : null)
+
+/**
+ * Whether the element is a link Livewire navigates (`wire:navigate`, `wire:navigate.hover`).
+ */
+const navigates = (el) => el.tagName === 'A' && [...el.attributes].some((a) => a.name === 'wire:navigate' || a.name.startsWith('wire:navigate.'))
 
 /**
  * Close the popovers the element sits in (a menu, a dropdown), the outermost last.
@@ -23,52 +40,97 @@ const closePopovers = (el) => {
 }
 
 /**
- * The delete confirm of a table's checked bar counts what is ticked; the same rule as Atom::deleteConfirmHandler().
+ * The dialog options of the element: only the keys atom writes, and a delete in a table's checked bar counts what is ticked (the same rule as
+ * Atom::deleteConfirmHandler()).
  */
-const heading = (el, options) => {
-    let { plural, ...rest } = options
+const optionsOf = (el) => {
+    let parsed
 
-    if (!plural) return rest
+    try {
+        parsed = JSON.parse(el.getAttribute('data-atom-confirm'))
+    } catch (error) {
+        return null
+    }
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+
+    let { plural, ...options } = Object.fromEntries(OPTIONS.filter((key) => Object.hasOwn(parsed, key)).map((key) => [key, parsed[key]]))
+
+    if (typeof plural !== 'string') return options
 
     let bar = el.closest('[data-atom-table-checked]')
     let $wire = bar ? window.Livewire?.find(el.closest('[wire\\:id]')?.getAttribute('wire:id')) : null
     let count = bar ? Number($wire?._table?.select_all ? bar.dataset.total : $wire?._table?.checkboxes?.length) || 0 : 0
 
-    return count > 1 ? { ...rest, heading: plural.replace(':count', count.toLocaleString('en-US')) } : rest
+    return count > 1 ? { ...options, heading: plural.replace(':count', count.toLocaleString('en-US')) } : options
+}
+
+/**
+ * Whether the press asks for a new tab: a middle click, or Ctrl, Meta or Shift on a link.
+ */
+const wantsNewTab = (e, el) => el.tagName === 'A' && !!el.getAttribute('href') && (e.button === 1 || e.ctrlKey || e.metaKey || e.shiftKey)
+
+/**
+ * Stop the press, close the menu it came from and ask. Accept dispatches `confirmed` on the element, then runs what the press was.
+ */
+const ask = (e, el, newTab) => {
+    e.preventDefault()
+    e.stopImmediatePropagation()
+
+    // A disabled element never asks, and what it guards never runs: a click on a child of a disabled button still bubbles through it
+    // (a script's, or a label with no pointer-events rule), and its `wire:click` would hear it
+    if (el.matches(':disabled, [aria-disabled="true"]')) return
+
+    let options = optionsOf(el)
+
+    if (!options) return
+
+    closePopovers(el)
+
+    confirm(options).then((answer) => {
+        if (!el.isConnected || el.matches(':disabled, [aria-disabled="true"]')) return
+
+        // For a host that asked for a password or a reason: `x-on:confirmed="..."` on the element itself hears what was typed
+        el.dispatchEvent(new CustomEvent('confirmed', { detail: answer }))
+
+        if (newTab) {
+            window.open(el.href, '_blank', 'noopener')
+
+            return
+        }
+
+        passing = el
+
+        try { el.click() } finally { passing = null }
+    }, () => {})
 }
 
 export default () => {
     window.addEventListener('click', (e) => {
-        let el = e.target instanceof Element ? e.target.closest('[data-atom-confirm]') : null
+        let el = gated(e)
 
         if (!el || el === passing) return
 
-        e.preventDefault()
-        e.stopImmediatePropagation()
-
-        // A disabled element never asks, and what it guards never runs: a click on a child of a disabled button still bubbles through it
-        // (a script's, or a label with no pointer-events rule), and its `wire:click` would hear it
-        if (el.matches(':disabled, [aria-disabled="true"]')) return
-
-        let options
-
-        try {
-            options = JSON.parse(el.getAttribute('data-atom-confirm'))
-        } catch (error) {
-            return
-        }
-
-        closePopovers(el)
-
-        confirm(heading(el, options)).then((answer) => {
-            if (!el.isConnected || el.matches(':disabled, [aria-disabled="true"]')) return
-
-            // For a host that asked for a password or a reason: `x-on:confirmed="..."` on the element itself hears what was typed
-            el.dispatchEvent(new CustomEvent('confirmed', { detail: answer }))
-
-            passing = el
-
-            try { el.click() } finally { passing = null }
-        }, () => {})
+        ask(e, el, wantsNewTab(e, el))
     }, { capture: true })
+
+    window.addEventListener('auxclick', (e) => {
+        let el = gated(e)
+
+        if (!el || el === passing || e.button !== 1 || !wantsNewTab(e, el)) return
+
+        ask(e, el, true)
+    }, { capture: true })
+
+    // The presses `wire:navigate` acts on before a click: the click that follows (not prevented here) is the one that asks
+    for (let type of ['mousedown', 'keydown']) {
+        window.addEventListener(type, (e) => {
+            let el = gated(e)
+
+            if (!el || el === passing || !navigates(el)) return
+            if (type === 'keydown' && e.key !== 'Enter') return
+
+            e.stopImmediatePropagation()
+        }, { capture: true })
+    }
 }

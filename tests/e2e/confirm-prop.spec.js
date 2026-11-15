@@ -258,6 +258,176 @@ test.describe('the confirm prop: what was typed', () => {
   })
 })
 
+const here = (page) => new URL(page.url()).pathname === '/atom/e2e/confirm-prop'
+
+// Livewire navigates a `wire:navigate` link on mousedown and mouseup, and on Enter, without waiting for the click
+test.describe('the confirm prop: a wire:navigate link', () => {
+  for (const testid of ['nav', 'nav-delete']) {
+    test(`${testid}: a mouse click asks first, and navigates only after Accept`, async ({ page }) => {
+      await open(page)
+
+      await asked(page, testid)
+      await settled(page)
+      expect(here(page)).toBe(true)
+
+      await dialog(page).locator('button[type="submit"]').click()
+      await expect(page).toHaveURL(/\/atom\/e2e\/confirm-prop\/landing$/)
+      await expect(page.getByTestId('landing')).toBeVisible()
+    })
+
+    test(`${testid}: Cancel after a mouse click stays on the page`, async ({ page }) => {
+      await open(page)
+
+      await asked(page, testid)
+      await reject(page)
+      await settled(page)
+
+      expect(here(page)).toBe(true)
+    })
+
+    test(`${testid}: Enter asks first, and navigates only after Accept`, async ({ page }) => {
+      await open(page)
+
+      await page.getByTestId(testid).focus()
+      await page.keyboard.press('Enter')
+      await expect(dialog(page)).toHaveAttribute('data-open', '')
+      await settled(page)
+      expect(here(page)).toBe(true)
+
+      await dialog(page).locator('button[type="submit"]').click()
+      await expect(page).toHaveURL(/\/atom\/e2e\/confirm-prop\/landing$/)
+    })
+
+    test(`${testid}: Cancel after Enter stays on the page`, async ({ page }) => {
+      await open(page)
+
+      await page.getByTestId(testid).focus()
+      await page.keyboard.press('Enter')
+      await expect(dialog(page)).toHaveAttribute('data-open', '')
+      await reject(page)
+      await settled(page)
+
+      expect(here(page)).toBe(true)
+    })
+  }
+})
+
+// A new tab by the browser's own gestures is a click with a modifier or a middle click: both are stopped and asked about
+// (Control with a click is a right click on a Mac: no click reaches the page, so it is not driven here)
+test.describe('the confirm prop: a link opened in a new tab', () => {
+  const gesture = {
+    'a middle click': (locator) => locator.click({ button: 'middle' }),
+    'a Meta click': (locator) => locator.click({ modifiers: ['Meta'] }),
+    'a Shift click': (locator) => locator.click({ modifiers: ['Shift'] }),
+  }
+
+  for (const [name, press] of Object.entries(gesture)) {
+    test(`${name} on a link asks, opens nothing before Accept, and opens a new tab after`, async ({ page, context }) => {
+      await open(page)
+      const pages = []
+      context.on('page', (p) => pages.push(p))
+
+      await press(page.getByTestId('link'))
+      await expect(dialog(page)).toHaveAttribute('data-open', '')
+      await settled(page)
+      expect(pages).toHaveLength(0)
+      expect(here(page)).toBe(true)
+
+      const opened = context.waitForEvent('page')
+      await dialog(page).locator('button[type="submit"]').click()
+      const tab = await opened
+
+      await tab.waitForLoadState()
+      expect(new URL(tab.url()).pathname).toBe('/atom/e2e/confirm-prop/landing')
+      expect(here(page)).toBe(true)
+    })
+
+    test(`${name} on a link and Cancel open nothing`, async ({ page, context }) => {
+      await open(page)
+      const pages = []
+      context.on('page', (p) => pages.push(p))
+
+      await press(page.getByTestId('link'))
+      await expect(dialog(page)).toHaveAttribute('data-open', '')
+      await reject(page)
+      await settled(page)
+
+      expect(pages).toHaveLength(0)
+      expect(here(page)).toBe(true)
+    })
+  }
+
+  test('a middle click on a wire:navigate link opens a new tab after Accept, and this page stays', async ({ page, context }) => {
+    await open(page)
+
+    await page.getByTestId('nav').click({ button: 'middle' })
+    await expect(dialog(page)).toHaveAttribute('data-open', '')
+
+    const opened = context.waitForEvent('page')
+    await dialog(page).locator('button[type="submit"]').click()
+    const tab = await opened
+
+    await tab.waitForLoadState()
+    expect(new URL(tab.url()).pathname).toBe('/atom/e2e/confirm-prop/landing')
+    expect(here(page)).toBe(true)
+  })
+})
+
+test.describe('the confirm prop: inside <atom:confirm.trigger>', () => {
+  for (const [testid, call] of [['in-trigger', 'in-trigger'], ['in-trigger-delete', 'in-trigger-delete']]) {
+    test(`${testid}: one dialog, and the action runs once after it`, async ({ page }) => {
+      await open(page)
+
+      await asked(page, testid)
+      await settled(page)
+      expect(await log(page)).toEqual([])
+      await accept(page)
+
+      await expect.poll(() => log(page)).toEqual([call])
+      // a second dialog would be open by now
+      await settled(page)
+      await expect(dialog(page)).not.toHaveAttribute('data-open', '')
+      expect(await log(page)).toEqual([call])
+    })
+  }
+
+  test('a plain button in a trigger still asks through the trigger', async ({ page }) => {
+    await open(page)
+
+    await asked(page, 'plain-trigger')
+    await expect(dialog(page)).toContainText('Plain trigger?')
+  })
+})
+
+test.describe('the confirm prop: the markup is not trusted', () => {
+  test('only the dialog options are read: html and anything else in the JSON never reach the dialog', async ({ page }) => {
+    await open(page)
+
+    await page.getByTestId('bare').evaluate((el) => el.setAttribute('data-atom-confirm', JSON.stringify({
+      heading: 'Hostile?', html: '<img src="x" data-pwn>', onAccepted: 'deleteDomain', wireId: 'x', buttonConfirm: 'Go',
+    })))
+    await asked(page, 'bare')
+
+    await expect(dialog(page)).toContainText('Hostile?')
+    await expect(confirmLabel(page)).toHaveText('Go')
+    await expect(dialog(page).locator('[data-pwn]')).toHaveCount(0)
+    await expect(dialog(page).locator('img')).toHaveCount(0)
+  })
+
+  test('an array or a string in place of the options asks nothing and runs nothing', async ({ page }) => {
+    await open(page)
+
+    for (const value of ['[1,2]', '"text"', 'null', '{broken']) {
+      await page.getByTestId('bare').evaluate((el, v) => el.setAttribute('data-atom-confirm', v), value)
+      await page.getByTestId('bare').click()
+      await settled(page)
+
+      await expect(dialog(page)).not.toHaveAttribute('data-open', '')
+      expect(await log(page)).toEqual([])
+    }
+  })
+})
+
 test.describe('the confirm prop: the keyboard', () => {
   for (const key of ['Enter', 'Space']) {
     test(`${key} on the focused element asks, and Accept with ${key} runs it`, async ({ page }) => {

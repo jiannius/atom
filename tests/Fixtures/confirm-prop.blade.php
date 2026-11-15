@@ -21,6 +21,8 @@
     <atom:button wire:click="record('reason')" :confirm="['heading' => 'Void the invoice?', 'reason' => true]" x-on:confirmed="window.__confirmed = $event.detail" data-testid="reason">Void invoice</atom:button>
     <atom:button x-on:click="window.__clicks = (window.__clicks ?? 0) + 1" confirm data-testid="alpine">Count a click</atom:button>
     <atom:button href="/atom/e2e/confirm-prop/landing" confirm data-testid="link">Go to the landing page</atom:button>
+    <atom:button href="/atom/e2e/confirm-prop/landing" wire:navigate confirm data-testid="nav">Navigate to the landing page</atom:button>
+    <atom:button type="delete" href="/atom/e2e/confirm-prop/landing" wire:navigate data-testid="nav-delete">Delete and navigate</atom:button>
     <atom:button href="/atom/e2e/confirm-prop/landing" newtab confirm data-testid="newtab">Open in a tab</atom:button>
     <atom:button wire:click="slow" confirm data-testid="slow">Slow action</atom:button>
     <atom:button wire:click="record('disabled')" confirm disabled data-testid="disabled">Disabled action</atom:button>
@@ -31,6 +33,16 @@
     <atom:button type="delete" data-testid="delete-bare">Delete (no handler)</atom:button>
     <atom:button type="delete" confirm="Really delete it?" data-testid="delete-copy">Delete (copy)</atom:button>
     <atom:button type="delete" :confirm="false" data-testid="delete-bare-optout">Delete (no handler, no dialog)</atom:button>
+
+    <atom:confirm.trigger>
+        <atom:button wire:click="record('in-trigger')" confirm data-testid="in-trigger">Inside a trigger</atom:button>
+    </atom:confirm.trigger>
+    <atom:confirm.trigger>
+        <atom:button type="delete" wire:click="record('in-trigger-delete')" data-testid="in-trigger-delete">Delete inside a trigger</atom:button>
+    </atom:confirm.trigger>
+    <atom:confirm.trigger heading="Plain trigger?">
+        <button type="button" wire:click="record('plain-trigger')" data-testid="plain-trigger">Plain button in a trigger</button>
+    </atom:confirm.trigger>
 
     <form wire:submit="save" class="flex items-center gap-2">
         <input type="text" name="field" data-testid="field" aria-label="Field">
