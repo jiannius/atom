@@ -150,7 +150,13 @@ for (const tw of ['floor', 'latest']) {
         })
         expect(fits).toBe(true)
 
-        await expect(page.getByTestId('dd-empty').locator('dd')).toHaveText('--')
+        // an empty value draws the missing-value mark: a muted dash for the eye, and "Not set" for a screen reader, clipped to a pixel
+        const mark = page.getByTestId('dd-empty').locator('dd [data-atom-missing]')
+        await expect(mark.locator('[aria-hidden="true"]')).toHaveText('—')
+        await expect(mark.locator('.sr-only')).toHaveText('Not set')
+        expect((await style(mark, 'color')).color).not.toBe(dd.color)
+        const clip = await mark.locator('.sr-only').evaluate((el) => { const r = el.getBoundingClientRect(); return [r.width, r.height] })
+        expect(clip).toEqual([1, 1])
       })
 
       test('the list heading is a 12px muted label, a row tints on hover, and the rail is the hairline', async ({ page }) => {

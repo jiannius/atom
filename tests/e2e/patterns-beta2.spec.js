@@ -38,6 +38,26 @@ for (const tw of ['floor', 'latest']) {
       expect(b.x).toBeCloseTo(a.x, 0)
     })
 
+    test('record page: an empty field in the rail shows the muted dash, and a screen reader hears "Not set"', async ({ page }) => {
+      await open(page, { path: 'shell-record', tw })
+
+      const marks = page.getByTestId('record-rail').locator('[data-atom-missing]')
+      await expect(marks).toHaveCount(2)
+      await expect(marks.first().locator('[aria-hidden="true"]')).toHaveText('—')
+      await expect(marks.first().locator('.sr-only')).toHaveText('Not set')
+      await expect(page.getByTestId('record-rail').locator('[data-atom-dd]', { hasText: 'Cost centre' }).locator('dd')).toContainText('—')
+      await expect(page.getByTestId('record-rail').locator('[data-atom-dd]', { hasText: 'Checked by' }).locator('dd')).toContainText('—')
+    })
+
+    test('list page: the draft invoice\'s blank Due cell shows the mark, in the same column as the dates', async ({ page }) => {
+      await open(page, { path: 'shell-list', tw })
+
+      const row = page.locator('tbody tr', { hasText: 'INV-0405' })
+      const cell = row.locator('td[data-atom-column="due"]')
+      await expect(cell.locator('[data-atom-missing] [aria-hidden="true"]')).toHaveText('—')
+      await expect(page.locator('tbody [data-atom-missing]')).toHaveCount(1)
+    })
+
     for (const dark of [false, true]) {
       test(`record page reads in ${dark ? 'dark' : 'light'}: the rail, the stage path and the lines panel`, async ({ page }) => {
         await open(page, { path: 'shell-record', tw, dark })
