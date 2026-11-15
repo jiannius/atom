@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ViewErrorBag;
 use Jiannius\Atom\Tests\Fixtures\MarkerChildFixture;
+use Jiannius\Atom\Tests\Fixtures\MarkerIslandFixture;
 use Jiannius\Atom\Tests\Fixtures\MarkerParentFixture;
 use Livewire\Livewire;
 
@@ -342,5 +343,76 @@ describe('the mode', function () {
         $html = renderBlade('<x-marker-form marker="optional" />');
 
         expect(markerCounts($html))->toBe(['asterisk' => 0, 'optional' => 1]);
+    });
+});
+
+describe('an island', function () {
+    /** The island's label as its own render prints it, apart from the page. */
+    function markerIslandAlone(\Livewire\Features\SupportTesting\Testable $test): string
+    {
+        $component = $test->instance();
+        $component->renderIsland('main');
+
+        $fragments = (new ReflectionProperty($component, 'renderedIslandFragments'))->getValue($component);
+
+        return preg_replace('/\s+/', ' ', trim(strip_tags(implode(' ', $fragments))));
+    }
+
+    it('draws a field of an island the same on its first render and when it is rendered on its own, a form outside it or not', function (string $where, string $first, string $alone) {
+        $test = Livewire::test(MarkerIslandFixture::class, ['where' => $where]);
+
+        expect(preg_replace('/\s+/', ' ', trim(strip_tags($test->html()))))->toContain($first)
+            ->and(markerIslandAlone($test))->toContain($alone);
+    })->with([
+        // the form is around the island's first render only: the island reads the config on both
+        'form outside' => ['outside', 'Beside (optional) Island', 'Island'],
+        // the form is inside the island: it is there on both
+        'form inside' => ['inside', 'Island (optional)', 'Island (optional)'],
+    ]);
+});
+
+describe('a note typed in the older translation key', function () {
+    /** Locale `ms` with the key the first version of the marker used: "optional" alone. */
+    function markerTranslateOldKey(): void
+    {
+        $dir = sys_get_temp_dir().'/atom-marker-old-'.uniqid();
+        mkdir($dir);
+        file_put_contents($dir.'/ms.json', json_encode(['optional' => 'pilihan']));
+        app('translator')->addJsonPath($dir);
+        app()->setLocale('ms');
+        register_shutdown_function(function () use ($dir) {
+            @unlink($dir.'/ms.json');
+            @rmdir($dir);
+        });
+    }
+
+    it('is still muted as a note, and not marked again', function (string $form) {
+        markerTranslateOldKey();
+
+        $html = renderBlade($form.'<atom:input name="a" label="Nama (pilihan)" />'.($form ? '</atom:form>' : ''));
+        $note = domQuery($html, '//*[@data-atom-label-optional]');
+
+        expect($note)->toHaveCount(1)
+            ->and($note[0]->textContent)->toBe('(pilihan)')
+            ->and(preg_replace('/\s+/', ' ', trim(domQuery($html, '//label')[0]->textContent)))->toBe('Nama (pilihan)');
+    })->with(['outside a form' => '', 'in an optional form' => '<atom:form marker="optional">']);
+});
+
+describe('a bound marker', function () {
+    it('is evaluated no more often than any other bound attribute of the tag', function () {
+        $count = function (string $attribute): int {
+            $calls = 0;
+            $tick = function () use (&$calls) {
+                $calls++;
+
+                return 'optional';
+            };
+
+            renderBlade('<atom:form '.$attribute.'="$tick()"><atom:input name="a" label="Name" /></atom:form>', ['tick' => $tick]);
+
+            return $calls;
+        };
+
+        expect($count(':marker'))->toBe($count(':data-probe'))->toBeGreaterThan(0);
     });
 });

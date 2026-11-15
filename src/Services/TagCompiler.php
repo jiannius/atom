@@ -37,9 +37,17 @@ class TagCompiler extends ComponentTagCompiler
 
         // A form's marker mode, for the fields in its slot: see FormMarker. A table filter bar publishes `required`, so its fields are never marked optional.
         if (in_array($component, ['atom::form', 'atom::form.modal'], true)) {
-            $marker = $attributes['marker'] ?? ($bag === null
-                ? 'null'
-                : "((({$bag}) instanceof \\Illuminate\\View\\ComponentAttributeBag) ? ({$bag})->get('marker') : null)");
+            // A bound `:marker="..."` is written into the compiled data twice by Blade itself; it is evaluated once there, into a variable that the
+            // published value reads next (the entries of an array are evaluated in order, and the published key is added last).
+            if (isset($attributes['marker'])) {
+                $attributes['marker'] = "(\$__atomFormMarker = {$attributes['marker']})";
+                $marker = '$__atomFormMarker';
+            }
+            else {
+                $marker = $bag === null
+                    ? 'null'
+                    : "((({$bag}) instanceof \\Illuminate\\View\\ComponentAttributeBag) ? ({$bag})->get('marker') : null)";
+            }
 
             $attributes[FormMarker::KEY] = "\\Jiannius\\Atom\\Services\\FormMarker::publish({$marker})";
         }

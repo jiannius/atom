@@ -25,16 +25,19 @@ $optional = null;
 $labelText = $label ? t($label) : null;
 $note = t('(optional)');
 
+/* what a typed note may look like: "(optional)", the translated key, or the older key "optional" in parentheses (a host that translated it) */
+$noteForms = '(?:\(optional\)|'.preg_quote($note, '/').'|'.preg_quote('('.t('optional').')', '/').')';
+
 if (is_string($labelText)) {
     $labelText = trim($labelText);
 
-    if (preg_match('/^(.*?)\s*((?:\(optional\)|'.preg_quote($note, '/').'))$/iu', $labelText, $found) && trim($found[1]) !== '') {
+    if (preg_match('/^(.*?)\s*('.$noteForms.')$/iu', $labelText, $found) && trim($found[1]) !== '') {
         [$labelText, $optional] = [$found[1], $found[2]];
     }
 }
 
 /* a label that is only the note, or ends with it, is not marked again */
-$endsWithNote = is_string($labelText) ? preg_match('/(?:\(optional\)|'.preg_quote($note, '/').')$/iu', $labelText) === 1 : false;
+$endsWithNote = is_string($labelText) ? preg_match('/'.$noteForms.'$/iu', $labelText) === 1 : false;
 
 if ($markOptional && !$required && !$optional && !$endsWithNote && $labelText) {
     $optional = $note;

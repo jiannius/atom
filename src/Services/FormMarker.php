@@ -61,12 +61,35 @@ class FormMarker
     }
 
     /**
-     * The id of the Livewire component being rendered, or an empty string outside one.
+     * The id of the Livewire component being rendered and how deep Livewire's render stack is, or an empty string outside one. The depth tells a
+     * form from the fields of an island or a child inside it: an island is rendered again, alone, by the same component, so the id alone would
+     * match on its first render (form around it) and not after its own update.
      */
     protected static function owner(): string
     {
-        $component = class_exists(ExtendBlade::class) ? ExtendBlade::currentRendering() : null;
+        if (! class_exists(ExtendBlade::class) || ! method_exists(ExtendBlade::class, 'currentRendering')) {
+            return '';
+        }
 
-        return is_object($component) && method_exists($component, 'getId') ? (string) $component->getId() : '';
+        $component = ExtendBlade::currentRendering();
+
+        if (! is_object($component) || ! method_exists($component, 'getId')) {
+            return '';
+        }
+
+        return $component->getId().'#'.static::depth();
+    }
+
+    /**
+     * How many components Livewire is rendering inside one another (an island counts as one more). Livewire keeps the stack in a protected static, so a
+     * Livewire that moves it reads as 0 (a form and its fields then match on the component alone).
+     */
+    protected static function depth(): int
+    {
+        try {
+            return \Closure::bind(fn () => count(static::$livewireComponents), null, ExtendBlade::class)();
+        } catch (\Throwable) {
+            return 0;
+        }
     }
 }
