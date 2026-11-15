@@ -550,6 +550,49 @@ test.describe('the confirm prop: a menu item', () => {
     await expect(page.getByTestId('bare')).toBeFocused()
   })
 
+  // A pending focus return is one record that the next ask replaces: an ask that was never answered (here its dialog is kept from opening, as when
+  // the page has none) left a `closed` listener behind, and the next confirm to close, from an element in no menu, put the focus on that menu's trigger.
+  // The second ask is clicked by a script (no focus moves to it, in any engine), so what is left after Cancel is for the gate to decide.
+  test('an ask that was never answered does not move the focus on a later confirm', async ({ page }) => {
+    await open(page)
+    await page.evaluate(() => {
+      window.__dispatch = window.dispatchEvent
+      window.dispatchEvent = function (e) { return e.type === 'atom-confirm-show' ? true : window.__dispatch.call(window, e) }
+    })
+    await openMenu(page)
+    await page.getByTestId('item-warning').click()
+    await settled(page)
+    await expect(dialog(page)).not.toHaveAttribute('data-open', '')
+
+    await page.evaluate(() => { window.dispatchEvent = window.__dispatch })
+    // Chromium gives the focus back to the trigger itself when a popover closes: take it off, so only the gate could put it there again
+    await page.evaluate(() => document.activeElement?.blur())
+    await page.getByTestId('bare').evaluate((el) => el.click())
+    await expect(dialog(page)).toHaveAttribute('data-open', '')
+    await reject(page)
+    await settled(page)
+
+    expect(await log(page)).toEqual([])
+    await expect(page.getByTestId('more-trigger')).not.toBeFocused()
+  })
+
+  // A morph that rewrites the trigger while the dialog is open leaves the node the gate first saw detached: the focus goes to the one the dropdown has now.
+  test('focus goes to the trigger a morph put in place while the dialog was open', async ({ page }) => {
+    await open(page)
+    await openMenu(page)
+
+    await page.getByTestId('item-warning').click()
+    await expect(dialog(page)).toHaveAttribute('data-open', '')
+    await page.getByTestId('more-trigger').evaluate((el) => {
+      el.replaceWith(el.cloneNode(true))
+    })
+    await reject(page)
+    await settled(page)
+
+    expect(await log(page)).toEqual([])
+    await expect(page.getByTestId('more-trigger')).toBeFocused()
+  })
+
   test('a plain item still runs at once and closes the menu', async ({ page }) => {
     await open(page)
     await openMenu(page)
