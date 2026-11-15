@@ -105,13 +105,13 @@ for (const [how, extra] of [['no action of its own', '&delete=1'], ['its own wir
   test('Accept runs the delete once: it ran once', async ({ page }) => {
     await open(page, { path: 'table-checked', tw: 'latest', extra })
     await expect(bar(page)).toBeVisible()
-    await expect(page.getByTestId('deleted')).toHaveText('0')
+    await expect(page.locator('[data-deleted]')).toHaveText('0')
 
     await ask(page)
     await dialog(page).locator('button[type="submit"]').click()
 
-    await expect(page.getByTestId('deleted')).toHaveText('1')
+    await expect(page.locator('[data-deleted]')).toHaveText('1')
     await page.waitForTimeout(300)
-    await expect(page.getByTestId('deleted')).toHaveText('1')
+    await expect(page.locator('[data-deleted]')).toHaveText('1')
   })
 })

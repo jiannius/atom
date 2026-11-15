@@ -31,6 +31,9 @@ class TableCheckedFixture extends Component
     /** `?menu=1` adds a `checked-menu` slot: an Export item and a `variant="delete"` item */
     public bool $menu = false;
 
+    /** `?menuclick=1` gives the `checked-menu` delete item a `wire:click` of its own, which the gate (not the delete handler) confirms */
+    public bool $menuClick = false;
+
     /** How many records `delete()` has been asked to delete: the visible effect of an accepted confirm */
     public int $deleted = 0;
 
@@ -62,6 +65,7 @@ class TableCheckedFixture extends Component
         $this->withDelete = request()->boolean('delete');
         $this->menu = request()->boolean('menu');
         $this->deleteClick = request()->boolean('deleteclick');
+        $this->menuClick = request()->boolean('menuclick');
         $this->buttons = max(1, min(5, request()->integer('buttons', 1)));
         $this->_table['checkboxes'] = [1];
     }
