@@ -31,7 +31,7 @@ test('the ⋯ is the last thing in the bar\'s group, after the host\'s buttons a
   await expect(more(page)).toHaveClass(/bg-transparent/)
 })
 
-test('the ⋯ opens its items, and an item acts on the selection', async ({ page }) => {
+test('the ⋯ opens its items, and Escape closes it', async ({ page }) => {
   await show(page)
 
   await more(page).click()
@@ -54,6 +54,22 @@ test('a delete item asks with the count, and says how many are ticked', async ({
   await expect(dialog(page).locator('.text-lg')).toHaveText('Delete 3 records?')
   await dialog(page).getByRole('button', { name: 'Cancel' }).click()
   await expect(dialog(page)).not.toHaveAttribute('data-open', '')
+})
+
+test('accepting a delete item runs the component\'s delete() for the selection and clears the bar', async ({ page }) => {
+  await show(page)
+  await page.getByRole('checkbox', { name: 'Select row' }).nth(1).click()
+  await page.getByRole('checkbox', { name: 'Select row' }).nth(2).click()
+  await expect(bar(page)).toContainText('3 Selected')
+  await expect(page.locator('[data-deleted]')).toHaveText('0')
+
+  await more(page).click()
+  await menu(page).getByRole('menuitem', { name: 'Delete' }).click()
+  await expect(dialog(page).locator('.text-lg')).toHaveText('Delete 3 records?')
+  await dialog(page).getByRole('button', { name: 'Delete' }).click()
+
+  await expect(page.locator('[data-deleted]')).toHaveText('3')
+  await expect(bar(page)).toBeHidden()
 })
 
 test('an open menu survives a morph of the table', async ({ page }) => {

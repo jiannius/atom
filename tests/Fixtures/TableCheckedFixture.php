@@ -26,10 +26,13 @@ class TableCheckedFixture extends Component
     public int $buttons = 1;
 
     /** `?delete=1` adds a `type="delete"` bulk action, for the count in its confirm */
-    public bool $delete = false;
+    public bool $withDelete = false;
 
     /** `?menu=1` adds a `checked-menu` slot: an Export item and a `variant="delete"` item */
     public bool $menu = false;
+
+    /** How many records `delete()` has been asked to delete: the visible effect of an accepted confirm */
+    public int $deleted = 0;
 
     /** How many times the view has rendered: `bump()` forces one, for the morph spec */
     public int $renders = 0;
@@ -53,7 +56,7 @@ class TableCheckedFixture extends Component
         $this->tone = request()->query('tone') ?: null;
         $this->sticky = request()->boolean('sticky');
         $this->gap = request()->query('gap') === '6' ? request()->query('gap') : null;
-        $this->delete = request()->boolean('delete');
+        $this->withDelete = request()->boolean('delete');
         $this->menu = request()->boolean('menu');
         $this->buttons = max(1, min(5, request()->integer('buttons', 1)));
         $this->_table['checkboxes'] = [1];
@@ -64,6 +67,7 @@ class TableCheckedFixture extends Component
      */
     public function delete(): void
     {
+        $this->deleted += count($this->_table['checkboxes'] ?? []);
         $this->_table['checkboxes'] = [];
     }
 

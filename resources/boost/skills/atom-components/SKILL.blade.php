@@ -16,7 +16,7 @@ working with Atom components.
 @verbatim
 Livewire 4 single-file components are the default. A plain `Livewire\Component` already has the helpers below (v4: macros registered by atom, no trait to add), and takes only the traits it needs from `Jiannius\Atom\Traits\`:
 
-- `WithTable`: `$_table` and the table methods, plus Livewire's `WithPagination` (a `toTable()` list always paginates); for an `<atom:table>` with a `checked` bar, sortable columns or checkboxes, or `toTable()` sorting. A plain `<atom:table>` of columns and rows needs no trait. Add `WithPagination` yourself only for a paginated list with no table.
+- `WithTable`: `$_table` and the table methods, plus Livewire's `WithPagination` (a `toTable()` list always paginates); for an `<atom:table>` with a `checked` or `checked-menu` bar, sortable columns or checkboxes, or `toTable()` sorting. A plain `<atom:table>` of columns and rows needs no trait. Add `WithPagination` yourself only for a paginated list with no table.
 - `WithBreadcrumbs`: `$_breadcrumbs`; define `breadcrumbs(Breadcrumbs $b)` and it is built on mount.
 - `WithEditor`: `$_editor` and `WithFileUploads`; for `<atom:tiptap>` with image upload.
 - `WithRecaptcha`: `$_recaptcha` and `verifyRecaptcha()`; for `<atom:form recaptcha>`.
