@@ -15,7 +15,10 @@
        inputs, a tax `<atom:select>` and a ghost remove x), with "Add line" and "Add from products" under it. The amount is read-only.
      - A section with a wide editor in it (the line items) is `layout="stacked"` whatever the rest are, so the table has the whole column.
      - A date is `<atom:date-picker>` and a choice from a short list (payment terms) is `<atom:select>`; a text input is for text.
-       "(optional)" at the end of a label is muted by the field itself.
+     - `<atom:form marker="optional">` marks the exception: the fields that are not required say "(optional)" (muted, inside the
+       label, so it is in the accessible name) and the required ones carry `required` and draw no asterisk. Never type "(optional)"
+       into a label yourself, and every field that must be filled needs `required`, or it reads as optional.
+     - A customer, a vendor or any record the form points at is an `<atom:card>`, not a hand-drawn box.
      - Errors: with `<atom:form>` (not `:error-toast="false"`) a failed save shows one summary at the top of the form and the message
        under each field; this page turns the toast off only because it has no component to fail.
      - A section that saves on its own (a settings panel) is its own <atom:form> with a `footer` slot; do not mix that with a page save bar.
@@ -71,9 +74,9 @@ $money = fn (float $amount) => number_format($amount, 2);
             </x-slot:status>
         </atom:page.header>
 
-        <atom:form x-data="{ saved: false, issued: '2026-10-15', due: '2026-11-14', terms: 'net-30' }" x-on:submit.prevent="saved = true" :error-toast="false">
+        <atom:form marker="optional" x-data="{ saved: false, issued: '2026-10-15', due: '2026-11-14', terms: 'net-30' }" x-on:submit.prevent="saved = true" :error-toast="false">
             <atom:form.section :layout="$layout" heading="Customer" subheading="Who you are billing. Their tax ID goes on the invoice.">
-                <div class="flex items-center gap-3 rounded-panel border bg-surface px-3.5 py-3 @md:col-span-2">
+                <atom:card class="flex items-center gap-3 @md:col-span-2">
                     <div class="flex size-[34px] shrink-0 items-center justify-center rounded-control bg-warning-bg text-sm font-semibold text-warning-fg">CA</div>
                     <div class="grid min-w-0 gap-px">
                         <b class="truncate font-medium">Customer A Sdn Bhd</b>
@@ -81,18 +84,18 @@ $money = fn (float $amount) => number_format($amount, 2);
                         <span class="truncate text-xs text-fg-subtle">accounts@customer-a.example</span>
                     </div>
                     <atom:button size="sm" class="ms-auto">Change</atom:button>
-                </div>
+                </atom:card>
             </atom:form.section>
 
             <atom:form.section :layout="$layout" heading="Details" subheading="Dates and terms printed on the invoice.">
-                <atom:date-picker label="Issue date" x-model="issued"/>
-                <atom:date-picker label="Due date" x-model="due" caption="30 days after the issue date"/>
-                <atom:select label="Payment terms" x-model="terms" :clearable="false" :options="[
+                <atom:date-picker label="Issue date" required x-model="issued"/>
+                <atom:date-picker label="Due date" required x-model="due" caption="30 days after the issue date"/>
+                <atom:select label="Payment terms" required x-model="terms" :clearable="false" :options="[
                     ['value' => 'net-14', 'label' => 'Net 14'],
                     ['value' => 'net-30', 'label' => 'Net 30'],
                     ['value' => 'net-60', 'label' => 'Net 60'],
                 ]"/>
-                <atom:input label="Reference (optional)" value="Quote Q-0231, phase 2"/>
+                <atom:input label="Reference" value="Quote Q-0231, phase 2"/>
             </atom:form.section>
 
             {{-- the line items are a wide editor: this section is always `stacked` (heading above, the table across the whole column), whatever the page's layout --}}
@@ -137,7 +140,7 @@ $money = fn (float $amount) => number_format($amount, 2);
 
             <atom:form.section :layout="$layout" heading="Notes" subheading="Shown at the bottom of the invoice.">
                 <div class="@md:col-span-2">
-                    <atom:textarea label="Note to customer (optional)" rows="3">Phase 2 of 2 as agreed in quote Q-0231. Please quote the invoice number with your transfer.</atom:textarea>
+                    <atom:textarea label="Note to customer" rows="3">Phase 2 of 2 as agreed in quote Q-0231. Please quote the invoice number with your transfer.</atom:textarea>
                 </div>
             </atom:form.section>
 

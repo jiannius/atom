@@ -7,6 +7,8 @@ export default (config) => {
         locked: config.locked,
         placement: config.placement,
 
+        // helpers/confirm-gate.js reads this getter (`Alpine.$data(root).trigger`, again once its dialog is gone) to put the focus back on a menu's trigger
+        // after Cancel or Escape: keep it a getter that finds the trigger in the DOM each time it is asked, never a field set at init.
         get trigger() {
             // Every lookup must skip the popover. With a trigger that is not a
             // <button> (a link), the first menu item would be picked, and a click

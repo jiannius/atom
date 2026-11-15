@@ -3,11 +3,11 @@
      structure, not the data.
 
      The rules this page follows:
-     - The panel is `<atom:panel>` (this page still draws the same box by hand, `rounded-panel border bg-surface overflow-clip`, until the
-       patterns are rebuilt on it). Everything in it (views, toolbar, rows, footer)
-       is separated by hairlines, so the table is `frameless`; a table on its own, with no panel around it, stays framed. The panel
-       clips (`overflow-clip`) rather than hides: a hidden overflow makes the panel a scroll container, and the table's pager, which
-       is pinned to the bottom of the screen while the table runs past it, would stick to a panel that never scrolls.
+     - The panel is `<atom:panel>`, with no heading here (the page header is the title). Everything in it (views, toolbar, rows, the
+       `footer` slot with the count and the sum) is separated by hairlines, so the table is `frameless`; a table on its own, with no
+       panel around it, stays framed. The panel clips (`overflow-clip`) rather than hides: a hidden overflow makes the panel a scroll
+       container, and the table's pager, which is pinned to the bottom of the screen while the table runs past it, would stick to a
+       panel that never scrolls.
      - ONE primary action: the header's "Create invoice". The toolbar's buttons are plain, and so is the header's secondary "Import".
      - Filters are sentence pills after the search, in the toolbar (`<atom:table.filters chips="inline">`): an active one reads
        "Issued is 01 Apr 2026 to 31 Oct 2026" with an x, and a filter that is not set is a dashed "+ Customer" pill (`add` on a select
@@ -118,7 +118,7 @@ $money = fn (float $amount) => number_format($amount, 2);
             <atom:stat label="Drafts" :value="(string) $counts['draft']" breakdown="not sent yet" href="?view=draft"/>
         </atom:stat.group>
 
-        <div class="min-w-0 overflow-clip rounded-panel border bg-surface" data-testid="list-panel">
+        <atom:panel data-testid="list-panel">
             <atom:table.views label="Invoice views" :counts="$counts" :current="$view">
                 <atom:table.views.item value="all" label="All" href="?view=all"/>
                 <atom:table.views.item value="unpaid" label="Unpaid" href="?view=unpaid"/>
@@ -199,13 +199,13 @@ $money = fn (float $amount) => number_format($amount, 2);
                 </x-slot:rows>
             </atom:table>
 
-            @if ($rows)
-                <div class="flex flex-wrap justify-between gap-x-4 gap-y-1 border-t px-3.5 py-2.5 text-xs tabular-nums text-fg-subtle">
+            <x-slot:footer>
+                @if ($rows)
                     <span data-testid="list-sum">{{ count($rows) }} of {{ $counts['all'] }} invoices · RM {{ $money($total) }}</span>
-                    <span>Sorted by issue date, newest first</span>
-                </div>
-            @endif
-        </div>
+                    <span class="ms-auto">Sorted by issue date, newest first</span>
+                @endif
+            </x-slot:footer>
+        </atom:panel>
     </atom:page>
 
     @livewireScripts

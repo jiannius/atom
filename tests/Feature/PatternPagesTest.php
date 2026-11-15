@@ -20,6 +20,18 @@ function registerDocsRoutes(): void
     }
 }
 
+/**
+ * The fixed trail a page hands <atom:breadcrumbs :items>: the engine reads it from this attribute, so it is what the browser draws.
+ *
+ * @return array<int, array{title: string, url: string|null, home: bool}>
+ */
+function crumbTrail(string $html, string $within = '//*[@data-atom-shell-crumbs]'): array
+{
+    $trail = domQuery($html, $within.'//*[@data-atom-breadcrumbs][@data-atom-breadcrumbs-items]');
+
+    return $trail ? json_decode($trail[0]->getAttribute('data-atom-breadcrumbs-items'), true) : [];
+}
+
 // The pattern pages in /atom/docs: whole screens in each app shell, built from one shared nav partial.
 describe('pattern pages', function () {
     it('has a view for every listed pattern', function (string $name) {
@@ -50,7 +62,7 @@ describe('pattern pages', function () {
     it('demos the same slots in both shells, built from atom components', function (string $name) {
         $html = view('atom::docs.patterns.'.$name)->render();
 
-        expect(domQuery($html, '//*[@data-atom-shell-crumbs][contains(., "Invoices")]'))->not->toBeEmpty()
+        expect(array_column(crumbTrail($html), 'title'))->toBe(['Sales', 'Invoices'])
             ->and(domQuery($html, '//*[@data-atom-shell-context]//button'))->not->toBeEmpty()
             ->and(domQuery($html, '//*[@data-atom-shell-search]//input'))->not->toBeEmpty()
             ->and(domQuery($html, '//main//*[@data-atom-table]//*[@data-atom-status]'))->toHaveCount(4);
@@ -62,7 +74,7 @@ describe('pattern pages', function () {
 
         expect(domQuery($html, '//main//*[@data-atom-badge]'))->toBeEmpty()
             ->and(domQuery($html, '//main//*[@data-atom-table][@data-atom-table-frameless]'))->toHaveCount(1)
-            ->and(domClasses(domQuery($html, '//main//*[@data-atom-table]/..')[0]))->toContain('rounded-panel', 'overflow-clip')
+            ->and(domQuery($html, '//main//*[@data-atom-panel][.//*[@data-atom-table][@data-atom-table-frameless]]'))->toHaveCount(1)
             // money: numeric on the column and the cell, named once in the header
             ->and(trim(domQuery($html, '//main//thead//th[contains(@class, "text-right")]')[0]->textContent))->toBe('Amount (RM)')
             ->and(domQuery($html, '//main//tbody/tr/td[contains(@class, "tabular-nums")]'))->toHaveCount(4)
@@ -267,13 +279,18 @@ describe('record page pattern', function () {
             ->and(domQuery($html, '//*[@data-atom-table]//*[@data-atom-status]'))->toHaveCount(4);
     });
 
-    it('has a rail of cards beside the main column on the overview, with the facts grouped by subject and the missing-value mark for an empty field', function () {
+    it('has a rail of headed cards beside the main column on the overview, with the facts grouped by subject and the missing-value mark for an empty field', function () {
         $html = view('atom::docs.patterns.record-page')->render();
         $rail = '//*[@data-testid="record-rail"]';
 
-        expect(domClasses(domQuery($html, $rail.'/..')[0]))->toContain('min-[1080px]:grid-cols-[minmax(0,1fr)_320px]')
+        // <atom:page.columns>: the main column and an <aside> named for the record, not a hand grid, and not pinned (its rail is taller than most windows)
+        expect(domQuery($html, '//*[@data-atom-page]/*[@data-atom-page-columns]/*[@data-atom-page-columns-main]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-page-columns]/aside[@data-atom-page-columns-rail][@data-testid="record-rail"][@aria-label="Work order details"]'))->toHaveCount(1)
+            ->and(domQuery($html, $rail.'[@data-sticky]'))->toBeEmpty()
             ->and(domQuery($html, $rail.'/*[@data-atom-card]'))->toHaveCount(5)
-            ->and(array_map(fn ($h) => trim($h->textContent), domQuery($html, $rail.'/*[@data-atom-card]//h3')))->toBe(['Details', 'Customer', 'People', 'Linked records', 'Activity'])
+            // each card is headed by atom's own heading row, not a hand <h3>
+            ->and(array_map(fn ($h) => trim($h->textContent), domQuery($html, $rail.'/*[@data-atom-card]/*[@data-atom-heading-row]//*[@data-atom-heading-row-title]')))->toBe(['Details', 'Customer', 'People', 'Linked records', 'Activity'])
+            ->and(domQuery($html, '//main//h3'))->toBeEmpty()
             ->and(domQuery($html, $rail.'//*[@data-atom-dd-group]/*[@data-atom-dd]'))->not->toBeEmpty()
             // an empty field ("Cost centre", "Checked by") stays in the list with the missing-value mark, never a typed dash
             ->and(domQuery($html, $rail.'//*[@data-atom-dd][contains(., "Cost centre")]//dd/*[@data-atom-missing]'))->toHaveCount(1)
@@ -289,14 +306,26 @@ describe('record page pattern', function () {
             ->and(domQuery($html, '//*[@data-testid="record-linked"]//a[contains(., "Purchase order")]'))->toHaveCount(1);
     });
 
-    it('puts the activity timeline last in the rail, with a link to all changes', function () {
+    it('has no rail on any other tab, and the lines panel stays in the main column on the Tasks tab', function () {
+        request()->query->set('tab', 'tasks');
+
+        $html = view('atom::docs.patterns.record-page')->render();
+
+        expect(domQuery($html, '//*[@data-atom-page-columns-rail]'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-page-columns-main]/*[@data-testid="record-lines"][@data-atom-panel]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="record-description"]'))->toBeEmpty()
+            // "View all" points at this tab: it is only on the overview
+            ->and(domQuery($html, '//*[@data-testid="record-lines"]//a[contains(., "View all")]'))->toBeEmpty();
+    });
+
+    it('puts the activity timeline last in the rail, with a link to all changes in the card\'s heading row', function () {
         $html = view('atom::docs.patterns.record-page')->render();
         $activity = '//*[@data-testid="record-rail"]/*[@data-atom-card][last()]';
 
         expect(domQuery($html, $activity.'[@data-testid="record-activity"]'))->toHaveCount(1)
             ->and(domQuery($html, $activity.'//*[@data-atom-timeline][@data-kind="event"]/ol/li'))->toHaveCount(4)
             ->and(domQuery($html, $activity.'//*[@data-atom-timeline-title]'))->toHaveCount(4)
-            ->and(domQuery($html, $activity.'//a[contains(., "All changes")]'))->toHaveCount(1)
+            ->and(domQuery($html, $activity.'/*[@data-atom-heading-row]//*[@data-atom-heading-row-actions]//a[contains(., "All changes")]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-testid="record-activity"]//li[@data-tone]'))->toHaveCount(4);
     });
 
@@ -334,19 +363,23 @@ describe('record page pattern', function () {
         expect(trim(domQuery($html, '//*[@data-kind="path"]//li[4]//*[@data-atom-timeline-meta]')[0]->textContent))->toContain('Today 11:20')->toContain('Ana');
     });
 
-    it('puts the record\'s lines in a panel with a heading row and a count, a frameless table of numeric hours and totals under it', function () {
+    it('puts the record\'s lines in a panel with a heading row and a count, a frameless table of numeric hours and the totals as the table\'s own footer lines', function () {
         $html = view('atom::docs.patterns.record-page')->render();
         $panel = '//*[@data-testid="record-lines"]';
 
-        expect(trim(domQuery($html, $panel.'/div[1]//h2')[0]->textContent))->toContain('Tasks')->toContain('4 tasks')
-            ->and(domQuery($html, $panel.'/div[1]//a[contains(., "View all")]'))->toHaveCount(1)
+        expect(domQuery($html, $panel.'[@data-atom-panel]'))->toHaveCount(1)
+            ->and(trim(domQuery($html, $panel.'/*[@data-atom-heading-row]//h2[@data-atom-heading-row-title]')[0]->textContent))->toBe('Tasks')
+            ->and(trim(domQuery($html, $panel.'/*[@data-atom-heading-row]//*[@data-atom-heading-row-count]')[0]->textContent))->toBe('4')
+            ->and(domQuery($html, $panel.'/*[@data-atom-heading-row]//*[@data-atom-heading-row-actions]//a[contains(., "View all")]'))->toHaveCount(1)
             ->and(domQuery($html, $panel.'//*[@data-atom-table][@data-atom-table-frameless]'))->toHaveCount(1)
             ->and(domQuery($html, $panel.'//thead//th[contains(@class, "text-right")]'))->toHaveCount(1)
             ->and(domQuery($html, $panel.'//tbody//td[contains(@class, "tabular-nums")][contains(@class, "text-right")]'))->toHaveCount(4)
             ->and(domQuery($html, $panel.'//td[@align="right"]'))->toBeEmpty()
-            // the totals follow the table, and add up (2.0 + 3.5 + 1.5 + 0.5)
-            ->and(domQuery($html, $panel.'//*[@data-atom-table]/following-sibling::dl[@data-testid="record-totals"]'))->toHaveCount(1)
-            ->and(domQuery($html, $panel.'//dl')[0]->textContent)->toContain('7.5 h');
+            // the totals are <atom:table.totals> lines in the table's footer, not a hand <dl> under it, and they add up (2.0 + 3.5 + 1.5 + 0.5)
+            ->and(domQuery($html, $panel.'//dl'))->toBeEmpty()
+            ->and(domQuery($html, $panel.'//tfoot/tr[@data-atom-table-totals]'))->toHaveCount(2)
+            ->and(domQuery($html, $panel.'//tfoot/tr[@data-atom-table-totals-total]//*[@data-testid="record-totals"]'))->toHaveCount(1)
+            ->and(trim(domQuery($html, $panel.'//tr[@data-atom-table-totals-total]//*[@data-atom-totals-value]')[0]->textContent))->toBe('7.5 h');
     });
 
     it('shows the description at the reading size', function () {
@@ -355,10 +388,10 @@ describe('record page pattern', function () {
         expect(domClasses(domQuery($html, '//*[@data-testid="record-description"]//p')[0]))->toContain('text-base');
     });
 
-    it('takes its crumbs from the shell\'s slot, with previous and next in the actions slot, and its nav from the shared partial', function (string $shell) {
+    it('takes a fixed trail in the shell\'s crumbs slot, with previous and next in the actions slot, and its nav from the shared partial', function (string $shell) {
         $html = view('atom::docs.patterns.record-page', ['shell' => $shell])->render();
 
-        expect(domQuery($html, '//*[@data-atom-shell-crumbs]//*[@data-testid="record-crumbs"]'))->toHaveCount(1)
+        expect(crumbTrail($html))->toBe([['title' => 'Jobs', 'url' => '?page=jobs', 'home' => true], ['title' => 'WO-1042', 'url' => null, 'home' => false]])
             ->and(domQuery($html, '//*[@data-atom-page-crumbs]'))->toBeEmpty()
             // previous and next: the sidebar's bar has them on its right, the top nav beside the crumbs (its right side is the account)
             ->and(domQuery($html, '//*[@data-atom-shell-'.($shell === 'header' ? 'crumbs' : 'actions').']//button[@aria-label="Previous job"]'))->toHaveCount(1)
@@ -475,15 +508,19 @@ describe('one primary action', function () {
 
 // V4-2c: the list page, the document page, the form page and the slide-over form: live pages built from atom's own components.
 describe('list page pattern', function () {
-    it('is one panel: the saved views, the toolbar and a frameless table, under a header and a totals strip', function () {
+    it('is one <atom:panel>: the saved views, the toolbar and a frameless table, under a header and a totals strip', function () {
         $html = view('atom::docs.patterns.list-page')->render();
-        $panel = domQuery($html, '//*[@data-testid="list-panel"]');
+        $panel = domQuery($html, '//*[@data-testid="list-panel"][@data-atom-panel]');
 
         expect($panel)->toHaveCount(1)
+            // clipped, never hidden: a hidden overflow would make the box a scroll container and the table's pinned pager would stick to it
+            ->and(domClasses($panel[0]))->toContain('overflow-clip', 'rounded-panel')->not->toContain('overflow-hidden')
+            // no heading here (the page header is the title): no heading row
+            ->and(domQuery($html, '//*[@data-testid="list-panel"]/*[@data-atom-heading-row]'))->toBeEmpty()
             ->and(domQuery($html, '//main//*[@data-atom-page]/header[@data-atom-page-header]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-atom-page]/*[@data-atom-stat-group]/*[@data-atom-stat]'))->toHaveCount(4)
-            ->and(domQuery($html, '//*[@data-testid="list-panel"]/nav[@data-atom-table-views]/*[@data-atom-table-view]'))->toHaveCount(5)
-            ->and(domQuery($html, '//*[@data-testid="list-panel"]/*[@data-atom-table-toolbar]//*[@data-atom-table-search]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="list-panel"]/*[@data-atom-panel-body]/nav[@data-atom-table-views]/*[@data-atom-table-view]'))->toHaveCount(5)
+            ->and(domQuery($html, '//*[@data-testid="list-panel"]/*[@data-atom-panel-body]/*[@data-atom-table-toolbar]//*[@data-atom-table-search]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-testid="list-panel"]//*[@data-atom-table][@data-atom-table-frameless]'))->toHaveCount(1);
     });
 
@@ -513,6 +550,15 @@ describe('list page pattern', function () {
             ->and(domQuery($html, '//tbody/tr[contains(., "INV-0405")]/td[@data-atom-column="due"]//*[@data-atom-missing]'))->toHaveCount(1);
     });
 
+    it('puts the count and the sum in the panel\'s footer slot, and none when no row is listed', function () {
+        $html = view('atom::docs.patterns.list-page')->render();
+        $footer = domQuery($html, '//*[@data-testid="list-panel"]/*[@data-atom-panel-footer]');
+
+        expect($footer)->toHaveCount(1)
+            ->and(trim(domQuery($html, '//*[@data-testid="list-sum"]')[0]->textContent))->toBe('8 of 8 invoices · RM 16,200.00')
+            ->and($footer[0]->textContent)->toContain('Sorted by issue date, newest first');
+    });
+
     it('puts money in a numeric column named once in the header, and identifiers in the mono style', function () {
         $html = view('atom::docs.patterns.list-page')->render();
         $header = domQuery($html, '//thead//th[contains(@class, "text-right")]');
@@ -537,7 +583,7 @@ describe('list page pattern', function () {
 
     it('has the filters as sentence pills in the toolbar, one of them active, and the others dashed add pills', function () {
         $html = view('atom::docs.patterns.list-page')->render();
-        $bar = '//*[@data-testid="list-panel"]/*[@data-atom-table-toolbar]//*[@data-atom-table-filters][@data-chips="inline"]';
+        $bar = '//*[@data-testid="list-panel"]//*[@data-atom-table-toolbar]//*[@data-atom-table-filters][@data-chips="inline"]';
 
         expect(domQuery($html, $bar))->toHaveCount(1)
             // customer, status, issued: all three are add pills (a select's trigger, a date range's input)
@@ -575,10 +621,10 @@ describe('document page pattern', function () {
             ->and(domQuery($html, '//*[@data-testid="history"]//*[@data-atom-timeline][@data-kind="event"]/ol/li'))->toHaveCount(4);
     });
 
-    it('uses the shell\'s crumbs slot, with previous and next in its actions slot, and a success-toned balance bar with the days past due', function () {
+    it('uses a fixed trail in the shell\'s crumbs slot, with previous and next in its actions slot, and a success-toned balance bar with the days past due', function () {
         $html = view('atom::docs.patterns.document-page')->render();
 
-        expect(domQuery($html, '//*[@data-atom-shell-crumbs]//*[@data-testid="document-crumbs"]'))->toHaveCount(1)
+        expect(crumbTrail($html))->toBe([['title' => 'Invoices', 'url' => 'list-page', 'home' => true], ['title' => 'INV-0412', 'url' => null, 'home' => false]])
             ->and(domQuery($html, '//*[@data-atom-page-crumbs]'))->toBeEmpty()
             ->and(domQuery($html, '//*[@data-atom-shell-actions]//button[@aria-label="Next invoice"]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-testid="balance-box"]//*[@data-atom-progress]//*[@role="progressbar"]/div[contains(@class, "bg-success-fg")]'))->toHaveCount(1)
@@ -598,12 +644,32 @@ describe('document page pattern', function () {
         }
     })->with([['overdue', 1], ['draft', 0], ['paid', 0]]);
 
-    it('draws the rail as cards, with the details as a description list', function () {
+    it('draws the document and its rail as <atom:page.columns>: headed cards, the details as a description list, the rail pinned under the bar', function () {
         $html = view('atom::docs.patterns.document-page')->render();
+        $rail = '//*[@data-atom-page-columns]/aside[@data-atom-page-columns-rail][@aria-label="Invoice details"][@data-sticky]';
 
-        expect(domQuery($html, '//aside//*[@data-atom-card]'))->toHaveCount(3)
+        expect(domQuery($html, '//*[@data-atom-page-columns]/*[@data-atom-page-columns-main]/article[@data-testid="paper"]'))->toHaveCount(1)
+            ->and(domQuery($html, $rail))->toHaveCount(1)
+            ->and(domQuery($html, '//aside//*[@data-atom-card]'))->toHaveCount(3)
+            ->and(array_map(fn ($h) => trim($h->textContent), domQuery($html, $rail.'/*[@data-atom-card]/*[@data-atom-heading-row]//*[@data-atom-heading-row-title]')))->toBe(['Balance due', 'Details', 'Activity'])
             ->and(domQuery($html, '//aside//*[@data-atom-dd-group]/*[@data-atom-dd]'))->toHaveCount(4)
-            ->and(domQuery($html, '//aside//section'))->toBeEmpty();
+            ->and(domQuery($html, '//aside//section'))->toBeEmpty()
+            ->and(domQuery($html, '//main//h3'))->toBeEmpty();
+    });
+
+    it('withdraws an invoice from a warning item behind a separator that confirms in warning, with no delete icon', function () {
+        $html = view('atom::docs.patterns.document-page')->render();
+        $void = domQuery($html, '//*[@data-atom-page-header]//*[@data-atom-menu]//*[@data-testid="document-void"]');
+        $options = $void ? json_decode($void[0]->getAttribute('data-atom-confirm'), true) : [];
+
+        expect($void)->toHaveCount(1)
+            ->and(domClasses($void[0]))->toContain('text-warning-fg')
+            ->and($void[0]->getElementsByTagName('svg')->length)->toBe(0)
+            ->and($options)->toMatchArray(['variant' => 'warning', 'heading' => 'Void this invoice?', 'buttonConfirm' => 'Void invoice'])
+            // the click gate asks, so there is no <atom:confirm.trigger> wrapper
+            ->and(domQuery($html, '//*[@data-atom-confirm-trigger]'))->toBeEmpty()
+            // warning goes last, after a separator
+            ->and(domQuery($html, '//*[@data-testid="document-void"]/preceding-sibling::*[@data-atom-menu-separator]'))->toHaveCount(1);
     });
 
     it('has one primary action and it follows the state', function (string $status, string $action, int $events) {
@@ -707,6 +773,20 @@ describe('form page pattern', function () {
             ->and(domQuery($html, $rows.'/td[5]//input'))->toBeEmpty()
             ->and(domQuery($html, '//*[@data-testid="form-lines"]/following-sibling::div//button[contains(., "Add line")]'))->toHaveCount(1)
             ->and(domQuery($html, '//*[@data-testid="form-lines"]/following-sibling::div//button[contains(., "Add from products")]'))->toHaveCount(1);
+    });
+
+    it('marks the exceptions with <atom:form marker="optional">: required fields carry `required` and no asterisk, the others say "(optional)" in the label', function () {
+        $html = view('atom::docs.patterns.form-page')->render();
+        $source = file_get_contents(dirname(__DIR__, 2).'/resources/views/docs/patterns/form-page.blade.php');
+        $labels = fn (string $xpath) => array_map(fn ($label) => preg_replace('/\s+/', ' ', trim($label->textContent)), domQuery($html, $xpath));
+
+        expect($source)->toContain('<atom:form marker="optional"')->not->toMatch('/label="[^"]*\(optional\)/')
+            ->and($labels('//label[.//*[@data-atom-label-optional]]'))->toBe(['Reference (optional)', 'Note to customer (optional)'])
+            ->and($labels('//form/*[@data-atom-form-section][not(.//*[@data-testid="form-lines"])]//*[@data-atom-input-field]/div[1]//label[not(.//*[@data-atom-label-optional])]'))->toBe(['Issue date', 'Due date', 'Payment terms'])
+            // no asterisk anywhere in the form
+            ->and(domQuery($html, '//form[@data-atom-form]//label//svg'))->toBeEmpty()
+            // the customer is an <atom:card>, not a hand-drawn box
+            ->and(domQuery($html, '//form/*[@data-atom-form-section][1]//*[@data-atom-card]'))->toHaveCount(1);
     });
 
     it('picks dates with date pickers and the payment terms from a select, and mutes the (optional)', function () {
@@ -938,7 +1018,7 @@ describe('the pattern pages mark the right nav item', function () {
         $html = view('atom::docs.patterns.record-page')->render();
 
         expect(domQuery($html, '//nav[@data-atom-navlist]//a[@href="?page=jobs"]'))->toHaveCount(1)
-            ->and(domQuery($html, '//*[@data-testid="record-crumbs"]//a[@href="?page=jobs"]'))->toHaveCount(1);
+            ->and(crumbTrail($html)[0])->toMatchArray(['title' => 'Jobs', 'url' => '?page=jobs']);
     });
 });
 
@@ -1027,16 +1107,34 @@ describe('pattern page details', function () {
     });
 });
 
-it('draws "Cancel job" as a warning item that confirms in warning, with no delete icon', function () {
+it('draws "Cancel job" as a warning item that confirms in warning through the click gate, with no delete icon', function () {
     $html = view('atom::docs.patterns.record-page')->render();
     $item = domQuery($html, '//*[@data-testid="record-cancel"]');
-    $trigger = domQuery($html, '//*[@data-atom-confirm-trigger][.//*[@data-testid="record-cancel"]]');
+    $options = $item ? json_decode($item[0]->getAttribute('data-atom-confirm'), true) : [];
 
     expect($item)->toHaveCount(1)
         ->and(domClasses($item[0]))->toContain('text-warning-fg')
         ->and($item[0]->getElementsByTagName('svg')->length)->toBe(0)
-        ->and($trigger)->toHaveCount(1)
-        ->and($trigger[0]->getAttribute('x-on:click'))->toContain('\\u0022variant\\u0022:\\u0022warning\\u0022')
+        ->and($options)->toMatchArray(['variant' => 'warning', 'heading' => 'Cancel this job?', 'buttonConfirm' => 'Cancel job', 'buttonCancel' => 'Keep job'])
+        // no <atom:confirm.trigger> wrapper, and warning sits after a separator
+        ->and(domQuery($html, '//*[@data-atom-confirm-trigger]'))->toBeEmpty()
+        ->and(domQuery($html, '//*[@data-testid="record-cancel"]/preceding-sibling::*[@data-atom-menu-separator]'))->toHaveCount(1)
         // the shell's layout holds the one dialog it opens
         ->and(substr_count($html, 'x-on:atom-confirm-show.window'))->toBe(1);
 });
+
+// The pattern pages are the copy-paste models, so none of them draws by hand what a component draws.
+it('draws no hand panel, hand rail grid, hand card title, hand crumbs, typed "(optional)" or typed dash on the pattern pages', function (string $page) {
+    // the markup, not the comment that explains it
+    $source = preg_replace('/\{\{--.*?--\}\}/s', '', file_get_contents(dirname(__DIR__, 2).'/resources/views/docs/patterns/'.$page.'.blade.php'));
+
+    // a hand box, a hand grid for the rail, a hand title, the box that clips by hiding, a typed marker or dash
+    expect($source)->not->toContain('rounded-panel')
+        ->not->toContain('overflow-hidden')
+        ->not->toContain('overflow-clip')
+        ->not->toContain('<h3')
+        ->not->toContain('min-[1080px]')
+        ->not->toContain('(optional)"')
+        ->not->toContain('<atom:confirm.trigger')
+        ->not->toMatch('/\?:\s*[\'"][—-]{1,2}[\'"]|\?\?\s*[\'"][—-]{1,2}[\'"]|>\s*(?:—|--)\s*</');
+})->with(['record-page', 'list-page', 'document-page', 'form-page', 'page', 'crumbs']);

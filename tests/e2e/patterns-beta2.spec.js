@@ -38,6 +38,57 @@ for (const tw of ['floor', 'latest']) {
       expect(b.x).toBeCloseTo(a.x, 0)
     })
 
+    test('record page: the trail is drawn by atom\'s breadcrumbs from its fixed items, the rail is a labelled aside under no hand grid, and the lines panel clips', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await open(page, { path: 'shell-record', tw })
+
+      await expect(page.getByTestId('record-crumbs').locator('> li')).toHaveCount(2)
+      await expect(page.getByTestId('record-crumbs').locator('a')).toHaveAttribute('href', '?page=jobs')
+      await expect(page.getByTestId('record-crumbs').locator('[aria-current="page"]')).toHaveText('WO-1042')
+
+      await expect(page.locator('[data-atom-page-columns] > aside[aria-label="Work order details"]')).toHaveCount(1)
+      expect(await page.getByTestId('record-lines').evaluate((el) => getComputedStyle(el).overflow)).toBe('clip')
+      // the headings are real headings of the page's outline: no skipped level under the h1
+      expect(await page.locator('[data-atom-main] h2, [data-atom-main] h3').evaluateAll((els) => els.map((el) => el.tagName))).not.toContain('H3')
+    })
+
+    test('document page: the rail is pinned under the shell\'s bar while the page scrolls, beside the paper at 1440px', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 500 })
+      await open(page, { path: 'shell-document', tw })
+
+      const rail = page.locator('[data-atom-page-columns-rail]')
+      const before = await rect(rail)
+      expect(before.x).toBeGreaterThan((await rect(page.getByTestId('paper'))).right)
+
+      await page.evaluate(() => window.scrollTo(0, 400))
+      await expect.poll(async () => (await rect(rail)).y).toBeLessThan(before.y)
+      // 1rem under the bar (the sidebar shell's is 48px high), not at the top of the window
+      expect(Math.round((await rect(rail)).y)).toBeGreaterThanOrEqual(48)
+      expect(Math.round((await rect(rail)).y)).toBeLessThanOrEqual(80)
+    })
+
+    for (const [name, path, trigger, item, heading] of [
+      ['record page', 'shell-record', 'More actions', 'record-cancel', 'Cancel this job?'],
+      ['document page', 'shell-document', 'More actions', 'document-void', 'Void this invoice?'],
+    ]) {
+      test(`${name}: the warning item asks in warning before it acts, and Cancel closes it`, async ({ page }) => {
+        await open(page, { path, tw })
+        await page.waitForFunction(() => window.Livewire && window.Alpine && window.atom)
+
+        await page.locator('[data-atom-page-header]').getByRole('button', { name: trigger }).click()
+        await page.getByTestId(item).click()
+
+        const dialog = page.locator('dialog[x-data*="atom-confirm"]')
+        await expect(dialog).toHaveAttribute('data-open', '')
+        await expect(dialog).toContainText(heading)
+        await expect(dialog.locator('button[type="submit"]')).toHaveClass(/bg-warning-fg/)
+
+        await dialog.getByRole('button', { name: /^(Cancel|Keep job|Keep invoice)$/ }).click()
+        await expect(dialog).not.toHaveAttribute('data-open', '')
+        await expect(page.locator('[data-atom-page-header]').getByRole('button', { name: trigger })).toBeFocused()
+      })
+    }
+
     test('record page: an empty field in the rail shows the muted dash, and a screen reader hears "Not set"', async ({ page }) => {
       await open(page, { path: 'shell-record', tw })
 
