@@ -83,8 +83,7 @@ const returnFocus = (root, accepted) => {
     record.onClosed = (e) => {
         if (e.detail !== 'atom-confirm') return
 
-        if (pending === record) forgetPending()
-        else window.removeEventListener('closed', record.onClosed)
+        forgetPending()
 
         // The next task: the dialog's own `close` handling is done. WebKit has not yet moved the focus off the closed dialog (or the button in it),
         // so that counts as nothing: it is the dialog's leftover, and it is the browser's move away from it that must not land on <body>.

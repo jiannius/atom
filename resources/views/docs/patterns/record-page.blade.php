@@ -253,10 +253,13 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
             {{-- the main column and, on the overview, the rail: the page.columns tag draws the layout and its gaps --}}
             <atom:page.columns>
                 {{-- the panel of the record's lines, the same on the overview and on the Tasks tab --}}
-                <atom:panel heading="Tasks" :count="count($tasks).' tasks'" data-testid="record-lines">
-                    <x-slot:actions>
-                        <atom:link href="?tab=tasks">View all {{ count($tasks) }}</atom:link>
-                    </x-slot:actions>
+                <atom:panel heading="Tasks" :count="count($tasks)" data-testid="record-lines">
+                    {{-- "View all" is for the overview: on the Tasks tab this is all of them --}}
+                    @if ($tab === 'overview')
+                        <x-slot:actions>
+                            <atom:link href="?tab=tasks">View all {{ count($tasks) }}</atom:link>
+                        </x-slot:actions>
+                    @endif
 
                     <atom:table frameless :empty="false">
                         <x-slot:columns>

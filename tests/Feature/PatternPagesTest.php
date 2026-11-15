@@ -313,7 +313,9 @@ describe('record page pattern', function () {
 
         expect(domQuery($html, '//*[@data-atom-page-columns-rail]'))->toBeEmpty()
             ->and(domQuery($html, '//*[@data-atom-page-columns-main]/*[@data-testid="record-lines"][@data-atom-panel]'))->toHaveCount(1)
-            ->and(domQuery($html, '//*[@data-testid="record-description"]'))->toBeEmpty();
+            ->and(domQuery($html, '//*[@data-testid="record-description"]'))->toBeEmpty()
+            // "View all" points at this tab: it is only on the overview
+            ->and(domQuery($html, '//*[@data-testid="record-lines"]//a[contains(., "View all")]'))->toBeEmpty();
     });
 
     it('puts the activity timeline last in the rail, with a link to all changes in the card\'s heading row', function () {
@@ -367,7 +369,7 @@ describe('record page pattern', function () {
 
         expect(domQuery($html, $panel.'[@data-atom-panel]'))->toHaveCount(1)
             ->and(trim(domQuery($html, $panel.'/*[@data-atom-heading-row]//h2[@data-atom-heading-row-title]')[0]->textContent))->toBe('Tasks')
-            ->and(trim(domQuery($html, $panel.'/*[@data-atom-heading-row]//*[@data-atom-heading-row-count]')[0]->textContent))->toBe('4 tasks')
+            ->and(trim(domQuery($html, $panel.'/*[@data-atom-heading-row]//*[@data-atom-heading-row-count]')[0]->textContent))->toBe('4')
             ->and(domQuery($html, $panel.'/*[@data-atom-heading-row]//*[@data-atom-heading-row-actions]//a[contains(., "View all")]'))->toHaveCount(1)
             ->and(domQuery($html, $panel.'//*[@data-atom-table][@data-atom-table-frameless]'))->toHaveCount(1)
             ->and(domQuery($html, $panel.'//thead//th[contains(@class, "text-right")]'))->toHaveCount(1)
