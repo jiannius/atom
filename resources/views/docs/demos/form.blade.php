@@ -9,6 +9,11 @@ description="Pass disabled to make the whole form read-only: each field is drawn
 view="atom::docs.demos.form.disabled"/>
 
 <atom:docs.example
+title="Optional marker"
+description="marker=optional marks the fields that are not required instead of the ones that are: no asterisk, and a muted (optional) at the end of the label, which a screen reader reads as part of the field's name. Use it where most fields are required. It reads the same required prop the asterisk reads, so set required on the required fields, or every field is marked optional. It covers every labelled field (input, textarea, the selects, the pickers, a radio group, the editor); a label that already ends with (optional) is not marked twice, and a table filter is never marked. The default is marker=required (the asterisk); config('atom.form.marker') changes it for every form, and the tag's own marker wins. It works on atom:form.modal too. A Livewire child component or an @island inside the form reads the config, not the form's marker: give it its own atom:form marker."
+view="atom::docs.demos.form.marker"/>
+
+<atom:docs.example
 title="Grid columns"
 description="atom:form.grid lays out a field group. cols=auto (default) is a container query: it shows 1 column in a narrow parent and 2 columns once the parent is wide enough (~max-w-2xl), regardless of viewport. Use cols=2 or cols=3 to force a viewport-responsive grid. For a single-group form, put cols on atom:form directly."
 view="atom::docs.demos.form.grid"/>

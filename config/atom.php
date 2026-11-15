@@ -8,4 +8,9 @@
  */
 return [
     'timezone' => env('TIMEZONE'),
+
+    // Which fields a form marks: 'required' draws an asterisk on a required field, 'optional' draws "(optional)" on the others. <atom:form marker> wins.
+    'form' => [
+        'marker' => 'required',
+    ],
 ];

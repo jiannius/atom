@@ -96,6 +96,26 @@ describe('accessible names', function () {
         expect($html)->not->toMatch('/<input[^<]*type="file"[^<]*aria-labelledby/');
     });
 
+    // `marker="optional"` adds "(optional)" inside the label, so it is part of the name the label gives the control, and it must not
+    // move the wiring: the same `for` or the same label id, and no second anchor.
+    it('keeps the wiring when the optional marker adds its note to the label', function (string $template) {
+        $plain = renderBlade($template);
+        $marked = renderBlade('<atom:form marker="optional">'.$template.'</atom:form>');
+
+        expect(preg_replace('/\s+/', ' ', trim(domQuery($marked, '//label')[0]->textContent)))->toBe(preg_replace('/\s+/', ' ', trim(domQuery($plain, '//label')[0]->textContent)).' (optional)')
+            ->and(labelFor($marked))->toBe(labelFor($plain))
+            ->and(labelId($marked))->toBe(labelId($plain))
+            ->and(domQuery($marked, '//label//*[@data-atom-label-optional]'))->toHaveCount(1);
+    })->with([
+        'input' => '<atom:input label="Phone" name="p" />',
+        'select native' => '<atom:select label="Country" wire:model="c" :options="[]" />',
+        'select listbox' => '<atom:select variant="listbox" label="Country" wire:model="c" :options="[]" />',
+        'date-picker' => '<atom:date-picker label="Due date" wire:model="d" />',
+        'radio.group' => '<atom:radio.group label="Plan" wire:model="p"><atom:radio value="a">A</atom:radio></atom:radio.group>',
+        'time-picker' => '<atom:time-picker label="Start time" wire:model="t" />',
+        'file' => '<atom:input type="file" label="Attachment" wire:model="doc" />',
+    ]);
+
     it('names the chat editor, which shares the contenteditable mechanism', function () {
         $html = renderBlade('<atom:tiptap.chat label="Message" wire:model="m" />');
         $id = labelId($html);

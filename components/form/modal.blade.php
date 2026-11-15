@@ -8,6 +8,7 @@
     'method' => 'submit',
     'disabled' => false,
     'novalidate' => true,
+    'marker' => null,
 ])
 
 {{-- A width the caller sets (`w-*` or `max-w-*`, under any variant, not `min-w-*`; see Attributes::hasWidth()) replaces the one `cols`
@@ -16,6 +17,8 @@
      `submit` is the Save button's LABEL; `method` names the component method the form calls (default `submit`), and is also the
      method whose run the button's loading state follows. A name that is not a plain method name falls back to `submit`. --}}
 @php
+$attributes = $attributes->except(\Jiannius\Atom\Services\FormMarker::KEY);
+
 $method = is_string($method) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*\z/', $method) ? $method : 'submit';
 
 $hasOwnWidth = \Jiannius\Atom\Services\Attributes::hasWidth($attributes);

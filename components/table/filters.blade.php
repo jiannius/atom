@@ -4,6 +4,10 @@
     'chips' => 'below',
 ])
 
+@php
+$attributes = $attributes->except(\Jiannius\Atom\Services\FormMarker::KEY);
+@endphp
+
 {{-- `chips="inline"` puts each active filter ahead of the controls, in the one wrapping row (after a `<atom:table.search>` that sits in the slot: the search keeps the first place),, as a sentence pill ("Issued is
      1 Apr 2026 to 30 Apr 2026", with a name, a muted operator and the value) that its x removes. A control can name its own
      operator in the event's `operator` detail (default `is`; the search says `:`, which reads "Search: foo").

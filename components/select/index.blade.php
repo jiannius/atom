@@ -62,7 +62,8 @@ $disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
         :inline="$inline"
         :error="$error"
         :for="$variant === 'native' ? $fieldId : null"
-        :label-id="$labelId">
+        :label-id="$labelId"
+        :marker="$attributes->has('table-filter') ? 'required' : null">
             <x-dynamic-component :component="'atom::select.'.$variant" :attributes="$attributes->merge($merges)">
                 {{ $slot }}
                 <x-slot:add-button>{{ $addButton ?? '' }}</x-slot:add-button>
