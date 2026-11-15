@@ -36,10 +36,10 @@ class Docs
     const PATTERN_NOTES = [
         'app-shell-sidebar' => ['use' => 'The shell for an app with many sections (about seven or more): every slot filled, one nav partial shared with the top-nav shell.', 'try' => '?page=customers'],
         'app-shell-header' => ['use' => 'The same slots and the same nav in the top-nav shell, for about six sections or fewer, or a role that can open only one or two.', 'try' => '?page=customers'],
-        'record-page' => ['use' => 'One record (a work order): crumbs, title and status, facts, the one action for its current status, stats, tabs and the three empty states.', 'try' => '?status=blocked&tab=parts'],
-        'list-page' => ['use' => 'A listing people filter and come back to: header, totals strip, then one panel of saved views, a toolbar and a frameless table.', 'try' => '?view=overdue'],
-        'document-page' => ['use' => 'A printable document (an invoice) as paper, with its balance, details and history in a rail beside it.', 'try' => '?status=paid'],
-        'form-page' => ['use' => 'A long form of sections, ending in the save bar, in a narrow page.', 'try' => '?layout=stacked'],
+        'record-page' => ['use' => 'One record (a work order): crumbs, title and status, facts, the one action for its current status, stats, tabs, a main column of panels with a rail of cards beside it, and the three empty states.', 'try' => '?status=blocked&tab=parts'],
+        'list-page' => ['use' => 'A listing people filter and come back to: header, totals strip, then one panel of saved views, a toolbar and a frameless table, with the count and sum in its footer.', 'try' => '?view=overdue'],
+        'document-page' => ['use' => 'A printable document (an invoice) as paper, with its balance, details and history in a pinned rail of cards beside it.', 'try' => '?status=paid'],
+        'form-page' => ['use' => 'A long form of sections, with the optional fields marked, ending in the save bar, in a narrow page.', 'try' => '?layout=stacked'],
         'slide-over-form' => ['use' => 'A short create or edit form that opens over a list, so the list stays in view. A whole record is a page, never a slide-over.', 'try' => '?open=1'],
     ];
 
