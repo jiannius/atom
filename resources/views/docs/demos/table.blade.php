@@ -40,7 +40,7 @@ view="atom::docs.demos.table.truncate"/>
 
 <atom:docs.example
 title="Frameless"
-description="frameless is for a table that sits in a panel your page already draws (a list with saved views and a toolbar above it): no outer box of its own, hairlines between the strips and the rows, a header and bulk bar that become strips. A table with no panel around it stays framed. A wide table scrolls sideways inside its panel, never the page."
+description="frameless is for a table that sits in a panel (a list with saved views and a toolbar above it): no outer box of its own, hairlines between the strips and the rows, a header and bulk bar that become strips. A table with no panel around it stays framed. A wide table scrolls sideways inside its panel, never the page."
 view="atom::docs.demos.table.frameless"/>
 
 <atom:docs.example

@@ -50,7 +50,7 @@ Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEdito
 - Forms: `<atom:form.section>`, `<atom:form.grid>`, `<atom:form.actions>`, never bare `grid-cols-2`. A main module's form is a page; a secondary one's (a tax rate, a tag) `<atom:form.modal>` or a slide-over.
 - Toast = what the user just did; one `<atom:callout>` under the header = what they must know.
 - Sentence case; buttons start with a verb ("Create …" a record, "Add …" a line). Never type `—` or `--` for a missing value.
-- Use `<atom:card>`, `<atom:dd>`, `<atom:timeline>`, `<atom:navlist>` (in `<atom:layouts.sidebar>` or `<atom:layouts.header>`) and `<atom:separator>`, not hand-built boxes or `<hr>`; no margins between blocks, no `gap-[..]`, no `shadow-*`. Colour with role tokens (`bg-surface`, `text-fg-muted`, `border-border`), not `zinc-*` or `dark:` pairs. `type="submit"` and `"delete"` add no icon (`icon=`).
+- Use `<atom:card>`, `<atom:panel>`, `<atom:dd>`, `<atom:timeline>`, `<atom:navlist>` (in `<atom:layouts.sidebar>` or `<atom:layouts.header>`) and `<atom:separator>`, not hand-built boxes or `<hr>`; no margins between blocks, no `gap-[..]`, no `shadow-*`. Colour with role tokens (`bg-surface`, `text-fg-muted`, `border-border`), not `zinc-*` or `dark:` pairs. `type="submit"` and `"delete"` add no icon (`icon=`).
 - Full tables: the skill's Design rules and Patterns section.
 @endverbatim
 

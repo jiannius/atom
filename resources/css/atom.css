@@ -1777,3 +1777,9 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
         display: table-row-group;
     }
 }
+
+/* A panel clips (it is never a scroll container), so the table's pinned pager sticks to the page, not to the box. The utility says the
+   same, but the test rig has no Tailwind and a host build might lack it, so the rule is written here too. */
+[data-atom-panel] {
+    overflow: clip;
+}

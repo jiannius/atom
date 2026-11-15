@@ -1,5 +1,5 @@
-{{-- the panel is yours; the table inside it draws no frame of its own --}}
-<div class="max-w-2xl overflow-hidden rounded-panel border bg-surface">
+{{-- the panel is <atom:panel>; the table inside it draws no frame of its own, and the panel clips, so the pinned pager sticks to the page --}}
+<atom:panel class="max-w-2xl">
     <atom:table frameless :empty="false">
         <x-slot:columns>
             <atom:table.column>Customer</atom:table.column>
@@ -27,4 +27,4 @@
             </atom:table.row>
         </x-slot:rows>
     </atom:table>
-</div>
+</atom:panel>

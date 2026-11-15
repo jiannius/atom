@@ -3,7 +3,8 @@
      structure, not the data.
 
      The rules this page follows:
-     - The panel is the host's: `rounded-panel border bg-surface overflow-clip`. Everything in it (views, toolbar, rows, footer)
+     - The panel is `<atom:panel>` (this page still draws the same box by hand, `rounded-panel border bg-surface overflow-clip`, until the
+       patterns are rebuilt on it). Everything in it (views, toolbar, rows, footer)
        is separated by hairlines, so the table is `frameless`; a table on its own, with no panel around it, stays framed. The panel
        clips (`overflow-clip`) rather than hides: a hidden overflow makes the panel a scroll container, and the table's pager, which
        is pinned to the bottom of the screen while the table runs past it, would stick to a panel that never scrolls.

@@ -15,8 +15,8 @@
         </div>
     </div>
 
-    {{-- frameless: the bar is the top strip of the panel your page draws --}}
-    <div class="overflow-hidden rounded-panel border bg-surface">
+    {{-- frameless: the bar is the top strip of an atom:panel --}}
+    <atom:panel>
         <div class="flex min-h-10 items-center gap-3 border-b bg-accent-soft px-3 py-2.5" data-tone="accent">
             <div class="flex shrink-0 items-center gap-2 text-sm font-medium text-accent-ink">
                 <atom:icon.double-check class="size-4"/>
@@ -25,5 +25,5 @@
             <div class="flex grow items-center gap-3"><atom:button size="sm">Send reminders</atom:button><atom:button variant="ghost" icon="more" tooltip="More actions" /></div>
         </div>
         <div class="px-3 py-2.5 text-sm text-fg-muted">Rows go here.</div>
-    </div>
+    </atom:panel>
 </div>

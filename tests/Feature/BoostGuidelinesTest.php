@@ -603,7 +603,7 @@ it('teaches the data-display components and the badge colour names', function ()
     expect($guideline)->toContain('<atom:card>')
         ->and($guideline)->toContain('<atom:dd>')
         ->and($guideline)->toContain('<atom:badge>')
-        ->and($skill)->toContain('**Data display:** a panel')
+        ->and($skill)->toContain('**Data display:** a rail box')
         ->and($skill)->toContain('blue/sky/cyan/indigo info')
         ->and($skill)->toContain('yellow/amber/orange warning')
         ->and($skill)->toContain('purple/violet/fuchsia/pink accent')
@@ -611,6 +611,23 @@ it('teaches the data-display components and the badge colour names', function ()
         ->and($skill)->toContain('<atom:progress')
         ->and($skill)->toContain('<atom:pagination')
         ->and($skill)->toContain('record-page.blade.php` (`?status=blocked`)');
+});
+
+// Phase 3: the card heading and <atom:panel>. The list panel is no longer "the one box you still draw", and the caps table has an
+// overflow cell for the card heading.
+it('teaches the card heading and <atom:panel>, and no longer a hand-drawn list panel', function () {
+    $guideline = boostFile('guidelines/core.blade.php');
+    $skill = boostFile('skills/atom-components/SKILL.blade.php');
+    $readme = file_get_contents(__DIR__.'/../../README.md');
+
+    expect($guideline)->toContain('<atom:panel>')
+        ->and($skill)->toContain('A list is ONE `<atom:panel>`')
+        ->and($skill)->toContain('| Card or panel heading | none | at most 1 link or ghost button ("View all") in `actions` | `menu` |')
+        ->and($skill)->toContain('(`<atom:card>`, `<atom:panel>`)')
+        ->and($skill)->toContain('never `overflow-hidden`')
+        ->and($skill)->not->toContain('the one box you still draw')
+        ->and($skill)->not->toContain('is the one you still draw')
+        ->and($readme)->toContain('| `<atom:panel>` |');
 });
 
 // every colour name the skill and the README promise maps to the tone they say

@@ -91,7 +91,7 @@ $columnsScript = $columnsCss !== '' && $columnsKey !== null && ! $columnsFromHos
 {{-- The checked bar wraps (count first, then the actions) so a narrow screen shows every action instead of clipping them.
      It is untinted by default. `<x-slot:checked tone="accent">` tints it with the accent-soft token and sets its text
      and icons in the accent ink, so the selected state stands out (any other tone is the default). Framed, the bar is its own
-     rounded strip; frameless it is a square strip inside the panel you draw, with its hairline strip padding, like the untinted one.
+     rounded strip; frameless it is a square strip inside the panel, with its hairline strip padding, like the untinted one.
      The `checked-menu` slot (<atom:menu.item>s) is the bar's overflow: a ghost ⋯ (<atom:menu._more>) LAST in the bar's group, after the `checked`
      buttons; a slot of only markers draws nothing, and a `checked-menu` without a `checked` slot still draws the bar. --}}
 <div
