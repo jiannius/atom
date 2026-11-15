@@ -17,10 +17,19 @@ export default (config) => {
         built: false,
 
         init () {
+            // a fixed trail (`items` on the tag) is on the page from the first frame; the server's own bar mark stays until build().
+            // The page's header is read first: the single-crumb heading would repeat its title for a frame otherwise.
+            this.readPageHeader()
+
+            if (this.readItems() && this.$root.closest?.('[x-persist]')) {
+                console.warn('[atom] a fixed breadcrumbs trail (`items`) is inside @persist: it keeps the first page\'s crumbs. Take it out of @persist.')
+            }
+
             // A page.header can also appear after navigation, when a Livewire update renders it (an `@if ($record)`, a lazy
             // component), so read it again after every morph. Kept on the element, so a re-run init() drops its earlier registration.
             this.$root._atomBreadcrumbsStopMorph?.()
             this.$root._atomBreadcrumbsStopMorph = onMorphed(() => {
+                this.readItems()
                 this.readPageHeader()
                 this.fit()
                 this.syncHeader()
@@ -43,17 +52,19 @@ export default (config) => {
                 let fonts = document.fonts
                 let refit = () => this.fit()
                 let sm = window.matchMedia?.('(min-width: 40rem)')
+                // crossing `sm` also changes whether the trail prints anything (a phone shows only the back link)
+                let crossed = () => { refit(); this.syncHeader() }
 
                 fonts?.ready?.then(refit)
                 fonts?.addEventListener?.('loadingdone', refit)
                 // the list is `display: none` below sm, so crossing it is a change of box the root's width may not show
-                sm?.addEventListener?.('change', refit)
+                sm?.addEventListener?.('change', crossed)
 
                 this.$root._atomBreadcrumbsStopWatching = () => {
                     cancelAnimationFrame(frame)
                     observer.disconnect()
                     fonts?.removeEventListener?.('loadingdone', refit)
-                    sm?.removeEventListener?.('change', refit)
+                    sm?.removeEventListener?.('change', crossed)
                 }
             }
         },
@@ -65,16 +76,53 @@ export default (config) => {
             this.$root._atomBreadcrumbsStopWatching = null
         },
 
+        // A fixed trail: the tag prints it as JSON on `data-atom-breadcrumbs-items` (hrefs already through safe_url(); the sinks check
+        // again). It is read here, never held in x-data, so a morph that changes it is picked up by the callback in init(). The first item
+        // is the root (`home`), so `breadcrumbs` is the whole list. Returns whether the tag has one: with it the component's
+        // `$_breadcrumbs` is ignored.
+        readItems () {
+            let raw = this.$root?.getAttribute?.('data-atom-breadcrumbs-items')
+
+            if (raw === null || raw === undefined) return false
+
+            let parsed
+
+            try {
+                parsed = JSON.parse(raw)
+            }
+            catch (e) {
+                parsed = []
+            }
+
+            let items = (Array.isArray(parsed) ? parsed : [])
+                .filter((item) => item && typeof item.title === 'string' && item.title !== '')
+                .map((item, i) => ({ title: item.title, url: item.url ?? null, href: item.url ?? null, home: i === 0 }))
+
+            // nothing to do (and no re-render) when a morph left the trail as it was
+            if (JSON.stringify(items) !== JSON.stringify(this.trails)) {
+                this.trails = items
+                this.$nextTick?.(() => this.fit())
+            }
+
+            return true
+        },
+
         readPageHeader () {
             this.hasPageHeader = !!document.body.querySelector('[data-atom-main] h1[data-atom-page-header-title]')
         },
 
         // whether the trail prints nothing at all: no crumb, or the single crumb's heading the page header makes redundant
-        // (or `heading="false"` turned off). Mirrors the two templates in breadcrumbs.blade.php.
+        // (or `heading="false"` turned off), or, below `sm`, no crumb above the current page has an address (no back link).
+        // Mirrors the templates in breadcrumbs.blade.php.
         get isEmpty () {
             let count = this.breadcrumbs.length
 
-            return count === 0 || (count === 1 && (config?.heading === false || this.hasPageHeader))
+            if (count === 0 || (count === 1 && (config?.heading === false || this.hasPageHeader))) return true
+
+            // a phone (below `sm`) shows only the back link: a trail with nothing to go back to prints nothing there either
+            let wide = window.matchMedia?.('(min-width: 40rem)')?.matches ?? true
+
+            return count > 1 && !wide && !this.backCrumb
         },
 
         // A shell's bar (layouts.sidebar, data-atom-header-crumbs-only) or crumbs row (layouts.header) that holds nothing but
@@ -115,9 +163,18 @@ export default (config) => {
             return this.trails.slice(start)
         },
 
-        // the crumb above the current page: the phone's back link
-        get parent () {
-            return this.breadcrumbs[this.breadcrumbs.length - 2]
+        // the way up: the nearest crumb above the current page that has a safe address (the parent's own, unless it has none), or
+        // null. The phone's back link and back() go there; a crumb with no address (a fixed trail's label, a hostile URL) is skipped.
+        get backCrumb () {
+            let crumbs = this.breadcrumbs
+
+            for (let i = crumbs.length - 2; i >= 0; i--) {
+                let href = atom.safeUrl(crumbs[i].href)
+
+                if (href) return { title: crumbs[i].title, href }
+            }
+
+            return null
         },
 
         // the middle crumbs, the ones that may collapse: everything between the first crumb, the parent and the current page
@@ -139,6 +196,7 @@ export default (config) => {
                     key: `${crumb.title}-${crumb.url}-${i}`,
                     title: crumb.title,
                     href: crumb.href,
+                    linked: !!atom.safeUrl(crumb.href),
                     last: i === crumbs.length - 1,
                     hidden: i >= 1 && i <= hidden,
                 })
@@ -149,7 +207,7 @@ export default (config) => {
                         key: 'more',
                         last: false,
                         hidden: hidden === 0,
-                        items: crumbs.slice(1, hidden + 1).map((item, j) => ({ key: `${item.title}-${item.url}-${j + 1}`, title: item.title, href: item.href })),
+                        items: crumbs.slice(1, hidden + 1).map((item, j) => ({ key: `${item.title}-${item.url}-${j + 1}`, title: item.title, href: item.href, linked: !!atom.safeUrl(item.href) })),
                     })
                 }
             })
@@ -221,8 +279,7 @@ export default (config) => {
         },
 
         back () {
-            let idx = this.breadcrumbs.length - 2
-            let url = idx > -1 ? atom.safeUrl(this.breadcrumbs[idx].href) : null
+            let url = this.backCrumb?.href
             if (url) Livewire.navigate(url)
         },
 
@@ -247,7 +304,7 @@ export default (config) => {
         // read the page (its header, then its trail) and mark the shell's bar for what that leaves to show
         build () {
             this.readPageHeader()
-            this.buildTrail()
+            if (!this.readItems()) this.buildTrail()
             this.built = true
             this.syncHeader()
         },

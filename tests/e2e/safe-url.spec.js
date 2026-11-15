@@ -225,15 +225,18 @@ test.describe('lightbox', () => {
 test.describe('breadcrumbs', () => {
   const crumbs = (page) => page.locator('[data-atom-breadcrumbs] [data-atom-crumb="crumb"] a')
 
-  test('a hostile crumb renders without an href and does nothing on click', async ({ page }) => {
+  test('a hostile crumb renders as text, not a link, and does nothing on click', async ({ page }) => {
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
 
     await page.goto('/atom/e2e/safe-url-breadcrumbs')
-    await expect(crumbs(page)).toHaveCount(3)
+    // Home and Legit are links; Hostile is a plain span, and so is Current (the last)
+    await expect(crumbs(page)).toHaveCount(2)
 
-    const hostileCrumb = crumbs(page).filter({ hasText: 'Hostile' })
-    await expect(hostileCrumb).not.toHaveAttribute('href', /.*/)
+    const hostileCrumb = page.locator('[data-atom-breadcrumbs] [data-atom-crumb="crumb"]', { hasText: 'Hostile' })
+    await expect(hostileCrumb).toBeVisible()
+    await expect(hostileCrumb.locator('a')).toHaveCount(0)
+    await expect(hostileCrumb.locator('span', { hasText: 'Hostile' })).toBeVisible()
 
     await hostileCrumb.click()
 
@@ -249,20 +252,20 @@ test.describe('breadcrumbs', () => {
     await expect(crumbs(page).filter({ hasText: 'Home' })).toHaveAttribute('href', '/atom/e2e/safe-url-breadcrumbs')
   })
 
-  test('back() does not navigate to a hostile crumb', async ({ page }) => {
+  test('back() does not navigate to a hostile crumb: it skips it to the nearest safe one', async ({ page }) => {
     await page.goto('/atom/e2e/safe-url-breadcrumbs?penultimate=hostile')
-    await expect(crumbs(page)).toHaveCount(3)
+    await expect(crumbs(page)).toHaveCount(2)
     await spyOnNavigation(page)
 
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('navigate-back')))
 
     expect(await pwned(page)).toBeUndefined()
-    expect(await navigated(page)).toEqual([])
+    expect(await navigated(page)).toEqual(['/atom/e2e/safe-url-breadcrumbs?legit=1'])
   })
 
   test('back() still navigates to a legitimate crumb', async ({ page }) => {
     await page.goto('/atom/e2e/safe-url-breadcrumbs')
-    await expect(crumbs(page)).toHaveCount(3)
+    await expect(crumbs(page)).toHaveCount(2)
     await spyOnNavigation(page)
 
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('navigate-back')))
