@@ -1,7 +1,7 @@
 @props([
     'align' => 'left',
     'checkbox' => null,
-    'filler' => null,
+    'filler' => '—',
     'muted' => false,
     'truncate' => false,
     'numeric' => false,
@@ -20,6 +20,10 @@ if ($column !== null && ! $checkbox) {
     $attributes = $attributes->merge(['data-atom-column' => \Jiannius\Atom\Services\TableColumns::assertName($column, '<atom:table.cell column>')]);
 }
 
+// An empty cell draws the missing-value mark (`filler` prints a text of your own instead; `:filler="false"` or `filler=""`
+// prints nothing). A checkbox cell and an empty cell with `colspan` (a spacer) never get the default mark, though a `filler` of
+// your own prints there as anywhere. A cell cannot tell it is in the table's footer (its slot is rendered before the table is), so a
+// footer spacer without `colspan` takes `:filler="false"`.
 // A numeric cell (money, quantities) is right-aligned with tabular figures, so a column of amounts lines up on the
 // decimal point; name the currency in the column header, not here.
 $align = $numeric ? 'right' : $align;
@@ -58,6 +62,6 @@ $classes = Arr::toCssClasses([
     </td>
 @else
     <td {{ $attributes->class($classes) }}>
-        {{ $slot->isEmpty() ? $filler : $slot }}
+        @if ($slot->hasActualContent()){{ $slot }}@elseif ($filler && ! ($filler === '—' && $attributes->has('colspan')))@if ($filler === '—')<atom:_missing />@else{{ $filler }}@endif@endif
     </td>
 @endif

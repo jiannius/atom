@@ -267,7 +267,7 @@ describe('record page pattern', function () {
             ->and(domQuery($html, '//*[@data-atom-table]//*[@data-atom-status]'))->toHaveCount(4);
     });
 
-    it('has a rail of cards beside the main column on the overview, with the facts grouped by subject and no dash for an empty field', function () {
+    it('has a rail of cards beside the main column on the overview, with the facts grouped by subject and the missing-value mark for an empty field', function () {
         $html = view('atom::docs.patterns.record-page')->render();
         $rail = '//*[@data-testid="record-rail"]';
 
@@ -275,9 +275,11 @@ describe('record page pattern', function () {
             ->and(domQuery($html, $rail.'/*[@data-atom-card]'))->toHaveCount(5)
             ->and(array_map(fn ($h) => trim($h->textContent), domQuery($html, $rail.'/*[@data-atom-card]//h3')))->toBe(['Details', 'Customer', 'People', 'Linked records', 'Activity'])
             ->and(domQuery($html, $rail.'//*[@data-atom-dd-group]/*[@data-atom-dd]'))->not->toBeEmpty()
-            // an empty field ("Cost centre", "Checked by") is left out, never printed as a dash
-            ->and($html)->not->toContain('Cost centre')->not->toContain('Checked by')
-            ->and(domQuery($html, $rail.'//dd[normalize-space(.) = "--" or normalize-space(.) = "—" or normalize-space(.) = ""]'))->toBeEmpty()
+            // an empty field ("Cost centre", "Checked by") stays in the list with the missing-value mark, never a typed dash
+            ->and(domQuery($html, $rail.'//*[@data-atom-dd][contains(., "Cost centre")]//dd/*[@data-atom-missing]'))->toHaveCount(1)
+            ->and(domQuery($html, $rail.'//*[@data-atom-dd][contains(., "Checked by")]//dd/*[@data-atom-missing]'))->toHaveCount(1)
+            ->and(domQuery($html, $rail.'//*[@data-atom-missing]'))->toHaveCount(2)
+            ->and(domQuery($html, $rail.'//dd[normalize-space(.) = "--" or normalize-space(.) = ""]'))->toBeEmpty()
             // people are an avatar, a name and an id in the mono style
             ->and(domQuery($html, $rail.'//*[@data-atom-avatar]'))->toHaveCount(2)
             ->and(domQuery($html, $rail.'//*[@data-atom-dd]//span[contains(@class, "font-id")]'))->not->toBeEmpty()
@@ -503,6 +505,13 @@ describe('list page pattern', function () {
             ->and(trim(domQuery($html, '//*[@data-atom-table-view][@aria-pressed="true"]//*[@data-atom-table-view-count]')[0]->textContent))->toBe((string) $rows)
             ->and(domQuery($html, '//*[@data-atom-table]//tbody/tr'))->toHaveCount($rows);
     })->with([['all', 8], ['unpaid', 4], ['overdue', 2], ['paid', 3], ['draft', 1]]);
+
+    it('shows the missing-value mark in the draft invoice\'s blank Due cell, and nowhere else in the rows', function () {
+        $html = view('atom::docs.patterns.list-page')->render();
+
+        expect(domQuery($html, '//tbody//*[@data-atom-missing]'))->toHaveCount(1)
+            ->and(domQuery($html, '//tbody/tr[contains(., "INV-0405")]/td[@data-atom-column="due"]//*[@data-atom-missing]'))->toHaveCount(1);
+    });
 
     it('puts money in a numeric column named once in the header, and identifiers in the mono style', function () {
         $html = view('atom::docs.patterns.list-page')->render();

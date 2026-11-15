@@ -12,8 +12,8 @@
        matching the status (done, current, pending, failed; a time and a person on each).
      - The overview is a main column and a RAIL (from 1080px beside it, below that under it): the main column holds the record's
        lines in a panel and the long text; the rail is `<atom:card>`s, each headed by a 12px muted title, with the facts grouped by
-       subject as `<atom:dd.group>` (Details, Customer, People, Linked records). An empty field is left out: it is never printed as
-       a dash. Activity is the last card of the rail, with a link to all of it.
+       subject as `<atom:dd.group>` (Details, Customer, People, Linked records). An empty field stays in the list: `<atom:dd>`
+       draws the missing-value mark for it, so it is never typed as a dash. Activity is the last card of the rail, with a link to all of it.
      - A panel for the record's lines has a heading row (the name, a count, a link to all of it) over a `frameless` table, and its
        totals under the table. Money and quantities are `numeric` on the column and the cell; identifiers are monospace (`font-id`).
      - Long text (a description, notes) is the reading size: `text-base`.
@@ -70,14 +70,14 @@ $tasks = [
 $openTasks = count(array_filter($tasks, fn ($task) => $task[2] !== 'Done'));
 $hours = array_sum(array_column($tasks, 4));
 
-// the facts of the rail; a field with no value is filtered out, so it is never printed as a dash
-$details = array_filter([
+// the facts of the rail; a field with no value stays in the list, and its dd draws the missing-value mark
+$details = [
     'Type' => 'Pump service',
     'Priority' => 'High',
     'Scheduled' => '29 Jul, 9:00',
     'Cost centre' => null,
     'Approved quote' => 'RM 4,200.00',
-]);
+];
 
 $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['Checked by', null, null]];
 @endphp
@@ -342,15 +342,15 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                             <h3 class="m-0 text-xs font-medium text-fg-subtle">People</h3>
                             <atom:dd.group>
                                 @foreach ($people as [$role, $person, $personId])
-                                    @if ($person)
-                                        <atom:dd :label="$role">
+                                    <atom:dd :label="$role">
+                                        @if ($person)
                                             <span class="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5">
                                                 <atom:avatar size="xs" :square="false" :name="$person"/>
                                                 {{ $person }}
                                                 <span class="font-id text-fg-subtle">{{ $personId }}</span>
                                             </span>
-                                        </atom:dd>
-                                    @endif
+                                        @endif
+                                    </atom:dd>
                                 @endforeach
                             </atom:dd.group>
                         </atom:card>
