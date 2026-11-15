@@ -20,8 +20,13 @@ view="atom::docs.demos.button.tooltip"/>
 
 <atom:docs.example
 title="Submit & delete types"
-description="type=submit is primary and shows a loading state on wire submit. type=delete is the danger tone's tint and auto-wires the confirm dialog, which dispatches confirmed → $wire.delete(), unless you override wire:click or x-on:click. Neither adds an icon of its own: pass icon=."
+description="type=submit is primary and shows a loading state on wire submit. type=delete is the danger tone's tint and confirms in danger: with no action of its own the dialog's Accept calls $wire.delete(), with a wire:click, x-on:click or href of its own that runs after Accept. Neither adds an icon of its own: pass icon=."
 view="atom::docs.demos.button.delete"/>
+
+<atom:docs.example
+title="Confirm"
+description="confirm asks before the button acts, in the tone of variant: bare confirm asks the label plus a question mark and repeats the label on its button, a string is the heading, an array takes heading, message, buttonConfirm, buttonCancel, passphrase, password and reason. wire:click, x-on:click, href and type=submit run after Accept; Cancel runs nothing. type=delete always confirms; :confirm=false opts it out."
+view="atom::docs.demos.button.confirm"/>
 
 <atom:docs.example
 title="Ghost colors"

@@ -43,7 +43,7 @@ Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEdito
 
 - A screen is `<atom:page>` opening with `<atom:page.header>`; crumbs from the shell's `crumbs` slot or the header's `crumbs` prop, not both. Never hand-build a title, crumb strip, sidebar toggle or ⋯ dropdown.
 - One `variant="primary"` per screen: the next step for the status (Edit if there is no workflow) or the form's submit. None in an empty state, toolbar, bulk bar or row.
-- Tone follows the consequence: danger destroys or cannot be undone (`type="delete"`); warning stops or hides but keeps the record (archive, void, cancel an order: `variant="warning" inverted`). Both confirm in their tone. Avoid `success` and `info` buttons.
+- Tone follows the consequence: danger destroys or cannot be undone (`type="delete"`); warning stops or hides but keeps the record (archive, void, cancel an order: `variant="warning" inverted`). Both confirm in their tone (`confirm`). Avoid `success` and `info` buttons.
 - Footers, bars and `form.modal` order buttons primary, default, danger, then ⋯ (the header places its own `primary`). In a menu, warning then danger go last, after `<atom:menu.separator>`.
 - Caps: header `actions` 2 (`size="sm"` 1), toolbar 2, bulk bar 3, card heading 1 link, rows 0 (`<atom:table.actions>`); the rest in `menu`/`checked-menu`.
 - List filters live in `<atom:table.filters>` bound to `filters.*`. A state is `<atom:status>`, a tag or count `<atom:badge>`; an empty list `<atom:empty>` with one plain button.
