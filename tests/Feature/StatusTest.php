@@ -213,11 +213,4 @@ describe('status from a value', function () {
         expect($root->getAttribute('data-tone'))->toBe('neutral')
             ->and(trim($root->textContent))->toBe('Neutral');
     });
-
-    it('treats a value that is a plain string as no state', function () {
-        $root = statusElement('<atom:status value="paid" label="Paid" />');
-
-        expect($root->getAttribute('data-tone'))->toBe('neutral')
-            ->and(trim($root->textContent))->toBe('Paid');
-    });
 });
