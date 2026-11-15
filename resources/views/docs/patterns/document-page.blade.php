@@ -6,14 +6,17 @@
      - The header carries the record's state (status pills beside the title) and ONE primary action, the one for the CURRENT state:
        Overdue: Record payment; Draft: Send invoice; Paid: Download receipt. Open it as ?status=overdue|draft|paid. An overdue
        invoice also has a secondary "Send reminder" in `actions`.
-     - Crumbs are the shell's `crumbs` slot (with the previous and next document as ghost icon buttons in its `actions` slot), so the
-       document's own title is the one heading; the header's `crumbs` prop is the alternative where the shell has no slot to spare.
+     - Crumbs are `<atom:breadcrumbs :items>` in the shell's `crumbs` slot (with the previous and next document as ghost icon buttons in
+       its `actions` slot), so the document's own title is the one heading; the header's `crumbs` prop is the alternative where the
+       shell has no slot to spare. "Void invoice" withdraws the document but keeps the record, so it is a `warning` item behind a
+       `<atom:menu.separator>` that asks first (`confirm`, in warning); only what destroys data is `variant="delete"`.
      - The paper is deliberately not themed: it is a document, so it keeps its own warm white and near-black in the dark theme
        too, and the 500 and 600 weights a printed page uses. It is plain markup, not <atom:table>: a document table has a
        dark rule under its header and no hover.
      - Money is tabular, right-aligned, with the currency named once ("Amount (RM)", "Total (RM)"); identifiers are monospace.
-     - The rail is `<atom:card>`s, each headed by a 12px muted title; label and value pairs are `<atom:dd.group>`, a progress bar is
-       `<atom:progress>` in the success tone (it is money received, not the accent). From 1080px it sits beside the document; below that it stacks under it.
+     - The document and its rail are `<atom:page.columns>` (the rail is `<x-slot:rail label sticky>`: beside the document while the room
+       allows, under it otherwise). The rail is `<atom:card heading>`s, each with a 12px muted title; label and value pairs are
+       `<atom:dd.group>`, a progress bar is `<atom:progress>` in the success tone (it is money received, not the accent).
      - The history is <atom:timeline>: a dot per event in the tone of what happened (danger for a reminder about money owed, success
        for a payment, accent for a send, neutral for a creation), the time under it, and a detail where there is one. Items
        rendered in a @foreach (or an @if that changes) carry a `wire:key`, as here: their folded state is Alpine's. --}}
@@ -66,11 +69,7 @@ $money = fn (float $amount) => number_format($amount, 2);
     </x-slot>
 
     <x-slot:crumbs>
-        <div class="flex items-center gap-1.5 text-fg-subtle" data-testid="document-crumbs">
-            <a href="list-page" class="text-fg-muted hover:text-fg">Invoices</a>
-            <atom:icon.right class="size-3.5"/>
-            <span class="font-id font-medium text-fg">INV-0412</span>
-        </div>
+        <atom:breadcrumbs :items="[['label' => 'Invoices', 'href' => 'list-page'], ['label' => 'INV-0412']]" data-testid="document-crumbs"/>
 
         @if ($shell === 'header')
             <span class="ms-2 flex items-center">
@@ -119,7 +118,8 @@ $money = fn (float $amount) => number_format($amount, 2);
 
             <x-slot:menu>
                 <atom:menu.item icon="copy">Duplicate</atom:menu.item>
-                <atom:menu.item icon="delete">Void invoice</atom:menu.item>
+                <atom:menu.separator/>
+                <atom:menu.item variant="warning" :confirm="['heading' => 'Void this invoice?', 'message' => 'The invoice no longer counts as owed, and its record stays.', 'buttonCancel' => 'Keep invoice']" data-testid="document-void">Void invoice</atom:menu.item>
             </x-slot:menu>
 
             <x-slot:primary>
@@ -127,7 +127,7 @@ $money = fn (float $amount) => number_format($amount, 2);
             </x-slot:primary>
         </atom:page.header>
 
-        <div class="grid items-start gap-6 min-[1080px]:grid-cols-[minmax(0,1fr)_320px]">
+        <atom:page.columns>
             <article class="grid min-w-0 gap-7 rounded-md bg-[#fffefc] px-5 py-6 text-[12.5px] text-[#1d1c19] shadow-[0_0_0_1px_rgba(45,32,8,0.08),0_2px_10px_rgba(45,32,8,0.05)] sm:px-12 sm:pb-10 sm:pt-11" aria-label="Invoice document" data-testid="paper">
                 <div class="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
                     <div class="flex items-center gap-2.5">
@@ -200,9 +200,8 @@ $money = fn (float $amount) => number_format($amount, 2);
                 <p class="m-0 border-t border-[#1d1c19]/10 pt-4 text-[11.5px] text-[#6b665c]">Thank you for your business. Please quote the invoice number with your transfer.</p>
             </article>
 
-            <aside class="grid min-w-0 gap-3.5 min-[1080px]:sticky min-[1080px]:top-16" aria-label="Invoice details">
-                <atom:card class="grid gap-3" data-testid="balance-box">
-                    <h3 class="m-0 text-xs font-medium text-fg-subtle">Balance due</h3>
+            <x-slot:rail label="Invoice details" sticky>
+                <atom:card heading="Balance due" class="grid gap-3" data-testid="balance-box">
                     <div @class(['text-[26px] font-semibold leading-[1.15] tracking-[-0.02em] tabular-nums', 'text-danger-fg' => $balance > 0 && $status === 'overdue', 'text-success-fg' => $balance <= 0]) data-testid="balance">
                         <small class="me-1 text-[13px] font-medium tracking-normal text-fg-subtle">RM</small>{{ $money($balance) }}
                     </div>
@@ -210,8 +209,7 @@ $money = fn (float $amount) => number_format($amount, 2);
                     <div class="text-xs tabular-nums text-fg-subtle">RM {{ $money($received) }} of {{ $money($total) }} received{{ $status === 'overdue' ? ' · 23 days past due' : '' }}</div>
                 </atom:card>
 
-                <atom:card class="grid gap-3">
-                    <h3 class="m-0 text-xs font-medium text-fg-subtle">Details</h3>
+                <atom:card heading="Details">
                     <atom:dd.group>
                         <atom:dd label="Customer">Customer A Sdn Bhd</atom:dd>
                         <atom:dd label="Contact">accounts@customer-a.example</atom:dd>
@@ -220,8 +218,7 @@ $money = fn (float $amount) => number_format($amount, 2);
                     </atom:dd.group>
                 </atom:card>
 
-                <atom:card class="grid gap-3" data-testid="history">
-                    <h3 class="m-0 text-xs font-medium text-fg-subtle">Activity</h3>
+                <atom:card heading="Activity" data-testid="history">
                     <atom:timeline label="Invoice history">
                         @if ($status === 'overdue')
                             <atom:timeline.item wire:key="history-reminder" title="Reminder emailed" body="to accounts@customer-a.example" time="14 Nov" tone="danger">
@@ -235,8 +232,8 @@ $money = fn (float $amount) => number_format($amount, 2);
                         <atom:timeline.item wire:key="history-created" title="Created" body="from quote Q-0231" actor="Ana" time="2 Oct"/>
                     </atom:timeline>
                 </atom:card>
-            </aside>
-        </div>
+            </x-slot:rail>
+        </atom:page.columns>
     </atom:page>
 
     @livewireScripts

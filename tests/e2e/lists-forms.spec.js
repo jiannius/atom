@@ -1071,13 +1071,13 @@ for (const tw of ['floor', 'latest']) {
       await shot(page, `document-${tw}-1280`, { fullPage: true })
     })
 
-    test('the rail sits beside the paper from 1080px and under it below', async ({ page }) => {
+    test('the rail sits beside the paper while the room allows (page.columns) and under it below', async ({ page }) => {
       await doc(page)
       const beside = [await box(page.getByTestId('paper')), await box(page.getByTestId('balance-box'))]
       expect(beside[1].x).toBeGreaterThanOrEqual(beside[0].right)
       expect(beside[1].width).toBe(320)
 
-      await page.setViewportSize({ width: 900, height: 900 })
+      await page.setViewportSize({ width: 800, height: 900 })
       const under = [await box(page.getByTestId('paper')), await box(page.getByTestId('balance-box'))]
       expect(under[1].y).toBeGreaterThanOrEqual(under[0].bottom)
     })

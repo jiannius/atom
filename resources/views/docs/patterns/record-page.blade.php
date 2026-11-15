@@ -10,23 +10,24 @@
      - A status is a tone plus a word; `running` only while something is actually in progress, and then it says for how long.
      - A record that moves through stages shows them as `<atom:timeline kind="path">` under the header, the current segment
        matching the status (done, current, pending, failed; a time and a person on each).
-     - The overview is a main column and a RAIL (from 1080px beside it, below that under it): the main column holds the record's
-       lines in a panel and the long text; the rail is `<atom:card>`s, each headed by a 12px muted title, with the facts grouped by
-       subject as `<atom:dd.group>` (Details, Customer, People, Linked records). An empty field stays in the list: `<atom:dd>`
-       draws the missing-value mark for it, so it is never typed as a dash. Activity is the last card of the rail, with a link to all of it.
-     - A panel for the record's lines has a heading row (the name, a count, a link to all of it) over a `frameless` table, and its
-       totals under the table. Money and quantities are `numeric` on the column and the cell; identifiers are monospace (`font-id`).
-     - Long text (a description, notes) is the reading size: `text-base`.
-     - Crumbs are the shell's own `crumbs` slot here, with the previous and next record as ghost icon buttons in its `actions` slot,
-       so the record's title is the page's one heading. (Use the header's own `crumbs` prop instead where the shell has no slot to
-       spare, not both.)
+     - The overview is `<atom:page.columns>`: a main column and a RAIL (`<x-slot:rail label>`) that sits beside it while the
+       room allows and under it otherwise. The main column holds the record's lines and the long text, each an `<atom:panel>`; the
+       rail is `<atom:card heading>`s (a 12px muted title, one link in `actions`), with the facts grouped by subject as `<atom:dd.group>`
+       (Details, Customer, People, Linked records). An empty field stays in the list: `<atom:dd>` draws the missing-value mark for it,
+       so it is never typed as a dash. Activity is the last card of the rail, with a link to all of it.
+     - The record's lines are `<atom:panel heading :count>` (a link to all of it in `actions`) over a `frameless` table, with the
+       totals as `<atom:table.totals>` in the table's `footer` slot. Money and quantities are `numeric` on the column and the cell;
+       identifiers are monospace (`font-id`). Long text (a description, notes) is a `padded` panel at the reading size: `text-base`.
+     - Crumbs are `<atom:breadcrumbs :items>` in the shell's `crumbs` slot (a fixed trail: this page has no Livewire component), with
+       the previous and next record as ghost icon buttons in the shell's `actions` slot, so the record's title is the page's one
+       heading. (Use the header's own `crumbs` prop instead where the shell has no slot to spare, not both.)
      - A list, a search and a failed load each have their own empty state, each with a next step, in an <atom:card inset>. The next
        step is a plain button: the header's primary stays the one primary on the screen.
      - A person in a list is `<atom:avatar size="xs">` and their name. Something the reader has to act on, such as a blocked
        job, is one `<atom:callout>` under the header, in the tone of the status (warning here), never a hand-built box.
      - Tone follows consequence in the menu: an action that stops or withdraws but keeps the record (cancel, archive, void) is a
-       `warning` item that confirms in warning (`<atom:confirm.trigger variant="warning">`), with no delete icon; only what destroys
-       data is `danger` (`variant="delete"`).
+       `warning` item that confirms in warning (`confirm` on the item), with no delete icon; only what destroys data is `danger`
+       (`variant="delete"`).
      - A process log is `<atom:timeline kind="step">` and a conversation is `<atom:timeline kind="message">`: the Log and Messages tabs.
 
      Open it with ?status=draft|in-progress|blocked|done to see the primary action and the stage path follow the status. --}}
@@ -100,11 +101,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
     </x-slot>
 
     <x-slot:crumbs>
-        <div class="flex items-center gap-1.5 text-fg-subtle" data-testid="record-crumbs">
-            <a href="?page=jobs" class="text-fg-muted hover:text-fg">Jobs</a>
-            <atom:icon.right class="size-3.5"/>
-            <span class="font-id font-medium text-fg">WO-1042</span>
-        </div>
+        <atom:breadcrumbs :items="[['label' => 'Jobs', 'href' => '?page=jobs'], ['label' => 'WO-1042']]" data-testid="record-crumbs"/>
 
         @if ($shell === 'header')
             <span class="ms-2 flex items-center">
@@ -147,9 +144,8 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
 
             <x-slot:menu>
                 <atom:menu.item icon="copy">Duplicate</atom:menu.item>
-                <atom:confirm.trigger variant="warning" heading="Cancel this job?" message="The job stops here, and its record stays." button-confirm="Cancel job" button-cancel="Keep job">
-                    <atom:menu.item variant="warning" data-testid="record-cancel">Cancel job</atom:menu.item>
-                </atom:confirm.trigger>
+                <atom:menu.separator/>
+                <atom:menu.item variant="warning" :confirm="['heading' => 'Cancel this job?', 'message' => 'The job stops here, and its record stays.', 'buttonCancel' => 'Keep job']" data-testid="record-cancel">Cancel job</atom:menu.item>
             </x-slot:menu>
 
             <x-slot:primary>
@@ -199,9 +195,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
             </atom:card>
         @elseif ($tab === 'activity' && request()->query('view') === 'all')
             {{-- "All changes" from the rail: the whole history, newest first --}}
-            <atom:card data-testid="record-history">
-                <h2 class="m-0 mb-3 text-sm font-semibold">All changes</h2>
-
+            <atom:panel heading="All changes" padded data-testid="record-history">
                 <atom:timeline label="Work order history" class="max-w-xl">
                     <atom:timeline.item wire:key="h-1" title="T-3 Pressure test" body="added to the job" actor="Ana" time="Today, 09:20" tone="info"/>
                     <atom:timeline.item wire:key="h-2" title="T-2 Replace the seal kit" body="marked done" actor="Ben" time="Today, 08:41" tone="success"/>
@@ -210,7 +204,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                     <atom:timeline.item wire:key="h-5" title="Due date" body="set to 29 Jul" actor="Ben" time="Yesterday, 16:12"/>
                     <atom:timeline.item wire:key="h-6" title="WO-1042" body="opened from quote Q-0231" actor="Ana" time="Yesterday, 16:02"/>
                 </atom:timeline>
-            </atom:card>
+            </atom:panel>
         @elseif ($tab === 'activity')
             {{-- an error: it could not load; the next step is to try again --}}
             <atom:card inset>
@@ -231,21 +225,17 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
             </atom:card>
         @elseif ($tab === 'log')
             {{-- a process log: `kind="step"`, each step done, current, pending or failed, the body folded away --}}
-            <atom:card data-testid="record-log">
-                <h2 class="m-0 mb-3 text-sm font-semibold">Pressure test run</h2>
-
+            <atom:panel heading="Pressure test run" padded data-testid="record-log">
                 <atom:timeline kind="step" label="Test run steps" class="max-w-xl">
                     <atom:timeline.item wire:key="log-1" title="Isolate the line" state="done" time="12m">Valves closed and tagged.</atom:timeline.item>
                     <atom:timeline.item wire:key="log-2" title="Fill and vent" state="done" time="20m">Air bled from the high point.</atom:timeline.item>
                     <atom:timeline.item wire:key="log-3" title="Hold at 16 bar" state="current" status="Running" time="38m">Holding. The gauge has not moved in 30 minutes.</atom:timeline.item>
                     <atom:timeline.item wire:key="log-4" title="Sign-off" state="pending">Needs the customer on site.</atom:timeline.item>
                 </atom:timeline>
-            </atom:card>
+            </atom:panel>
         @elseif ($tab === 'messages')
             {{-- a conversation: `kind="message"`, the other person at the start, yours at the end, a composer last --}}
-            <atom:card data-testid="record-messages">
-                <h2 class="m-0 mb-3 text-sm font-semibold">Customer thread</h2>
-
+            <atom:panel heading="Customer thread" padded data-testid="record-messages">
                 <atom:timeline kind="message" label="Customer thread" class="max-w-xl">
                     <atom:timeline.item wire:key="msg-1" speaker="Mira (Lakeside Foods)" time="09:02" body="Can someone confirm the pressure test is still on for Tuesday?"/>
                     <atom:timeline.item wire:key="msg-2" speaker="You" side="end" time="09:10" body="Yes. We are waiting on one seal kit and will confirm the time by end of day."/>
@@ -258,70 +248,62 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                         </form>
                     </x-slot:composer>
                 </atom:timeline>
-            </atom:card>
+            </atom:panel>
         @else
-            <div @class(['grid items-start gap-6', 'min-[1080px]:grid-cols-[minmax(0,1fr)_320px]' => $tab === 'overview'])>
-                <div class="grid min-w-0 gap-6">
-                    {{-- the panel of the record's lines, the same on the overview and on the Tasks tab --}}
-                    <div class="min-w-0 overflow-clip rounded-panel border bg-surface" data-testid="record-lines">
-                        <div class="flex items-baseline justify-between gap-3 border-b px-3.5 py-2.5">
-                            <h2 class="m-0 text-sm font-semibold">Tasks <span class="ms-1.5 text-xs font-normal text-fg-muted">{{ count($tasks) }} tasks</span></h2>
-                            <atom:link href="?tab=tasks" class="text-xs">View all {{ count($tasks) }}</atom:link>
-                        </div>
+            {{-- the main column and, on the overview, the rail: the page.columns tag draws the layout and its gaps --}}
+            <atom:page.columns>
+                {{-- the panel of the record's lines, the same on the overview and on the Tasks tab --}}
+                <atom:panel heading="Tasks" :count="count($tasks).' tasks'" data-testid="record-lines">
+                    <x-slot:actions>
+                        <atom:link href="?tab=tasks">View all {{ count($tasks) }}</atom:link>
+                    </x-slot:actions>
 
-                        <atom:table frameless :empty="false">
-                            <x-slot:columns>
-                                <atom:table.column>Task</atom:table.column>
-                                <atom:table.column>Status</atom:table.column>
-                                <atom:table.column>Assigned</atom:table.column>
-                                <atom:table.column numeric>Hours</atom:table.column>
-                            </x-slot:columns>
+                    <atom:table frameless :empty="false">
+                        <x-slot:columns>
+                            <atom:table.column>Task</atom:table.column>
+                            <atom:table.column>Status</atom:table.column>
+                            {{-- on a phone the hours and the totals under them stay in reach: the table scrolls sideways, and the totals end at its edge --}}
+                            <atom:table.column class="max-sm:hidden">Assigned</atom:table.column>
+                            <atom:table.column numeric>Hours</atom:table.column>
+                        </x-slot:columns>
 
-                            <x-slot:rows>
-                                @foreach ($tasks as [$id, $name, $taskStatus, $who, $taskHours])
-                                    <atom:table.row>
-                                        <atom:table.cell>
-                                            <span class="font-id text-fg-subtle">{{ $id }}</span>
-                                            <span class="ms-2 font-medium">{{ $name }}</span>
-                                        </atom:table.cell>
-                                        <atom:table.cell>
-                                            <atom:status :tone="$taskStatus === 'Done' ? 'success' : 'neutral'" :label="$taskStatus"/>
-                                        </atom:table.cell>
-                                        <atom:table.cell>
-                                            <span class="inline-flex items-center gap-2">
-                                                <atom:avatar size="xs" :square="false" :name="$who"/>
-                                                {{ $who }}
-                                            </span>
-                                        </atom:table.cell>
-                                        <atom:table.cell numeric>{{ $taskHours }}</atom:table.cell>
-                                    </atom:table.row>
-                                @endforeach
-                            </x-slot:rows>
-                        </atom:table>
+                        <x-slot:rows>
+                            @foreach ($tasks as [$id, $name, $taskStatus, $who, $taskHours])
+                                <atom:table.row>
+                                    <atom:table.cell>
+                                        <span class="font-id text-fg-subtle">{{ $id }}</span>
+                                        <span class="ms-2 font-medium">{{ $name }}</span>
+                                    </atom:table.cell>
+                                    <atom:table.cell>
+                                        <atom:status :tone="$taskStatus === 'Done' ? 'success' : 'neutral'" :label="$taskStatus"/>
+                                    </atom:table.cell>
+                                    <atom:table.cell class="max-sm:hidden">
+                                        <span class="inline-flex items-center gap-2">
+                                            <atom:avatar size="xs" :square="false" :name="$who"/>
+                                            {{ $who }}
+                                        </span>
+                                    </atom:table.cell>
+                                    <atom:table.cell numeric>{{ $taskHours }}</atom:table.cell>
+                                </atom:table.row>
+                            @endforeach
+                        </x-slot:rows>
 
-                        {{-- the totals sit under the table, in the panel --}}
-                        <dl class="m-0 flex flex-wrap justify-end gap-x-6 gap-y-1 border-t px-3.5 py-2.5 text-xs tabular-nums text-fg-subtle" data-testid="record-totals">
-                            <div class="flex gap-2"><dt>Quoted</dt><dd class="m-0">10.0 h</dd></div>
-                            <div class="flex gap-2"><dt class="font-medium text-fg">Total hours</dt><dd class="m-0 font-medium text-fg">{{ number_format($hours, 1) }} h</dd></div>
-                        </dl>
-                    </div>
-
-                    @if ($tab === 'overview')
-                        <div class="min-w-0 overflow-hidden rounded-panel border bg-surface" data-testid="record-description">
-                            <div class="border-b px-3.5 py-2.5">
-                                <h2 class="m-0 text-sm font-semibold">Description</h2>
-                            </div>
-
-                            {{-- long text is the reading size: 14px in the compact shell --}}
-                            <p class="m-0 px-3.5 py-3 text-base text-fg">The customer reports a drop in pressure on the second pump when both are running. Replace the seal kit, pressure test the line at 16 bar for an hour and sign the job off with the customer on site.</p>
-                        </div>
-                    @endif
-                </div>
+                        {{-- the totals are the table's own footer lines, under the hours column (the last one drawn) --}}
+                        <x-slot:footer>
+                            <atom:table.totals label="Quoted" value="10.0 h"/>
+                            <atom:table.totals label="Total hours" :value="number_format($hours, 1).' h'" total data-testid="record-totals"/>
+                        </x-slot:footer>
+                    </atom:table>
+                </atom:panel>
 
                 @if ($tab === 'overview')
-                    <aside class="grid min-w-0 gap-3.5" aria-label="Work order details" data-testid="record-rail">
-                        <atom:card class="grid gap-3">
-                            <h3 class="m-0 text-xs font-medium text-fg-subtle">Details</h3>
+                    {{-- long text is the reading size: 14px in the compact shell --}}
+                    <atom:panel heading="Description" padded data-testid="record-description">
+                        <p class="m-0 text-base text-fg">The customer reports a drop in pressure on the second pump when both are running. Replace the seal kit, pressure test the line at 16 bar for an hour and sign the job off with the customer on site.</p>
+                    </atom:panel>
+
+                    <x-slot:rail label="Work order details" data-testid="record-rail">
+                        <atom:card heading="Details">
                             <atom:dd.group>
                                 @foreach ($details as $label => $value)
                                     <atom:dd :label="$label">{{ $value }}</atom:dd>
@@ -329,8 +311,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                             </atom:dd.group>
                         </atom:card>
 
-                        <atom:card class="grid gap-3">
-                            <h3 class="m-0 text-xs font-medium text-fg-subtle">Customer</h3>
+                        <atom:card heading="Customer">
                             <atom:dd.group>
                                 <atom:dd label="Name">Lakeside Foods Sdn Bhd</atom:dd>
                                 <atom:dd label="Contact">Mira Tan</atom:dd>
@@ -338,8 +319,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                             </atom:dd.group>
                         </atom:card>
 
-                        <atom:card class="grid gap-3">
-                            <h3 class="m-0 text-xs font-medium text-fg-subtle">People</h3>
+                        <atom:card heading="People">
                             <atom:dd.group>
                                 @foreach ($people as [$role, $person, $personId])
                                     <atom:dd :label="$role">
@@ -355,8 +335,7 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                             </atom:dd.group>
                         </atom:card>
 
-                        <atom:card class="grid gap-3" data-testid="record-linked">
-                            <h3 class="m-0 text-xs font-medium text-fg-subtle">Linked records</h3>
+                        <atom:card heading="Linked records" class="grid gap-3" data-testid="record-linked">
                             <atom:dd.group>
                                 <atom:dd label="Appointment"><span class="font-id">AP-26100118</span></atom:dd>
                                 <atom:dd label="Order"><span class="font-id">PO-88213</span></atom:dd>
@@ -368,11 +347,10 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                         </atom:card>
 
                         {{-- activity is last in the rail: a few events and a link to all of them --}}
-                        <atom:card class="grid gap-3" data-testid="record-activity">
-                            <div class="flex items-baseline justify-between gap-3">
-                                <h3 class="m-0 text-xs font-medium text-fg-subtle">Activity</h3>
-                                <atom:link href="?tab=activity&view=all" class="text-xs">All changes</atom:link>
-                            </div>
+                        <atom:card heading="Activity" data-testid="record-activity">
+                            <x-slot:actions>
+                                <atom:link href="?tab=activity&view=all">All changes</atom:link>
+                            </x-slot:actions>
 
                             <atom:timeline label="Work order activity">
                                 <atom:timeline.item wire:key="activity-test" title="T-3 Pressure test" body="added to the job" actor="Ana" time="Today, 09:20" tone="info"/>
@@ -381,9 +359,9 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
                                 <atom:timeline.item wire:key="activity-opened" title="WO-1042" body="opened from quote Q-0231" actor="Ana" time="Yesterday, 16:02"/>
                             </atom:timeline>
                         </atom:card>
-                    </aside>
+                    </x-slot:rail>
                 @endif
-            </div>
+            </atom:page.columns>
         @endif
     </atom:page>
 

@@ -858,7 +858,7 @@ test.describe('dark mode in the shells', () => {
     expect(await contrast(page, await style(count, 'color'), side), 'a count').toBeGreaterThanOrEqual(4.5)
 
     // the top bar's crumbs read on the page canvas
-    const crumb = page.locator('[data-atom-shell-crumbs] .font-medium')
+    const crumb = page.locator('[data-atom-shell-crumbs] [data-atom-crumb-current]')
     expect(await contrast(page, await style(crumb, 'color'), canvas)).toBeGreaterThanOrEqual(4.5)
   })
 

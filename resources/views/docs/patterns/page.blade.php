@@ -1,6 +1,6 @@
 {{-- Placeholder page content for the two shell patterns. <main> is unpadded: <atom:page> pads the page. It follows the list page:
      the page's ONE primary action ("Create invoice") is the header's `primary` slot, never the shell's `actions` slot (that one is for
-     a secondary action or nothing); the table is a frameless one in a panel; a status is <atom:status>; money is `numeric` on the
+     a secondary action or nothing); the table is a frameless one in an `<atom:panel>`; a status is <atom:status>; money is `numeric` on the
      column and the cell, with the currency named once in the header ("Amount (RM)"). --}}
 @php
 $page = request()->query('page', 'invoices');
@@ -29,7 +29,7 @@ $tones = ['Paid' => 'success', 'Overdue' => 'danger', 'Sent' => 'neutral', 'Draf
 
     {{-- A table with no Livewire component behind it: static rows, no sorting or pagination. In a real page the rows come
          from a component (see the table docs). --}}
-    <div class="min-w-0 overflow-clip rounded-panel border bg-surface">
+    <atom:panel>
         <atom:table frameless :empty="false">
             <x-slot:columns>
                 <atom:table.column>Number</atom:table.column>
@@ -49,5 +49,5 @@ $tones = ['Paid' => 'success', 'Overdue' => 'danger', 'Sent' => 'neutral', 'Draf
                 @endforeach
             </x-slot:rows>
         </atom:table>
-    </div>
+    </atom:panel>
 </atom:page>
