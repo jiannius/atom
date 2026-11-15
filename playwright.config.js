@@ -38,6 +38,10 @@ const calendarProjects = engines.flatMap(({ browser, device }) => [
   // button (it still reaches the child's own listener), the controls Tab reaches (Safari's Tab skips buttons, so the rig walks with Alt+Tab there), a file
   // chooser, a drop, a selection. CI runs them in a job of their own (`e2e-disabled`), and Firefox is in it too: its disabled-button children were never probed.
   { name: `${browser}-disabled`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: disabledRigSpecs },
+  // The `confirm` prop's click gate and the table's checked-rows menu, for what an engine decides: a capture-phase click and a middle click on a link, Space
+  // and Enter on a gated link, where the focus lands when a menu closes under a dialog (Safari does not focus a button on click), and the popover and dialog
+  // layers closing together. CI runs them in the calendar job (`e2e-engines`), after its calendar projects.
+  { name: `${browser}-confirm`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /(confirm-prop|table-checked-menu)\.spec\.js$/ },
 ])
 
 // The shells' keyboard and focus specs run again in WebKit, for what Safari does and Chromium does not: it does not focus a button on click

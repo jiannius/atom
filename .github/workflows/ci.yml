@@ -204,6 +204,11 @@ jobs:
       - if: ${{ !cancelled() && matrix.browser == 'webkit' }}
         run: node_modules/.bin/playwright test --no-deps --project=webkit-shell
 
+      # The `confirm` prop's click gate and the table's checked-rows menu (tests/e2e/confirm-prop.spec.js, table-checked-menu.spec.js), in both
+      # engines: about 80 tests a browser, a couple of minutes. Same job and same "runs after a calendar failure" rule as the shell specs.
+      - if: ${{ !cancelled() }}
+        run: node_modules/.bin/playwright test --no-deps --project=${{ matrix.browser }}-confirm
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
