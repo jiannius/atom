@@ -78,13 +78,9 @@ $hasBeforeColumns = $hasActions || $hasEnd || $hasMenu || $trashed;
             @endif
 
             @if ($hasMenu)
-                <atom:dropdown position="bottom" align="end">
-                    <atom:button variant="ghost" icon="more" tooltip="More actions" />
-
-                    <atom:menu class="w-[220px]" popover>
-                        {{ $menu }}
-                    </atom:menu>
-                </atom:dropdown>
+                <atom:menu._more variant="ghost" tooltip>
+                    {{ $menu }}
+                </atom:menu._more>
             @endif
 
             @if ($hasColumns)
