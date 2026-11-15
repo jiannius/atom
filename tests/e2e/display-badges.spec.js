@@ -74,6 +74,17 @@ for (const tw of ['floor', 'latest']) {
       expect(badge['background-color']).toBe(await token(page, 'success-bg'))
     })
 
+    test('a status read from a value draws the tone of its colour, with its word', async ({ page }) => {
+      await openDisplay(page, { tw, section: 'badges' })
+
+      const fromValue = page.getByTestId('vs-status-value')
+      const status = await style(fromValue, 'background-color', 'color')
+
+      expect(status['background-color']).toBe(await token(page, 'success-bg'))
+      expect(status['background-color']).toBe((await style(page.getByTestId('vs-status'), 'background-color'))['background-color'])
+      await expect(fromValue).toHaveText('Paid')
+    })
+
     test('a status stays a dot and a word; a badge is neither a dot nor a status', async ({ page }) => {
       await openDisplay(page, { tw, section: 'badges' })
 
