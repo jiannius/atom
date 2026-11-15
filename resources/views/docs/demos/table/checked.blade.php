@@ -1,6 +1,8 @@
 {{-- The real bar is an Alpine template that opens when `$wire._table.checkboxes` has an id (the `WithTable` trait), so a static page
      cannot open it: these are its two looks, drawn with the classes the table prints. In a Livewire page you write
-     `<x-slot:checked tone="accent"> ...bulk actions... </x-slot:checked>` and the table does the rest. --}}
+     `<x-slot:checked tone="accent"> ...bulk actions... </x-slot:checked>` and the table does the rest. The ⋯ at the end of each group is the
+     table's `checked-menu` slot: `<x-slot:checked-menu><atom:menu.item>Export</atom:menu.item></x-slot:checked-menu>`, and atom draws the button
+     last, after your buttons. --}}
 <div class="max-w-2xl space-y-8">
     {{-- framed: the bar is its own strip above the panel --}}
     <div class="space-y-4">
@@ -9,7 +11,7 @@
                 <atom:icon.double-check class="size-4"/>
                 <div>2 Selected</div>
             </div>
-            <div class="flex grow items-center gap-3"><atom:button size="sm">Send reminders</atom:button></div>
+            <div class="flex grow items-center gap-3"><atom:button size="sm">Send reminders</atom:button><atom:button variant="ghost" icon="more" tooltip="More actions" /></div>
         </div>
     </div>
 
@@ -20,7 +22,7 @@
                 <atom:icon.double-check class="size-4"/>
                 <div>2 Selected</div>
             </div>
-            <div class="flex grow items-center gap-3"><atom:button size="sm">Send reminders</atom:button></div>
+            <div class="flex grow items-center gap-3"><atom:button size="sm">Send reminders</atom:button><atom:button variant="ghost" icon="more" tooltip="More actions" /></div>
         </div>
         <div class="px-3 py-2.5 text-sm text-fg-muted">Rows go here.</div>
     </div>

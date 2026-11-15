@@ -45,7 +45,7 @@ Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEdito
 - One `variant="primary"` per screen: the next step for the status (Edit if there is no workflow) or the form's submit. None in an empty state, toolbar, bulk bar or row.
 - Tone follows the consequence: danger destroys or cannot be undone (`type="delete"`); warning stops or hides but keeps the record (archive, void, cancel an order: `variant="warning" inverted`). Both confirm in their tone. Avoid `success` and `info` buttons.
 - Footers, bars and `form.modal` order buttons primary, default, danger, then ⋯ (the header places its own `primary`). In a menu, warning then danger go last, after `<atom:menu.separator>`.
-- Caps: header `actions` 2 (`size="sm"` 1), toolbar 2, bulk bar 3, card heading 1 link, rows 0 (`<atom:table.actions>`); the rest in `menu`.
+- Caps: header `actions` 2 (`size="sm"` 1), toolbar 2, bulk bar 3, card heading 1 link, rows 0 (`<atom:table.actions>`); the rest in `menu`/`checked-menu`.
 - List filters live in `<atom:table.filters>` bound to `filters.*`. A state is `<atom:status>`, a tag or count `<atom:badge>`; an empty list `<atom:empty>` with one plain button.
 - Forms: `<atom:form.section>`, `<atom:form.grid>`, `<atom:form.actions>`, never bare `grid-cols-2`. A main module's form is a page; a secondary one's (a tax rate, a tag) `<atom:form.modal>` or a slide-over.
 - Toast = what the user just did; one `<atom:callout>` under the header = what they must know.
