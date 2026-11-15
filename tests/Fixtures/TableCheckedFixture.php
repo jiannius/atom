@@ -9,7 +9,7 @@ use Livewire\WithPagination;
 
 /**
  * Drives the E2E for the checked bar's `tone="accent"`: a table with one row ticked, so the bar is showing. The query string picks
- * the shape (`frameless`, `tone`, `sticky`, `buttons`: how many bulk actions the slot holds, `gap`: a host's `gap-6` on the slot), so one page covers the framed and the frameless bar, tinted and not, with every text
+ * the shape (`frameless`, `tone`, `sticky`, `buttons`: how many bulk actions the slot holds, `gap`: a host's `gap-6` on the slot, `menu`: a `checked-menu` slot), so one page covers the framed and the frameless bar, tinted and not, with every text
  * role the bar can print (the count, "select all", "show selected", "clear selection") on screen.
  */
 class TableCheckedFixture extends Component
@@ -27,6 +27,12 @@ class TableCheckedFixture extends Component
 
     /** `?delete=1` adds a `type="delete"` bulk action, for the count in its confirm */
     public bool $delete = false;
+
+    /** `?menu=1` adds a `checked-menu` slot: an Export item and a `variant="delete"` item */
+    public bool $menu = false;
+
+    /** How many times the view has rendered: `bump()` forces one, for the morph spec */
+    public int $renders = 0;
 
     /** A class a host puts on `<x-slot:checked>`: `gap-6` (a literal in the view, so the consumer build sees it) */
     public ?string $gap = null;
@@ -48,6 +54,7 @@ class TableCheckedFixture extends Component
         $this->sticky = request()->boolean('sticky');
         $this->gap = request()->query('gap') === '6' ? request()->query('gap') : null;
         $this->delete = request()->boolean('delete');
+        $this->menu = request()->boolean('menu');
         $this->buttons = max(1, min(5, request()->integer('buttons', 1)));
         $this->_table['checkboxes'] = [1];
     }
@@ -58,6 +65,14 @@ class TableCheckedFixture extends Component
     public function delete(): void
     {
         $this->_table['checkboxes'] = [];
+    }
+
+    /**
+     * Re-render the view with nothing changed: a morph, for the open menu to survive.
+     */
+    public function bump(): void
+    {
+        $this->renders++;
     }
 
     /**

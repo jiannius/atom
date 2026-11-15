@@ -14,7 +14,11 @@
 
 @php
 /* A table of columns and rows needs nothing from $_table: the checked bar is what reads it (the parts that do guard themselves) */
-if (isset($checked) && $checked->isNotEmpty()) {
+$hasChecked = isset($checked) && $checked->isNotEmpty();
+$hasCheckedMenu = isset($checkedMenu) && $checkedMenu->hasActualContent();
+$showChecked = $hasChecked || $hasCheckedMenu;
+
+if ($showChecked) {
     app('atom')->requireTrait(\Jiannius\Atom\Traits\WithTable::class, '<atom:table>');
 }
 
@@ -53,7 +57,8 @@ $frameless = (bool) $frameless;
 
 $stripClasses = $frameless ? 'border-b px-3 py-2.5' : '';
 
-$checkedAccent = isset($checked) && $checked->attributes->get('tone') === 'accent';
+$checkedAccent = $hasChecked && $checked->attributes->get('tone') === 'accent';
+$checkedBag = $hasChecked ? $checked->attributes : new \Illuminate\View\ComponentAttributeBag;
 $checkedClasses = Arr::toCssClasses([
     'min-h-10 flex flex-wrap items-center gap-3',
     $stripClasses,
@@ -86,7 +91,9 @@ $columnsScript = $columnsCss !== '' && $columnsKey !== null && ! $columnsFromHos
 {{-- The checked bar wraps (count first, then the actions) so a narrow screen shows every action instead of clipping them.
      It is untinted by default. `<x-slot:checked tone="accent">` tints it with the accent-soft token and sets its text
      and icons in the accent ink, so the selected state stands out (any other tone is the default). Framed, the bar is its own
-     rounded strip; frameless it is a square strip inside the panel you draw, with its hairline strip padding, like the untinted one. --}}
+     rounded strip; frameless it is a square strip inside the panel you draw, with its hairline strip padding, like the untinted one.
+     The `checked-menu` slot (<atom:menu.item>s) is the bar's overflow: a ghost ⋯ (<atom:menu._more>) LAST in the bar's group, after the `checked`
+     buttons; a slot of only markers draws nothing, and a `checked-menu` without a `checked` slot still draws the bar. --}}
 <div
 {{ $attributes->merge(['x-data' => '{}'])->class(['group/table min-w-0 max-w-full', 'space-y-4' => ! $frameless]) }}
 x-on:table-filter:changed.window="{!! $onFilterChanged !!}"
@@ -122,7 +129,7 @@ data-atom-table
          expression tracks: the count and the select-all button each hold it as reactive state (`x-data="tableChecked"`, resources/js/alpinejs/
          table-checked.js, which watches the attribute), and the scope is theirs alone, not the bar's, so the host's `checked` slot is
          not inside it. --}}
-    @if (isset($checked) && $checked->isNotEmpty())
+    @if ($showChecked)
         <div x-show="$wire._table.checkboxes.length || $wire._table.select_all" x-cloak class="{{ $checkedClasses }}" data-atom-table-checked @if ($checkedAccent) data-tone="accent" @endif data-total="{{ $total }}">
             <div class="shrink-0 flex items-center gap-2 text-sm font-medium {{ $checkedMuted }}">
                 <atom:icon.double-check class="size-4"/>
@@ -159,8 +166,17 @@ data-atom-table
                 </button>
             @endif
 
-            <div {{ $checked->attributes->except('tone')->class('grow flex flex-wrap items-center gap-2') }}>
-                {{ $checked }}
+            <div {{ $checkedBag->except('tone')->class('grow flex flex-wrap items-center gap-2') }}>
+                @if ($hasChecked)
+                    {{ $checked }}
+                @endif
+
+                @if ($hasCheckedMenu)
+                    {{-- the ⋯ menu, last in the group after the host's buttons (delete included). It stays inside the bar, so a delete item counts the selection --}}
+                    <atom:menu._more variant="ghost" tooltip>
+                        {{ $checkedMenu }}
+                    </atom:menu._more>
+                @endif
             </div>
         </div>
     @endif
