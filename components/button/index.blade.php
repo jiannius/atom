@@ -14,6 +14,7 @@
     'icon' => null,
     'iconSuffix' => null,
     'tooltip' => null,
+    'confirm' => null,   // a heading, an array of dialog options, true for the default copy; false opts a delete out
 ])
 
 @php
@@ -187,18 +188,32 @@ if (!$attributes->wire('loading')->value()) {
     }
 }
 
-if ($type === 'delete' && !$attributes->wire('click')->value() && !$attributes->has('x-on:click')) {
-    /* The confirm button says what the trigger says ("Delete invoice"), when the trigger is plain text; else the dialog's own default. */
-    $confirmLabel = $label ? html_entity_decode(trim(preg_replace('/\s+/', ' ', (string) $slot)), ENT_QUOTES) : '';
-    $buttonConfirm = mb_strlen($confirmLabel) <= 40 ? $confirmLabel : '';
+/* The element asks before it acts when `confirm` says so, and a delete always does (`:confirm="false"` opts out). A delete with no action of its own
+   (no click handler, no link, not a submit) keeps calling `$wire.delete()` after the dialog; anything else carries the dialog as data, and helpers/confirm-gate.js
+   asks before the click reaches any handler, then clicks again once it is accepted. */
+$handled = $attributes->wire('click')->value()
+    || \Jiannius\Atom\Services\Attributes::hasLike($attributes, 'x-on:click*', '@click*');
 
+$confirmation = \Jiannius\Atom\Services\ConfirmProp::resolve($confirm, $variant, $type === 'delete', (bool) $handled, $el === 'a' || $type === 'submit', (string) $slot, $passphrase);
+
+if (data_get($confirmation, 'mode') === 'handler') {
     $merges = [
         ...$merges,
 
-        'x-on:click' => app('atom')->deleteConfirmHandler($passphrase, $buttonConfirm),
+        'x-on:click' => app('atom')->deleteConfirmHandler(
+            data_get($confirmation, 'config.passphrase'),
+            (string) data_get($confirmation, 'config.buttonConfirm', ''),
+            $confirmation['given'],
+        ),
 
         'x-on:confirmed' => "\$wire.delete()",
     ];
+}
+else if ($confirmation) {
+    $merges = [...$merges, 'data-atom-confirm' => json_encode($confirmation['config'])];
+}
+else if ($type === 'delete' && $confirm === false && !$handled && $el === 'button') {
+    $merges = [...$merges, 'x-on:click' => "\$wire.delete()"];
 }
 
 if ($slot->isEmpty() && data_get($icon, 'start')) {

@@ -11,8 +11,8 @@ const more = (page) => bar(page).getByRole('button', { name: 'More actions' })
 const menu = (page) => bar(page).locator('[data-atom-menu][popover]')
 const dialog = (page) => page.locator('dialog[x-data*="atom-confirm"]')
 
-const show = async (page, { tw = 'latest', dark = false, accent = null, tone = null, buttons = 1, frameless = false } = {}) => {
-  await open(page, { path: 'table-checked', tw, dark, accent, extra: `&menu=1&delete=1&buttons=${buttons}${tone ? `&tone=${tone}` : ''}${frameless ? '&frameless=1' : ''}` })
+const show = async (page, { tw = 'latest', dark = false, accent = null, tone = null, buttons = 1, frameless = false, click = false } = {}) => {
+  await open(page, { path: 'table-checked', tw, dark, accent, extra: `&menu=1&delete=1${click ? '&menuclick=1' : ''}&buttons=${buttons}${tone ? `&tone=${tone}` : ''}${frameless ? '&frameless=1' : ''}` })
   await page.waitForFunction(() => window.Livewire && window.Alpine)
   await expect(bar(page)).toBeVisible()
 }
@@ -70,6 +70,32 @@ test('accepting a delete item runs the component\'s delete() for the selection a
 
   await expect(page.locator('[data-deleted]')).toHaveText('3')
   await expect(bar(page)).toBeHidden()
+})
+
+// the same item with a `wire:click` of its own: the click gate asks (Q14), counting the selection, and runs it once after Accept
+test('a delete item with its own wire:click asks with the count, runs it once after Accept, and Cancel runs nothing', async ({ page }) => {
+  await show(page, { click: true })
+  await page.getByRole('checkbox', { name: 'Select row' }).nth(1).click()
+  await page.getByRole('checkbox', { name: 'Select row' }).nth(2).click()
+  await expect(bar(page)).toContainText('3 Selected')
+
+  await more(page).click()
+  await menu(page).getByRole('menuitem', { name: 'Delete' }).click()
+  await expect(dialog(page)).toHaveAttribute('data-open', '')
+  await expect(dialog(page).locator('.text-lg')).toHaveText('Delete 3 records?')
+  expect(await menu(page).evaluate((el) => el.matches(':popover-open'))).toBe(false)
+  await dialog(page).getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog(page)).not.toHaveAttribute('data-open', '')
+  await page.waitForTimeout(400)
+  await expect(page.locator('[data-deleted]')).toHaveText('0')
+
+  await more(page).click()
+  await menu(page).getByRole('menuitem', { name: 'Delete' }).click()
+  await dialog(page).locator('button[type="submit"]').click()
+
+  await expect(page.locator('[data-deleted]')).toHaveText('3')
+  await page.waitForTimeout(400)
+  await expect(page.locator('[data-deleted]')).toHaveText('3')
 })
 
 test('an open menu survives a morph of the table', async ({ page }) => {

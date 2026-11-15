@@ -15,7 +15,7 @@
 
 <div
 x-data
-x-on:click="$el.querySelector('button[disabled]') || atom.confirm(@js(array_filter([
+x-on:click="$event.target.closest?.('[data-atom-confirm]') || $el.querySelector('button[disabled]') || atom.confirm(@js(array_filter([
     'variant' => $variant,
     'heading' => app('atom')->translateOnce($heading),
     'subheading' => app('atom')->translateOnce($subheading ?? $message),

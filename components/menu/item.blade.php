@@ -10,6 +10,7 @@
     'phrase' => null,   // alias of passphrase
     'icon' => null,
     'iconSuffix' => null,
+    'confirm' => null,   // a heading, an array of dialog options, true for the default copy; false opts a delete out
 ])
 
 @php
@@ -51,18 +52,30 @@ $merges = [
     'data-atom-menu-item' => true,
 ];
 
-if ($variant === 'delete' && !$attributes->wire('click')->value() && !$attributes->has('x-on:click')) {
-    /* The confirm button says what the item says ("Delete invoice"), when the item is plain text; else the dialog's own default. */
-    $confirmLabel = str_contains((string) $slot, '<') ? '' : html_entity_decode(trim(preg_replace('/\s+/', ' ', (string) $slot)), ENT_QUOTES);
-    $buttonConfirm = mb_strlen($confirmLabel) <= 40 ? $confirmLabel : '';
+/* Asks before it acts when `confirm` says so, and a delete always does (`:confirm="false"` opts out); see button/index.blade.php. */
+$handled = $attributes->wire('click')->value()
+    || \Jiannius\Atom\Services\Attributes::hasLike($attributes, 'x-on:click*', '@click*');
 
+$confirmation = \Jiannius\Atom\Services\ConfirmProp::resolve($confirm, $variant, $variant === 'delete', (bool) $handled, $el === 'a' || $type === 'submit', (string) $slot, $passphrase);
+
+if (data_get($confirmation, 'mode') === 'handler') {
     $merges = [
         ...$merges,
 
-        'x-on:click' => app('atom')->deleteConfirmHandler($passphrase, $buttonConfirm),
+        'x-on:click' => app('atom')->deleteConfirmHandler(
+            data_get($confirmation, 'config.passphrase'),
+            (string) data_get($confirmation, 'config.buttonConfirm', ''),
+            $confirmation['given'],
+        ),
 
         'x-on:confirmed' => "\$wire.delete()",
     ];
+}
+else if ($confirmation) {
+    $merges = [...$merges, 'data-atom-confirm' => json_encode($confirmation['config'])];
+}
+else if ($variant === 'delete' && $confirm === false && !$handled && $el === 'button' && $type !== 'submit') {
+    $merges = [...$merges, 'x-on:click' => "\$wire.delete()"];
 }
 @endphp
 

@@ -129,10 +129,17 @@ describe('button', function () {
             ->toContain('x-on:confirmed="$wire.delete()"');
     });
 
-    it('does not auto-wire the confirm flow when the caller sets its own click', function () {
+    it('confirms a delete that has its own click too, through the gate and not the delete handler', function () {
         $html = renderBlade('<atom:button type="delete" wire:click="remove">Delete</atom:button>');
 
-        expect($html)->not->toContain('atom.confirm({');
+        expect($html)->not->toContain('atom.confirm({')->not->toContain('x-on:confirmed')
+            ->toContain('wire:click="remove"')
+            ->toContain('data-atom-confirm=');
+    });
+
+    it('lets a delete opt out of its confirm with :confirm="false"', function () {
+        expect(renderBlade('<atom:button type="delete" wire:click="remove" :confirm="false">Delete</atom:button>'))
+            ->not->toContain('data-atom-confirm')->not->toContain('atom.confirm({');
     });
 
     it('renders an anchor when given an href', function () {

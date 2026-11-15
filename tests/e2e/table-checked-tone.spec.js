@@ -71,7 +71,8 @@ for (const tw of ['floor', 'latest']) {
 }
 
 // The bulk delete counts what is ticked: "Delete this record?" for one, "Delete 2 records?" for two, the total for select-all.
-test.describe('table checked bar: the delete confirm counts the selection', () => {
+// Both ways a delete asks: with no action of its own (the delete handler) and with a `wire:click` (the click gate).
+for (const [how, extra] of [['no action of its own', '&delete=1'], ['its own wire:click', '&deleteclick=1']]) test.describe(`table checked bar: the delete confirm counts the selection (${how})`, () => {
   const dialog = (page) => page.locator('dialog[x-data*="atom-confirm"]')
   const heading = (page) => dialog(page).locator('.text-lg')
 
@@ -81,7 +82,7 @@ test.describe('table checked bar: the delete confirm counts the selection', () =
   }
 
   test('one ticked row keeps the single wording, two say how many, select-all says the total', async ({ page }) => {
-    await open(page, { path: 'table-checked', tw: 'latest', extra: '&delete=1' })
+    await open(page, { path: 'table-checked', tw: 'latest', extra })
     await expect(bar(page)).toBeVisible()
 
     await ask(page)
@@ -100,5 +101,17 @@ test.describe('table checked bar: the delete confirm counts the selection', () =
     await expect(bar(page)).toContainText('12 Selected')
     await ask(page)
     await expect(heading(page)).toHaveText('Delete 12 records?')
+  })
+  test('Accept runs the delete once: it ran once', async ({ page }) => {
+    await open(page, { path: 'table-checked', tw: 'latest', extra })
+    await expect(bar(page)).toBeVisible()
+    await expect(page.locator('[data-deleted]')).toHaveText('0')
+
+    await ask(page)
+    await dialog(page).locator('button[type="submit"]').click()
+
+    await expect(page.locator('[data-deleted]')).toHaveText('1')
+    await page.waitForTimeout(300)
+    await expect(page.locator('[data-deleted]')).toHaveText('1')
   })
 })
