@@ -57,6 +57,7 @@ $pager = fn (int $page) => new \Illuminate\Pagination\LengthAwarePaginator(colle
         <div class="flex flex-wrap items-center gap-2" data-testid="badge-vs-status">
             <atom:badge color="green" label="Paid" data-testid="vs-badge"/>
             <atom:status tone="success" label="Paid" data-testid="vs-status"/>
+            <atom:status :value="['color' => 'green', 'label' => 'Paid']" data-testid="vs-status-value"/>
         </div>
 
         {{-- on a sunken and on a raised surface: a badge is read on whatever it sits on --}}
