@@ -240,3 +240,12 @@ it('draws the missing-value mark in a dd and a table cell whose slot is only fal
         ->and(domQuery($real, '//dd//*[@data-atom-missing]'))->toBeEmpty()
         ->and($real)->toContain('Jane');
 });
+
+it('draws no rail aside for a page.columns rail slot that is only false blocks, and keeps the main column', function () {
+    $empty = renderInLivewire('<atom:page.columns><p>Main</p><x-slot:rail label="L">'.FALSE_BLOCKS.'</x-slot:rail></atom:page.columns>');
+    $real = renderInLivewire('<atom:page.columns><p>Main</p><x-slot:rail label="L">@if (true) <p>Rail</p> @endif</x-slot:rail></atom:page.columns>');
+
+    expect(domQuery($empty, '//*[@data-atom-page-columns-main]//p'))->toHaveCount(1)
+        ->and(domQuery($empty, '//aside'))->toBeEmpty()
+        ->and(domQuery($real, '//aside[@aria-label="L"]'))->toHaveCount(1);
+});

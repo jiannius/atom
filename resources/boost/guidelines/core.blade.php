@@ -41,7 +41,7 @@ Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEdito
 
 ### Design rules
 
-- A screen is `<atom:page>` opening with `<atom:page.header>`; crumbs: <atom:breadcrumbs :items> in the shell's `crumbs` slot, or the header's `crumbs` prop, not both. Never hand-build a title, crumb strip, sidebar toggle or ⋯ dropdown.
+- A screen is `<atom:page>` opening with `<atom:page.header>`; crumbs: <atom:breadcrumbs :items> in the shell's `crumbs` slot, or the header's `crumbs` prop, not both. Never hand-build a title, crumb strip, sidebar toggle, ⋯ dropdown or rail (`<atom:page.columns>`).
 - One `variant="primary"` per screen: the next step for the status (Edit if there is no workflow) or the form's submit. None in an empty state, toolbar, bulk bar or row.
 - Tone follows the consequence: danger destroys or cannot be undone (`type="delete"`); warning stops or hides but keeps the record (archive, void, cancel an order: `variant="warning" inverted`). Both confirm in tone (`confirm`). Avoid `success` and `info` buttons.
 - Footers, bars and `form.modal` order buttons primary, default, danger, then ⋯ (the header places its own `primary`). In a menu, warning then danger go last, after `<atom:menu.separator>`.
@@ -50,7 +50,7 @@ Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEdito
 - Forms: `<atom:form.section>`, `<atom:form.grid>`, `<atom:form.actions>`, never bare `grid-cols-2`. A main module's form is a page; a secondary one's (a tax rate, a tag) `<atom:form.modal>` or a slide-over.
 - Toast = what the user just did; one `<atom:callout>` under the header = what they must know.
 - Sentence case; buttons start with a verb ("Create …" a record, "Add …" a line). Never type `—` or `--` for a missing value.
-- Use `<atom:card>`, `<atom:dd>`, `<atom:timeline>`, `<atom:navlist>` (in `<atom:layouts.sidebar>` or `<atom:layouts.header>`) and `<atom:separator>`, not hand-built boxes or `<hr>`; no margins between page blocks, no `gap-[..]`, no `shadow-*`. Colour with role tokens (`bg-surface`, `text-fg-muted`, `border-border`), not `zinc-*` or `dark:` pairs. `type="submit"` and `"delete"` add no icon (`icon=`).
+- Use `<atom:card>`, `<atom:dd>`, `<atom:timeline>`, `<atom:navlist>` (in `<atom:layouts.sidebar>` or `<atom:layouts.header>`) and `<atom:separator>`, not hand-built boxes or `<hr>`; no margins between blocks, no `gap-[..]`, no `shadow-*`. Colour with role tokens (`bg-surface`, `text-fg-muted`, `border-border`), not `zinc-*` or `dark:` pairs. `type="submit"` and `"delete"` add no icon (`icon=`).
 - Full tables: the skill's Design rules and Patterns section.
 @endverbatim
 

@@ -22,6 +22,11 @@ description="Link tabs with counts, straight under the header. The current tab c
 view="atom::docs.demos.page.tabs"/>
 
 <atom:docs.example
+title="Main column and rail"
+description="No breakpoint: the rail (a 320px aside, 14px between its cards) sits beside the main column while that keeps 60% of the row, and under it, full width, when it no longer fits, so a collapsed sidebar or the top-nav shell brings it beside sooner. sticky pins it under the shell's bar while it is beside the main column; label names the aside."
+view="atom::docs.demos.page.columns"/>
+
+<atom:docs.example
 title="In a modal or a slide-over"
 description="For a form, never a whole record: size=sm and level=2. The header is pure Blade and CSS, so a Livewire morph leaves it alone."
 view="atom::docs.demos.page.compact"/>

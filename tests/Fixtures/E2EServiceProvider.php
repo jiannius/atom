@@ -181,6 +181,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/timeline-wrap', fn () => view('atom::e2e.timeline-wrap'));
         Route::middleware('web')->get('/atom/e2e/slide-over-form', fn () => view('atom::e2e.slide-over-form'));
         Route::middleware('web')->get('/atom/e2e/page-width', fn () => view('atom::e2e.page-width'));
+        // <atom:page.columns> in both shells: ?shell=sidebar|header, ?tw, ?rail=0, ?sticky=1, ?wide=1, ?tall=1
+        Route::middleware('web')->get('/atom/e2e/page-columns', fn () => view('atom::e2e.page-columns'));
         Route::middleware('web')->get('/atom/e2e/page-header-container', fn () => view('atom::e2e.page-header-container'));
         Route::middleware('web')->get('/atom/e2e/page-header-slide', fn () => view('atom::e2e.page-header-slide'));
         // status tones, stats and the empty states, on the consumer's Tailwind: ?tw=floor|latest, ?dark=1, ?accent=#rrggbb

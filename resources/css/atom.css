@@ -1590,6 +1590,76 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
     }
 }
 
+/* page.columns: a main column and a rail with no breakpoint. A wrapping flex row: the main column takes the room the rail leaves
+   (flex-grow 99999 against the rail's 1, so the rail is its 320px basis plus a hundredth of a pixel) and keeps at least 60% of the
+   width; the rail (320px basis) wraps under it, full width, when it no longer fits beside that. So the switch follows the room the
+   columns have, a wide shell or a collapsed sidebar brings the rail beside the main column sooner, and it is the same in both
+   shells. The row is (320 + 22) / (1 - 0.6) = 855px wide at the switch: the `@container` below says the same number, and
+   tests/e2e/page-columns.spec.js holds the two together. The 22px page gap is the gap between the columns and
+   between the main column's blocks; the rail's cards are 14px apart. The main column is a one-track grid with `minmax(0, 1fr)`, so
+   a wide table in it scrolls inside its own box and never widens the page. Everything is in `@layer base`, so a utility of the
+   host's on the tag (`gap-8`) or on the rail slot (`class="static"`) wins.
+   A sticky rail (`data-sticky`) sticks under the shell's bar (`--atom-shell-bar-h`, 0 outside a shell) wherever it is: wrapped under the
+   main column it is the last item of the row, with nothing below it to stick against, so it does not move. What a container query on
+   the row's own width gates (the row is the container; it fills the page, so `width: 100%`) is the part that needs it beside the main
+   column: the rail is no taller than what the window leaves under the bar (taller, it scrolls inside itself, so its lower cards and their
+   controls can be reached), it clips sideways (a wide card does not get a scroll bar of its own), and it keeps 6px of padding that a
+   negative margin takes back (its content is still the 320px and the row's edge), so a scroll box that clips on every side does not
+   cut the focus ring of a card or a control at its edge. `max-width: 100%` stops that margin from making a wrapped rail wider than
+   the row. The 855px is the switch for the default 22px gap and the 320px rail: a host gap (`gap-8`, switch at 880px) or rail width
+   moves the real switch and leaves a band of a few tens of pixels where the rail is beside the main column without the inner scroll
+   (a smaller gap) or wrapped under it with it (a larger one, with `max-width` holding the box to the row). */
+@layer base {
+    [data-atom-page-columns] {
+        container-type: inline-size;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 22px;
+        width: 100%;
+        min-width: 0;
+    }
+
+    [data-atom-page-columns-main] {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-content: start;
+        gap: 22px;
+        flex: 99999 1 0%;
+        min-width: 60%;
+    }
+
+    [data-atom-page-columns-rail] {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-content: start;
+        gap: 14px;
+        flex: 1 0 320px;
+        min-width: 0;
+    }
+
+    [data-atom-page-columns-rail][data-sticky] {
+        position: sticky;
+        top: calc(var(--atom-shell-bar-h, 0px) + 1rem);
+    }
+
+    @container (min-width: 855px) {
+        [data-atom-page-columns-rail][data-sticky] {
+            --atom-rail-bleed: 6px;
+            box-sizing: border-box;
+            flex-basis: calc(320px + 2 * var(--atom-rail-bleed));
+            max-width: 100%;
+            margin: calc(-1 * var(--atom-rail-bleed));
+            padding: var(--atom-rail-bleed);
+            top: calc(var(--atom-shell-bar-h, 0px) + 1rem - var(--atom-rail-bleed));
+            max-height: calc(100dvh - var(--atom-shell-bar-h, 0px) - 2rem + 2 * var(--atom-rail-bleed));
+            overflow-x: clip;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+    }
+}
+
 /* A page that prints its own <h1> (page.header at level 1) replaces the layout's hidden fallback, so a screen reader
    meets one h1. The fallback stays for a page without one. A page.header inside a modal is level 2 and does not match. */
 [data-atom-main]:has(h1[data-atom-page-header-title]) > [data-atom-page-title] {
