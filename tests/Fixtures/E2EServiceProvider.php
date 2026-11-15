@@ -75,6 +75,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-shell-actions', ShellActionsFixture::class);
         Livewire::component('atom-e2e-page-header-slide', PageHeaderSlideFixture::class);
         Livewire::component('atom-e2e-card-panel', CardPanelFixture::class);
+        Livewire::component('atom-e2e-tiles', TilesFixture::class);
         Livewire::component('atom-e2e-table-views', TableViewsFixture::class);
         Livewire::component('atom-e2e-table-filter-bar', TableFilterBarFixture::class);
         Livewire::component('atom-e2e-timeline', TimelineFixture::class);
@@ -121,6 +122,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/table-filters-more', fn () => view('atom::e2e.table-filters-more'));
         Route::middleware('web')->get('/atom/e2e/table-filter-bar', fn () => view('atom::e2e.table-filter-bar'));
         Route::middleware('web')->get('/atom/e2e/card-panel', fn () => view('atom::e2e.card-panel'));
+        Route::middleware('web')->get('/atom/e2e/tiles', fn () => view('atom::e2e.tiles'));
         Route::middleware('web')->get('/atom/e2e/table-filters-inline', fn () => view('atom::e2e.table-filters-inline'));
         Route::middleware('web')->get('/atom/e2e/table-filters-disabled', fn () => view('atom::e2e.table-filters-disabled'));
         Route::middleware('web')->get('/atom/e2e/table-loading', fn () => view('atom::e2e.table-loading'));

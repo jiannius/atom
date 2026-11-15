@@ -1783,3 +1783,62 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
 [data-atom-panel] {
     overflow: clip;
 }
+
+/* Selectable tiles: `variant="tile"` on <atom:radio.group> and <atom:checkbox.group>. The group is a grid of boxes at least 12rem wide (`min()` so a
+   container narrower than that gets one full-width column, never an overflow); each <atom:radio> / <atom:checkbox> in it is a <label> box around its native
+   input (sr-only), with the indicator over the top end. The fill, border and radius are utilities in the Blade file, the rest is here because the test rig has
+   no Tailwind and the states are `:has()` of the input. The grid is in `@layer base`, so a host's `grid-cols-*` or `gap-*` on the group wins. */
+@layer base {
+    [data-atom-tiles] {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(min(12rem, 100%), 1fr));
+        gap: 0.75rem;
+    }
+}
+
+[data-atom-tile] {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+[data-atom-tile-indicator] {
+    position: absolute;
+    inset-block-start: 0.75rem;
+    inset-inline-end: 0.75rem;
+}
+
+/* One state wins by order, not by weight: every condition sits in `:where()`, so each rule is one attribute selector. Hover, checked (a ring: the border
+   plus 1px more, in `--atom-tile-ring`, the accent ink), an invalid one (the error under the tile group, or a checkbox's own error, takes the ring and the border to the
+   danger colour), a disabled one (sunken, a faint border, no ring: it beats all), then the keyboard ring on the tile, drawn only for `:focus-visible`. */
+[data-atom-tile]:where(:hover) {
+    border-color: var(--atom-border-strong);
+}
+
+[data-atom-tile]:where(:has(> input:checked)) {
+    border-color: var(--atom-tile-ring, var(--atom-accent-ink));
+    box-shadow: 0 0 0 1px var(--atom-tile-ring, var(--atom-accent-ink));
+}
+
+[data-atom-tile]:where(:has([data-atom-error]), [data-atom-tiles]:has(~ [data-atom-error]) *) {
+    --atom-tile-ring: var(--atom-danger-fg);
+    border-color: var(--atom-danger-fg);
+}
+
+[data-atom-tile]:where(:has(> input:disabled)) {
+    border-color: var(--atom-border);
+    background: var(--atom-surface-sunken);
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* a disabled tile that is checked keeps a faint accent border (no ring), so a locked form still shows what was chosen */
+[data-atom-tile]:where(:has(> input:checked:disabled)) {
+    border-color: color-mix(in srgb, var(--atom-accent-ink) 45%, var(--atom-surface-sunken));
+}
+
+[data-atom-tile]:where(:has(> input:focus-visible)) {
+    outline: 2px solid var(--atom-focus);
+    outline-offset: 2px;
+}

@@ -213,6 +213,10 @@ jobs:
       - if: ${{ !cancelled() }}
         run: node_modules/.bin/playwright test --no-deps --project=${{ matrix.browser }}-totals
 
+      # Selectable tiles (tests/e2e/tiles.spec.js) in both engines: the `:has()` states and the focus ring on the tile are the engine's to draw.
+      - if: ${{ !cancelled() }}
+        run: node_modules/.bin/playwright test --no-deps --project=${{ matrix.browser }}-tiles
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

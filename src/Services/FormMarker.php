@@ -65,7 +65,7 @@ class FormMarker
      * form from the fields of an island or a child inside it: an island is rendered again, alone, by the same component, so the id alone would
      * match on its first render (form around it) and not after its own update.
      */
-    protected static function owner(): string
+    public static function owner(): string
     {
         if (! class_exists(ExtendBlade::class) || ! method_exists(ExtendBlade::class, 'currentRendering')) {
             return '';

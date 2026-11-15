@@ -575,8 +575,8 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:input>` | `name`, `type` (`text`, `email`, `password`, `number`, `tel`, `color`), `label`, `caption`, `prefix`, `suffix`, `required`, `error`, `disabled` (see "Disabled controls"). Subs: `<atom:input.text>`, `<atom:input.email>`, `<atom:input.tel>`, `<atom:input.color>`, `<atom:input.field>`, `<atom:input.prefix>`. |
 | `<atom:textarea>` | `name`, `label`, `caption`, `rows` (default 3), `autoresize`, `variant="transparent"`, `disabled` (see "Disabled controls"; the transparent variant, which has no box, shows it by its subtle text). |
 | `<atom:select>` | `options` — an **array** for a static list, or a **string** naming a `GetOptions` set to fetch remotely. Plus `name` (field name, not the option set), `label`, `caption`, `variant` (`native` (default), `listbox`, `filter`), `required`, `error`, `prefix`, `suffix`, `inline`; `filters`, `multiple`, `searchable`, `clearable` on `listbox`; `table-filter` on `native`/`listbox` registers the field as a chip in `<atom:table.filters>` (key = `wire:model`, chip name = `label`); `add` on `filter` draws the trigger as a dashed "+ Label" pill. In `<atom:table.filters chips="inline">` it is also the filter's chip once a value is set: one button ("Label is Value", a chevron, an x beside it) that opens the same menu with the value ticked; a single select closes on a pick, a multiple one stays open, reads "is any of" and names two values before it counts ("3 selected"). In a `chips="below"` bar, or in the `more` slot, the bar draws the chip and a single select's pill steps aside while it has a value. Children: `<atom:select.option>`, `<atom:select.group>`. |
-| `<atom:checkbox>` | `name`, `label`, `caption`, `align` (`start`, `center`, `end`). Group with `<atom:checkbox.group>`. |
-| `<atom:radio>` | Same as checkbox. Group with `<atom:radio.group>`; `variant="card"` on the group puts the options in one bordered panel, and a radio's `caption` is then the muted second line under its label (`label="Yearly" caption="RM 500 a year, two months free" align="start"`: a title and a description, clickable as one). |
+| `<atom:checkbox>` | `name`, `label`, `caption`, `align` (`start`, `center`, `end`). Group with `<atom:checkbox.group>`; `variant="card"` puts the options in one bordered panel, `variant="tile"` draws a grid of selectable tiles (see below). |
+| `<atom:radio>` | Same as checkbox. Group with `<atom:radio.group>`; `variant="card"` on the group puts the options in one bordered panel, and a radio's `caption` is then the muted second line under its label (`label="Yearly" caption="RM 500 a year, two months free" align="start"`: a title and a description, clickable as one). `variant="tile"` draws the group as a grid of selectable tiles instead (see below). |
 | `<atom:toggle>` | `name`, `label`, `caption`, `disabled`. Group with `<atom:toggle.group>`. |
 | `<atom:slider>` | Range slider on a native `<input type=range>`. `name`, `label`, `caption`, `min` (0), `max` (100), `step` (1), `value`, `bubble` (value shown on interaction), `labels` (min/max at track ends), `required`, `disabled`. `wire:model` binds via `x-modelable`. |
 | `<atom:rating>` | Star rating input + display. `name`, `label`, `caption`, `count` (5), `value`, `half` (half-step selection), `readonly` (display a fixed/average value), `disabled` (dimmed, no pointer or keyboard, no tab stop; also from a disabled `<atom:form>`; wins over `readonly`), `clearable` (re-click resets to 0), `icon` (swap the star for any atom icon). `wire:model` binds via `x-modelable`. |
@@ -585,6 +585,30 @@ All components live in `components/`. Open `components/<name>/index.blade.php` (
 | `<atom:uploader>` | `label` (default `Upload`), `variant`, `size`, `disabled` (also from a disabled `<atom:form>`: the file input is really disabled, so no chooser opens from the button or a slotted trigger; the dropzone ignores a drop). A default slot **replaces** the upload button (your own trigger); the `end` slot (`<x-slot:end>`) adds content beside the button and the cancel control and keeps the button: a size or type hint. `<atom:input type="file">` forwards both slots. Drop variant: `<atom:uploader.dropzone>`, with the same two slots (`end` is drawn under the zone). |
 | `<atom:tiptap>` | Tiptap rich text. `name`, `label`, `caption`, `readonly`, `autofocus`, `variant="transparent"`, `placeholder`, `toolbar`, `mention`. Many sub-buttons under `<atom:tiptap.toolbar.*>` and contextual menus under `<atom:tiptap.menu.*>`. `<atom:editor>`, `<atom:editor.chat>` and `<atom:editor.content>` are gone: they were aliases of `<atom:tiptap>`, `<atom:tiptap.chat>` and `<atom:tiptap.content>`. |
 | `<atom:prose>` | Typography for text that is read inside something else (a message bubble, a card): the same wrapper as `<atom:tiptap.content>`, with the first and last block flush against the box. `size="sm"` is the chat-bubble step. One of three sources: `markdown` (a string, converted and sanitised: see "Markdown in a message"), `content` (stored Tiptap JSON or HTML, through `Content::render()`) or the slot (your own markup, printed as written). Put it in `<atom:timeline.item kind="message">`'s slot for an assistant's reply. |
+
+### Selectable tiles
+
+`variant="tile"` on `<atom:radio.group>` or `<atom:checkbox.group>` draws the group as a grid of boxes, one per `<atom:radio>` or `<atom:checkbox>`: pick one (a plan) or pick many (extras). A tile is the option's `<label>` with its dot or tick over the top end and its `label` and `caption` as the body, or any slot instead (an image, a price).
+
+```blade
+<atom:radio.group label="Plan" variant="tile">
+    <atom:radio wire:model="plan" name="plan" value="starter" label="Starter" caption="RM 50 a month"/>
+    <atom:radio wire:model="plan" name="plan" value="custom">
+        <div class="font-medium">Custom</div>
+        <div class="text-2xl font-semibold">RM 999</div>
+    </atom:radio>
+</atom:radio.group>
+
+<atom:checkbox.group variant="tile" role="group" aria-label="Extras">
+    <atom:checkbox wire:model="extras" value="gift" label="Gift wrap" caption="RM 5"/>
+</atom:checkbox.group>
+```
+
+- **The inputs are native.** Each tile keeps a real, visually hidden `<input>`, so Tab enters a radio group once and its arrow keys move the choice (give the radios one `name`), Space toggles a checkbox, and `wire:model`, `x-model`, `name` and a form post work as on a plain radio or checkbox. A screen reader reads the tile's label and caption as the control's name; a radio group with a `label` is named by it, and a checkbox group (it has no label of its own) by `role="group"` and an `aria-label`.
+- **The grid.** Columns are at least 12rem wide and wrap by the room (one on a phone). `grid-cols-*` and `gap-*` on the group win over the default.
+- **States.** The checked tile is ringed in the accent; keyboard focus rings the tile (a click does not); a group error or a checkbox's own `error` draws the danger border; a disabled tile (its own `disabled`, its group's or a disabled `<atom:form>`'s) is sunken and takes no click. `align` has no effect on a tile, and a tile's `caption` and slot keep clear of the indicator.
+- **Tag syntax only.** The tile is drawn for `<atom:radio.group variant="tile">` and `<atom:checkbox.group variant="tile">`; the group tells its options through the tag compiler, so `<x-atom::radio.group variant="tile">` draws a plain group. A `variant` on some other component around an option is not read, and a Livewire child inside a tile group draws plain options.
+- **Not for actions.** A grid where a tap adds to a cart or runs a handler is not a selection: draw it with `<atom:button>`s.
 
 ### Disabled controls
 

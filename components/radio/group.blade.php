@@ -8,6 +8,8 @@
 ])
 
 @php
+// the key a tile group publishes for its options (TagCompiler, ChoiceTile) is not an HTML attribute
+$attributes = $attributes->except(\Jiannius\Atom\Services\ChoiceTile::KEY);
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
 
@@ -36,6 +38,10 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
             {{ $slot }}
         </div>
     </atom:card>
+@elseif ($attributes->get('variant') === 'tile')
+    <div {{ $attributes->except('variant')->class('group/group') }} data-atom-tiles>
+        {{ $slot }}
+    </div>
 @else
     <div {{ $attributes->class(['group/group flex flex-col gap-2 [&>[data-atom-heading]]:mb-1']) }}>
         {{ $slot }}
