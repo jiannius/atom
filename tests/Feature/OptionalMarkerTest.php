@@ -1,6 +1,10 @@
 <?php
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ViewErrorBag;
+use Jiannius\Atom\Tests\Fixtures\MarkerChildFixture;
+use Jiannius\Atom\Tests\Fixtures\MarkerParentFixture;
+use Livewire\Livewire;
 
 /**
  * The optional marker (#212): `<atom:form marker="optional">` (or `config('atom.form.marker')`) draws no asterisk and adds "(optional)" to
@@ -75,7 +79,7 @@ describe('marker="optional"', function () {
     it('translates the word', function () {
         $dir = sys_get_temp_dir().'/atom-marker-'.uniqid();
         mkdir($dir);
-        file_put_contents($dir.'/ms.json', json_encode(['optional' => 'pilihan']));
+        file_put_contents($dir.'/ms.json', json_encode(['(optional)' => '(pilihan)']));
         app('translator')->addJsonPath($dir);
         app()->setLocale('ms');
 
@@ -87,12 +91,12 @@ describe('marker="optional"', function () {
         expect(domQuery($html, '//*[@data-atom-label-optional]')[0]->textContent)->toBe('(pilihan)');
     });
 
-    it('does not add it again when the label already ends with it', function (string $label) {
+    it('does not add it again when the label already ends with it, whatever surrounds it', function (string $label) {
         $html = renderBlade('<atom:form marker="optional"><atom:input name="x" label="'.$label.'" /></atom:form>');
 
-        expect(domQuery($html, '//*[@data-atom-label-optional]'))->toHaveCount(1)
-            ->and(preg_replace('/\s+/', ' ', trim(domQuery($html, '//label')[0]->textContent)))->toBe($label);
-    })->with(['Reference (optional)', 'Reference (Optional)']);
+        expect(preg_replace('/\s+/', ' ', trim(domQuery($html, '//label')[0]->textContent)))->toBe(preg_replace('/\s+/', ' ', trim($label)))
+            ->and(substr_count(strtolower($html), '(optional)'))->toBe(1);
+    })->with(['Reference (optional)', 'Reference (Optional)', 'Reference (optional) ', '  Reference  (optional)  ', '(optional)']);
 
     it('adds it to a label that only has the word in the middle', function () {
         $html = renderBlade('<atom:form marker="optional"><atom:input name="x" label="Optional extras" /></atom:form>');
@@ -160,12 +164,16 @@ describe('marker="optional"', function () {
         expect(markerCounts($html))->toBe(['asterisk' => 0, 'optional' => 1]);
     });
 
-    it('does not print marker on the form tag', function () {
-        $html = renderBlade('<atom:form marker="optional"><atom:input name="a" label="Name" /></atom:form>');
+    it('prints neither marker nor the key atom publishes it under, on a form, a modal form or a filter bar', function (string $template) {
+        $html = renderBlade($template);
 
-        expect(domQuery($html, '//form')[0]->hasAttribute('marker'))->toBeFalse()
-            ->and(domQuery($html, '//*[@data-atom-input-field]')[0]->hasAttribute('marker'))->toBeFalse();
-    });
+        expect($html)->not->toMatch('/\bmarker=/i')->and($html)->not->toContain('atomformmarker')->and($html)->not->toContain('atomFormMarker');
+    })->with([
+        'form' => '<atom:form marker="optional"><atom:input name="a" label="Name" /></atom:form>',
+        'form.modal' => '<atom:form.modal name="m" marker="optional"><atom:input name="a" label="Name" /></atom:form.modal>',
+        'form with a bag' => '<atom:form marker="optional" class="x"><atom:input name="a" label="Name" /></atom:form>',
+        'table.filters' => '<atom:table.filters><atom:input name="a" label="Name" /></atom:table.filters>',
+    ]);
 
     it('ends at the form: a field after it is back to the default', function () {
         $html = renderBlade('<atom:form marker="optional"><atom:input name="a" label="Name" /></atom:form><atom:input name="b" label="Phone" required />');
@@ -224,4 +232,115 @@ describe('config("atom.form.marker")', function () {
 
         expect(markerCounts($html))->toBe(['asterisk' => 1, 'optional' => 0]);
     })->with([null, 'nonsense', false]);
+});
+
+describe('what reaches a field', function () {
+    beforeEach(fn () => Blade::anonymousComponentPath(__DIR__.'/../Fixtures/AnonComponents'));
+
+    // `marker` is a name any host component may use (a map pin, a highlight): the form publishes its mode under a key of atom's own.
+    it('is not changed by a component of the host with a marker of its own between the form and the field', function (string $value) {
+        $html = renderBlade('<atom:form marker="optional"><x-marker-probe marker="'.$value.'"><atom:input name="a" label="Name" required /><atom:input name="b" label="Phone" /></x-marker-probe></atom:form>');
+
+        expect(markerCounts($html))->toBe(['asterisk' => 0, 'optional' => 1]);
+    })->with(['pin', 'required', 'optional']);
+
+    it('is not changed by it in a form that keeps the asterisk, either', function (string $value) {
+        $html = renderBlade('<atom:form><x-marker-probe marker="'.$value.'"><atom:input name="a" label="Name" required /><atom:input name="b" label="Phone" /></x-marker-probe></atom:form>');
+
+        expect(markerCounts($html))->toBe(['asterisk' => 1, 'optional' => 0]);
+    })->with(['pin', 'required', 'optional']);
+
+    it('is not changed by a marker on a component with no form around it', function () {
+        $html = renderBlade('<x-marker-probe marker="optional"><atom:input name="a" label="Name" required /><atom:input name="b" label="Phone" /></x-marker-probe>');
+
+        expect(markerCounts($html))->toBe(['asterisk' => 1, 'optional' => 0]);
+    });
+
+    // A table filter is a chip in the bar, not a field of the form: the bar publishes `required`, and a select that is a table filter says so itself.
+    it('never marks a table filter, in the filter bar or on its own', function (string $template) {
+        config(['atom.form.marker' => 'optional']);
+
+        $html = renderBlade('<atom:form marker="optional">'.$template.'</atom:form>');
+
+        expect(domQuery($html, '//*[@data-atom-label-optional]'))->toBeEmpty()
+            ->and(domQuery($html, '//*[@data-atom-input-field]'))->not->toBeEmpty();
+    })->with([
+        'a select table filter' => '<atom:select multiple table-filter name="tags" label="Tags" :options="[]" />',
+        'a listbox table filter' => '<atom:select variant="listbox" multiple table-filter name="tags" label="Tags" :options="[]" />',
+        'a field in the filter bar' => '<atom:table.filters><x-slot:more><atom:select name="tags" label="Tags" :options="[]" /><atom:date-picker range name="due" label="Due" /></x-slot:more></atom:table.filters>',
+    ]);
+
+    it('marks a field beside the filter bar as the form says', function () {
+        $html = renderBlade('<atom:form marker="optional"><atom:table.filters><atom:input name="q" label="Search" /></atom:table.filters><atom:input name="b" label="Phone" /></atom:form>');
+
+        expect(array_map(fn ($note) => $note->parentNode->parentNode->textContent, domQuery($html, '//*[@data-atom-label-optional]')))->toHaveCount(1)
+            ->and(preg_replace('/\s+/', ' ', domQuery($html, '//*[@data-atom-label-optional]')[0]->parentNode->textContent))->toContain('Phone');
+    });
+});
+
+describe('a Livewire child inside the form', function () {
+    beforeEach(function () {
+        Livewire::component('atom-test-marker-child', MarkerChildFixture::class);
+    });
+
+    /** The child's two labels, as the text a screen reader reads, and how many asterisks it draws. */
+    function markerChild(string $html): array
+    {
+        $labels = array_map(fn ($label) => preg_replace('/\s+/', ' ', trim($label->textContent)), domQuery($html, '//*[@data-child]//label'));
+
+        return ['labels' => $labels, 'asterisks' => markerCounts($html)['asterisk']];
+    }
+
+    it('draws the same on its first render and after its own update, whatever the form says', function (string $config, array $expected) {
+        config(['atom.form.marker' => $config]);
+
+        $parent = Livewire::test(MarkerParentFixture::class);
+        $first = markerChild($parent->html());
+
+        // the child's own update renders it alone, with no form around it
+        $alone = Livewire::test(MarkerChildFixture::class)->call('bump');
+        $afterUpdate = markerChild($alone->html());
+
+        expect($first['labels'])->toBe($afterUpdate['labels'])->toBe($expected['labels'])
+            ->and($first['asterisks'])->toBe($expected['asterisks']);
+    })->with([
+        'config required' => ['required', ['labels' => ['Child required', 'Child other'], 'asterisks' => 1]],
+        'config optional' => ['optional', ['labels' => ['Child required', 'Child other (optional)'], 'asterisks' => 0]],
+    ]);
+
+    it('still marks the parent\'s own fields as its form says', function () {
+        $labels = array_map(fn ($label) => preg_replace('/\s+/', ' ', trim($label->textContent)), domQuery(Livewire::test(MarkerParentFixture::class)->html(), '//label'));
+
+        expect($labels)->toContain('Parent required', 'Parent other (optional)');
+    });
+});
+
+describe('the mode', function () {
+    it('reads a config value in any case', function (string $value) {
+        config(['atom.form.marker' => $value]);
+
+        $html = renderBlade('<atom:input name="a" label="Name" required /><atom:input name="b" label="Phone" />');
+
+        expect(markerCounts($html))->toBe(['asterisk' => 0, 'optional' => 1]);
+    })->with(['Optional', 'OPTIONAL', ' optional ']);
+
+    it('reads the form\'s marker in any case', function () {
+        $html = renderBlade('<atom:form marker="Optional"><atom:input name="a" label="Name" required /><atom:input name="b" label="Phone" /></atom:form>');
+
+        expect(markerCounts($html))->toBe(['asterisk' => 0, 'optional' => 1]);
+    });
+
+    it('reads a bound marker', function () {
+        $html = renderBlade('<atom:form :marker="$mode"><atom:input name="a" label="Name" required /><atom:input name="b" label="Phone" /></atom:form>', ['mode' => 'optional']);
+
+        expect(markerCounts($html))->toBe(['asterisk' => 0, 'optional' => 1]);
+    });
+
+    it('reads a marker that arrives in the attribute bag of a host wrapper', function () {
+        Blade::anonymousComponentPath(__DIR__.'/../Fixtures/AnonComponents');
+
+        $html = renderBlade('<x-marker-form marker="optional" />');
+
+        expect(markerCounts($html))->toBe(['asterisk' => 0, 'optional' => 1]);
+    });
 });

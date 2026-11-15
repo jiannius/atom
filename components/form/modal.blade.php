@@ -17,6 +17,8 @@
      `submit` is the Save button's LABEL; `method` names the component method the form calls (default `submit`), and is also the
      method whose run the button's loading state follows. A name that is not a plain method name falls back to `submit`. --}}
 @php
+$attributes = $attributes->except(\Jiannius\Atom\Services\FormMarker::KEY);
+
 $method = is_string($method) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*\z/', $method) ? $method : 'submit';
 
 $hasOwnWidth = \Jiannius\Atom\Services\Attributes::hasWidth($attributes);
@@ -33,7 +35,7 @@ $width = $hasOwnWidth ? '' : match ((string) $cols) {
 @endphp
 
 <atom:modal :name="$name" :dismissible="$dismissible" :escapable="$escapable" :closeable="$closeable" {{ $attributes->class($width) }}>
-    <atom:form wire:submit="{{ $method }}" :disabled="$disabled" :novalidate="$novalidate" :marker="$marker">
+    <atom:form wire:submit="{{ $method }}" :disabled="$disabled" :novalidate="$novalidate">
         <atom:form.grid :cols="$cols">
             {{ $slot }}
         </atom:form.grid>

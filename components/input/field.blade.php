@@ -1,4 +1,4 @@
-@aware(['marker' => null])
+@aware(['atomFormMarker' => null])
 
 @props([
     'label' => null,
@@ -14,22 +14,30 @@
 @php
 /* "(optional)" at the end of a label is a note, not part of the name: it prints in the muted tone at the regular weight. The
    words stay in the label, so the field's accessible name is unchanged.
-   `marker` (read from the form that holds the field, `config('atom.form.marker')` outside one; only `optional` or `required` count) says which
-   fields are marked: `required` (the default) draws the asterisk on a required one; `optional` draws none and adds the same "(optional)" note
-   to a field that is not required, unless the label already ends with it. A label slot is the host's own markup and is left as it is. */
-$marker = in_array($marker, ['optional', 'required'], true) ? $marker : config('atom.form.marker', 'required');
-$markOptional = $marker === 'optional';
+   Which fields are marked comes from the form that holds the field (`<atom:form marker>`, published by the tag compiler as `atomFormMarker`: see
+   Services\FormMarker) and from `config('atom.form.marker')` outside one, or in a Livewire child, which a form's mode does not reach. `required`
+   (the default) draws the asterisk on a required field; `optional` draws none and adds the same "(optional)" note to a field that is not required,
+   unless the label already ends with it. The note is one translation key, "(optional)". A label that is HTML the host chose always gets it, and a
+   label slot is the host's own markup and is left as it is. A `marker` of its own on this tag (`required` or `optional`) wins over the form's. */
+$mode = \Jiannius\Atom\Services\FormMarker::normalise($marker) ?? \Jiannius\Atom\Services\FormMarker::resolve($atomFormMarker);
+$markOptional = $mode === 'optional';
 $optional = null;
 $labelText = $label ? t($label) : null;
+$note = t('(optional)');
 
 if (is_string($labelText)) {
-    if (preg_match('/^(.*?)\s*(\((?:optional|'.preg_quote(t('optional'), '/').')\))$/iu', $labelText, $found) && trim($found[1]) !== '') {
+    $labelText = trim($labelText);
+
+    if (preg_match('/^(.*?)\s*((?:\(optional\)|'.preg_quote($note, '/').'))$/iu', $labelText, $found) && trim($found[1]) !== '') {
         [$labelText, $optional] = [$found[1], $found[2]];
     }
 }
 
-if ($markOptional && !$required && !$optional && $labelText) {
-    $optional = '('.t('optional').')';
+/* a label that is only the note, or ends with it, is not marked again */
+$endsWithNote = is_string($labelText) ? preg_match('/(?:\(optional\)|'.preg_quote($note, '/').')$/iu', $labelText) === 1 : false;
+
+if ($markOptional && !$required && !$optional && !$endsWithNote && $labelText) {
+    $optional = $note;
 }
 @endphp
 

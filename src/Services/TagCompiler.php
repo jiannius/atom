@@ -35,6 +35,18 @@ class TagCompiler extends ComponentTagCompiler
                 : "((({$bag}) instanceof \\Illuminate\\View\\ComponentAttributeBag) ? ({$bag})->get('{$prop}') : null) ?? {$default}";
         }
 
+        // A form's marker mode, for the fields in its slot: see FormMarker. A table filter bar publishes `required`, so its fields are never marked optional.
+        if (in_array($component, ['atom::form', 'atom::form.modal'], true)) {
+            $marker = $attributes['marker'] ?? ($bag === null
+                ? 'null'
+                : "((({$bag}) instanceof \\Illuminate\\View\\ComponentAttributeBag) ? ({$bag})->get('marker') : null)");
+
+            $attributes[FormMarker::KEY] = "\\Jiannius\\Atom\\Services\\FormMarker::publish({$marker})";
+        }
+        elseif ($component === 'atom::table.filters') {
+            $attributes[FormMarker::KEY] = "\\Jiannius\\Atom\\Services\\FormMarker::publish('required')";
+        }
+
         return parent::componentString($component, $attributes);
     }
 

@@ -9,6 +9,8 @@
 ])
 
 @php
+$attributes = $attributes->except(\Jiannius\Atom\Services\FormMarker::KEY);
+
 // The submit method drives loading: the form carries .is-loading while this
 // Livewire action runs, so an <atom:button type=submit> inside it spins for
 // the right method (create/save/submit/...), not a hardcoded one.
@@ -65,7 +67,7 @@ if ($errorToast) {
 }
 @endphp
 
-{{-- `marker` is read by the fields inside (input.field, through @aware), not by the form: it is declared here so it stays off the <form> tag. --}}
+{{-- `marker` is read by the tag compiler, which publishes it to the fields inside as `atomFormMarker` (Services\FormMarker): it is declared here so it stays off the <form> tag, and the published key is dropped for the same reason. --}}
 <form {{ $attributes->class([
     'group/form relative',
     'flex flex-col gap-6' => !$inset,
