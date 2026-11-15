@@ -209,6 +209,14 @@ describe('config("atom.form.marker")', function () {
         expect(markerCounts($html))->toBe(['asterisk' => 1, 'optional' => 0]);
     });
 
+    it('is what a form with a value it does not know falls back to', function () {
+        config(['atom.form.marker' => 'optional']);
+
+        $html = renderBlade('<atom:form marker="nonsense"><atom:input name="a" label="Name" required /><atom:input name="b" label="Phone" /></atom:form>');
+
+        expect(markerCounts($html))->toBe(['asterisk' => 0, 'optional' => 1]);
+    });
+
     it('falls back to the asterisk for a value it does not know, or none', function (mixed $value) {
         config(['atom.form.marker' => $value]);
 
