@@ -72,7 +72,7 @@
 
         <x-slot:footer>
             <atom:table.row>
-                <atom:table.cell />
+                <atom:table.cell :filler="false" />
                 <atom:table.cell column="name">Total</atom:table.cell>
                 <atom:table.cell :column="$renamed ? 'mail' : 'email'">30 people</atom:table.cell>
             </atom:table.row>

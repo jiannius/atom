@@ -93,6 +93,10 @@ describe('table.cell', function () {
             ->and(missingMarks(cell('filler=""')))->toBeEmpty();
     });
 
+    it('prints a custom filler in an empty colspan cell, as dd does', function () {
+        expect(trim(domQuery(cell('colspan="3" filler="n/a"'), '//td')[0]->textContent))->toBe('n/a');
+    });
+
     it('draws no mark in an empty spacer cell that has colspan, nor in a checkbox cell', function () {
         expect(missingMarks(cell('colspan="3"')))->toBeEmpty()
             ->and(missingMarks(cell('colspan="3"', 'Total')))->toBeEmpty()
