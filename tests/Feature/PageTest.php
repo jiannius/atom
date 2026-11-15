@@ -277,3 +277,54 @@ describe('page.tabs', function () use ($evil) {
             ->and(domQuery(renderBlade('<atom:page.tabs :tabs="$tabs" />', ['tabs' => $tabs]), '//nav[@aria-label="Sections"]'))->toHaveCount(1);
     });
 });
+
+describe('page.columns', function () use ($evil) {
+    it('prints the default slot as the main column and the rail slot as a labelled aside after it', function () {
+        $html = renderBlade('<atom:page.columns><p id="m">Main</p><x-slot:rail label="Work order details"><p id="r">Rail</p></x-slot:rail></atom:page.columns>');
+        $columns = domQuery($html, '//*[@data-atom-page-columns]')[0];
+        $aside = domQuery($html, '//*[@data-atom-page-columns]/aside')[0];
+
+        expect(domQuery($html, '//*[@data-atom-page-columns]/*[@data-atom-page-columns-main]//p[@id="m"]'))->toHaveCount(1)
+            ->and($aside->getAttribute('aria-label'))->toBe('Work order details')
+            ->and($aside->hasAttribute('data-atom-page-columns-rail'))->toBeTrue()
+            ->and($aside->textContent)->toContain('Rail')
+            // the main column comes first in the source, so the rail follows it when it wraps and in reading order
+            ->and($columns->firstElementChild->hasAttribute('data-atom-page-columns-main'))->toBeTrue()
+            ->and($columns->lastElementChild->tagName)->toBe('aside');
+    });
+
+    it('is sticky for a bare sticky, true, \'true\' and \'1\', and not for null, 0, \'\', \'0\', false and \'false\'', function () {
+        $sticky = fn (string $attribute) => domQuery(renderBlade('<atom:page.columns>m<x-slot:rail label="L" '.$attribute.'>r</x-slot:rail></atom:page.columns>'), '//aside[@data-sticky]');
+
+        foreach (['sticky', ':sticky="true"', 'sticky="true"', 'sticky="1"', ':sticky="1"'] as $on) {
+            expect($sticky($on), $on)->toHaveCount(1);
+        }
+
+        foreach (['', ':sticky="null"', ':sticky="0"', 'sticky=""', 'sticky="0"', ':sticky="false"', 'sticky="false"'] as $off) {
+            expect($sticky($off), $off ?: '(none)')->toBeEmpty();
+        }
+    });
+
+    it('names the aside Details when it has no label, and a label or an aria-label of the caller\'s wins', function () {
+        $name = fn (string $attributes) => domQuery(renderBlade('<atom:page.columns>m<x-slot:rail '.$attributes.'>r</x-slot:rail></atom:page.columns>'), '//aside')[0]->getAttribute('aria-label');
+
+        expect($name(''))->toBe('Details')
+            ->and($name('label=""'))->toBe('Details')
+            ->and($name('label="Work order details"'))->toBe('Work order details')
+            ->and($name('aria-label="Customer"'))->toBe('Customer')
+            ->and($name('label="Work order details" aria-label="Customer"'))->toBe('Work order details');
+    });
+
+    it('draws no aside without a rail or with an empty one', function () {
+        expect(domQuery(renderBlade('<atom:page.columns>m</atom:page.columns>'), '//aside'))->toBeEmpty()
+            ->and(domQuery(renderBlade('<atom:page.columns>m<x-slot:rail label="L"></x-slot:rail></atom:page.columns>'), '//aside'))->toBeEmpty();
+    });
+
+    it('prints the label as text and passes the host\'s attributes to the wrapper', function () use ($evil) {
+        $html = renderBlade('<atom:page.columns class="gap-8" data-x="1"><x-slot:rail :label="$e">r</x-slot:rail></atom:page.columns>', ['e' => $evil]);
+
+        expect(domQuery($html, '//img'))->toBeEmpty()
+            ->and(domQuery($html, '//aside')[0]->getAttribute('aria-label'))->toBe($evil)
+            ->and(domClasses(domQuery($html, '//*[@data-atom-page-columns]')[0]))->toContain('gap-8');
+    });
+});
