@@ -43,6 +43,35 @@
     <div class="rounded-md border bg-white/80 p-4">White</div> {{-- expect: hand-panel --}}
     <div x-show="open" class="rounded-md border bg-surface p-4">A collapsible box in the flow</div> {{-- expect: hand-panel --}}
 
+    <div class="rounded-lg border bg-surface p-6"> {{-- expect: hand-panel --}}
+        <div class="grid gap-4"><atom:input wire:model="a" /><atom:input wire:model="b" /></div>
+    </div>
+    <form class="rounded-lg border bg-white p-6"> {{-- expect: hand-panel --}}
+        <div class="space-y-4"><atom:select wire:model="a" /></div>
+    </form>
+    <div class="rounded-lg border bg-surface"> {{-- expect: hand-panel --}}
+        <div class="border-b px-4 py-3">Settings</div>
+        <div class="p-4"><atom:select wire:model="a" /></div>
+    </div>
+    <div class="rounded-lg border bg-surface p-4"> {{-- expect: hand-panel --}}
+        <atom:input wire:model="a" />
+    </div>
+    <div class="rounded-lg border bg-surface"> {{-- expect: hand-panel --}}
+        <div class="grid gap-4"><atom:input wire:model="a" /><atom:input wire:model="b" /></div>
+    </div>
+    <div class="rounded-md border bg-surface"> {{-- expect: hand-panel --}}
+        <div><label>Name</label><input type="text"></div>
+    </div>
+    <div class="rounded-md border bg-surface"> {{-- expect: hand-panel --}}
+        <input type="text"><input type="text">
+    </div>
+    <div class="rounded-md border bg-surface"> {{-- expect: hand-panel --}}
+        <input type="text"><p>A hint</p>
+    </div>
+    <div class="rounded-md border bg-surface"> {{-- expect: hand-panel --}}
+        <input type="text"><svg></svg><span>a</span><button>b</button>
+    </div>
+
     {{-- look-alikes: none of these is flagged --}}
     <atom:panel heading="Lines">Body</atom:panel>
     <atom:card heading="Customer">Body</atom:card>
@@ -60,6 +89,9 @@
     <div class="rounded-md border bg-surface px-2">
         <atom:input wire:model="search" />
     </div>
+    <div class="flex rounded-md border bg-surface px-2"><atom:icon.search /><input type="text"></div>
+    <div class="flex rounded-md border bg-surface px-2"><span>RM</span><input type="text"><button type="button">Go</button></div>
+    <div class="flex rounded-md border bg-surface px-2"><span><input type="text"></span></div>
     <div popover class="rounded-md border bg-surface">A popover</div>
     <div role="dialog" class="rounded-md border bg-surface">A dialog</div>
     <div class="animate-pulse rounded-md border bg-surface-sunken">A placeholder</div>

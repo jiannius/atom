@@ -34,7 +34,7 @@ class RawControl extends BoxesColour
 
     public function detect(): string
     {
-        return 'A raw `<button>` or `<a>` whose own classes (no variant) hold a `rounded*` token, a border width or a `bg-*` fill, and a padding or `h-<n>` token. A text-only link is not flagged; neither is one that holds a block, several elements or a picture beside text (a tile or a row), has a `role` other than button or link, or sits in the `brand` or `logo` slot.';
+        return 'A raw `<button>` or `<a>` whose own classes (no variant) hold a `rounded*` token, a border width or a `bg-*` fill, and a padding or `h-<n>` token. A text-only link is not flagged; neither is one that holds a block, a picture (`img`, `atom:avatar`) beside text or another element, or several elements besides an icon (a tile or a row), has a `role` other than button or link, or sits in the `brand` or `logo` slot.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -72,17 +72,20 @@ class RawControl extends BoxesColour
             return true;
         }
 
-        $icons = false;
+        $pictures = false;
 
         foreach ($outline->descendants($node) as $inside) {
             if (in_array($inside['tag'], static::BLOCKS, true)) {
                 return true;
             }
 
-            $icons = $icons || in_array($inside['tag'], ['img', 'svg', 'atom:avatar'], true) || ($inside['kind'] === 'atom' && str_starts_with((string) $inside['component'], 'icon.'));
+            $pictures = $pictures || in_array($inside['tag'], ['img', 'atom:avatar'], true);
         }
 
-        // a real control holds a label, or one icon: several elements, or a picture beside text, is a row or a tile
-        return count($outline->children($node)) > 1 || ($icons && $outline->label($node) !== '');
+        // a glyph (`svg`, `atom:icon.*`) beside the label is a button's own icon; a picture beside text, or several
+        // other elements, is a row or a tile
+        $others = array_filter($outline->children($node), fn ($child) => $child['tag'] !== 'svg' && ! ($child['kind'] === 'atom' && str_starts_with((string) $child['component'], 'icon.')));
+
+        return count($others) > 1 || ($pictures && ($outline->label($node) !== '' || count($outline->children($node)) > 1));
     }
 }

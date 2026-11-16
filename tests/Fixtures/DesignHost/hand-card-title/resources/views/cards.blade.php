@@ -35,6 +35,23 @@
         <h3>Customer</h3>
     </atom:card>
 
+    <atom:card> {{-- expect: hand-card-title --}}
+        @foreach ($tabs as $tab)
+            <h3>Repeated</h3>
+        @endforeach
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @auth
+            <h3>Signed in</h3>
+        @endauth
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @php($label = 'x')
+        <h3>After a php line</h3>
+    </atom:card>
+
     {{-- look-alikes: none of these is flagged --}}
     <atom:card heading="Customer">
         <p>Body</p>

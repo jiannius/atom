@@ -55,10 +55,15 @@
     <a href="#" class="flex items-center gap-3 rounded-lg border p-3 hover:bg-surface"><img src="a.png" alt=""><span>Name</span><span>Sub</span></a>
     <a href="#" class="rounded-lg border p-3"><atom:avatar /> Name</a>
     <a href="#" class="rounded-lg border p-3"><img src="a.png" alt=""> Name</a>
-    <button class="rounded-md border px-2 py-1"><atom:icon.plus /> Add</button>
-    <button class="rounded-md border px-2 py-1"><svg viewBox="0 0 1 1"></svg> Add</button>
     <button class="rounded-md border px-2 py-1"><span>A</span><span>B</span></button>
     <button class="rounded-md border p-2"><span>Save</span></button> {{-- expect: raw-control --}}
+
+    {{-- an icon beside the label is a button's own icon --}}
+    <button class="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-white"><svg class="size-4" viewBox="0 0 1 1"></svg> Save</button> {{-- expect: raw-control --}}
+    <button class="rounded-md border px-2 py-1"><atom:icon.plus /> <span>Add</span></button> {{-- expect: raw-control --}}
+    <button class="rounded-md border px-2 py-1"><span>Add</span><svg viewBox="0 0 1 1"></svg></button> {{-- expect: raw-control --}}
+    <button class="rounded-md border px-2 py-1"><atom:icon.plus /> Add</button> {{-- expect: raw-control --}}
+    <button class="rounded-md border px-2 py-1"><atom:avatar /> <atom:icon.chevron-down /></button>
 
     {{-- a background that is not a fill --}}
     <button class="rounded-md px-2 bg-transparent">No fill</button>

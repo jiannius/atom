@@ -41,7 +41,7 @@ class HandPanel extends BoxesColour
 
     public function detect(): string
     {
-        return 'A `div`, `section`, `article`, `aside`, `nav`, `header`, list, `figure`, `fieldset`, `details` or `form` whose own classes hold a panel rounding (`rounded-panel`, `rounded-md`, `-lg`, `-xl`, `-2xl`), a border on all sides (`border`, `border-2`) and a fill (`bg-surface`, `bg-surface-sunken`, `bg-white`, with or without an opacity), all without a variant. Not flagged: a link or a button (`raw-control`), `rounded-full`, a box with a field in it or one level below (a field shell, a labelled checkbox), a dialog, a `border-dashed` or `border-dotted` box (a dropzone), an `inline-*` or `w-fit` box, an Alpine popover (`x-show`, `x-anchor` or `x-transition` on an absolutely or fixed positioned box), an `animate-pulse` placeholder, a host component, and the `brand` and `logo` slots. A class token written with an echo (`bg-{{ $c }}`) is not counted, so a box whose fill comes from one is not flagged; a `bg-surface/50` fill is.';
+        return 'A `div`, `section`, `article`, `aside`, `nav`, `header`, list, `figure`, `fieldset`, `details` or `form` whose own classes hold a panel rounding (`rounded-panel`, `rounded-md`, `-lg`, `-xl`, `-2xl`), a border on all sides (`border`, `border-2`) and a fill (`bg-surface`, `bg-surface-sunken`, `bg-white`, with or without an opacity), all without a variant. Not flagged: a link or a button (`raw-control`), `rounded-full`, a small shell around one field (no 16px padding, at most three elements, one field, directly or in one wrapper: a field shell, a labelled checkbox), a dialog, a `border-dashed` or `border-dotted` box (a dropzone), an `inline-*` or `w-fit` box, an Alpine popover (`x-show`, `x-anchor` or `x-transition` on an absolutely or fixed positioned box), an `animate-pulse` placeholder, a host component, and the `brand` and `logo` slots. A class token written with an echo (`bg-{{ $c }}`) is not counted, so a box whose fill comes from one is not flagged; a `bg-surface/50` fill is.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -86,23 +86,68 @@ class HandPanel extends BoxesColour
             }
         }
 
-        foreach ($outline->children($node) as $child) {
-            if ($this->isField($child)) {
-                return true;
-            }
-
-            foreach ($outline->children($child) as $inner) {
-                if ($this->isField($inner)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return $this->isFieldShell($file, $node, $resting);
     }
 
     /**
-     * Whether a tag is a field: a box with one inside it (a field's shell, a labelled checkbox) is a control, not a panel
+     * Whether a box is a small shell around one field: no padding of 16px or more, one to three elements, exactly one
+     * field among them (directly or in one wrapper that holds nothing else but a glyph), and nothing else but glyphs and
+     * buttons beside it. A box with a heading row, a padded body or a wrapper around several fields is a panel.
+     *
+     * @param  array<int, string>  $resting
+     */
+    protected function isFieldShell(File $file, array $node, array $resting): bool
+    {
+        $outline = $file->outline();
+        $children = array_values(array_filter($outline->children($node), fn ($child) => $child['kind'] !== 'slot'));
+
+        if ($children === [] || count($children) > 3 || $this->any($resting, '/^p[xy]?-(?:[4-9]|\d{2,})$/')) {
+            return false;
+        }
+
+        $fields = 0;
+
+        foreach ($children as $child) {
+            if ($this->isField($child)) {
+                $fields++;
+            } elseif ($this->isAdornment($child)) {
+                continue;
+            } elseif (in_array($child['tag'], ['label', 'span', 'div'], true)) {
+                $inside = $outline->children($child);
+
+                if ($inside === [] && $child['tag'] === 'span') {
+                    continue;
+                }
+
+                if ($inside === [] || ($child['tag'] === 'div' && count($inside) !== 1)) {
+                    return false;
+                }
+
+                foreach ($inside as $inner) {
+                    if ($this->isField($inner)) {
+                        $fields++;
+                    } elseif (! $this->isAdornment($inner)) {
+                        return false;
+                    }
+                }
+            } else {
+                return false;
+            }
+        }
+
+        return $fields === 1;
+    }
+
+    /**
+     * Whether a tag is a glyph or a small button beside a field: an icon, an `svg`, a button
+     */
+    protected function isAdornment(array $node): bool
+    {
+        return in_array($node['tag'], ['svg', 'button', 'atom:button'], true) || ($node['kind'] === 'atom' && str_starts_with((string) $node['component'], 'icon.'));
+    }
+
+    /**
+     * Whether a tag is a field
      */
     protected function isField(array $node): bool
     {
