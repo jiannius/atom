@@ -29,7 +29,7 @@ abstract class BoxesColour extends Rule
      * @var array<int, string>
      */
     protected const BARE_UTILITIES = [
-        'absolute', 'antialiased', 'block', 'border', 'capitalize', 'collapse', 'container', 'contents', 'fixed', 'flex', 'flow-root', 'grid', 'grow', 'hidden', 'inline', 'invisible', 'isolate', 'italic', 'lowercase', 'outline', 'overline', 'relative', 'resize', 'ring', 'rounded', 'shadow', 'shrink', 'static', 'sticky', 'table', 'transform', 'transition', 'truncate', 'underline', 'uppercase', 'visible',
+        'absolute', 'antialiased', 'block', 'border', 'capitalize', 'collapse', 'container', 'contents', 'fixed', 'flex', 'grid', 'grow', 'hidden', 'inline', 'invisible', 'isolate', 'italic', 'lowercase', 'outline', 'overline', 'relative', 'resize', 'ring', 'rounded', 'shadow', 'shrink', 'static', 'sticky', 'table', 'transform', 'transition', 'truncate', 'underline', 'uppercase', 'visible',
     ];
 
     /**

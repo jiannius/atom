@@ -54,6 +54,7 @@
     <a href="#" class="rounded-md border px-2 py-1"><atom:panel>x</atom:panel></a>
     <a href="#" class="flex items-center gap-3 rounded-lg border p-3 hover:bg-surface"><img src="a.png" alt=""><span>Name</span><span>Sub</span></a>
     <a href="#" class="rounded-lg border p-3"><atom:avatar /> Name</a>
+    <a href="#" class="rounded-lg border p-3"><img src="a.png" alt=""> Name</a>
     <button class="rounded-md border px-2 py-1"><atom:icon.plus /> Add</button>
     <button class="rounded-md border px-2 py-1"><svg viewBox="0 0 1 1"></svg> Add</button>
     <button class="rounded-md border px-2 py-1"><span>A</span><span>B</span></button>

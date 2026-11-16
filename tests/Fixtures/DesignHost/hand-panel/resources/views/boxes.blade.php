@@ -64,6 +64,9 @@
     <div role="dialog" class="rounded-md border bg-surface">A dialog</div>
     <div class="animate-pulse rounded-md border bg-surface-sunken">A placeholder</div>
     <div x-show="open" x-transition class="absolute right-0 z-10 mt-2 rounded-md border bg-surface p-1">An Alpine dropdown</div>
+    <div x-show="open" class="absolute rounded-md border bg-surface p-1">Shown by Alpine</div>
+    <div x-transition class="absolute rounded-md border bg-surface p-1">Transitioned</div>
+    <div class="rounded-md border bg-surface p-2"><atom:checkbox wire:model="x" /></div>
     <div x-anchor="$refs.button" class="fixed rounded-md border bg-surface p-1">An anchored panel</div>
     <div x-show="open" x-transition:enter="a" class="fixed rounded-md border bg-surface p-1">A transition</div>
     <div class="rounded-md border border-dashed bg-surface p-6">A dropzone</div>
