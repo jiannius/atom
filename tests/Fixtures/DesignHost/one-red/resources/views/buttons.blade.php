@@ -28,6 +28,8 @@
     <atom:button variant="ghost" class="text-fg-muted">More</atom:button>
     <atom:button variant="ghost" class="text-danger-{{ $level }}">More</atom:button>
     <atom:button class="text-danger-fg">Not a ghost</atom:button>
+    <atom:button variant="default" color="danger" class="text-danger-fg">Not a ghost</atom:button>
+    <atom:button variant="link" color="danger" class="text-danger-fg">Not a ghost</atom:button>
     <atom:button :variant="$tone">Purge</atom:button>
     <atom:button variant="danger" :type="$type">Purge</atom:button>
     <atom:button variant="danger" :inverted="$soft">Purge</atom:button>

@@ -103,7 +103,7 @@ class ToneUnconfirmed extends ToneAndConfirmRule
                 continue;
             }
 
-            if (! is_string($value) || preg_match('/atom\.confirm\(|atom-confirm-show|atom-modal-show|atom\.modal\(|\bconfirm\(/', $value)) {
+            if (! is_string($value) || preg_match('/atom-confirm-show|atom-modal-show|atom\.modal\(|\bconfirm\(/', $value)) {
                 return null;
             }
 

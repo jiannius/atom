@@ -35,8 +35,10 @@
     <atom:menu.item variant="warning" :confirm="false" wire:click="archive">Archive</atom:menu.item>
     <atom:button variant="danger" wire:click="purge" wire:confirm="Purge it?">Purge</atom:button>
     <atom:button variant="danger" wire:click="purge" x-on:click="atom.confirm({ heading: 'Purge?' })">Purge</atom:button>
-    <atom:button variant="danger" x-on:click="$dispatch('atom-confirm-show', { heading: 'Purge?' })">Purge</atom:button>
-    <atom:button variant="danger" x-on:click="$dispatch('atom-modal-show', 'purge')">Purge</atom:button>
+    <atom:button variant="danger" wire:click="purge" x-on:click="$dispatch('atom-confirm-show', { heading: 'Purge?' })">Purge</atom:button>
+    <atom:button variant="danger" wire:click="purge" x-on:click="$dispatch('atom-modal-show', 'purge')">Purge</atom:button>
+    <atom:button variant="danger" wire:click="purge" x-on:click="atom.modal('purge').show()">Purge</atom:button>
+    <atom:button variant="danger" x-on:click="window.confirm('Sure?') && $wire.purge()">Purge</atom:button>
 
     {{-- a wrapper or a dialog of its own --}}
     <atom:confirm.trigger variant="warning" heading="Archive?" button-confirm="Archive" x-on:confirmed="$wire.archive()">
@@ -55,6 +57,7 @@
     {{-- a submit, a link, an Alpine-only handler, no handler, or a value that cannot be read --}}
     <atom:button variant="danger" type="submit">Close account</atom:button>
     <atom:button variant="warning" href="{{ route('orders.cancel', $order) }}">Cancel order</atom:button>
+    <atom:menu.item variant="warning" href="{{ route('orders.show', $order) }}" wire:click="track">Track</atom:menu.item>
     <atom:button variant="danger" x-on:click="open = false">Close</atom:button>
     <atom:button variant="danger">Purge</atom:button>
     <atom:menu.item variant="warning">Archive</atom:menu.item>
