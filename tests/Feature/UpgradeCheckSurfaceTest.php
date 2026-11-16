@@ -97,6 +97,7 @@ it('keeps the protected methods of UpgradeCheck', function () {
         'codeFromMarkup',
         'compareGuideline',
         'components',
+        'directories',
         'disabledFormViewControls',
         'discover',
         'installedVersion',
