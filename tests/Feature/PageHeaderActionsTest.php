@@ -271,12 +271,12 @@ describe('keys, markers and the registry', function () {
     });
 
     it('does not take an action of a Livewire child rendered inside the header\'s slot', function () {
-        Livewire::component('action-child', new class extends Component {
+        Livewire::component('action-child', (new class extends Component {
             public function render()
             {
                 return '<div><atom:action wire:click="child">Child</atom:action></div>';
             }
-        }::class);
+        })::class);
 
         config(['cache.default' => 'array']);
         Log::spy();
