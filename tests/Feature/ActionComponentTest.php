@@ -52,6 +52,7 @@ describe('the tag\'s contract', function () {
             ->and(actionRefusal('<atom:action>Outer <atom:action label="Inner" wire:click="x" /></atom:action>'))->toContain('cannot hold another')
             ->and(actionRefusal('<atom:action><atom:icon.edit /></atom:action>'))->toContain('pass `label`, or `aria-label`')
             ->and(actionRefusal('<atom:action><atom:icon.edit /></atom:action>'))->not->toContain('needs a label')
+            ->and(actionRefusal('<atom:action><atom:icon.loading /></atom:action>'))->toContain('pass `label`, or `aria-label`')
             ->and(actionRefusal('<atom:action aria-label="Edit"><atom:icon.edit /></atom:action>'))->toBe('')
             ->and(actionRefusal('<atom:action>Edit <atom:icon.edit /></atom:action>'))->toBe('');
     });
