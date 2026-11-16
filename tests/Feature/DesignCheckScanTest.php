@@ -172,6 +172,7 @@ describe('design-check: failures and a path that is not an app root', function (
 
             expect($result['errors'])->toHaveCount(12)
                 ->and($scanner->format($result, 10))->toContain('CHECKS THAT FAILED (12)')->toContain('... and 2 more (use --all)')
+                ->and(substr_count($scanner->format($result, 10), 'RuntimeException: boom'))->toBe(10)
                 ->and(substr_count($scanner->format($result, null), 'RuntimeException: boom'))->toBe(12);
         } finally {
             DesignHost::remove($dir);
