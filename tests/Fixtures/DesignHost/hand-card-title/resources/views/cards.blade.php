@@ -52,6 +52,112 @@
         <h3>After a php line</h3>
     </atom:card>
 
+    <atom:card> {{-- expect: hand-card-title --}}
+        @unless ($hide)
+            <h3>A</h3>
+        @endunless
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @guest
+            <h3>A</h3>
+        @endguest
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @can('update', $x)
+            <h3>A</h3>
+        @endcan
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @cannot('update', $x)
+            <h3>A</h3>
+        @endcannot
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @canany(['a', 'b'])
+            <h3>A</h3>
+        @endcanany
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @can('a')
+        @elsecan('b')
+            <h3>A</h3>
+        @endcan
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @isset($x)
+            <h3>A</h3>
+        @endisset
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @empty($x)
+            <h3>A</h3>
+        @endempty
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @for ($i = 0; $i < 2; $i++)
+            <h3>A</h3>
+        @endfor
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @while ($more)
+            <h3>A</h3>
+        @endwhile
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @forelse ($x as $y)
+            <h3>A</h3>
+        @empty
+        @endforelse
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @if ($a)
+        @else
+            <h3>A</h3>
+        @endif
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @if ($a)
+        @elseif ($b)
+            <h3>A</h3>
+        @endif
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @switch ($x)
+            @case(1)
+                <h3>A</h3>
+                @break
+            @default
+        @endswitch
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @switch ($x)
+            @default
+                <h3>A default</h3>
+        @endswitch
+    </atom:card>
+
+    <atom:card> {{-- expect: hand-card-title --}}
+        @switch ($x)
+            @case(1)
+                @break
+                <h3>After a break</h3>
+        @endswitch
+    </atom:card>
+
     {{-- look-alikes: none of these is flagged --}}
     <atom:card heading="Customer">
         <p>Body</p>

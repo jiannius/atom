@@ -101,7 +101,7 @@ class HandPanel extends BoxesColour
         $outline = $file->outline();
         $children = array_values(array_filter($outline->children($node), fn ($child) => $child['kind'] !== 'slot'));
 
-        if ($children === [] || count($children) > 3 || $this->any($resting, '/^p[xy]?-(?:[4-9]|\d{2,})$/')) {
+        if (count($children) > 3 || $this->any($resting, '/^p[xy]?-(?:[4-9]|\d{2,})$/')) {
             return false;
         }
 

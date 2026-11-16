@@ -72,6 +72,25 @@
         <input type="text"><svg></svg><span>a</span><button>b</button>
     </div>
 
+    <div class="rounded-md border bg-surface py-4"> {{-- expect: hand-panel --}}
+        <atom:input wire:model="a" />
+    </div>
+    <div class="rounded-md border bg-surface p-12"> {{-- expect: hand-panel --}}
+        <atom:input wire:model="a" />
+    </div>
+    <div class="rounded-md border bg-surface"> {{-- expect: hand-panel --}}
+        <svg></svg>
+    </div>
+    <div class="rounded-md border bg-surface"> {{-- expect: hand-panel --}}
+        <label>Name</label><input type="text">
+    </div>
+    <div class="rounded-md border bg-surface"> {{-- expect: hand-panel --}}
+        <div><input type="text"><svg></svg></div>
+    </div>
+    <div class="rounded-md border bg-surface"> {{-- expect: hand-panel --}}
+        <label><input type="text"><p>Hint</p></label>
+    </div>
+
     {{-- look-alikes: none of these is flagged --}}
     <atom:panel heading="Lines">Body</atom:panel>
     <atom:card heading="Customer">Body</atom:card>
@@ -92,6 +111,8 @@
     <div class="flex rounded-md border bg-surface px-2"><atom:icon.search /><input type="text"></div>
     <div class="flex rounded-md border bg-surface px-2"><span>RM</span><input type="text"><button type="button">Go</button></div>
     <div class="flex rounded-md border bg-surface px-2"><span><input type="text"></span></div>
+    <div class="flex rounded-md border bg-surface px-2"><svg></svg><input type="text"></div>
+    <div class="flex rounded-md border bg-surface px-2"><input type="text"><atom:button>Go</atom:button></div>
     <div popover class="rounded-md border bg-surface">A popover</div>
     <div role="dialog" class="rounded-md border bg-surface">A dialog</div>
     <div class="animate-pulse rounded-md border bg-surface-sunken">A placeholder</div>
