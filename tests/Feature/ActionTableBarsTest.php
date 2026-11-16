@@ -307,7 +307,7 @@ describe('the bulk bar', function () {
         $items[$found[1]]['owner'] = ['someone-else', 99];
         $reflection->setValue($registry, $items);
 
-        $html = renderBlade(bulkTable($foreign));
+        $html = renderBlade(bulkTable("\n    ".$foreign."\n  "));
 
         expect($html)->not->toContain(BULK)
             ->and($html)->not->toContain('atom:action:');
