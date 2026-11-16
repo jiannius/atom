@@ -8,6 +8,7 @@ use Illuminate\Support\ServiceProvider;
 use Jiannius\Atom\Commands\MigrateTiptapContent;
 use Jiannius\Atom\Commands\PurgeEditorImages;
 use Jiannius\Atom\Commands\Upgrade;
+use Jiannius\Atom\Commands\DesignCheck;
 use Jiannius\Atom\Commands\UpgradeCheck;
 use Illuminate\Queue\Events\JobAttempted;
 use Illuminate\Queue\Events\JobFailed;
@@ -361,6 +362,7 @@ class AtomServiceProvider extends ServiceProvider
             PurgeEditorImages::class,
             MigrateTiptapContent::class,
             UpgradeCheck::class,
+            DesignCheck::class,
             Upgrade::class,
         ]);
     }
