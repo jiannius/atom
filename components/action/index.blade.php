@@ -49,21 +49,30 @@ if ($hasSlot && $hasLabel) {
     throw new \InvalidArgumentException('<atom:action> takes a `label` or a slot, not both.');
 }
 
-/* the text of a slot: its markup stripped, and what an icon's `<style>` holds is not text */
+/* the text of a slot: its markup stripped, what an icon's `<style>` holds is not text, and a no-break space is not either */
+$clean = fn ($t) => trim(preg_replace('/[\s\x{00A0}]+/u', ' ', html_entity_decode((string) $t)));
+
 $text = $hasLabel
-    ? trim(app('atom')->translateOnce($label))
-    : trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags(preg_replace('#<(style|script)\b.*?</\1>#is', '', (string) $slot)))));
+    ? $clean(app('atom')->translateOnce($label))
+    : $clean(strip_tags(preg_replace('#<(style|script)\b.*?</\1>#is', '', (string) $slot)));
 
 if (! $hasSlot && $text === '') {
-    throw new \InvalidArgumentException('<atom:action> needs a label: pass `label` or put the text in the slot.');
+    throw new \InvalidArgumentException('<atom:action> needs a label: pass `label` or put the text in the slot. An empty label (a blank record field) throws, so guard an optional name.');
 }
 
-if ($text === '' && blank($attributes->get('aria-label'))) {
+/* markup with no text still has a name when the action carries an `aria-label`, or the slot holds an `<img alt>` or an element with an `aria-label` */
+$name = $clean($attributes->get('aria-label'));
+
+if ($text === '' && $name === '' && preg_match('/<img\b[^>]*\balt\s*=\s*(?:"([^"]*)"|\'([^\']*)\')|\baria-label\s*=\s*(?:"([^"]*)"|\'([^\']*)\')/i', (string) $slot, $found)) {
+    $name = $clean(implode('', array_slice($found, 1)));
+}
+
+if ($text === '' && $name === '') {
     throw new \InvalidArgumentException('<atom:action> with markup and no text (an icon alone) would be a button with no name: pass `label`, or `aria-label` on the action.');
 }
 
 if ($text === '') {
-    $text = trim((string) $attributes->get('aria-label'));
+    $text = $name;
 }
 
 $marker = app(\Jiannius\Atom\Services\ActionItems::class)->add([

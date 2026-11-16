@@ -53,6 +53,13 @@ describe('the tag\'s contract', function () {
             ->and(actionRefusal('<atom:action><atom:icon.edit /></atom:action>'))->toContain('pass `label`, or `aria-label`')
             ->and(actionRefusal('<atom:action><atom:icon.edit /></atom:action>'))->not->toContain('needs a label')
             ->and(actionRefusal('<atom:action><atom:icon.loading /></atom:action>'))->toContain('pass `label`, or `aria-label`')
+            ->and(actionRefusal('<atom:action>&nbsp;</atom:action>'))->toContain('pass `label`, or `aria-label`')
+            ->and(actionRefusal("<atom:action>\u{00A0}<atom:icon.edit /></atom:action>"))->toContain('pass `label`, or `aria-label`')
+            ->and(actionRefusal('<atom:action><img src="/a.png" alt=""></atom:action>'))->toContain('pass `label`, or `aria-label`')
+            ->and(actionRefusal('<atom:action><img src="/a.png" alt="Edit"></atom:action>'))->toBe('')
+            ->and(actionRefusal('<atom:action><span aria-label="Edit"><atom:icon.edit /></span></atom:action>'))->toBe('')
+            ->and(actionRefusal('<atom:action label=" "  wire:click="x" />'))->toContain('needs a label')
+            ->and(actionRefusal('<atom:action label="" wire:click="x" />'))->toContain('blank record field')
             ->and(actionRefusal('<atom:action aria-label="Edit"><atom:icon.edit /></atom:action>'))->toBe('')
             ->and(actionRefusal('<atom:action>Edit <atom:icon.edit /></atom:action>'))->toBe('');
     });
@@ -213,6 +220,25 @@ describe('the registry', function () {
         $other->reportUnplaced();
 
         Log::shouldHaveReceived('warning')->twice();
+    });
+
+    it('reports an unplaced action on a cloned app, as Octane runs a request, through the global container', function () {
+        config(['cache.default' => 'array']);
+        Log::spy();
+
+        $original = app();
+        $clone = clone $original;
+        \Illuminate\Container\Container::setInstance($clone);
+
+        try {
+            renderBlade('<atom:action label="Edit" wire:click="x" />');
+            $clone->terminate();
+        }
+        finally {
+            \Illuminate\Container\Container::setInstance($original);
+        }
+
+        Log::shouldHaveReceived('warning')->once();
     });
 
     it('registers one terminating callback for the container, however many requests or jobs a worker serves', function () {
