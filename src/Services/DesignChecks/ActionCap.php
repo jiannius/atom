@@ -34,6 +34,11 @@ class ActionCap extends ActionRule
         [['atom:empty'], ['action'], 1, 'empty state action'],
     ];
 
+    /**
+     * More actions than this in one surface are not read (the count of what shows together is quadratic)
+     */
+    protected const MAX_UNITS = 50;
+
     public function title(): string
     {
         return 'More visible actions than the surface holds';
@@ -41,7 +46,7 @@ class ActionCap extends ActionRule
 
     public function fix(): string
     {
-        return 'Keep the first ones and move the rest to the surface\'s `menu` slot (`checked-menu` on a bulk bar), utilities first, then `<atom:menu.separator>`, warning, and danger last, as `<atom:menu.item>`s.';
+        return 'Keep the first ones and move the rest to the surface\'s `menu` slot (`checked-menu` on a bulk bar), utilities first, then `<atom:menu.separator>`, warning, and danger last, as `<atom:menu.item>`s. An `<atom:empty>` has no menu: keep one plain button.';
     }
 
     public function rule(): string
@@ -51,7 +56,7 @@ class ActionCap extends ActionRule
 
     public function detect(): string
     {
-        return 'The buttons in a surface\'s own slot (nothing but markup between), counting a `<atom:button.group>` or an `<atom:dropdown>` as one: `page.header` `actions` over 2 (over 1 with `size="sm"`), `table.toolbar` `actions` plus `end` over 2, the table\'s `checked` slot over 3 (a delete in the last place is not counted), `card` or `panel` `actions` over 1, `empty` `action` over 1. Buttons that cannot show together (the branches of one `@if` chain) are not counted together, and a button in a loop counts once. The shell\'s own `actions` slot is never counted, and neither is a button inside a component.';
+        return 'The buttons in a surface\'s own slot (nothing but markup between), counting a `<atom:button.group>` or an `<atom:dropdown>` as one: `page.header` `actions` over 2 (over 1 with `size="sm"`), `table.toolbar` `actions` plus `end` over 2, the table\'s `checked` slot over 3 (a delete in the last place is not counted), `card` or `panel` `actions` over 1, `empty` `action` over 1. Buttons that cannot show together (the branches of one `@if` chain) are not counted together, and a button in a loop counts once. A button the browser can hide (`x-show`, `<template x-if>`, `wire:show`, `:hidden`) is not counted, and a surface with over 50 actions is not read. The shell\'s own `actions` slot is never counted, and neither is a button inside a component.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -71,9 +76,14 @@ class ActionCap extends ActionRule
             }
 
             foreach ($units as $ownerId => $found) {
-                $cap = $this->capFor($outline, $outline->node($ownerId), $base);
+                $owner = $outline->node($ownerId);
+                $cap = $this->capFor($outline, $owner, $base);
 
                 if ($cap === null) {
+                    continue;
+                }
+
+                if (count($found) > static::MAX_UNITS) {
                     continue;
                 }
 
@@ -86,7 +96,7 @@ class ActionCap extends ActionRule
                 $chain = $this->largestTogether($outline, $found);
 
                 if (count($chain) > $cap) {
-                    yield [$chain[$cap]['offset'], $name.': '.count($chain).' (cap '.$cap.')'];
+                    yield [$chain[$cap]['offset'], $name.': '.count($chain).' (cap '.$cap.')'.($owner['tag'] === 'atom:empty' ? ': keep one plain button, an empty state has no menu' : '')];
                 }
             }
         }
@@ -115,7 +125,7 @@ class ActionCap extends ActionRule
     {
         return array_values(array_filter(
             $outline->descendants($slot),
-            fn ($node) => in_array($node['tag'], static::UNITS, true) && $this->reaches($outline, $node, $slot),
+            fn ($node) => in_array($node['tag'], static::UNITS, true) && $this->reaches($outline, $node, $slot) && ! $this->clientConditional($outline, $node),
         ));
     }
 

@@ -103,7 +103,7 @@ describe('action-cap', function () {
             ->and($notes("<atom:table><x-slot:checked>{$buttons(4)}</x-slot:checked></atom:table>"))->toBe([1 => 'bulk bar (checked slot): 4 (cap 3)'])
             ->and($notes("<atom:card><x-slot:actions>{$buttons(2)}</x-slot:actions></atom:card>"))->toBe([1 => 'card actions: 2 (cap 1)'])
             ->and($notes("<atom:panel><x-slot:actions>{$buttons(2)}</x-slot:actions></atom:panel>"))->toBe([1 => 'panel actions: 2 (cap 1)'])
-            ->and($notes("<atom:empty><x-slot:action>{$buttons(2)}</x-slot:action></atom:empty>"))->toBe([1 => 'empty state action: 2 (cap 1)']);
+            ->and($notes("<atom:empty><x-slot:action>{$buttons(2)}</x-slot:action></atom:empty>"))->toBe([1 => 'empty state action: 2 (cap 1): keep one plain button, an empty state has no menu']);
     });
 
     it('puts the finding on the button that passes the cap', function () use ($buttons) {
@@ -342,5 +342,118 @@ describe('dup-export', function () {
 
     it('is info', function () {
         expect((new DesignCheck)->rules()['dup-export']::SEVERITY)->toBe(DesignCheck::INFO);
+    });
+});
+
+describe('extra-primary: forms, the browser and host components', function () {
+    $notes = fn (string $source) => DesignHost::notes($source, 'extra-primary');
+    $header = '<atom:page.header title="a"><x-slot:primary><atom:button variant="primary">h</atom:button></x-slot:primary></atom:page.header>';
+    $screen = 'a second primary on one screen: the next step for the status, or the form\'s submit';
+
+    it('leaves a primary in a form to its form, in either direction', function () use ($notes, $header, $screen) {
+        $submit = '<atom:button type="submit">a</atom:button>';
+
+        expect($notes("{$header}<atom:form>{$submit}</atom:form><atom:form>{$submit}</atom:form>"))->toBe([])
+            ->and($notes("{$header}<form>{$submit}</form><form>{$submit}</form>"))->toBe([])
+            ->and($notes("{$header}<atom:form.section>{$submit}</atom:form.section><atom:form.section>{$submit}</atom:form.section>"))->toBe([])
+            ->and($notes("<atom:form>{$submit}</atom:form><atom:button variant=\"primary\">b</atom:button>"))->toBe([])
+            ->and($notes("{$header}<atom:button type=\"submit\" form=\"f\">a</atom:button>"))->toBe([1 => $screen]);
+    });
+
+    it('says a second primary in one form is a second, in a plain form and a section too', function () use ($notes) {
+        $two = '<atom:button type="submit">a</atom:button><atom:button variant="primary">b</atom:button>';
+        $note = 'one primary in a form, its submit: a second submit takes `variant="default"`';
+
+        expect($notes("<form>{$two}</form>"))->toBe([1 => $note])
+            ->and($notes("<atom:form.section>{$two}</atom:form.section>"))->toBe([1 => $note])
+            ->and($notes("<atom:form><atom:form.section>{$two}</atom:form.section></atom:form>"))->toBe([1 => $note])
+            ->and($notes("<atom:form><atom:form.section><atom:button type=\"submit\">a</atom:button></atom:form.section><atom:form.section><atom:button type=\"submit\">b</atom:button></atom:form.section></atom:form>"))->toHaveCount(1);
+    });
+
+    it('does not take a primary flagged for where it sits as the form\'s one', function () use ($notes) {
+        expect($notes('<atom:form><atom:table.toolbar><x-slot:actions><atom:button variant="primary">a</atom:button></x-slot:actions></atom:table.toolbar><atom:button type="submit">b</atom:button></atom:form>'))
+            ->toHaveCount(1);
+    });
+
+    it('does not pair what the browser shows in turn, on the node or a tag around it up to its slot', function () use ($notes, $header) {
+        $one = '<atom:button variant="primary">a</atom:button>';
+
+        foreach (['x-show="a"', 'x-show.transition="a"', 'wire:show="a"', ':hidden="$a"', 'x-bind:hidden="a"'] as $attribute) {
+            expect($notes("{$header}<div {$attribute}>{$one}</div>"))->toBe([], $attribute);
+        }
+
+        expect($notes("{$header}<template x-if=\"a\">{$one}</template>"))->toBe([])
+            ->and($notes("{$header}<atom:button variant=\"primary\" x-show=\"a\">a</atom:button>"))->toBe([])
+            ->and($notes("<div x-show=\"a\">{$header}</div>{$one}"))->toHaveCount(1)
+            ->and($notes("{$header}<div x-show=\"a\">{$one}</div>{$one}"))->toHaveCount(1)
+            ->and($notes("<atom:empty x-show=\"a\"><x-slot:action>{$one}</x-slot:action></atom:empty>"))->toHaveCount(1)
+            ->and($notes("<atom:form><atom:button type=\"submit\">a</atom:button><atom:button type=\"submit\" x-show=\"a\">b</atom:button></atom:form>"))->toBe([])
+            ->and($notes("{$header}<div x-show=\"a\"><atom:modal name=\"m\">{$one}{$one}</atom:modal></div>"))->toHaveCount(1);
+    });
+
+    it('does not read a primary in a host component, and reads one in a layout', function () use ($notes, $header) {
+        $one = '<atom:button variant="primary">a</atom:button>';
+
+        expect($notes("{$header}<x-confirm-modal>{$one}</x-confirm-modal>"))->toBe([])
+            ->and($notes("{$header}<x-card><x-slot:footer>{$one}</x-slot:footer></x-card>"))->toBe([])
+            ->and($notes("<x-layouts.app>{$header}{$one}</x-layouts.app>"))->toHaveCount(1)
+            ->and($notes("<x-app-layout>{$header}{$one}</x-app-layout>"))->toHaveCount(1)
+            ->and($notes("<x-app.shell>{$header}{$one}</x-app.shell>"))->toHaveCount(1)
+            ->and($notes("<x-admin-layout>{$header}{$one}</x-admin-layout>"))->toHaveCount(1)
+            ->and($notes("<x-dynamic-component component=\"x\">{$header}{$one}</x-dynamic-component>"))->toHaveCount(1)
+            ->and($notes("<x-confirm-modal><atom:modal name=\"m\">{$one}{$one}</atom:modal></x-confirm-modal>"))->toHaveCount(1);
+    });
+});
+
+describe('action-cap: the browser, size and the empty state', function () {
+    $notes = fn (string $source) => DesignHost::notes($source, 'action-cap');
+    $buttons = fn (int $count) => str_repeat('<atom:button>a</atom:button>', $count);
+
+    it('does not count what the browser shows in turn', function () use ($notes, $buttons) {
+        $wrap = fn (string $inside) => "<atom:page.header><x-slot:actions>{$inside}</x-slot:actions></atom:page.header>";
+
+        expect($notes($wrap($buttons(2).'<atom:button x-show="a">b</atom:button>')))->toBe([])
+            ->and($notes($wrap($buttons(2).'<div wire:show="a"><atom:button>b</atom:button></div>')))->toBe([])
+            ->and($notes($wrap($buttons(2).'<template x-if="a"><atom:button>b</atom:button></template>')))->toBe([])
+            ->and($notes($wrap($buttons(3).'<atom:button x-show="a">b</atom:button>')))->toHaveCount(1);
+    });
+
+    it('says an empty state has no menu', function () use ($notes, $buttons) {
+        expect($notes("<atom:empty><x-slot:action>{$buttons(2)}</x-slot:action></atom:empty>"))->toBe([1 => 'empty state action: 2 (cap 1): keep one plain button, an empty state has no menu'])
+            ->and((new DesignCheck)->rules()['action-cap']->fix())->toContain('has no menu');
+    });
+
+    it('does not read a surface with more than 50 actions', function () use ($notes, $buttons) {
+        expect($notes("<atom:page.header><x-slot:actions>{$buttons(50)}</x-slot:actions></atom:page.header>"))->toHaveCount(1)
+            ->and($notes("<atom:page.header><x-slot:actions>{$buttons(51)}</x-slot:actions></atom:page.header>"))->toBe([]);
+    });
+});
+
+describe('row-buttons: tables of lines, toggles and footers', function () {
+    $notes = fn (string $source) => DesignHost::notes($source, 'row-buttons');
+
+    it('does not read a table when any of its rows edits something', function () use ($notes) {
+        $row = fn (string $cell) => "<atom:table.row><atom:table.cell>{$cell}</atom:table.cell></atom:table.row>";
+
+        expect($notes('<atom:table>'.$row('<atom:input/>').$row('<atom:button>a</atom:button>').'</atom:table>'))->toBe([])
+            ->and($notes('<atom:table>'.$row('<atom:button>a</atom:button>').$row('<div x-model="a"></div>').'</atom:table>'))->toBe([])
+            ->and($notes('<atom:table>'.$row('<atom:button>a</atom:button>').'</atom:table><atom:table>'.$row('<atom:input/>').'</atom:table>'))->toHaveCount(1)
+            ->and($notes('<atom:table><x-slot:header><atom:table.toolbar><atom:input/></atom:table.toolbar></x-slot:header>'.$row('<atom:button>a</atom:button>').'</atom:table>'))->toHaveCount(1);
+    });
+
+    it('does not take text that only a screen reader gets for the button\'s text', function () use ($notes) {
+        $cell = fn (string $button) => "<atom:table.row><atom:table.cell>{$button}</atom:table.cell></atom:table.row>";
+
+        expect($notes($cell('<button><span class="sr-only">Expand</span><atom:icon.chevron-down/></button>')))->toBe([])
+            ->and($notes($cell('<button><span class="sr-only">Expand</span> Details</button>')))->toHaveCount(1)
+            ->and($notes($cell('<button>Details<span class="sr-only"> of the job</span></button>')))->toHaveCount(1);
+    });
+
+    it('does not read the table\'s footer slot, totals included', function () use ($notes) {
+        $totals = '<atom:table.totals><atom:table.row><atom:table.cell><atom:button>a</atom:button></atom:table.cell></atom:table.row></atom:table.totals>';
+
+        expect($notes("<atom:table><x-slot:footer>{$totals}</x-slot:footer></atom:table>"))->toBe([])
+            ->and($notes("<atom:table><x-slot:rows>{$totals}</x-slot:rows></atom:table>"))->toHaveCount(1)
+            ->and($notes("<atom:card><x-slot:footer>{$totals}</x-slot:footer></atom:card>"))->toHaveCount(1);
     });
 });

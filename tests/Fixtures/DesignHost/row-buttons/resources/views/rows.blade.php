@@ -60,37 +60,57 @@
                         <atom:button variant="ghost">In the actions cell</atom:button>
                     </atom:table.actions>
                 </atom:table.row>
-
-                {{-- an editable line item: a control in the row, and a ghost remove button --}}
-                <atom:table.row>
-                    <atom:table.cell><atom:input wire:model="lines.0.quantity" /></atom:table.cell>
-                    <atom:table.cell><atom:button variant="ghost" icon="x" size="sm" wire:click="removeLine(0)" /></atom:table.cell>
-                </atom:table.row>
-
-                <atom:table.row>
-                    <atom:table.cell><input type="number" name="quantity"></atom:table.cell>
-                    <atom:table.cell><atom:button variant="ghost" size="sm" wire:click="removeLine(1)">Remove</atom:button></atom:table.cell>
-                </atom:table.row>
-
-                <atom:table.row>
-                    <atom:table.cell><atom:select name="status" aria-label="Status" /></atom:table.cell>
-                    <atom:table.cell><atom:button size="sm">Move</atom:button></atom:table.cell>
-                </atom:table.row>
-
-                <atom:table.row>
-                    <atom:table.cell><div x-model="note">Note</div></atom:table.cell>
-                    <atom:table.cell><atom:button size="sm">Save note</atom:button></atom:table.cell>
-                </atom:table.row>
-
-                <atom:table.row>
-                    <atom:table.cell><span wire:model.live="note">Note</span></atom:table.cell>
-                    <atom:table.cell><atom:button size="sm">Save note</atom:button></atom:table.cell>
-                </atom:table.row>
             </x-slot:rows>
 
             <x-slot:footer>
                 <atom:button>Add line</atom:button>
             </x-slot:footer>
+        </atom:table>
+
+        {{-- a table with a row that edits something is a form of lines: its buttons are controls (one table for each way a control is written) --}}
+        <atom:table>
+            <x-slot:rows>
+                <atom:table.row>
+                    <atom:table.cell><atom:input wire:model="lines.0.quantity" /></atom:table.cell>
+                    <atom:table.cell><atom:button variant="ghost" icon="x" size="sm" wire:click="removeLine(0)" /></atom:table.cell>
+                </atom:table.row>
+            </x-slot:rows>
+        </atom:table>
+
+        <atom:table>
+            <x-slot:rows>
+                <atom:table.row>
+                    <atom:table.cell><input type="number" name="quantity"></atom:table.cell>
+                    <atom:table.cell><atom:button variant="ghost" size="sm" wire:click="removeLine(1)">Remove</atom:button></atom:table.cell>
+                </atom:table.row>
+            </x-slot:rows>
+        </atom:table>
+
+        <atom:table>
+            <x-slot:rows>
+                <atom:table.row>
+                    <atom:table.cell><atom:select name="status" aria-label="Status" /></atom:table.cell>
+                    <atom:table.cell><atom:button size="sm">Move</atom:button></atom:table.cell>
+                </atom:table.row>
+            </x-slot:rows>
+        </atom:table>
+
+        <atom:table>
+            <x-slot:rows>
+                <atom:table.row>
+                    <atom:table.cell><div x-model="note">Note</div></atom:table.cell>
+                    <atom:table.cell><atom:button size="sm">Save note</atom:button></atom:table.cell>
+                </atom:table.row>
+            </x-slot:rows>
+        </atom:table>
+
+        <atom:table>
+            <x-slot:rows>
+                <atom:table.row>
+                    <atom:table.cell><span wire:model.live="note">Note</span></atom:table.cell>
+                    <atom:table.cell><atom:button size="sm">Save note</atom:button></atom:table.cell>
+                </atom:table.row>
+            </x-slot:rows>
         </atom:table>
     </atom:panel>
 

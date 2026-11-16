@@ -24,3 +24,8 @@
         <atom:button>Reset</atom:button>
     </x-slot:actions>
 </atom:form.modal>
+
+{{-- a bare primary in another modal is that modal's, whatever the page holds --}}
+<atom:modal name="note">
+    <atom:button variant="primary" wire:click="addNote">Add note</atom:button>
+</atom:modal>

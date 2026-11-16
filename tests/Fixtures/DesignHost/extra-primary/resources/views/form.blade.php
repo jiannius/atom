@@ -16,9 +16,9 @@
         </atom:form.actions>
     </atom:form>
 
-    {{-- a second form is a second submit: it is the one primary of its own form, but the screen has two --}}
+    {{-- a second form has a submit of its own: a primary in a form is the form's, never a second one on the screen --}}
     <atom:form wire:submit="comment">
         <atom:textarea wire:model="body" />
-        <atom:button type="submit">Post comment</atom:button> {{-- expect: extra-primary --}}
+        <atom:button type="submit">Post comment</atom:button>
     </atom:form>
 </atom:page>

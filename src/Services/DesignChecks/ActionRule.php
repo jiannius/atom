@@ -41,6 +41,18 @@ abstract class ActionRule extends Rule
     protected const FORM_CONTROLS = ['input', 'select', 'textarea', 'date-picker', 'time-picker', 'checkbox', 'radio', 'toggle', 'slider', 'rating', 'uploader'];
 
     /**
+     * The attributes (modifiers aside) that show or hide a node in the browser: two nodes with one are often exclusive
+     *
+     * @var array<int, string>
+     */
+    protected const CLIENT_CONDITIONALS = ['x-show', 'x-if', 'wire:show', ':hidden', 'x-bind:hidden'];
+
+    /**
+     * The tags of a layout around a page: its slot is the page, so a button in it is on the screen
+     */
+    protected const LAYOUT_TAG = '/^x-(dynamic-component$|layouts?(\.|-|$)|app(\.|-|$)|guest(\.|-|$)|.+-layout$)/';
+
+    /**
      * The slot's name with its case and hyphens folded, so `checked-menu` (a `name` attribute) and `checkedMenu`
      * (`<x-slot:checked-menu>`, as Blade reads it) are one
      */
@@ -152,6 +164,46 @@ abstract class ActionRule extends Rule
                 if (str_starts_with($name, 'wire:model') || str_starts_with($name, 'x-model')) {
                     return true;
                 }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether the browser can hide a node: it or a tag around it (up to its slot or screen) has `x-show`, `x-if`,
+     * `wire:show` or `:hidden`. Such nodes are paired by no check: two that show in turn would read as two at once.
+     */
+    protected function clientConditional(BladeOutline $outline, array $node): bool
+    {
+        foreach ([$node, ...$outline->ancestors($node)] as $each) {
+            if ($each['id'] !== $node['id'] && ($each['kind'] === 'slot' || in_array($each['tag'], static::SCREENS, true))) {
+                return false;
+            }
+
+            foreach (array_keys($each['attributes']) as $name) {
+                if (in_array(explode('.', $name, 2)[0], static::CLIENT_CONDITIONALS, true)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a host component (an `<x-...>` that is not a layout) is around a node before its screen's edge: what it does
+     * with its slot is not known, so the node may not be on the page at all
+     */
+    protected function hostWrapped(BladeOutline $outline, array $node): bool
+    {
+        foreach ($outline->ancestors($node) as $ancestor) {
+            if (in_array($ancestor['tag'], static::SCREENS, true)) {
+                return false;
+            }
+
+            if ($ancestor['kind'] === 'component' && ! preg_match(static::LAYOUT_TAG, $ancestor['tag'])) {
+                return true;
             }
         }
 

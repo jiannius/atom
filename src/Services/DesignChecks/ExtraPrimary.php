@@ -30,7 +30,7 @@ class ExtraPrimary extends ActionRule
 
     public function detect(): string
     {
-        return 'A primary is an `<atom:button>` with a static `variant="primary"`, or `type="submit"` and no `variant`. A modal and a `<atom:form.modal>` (which draws its own Save) are screens of their own. Flagged: one in `<atom:empty>`, `<atom:table.toolbar>`, the table\'s `checked` slot or a row (not a row that edits something); one in an `<atom:callout>` when the screen\'s `<atom:page.header>` has a `primary` slot; a second in one `<atom:form>`; one in a loop (one per item); and a second that can show with an earlier one on a screen (the branches of one `@if` chain never do, and two separate `@if` blocks are not paired). A bound `variant` or `type` is not read.';
+        return 'A primary is an `<atom:button>` with a static `variant="primary"`, or `type="submit"` and no `variant`. A modal and a `<atom:form.modal>` (which draws its own Save) are screens of their own. A primary in a form (`<atom:form>`, `<form>`, or an `<atom:form.section>` that saves on its own) belongs to it: only a second one in the same form is flagged, and it is never paired with a primary of the screen. A primary that the browser can hide (`x-show`, `<template x-if>`, `wire:show`, `:hidden`) or that sits in a host component other than a layout is not paired. Flagged: one in `<atom:empty>`, `<atom:table.toolbar>`, the table\'s `checked` slot or a row (not a row that edits something); one in an `<atom:callout>` when the screen\'s `<atom:page.header>` has a `primary` slot; a second in one form; one in a loop (one per item); and a second that can show with an earlier one on a screen (the branches of one `@if` chain never do, and two separate `@if` blocks are not paired). A bound `variant` or `type` is not read.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -47,6 +47,10 @@ class ExtraPrimary extends ActionRule
         $kept = [];
 
         foreach ($primaries as $primary) {
+            if ($this->hostWrapped($outline, $primary)) {
+                continue;
+            }
+
             $screen = $this->screen($outline, $primary);
             $form = $this->form($outline, $primary);
             $placement = $this->placement($outline, $primary, $headed);
@@ -55,25 +59,26 @@ class ExtraPrimary extends ActionRule
                 continue;
             }
 
+            $conditional = $this->clientConditional($outline, $primary);
             $note = $placement
-                ?? $this->secondInForm($outline, $primary, $form, $inForm)
+                ?? ($conditional ? null : $this->secondInForm($outline, $primary, $form, $inForm))
                 ?? $this->inLoop($outline, $primary, $form, $screen);
 
-            if ($form !== null) {
-                $inForm[$form['id']][] = $primary;
-            }
+            if ($note === null && ! $conditional) {
+                if ($form !== null) {
+                    $inForm[$form['id']][] = $primary;
+                } else {
+                    foreach ($kept[$screen] ?? [] as $earlier) {
+                        if ($outline->together($earlier, $primary)) {
+                            $note = 'a second primary on one screen: the next step for the status, or the form\'s submit';
 
-            if ($note === null) {
-                foreach ($kept[$screen] ?? [] as $earlier) {
-                    if ($outline->together($earlier, $primary)) {
-                        $note = 'a second primary on one screen: the next step for the status, or the form\'s submit';
-
-                        break;
+                            break;
+                        }
                     }
-                }
 
-                if ($note === null) {
-                    $kept[$screen][] = $primary;
+                    if ($note === null) {
+                        $kept[$screen][] = $primary;
+                    }
                 }
             }
 
@@ -100,21 +105,28 @@ class ExtraPrimary extends ActionRule
     }
 
     /**
-     * The form a button submits: the nearest `<atom:form>` or `<atom:form.modal>` before a modal's edge
+     * The form a button submits: the nearest `<atom:form>`, plain `<form>` or `<atom:form.modal>` before a modal's edge, else
+     * the `<atom:form.section>` it is in (a section that saves on its own). Null when it is in none: a primary of the screen.
      */
     protected function form(BladeOutline $outline, array $button): ?array
     {
+        $section = null;
+
         foreach ($outline->ancestors($button) as $ancestor) {
-            if (in_array($ancestor['tag'], ['atom:form', 'atom:form.modal'], true)) {
+            if (in_array($ancestor['tag'], ['atom:form', 'form', 'atom:form.modal'], true)) {
                 return $ancestor;
             }
 
+            if ($ancestor['tag'] === 'atom:form.section') {
+                $section ??= $ancestor;
+            }
+
             if ($ancestor['tag'] === 'atom:modal') {
-                return null;
+                break;
             }
         }
 
-        return null;
+        return $section;
     }
 
     /**
