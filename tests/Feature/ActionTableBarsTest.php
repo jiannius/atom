@@ -298,7 +298,7 @@ describe('the bulk bar', function () {
     });
 
     it('draws no bar when the only markers in the slot were another component\'s', function () {
-        // a marker no surface of this owner takes is stripped, so a slot that held nothing else is empty and the bar is not drawn
+        // a marker no surface of this owner takes is stripped, so a slot that held nothing else (Livewire's block comments are not content) draws no bar
         $foreign = app(ActionItems::class)->add(['label' => 'Alien', 'html' => 'Alien', 'attributes' => new \Illuminate\View\ComponentAttributeBag]);
         $registry = app(ActionItems::class);
         $reflection = new ReflectionProperty($registry, 'items');
@@ -307,7 +307,7 @@ describe('the bulk bar', function () {
         $items[$found[1]]['owner'] = ['someone-else', 99];
         $reflection->setValue($registry, $items);
 
-        $html = renderBlade(bulkTable("\n    ".$foreign."\n  "));
+        $html = renderBlade(bulkTable($foreign.'<!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->'));
 
         expect($html)->not->toContain(BULK)
             ->and($html)->not->toContain('atom:action:');
