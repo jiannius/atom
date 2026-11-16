@@ -148,6 +148,14 @@ describe('table.toolbar', function () {
             ->and(json_decode($second->getAttribute('data-atom-confirm'), true))->toBe(['heading' => 'Send them?', 'buttonConfirm' => 'Send']);
     });
 
+    it('keeps a pipe in an icon-only label out of the button text: the heading keeps the whole label, the button is not cut at the pipe', function () {
+        $html = renderBlade('<atom:table.toolbar><atom:action icon="download" confirm wire:click="a">Archive | restore</atom:action></atom:table.toolbar>');
+        $confirm = json_decode(domQuery($html, '//*[@data-atom-action="visible"]')[0]->getAttribute('data-atom-confirm'), true);
+
+        expect($confirm['heading'])->toBe('Archive | restore?')
+            ->and($confirm)->not->toHaveKey('buttonConfirm');
+    });
+
     it('confirms a warning action in the ⋯ in its tone, with the label\'s copy', function () {
         $html = renderBlade('<atom:table.toolbar><atom:action tone="warning" wire:click="a">Void all</atom:action></atom:table.toolbar>');
         $row = domQuery($html, '//*[@data-atom-menu]//*[@data-atom-action="menu"]')[0];
@@ -335,6 +343,27 @@ describe('the bulk bar', function () {
         expect(bulkGroup($html))->toBe(['host', 'Alpha:visible'])
             ->and($bar->getAttribute('data-tone'))->toBe('accent')
             ->and($html)->toContain('gap-6');
+    });
+
+    it('keeps the checked slot\'s tone and class when every action in it went to the ⋯', function () {
+        $warning = renderBlade('<atom:table :empty="false"><x-slot:checked tone="accent" class="gap-6"><atom:action tone="warning" wire:click="w">Void</atom:action></x-slot:checked><x-slot:rows></x-slot:rows></atom:table>');
+        $low = renderBlade('<atom:table :empty="false"><x-slot:checked tone="accent" class="gap-6"><atom:action priority="low" wire:click="l">Export</atom:action></x-slot:checked><x-slot:rows></x-slot:rows></atom:table>');
+
+        foreach ([$warning, $low] as $html) {
+            $bar = domQuery($html, '//*[@data-atom-table-checked]')[0];
+
+            expect($bar->getAttribute('data-tone'))->toBe('accent')
+                ->and(domClasses($bar))->toContain('bg-accent-soft')
+                ->and(bulkGroup($html))->toBe(['menu'])
+                ->and(domClasses(domQuery($html, '//*[@data-atom-table-checked]/div[last()]')[0]))->toContain('gap-6');
+        }
+    });
+
+    it('draws a `checked-menu` action with `priority="normal"` as a button when there is no `checked` slot', function () {
+        $html = renderBlade(bulkTable('', '<atom:action priority="normal" wire:click="a">Alpha</atom:action>'));
+
+        expect(bulkGroup($html))->toBe(['Alpha:visible'])
+            ->and($html)->toContain(BULK);
     });
 
     it('draws each action once and leaves no marker', function () {

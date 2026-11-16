@@ -31,7 +31,8 @@ $plain = \Jiannius\Atom\Services\ConfirmProp::plainLabel(strip_tags($html) === $
 if ($wrapped && $plain !== '' && $confirm !== false && $confirm !== null) {
     $given = is_array($confirm) ? $confirm : (is_string($confirm) && $confirm !== '' ? ['heading' => $confirm] : []);
 
-    $confirm = [...['heading' => str_ends_with($plain, '?') ? $plain : $plain.'?', 'buttonConfirm' => $plain], ...$given];
+    /* the button text goes through t(), which splits on a pipe: a label with one keeps the dialog's own button text rather than a cut word */
+    $confirm = [...['heading' => str_ends_with($plain, '?') ? $plain : $plain.'?'], ...(str_contains($plain, '|') ? [] : ['buttonConfirm' => $plain]), ...$given];
 }
 
 /* the label is built here, not with an `@if` inside the tag: in a Livewire view a directive prints morph markers, and a label with a `<` in it is markup to the

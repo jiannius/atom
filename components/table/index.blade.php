@@ -18,7 +18,8 @@
 /* the actions in `checked` and `checked-menu` are taken out of the slots (a marker is what stands for each one there) and placed: the first three as buttons
    (a `danger` or `delete` one that is not `low` is pinned after them, outside the three), the rest in the ⋯; a slot without one is the slot as it was, down to
    the bytes. A slot that held markers (placed or not) counts as content only when something real is left, like the header's slots; one that held none keeps
-   the old rule (`isNotEmpty()`), so a bar whose slot is made of `@if` blocks that all come out false is drawn as it always was. */
+   the old rule (`isNotEmpty()`), so a bar whose slot is made of `@if` blocks that all come out false is drawn as it always was. The slot's own `tone` and
+   attributes follow the slot when it held content or actions, even when every action went to the ⋯ (`$checkedUsed`). */
 $registry = app(\Jiannius\Atom\Services\ActionItems::class);
 $checkedBefore = $checked ?? null;
 [$checked, $fromChecked] = $registry->collect($checkedBefore, 'checked');
@@ -73,8 +74,9 @@ $frameless = (bool) $frameless;
 
 $stripClasses = $frameless ? 'border-b px-3 py-2.5' : '';
 
-$checkedAccent = $hasChecked && isset($checked) && $checked->attributes->get('tone') === 'accent';
-$checkedBag = $hasChecked && isset($checked) ? $checked->attributes : new \Illuminate\View\ComponentAttributeBag;
+$checkedUsed = isset($checked) && ($hasChecked || $checked !== $checkedBefore);
+$checkedAccent = $checkedUsed && $checked->attributes->get('tone') === 'accent';
+$checkedBag = $checkedUsed ? $checked->attributes : new \Illuminate\View\ComponentAttributeBag;
 $checkedClasses = Arr::toCssClasses([
     'min-h-10 flex flex-wrap items-center gap-3',
     $stripClasses,
