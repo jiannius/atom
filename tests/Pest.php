@@ -152,3 +152,15 @@ function calendarEventFacts(): array
 
     return $facts;
 }
+
+/** The visible text of an element: no `<style>` (the loading spinner carries one), whitespace collapsed */
+function actionText(DOMNode $node): string
+{
+    $text = '';
+
+    foreach ((new DOMXPath($node->ownerDocument))->query('.//text()[not(ancestor::style)]', $node) as $part) {
+        $text .= $part->textContent;
+    }
+
+    return trim(preg_replace('/\s+/', ' ', $text));
+}

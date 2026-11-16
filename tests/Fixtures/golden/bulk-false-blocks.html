@@ -1,0 +1,86 @@
+<div><div
+class="group/table min-w-0 max-w-full space-y-4" x-data="{}"
+x-on:table-filter:changed.window="if ($wire._table?.checkboxes?.length || $wire._table?.select_all) $wire.resetTableCheckboxes()"
+data-atom-table
+>
+    
+    <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->
+    
+    <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->
+    <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->
+    
+    <!--[if BLOCK]><![endif]-->        <div x-show="$wire._table.checkboxes.length || $wire._table.select_all" x-cloak class="min-h-10 flex flex-wrap items-center gap-3 " data-atom-table-checked  data-total="0">
+            <div class="shrink-0 flex items-center gap-2 text-sm font-medium text-fg-muted">
+                <span aria-hidden="true" class="inline-flex shrink-0  *:w-full *:h-full size-4" data-atom-icon>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11.602 13.7599L13.014 15.1719L21.4795 6.7063L22.8938 8.12051L13.014 18.0003L6.65 11.6363L8.06421 10.2221L10.189 12.3469L11.6025 13.7594L11.602 13.7599ZM11.6037 10.9322L16.5563 5.97949L17.9666 7.38977L13.014 12.3424L11.6037 10.9322ZM8.77698 16.5873L7.36396 18.0003L1 11.6363L2.41421 10.2221L3.82723 11.6352L3.82604 11.6363L8.77698 16.5873Z"></path></svg>
+</span>                <div x-data="tableChecked">
+                    <span x-text="$wire._table.select_all ? _atomTotal : $wire._table.checkboxes.length"></span> Selected
+                </div>
+            </div>
+
+            <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->
+            <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->
+            <div class="grow flex flex-wrap items-center gap-2">
+                <!--[if BLOCK]><![endif]-->                    <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]--> <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->
+                <!--[if ENDBLOCK]><![endif]-->
+                <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->            </div>
+        </div>
+    <!--[if ENDBLOCK]><![endif]-->
+    <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->
+    
+    <div class="relative min-w-0">
+        <div class="min-w-0 divide-y divide-border overflow-clip rounded-panel border bg-surface">
+            
+            <div class="relative min-w-0 overflow-x-auto" data-atom-table-scroll
+                                                >
+                
+                <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->                <!--[if BLOCK]><![endif]-->                    <table class="min-w-full text-fg divide-y divide-border">
+                        <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->
+                        <!--[if BLOCK]><![endif]-->                            <tbody class="divide-y divide-border" data-atom-table-rows>
+                                <tr
+class="hover:bg-fg/[0.035]"
+data-atom-table-row>
+    <!--[if BLOCK]><![endif]-->    <td class="px-row py-row leading-row h-(--atom-row-min-h) [:where(&amp;)]:whitespace-nowrap text-fg   text-left justify-start">
+        <!--[if BLOCK]><![endif]-->x    </td>
+<!--[if ENDBLOCK]><![endif]-->
+</tr>
+                            </tbody>
+                        <!--[if ENDBLOCK]><![endif]-->
+                        <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->                    </table>
+                <!--[if ENDBLOCK]><![endif]-->            </div>
+
+            <!--[if BLOCK]><![endif]--><!--[if ENDBLOCK]><![endif]-->        </div>
+
+        
+        <div
+        wire:loading.flex
+        wire:target="gotoPage,nextPage,previousPage,_table.sort.column,_table.sort.direction,_table.max_rows,_table.show_trashed"
+        class="absolute inset-0 z-10 justify-center bg-surface/60 rounded-panel"
+        data-atom-table-loading>
+            
+            <div class="sticky top-[var(--atom-shell-bar-h,0px)] h-[calc(100dvh-var(--atom-shell-bar-h,0px))] max-h-full flex items-center">
+                <span aria-hidden="true" class="inline-flex shrink-0  *:w-full *:h-full sticky top-[calc(var(--atom-shell-bar-h,0px)+1rem)] bottom-4 size-6 text-fg-muted" data-atom-icon>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <style>
+         .spinner_ajPY {
+            transform-origin: center;
+            animation: spinner_AtaB 1s infinite linear
+         }
+
+         @keyframes spinner_AtaB {
+            100% {
+               transform: rotate(360deg)
+            }
+         }
+      </style>
+      <path d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity=".25" />
+      <path
+         d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z"
+         class="spinner_ajPY" />
+   </svg>
+</span>            </div>
+        </div>
+    </div>
+</div>
+
+</div>
