@@ -116,6 +116,24 @@ describe('what shows', function () {
             ->and(domClasses($panelLink[0]))->toContain('text-sm');
     });
 
+    it('draws a visible action with a blocked href as a ghost button, never an anchor with no href', function () {
+        $card = renderBlade('<atom:card heading="Parts"><x-slot:actions><atom:action href="javascript:alert(1)">View all</atom:action></x-slot:actions> b</atom:card>');
+        $panel = renderBlade('<atom:panel heading="Parts"><x-slot:actions><atom:action href="javascript:alert(1)">View all</atom:action></x-slot:actions> b</atom:panel>');
+        $header = renderBlade('<atom:page.header title="T"><x-slot:actions><atom:action href="javascript:alert(1)">View all</atom:action></x-slot:actions></atom:page.header>');
+
+        foreach ([[$card, 'h-control-xs'], [$panel, 'h-control-sm'], [$header, 'h-control']] as [$html, $height]) {
+            $visible = domQuery($html, '//*[@data-atom-action="visible"]');
+
+            expect($visible)->toHaveCount(1)
+                ->and($visible[0]->nodeName)->toBe('button')
+                ->and($visible[0]->hasAttribute('href'))->toBeFalse()
+                ->and(domClasses($visible[0]))->toContain($height)
+                ->and(actionText($visible[0]))->toBe('View all')
+                ->and($html)->not->toContain('javascript:')
+                ->and(domQuery($html, '//a[@data-atom-action]'))->toBeEmpty();
+        }
+    });
+
     it('draws a second action with an href in the ⋯ as a row, and drops a javascript: href', function () {
         $html = renderBlade('<atom:card heading="Parts"><x-slot:actions>
             <atom:action href="/a">One</atom:action><atom:action href="/b">Two</atom:action><atom:action href="javascript:alert(1)">Bad</atom:action>
