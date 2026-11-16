@@ -76,11 +76,25 @@ describe('page-header', function () {
 describe('hand-crumbs', function () {
     it('names what it saw', function () {
         expect(DesignHost::notes('<nav aria-label="Breadcrumb"><a>a</a></nav>', 'hand-crumbs'))->toBe([1 => 'a `<nav>` labelled as a breadcrumb'])
-            ->and(DesignHost::notes('<div><a href="/a">a</a>›<a href="/b">b</a></div>', 'hand-crumbs'))->toBe([1 => 'links with a separator between them']);
+            ->and(DesignHost::notes('<nav><a href="/a">a</a>›<a href="/b">b</a></nav>', 'hand-crumbs'))->toBe([1 => 'links with a separator between them']);
     });
 
     it('is one finding for a nav and the links inside it', function () {
         expect(DesignHost::scanSource('<nav aria-label="Breadcrumb"><a href="/a">a</a><atom:icon.right/><a href="/b">b</a></nav>', 'hand-crumbs'))->toHaveCount(1);
+    });
+
+    it('takes two links and a chevron in a nav or a list, three anywhere but in a sentence, and never in a footer', function () {
+        $two = '<a href="/a">a</a>›<a href="/b">b</a>';
+        $three = '<a href="/a">a</a>›<a href="/b">b</a>›<a href="/c">c</a>';
+
+        foreach (['nav' => [1, 1], 'ol' => [1, 1], 'ul' => [1, 1], 'div' => [0, 1], 'section' => [0, 1], 'p' => [0, 0], 'span' => [0, 0], 'small' => [0, 0], 'label' => [0, 0]] as $tag => [$twoLinks, $threeLinks]) {
+            expect(DesignHost::scanSource("<{$tag}>{$two}</{$tag}>", 'hand-crumbs'))->toHaveCount($twoLinks, $tag.' two')
+                ->and(DesignHost::scanSource("<{$tag}>{$three}</{$tag}>", 'hand-crumbs'))->toHaveCount($threeLinks, $tag.' three');
+        }
+
+        expect(DesignHost::scanSource("<footer><nav>{$two}</nav></footer>", 'hand-crumbs'))->toHaveCount(0)
+            ->and(DesignHost::scanSource("<footer><div>{$three}</div></footer>", 'hand-crumbs'))->toHaveCount(0)
+            ->and(DesignHost::scanSource("<nav><div>{$two}</div></nav>", 'hand-crumbs'))->toHaveCount(1);
     });
 
     it('needs a third link and a nav or a list around it before a slash is a trail, and never counts a footer', function () {

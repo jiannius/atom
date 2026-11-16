@@ -19,6 +19,21 @@
     <atom:breadcrumbs :items="[['label' => 'Jobs', 'href' => route('jobs')], ['label' => $job->number]]" />
 </x-slot:crumbs>
 
+<div class="mx-auto max-w-sm">
+    <h1 class="text-2xl">Sign in</h1>
+    <p class="text-sm">Not a member? <a href="/register">Register</a> › <a href="/help">Help</a></p>
+    <p><a href="/register">Register</a> › <a href="/help">Help</a> › <a href="/faq">FAQ</a></p>
+    <small><a href="/a">A</a> › <a href="/b">B</a> › <a href="/c">C</a></small>
+    <span><a href="/a">A</a><atom:icon.right /><a href="/b">B</a><atom:icon.right /><a href="/c">C</a></span>
+    <label><a href="/a">A</a> › <a href="/b">B</a> › <a href="/c">C</a></label>
+    <div><a href="/register">Register</a> › <a href="/help">Help</a></div>
+    <div><a href="/a">A</a><atom:icon.right /><a href="/b">B</a></div>
+</div>
+
+<ul>
+    <li><div><a href="/a">A</a> › <a href="/b">B</a></div></li>
+</ul>
+
 <footer>
     <a href="/terms">Terms</a> / <a href="/privacy">Privacy</a>
 </footer>
@@ -38,33 +53,33 @@
     <a href="/terms">Terms</a> / <a href="/privacy">Privacy</a>
 </ul>
 
-<div>
+<ol>
     <a href="/jobs">Jobs</a><span><atom:icon.right /> and</span><a href="/parts">Parts</a>
-</div>
+</ol>
 
 <div>
     <a href="/jobs">Next <atom:icon.right /></a>
 </div>
 
-<div>
+<ol>
     <a href="/jobs">Jobs</a><atom:icon.right /><span>WO-1</span>
-</div>
+</ol>
 
 <div>
     <a href="/jobs">Jobs</a> | <a href="/parts">Parts</a>
 </div>
 
-<div>
+<ol>
     <a href="/jobs">Jobs</a><span>and</span><a href="/parts">Parts</a>
-</div>
+</ol>
 
-<div>
+<ol>
     <a href="/jobs">Jobs</a><button type="button">›</button><a href="/parts">Parts</a>
-</div>
+</ol>
 
-<div>
+<ol>
     <a href="/jobs">Jobs</a> or <span>›</span><a href="/parts">Parts</a>
-</div>
+</ol>
 
 <div>
     <a href="/jobs">Prev</a><atom:button icon="right" aria-label="Next" /><a href="/parts">Parts</a>

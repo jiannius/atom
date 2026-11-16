@@ -14,13 +14,19 @@
     <a href="/jobs">Jobs</a><atom:icon.right /><a href="/jobs/1">WO-1</a>
 </nav>
 
-<div>
+<nav class="text-sm">
     <a href="/jobs">Jobs</a><atom:icon.right class="size-3" /><a href="/jobs/1">WO-1</a> {{-- expect: hand-crumbs --}}
-</div>
+</nav>
 
-<div>
+<nav class="text-sm">
     <atom:link href="/jobs">Jobs</atom:link> › <atom:link href="/jobs/1">WO-1</atom:link> {{-- expect: hand-crumbs --}}
-</div>
+</nav>
+
+<nav class="text-sm">
+    <div class="flex">
+        <a href="/jobs">Jobs</a> › <a href="/jobs/1">WO-1</a> {{-- expect: hand-crumbs --}}
+    </div>
+</nav>
 
 <ol>
     {{-- expect: hand-crumbs --}}
@@ -41,14 +47,18 @@
     </div>
 </nav>
 
-<div><a href="/jobs">Jobs</a>&raquo;<a href="/jobs/1">WO-1</a></div> {{-- expect: hand-crumbs --}}
+<ul class="flex"><a href="/jobs">Jobs</a>&raquo;<a href="/jobs/1">WO-1</a></ul> {{-- expect: hand-crumbs --}}
 
-<div><a href="/jobs">Jobs</a>&nbsp;›&nbsp;<a href="/jobs/1">WO-1</a></div> {{-- expect: hand-crumbs --}}
+<ul class="flex"><a href="/jobs">Jobs</a>&nbsp;›&nbsp;<a href="/jobs/1">WO-1</a></ul> {{-- expect: hand-crumbs --}}
 
-<div><a href="/jobs">Jobs</a> › <a href="/jobs/1">WO-1</a></div> {{-- expect: hand-crumbs --}}
+<ul class="flex"><a href="/jobs">Jobs</a> › <a href="/jobs/1">WO-1</a></ul> {{-- expect: hand-crumbs --}}
 
 <ol><a href="/jobs">Jobs</a><li>›</li><a href="/jobs/1">WO-1</a></ol> {{-- expect: hand-crumbs --}}
 
-<div><a href="/jobs">Jobs</a><div>›</div><a href="/jobs/1">WO-1</a></div> {{-- expect: hand-crumbs --}}
+<ol><a href="/jobs">Jobs</a><div>›</div><a href="/jobs/1">WO-1</a></ol> {{-- expect: hand-crumbs --}}
 
-<div><a href="/jobs">Jobs</a><i>›</i><a href="/jobs/1">WO-1</a></div> {{-- expect: hand-crumbs --}}
+<ol><a href="/jobs">Jobs</a><i>›</i><a href="/jobs/1">WO-1</a></ol> {{-- expect: hand-crumbs --}}
+
+<div class="flex gap-2"><a href="/">Home</a> › <a href="/jobs">Jobs</a> › <a href="/jobs/1">WO-1</a></div> {{-- expect: hand-crumbs --}}
+
+<div class="flex"><a href="/jobs">Jobs</a><atom:icon.right /><a href="/jobs/1">WO-1</a><atom:icon.right /><a href="/jobs/1/parts">Parts</a></div> {{-- expect: hand-crumbs --}}

@@ -18,6 +18,13 @@ class HandCrumbs extends PageRule
     protected const ARROWS = ['icon.right', 'icon.arrow-right'];
 
     /**
+     * The elements that hold a sentence: two links in one are an aside, not a trail
+     *
+     * @var array<int, string>
+     */
+    protected const PROSE = ['p', 'span', 'small', 'label'];
+
+    /**
      * Text between two crumbs: a chevron (arrow) or a slash
      *
      * @var array<string, string>
@@ -41,7 +48,7 @@ class HandCrumbs extends PageRule
 
     public function detect(): string
     {
-        return 'A `<nav>` whose static `aria-label` has "breadcrumb" in it (a `t()` or `__()` literal counts) and that holds no `<atom:breadcrumbs>`; or, as siblings of one parent, two links (`<a>`, `<atom:link>`) with a chevron between them (an `<atom:icon.right>` or `<atom:icon.arrow-right>`, or a `›` or `»`), or, inside a `<nav>`, `<ol>` or `<ul>`, three or more with a `/` between them (two links and a `/` is a footer\'s list, and a trail has a nav or a list around it). Links in a `<footer>` never count. An arrow inside a link\'s own text is not seen. Atom\'s own header, which draws such a `nav`, is a published view and is not read.';
+        return 'A `<nav>` whose static `aria-label` has "breadcrumb" in it (a `t()` or `__()` literal counts) and that holds no `<atom:breadcrumbs>`; or, as siblings of one parent, two links (`<a>`, `<atom:link>`) with a chevron between them (an `<atom:icon.right>` or `<atom:icon.arrow-right>`, or a `›` or `»`), when they sit in a `<nav>`, `<ol>` or `<ul>` (two links), or three or more of them are in an element that is not `p`, `span`, `small` or `label` ("Not a member? Register › Help" is a sentence); with a `/` between them, three or more links and a `<nav>`, `<ol>` or `<ul>` (two links and a `/` is a footer\'s list). Links in a `<footer>` never count. An arrow inside a link\'s own text is not seen. Atom\'s own header, which draws such a `nav`, is a published view and is not read.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -70,7 +77,7 @@ class HandCrumbs extends PageRule
                 continue;
             }
 
-            foreach ($this->chains($file, $siblings, $this->isTrailShape($around)) as $first) {
+            foreach ($this->chains($file, $siblings, $this->isTrailShape($around), in_array($around[0]['tag'] ?? '', static::PROSE, true)) as $first) {
                 yield [$first['offset'], 'links with a separator between them'];
             }
         }
@@ -95,7 +102,7 @@ class HandCrumbs extends PageRule
     }
 
     /**
-     * Whether siblings sit where a trail does, which a slash needs: a nav, a list, or in one
+     * Whether siblings sit where a trail does: in a nav, or as the items of a list
      *
      * @param  array<int, array>  $around  the parent first, then what is around it
      */
@@ -146,7 +153,7 @@ class HandCrumbs extends PageRule
      * @param  array<int, array>  $siblings
      * @return array<int, array>
      */
-    protected function chains(File $file, array $siblings, bool $slashOk): array
+    protected function chains(File $file, array $siblings, bool $trail, bool $prose): array
     {
         $found = [];
         $count = count($siblings);
@@ -166,7 +173,7 @@ class HandCrumbs extends PageRule
                 $at = $next[0];
             }
 
-            if ($links > 1 && (isset($types['arrow']) || ($slashOk && $links >= 3))) {
+            if ($links > 1 && (isset($types['arrow']) ? ($trail || ($links >= 3 && ! $prose)) : ($trail && $links >= 3))) {
                 $found[] = $siblings[$i];
             }
 
