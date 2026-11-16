@@ -164,6 +164,20 @@ class DesignHost
     }
 
     /**
+     * A temp host holding atom's pattern pages (resources/views/docs/patterns) as its `resources/views/`; remove() it when done
+     */
+    public static function patterns(): string
+    {
+        $files = [];
+
+        foreach (glob(dirname(__DIR__, 2).'/resources/views/docs/patterns/*.blade.php') as $path) {
+            $files['resources/views/'.basename($path)] = file_get_contents($path);
+        }
+
+        return static::temp($files);
+    }
+
+    /**
      * What one check finds in one Blade source: its findings
      *
      * @return array<int, array<string, mixed>>

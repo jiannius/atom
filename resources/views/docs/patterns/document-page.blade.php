@@ -113,11 +113,11 @@ $money = fn (float $amount) => number_format($amount, 2);
                     <atom:button icon="send" data-testid="document-reminder">Send reminder</atom:button>
                 @endif
                 <atom:button>Edit</atom:button>
-                <atom:button icon="download">PDF</atom:button>
             </x-slot:actions>
 
             <x-slot:menu>
                 <atom:menu.item icon="copy">Duplicate</atom:menu.item>
+                <atom:menu.item icon="download">Download PDF</atom:menu.item>
                 <atom:menu.separator/>
                 <atom:menu.item variant="warning" :confirm="['heading' => 'Void this invoice?', 'message' => 'The invoice no longer counts as owed, and its record stays.', 'buttonCancel' => 'Keep invoice']" data-testid="document-void">Void invoice</atom:menu.item>
             </x-slot:menu>
@@ -128,6 +128,7 @@ $money = fn (float $amount) => number_format($amount, 2);
         </atom:page.header>
 
         <atom:page.columns>
+            {{-- atom:design-check off arbitrary-value, shadow: the paper is a printed page, deliberately unthemed, with its own scale --}}
             <article class="grid min-w-0 gap-7 rounded-md bg-[#fffefc] px-5 py-6 text-[12.5px] text-[#1d1c19] shadow-[0_0_0_1px_rgba(45,32,8,0.08),0_2px_10px_rgba(45,32,8,0.05)] sm:px-12 sm:pb-10 sm:pt-11" aria-label="Invoice document" data-testid="paper">
                 <div class="flex flex-col justify-between gap-6 sm:flex-row sm:items-start">
                     <div class="flex items-center gap-2.5">
@@ -199,11 +200,12 @@ $money = fn (float $amount) => number_format($amount, 2);
 
                 <p class="m-0 border-t border-[#1d1c19]/10 pt-4 text-[11.5px] text-[#6b665c]">Thank you for your business. Please quote the invoice number with your transfer.</p>
             </article>
+            {{-- atom:design-check on --}}
 
             <x-slot:rail label="Invoice details" sticky>
                 <atom:card heading="Balance due" class="grid gap-3" data-testid="balance-box">
-                    <div @class(['text-[26px] font-semibold leading-[1.15] tracking-[-0.02em] tabular-nums', 'text-danger-fg' => $balance > 0 && $status === 'overdue', 'text-success-fg' => $balance <= 0]) data-testid="balance">
-                        <small class="me-1 text-[13px] font-medium tracking-normal text-fg-subtle">RM</small>{{ $money($balance) }}
+                    <div @class(['text-2xl font-semibold tabular-nums', 'text-danger-fg' => $balance > 0 && $status === 'overdue', 'text-success-fg' => $balance <= 0]) data-testid="balance">
+                        <small class="me-1 text-sm font-medium text-fg-subtle">RM</small>{{ $money($balance) }}
                     </div>
                     <atom:progress :value="(int) round($received / $total * 100)" size="sm" variant="success" aria-label="Paid"/>
                     <div class="text-xs tabular-nums text-fg-subtle">RM {{ $money($received) }} of {{ $money($total) }} received{{ $status === 'overdue' ? ' · 23 days past due' : '' }}</div>
