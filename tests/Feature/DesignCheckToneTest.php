@@ -516,6 +516,11 @@ describe('round 2: tone-missing', function () {
             "<div><atom:select wire:model=\"a\" /><atom:card><div>{$remove}</div></atom:card></div>",
             "<atom:page.header title=\"a\"><atom:input wire:model=\"a\" />{$remove}</atom:page.header>",
             "<ul><li>{$remove}</li><li><atom:input wire:model=\"a\" /></li></ul>",
+            "<div><atom:table.toolbar><atom:select wire:model=\"a\" /></atom:table.toolbar>{$remove}</div>",
+            "<div><atom:input wire:model=\"a\" /><atom:table.toolbar><div>{$remove}</div></atom:table.toolbar></div>",
+            "<div><atom:table.search><atom:input wire:model=\"s\" /></atom:table.search>{$remove}</div>",
+            "<div><atom:input wire:model=\"a\" /><atom:table.row><atom:table.cell>{$remove}</atom:table.cell></atom:table.row></div>",
+            "<table><tr><td>{$remove}</td></tr><tr><td><input wire:model=\"a\"></td></tr></table>",
         ] as $source) {
             expect(DesignHost::notes($source, 'tone-missing'))->toHaveCount(1, $source);
         }
