@@ -18,7 +18,19 @@
     <atom:page.header title="Job" :facts="[['label' => 'Site', 'value' => '—']]" /> {{-- expect: empty-glyph --}}
     <atom:page.header title="Job" :facts="[['label' => 'Site', 'value' => $site ?: '--']]" /> {{-- expect: empty-glyph --}}
 
+    <p>{{ $a ?? '&mdash;' }}</p> {{-- expect: empty-glyph --}}
+    <p>{{ $a ?: '&#8212;' }}</p> {{-- expect: empty-glyph --}}
+    <p>@if ($a) {{ $a }} @else — @endif</p> {{-- expect: empty-glyph --}}
+    <p>@if ($a) {{ $a }} @else <span class="text-sm">--</span> @endif</p> {{-- expect: empty-glyph --}}
+    <p>@if ($a) {!! $a !!} @else &mdash; @endif</p> {{-- expect: empty-glyph --}}
+
     {{-- look-alikes: nothing here is a missing value typed in --}}
+    <p>@if ($a) yes @else — @endif</p>
+    <p>@if ($a) {{ $a }} @else n/a @endif</p>
+    <p>@if ($a) {{ $a }} @else - @endif</p>
+    <p>@if ($a) @if ($b) {{ $b }} @endif @else — @endif</p>
+    <p>@if ($a) {{ $a }} @elseif ($b) {{ $b }} @else — @endif</p>
+    <p>{{ $a ?? '&hellip;' }}</p>
     <p>{{ $from }}–{{ $to }}</p>
     <p>{{ $a - $b }} and {{ $balance ?? 0 }}</p>
     <p>Takes 2–3 days -- or 4 - 5 on a holiday</p>

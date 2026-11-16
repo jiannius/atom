@@ -76,26 +76,23 @@ class TitleCase extends CopyFormsRule
             return;
         }
 
-        $flagged = [];
-
         foreach ($file->isBlade() ? $this->bladeLabels($file) : $this->phpLabels($file) as [$offset, $label]) {
             $words = $this->capitalised($label);
             $key = $file->path.':'.$offset.':'.md5($label);
 
             $context->add(static::VOCABULARY, [$key, $this->lowercaseWords($label)]);
 
-            if ($words === [] || isset($flagged[$offset])) {
+            if ($words === []) {
                 continue;
             }
 
-            $flagged[$offset] = true;
-
-            yield [$offset, '"'.$label.'"'.(count($words) > 1 ? ' capitalises '.implode(', ', $words) : ' capitalises '.$words[0].', a word the app writes in lowercase elsewhere'), ['key' => $key, 'words' => $words]];
+            yield [$offset, '"'.$label.'"'.(count($words) > 1 ? ' capitalises '.implode(', ', $words) : ' capitalises '.$words[0].', a word the app writes in lowercase elsewhere').'. If it is a product or proper name, mark it: atom:design-check ignore title-case', ['key' => $key, 'words' => $words, 'element' => $file->path.':'.$offset]];
         }
     }
 
     /**
-     * A label with one capitalised word stands only when the app writes that word in lowercase in another label
+     * A label with one capitalised word stands only when the app writes that word in lowercase in another label; of
+     * the labels that stand on one element (a header's title and its facts, a list of tabs) the first is reported
      */
     public function finish(array $findings, Context $context): array
     {
@@ -107,16 +104,23 @@ class TitleCase extends CopyFormsRule
             }
         }
 
-        return array_values(array_filter($findings, function ($finding) use ($seen) {
-            $words = $finding['data']['words'] ?? [];
+        $elements = [];
 
-            if (count($words) > 1) {
-                return true;
+        return array_values(array_filter($findings, function ($finding) use ($seen, &$elements) {
+            $words = $finding['data']['words'] ?? [];
+            $element = $finding['data']['element'] ?? null;
+
+            if (count($words) === 1 && array_diff_key($seen[strtolower($words[0])] ?? [], [$finding['data']['key'] ?? '' => true]) === []) {
+                return false;
             }
 
-            $others = array_diff_key($seen[strtolower($words[0] ?? '')] ?? [], [$finding['data']['key'] ?? '' => true]);
+            if ($element !== null && isset($elements[$element])) {
+                return false;
+            }
 
-            return $others !== [];
+            $elements[$element ?? count($elements)] = true;
+
+            return true;
         }));
     }
 

@@ -14,9 +14,9 @@ class ModalFooterPadding extends CopyFormsRule
 
     /**
      * A padding utility: `p-6`, `px-4`, `pt-2`, `p-[10px]`, behind any variant (`md:p-4`) or an important mark; not a
-     * zero, which takes padding away
+     * zero (`p-0`, `p-0!`, `p-[0px]`), which takes padding away
      */
-    protected const PADDING = '/^(?:[\w\[\]&>*.-]+:)*!?-?(?:p|px|py|pt|pb|ps|pe|pl|pr)-(?!0$)[\w.\/\[\]%-]+!?$/';
+    protected const PADDING = '/^(?:[\w\[\]&>*.-]+:)*!?-?(?:p|px|py|pt|pb|ps|pe|pl|pr)-(?!(?:0|\[0(?:px|r?em)?\])!?$)[\w.\/\[\]%-]+!?$/';
 
     public function title(): string
     {
@@ -35,7 +35,7 @@ class ModalFooterPadding extends CopyFormsRule
 
     public function detect(): string
     {
-        return 'An `<atom:form.actions>` whose static `class` (or a string in `:class`) holds a padding utility (`p-*`, `px-*`, `py-*`, `pt-*`, `pb-*`, `ps-*`, `pe-*`, `pl-*`, `pr-*`, behind any variant). A zero (`p-0`) is not flagged, and a class that holds an echo is not read.';
+        return 'An `<atom:form.actions>` whose static `class` (or a string in `:class`) holds a padding utility (`p-*`, `px-*`, `py-*`, `pt-*`, `pb-*`, `ps-*`, `pe-*`, `pl-*`, `pr-*`, behind any variant). A zero (`p-0`, `p-0!`, `p-[0px]`) is not flagged, and a class that holds an echo is not read.';
     }
 
     /**

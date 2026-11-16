@@ -13,15 +13,20 @@ class EnumTitle extends CopyFormsRule
     public const GROUP = 'Copy and state';
 
     /**
-     * An enum read for its word: `->status->name`, `->type->value`, `$status->value`. A `state` is only read by `->value`:
-     * `->state->name` is as often a place (a State model) as a case.
+     * An enum read for its word: `->status->name`, `->stage->value`, `$status->value`. A `type`, `kind` or `state` is
+     * only read by `->value`: `->type->name` is as often a lookup model's name (a category, a place) as a case.
      */
-    protected const ENUM_WORD = '/(?:->|\?->)\s*(?:status|stage|type|kind)\s*(?:\(\s*\))?\s*(?:->|\?->)\s*(?:name|value)\b|(?:->|\?->)\s*state\s*(?:\(\s*\))?\s*(?:->|\?->)\s*value\b|\$(?:status|stage)\s*(?:->|\?->)\s*(?:name|value)\b/';
+    protected const ENUM_WORD = '/(?:->|\?->)\s*(?:status|stage)\s*(?:\(\s*\))?\s*(?:->|\?->)\s*(?:name|value)\b|(?:->|\?->)\s*(?:type|kind|state)\s*(?:\(\s*\))?\s*(?:->|\?->)\s*value\b|\$(?:status|stage)\s*(?:->|\?->)\s*(?:name|value)\b/';
 
     /**
      * A function that turns a word into a title: it opens a call (`Str::title(`, `ucfirst(`)
      */
     protected const FUNCTION_CALL = '/(?<!\w|\$|:|->)(?:Str::(?:title|headline|ucfirst|ucwords)|ucfirst|ucwords)\s*\(/';
+
+    /**
+     * A call whose arguments are a log line or a cache key, not a screen: `Log::info(`, `logger(`, `cache(`, `Cache::remember(`
+     */
+    protected const NOT_SCREEN_CALL = '/(?<![\w$>])(?:Log::\w+|logger|cache|Cache::\w+)\s*\(/';
 
     /**
      * `str(` or `Str::of(`, whose chain may end in `->title()`
@@ -50,7 +55,7 @@ class EnumTitle extends CopyFormsRule
 
     public function detect(): string
     {
-        return 'In Blade and PHP: `str(…)`, `Str::of(…)` (with `->title()`, `->headline()`, `->ucfirst()` or `->ucwords()` after it, possibly after other calls), `Str::title(`, `Str::headline(`, `ucfirst(` or `ucwords(` around a chain that ends `->status->name`, `->stage->value`, `->type->name`, `->kind->value` (or `->state->value`, or a `$status->name`). One level (`str($user->name)->title()`) is a person\'s name and is not read, and neither is a PHP file under a mail, PDF, print or export directory.';
+        return 'In Blade and PHP: `str(…)`, `Str::of(…)` (with `->title()`, `->headline()`, `->ucfirst()` or `->ucwords()` after it, possibly after other calls), `Str::title(`, `Str::headline(`, `ucfirst(` or `ucwords(` around a chain that ends `->status->name`, `->stage->value` (or `->type->value`, `->kind->value`, `->state->value`, or a `$status->name`). One level (`str($user->name)->title()`) is a person\'s name, `->type->name` is as often a lookup model, and neither is read; nor is a call inside `Log::`, `logger(` or `cache(`, or a PHP file under a mail, PDF, print or export directory.';
     }
 
     public function structural(): bool
@@ -98,10 +103,21 @@ class EnumTitle extends CopyFormsRule
         ksort($found);
 
         foreach ($found as $offset => $note) {
-            if ($outline === null || ! $this->inCode($outline, $offset)) {
+            if (($outline === null || ! $this->inCode($outline, $offset)) && ! $this->inLogOrCache($text, $offset)) {
                 yield [$offset, $note.': use the enum\'s `label()` or `<atom:status>`'];
             }
         }
+    }
+
+    /**
+     * Whether an offset is inside the arguments of a log or cache call of the same statement
+     */
+    protected function inLogOrCache(string $text, int $offset): bool
+    {
+        $before = substr($text, max(0, $offset - 400), min(400, $offset));
+        $cut = max((int) strrpos($before, ';'), (int) strrpos($before, '}}'), (int) strrpos($before, '{{'));
+
+        return preg_match(static::NOT_SCREEN_CALL, substr($before, $cut)) === 1;
     }
 
     /**

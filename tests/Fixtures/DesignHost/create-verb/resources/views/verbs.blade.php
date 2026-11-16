@@ -24,7 +24,7 @@
 
     <atom:table.toolbar>
         <x-slot:menu>
-            <atom:menu.item icon="add">New group</atom:menu.item> {{-- expect: create-verb --}}
+            <atom:menu.item icon="add">New group</atom:menu.item>
             <atom:menu.item icon="add">Create group</atom:menu.item>
             <atom:menu.item>Newest first</atom:menu.item>
             <atom:menu.item>Renew contract</atom:menu.item>
@@ -36,6 +36,7 @@
             <atom:empty heading="No parts yet">
                 <x-slot:action>
                     <atom:button>Add part</atom:button>
+                    <atom:button>New part</atom:button> {{-- expect: create-verb --}}
                 </x-slot:action>
             </atom:empty>
         </x-slot:empty>
@@ -50,6 +51,8 @@
     <atom:form wire:submit="save">
         <atom:button type="button" wire:click="addLine">Add line</atom:button>
         <atom:button>New</atom:button>
+        <atom:button>New message</atom:button>
+        <atom:button type="button">New chat</atom:button>
         <atom:button>{{ $verb }} invoice</atom:button>
         <atom:button>New {{ $kind }}</atom:button>
         <atom:button>Add</atom:button>

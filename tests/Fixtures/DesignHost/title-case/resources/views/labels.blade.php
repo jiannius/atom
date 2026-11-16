@@ -4,6 +4,8 @@
     <atom:page.header title="Customer billing details" />
     <atom:page.header title="Big Customer Report" :facts="[['label' => 'Due Date Range', 'value' => $x]]" /> {{-- expect: title-case --}}
     <atom:button>Invoice Acme Inc.</atom:button>
+    <atom:page.header title="Customer Invoicing" :facts="[['label' => 'Due Date Range', 'value' => $x]]" /> {{-- expect: title-case --}}
+    <atom:tabs :tabs="[['label' => 'Odd Items', 'href' => '#'], ['label' => 'Overdue Items List', 'href' => '#']]" /> {{-- expect: title-case --}}
 
     <atom:menu.item>Save As Template</atom:menu.item> {{-- expect: title-case --}}
     <atom:menu.item>Save as template</atom:menu.item>

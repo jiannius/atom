@@ -106,6 +106,14 @@ describe('title-case', function () {
             ->and(CopyFormsHost::scan($views('<atom:button>Save as Template</atom:button>'), 'title-case'))->toBe([]);
     });
 
+    it('reports the first label that stands on an element, and a one-word candidate without evidence does not hide a clear one', function () {
+        $found = DesignHost::notes('<atom:page.header title="Customer Invoicing" :facts="[[\'label\' => \'Due Date Range\', \'value\' => 1]]" />', 'title-case');
+
+        expect($found)->toHaveCount(1)
+            ->and($found[1])->toContain('"Due Date Range" capitalises Date, Range')
+            ->and($found[1])->toContain('If it is a product or proper name, mark it');
+    });
+
     it('does not take a label\'s own lowercase word as the evidence', function () {
         expect(DesignHost::scanSource('<atom:button>Use Template or template</atom:button>', 'title-case'))->toBe([]);
     });
@@ -144,15 +152,28 @@ describe('title-case', function () {
 
 describe('create-verb', function () {
     it('names the label', function () {
-        expect(DesignHost::notes("<atom:button>New invoice</atom:button>\n<atom:table/><atom:page.header title=\"a\"><x-slot:primary><atom:button>Add customer</atom:button></x-slot:primary></atom:page.header>\n", 'create-verb'))
+        expect(DesignHost::notes("<atom:page.header title=\"a\"><x-slot:primary><atom:button>New invoice</atom:button></x-slot:primary></atom:page.header>\n<atom:table.toolbar/><atom:page.header title=\"a\"><x-slot:primary><atom:button>Add customer</atom:button></x-slot:primary></atom:page.header>\n", 'create-verb'))
             ->toBe([1 => '"New invoice": a new record is "Create …"', 2 => '"Add customer" in the list header\'s primary slot: a new record is "Create …"']);
     });
 
-    it('reads "Add" only in a view that has a table', function () {
+    it('reads "Add" only in a list: a paginated table, or one with filters, a search or a toolbar', function () {
         $header = '<atom:page.header title="a"><x-slot:primary><atom:button>Add customer</atom:button></x-slot:primary></atom:page.header>';
 
         expect(DesignHost::scanSource($header, 'create-verb'))->toBe([])
-            ->and(DesignHost::scanSource($header.'<atom:table />', 'create-verb'))->toHaveCount(1);
+            ->and(DesignHost::scanSource($header.'<atom:table />', 'create-verb'))->toBe([])
+            ->and(DesignHost::scanSource($header.'<atom:table :paginate="$a" />', 'create-verb'))->toHaveCount(1)
+            ->and(DesignHost::scanSource($header.'<atom:table.toolbar />', 'create-verb'))->toHaveCount(1)
+            ->and(DesignHost::scanSource($header.'<atom:table.filters />', 'create-verb'))->toHaveCount(1)
+            ->and(DesignHost::scanSource($header.'<atom:table.search />', 'create-verb'))->toHaveCount(1);
+    });
+
+    it('reads "New" only in the header primary slot and an empty state, not on any other button or a menu item', function () {
+        $new = fn (string $inside) => DesignHost::scanSource($inside, 'create-verb');
+
+        expect($new('<atom:button>New message</atom:button><atom:menu.item>New chat</atom:menu.item>'))->toBe([])
+            ->and($new('<atom:page.header title="a"><x-slot:actions><atom:button>New version</atom:button></x-slot:actions></atom:page.header>'))->toBe([])
+            ->and($new('<atom:page.header title="a"><x-slot:primary><atom:button>New invoice</atom:button></x-slot:primary></atom:page.header>'))->toHaveCount(1)
+            ->and($new('<atom:empty heading="a"><x-slot:action><atom:button>New thing</atom:button></x-slot:action></atom:empty>'))->toHaveCount(1);
     });
 
     it('does not read PHP', function () {
@@ -172,6 +193,15 @@ describe('modal-title', function () {
     });
 });
 
+describe('danger-section limits', function () {
+    it('declines a view with over 200 danger sections, and reads one with fewer', function () {
+        $sections = fn (int $n) => '<atom:form>'.str_repeat('<atom:form.section variant="danger">a</atom:form.section>', $n).'</atom:form>';
+
+        expect(DesignHost::scanSource($sections(201), 'danger-section'))->toBe([])
+            ->and(DesignHost::scanSource($sections(3), 'danger-section'))->toHaveCount(3);
+    });
+});
+
 describe('modal-footer-padding', function () {
     it('names the class', function () {
         expect(DesignHost::notes('<atom:form.actions class="gap-2 p-6">a</atom:form.actions>', 'modal-footer-padding'))->toBe([1 => '`p-6`: use `sticky` (a modal or slide-over) or `bar` (a page)']);
@@ -180,11 +210,11 @@ describe('modal-footer-padding', function () {
     it('reads every padding utility, behind a variant or an important mark, and no other class', function () {
         $found = fn (string $class) => DesignHost::scanSource('<atom:form.actions class="'.$class.'">a</atom:form.actions>', 'modal-footer-padding') !== [];
 
-        foreach (['p-4', 'px-2', 'py-2', 'pt-1', 'pb-1', 'ps-1', 'pe-1', 'pl-1', 'pr-1', 'md:p-4', '!p-4', 'p-4!', 'p-[1rem]', 'hover:md:px-3', 'p-0.5'] as $class) {
+        foreach (['p-4', 'px-2', 'py-2', 'pt-1', 'pb-1', 'ps-1', 'pe-1', 'pl-1', 'pr-1', 'md:p-4', '!p-4', 'p-4!', 'p-[1rem]', 'hover:md:px-3', 'p-0.5', 'p-[0.5rem]'] as $class) {
             expect($found($class))->toBeTrue($class);
         }
 
-        foreach (['p-0', 'px-0', 'top-4', 'gap-4', 'max-w-lg', 'pointer-events-none', 'place-items-center', 'mt-4', 'flex'] as $class) {
+        foreach (['p-0', 'p-0!', 'sm:px-0!', 'p-[0px]', 'p-[0]', 'px-0', 'top-4', 'gap-4', 'max-w-lg', 'pointer-events-none', 'place-items-center', 'mt-4', 'flex'] as $class) {
             expect($found($class))->toBeFalse($class);
         }
     });

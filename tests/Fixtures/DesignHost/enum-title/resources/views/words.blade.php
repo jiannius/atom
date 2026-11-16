@@ -3,15 +3,17 @@
     <p>{{ str($order->status->name)->title() }}</p> {{-- expect: enum-title --}}
     <p>{{ Str::headline($order->status->value) }}</p> {{-- expect: enum-title --}}
     <p>{{ ucfirst($invoice->stage->value) }}</p> {{-- expect: enum-title --}}
-    <p>{{ ucwords(str_replace('_', ' ', $job->type->name)) }}</p> {{-- expect: enum-title --}}
+    <p>{{ ucwords(str_replace('_', ' ', $job->type->value)) }}</p> {{-- expect: enum-title --}}
     <p>{{ str($status->value)->replace('_', ' ')->title() }}</p> {{-- expect: enum-title --}}
-    <p>{{ Str::of($order->kind?->name)->headline() }}</p> {{-- expect: enum-title --}}
+    <p>{{ Str::of($order->kind?->value)->headline() }}</p> {{-- expect: enum-title --}}
     <p>{{ str($order->account->state->value)->title() }}</p> {{-- expect: enum-title --}}
 
     {{-- look-alikes --}}
     <p>{{ str($user->name)->title() }}</p>
     <p>{{ Str::title($customer->company->name) }}</p>
     <p>{{ ucfirst($user->role) }}</p>
+    <p>{{ ucwords(str_replace('_', ' ', $job->type->name)) }}</p>
+    <p>{{ Str::of($order->kind?->name)->headline() }}</p>
     <p>{{ str($address->state->name)->title() }}</p>
     <p>{{ $order->status->label() }}</p>
     <p>{{ $order->status->name }}</p>

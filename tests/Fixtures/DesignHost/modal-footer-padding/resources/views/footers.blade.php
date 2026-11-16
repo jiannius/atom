@@ -28,7 +28,7 @@
         <atom:button type="submit">Save</atom:button>
     </atom:form.actions>
 
-    <atom:form.actions class="p-0">
+    <atom:form.actions class="p-0 sm:px-0! py-[0px] pt-[0] pb-0!">
         <atom:button type="submit">Save</atom:button>
     </atom:form.actions>
 
