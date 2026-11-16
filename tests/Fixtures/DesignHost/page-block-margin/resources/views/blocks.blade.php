@@ -26,7 +26,33 @@
         </x-slot:rail>
     </atom:page.columns>
 
+    <div class="first:mt-4">A variant of the block itself</div> {{-- expect: page-block-margin --}}
+
+    <div class="[&:hover]:mt-4">A state of the block itself</div> {{-- expect: page-block-margin --}}
+
+    <div class="has-[img]:mb-3">Its own, when it has an image</div> {{-- expect: page-block-margin --}}
+
     {{-- the look-alikes --}}
+    <div class="*:mt-4">Its children's</div>
+
+    <div class="**:mt-4">Its descendants'</div>
+
+    <div class="prose [&>p]:mb-4">Children</div>
+
+    <div class="[&_p]:mt-3">Descendants</div>
+
+    <div class="[&>*+*]:mt-4">Siblings</div>
+
+    <div class="[&>li]:my-1 [&+p]:mt-2 [&~p]:mt-2">More</div>
+
+    <div class="mx-4 ms-2 me-2 px-2 py-2">Horizontal and padding</div>
+
+    <x-two-col>
+        <x-slot:rail>
+            <div class="mt-4">The host's rail, not page.columns'</div>
+        </x-slot:rail>
+    </x-two-col>
+
     <div class="mt-0">Zero adds no room</div>
 
     <div class="my-auto">Auto adds none</div>

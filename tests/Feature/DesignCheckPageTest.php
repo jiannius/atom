@@ -54,10 +54,22 @@ describe('page-header', function () {
         }
     });
 
-    it('reads a heading as big as a title: lg, xl, or 18 and more, and not a bound size', function () {
-        foreach (['size="lg"' => 1, 'size="xl"' => 1, 'size="18"' => 1, 'size="40"' => 1, 'size="17"' => 0, 'size="sm"' => 0, ':size="$s"' => 0, '' => 0] as $size => $count) {
-            expect(DesignHost::scanSource("<atom:page><atom:page.header title=\"a\"/><atom:heading {$size}>Jobs</atom:heading></atom:page>", 'page-header'))->toHaveCount($count, $size);
+    it('reads a heading as big as a title on a page with no header: lg, xl, or 18 and more, level 1, and not a bound size', function () {
+        $hand = 'A hand-built page title: use `<atom:page.header title="...">`';
+
+        foreach (['size="lg"' => true, 'size="xl"' => true, 'size="18"' => true, 'size="40"' => true, 'level="1"' => true, 'size="17"' => false, 'size="sm"' => false, ':size="$s"' => false, '' => false] as $size => $title) {
+            $notes = DesignHost::notes("<atom:page><atom:heading {$size}>Jobs</atom:heading></atom:page>", 'page-header');
+
+            expect(array_values($notes))->toBe([$title ? $hand : 'This page has no `<atom:page.header>`'], $size);
         }
+    });
+
+    it('reads only a level 1 as the title on a page with a header: a bigger heading is a section\'s', function () {
+        foreach (['size="xl"' => 0, 'size="lg" level="2"' => 0, 'level="1"' => 1, 'level="1" size="sm"' => 1] as $attributes => $count) {
+            expect(DesignHost::scanSource("<atom:page><atom:page.header title=\"a\"/><atom:heading {$attributes}>Jobs</atom:heading></atom:page>", 'page-header'))->toHaveCount($count, $attributes);
+        }
+
+        expect(DesignHost::scanSource('<atom:page><atom:page.header title="a"/><h1>Jobs</h1></atom:page>', 'page-header'))->toHaveCount(1);
     });
 });
 
@@ -71,9 +83,15 @@ describe('hand-crumbs', function () {
         expect(DesignHost::scanSource('<nav aria-label="Breadcrumb"><a href="/a">a</a><atom:icon.right/><a href="/b">b</a></nav>', 'hand-crumbs'))->toHaveCount(1);
     });
 
-    it('needs a third link before a slash is a trail', function () {
-        expect(DesignHost::scanSource('<div><a href="/a">a</a>/<a href="/b">b</a></div>', 'hand-crumbs'))->toHaveCount(0)
-            ->and(DesignHost::scanSource('<div><a href="/a">a</a>/<a href="/b">b</a>/<a href="/c">c</a></div>', 'hand-crumbs'))->toHaveCount(1);
+    it('needs a third link and a nav or a list around it before a slash is a trail, and never counts a footer', function () {
+        $links = '<a href="/a">a</a>/<a href="/b">b</a>/<a href="/c">c</a>';
+
+        expect(DesignHost::scanSource('<nav><a href="/a">a</a>/<a href="/b">b</a></nav>', 'hand-crumbs'))->toHaveCount(0)
+            ->and(DesignHost::scanSource("<div>{$links}</div>", 'hand-crumbs'))->toHaveCount(0)
+            ->and(DesignHost::scanSource("<nav>{$links}</nav>", 'hand-crumbs'))->toHaveCount(1)
+            ->and(DesignHost::scanSource("<ol>{$links}</ol>", 'hand-crumbs'))->toHaveCount(1)
+            ->and(DesignHost::scanSource("<footer><nav>{$links}</nav></footer>", 'hand-crumbs'))->toHaveCount(0)
+            ->and(DesignHost::scanSource('<footer><a href="/a">a</a>›<a href="/b">b</a></footer>', 'hand-crumbs'))->toHaveCount(0);
     });
 });
 
@@ -106,7 +124,15 @@ describe('page-block-margin', function () {
 describe('hand-rail-grid', function () {
     it('reads the track in px or rem, and calls a narrow one a column of figures', function () {
         foreach (['grid-cols-[1fr_12rem]' => 1, 'grid-cols-[1fr_192px]' => 1, 'grid-cols-[1fr_191px]' => 0, 'grid-cols-[minmax(0,1fr)_11.9rem]' => 0, 'grid-cols-[320px_1fr]' => 1, 'lg:grid-cols-[320px_minmax(0,1fr)]' => 1, 'grid-cols-[1fr_20em]' => 0, 'grid-cols-[1fr_auto]' => 0] as $class => $count) {
-            expect(DesignHost::scanSource("<atom:page><div class=\"{$class}\"/></atom:page>", 'hand-rail-grid'))->toHaveCount($count, $class);
+            expect(DesignHost::scanSource("<atom:page><div class=\"{$class}\"><div>a</div></div></atom:page>", 'hand-rail-grid'))->toHaveCount($count, $class);
+        }
+    });
+});
+
+describe('page-block-margin variants', function () {
+    it('takes a margin of the block itself under a variant, and not one sent to its children', function () {
+        foreach (['lg:mt-4' => 1, 'first:mt-4' => 1, '[&:hover]:mt-4' => 1, 'has-[img]:mb-3' => 1, '*:mt-4' => 0, '**:mt-4' => 0, '[&>p]:mb-4' => 0, '[&_p]:mt-3' => 0, '[&>*+*]:mt-4' => 0, '[&+p]:mt-4' => 0, '[&~p]:mt-4' => 0] as $class => $count) {
+            expect(DesignHost::scanSource("<atom:page><div class=\"{$class}\"></div></atom:page>", 'page-block-margin'))->toHaveCount($count, $class);
         }
     });
 });

@@ -31,3 +31,62 @@
 
 <atom:page>
 </atom:page>
+
+<atom:page>
+    <div><x-job-header :job="$job" /></div>
+    <atom:callout variant="warning">Read only</atom:callout>
+</atom:page>
+
+<atom:page>
+    <div>@include('jobs.header')</div>
+    <atom:callout variant="warning">Read only</atom:callout>
+</atom:page>
+
+<atom:page>
+    <header>{{ $header }}</header>
+    <atom:callout variant="warning">Read only</atom:callout>
+</atom:page>
+
+<atom:page>
+    <div class="flex"><livewire:jobs.header :job="$job" /></div>
+    <atom:callout variant="warning">Read only</atom:callout>
+</atom:page>
+
+<atom:page>
+    <div class="mx-auto">{{ $slot }}</div>
+</atom:page>
+
+<atom:page>
+    @yield('content')
+    <div>Rows</div>
+</atom:page>
+
+<atom:page>
+    @stack('styles')
+    <div>Rows</div>
+</atom:page>
+
+<atom:page>
+    @each('jobs.row', $jobs, 'job')
+    <div>Rows</div>
+</atom:page>
+
+<atom:page>
+    @component('jobs.header')@endcomponent
+    <div>Rows</div>
+</atom:page>
+
+<atom:page>
+    @embed('jobs.header')@endembed
+    <div>Rows</div>
+</atom:page>
+
+<atom:page>
+    {!! $header !!}
+    <div>Rows</div>
+</atom:page>
+
+<atom:page>
+    <x-slot:aside>Aside</x-slot:aside>
+    <div>Rows</div>
+</atom:page>

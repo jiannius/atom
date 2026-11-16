@@ -22,12 +22,14 @@ abstract class PageRule extends Rule
     ];
 
     /**
-     * A utility without its variants (`lg:hover:mt-4` is `mt-4`) and without a leading or trailing important mark
+     * A utility without its variants (`lg:hover:mt-4` is `mt-4`) and without a leading or trailing important mark; null
+     * when a variant sends it to the tag's children (`*:mt-4`, `[&>p]:mb-4`, `[&_p]:mt-3`), which is not the tag's own
      */
-    protected function utility(string $token): string
+    protected function utility(string $token): ?string
     {
         $depth = 0;
-        $cut = -1;
+        $parts = [];
+        $from = 0;
 
         for ($i = 0, $length = strlen($token); $i < $length; $i++) {
             $char = $token[$i];
@@ -37,21 +39,31 @@ abstract class PageRule extends Rule
             } elseif ($char === ']' || $char === ')') {
                 $depth--;
             } elseif ($char === ':' && $depth === 0) {
-                $cut = $i;
+                $parts[] = substr($token, $from, $i - $from);
+                $from = $i + 1;
             }
         }
 
-        return trim(substr($token, $cut + 1), '!');
+        $base = substr($token, $from);
+
+        foreach ($parts as $variant) {
+            if ($variant === '*' || $variant === '**' || (str_starts_with($variant, '[&') && preg_match('/[>+~_\s]/', $variant))) {
+                return null;
+            }
+        }
+
+        return trim($base, '!');
     }
 
     /**
-     * The utilities of a tag's classes, as written (a bound or echoed token is left out by the outline)
+     * The utilities of a tag's classes, as written (a bound or echoed token is left out by the outline, and so is one
+     * that a variant sends to the tag's children)
      *
      * @return array<int, string>
      */
     protected function utilities(File $file, array $node): array
     {
-        return array_map(fn ($token) => $this->utility($token), $file->outline()->classes($node));
+        return array_values(array_filter(array_map(fn ($token) => $this->utility($token), $file->outline()->classes($node)), fn ($utility) => $utility !== null));
     }
 
     /**
@@ -68,14 +80,10 @@ abstract class PageRule extends Rule
     }
 
     /**
-     * Whether a tag or one around it is a box, from a node up to (not including) `$stop`
+     * Whether a tag around a node is a box, nearest first, up to (not including) `$stop`: the node itself is not asked
      */
     protected function insideBox(File $file, array $node, ?array $stop = null): bool
     {
-        if ($this->isBox($node)) {
-            return true;
-        }
-
         foreach ($file->outline()->ancestors($node) as $ancestor) {
             if ($stop !== null && $ancestor['id'] === $stop['id']) {
                 return false;

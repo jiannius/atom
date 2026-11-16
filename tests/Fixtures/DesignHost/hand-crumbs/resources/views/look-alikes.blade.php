@@ -23,6 +23,25 @@
     <a href="/terms">Terms</a> / <a href="/privacy">Privacy</a>
 </footer>
 
+<footer>
+    <nav>
+        <a href="/terms">Terms</a> / <a href="/privacy">Privacy</a> / <a href="/cookies">Cookies</a>
+    </nav>
+    <a href="/terms">Terms</a>›<a href="/privacy">Privacy</a>
+</footer>
+
+<p>
+    <a href="/terms">Terms</a> / <a href="/privacy">Privacy</a> / <a href="/cookies">Cookies</a>
+</p>
+
+<ul class="flex">
+    <a href="/terms">Terms</a> / <a href="/privacy">Privacy</a>
+</ul>
+
+<div>
+    <a href="/jobs">Jobs</a><span><atom:icon.right /> and</span><a href="/parts">Parts</a>
+</div>
+
 <div>
     <a href="/jobs">Next <atom:icon.right /></a>
 </div>

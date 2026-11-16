@@ -21,38 +21,40 @@
 
     {{-- the look-alikes --}}
     <atom:card heading="Totals">
-        <div class="grid lg:grid-cols-[minmax(0,1fr)_20rem]">Inside a card</div>
+        <div class="grid lg:grid-cols-[minmax(0,1fr)_20rem]"><div>Inside a card</div></div>
     </atom:card>
 
     <atom:panel heading="Lines">
-        <atom:table>
-            <x-slot:rows>
-                <div class="grid grid-cols-[1fr_20rem]">Inside a table</div>
-            </x-slot:rows>
-        </atom:table>
+        <div class="grid grid-cols-[1fr_20rem]"><div>Inside a panel</div></div>
     </atom:panel>
 
+    <atom:table>
+        <x-slot:rows>
+            <div class="grid grid-cols-[1fr_20rem]"><div>Inside a table</div></div>
+        </x-slot:rows>
+    </atom:table>
+
     <atom:form.section heading="Billing">
-        <div class="grid grid-cols-[1fr_20rem]">Inside a form section</div>
+        <div class="grid grid-cols-[1fr_20rem]"><div>Inside a form section</div></div>
     </atom:form.section>
 
     <atom:dd.group>
-        <div class="grid grid-cols-[1fr_20rem]">Inside a description list</div>
+        <div class="grid grid-cols-[1fr_20rem]"><div>Inside a description list</div></div>
     </atom:dd.group>
 
-    <div class="grid gap-6 lg:grid-cols-3">Three equal columns</div>
+    <div class="grid gap-6 lg:grid-cols-3"><div>Three equal columns</div></div>
 
-    <div class="grid grid-cols-[minmax(0,1fr)_120px]">A column of figures</div>
+    <div class="grid grid-cols-[minmax(0,1fr)_120px]"><div>A column of figures</div></div>
 
-    <div class="grid grid-cols-[170px_130px]">Two fixed tracks</div>
+    <div class="grid grid-cols-[170px_130px]"><div>Two fixed tracks</div></div>
 
-    <div class="grid grid-cols-[1fr_auto]">A row with a button</div>
+    <div class="grid grid-cols-[1fr_auto]"><div>A row with a button</div></div>
 
-    <div class="grid grid-cols-[1fr_2fr]">Two flexible tracks</div>
+    <div class="grid grid-cols-[1fr_2fr]"><div>Two flexible tracks</div></div>
 
-    <div class="grid grid-cols-[1fr_20rem_2rem]">Three tracks</div>
+    <div class="grid grid-cols-[1fr_20rem_2rem]"><div>Three tracks</div></div>
 
-    <div class="grid grid-cols-[minmax(0,1fr)_{{ $width }}]">An echoed track</div>
+    <div class="grid grid-cols-[minmax(0,1fr)_{{ $width }}]"><div>An echoed track</div></div>
 </atom:page>
 
-<div class="grid grid-cols-[1fr_20rem]">Outside a page</div>
+<div class="grid grid-cols-[1fr_20rem]"><div>Outside a page</div></div>

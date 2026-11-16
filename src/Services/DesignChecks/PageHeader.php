@@ -39,7 +39,7 @@ class PageHeader extends PageRule
 
     public function detect(): string
     {
-        return 'An `<atom:page>` in a file with no `<atom:page.header>`, whose first element is not a host component, a `<livewire:...>` tag, an `@include` or `@livewire` (any of which may draw the header), or a `{{ }}` echo; and, inside a page, an `<h1>` or an `<atom:heading>` with `size` `lg`, `xl` or a number of 18 or more, reached through plain `div`, `header` or `section` wrappers only (a heading in a card, panel, modal, form or any other component is not a page title). A page with a hand title is told about the title, not twice. A header drawn by a partial or a layout in another file is not seen.';
+        return 'An `<atom:page>` in a file with no `<atom:page.header>` that opens with something that does not draw one: nothing in its first element (up to the first atom tag in it), or in front of it, is a host component, a `<livewire:...>` tag, an `@include`, `@livewire`, `@yield` or `@stack`, or a `{{ }}` echo (so `<div>{{ $slot }}</div>` is left alone); and, inside a page, an `<h1>` or an `<atom:heading level="1">` (with no header in the file also an `<atom:heading>` of `size` `lg`, `xl` or 18 and more: with one, a smaller heading is a section\'s), reached through plain `div`, `header`, `section`, `hgroup` or `main` wrappers only (a heading in a card, panel, modal, form, list item, aside or any other component is not a page title), none of them hidden, fixed or absolute, centred (an empty state), or carrying a `role` or `x-show` (an overlay), and not dressed as a box (`rounded`, `shadow`, `ring`, `border`, any `bg-`). A page with a hand title is told about the title, not twice. A header drawn by a partial or a layout in another file is not seen.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -49,13 +49,13 @@ class PageHeader extends PageRule
         $titled = [];
 
         foreach ($outline->nodes() as $node) {
-            if (! $this->isTitleCandidate($file, $node)) {
+            if ($node['tag'] !== 'h1' && $node['tag'] !== 'atom:heading') {
                 continue;
             }
 
             $page = $this->pageOf($file, $node);
 
-            if ($page === null || ! $this->isHandTitle($file, $node, $page)) {
+            if ($page === null || ! $this->isTitleCandidate($file, $node, $hasHeader) || ! $this->isHandTitle($file, $node, $page)) {
                 continue;
             }
 
@@ -78,21 +78,23 @@ class PageHeader extends PageRule
     }
 
     /**
-     * An `<h1>`, or a heading drawn as big as one
+     * An `<h1>`, or a heading drawn as one: level 1 and, on a page with no header, as big as one
      */
-    protected function isTitleCandidate(File $file, array $node): bool
+    protected function isTitleCandidate(File $file, array $node, bool $hasHeader): bool
     {
         if ($node['tag'] === 'h1') {
             return true;
         }
 
-        if ($node['tag'] !== 'atom:heading') {
-            return false;
+        $outline = $file->outline();
+
+        if ($outline->value($node, 'level') === '1') {
+            return true;
         }
 
-        $size = $file->outline()->value($node, 'size');
+        $size = $outline->value($node, 'size');
 
-        return $size !== null && (in_array($size, ['lg', 'xl'], true) || (ctype_digit($size) && (int) $size >= 18));
+        return ! $hasHeader && $size !== null && (in_array($size, ['lg', 'xl'], true) || (ctype_digit($size) && (int) $size >= 18));
     }
 
     /**
@@ -105,8 +107,28 @@ class PageHeader extends PageRule
                 return true;
             }
 
-            if (! in_array($ancestor['tag'], static::WRAPPERS, true) || $this->looksLikeBox($file, $ancestor)) {
+            if (! in_array($ancestor['tag'], static::WRAPPERS, true) || $this->looksLikeBox($file, $ancestor) || $this->looksLikeOverlay($file, $ancestor)) {
                 return false;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a wrapper is an overlay, hidden, or a centred empty state: what it holds is not the page's title
+     */
+    protected function looksLikeOverlay(File $file, array $node): bool
+    {
+        $outline = $file->outline();
+
+        if ($outline->has($node, 'role') || $outline->has($node, 'x-show') || $outline->has($node, 'hidden') || $outline->has($node, 'aria-modal')) {
+            return true;
+        }
+
+        foreach ($this->utilities($file, $node) as $utility) {
+            if (in_array($utility, ['fixed', 'absolute', 'hidden', 'text-center'], true) || str_starts_with($utility, 'inset-') || str_starts_with($utility, 'z-')) {
+                return true;
             }
         }
 
@@ -119,7 +141,7 @@ class PageHeader extends PageRule
     protected function looksLikeBox(File $file, array $node): bool
     {
         foreach ($this->utilities($file, $node) as $utility) {
-            if (str_starts_with($utility, 'rounded') || str_starts_with($utility, 'shadow') || str_starts_with($utility, 'ring') || str_starts_with($utility, 'bg-surface')) {
+            if (str_starts_with($utility, 'rounded') || str_starts_with($utility, 'shadow') || str_starts_with($utility, 'ring') || str_starts_with($utility, 'bg-') || $utility === 'border') {
                 return true;
             }
         }
@@ -128,22 +150,33 @@ class PageHeader extends PageRule
     }
 
     /**
-     * Whether a page opens with something other than a header, and nothing in front of it may be drawing one
+     * Whether a page opens with something other than a header, and nothing in front of it, or in its first element, may be drawing one
      */
     protected function opensWithoutHeader(File $file, array $page): bool
     {
-        $first = $file->outline()->children($page)[0] ?? null;
+        $outline = $file->outline();
+        $first = $outline->children($page)[0] ?? null;
 
-        if ($first === null) {
+        if ($first === null || $first['kind'] === 'component' || $first['kind'] === 'slot') {
             return false;
         }
 
-        if ($first['kind'] === 'component' || $first['kind'] === 'slot' || str_starts_with($first['tag'], 'livewire:')) {
-            return false;
+        $until = $first['offset'];
+
+        if ($first['kind'] === 'html') {
+            $until = $first['end'];
+
+            foreach ($outline->descendants($first) as $inside) {
+                if ($inside['kind'] === 'component') {
+                    return false;
+                }
+
+                if ($inside['kind'] === 'atom') {
+                    $until = min($until, $inside['offset']);
+                }
+            }
         }
 
-        $before = substr($file->text(), $page['openEnd'], $first['offset'] - $page['openEnd']);
-
-        return ! preg_match(static::RENDERS, $before);
+        return ! preg_match(static::RENDERS, substr($file->text(), $page['openEnd'], $until - $page['openEnd']));
     }
 }

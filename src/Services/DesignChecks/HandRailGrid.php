@@ -21,6 +21,13 @@ class HandRailGrid extends PageRule
      */
     protected const GRID = '/^grid-cols-\[(?:(?:minmax\(0,_?1fr\)|1fr)_(\d+(?:\.\d+)?)(px|rem)|(\d+(?:\.\d+)?)(px|rem)_(?:minmax\(0,_?1fr\)|1fr))\]$/';
 
+    /**
+     * The HTML elements that hold blocks: a rail grid arranges these, where a key and its value are inline text
+     *
+     * @var array<int, string>
+     */
+    protected const BLOCKS = ['div', 'section', 'aside', 'article', 'main', 'form', 'ul', 'ol', 'nav', 'header', 'footer', 'details', 'fieldset'];
+
     public function title(): string
     {
         return 'A hand-built grid for a page\'s rail';
@@ -38,7 +45,7 @@ class HandRailGrid extends PageRule
 
     public function detect(): string
     {
-        return 'An element in an `<atom:page>`, outside a card, panel, table, form, modal or description list, whose classes (static, or a literal in `:class`) hold a two-track `grid-cols-[...]` of a flexible track (`1fr` or `minmax(0,1fr)`) and a fixed one of 12rem or 192px and more, with any variant. A narrower fixed track (a column of figures) is not a rail. A grid built from a bound class, or a `grid-template-columns` style, is not seen.';
+        return 'An element in an `<atom:page>`, outside a card, panel, table, form, modal or description list (a form around the whole page does not count, and a `<form>` that is itself the grid does), whose classes (static, or a literal in `:class`) hold a two-track `grid-cols-[...]` of a flexible track (`1fr` or `minmax(0,1fr)`) and a fixed one of 12rem or 192px and more, with any variant but one that sends it to the children (`*:`, `[&>div]:`), and that has a block among its children (a `div`, `section`, `aside`, an atom or host component: a key and its value in two `span`s is no rail). A narrower fixed track (a column of figures) is not a rail. A grid built from a bound class, or a `grid-template-columns` style, is not seen.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -50,12 +57,36 @@ class HandRailGrid extends PageRule
                 continue;
             }
 
-            if ($this->pageOf($file, $node) === null || $this->insideBox($file, $node)) {
+            $page = $this->pageOf($file, $node);
+
+            if ($page === null || $this->isBoxItself($node) || $this->insideBox($file, $node, $page) || ! $this->hasBlockChild($file, $node)) {
                 continue;
             }
 
             yield [$node['offset'], null];
         }
+    }
+
+    /**
+     * Whether a tag is a box that arranges its own inside: any but a form, which may itself be the page's grid
+     */
+    protected function isBoxItself(array $node): bool
+    {
+        return $this->isBox($node) && ! in_array($node['tag'], ['form', 'atom:form'], true);
+    }
+
+    /**
+     * Whether a tag holds a block: an element that holds blocks, or a component
+     */
+    protected function hasBlockChild(File $file, array $node): bool
+    {
+        foreach ($file->outline()->children($node) as $child) {
+            if (in_array($child['kind'], ['atom', 'component'], true) || in_array($child['tag'], static::BLOCKS, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

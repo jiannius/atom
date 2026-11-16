@@ -31,6 +31,24 @@
     <a href="/jobs/1">WO-1</a>
 </ol>
 
-<p>
+<ul class="flex">
     <a href="/jobs">Jobs</a> <span>/</span> <a href="/jobs/1">WO-1</a> <span>/</span> <a href="/jobs/1/parts">Parts</a> {{-- expect: hand-crumbs --}}
-</p>
+</ul>
+
+<nav class="text-sm">
+    <div>
+        <a href="/jobs">Jobs</a> / <a href="/jobs/1">WO-1</a> / <a href="/jobs/1/parts">Parts</a> {{-- expect: hand-crumbs --}}
+    </div>
+</nav>
+
+<div><a href="/jobs">Jobs</a>&raquo;<a href="/jobs/1">WO-1</a></div> {{-- expect: hand-crumbs --}}
+
+<div><a href="/jobs">Jobs</a>&nbsp;›&nbsp;<a href="/jobs/1">WO-1</a></div> {{-- expect: hand-crumbs --}}
+
+<div><a href="/jobs">Jobs</a> › <a href="/jobs/1">WO-1</a></div> {{-- expect: hand-crumbs --}}
+
+<ol><a href="/jobs">Jobs</a><li>›</li><a href="/jobs/1">WO-1</a></ol> {{-- expect: hand-crumbs --}}
+
+<div><a href="/jobs">Jobs</a><div>›</div><a href="/jobs/1">WO-1</a></div> {{-- expect: hand-crumbs --}}
+
+<div><a href="/jobs">Jobs</a><i>›</i><a href="/jobs/1">WO-1</a></div> {{-- expect: hand-crumbs --}}
