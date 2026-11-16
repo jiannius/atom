@@ -96,6 +96,95 @@
         </atom:dropdown>
     </div>
 
+    {{-- somewhere else for the focus to be: a field and a button outside every menu --}}
+    <input type="text" data-testid="outside-input" aria-label="Outside field">
+    <button type="button" data-testid="outside-button">Outside</button>
+    <input type="text" data-testid="target-input" aria-label="Target field">
+
+    {{-- items that count, and one that moves the focus to a field of the page --}}
+    <div x-data="{ n: 0 }" data-testid="act">
+        <output data-testid="n" x-text="n"></output>
+
+        <atom:dropdown>
+            <atom:button>Act</atom:button>
+
+            <atom:menu popover>
+                <atom:menu.item x-on:click="n++" data-testid="a-count">Count</atom:menu.item>
+                <atom:menu.item x-on:click="document.querySelector('[data-testid=target-input]').focus()" data-testid="a-focus">Focus the field</atom:menu.item>
+                <atom:menu.item x-on:click="setTimeout(() => document.querySelector('[data-testid=target-input]').focus())" data-testid="a-later">Focus the field in a moment</atom:menu.item>
+                <atom:menu.item variant="warning" confirm="Sure?" x-on:click="n += 10" data-testid="a-confirm">Confirm</atom:menu.item>
+            </atom:menu>
+        </atom:dropdown>
+    </div>
+
+    {{-- a locked dropdown: a press on its menu does not close it --}}
+    <div data-testid="locked">
+        <atom:dropdown locked>
+            <atom:button>Locked</atom:button>
+
+            <atom:menu popover>
+                <atom:menu.item data-testid="l-one">One</atom:menu.item>
+                <atom:menu.item data-testid="l-two">Two</atom:menu.item>
+            </atom:menu>
+        </atom:dropdown>
+    </div>
+
+    {{-- a menu with a key handler of its own, like the column picker's and the crumbs menu's: its Down goes to the last item --}}
+    <div data-testid="owned">
+        <atom:dropdown>
+            <atom:button>Owned</atom:button>
+
+            <atom:menu popover x-on:keydown.arrow-down.prevent="$el.querySelector('[data-testid=o-last]').focus()">
+                <atom:menu.item data-testid="o-first">First</atom:menu.item>
+                <atom:menu.item data-testid="o-second">Second</atom:menu.item>
+                <atom:menu.item data-testid="o-last">Last</atom:menu.item>
+            </atom:menu>
+        </atom:dropdown>
+    </div>
+
+    {{-- a text field as the trigger, and a button trigger inside an editable region --}}
+    <div data-testid="field">
+        <atom:dropdown>
+            <input type="text" data-atom-dropdown-trigger data-testid="f-input" aria-label="Pick a value">
+
+            <atom:menu popover>
+                <atom:menu.item data-testid="f-one">One</atom:menu.item>
+                <atom:menu.item data-testid="f-two">Two</atom:menu.item>
+            </atom:menu>
+        </atom:dropdown>
+    </div>
+
+    <div data-testid="editable" contenteditable="true">
+        <atom:dropdown>
+            <atom:button>Editable</atom:button>
+
+            <atom:menu popover>
+                <atom:menu.item data-testid="e-one">One</atom:menu.item>
+                <atom:menu.item data-testid="e-two">Two</atom:menu.item>
+            </atom:menu>
+        </atom:dropdown>
+    </div>
+
+    {{-- a panel with no menu items in it (a filter form, a picker): Down on its trigger opens nothing --}}
+    <div data-testid="panel">
+        <atom:dropdown>
+            <atom:button>Panel</atom:button>
+
+            <atom:menu popover>
+                <p data-testid="panel-text">No items here</p>
+            </atom:menu>
+        </atom:dropdown>
+    </div>
+
+    {{-- selects: their list is the same menu component with role="listbox" and keys of its own --}}
+    <div data-testid="listbox">
+        <atom:select variant="listbox" label="City" :options="[['value' => 'ny', 'label' => 'New York'], ['value' => 'nw', 'label' => 'Newark'], ['value' => 'th', 'label' => 'The Hague']]" />
+    </div>
+
+    <div data-testid="filter">
+        <atom:select variant="filter" data-filter-key="filters.city" label="Town" :options="[['value' => 'ny', 'label' => 'New York'], ['value' => 'nw', 'label' => 'Newark'], ['value' => 'th', 'label' => 'The Hague']]" />
+    </div>
+
     <button type="button" wire:click="bump" data-testid="bump">Bump</button>
     <button type="button" wire:click="reorder" data-testid="reorder">Reorder</button>
     <button type="button" wire:click="rekey" data-testid="rekey">Rekey</button>

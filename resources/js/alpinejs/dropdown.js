@@ -59,6 +59,9 @@ export default (config) => {
                 this.openBeforePress = this.trigger?.contains(e.target)
                     ? !!this.popover?.matches(':popover-open')
                     : null
+
+                // a press on the menu's padding takes the focus off its item: a morph must not pull it back
+                if (this.popover?.contains(e.target) && !e.target.closest('[data-atom-menu-item]')) this.$root._atomMenuHeld = null
             }, { capture: true, signal })
 
             this.$root.addEventListener('click', (e) => {
@@ -87,7 +90,7 @@ export default (config) => {
 
                         // A keyboard press on the trigger (Enter, Space) has no pointer behind it (detail 0): the menu opens on its first item.
                         // Not when the trigger is a field the person is typing in.
-                        if (opened && e.detail === 0 && !inTrigger) this._atomFocusItem('first')
+                        if (opened && e.detail === 0 && !inTrigger && this._atomFocusItem('first')) this.$root._atomOpenedByKey = true
                     }
                 }
                 // Close on a click inside the menu, unless `locked`. Bubble
@@ -95,6 +98,17 @@ export default (config) => {
                 // keeps the menu open (form controls rely on that).
                 else if (!this.locked && this.popover?.contains(e.target)) this.hide()
             }, { signal })
+
+            // A held Enter opened the menu and its repeats now land on the first item, which would run it: swallow them until the key is up. The first
+            // press (not a repeat) or any key up ends it.
+            this.$root.addEventListener('keydown', (e) => {
+                if (!e.repeat) this.$root._atomOpenedByKey = false
+                else if (this.$root._atomOpenedByKey && (e.key === 'Enter' || e.key === ' ') && this.popover?.contains(e.target)) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                }
+            }, { capture: true, signal })
+            this.$root.addEventListener('keyup', () => { this.$root._atomOpenedByKey = false }, { capture: true, signal })
 
             // Up, Down, Home and End in a menu (see _atomMenuKey()). On the root, like the rest, so a morph that replaces the popover or the trigger keeps it.
             this.$root.addEventListener('keydown', (e) => this._atomMenuKey(e), { signal })
@@ -114,7 +128,9 @@ export default (config) => {
 
             // Whether the focus is in the menu as it closes, to give it back to the trigger once it is closed (see the toggle handler below).
             this.$root.addEventListener('beforetoggle', (e) => {
-                if (e.target === this.popover && e.newState === 'closed') this.$root._atomMenuHadFocus = this.popover.contains(document.activeElement)
+                if (e.target === this.popover && e.newState === 'closed') {
+                    this.$root._atomMenuHadFocus = !!this.$root._atomMenuHeld && this.popover.contains(document.activeElement)
+                }
             }, { capture: true, signal })
 
             // `toggle` doesn't bubble, so it is caught on the way down instead —
@@ -180,6 +196,16 @@ export default (config) => {
         // column picker's menu and the breadcrumbs menu's) reads this object first, so a plain `menuKey` here would be called instead of their own.
 
         /**
+         * The popover when it is a menu (`<atom:menu popover>`: `role="menu"`), else null. A select's list is the same component with `role="listbox"`
+         * and its own keys, and a date picker's panel holds no items: neither is walked.
+         */
+        _atomMenu() {
+            let popover = this.popover
+
+            return popover?.matches('[data-atom-menu][role="menu"]') ? popover : null
+        },
+
+        /**
          * The menu items a key can reach: without a disabled one, one marked `aria-disabled` or one that is not drawn (hidden by
          * `x-show`, or inside a popover that is closed). A separator is not an item.
          */
@@ -193,9 +219,9 @@ export default (config) => {
          * item, wrapping at the ends. Returns whether an item took the focus.
          */
         _atomFocusItem(to) {
-            let menu = this.popover
+            let menu = this._atomMenu()
 
-            if (!menu?.matches('[data-atom-menu]')) return false
+            if (!menu) return false
 
             let items = this._atomMenuItems(menu)
 
@@ -223,9 +249,9 @@ export default (config) => {
             if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
 
             let to = { ArrowDown: 1, ArrowUp: -1, Home: 'first', End: 'last' }[e.key]
-            let menu = this.popover
+            let menu = this._atomMenu()
 
-            if (!to || !menu?.matches('[data-atom-menu]') || this.disabled || !(e.target instanceof Element)) return
+            if (!to || !menu || this.disabled || !(e.target instanceof Element)) return
 
             if (menu.contains(e.target)) {
                 // not a field or another control in the menu
@@ -236,8 +262,10 @@ export default (config) => {
                 return
             }
 
-            // the trigger, unless it is a field: Home and End are its own
-            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && this.trigger?.contains(e.target) && !e.target.closest('input, textarea, select, [contenteditable]')) {
+            // the trigger, unless it is a field (Home and End are its own), and only a menu that has items to land on
+            let field = e.target.closest('input, textarea, select, [contenteditable]')
+
+            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && this.trigger?.contains(e.target) && !(field && this.trigger.contains(field)) && menu.querySelector('[data-atom-menu-item]')) {
                 e.preventDefault()
                 this.show()
                 this._atomFocusItem(to === 1 ? 'first' : 'last')
