@@ -31,7 +31,7 @@ The service provider (`Jiannius\Atom\AtomServiceProvider`) auto-registers via La
 - Register all components under the `atom` view namespace.
 - Install the `<atom:...>` Blade tag compiler.
 - Mix macros onto `Eloquent\Builder`, `Query\Builder`, `Request`, `Str`, `Stringable`, `Arr` and `Livewire\Component`.
-- Register the artisan commands `atom:purge-editor-images`, `atom:tiptap-migrate` and `atom:upgrade-check`.
+- Register the artisan commands `atom:purge-editor-images`, `atom:tiptap-migrate`, `atom:upgrade-check` and `atom:design-check`.
 
 No publishing step is required to get started.
 
@@ -2216,6 +2216,33 @@ v4 is a breaking release (a restyle onto design tokens, `AtomComponent` split in
 
 ---
 
+## Checking screens against the design rules: `atom:design-check`
+
+`php artisan atom:design-check` reads your views and lists where a screen drifts from atom's design rules (the "Design rules" and "Patterns" of the `atom-components` skill, which `php artisan boost:install` writes into your agent's skills), with `file:line`, the rule and the atom component to use instead. It is read only: it writes nothing, not even the compiled views Blade would cache. It ships in v4.
+
+- **What it reads.** The Blade views and PHP of `app/`, `resources/` and `modules/` (or `Modules/`). It does not read `tests/`, `config/`, `routes/` or `database/`; atom's published views (`resources/views/vendor/`), which are atom's markup and not yours; the views of a mail, a PDF, a print page or an error page (a directory called `mail`, `mails`, `email`, `emails`, `pdf`, `pdfs`, `print` or `errors` under a views folder, and any view that uses `<x-mail::`); `node_modules/`, Composer's `vendor/`, a symlink or a file over 2 MB. Each of these is listed under NOT READ in the report. Comments and `@verbatim` blocks are blanked first, so commented-out markup is never a finding.
+- **Text, not a browser.** A finding is a candidate from a text scan, not a proof, and a check declines when it is unsure: a label built from a variable, a class built at runtime and a slot split across partials are not seen. A view whose atom tags or slots do not balance is read as text only (listed under READ AS TEXT ONLY): the checks that need nesting skip it.
+- **Three severities.** `break`: something works wrong, not just looks off (a pager that stops pinning). `review`: drift from a rule that a person decides. `info`: a nit or a style mark. The report groups by severity, then check, prints each rule and its fix once, then the sites (the first 10 of each check), then the files with the most findings.
+- **Flags.** `--json` prints the result as JSON: every check, even at zero, with its title, group, severity, fix, rule and how it is found, so the JSON is the catalogue of checks (there is no table of them here to drift). `--all` lists every finding. `--only=palette-colour,shadow` runs just those checks (an unknown id exits 1), to fix one kind of drift across the app, or to give an agent a bounded list. `--path=dir` scans another directory. The exit code is 0 whatever it finds: there is no `--fail-on`.
+- **A deliberate exception is a marker in your own file,** beside the code it excuses, with the reason:
+
+  ```blade
+  {{-- atom:design-check ignore own-overflow: the export menu predates the toolbar --}}
+  <atom:dropdown> ... </atom:dropdown>
+
+  <atom:button variant="success">Mark as inspected</atom:button> {{-- atom:design-check ignore success-button: a kiosk screen --}}
+
+  {{-- atom:design-check off arbitrary-value, shadow: the paper keeps its own scale --}}
+  ...
+  {{-- atom:design-check on --}}
+  ```
+
+  `ignore <ids>: <reason>` covers the line it trails, else the next line that has code; several ids are separated by commas. `off <ids|all>: <reason>` covers everything up to the matching `on` (to the end of the file with none); `all` is for `off` only. In a PHP file the same marker is a `//`, `#` or block comment. A marker is read from a Blade comment or a PHP comment, never from an HTML comment. The report lists what was suppressed, with each reason, and reports a marker that names an unknown id, one with no reason (it still applies) and an `ignore` that suppressed nothing, so a marker does not outlive the code it excused.
+- **What no scan can judge** is printed under NOT CHECKED: whether the primary is the next step for the status; whether an "archive" really deletes (the consequence decides the tone, a verb list only suggests it); the same action in the same place on every record page; page or modal for a form; toast, callout or alert by meaning; status tones, which come from the enum at runtime; and labels or classes built in PHP.
+- **The report quotes up to 160 characters of each matching line**, in the console and in `--json`: treat the output like source code.
+
+---
+
 ## Artisan commands
 
 | Command | Purpose |
@@ -2224,6 +2251,7 @@ v4 is a breaking release (a restyle onto design tokens, `AtomComponent` split in
 | `atom:purge-editor-images --dry-run` | Lists what it would delete and changes nothing. |
 | `atom:purge-editor-images --force` | Empties the `editor-purged/` backup folder. |
 | `atom:upgrade-check [--json] [--all] [--output=path] [--fail-on=breaks] [--path=dir]` | Read only: lists what moving to atom 4 will break or change (file:line, counts, severity, codemod verdict), the traits each `AtomComponent` user needs, the atom tags in use, and whether the atom section of `CLAUDE.md` / `AGENTS.md` is in sync. See "Moving an app to v4". |
+| `atom:design-check [--json] [--all] [--only=ids] [--path=dir]` | v4, read only: lists where the app's views drift from atom's design rules (file:line, severity, the rule and the component to use), and what was suppressed by `{{-- atom:design-check ignore <id>: <reason> --}}`. See "Checking screens against the design rules". |
 | `atom:upgrade [--dry-run] [--path=dir]` | v4: rewrites the Tailwind entry file, `use AtomComponent`, the `Date::use` line, the `<atom:editor*>` tags and `x.currency()` calls, and writes `ATOM-UPGRADE-TODO.md` with the rest. `--dry-run` prints the diff and the TODO and writes nothing. Refuses to write while `atom:tiptap-migrate --status` is not ready. See "Moving an app to v4". |
 | `atom:tiptap-migrate` | Dry run: classifies every editor value as clean, flagged, refused or already JSON, and writes nothing. |
 | `atom:tiptap-migrate --force [--accept=ids\|all]` | Backs up and converts the clean rows (and the flagged ones named in `--accept`). |
