@@ -45,7 +45,22 @@ $items = collect($facts)->map(fn ($fact) => is_scalar($fact)
    blocks that all come out false is still `<!--[if BLOCK]><![endif]-->` markers, which isNotEmpty() takes for content and
    would draw an empty overflow button and a wrapper around nothing. */
 $has = fn ($s) => isset($s) && $s->hasActualContent();
-$hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? null);
+
+/* the actions in the slots are taken out of them (a marker is what stands for each one there) and placed; a slot without one is the slot as it was */
+$registry = app(\Jiannius\Atom\Services\ActionItems::class);
+[$primary, $fromPrimary] = $registry->collect($primary ?? null, 'primary');
+[$ignored, $fromDefault] = $registry->collect($slot, 'default');
+[$actions, $fromActions] = $registry->collect($actions ?? null, 'actions');
+[$menu, $fromMenu] = $registry->collect($menu ?? null, 'menu');
+
+$placed = \Jiannius\Atom\Services\ActionPlacement::place('header', $registry->keyed([...$fromPrimary, ...$fromDefault, ...$fromActions, ...$fromMenu]), [
+    'small' => $small,
+    'hostPrimary' => $has($primary),
+    'hostMenu' => $has($menu),
+]);
+
+$hasMenu = $has($menu) || $placed['menu'] !== [];
+$hasActions = $has($actions ?? null) || $placed['visible'] !== [] || $hasMenu || $has($primary ?? null) || $placed['primary'] !== null;
 @endphp
 
 <header {{ $attributes->class([
@@ -120,16 +135,21 @@ $hasActions = $has($actions ?? null) || $has($menu ?? null) || $has($primary ?? 
                 {{ $actions }}
             @endif
 
-            @if ($has($menu ?? null))
+            <atom:action._list :items="$placed['visible']" place="visible" surface="header" :small="$small" />
+
+            @if ($hasMenu)
                 {{-- the trigger is the size of the header's other buttons: the control's own on a page, `sm` in a modal or slide-over --}}
                 <atom:menu._more :size="$small ? 'sm' : null">
                     {{ $menu }}
+                    <atom:action._list :items="$placed['menu']" place="menu" surface="header" :small="$small" :separator="$placed['separator']" />
                 </atom:menu._more>
             @endif
 
             @if ($has($primary ?? null))
                 {{ $primary }}
             @endif
+
+            <atom:action._list :items="array_filter([$placed['primary']])" place="primary" surface="header" :small="$small" />
         </div>
     @endif
 </header>

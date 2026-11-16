@@ -29,6 +29,9 @@ class AtomServiceProvider extends ServiceProvider
     {
         $this->app->alias(Atom::class, 'atom');
 
+        // the actions a request's `<atom:action>`s wait in until a surface takes them; scoped, so Octane and queue workers start each request and job empty
+        $this->app->scoped(\Jiannius\Atom\Services\ActionItems::class);
+
         // atom's defaults (config/atom.php) sit under the host's own config/atom.php, which wins; config:cache keeps the merged result
         $this->mergeConfigFrom(__DIR__.'/../config/atom.php', 'atom');
 
