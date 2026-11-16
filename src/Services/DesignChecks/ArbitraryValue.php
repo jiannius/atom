@@ -27,7 +27,15 @@ class ArbitraryValue extends BoxesColour
 
     public function detect(): string
     {
-        return 'A class token `gap-[...]`, `gap-x-[...]`, `gap-y-[...]`, `p-[...]` (or `px`, `py`, `pt`, `pr`, `pb`, `pl`, `ps`, `pe`) or `text-[<n>px]` / `text-[<n>rem]`, with any variant, in a class attribute of a Blade file. A value that reads a variable (`var(...)`, `env(...)`, `--x`) is not flagged, nor is a width (`w-[28rem]`); an element in the `brand` or `logo` slot is left alone.';
+        return 'A class token `gap-[...]`, `gap-x-[...]`, `gap-y-[...]`, `p-[...]` (or `px`, `py`, `pt`, `pr`, `pb`, `pl`, `ps`, `pe`) or `text-[<n>px]` / `text-[<n>rem]`, with any variant, in a class attribute of a Blade file. A value that reads a variable (`var(...)`, `env(...)`, `--x`) is not flagged, nor is a width (`w-[28rem]`); an element in the `brand` or `logo` slot is left alone. It runs on a view read as text only, too.';
+    }
+
+    /**
+     * It reads one element's class tokens, never its place in the tree (the brand exemption is read when there is a tree)
+     */
+    public function structural(): bool
+    {
+        return false;
     }
 
     public function find(File $file, Context $context): iterable

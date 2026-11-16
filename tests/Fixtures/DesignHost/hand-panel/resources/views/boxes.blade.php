@@ -29,6 +29,20 @@
         A tag over several lines is read at its first line
     </aside>
 
+    <article class="rounded-md border bg-surface"><p>x</p></article> {{-- expect: hand-panel --}}
+    <aside class="rounded-md border bg-surface"><p>x</p></aside> {{-- expect: hand-panel --}}
+    <ol class="rounded-md border bg-surface"><p>x</p></ol> {{-- expect: hand-panel --}}
+    <dl class="rounded-md border bg-surface"><p>x</p></dl> {{-- expect: hand-panel --}}
+    <figure class="rounded-md border bg-surface"><p>x</p></figure> {{-- expect: hand-panel --}}
+    <fieldset class="rounded-md border bg-surface"><p>x</p></fieldset> {{-- expect: hand-panel --}}
+    <details class="rounded-md border bg-surface"><p>x</p></details> {{-- expect: hand-panel --}}
+    <form class="rounded-md border bg-surface"><p>x</p></form> {{-- expect: hand-panel --}}
+    <nav class="rounded-md border bg-surface"><p>x</p></nav> {{-- expect: hand-panel --}}
+    <header class="rounded-md border bg-surface"><p>x</p></header> {{-- expect: hand-panel --}}
+    <div class="rounded-md border bg-surface/50 p-4">Half</div> {{-- expect: hand-panel --}}
+    <div class="rounded-md border bg-white/80 p-4">White</div> {{-- expect: hand-panel --}}
+    <div x-show="open" class="rounded-md border bg-surface p-4">A collapsible box in the flow</div> {{-- expect: hand-panel --}}
+
     {{-- look-alikes: none of these is flagged --}}
     <atom:panel heading="Lines">Body</atom:panel>
     <atom:card heading="Customer">Body</atom:card>
@@ -49,6 +63,17 @@
     <div popover class="rounded-md border bg-surface">A popover</div>
     <div role="dialog" class="rounded-md border bg-surface">A dialog</div>
     <div class="animate-pulse rounded-md border bg-surface-sunken">A placeholder</div>
+    <div x-show="open" x-transition class="absolute right-0 z-10 mt-2 rounded-md border bg-surface p-1">An Alpine dropdown</div>
+    <div x-anchor="$refs.button" class="fixed rounded-md border bg-surface p-1">An anchored panel</div>
+    <div x-show="open" x-transition:enter="a" class="fixed rounded-md border bg-surface p-1">A transition</div>
+    <div class="rounded-md border border-dashed bg-surface p-6">A dropzone</div>
+    <div class="rounded-md border border-dotted bg-surface p-6">A placeholder</div>
+    <div class="inline-flex rounded-md border bg-surface">A segmented control</div>
+    <div class="inline-block rounded-md border bg-surface">Inline</div>
+    <div class="inline rounded-md border bg-surface">Inline</div>
+    <div class="w-fit rounded-md border bg-surface">Fit</div>
+    <div class="rounded-md border bg-surface p-2"><label><input type="checkbox"> A labelled checkbox</label></div>
+    <div class="rounded-md border bg-surface p-2"><div><atom:select wire:model="x" /></div></div>
     <x-box class="rounded-md border bg-surface">A host component</x-box>
     <span class="rounded-md border bg-surface px-1">A badge</span>
 

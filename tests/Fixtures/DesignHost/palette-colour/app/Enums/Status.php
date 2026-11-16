@@ -41,6 +41,11 @@ enum Status: string
         return 'bg-red-500 $a-b';
     }
 
+    public function utilities(): string
+    {
+        return 'bg-red-500 absolute antialiased block border capitalize collapse container contents fixed flex flow-root grid grow hidden inline invisible isolate italic lowercase outline overline relative resize ring rounded shadow shrink static sticky table transform transition truncate underline uppercase visible'; // expect: palette-colour
+    }
+
     public function sentence(): string
     {
         return 'Use bg-zinc-100 for the paper';

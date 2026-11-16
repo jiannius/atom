@@ -34,6 +34,59 @@
     <x-fancy-button class="rounded-md border px-2 py-1">A host component</x-fancy-button>
     <div class="rounded-md border px-2 py-1">Not a control</div>
 
+    {{-- a tile or a row: a block, several elements, or a picture beside the text --}}
+    <a href="#" class="rounded-md border px-2 py-1"><div>x</div></a>
+    <a href="#" class="rounded-md border px-2 py-1"><p>x</p></a>
+    <a href="#" class="rounded-md border px-2 py-1"><section>x</section></a>
+    <a href="#" class="rounded-md border px-2 py-1"><article>x</article></a>
+    <a href="#" class="rounded-md border px-2 py-1"><ul>x</ul></a>
+    <a href="#" class="rounded-md border px-2 py-1"><ol>x</ol></a>
+    <a href="#" class="rounded-md border px-2 py-1"><table>x</table></a>
+    <a href="#" class="rounded-md border px-2 py-1"><figure>x</figure></a>
+    <a href="#" class="rounded-md border px-2 py-1"><form>x</form></a>
+    <a href="#" class="rounded-md border px-2 py-1"><h1>x</h1></a>
+    <a href="#" class="rounded-md border px-2 py-1"><h2>x</h2></a>
+    <a href="#" class="rounded-md border px-2 py-1"><h3>x</h3></a>
+    <a href="#" class="rounded-md border px-2 py-1"><h4>x</h4></a>
+    <a href="#" class="rounded-md border px-2 py-1"><h5>x</h5></a>
+    <a href="#" class="rounded-md border px-2 py-1"><h6>x</h6></a>
+    <a href="#" class="rounded-md border px-2 py-1"><atom:card>x</atom:card></a>
+    <a href="#" class="rounded-md border px-2 py-1"><atom:panel>x</atom:panel></a>
+    <a href="#" class="flex items-center gap-3 rounded-lg border p-3 hover:bg-surface"><img src="a.png" alt=""><span>Name</span><span>Sub</span></a>
+    <a href="#" class="rounded-lg border p-3"><atom:avatar /> Name</a>
+    <button class="rounded-md border px-2 py-1"><atom:icon.plus /> Add</button>
+    <button class="rounded-md border px-2 py-1"><svg viewBox="0 0 1 1"></svg> Add</button>
+    <button class="rounded-md border px-2 py-1"><span>A</span><span>B</span></button>
+    <button class="rounded-md border p-2"><span>Save</span></button> {{-- expect: raw-control --}}
+
+    {{-- a background that is not a fill --}}
+    <button class="rounded-md px-2 bg-transparent">No fill</button>
+    <button class="rounded-md px-2 bg-inherit">No fill</button>
+    <button class="rounded-md px-2 bg-current">No fill</button>
+    <button class="rounded-md px-2 bg-none">No fill</button>
+    <button class="rounded-md px-2 bg-clip-text">No fill</button>
+    <button class="rounded-md px-2 bg-cover">No fill</button>
+    <button class="rounded-md px-2 bg-contain">No fill</button>
+    <button class="rounded-md px-2 bg-center">No fill</button>
+    <button class="rounded-md px-2 bg-top">No fill</button>
+    <button class="rounded-md px-2 bg-bottom">No fill</button>
+    <button class="rounded-md px-2 bg-left">No fill</button>
+    <button class="rounded-md px-2 bg-right">No fill</button>
+    <button class="rounded-md px-2 bg-repeat">No fill</button>
+    <button class="rounded-md px-2 bg-no-repeat">No fill</button>
+    <button class="rounded-md px-2 bg-fixed">No fill</button>
+    <button class="rounded-md px-2 bg-local">No fill</button>
+    <button class="rounded-md px-2 bg-scroll">No fill</button>
+    <button class="rounded-md px-2 bg-origin-center">No fill</button>
+    <button class="rounded-md px-2 bg-blend-multiply">No fill</button>
+    <button class="rounded-md px-2 bg-gradient-to-r">No fill</button>
+    <button class="rounded-md px-2 bg-linear-45">No fill</button>
+    <button class="rounded-md px-2 bg-radial">No fill</button>
+    <button class="rounded-md px-2 bg-conic">No fill</button>
+    <button class="rounded-md px-2 bg-size-auto">No fill</button>
+    <button class="rounded-md px-2 bg-position-x">No fill</button>
+    <button class="rounded-md px-2 bg-auto">No fill</button>
+
     <atom:layouts.sidebar>
         <x-slot:brand>
             <a href="/" class="rounded-md border px-2 py-1">The host's own look</a>

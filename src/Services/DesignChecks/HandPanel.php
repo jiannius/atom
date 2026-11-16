@@ -15,7 +15,7 @@ class HandPanel extends BoxesColour
      *
      * @var array<int, string>
      */
-    protected const BOXES = ['div', 'section', 'article', 'aside', 'ul', 'ol', 'dl', 'figure', 'fieldset', 'details', 'form'];
+    protected const BOXES = ['div', 'section', 'article', 'aside', 'nav', 'header', 'ul', 'ol', 'dl', 'figure', 'fieldset', 'details', 'form'];
 
     /**
      * What a field's own shell holds: a box around one of these is a control, not a panel
@@ -41,7 +41,7 @@ class HandPanel extends BoxesColour
 
     public function detect(): string
     {
-        return 'A `div`, `section`, `article`, `aside`, list, `figure`, `fieldset`, `details` or `form` whose own classes hold a panel rounding (`rounded-panel`, `rounded-md`, `-lg`, `-xl`, `-2xl`), a border on all sides (`border`, `border-2`) and a fill (`bg-surface`, `bg-surface-sunken`, `bg-white`), all without a variant. Not flagged: a link or a button (`raw-control`), `rounded-full`, a box a field sits straight in, a popover or dialog, an `animate-pulse` placeholder, a host component, an element with a class built from an echo, and the `brand` and `logo` slots.';
+        return 'A `div`, `section`, `article`, `aside`, `nav`, `header`, list, `figure`, `fieldset`, `details` or `form` whose own classes hold a panel rounding (`rounded-panel`, `rounded-md`, `-lg`, `-xl`, `-2xl`), a border on all sides (`border`, `border-2`) and a fill (`bg-surface`, `bg-surface-sunken`, `bg-white`, with or without an opacity), all without a variant. Not flagged: a link or a button (`raw-control`), `rounded-full`, a box with a field in it or one level below (a field shell, a labelled checkbox), a dialog, a `border-dashed` or `border-dotted` box (a dropzone), an `inline-*` or `w-fit` box, an Alpine popover (`x-show`, `x-anchor` or `x-transition` on an absolutely or fixed positioned box), an `animate-pulse` placeholder, a host component, and the `brand` and `logo` slots. A class token written with an echo (`bg-{{ $c }}`) is not counted, so a box whose fill comes from one is not flagged; a `bg-surface/50` fill is.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -57,7 +57,7 @@ class HandPanel extends BoxesColour
 
             if (! $this->any($resting, '/^rounded-(?:panel|md|lg|xl|2xl)$/')
                 || ! $this->any($resting, '/^border(?:-[1248])?$/')
-                || ! $this->any($resting, '/^bg-(?:surface(?:-sunken)?|white)$/')
+                || ! $this->any($resting, '/^bg-(?:surface(?:-sunken)?|white)(?:\/\d+)?$/')
                 || $this->inBrand($file, $node)) {
                 continue;
             }
@@ -73,17 +73,41 @@ class HandPanel extends BoxesColour
     {
         $outline = $file->outline();
 
-        if ($outline->has($node, 'popover') || $outline->has($node, 'role') || $this->any($this->resting($file, $node), '/^animate-pulse$/')) {
+        $resting = $this->resting($file, $node);
+
+        if ($outline->has($node, 'popover') || $outline->has($node, 'role') || $this->any($resting, '/^(?:animate-pulse|border-(?:dashed|dotted)|inline(?:-[a-z]+)?|w-fit)$/')) {
             return true;
         }
 
-        foreach ($outline->children($node) as $child) {
-            if (in_array($child['tag'], static::FIELDS, true) || ($child['kind'] === 'atom' && preg_match('/^(?:input|select|textarea|date-picker|time-picker|tiptap)(?:\.|$)/', (string) $child['component']))) {
+        // an Alpine popover or dropdown panel: shown and positioned by the page, not a box in the flow
+        foreach (array_keys($node['attributes']) as $name) {
+            if (preg_match('/^x-(?:show|anchor|transition)/', (string) $name) && $this->any($resting, '/^(?:absolute|fixed)$/')) {
                 return true;
             }
         }
 
+        foreach ($outline->children($node) as $child) {
+            if ($this->isField($child)) {
+                return true;
+            }
+
+            foreach ($outline->children($child) as $inner) {
+                if ($this->isField($inner)) {
+                    return true;
+                }
+            }
+        }
+
         return false;
+    }
+
+    /**
+     * Whether a tag is a field: a box with one inside it (a field's shell, a labelled checkbox) is a control, not a panel
+     */
+    protected function isField(array $node): bool
+    {
+        return in_array($node['tag'], static::FIELDS, true)
+            || ($node['kind'] === 'atom' && preg_match('/^(?:input|select|textarea|checkbox|radio|toggle|date-picker|time-picker|tiptap)(?:\.|$)/', (string) $node['component']));
     }
 
     /**

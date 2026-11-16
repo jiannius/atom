@@ -34,7 +34,7 @@ class RawControl extends BoxesColour
 
     public function detect(): string
     {
-        return 'A raw `<button>` or `<a>` whose own classes (no variant) hold a `rounded*` token, a border width or a `bg-*` fill, and a padding or `h-<n>` token. A text-only link is not flagged; neither is one that holds a block (a tile), has a `role` other than button or link, or sits in the `brand` or `logo` slot.';
+        return 'A raw `<button>` or `<a>` whose own classes (no variant) hold a `rounded*` token, a border width or a `bg-*` fill, and a padding or `h-<n>` token. A text-only link is not flagged; neither is one that holds a block, several elements or a picture beside text (a tile or a row), has a `role` other than button or link, or sits in the `brand` or `logo` slot.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -49,7 +49,7 @@ class RawControl extends BoxesColour
             $resting = $this->resting($file, $node);
 
             if (! $this->any($resting, '/^rounded(?!-none$)/')
-                || ! ($this->any($resting, '/^border(?:-[trblxyse])?(?:-[1248])?$/') || $this->any($resting, '/^bg-(?!transparent$|inherit$|current$|none$|clip-|cover$|contain$|center$|top$|bottom$|left$|right$|repeat$|no-repeat$|fixed$|local$|scroll$|origin-|blend-|gradient-|linear-|radial-|conic-|size-|position-|auto$)/'))
+                || ! ($this->any($resting, '/^border(?:-[trblxyse])?(?:-[1248])?$/') || $this->any($resting, '/^bg-(?!transparent$|inherit$|current$|none$|clip-|cover$|contain$|center$|top$|bottom$|left$|right$|repeat$|no-repeat$|fixed$|local$|scroll$|origin-|blend-|gradient-|linear-|radial(?:-|$)|conic(?:-|$)|size-|position-|auto$)/'))
                 || ! ($this->any($resting, '/^p[xytrblse]?-(?!0$)/') || $this->any($resting, '/^h-(?:\d|\[)/'))
                 || $this->declined($file, $node)
                 || $this->inBrand($file, $node)) {
@@ -72,12 +72,17 @@ class RawControl extends BoxesColour
             return true;
         }
 
+        $icons = false;
+
         foreach ($outline->descendants($node) as $inside) {
             if (in_array($inside['tag'], static::BLOCKS, true)) {
                 return true;
             }
+
+            $icons = $icons || in_array($inside['tag'], ['img', 'svg', 'atom:avatar'], true) || ($inside['kind'] === 'atom' && str_starts_with((string) $inside['component'], 'icon.'));
         }
 
-        return false;
+        // a real control holds a label, or one icon: several elements, or a picture beside text, is a row or a tile
+        return count($outline->children($node)) > 1 || ($icons && $outline->label($node) !== '');
     }
 }

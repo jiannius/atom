@@ -135,11 +135,24 @@ PHP]);
         expect($findings)->toBe([]);
     });
 
-    it('skips a view whose tags do not balance, since it cannot tell the brand slot from the rest', function (string $id, string $offender) {
-        expect(DesignHost::scanSource('<atom:page>'.$offender, $id))->toBe([]);
+    it('skips a view whose tags do not balance for a check that reads structure, and reads it for a token check', function (string $id, string $offender, int $expected) {
+        expect(DesignHost::scanSource('<atom:page>'.$offender, $id))->toHaveCount($expected);
     })->with([
-        'hand-panel' => ['hand-panel', '<div class="rounded-md border bg-surface"><p>x</p></div>'],
-        'palette-colour' => ['palette-colour', '<div class="bg-zinc-100"></div>'],
-        'shadow' => ['shadow', '<div class="shadow-md"></div>'],
+        'hand-panel' => ['hand-panel', '<div class="rounded-md border bg-surface"><p>x</p></div>', 0],
+        'hand-card-title' => ['hand-card-title', '<atom:card><h3>A</h3></atom:card>', 0],
+        'raw-control' => ['raw-control', '<button class="rounded-md border px-2 py-1">x</button>', 0],
+        'palette-colour' => ['palette-colour', '<div class="bg-zinc-100"></div>', 1],
+        'shadow' => ['shadow', '<div class="shadow-md"></div>', 1],
+        'arbitrary-value' => ['arbitrary-value', '<div class="gap-[22px]"></div>', 1],
     ]);
+
+    it('reads a class attribute and not a data attribute that ends in class', function () {
+        expect(DesignHost::scanSource('<div data-class="bg-red-500" :data-class="\'bg-red-500\'" title="x"></div>', 'palette-colour'))->toBe([])
+            ->and(DesignHost::scanSource('<div wrapper-class="bg-red-500"></div>', 'palette-colour'))->toHaveCount(1);
+    });
+
+    it('declines a title that an output directive comes before', function () {
+        expect(DesignHost::scanSource("<atom:card>\n@include('x')\n<h3>A</h3>\n</atom:card>", 'hand-card-title'))->toBe([])
+            ->and(DesignHost::scanSource("<atom:card>\n@if (\$x)\n<h3>A</h3>\n@endif\n</atom:card>", 'hand-card-title'))->toHaveCount(1);
+    });
 });

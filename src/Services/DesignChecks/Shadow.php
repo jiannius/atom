@@ -27,7 +27,15 @@ class Shadow extends BoxesColour
 
     public function detect(): string
     {
-        return 'A class token `shadow`, `shadow-2xs` through `shadow-2xl`, `shadow-inner` or `shadow-[...]`, with any variant, in a class attribute of a Blade file. `shadow-none`, atom\'s `shadow-pop` and a shadow colour are not flagged; an element in the `brand` or `logo` slot is left alone; a class set from `@php` is not seen.';
+        return 'A class token `shadow`, `shadow-2xs` through `shadow-2xl`, `shadow-inner` or `shadow-[...]`, with any variant, in a class attribute of a Blade file. `shadow-none`, atom\'s `shadow-pop` and a shadow colour are not flagged; an element in the `brand` or `logo` slot is left alone; a class set from `@php` is not seen. It runs on a view read as text only, too.';
+    }
+
+    /**
+     * It reads one element's class tokens, never its place in the tree (the brand exemption is read when there is a tree)
+     */
+    public function structural(): bool
+    {
+        return false;
     }
 
     public function find(File $file, Context $context): iterable

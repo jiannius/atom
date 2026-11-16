@@ -72,6 +72,26 @@
     </atom:card>
 
     <atom:card>
+        @include('partials.intro')
+        <h3>An output directive before it</h3>
+    </atom:card>
+
+    <atom:card>
+        @livewire('intro')
+        <h3>An output directive before it</h3>
+    </atom:card>
+
+    <atom:card>
+        @yield('intro')
+        <h3>An output directive before it</h3>
+    </atom:card>
+
+    <atom:card>
+        @stack('intro')
+        <h3>An output directive before it</h3>
+    </atom:card>
+
+    <atom:card>
         <h1>An h1 is the page title</h1>
     </atom:card>
 

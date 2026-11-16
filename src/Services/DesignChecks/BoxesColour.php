@@ -91,13 +91,14 @@ abstract class BoxesColour extends Rule
     }
 
     /**
-     * Whether nothing but whitespace and Blade directives (`@if (...)`) lies between two offsets: text or an echo there
-     * means the element at the second is not the first thing in its parent.
+     * Whether nothing but whitespace and Blade control-flow directives (`@if (...)`, `@foreach`) lies between two offsets:
+     * text, an echo or an output directive (`@include`, `@livewire`, `@yield`) there means the element at the second is not
+     * the first thing in its parent.
      */
     protected function onlyDirectivesBetween(File $file, int $from, int $to): bool
     {
         $gap = substr($file->text(), $from, max(0, $to - $from));
-        $gap = preg_replace('/@\w+[ \t]*(\((?:[^()]++|(?1))*\))?/', '', $gap);
+        $gap = preg_replace('/@(?:end)?(?:if|elseif|else|unless|foreach|forelse|for|while|switch|case|default|break|auth|guest|can|elsecan|cannot|canany|isset|empty|php)\b[ \t]*(\((?:[^()]++|(?1))*\))?/', '', $gap);
 
         return $gap !== null && trim($gap) === '';
     }
@@ -113,7 +114,7 @@ abstract class BoxesColour extends Rule
         $values = [];
 
         foreach ($node['attributes'] as $name => $value) {
-            if (is_string($value) && preg_match('/^(?::|x-bind:)?(?:[a-z0-9]+-)*class(?:es)?$/i', (string) $name)) {
+            if (is_string($value) && ! str_starts_with(ltrim((string) $name, ':'), 'data-') && preg_match('/^(?::|x-bind:)?(?:[a-z0-9]+-)*class(?:es)?$/i', (string) $name)) {
                 $values[] = $value;
             }
         }

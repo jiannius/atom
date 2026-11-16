@@ -36,6 +36,26 @@
         An @class argument is read, at the tag's first line
     </div>
 
+    <div class="bg-red-500 text-red-500 border-red-500 border-t-red-500 ring-red-500 ring-offset-red-500 inset-ring-red-500 divide-red-500 outline-red-500 fill-red-500 stroke-red-500 from-red-500 via-red-500 to-red-500 placeholder-red-500 decoration-red-500 accent-red-500 caret-red-500 shadow-red-500 drop-shadow-red-500 text-shadow-red-500"> {{-- expect: palette-colour x21 --}}
+        Every colour utility prefix
+    </div>
+
+    <div class="border-r-red-500 border-b-red-500 border-l-red-500 border-x-red-500 border-y-red-500 border-s-red-500 border-e-red-500"> {{-- expect: palette-colour x7 --}}
+        Every side of a border
+    </div>
+
+    <div class="bg-slate-500 bg-gray-500 bg-zinc-500 bg-neutral-500 bg-stone-500 bg-red-500 bg-orange-500 bg-amber-500 bg-yellow-500 bg-lime-500 bg-green-500 bg-emerald-500 bg-teal-500 bg-cyan-500 bg-sky-500 bg-blue-500 bg-indigo-500 bg-violet-500 bg-purple-500 bg-fuchsia-500 bg-pink-500 bg-rose-500 bg-mauve-500 bg-olive-500 bg-mist-500 bg-taupe-500"> {{-- expect: palette-colour x26 --}}
+        Every hue
+    </div>
+
+    <div class="dark:bg-[rgb(0,0,0)] dark:bg-[rgba(0,0,0,.5)] dark:bg-[hsl(1,2%,3%)] dark:bg-[hsla(1,2%,3%,.5)] dark:bg-[oklch(0.1_0.1_100)]"> {{-- expect: palette-colour x5 --}}
+        Every colour function in brackets after dark:
+    </div>
+
+    <div class="dark:border-control-border"> {{-- expect: palette-colour --}}
+        A dark: control border
+    </div>
+
     {{-- look-alikes: none of these is flagged --}}
     <div class="bg-surface text-fg-muted border-border">Role tokens</div>
     <div class="bg-[#fffefc] text-[#1d1c19] border-[rgb(0,0,0)]">A colour in brackets is the document paper's</div>
