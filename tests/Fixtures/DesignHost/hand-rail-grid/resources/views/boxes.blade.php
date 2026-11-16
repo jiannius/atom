@@ -29,4 +29,14 @@
     <div class="grid grid-cols-[1fr_20rem]"><atom:callout>x</atom:callout></div> {{-- expect: hand-rail-grid --}}
     <div class="grid grid-cols-[1fr_20rem]"><span>a</span><ul><li>b</li></ul></div> {{-- expect: hand-rail-grid --}}
     <div class="grid grid-cols-[1fr_20rem]"><article>a</article></div> {{-- expect: hand-rail-grid --}}
+    <div class="grid grid-cols-[1fr_20rem]"><section>a</section></div> {{-- expect: hand-rail-grid --}}
+    <div class="grid grid-cols-[1fr_20rem]"><aside>a</aside></div> {{-- expect: hand-rail-grid --}}
+    <div class="grid grid-cols-[1fr_20rem]"><main>a</main></div> {{-- expect: hand-rail-grid --}}
+    <div class="grid grid-cols-[1fr_20rem]"><ol><li>a</li></ol></div> {{-- expect: hand-rail-grid --}}
+    <div class="grid grid-cols-[1fr_20rem]"><nav>a</nav></div> {{-- expect: hand-rail-grid --}}
+    <div class="grid grid-cols-[1fr_20rem]"><header>a</header></div> {{-- expect: hand-rail-grid --}}
+    <div class="grid grid-cols-[1fr_20rem]"><footer>a</footer></div> {{-- expect: hand-rail-grid --}}
+    <div class="grid grid-cols-[1fr_20rem]"><details><summary>a</summary></details></div> {{-- expect: hand-rail-grid --}}
+    <div class="grid grid-cols-[1fr_20rem]"><fieldset>a</fieldset></div> {{-- expect: hand-rail-grid --}}
+    <div class="grid grid-cols-[1fr_20rem]"><form>a</form></div> {{-- expect: hand-rail-grid --}}
 </atom:page>

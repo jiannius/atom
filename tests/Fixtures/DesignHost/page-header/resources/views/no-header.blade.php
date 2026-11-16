@@ -15,3 +15,12 @@
 <atom:page>
     <div class="flex"><atom:button>Edit</atom:button> {{ $suffix }}</div>
 </atom:page>
+
+{{-- a host component past the first atom tag is not the header: the wrapper does not hide the page --}}
+{{-- expect: page-header --}}
+<atom:page>
+    <div class="space-y-6">
+        <atom:card><x-status-badge :status="$status" /></atom:card>
+        <x-job-summary :job="$job" />
+    </div>
+</atom:page>

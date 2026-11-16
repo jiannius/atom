@@ -90,3 +90,10 @@
     <x-slot:aside>Aside</x-slot:aside>
     <div>Rows</div>
 </atom:page>
+
+<atom:page>
+    <div class="space-y-6">
+        <x-job-header :job="$job" />
+        <atom:card>Details</atom:card>
+    </div>
+</atom:page>

@@ -39,7 +39,7 @@ class PageHeader extends PageRule
 
     public function detect(): string
     {
-        return 'An `<atom:page>` in a file with no `<atom:page.header>` that opens with something that does not draw one: nothing in its first element (up to the first atom tag in it), or in front of it, is a host component, a `<livewire:...>` tag, an `@include`, `@livewire`, `@yield` or `@stack`, or a `{{ }}` echo (so `<div>{{ $slot }}</div>` is left alone); and, inside a page, an `<h1>` or an `<atom:heading level="1">` (with no header in the file also an `<atom:heading>` of `size` `lg`, `xl` or 18 and more: with one, a smaller heading is a section\'s), reached through plain `div`, `header`, `section`, `hgroup` or `main` wrappers only (a heading in a card, panel, modal, form, list item, aside or any other component is not a page title), none of them hidden, fixed or absolute, centred (an empty state), or carrying a `role` or `x-show` (an overlay), and not dressed as a box (`rounded`, `shadow`, `ring`, `border`, any `bg-`). A page with a hand title is told about the title, not twice. A header drawn by a partial or a layout in another file is not seen.';
+        return 'An `<atom:page>` in a file with no `<atom:page.header>` that opens with something that does not draw one: nothing in front of its first element, or in it up to its first atom tag, is a host component, a `<livewire:...>` tag, an `@include`, `@livewire`, `@yield` or `@stack`, or a `{{ }}` echo (a host component further down, past an atom tag, does not count) (so `<div>{{ $slot }}</div>` is left alone); and, inside a page, an `<h1>` or an `<atom:heading level="1">` (with no header in the file also an `<atom:heading>` of `size` `lg`, `xl` or 18 and more: with one, a smaller heading is a section\'s), reached through plain `div`, `header`, `section`, `hgroup` or `main` wrappers only (a heading in a card, panel, modal, form, list item, aside or any other component is not a page title), none of them hidden, fixed or absolute, centred (an empty state), or carrying a `role` or `x-show` (an overlay), and not dressed as a box (`rounded`, `shadow`, `ring`, `border`, any `bg-`). A page with a hand title is told about the title, not twice. A header drawn by a partial or a layout in another file is not seen.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -167,12 +167,14 @@ class PageHeader extends PageRule
             $until = $first['end'];
 
             foreach ($outline->descendants($first) as $inside) {
-                if ($inside['kind'] === 'component') {
-                    return false;
+                if ($inside['kind'] === 'atom') {
+                    $until = $inside['offset'];
+
+                    break;
                 }
 
-                if ($inside['kind'] === 'atom') {
-                    $until = min($until, $inside['offset']);
+                if ($inside['kind'] === 'component') {
+                    return false;
                 }
             }
         }
