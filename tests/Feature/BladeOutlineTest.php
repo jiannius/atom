@@ -1,6 +1,7 @@
 <?php
 
 use Jiannius\Atom\Services\BladeOutline;
+use Jiannius\Atom\Services\HostScanner;
 
 /**
  * The outline of a view, from a snippet.
@@ -369,10 +370,10 @@ describe('the reader', function () {
 });
 
 /**
- * A view of about two megabytes (the size HostScanner reads at most) that is shaped to
- * be slow to read: something that never ends, repeated.
+ * A view of half a megabyte (two, the most HostScanner reads, for the shapes that need
+ * it) that is shaped to be slow to read: something that never ends, repeated.
  */
-function degenerate(string $shape, int $bytes = 2097152): string
+function degenerate(string $shape, int $bytes = 524288): string
 {
     $repeat = fn (string $unit) => str_repeat($unit, intdiv($bytes, strlen($unit)));
 
@@ -428,7 +429,7 @@ describe('cost bounds', function () {
     it('reads a degenerate view in bounded time and memory', function (string $shape) {
         set_time_limit(60);
 
-        $blade = degenerate($shape);
+        $blade = degenerate($shape, in_array($shape, ['ifs opened and closed', 'closer with a far >'], true) ? 2097152 : 524288);
 
         memory_reset_peak_usage();
         $before = memory_get_usage();
@@ -490,6 +491,60 @@ describe('cost bounds', function () {
             ->and($o->branchesDeclined())->toBeTrue();
     });
 
+    it('labels every node of a deep balanced view in bounded time', function () {
+        set_time_limit(60);
+
+        $o = outline(str_repeat('<atom:button>', 255).str_repeat('<b/>', 49000).str_repeat('</atom:button>', 255));
+
+        $start = cpuSeconds();
+        $labels = array_map(fn ($node) => $o->label($node), $o->nodes());
+
+        expect($o->balanced())->toBeTrue()
+            ->and(count($labels))->toBe(255 + 49000)
+            ->and(cpuSeconds() - $start)->toBeLessThan(6.0)
+            ->and($labels[0])->toBeNull()
+            ->and($labels[254])->toBeNull()
+            ->and($labels[300])->toBe('');
+
+        $small = outline('<atom:button>'.str_repeat('<b>x</b>', 100).'</atom:button>');
+
+        expect($small->label(first($small, 'atom:button')))->toBe(str_repeat('x', 100));
+    });
+
+    it('says the view was cut short when the budget is spent, whichever construct is dropped, and still labels what was read', function () {
+        $spend = fn (int $calls) => str_repeat('@lang(', $calls).str_repeat('x', 25000);
+
+        $tag = outline('<atom:button>@lang(\'Save\')</atom:button><atom:card label="{{ t(\'Hi\') }}"/>'.$spend(10).'<div></div>');
+
+        expect($tag->balanced())->toBeFalse()
+            ->and(tags($tag))->toBe(['atom:button', 'atom:card'])
+            ->and($tag->label(first($tag, 'atom:button')))->toBe('Save')
+            ->and($tag->label(first($tag, 'atom:card')))->toBe('Hi');
+
+        expect(outline($spend(11))->balanced())->toBeFalse()
+            ->and(tags(outline($spend(9).'<div></div>')))->toBe(['div'])
+            ->and(outline($spend(9).'<div></div>')->balanced())->toBeTrue();
+    });
+
+    it('does not count the cuts before a node against its label', function () {
+        $o = outline(str_repeat('<b/>', 12000).'<atom:button>Go <i>now</i></atom:button>');
+
+        expect($o->label(first($o, 'atom:button')))->toBe('Go now');
+    });
+
+    it('does not let label() text use up the budget of the scan, so the order of calls changes nothing', function () {
+        $o = outline('<atom:card label="'.str_repeat('@lang(', 3000).'"/><atom:card id="after"/>');
+
+        $start = cpuSeconds();
+        $first = $o->label(first($o, 'atom:card'));
+        $again = $o->label(first($o, 'atom:card'));
+
+        expect($first)->toBeNull()
+            ->and($again)->toBeNull()
+            ->and(cpuSeconds() - $start)->toBeLessThan(6.0)
+            ->and($o->balanced())->toBeTrue();
+    });
+
     it('does not rescan for a closer it has already failed to find, nor for one far away', function () {
         set_time_limit(60);
 
@@ -533,10 +588,67 @@ describe('cost bounds', function () {
         expect(array_column(array_column($o->nodes(), 'attributes'), 'id'))->toBe(['first'])
             ->and($o->balanced())->toBeFalse();
 
+        $html = outline('<div>'.str_repeat('@lang(', 60000).'<span>x</span><b>y</b></div>');
+
+        expect($html->balanced())->toBeFalse();
+
         $fine = outline('<atom:card id="first"/>'.str_repeat('@lang(', 3).'<atom:card id="last"/>');
 
         expect(array_column(array_column($fine->nodes(), 'attributes'), 'id'))->toBe(['first', 'last'])
             ->and($fine->balanced())->toBeTrue();
+    });
+});
+
+describe('against HostScanner::parseTags()', function () {
+    /**
+     * What HostScanner reads of the same text: name, attribute names with their values, and where it is.
+     */
+    function scannerTags(string $blade): array
+    {
+        $scanner = new class extends HostScanner {};
+
+        return array_map(fn ($tag) => ['name' => $tag['name'], 'attributes' => $tag['attributes'], 'offset' => $tag['offset'], 'spans' => $tag['spans'], 'attributes_at' => $tag['attributes_at']], $scanner->parseTags($blade));
+    }
+
+    it('reads the same attribute names and values where both read a plain tag, with _ in a name', function () {
+        $blade = '<atom:card data_x="1" my_attr=2 id="a" disabled/>';
+
+        expect(scannerTags($blade)[0]['attributes'])->toBe(['data_x' => '1', 'my_attr' => '2', 'id' => 'a', 'disabled' => true])
+            ->and(first(outline($blade), 'atom:card')['attributes'])->toBe(['data_x' => '1', 'my_attr' => '2', 'id' => 'a', 'disabled' => true]);
+    });
+
+    it('reads a > inside @class([... => ...]) as part of the tag, where HostScanner ends the attributes there', function () {
+        $blade = "<atom:card @class(['a' => \$b > 1]) id=\"a\"/>";
+
+        expect(array_keys(scannerTags($blade)[0]['attributes']))->toBe(['@class([', 'a'])
+            ->and(first(outline($blade), 'atom:card')['attributes'])->toBe(['id' => 'a'])
+            ->and(first(outline($blade), 'atom:card')['directives'][0]['name'])->toBe('class');
+    });
+
+    it('reads an unquoted {{ $v }} as one value, where HostScanner splits it into three attributes', function () {
+        $blade = '<atom:card title={{ $t }} id="a"/>';
+
+        expect(scannerTags($blade)[0]['attributes'])->toBe(['title' => '{{', '$t' => true, '}}' => true, 'id' => 'a'])
+            ->and(first(outline($blade), 'atom:card')['attributes'])->toBe(['title' => '{{ $t }}', 'id' => 'a']);
+    });
+
+    it('gives spans as offsets into the whole text, where HostScanner gives them from the end of the tag name', function () {
+        $blade = "xx\n<atom:card  id=\"a\" b/>";
+        $tag = scannerTags($blade)[0];
+        $node = first(outline($blade), 'atom:card');
+
+        expect($tag['spans']['id'])->toBe([2, 8])
+            ->and(substr($blade, $tag['attributes_at'] + $tag['spans']['id'][0], 6))->toBe('id="a"')
+            ->and($node['spans']['id'])->toBe([$tag['attributes_at'] + 2, $tag['attributes_at'] + 8])
+            ->and(substr($blade, $node['spans']['id'][0], 6))->toBe('id="a"')
+            ->and(substr($blade, $node['spans']['b'][0], 1))->toBe('b');
+    });
+
+    it('does not read a tag written inside a string, a script or an echo, where HostScanner reads each one', function () {
+        $blade = '<script>const s = "<atom:card id=\'x\'/>";</script>{{ \'<atom:card id="y"/>\' }}<atom:card id="z"/>';
+
+        expect(array_map(fn ($tag) => $tag['attributes']['id'], scannerTags($blade)))->toBe(['x', 'y', 'z'])
+            ->and(array_map(fn ($node) => $node['attributes']['id'], outline($blade)->atom()))->toBe(['z']);
     });
 });
 
@@ -586,6 +698,28 @@ describe('queries', function () {
             ->and($o->inside(first($o, 'button'), 'html:form')['tag'])->toBe('form');
     });
 
+    it('takes the bare HTML names a check asks for, refuses only the ones an atom component shares, and leaves x- components alone', function () {
+        $o = outline('<x-forms.field><div><span><a><ul><li><p><section><nav><tr><td><atom:button/></td></tr></nav></section></p></li></ul></a></span></div></x-forms.field>');
+        $button = first($o, 'atom:button');
+
+        foreach (['div', 'span', 'a', 'ul', 'li', 'p', 'section', 'nav', 'tr', 'td', 'h1', 'header', 'footer', 'main', 'aside', 'article', 'thead', 'tbody', 'th', 'ol', 'dl'] as $html) {
+            expect(fn () => $o->inside($button, $html))->not->toThrow(InvalidArgumentException::class);
+        }
+
+        foreach (['button', 'form', 'table', 'label', 'input', 'select', 'textarea', 'link', 'menu', 'kbd', 'caption', 'html', 'dd'] as $both) {
+            expect(fn () => $o->inside($button, $both))->toThrow(InvalidArgumentException::class, 'write `atom:'.$both.'` or `html:'.$both.'`');
+        }
+
+        foreach (['card', 'page', 'heading', 'badge', 'modal', 'alert'] as $atom) {
+            expect(fn () => $o->inside($button, $atom))->not->toThrow(InvalidArgumentException::class);
+        }
+
+        expect($o->inside($button, 'x-forms.field')['tag'])->toBe('x-forms.field')
+            ->and($o->inside($button, ['div', 'x-forms.field'])['tag'])->toBe('div')
+            ->and($o->inside($button, 'x-forms.other'))->toBeNull()
+            ->and($o->inside($button, 'html:td')['tag'])->toBe('td');
+    });
+
     it('takes a bare atom name with a dot, and refuses a bare name that is also an atom component', function () {
         $o = outline('<atom:page><atom:page.header><x-slot:actions><atom:button/></x-slot:actions></atom:page.header><atom:card><button>x</button></atom:card></atom:page>');
 
@@ -598,9 +732,12 @@ describe('queries', function () {
             ->and($o->inside(first($o, 'button'), 'page.header'))->toBeNull()
             ->and($o->inside(first($o, 'button'), 'div'))->toBeNull();
 
-        foreach (['card', 'button', 'table', 'form', ['div', 'input']] as $ambiguous) {
-            expect(fn () => $o->inside(first($o, 'button'), $ambiguous))->toThrow(InvalidArgumentException::class);
+        foreach (['button', 'table', 'form', ['div', 'input']] as $ambiguous) {
+            expect(fn () => $o->inside(first($o, 'button'), $ambiguous))->toThrow(InvalidArgumentException::class, 'is ambiguous');
         }
+
+        expect($o->inside(first($o, 'button'), 'card')['tag'])->toBe('atom:card')
+            ->and($o->inside(first($o, 'button'), 'page')['tag'])->toBe('atom:page');
 
         $o = outline('<form><button>x</button></form>');
 
@@ -1057,6 +1194,20 @@ describe('branch paths', function () {
             ->and($o->branch($a))->toHaveCount(256);
     });
 
+    it('says a node is in no loop once the branches are declined, even one opened before', function () {
+        $o = outline('@foreach($a as $b)<atom:button id="in"/>'.str_repeat('@if($c)', 260).'<atom:button id="deep"/>');
+
+        [$in, $deep] = $o->atom('button');
+
+        expect($o->branchesDeclined())->toBeTrue()
+            ->and($o->inLoop($in))->toBeFalse()
+            ->and($o->inLoop($deep))->toBeFalse();
+
+        $fine = outline('@foreach($a as $b)<atom:button/>');
+
+        expect($fine->inLoop(first($fine, 'atom:button')))->toBeTrue();
+    });
+
     it('stops reading branches past MAX_BLOCKS open blocks, and says so', function () {
         $fine = outline(str_repeat('@if($a)', 256).'<atom:button/>');
 
@@ -1226,6 +1377,12 @@ describe('classes', function () {
         $o = outline('<div :class="$on ? \'p-$n q\' : \'r\'" @class([\'s-{{ $x }}\', \'t\', "u-$v" => $w])></div>');
 
         expect($o->classes(first($o, 'div')))->toBe(['q', 'r', 't']);
+    });
+
+    it('leaves out an echo with quotes inside it in a bound class', function () {
+        $o = outline('<div x-bind:class="{ \'a b\': x, \'{{ $d ? \'border-x\' : \'border-y\' }}\': !z, \'{{ $k }}\': q, \'c\': r }" :class="\'d \' . ($e ? \'{{ $f ? \'g\' : \'h\' }}\' : \'i\')"></div>');
+
+        expect($o->classes(first($o, 'div')))->toBe(['d', 'i', 'a', 'b', 'c']);
     });
 
     it('is empty for a tag with none', function () {

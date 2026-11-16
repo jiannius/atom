@@ -27,9 +27,10 @@ use Illuminate\Support\Str;
  *
  * This is the reader of attributes the design checks use; `HostScanner::parseTags()`
  * and `UpgradeCheck` have their own and are not to be mixed with it. Where the two
- * differ this one is the more exact: attribute names with `_`, a `>` inside an
- * `@class([... => ...])` argument, an unquoted `{{ $v }}` value, spans that are
- * absolute offsets, and a tag written inside a string or an echo that is not a tag.
+ * differ this one is the more exact: a `>` inside an `@class([... => ...])` argument,
+ * an unquoted `{{ $v }}` value, spans that are absolute offsets (theirs start at the
+ * end of the tag name), and a tag written inside a string, a script or an echo, which
+ * is not a tag.
  *
  * Nodes are arrays (this folder has no room for a node class), keyed by an id that is
  * the tag's position in document order. Every query takes a node or an id.
@@ -38,7 +39,8 @@ use Illuminate\Support\Str;
  *   id, tag (`atom:page.header`, `x-slot`, `x-foo`, `livewire:x`, `div`, lowercased;
  *   `x-atom::x` reads as `atom:x`), kind (`atom`, `slot`, `component`, `html`),
  *   component (the part after `atom:`, or null), slot (a slot's name, or null when
- *   it is bound), offset, openEnd (after the `>`), close (the closer's offset, or
+ *   it is bound; as Blade reads it, `<x-slot:foo-bar>` is `fooBar` while
+ *   `<x-slot name="foo-bar">` stays `foo-bar`: two names), offset, openEnd (after the `>`), close (the closer's offset, or
  *   null), end (after the closer; where it was cut off when there is none),
  *   selfClosing, attributes, spans (name => absolute [start, end]), directives
  *   (`@class([...])` and the like inside the tag), parent (id or null), depth.
@@ -81,6 +83,20 @@ class BladeOutline
      * Directive blocks open at once; a deeper one stops the branch paths
      */
     protected const MAX_BLOCKS = 256;
+
+    /**
+     * Cuts (tag markup) a label reads at most; past that it is null
+     */
+    protected const MAX_LABEL_CUTS = 10000;
+
+    /**
+     * HTML element names, to tell a bare name that is one from a bare atom component
+     *
+     * @var array<int, string>
+     */
+    protected const HTML_ELEMENTS = [
+        'a', 'abbr', 'address', 'area', 'article', 'aside', 'audio', 'b', 'base', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'cite', 'code', 'col', 'colgroup', 'data', 'datalist', 'dd', 'del', 'details', 'dfn', 'dialog', 'div', 'dl', 'dt', 'em', 'embed', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'head', 'header', 'hgroup', 'hr', 'html', 'i', 'iframe', 'img', 'input', 'ins', 'kbd', 'label', 'legend', 'li', 'link', 'main', 'map', 'mark', 'menu', 'meta', 'meter', 'nav', 'noscript', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'picture', 'pre', 'progress', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'script', 'section', 'select', 'slot', 'small', 'source', 'span', 'strong', 'style', 'sub', 'summary', 'sup', 'svg', 'table', 'tbody', 'td', 'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'title', 'tr', 'track', 'u', 'ul', 'var', 'video', 'wbr',
+    ];
 
     /**
      * Components whose own text is their label: a `label` or `heading` attribute is only
@@ -199,6 +215,18 @@ class BladeOutline
      * @var array<int, array<int, int>>|null
      */
     protected ?array $childIds = null;
+
+    /**
+     * Where each tag's markup starts and ends, for `label()`, built on the first one
+     *
+     * @var array<int, int>|null
+     */
+    protected ?array $cutFrom = null;
+
+    /**
+     * @var array<int, int>
+     */
+    protected array $cutTo = [];
 
     protected int $chains = 0;
 
@@ -402,13 +430,14 @@ class BladeOutline
     /**
      * The nearest tag around a node that is one of these. A name is:
      *  - an atom component: `atom:page.header`, `x-atom::page.header`, or `page.header`
-     *    (a bare name with a dot is always one, no HTML element has a dot);
+     *    (a bare name with a dot is one unless it starts with `x-`: no HTML element has a
+     *    dot), or a bare `card` or `page` that is an atom component and no HTML element;
      *  - `x-slot` (any slot) or `x-slot:actions` (that slot);
      *  - any other tag as written: `div`, `x-foo`, `livewire:foo`;
      *  - `html:button` for an HTML element that an atom component shares a name with.
-     * A bare name that is also an atom component (`card`, `button`, `table`, `form`) is
-     * ambiguous and throws, so that a check cannot ask for the wrong one by accident:
-     * write `atom:card`, or `html:button`.
+     * A bare name that is both an atom component and an HTML element (`button`, `table`,
+     * `form`, `label`, `link`...) is ambiguous and throws, so that a check cannot ask for the
+     * wrong one by accident: write `atom:button`, or `html:button`.
      *
      * @param  string|array<int, string>  $names
      *
@@ -549,7 +578,7 @@ class BladeOutline
     {
         $node = $this->resolve($node);
 
-        if ($node === null) {
+        if ($node === null || $this->declined) {
             return false;
         }
 
@@ -667,6 +696,27 @@ class BladeOutline
     }
 
     /**
+     * Every tag's opener and closer as a stretch of text to cut out of a label, in order
+     */
+    protected function buildCuts(): void
+    {
+        $cuts = [];
+
+        foreach ($this->nodes as $node) {
+            $cuts[$node['offset']] = $node['openEnd'];
+
+            if ($node['close'] !== null) {
+                $cuts[$node['close']] = $node['end'];
+            }
+        }
+
+        ksort($cuts);
+
+        $this->cutFrom = array_keys($cuts);
+        $this->cutTo = array_values($cuts);
+    }
+
+    /**
      * The text inside a node, tags removed (see `label()`)
      */
     protected function contentText(array $node): ?string
@@ -685,25 +735,34 @@ class BladeOutline
             $close = $node['end'];
         }
 
-        $cuts = [];
-
-        foreach ($this->descendants($node) as $inner) {
-            $cuts[] = [$inner['offset'], $inner['openEnd']];
-
-            if ($inner['close'] !== null) {
-                $cuts[] = [$inner['close'], $inner['end']];
-            }
+        if ($this->cutFrom === null) {
+            $this->buildCuts();
         }
 
-        usort($cuts, fn ($a, $b) => $a[0] <=> $b[0]);
+        $low = 0;
+        $high = count($this->cutFrom);
+
+        while ($low < $high) {
+            $middle = intdiv($low + $high, 2);
+
+            if ($this->cutFrom[$middle] < $node['openEnd']) {
+                $low = $middle + 1;
+            } else {
+                $high = $middle;
+            }
+        }
 
         $content = '';
         $at = $node['openEnd'];
 
-        foreach ($cuts as [$from, $to]) {
-            if ($from >= $at) {
-                $content .= substr($this->text, $at, $from - $at);
-                $at = $to;
+        for ($i = $low, $n = count($this->cutFrom); $i < $n && $this->cutFrom[$i] < $close; $i++) {
+            if ($i - $low >= self::MAX_LABEL_CUTS) {
+                return null;
+            }
+
+            if ($this->cutFrom[$i] >= $at) {
+                $content .= substr($this->text, $at, $this->cutFrom[$i] - $at);
+                $at = $this->cutTo[$i];
             }
         }
 
@@ -755,12 +814,12 @@ class BladeOutline
         }
 
         foreach ($expressions as $expression) {
+            $expression = preg_replace('/\{\{.*?\}\}|\{!!.*?!!\}/s', "\0", $expression) ?? $expression;
+
             preg_match_all('/\'((?:[^\'\\\\]|\\\\.)*)\'|"((?:[^"\\\\]|\\\\.)*)"/s', $expression, $found, PREG_SET_ORDER);
 
             foreach ($found as $match) {
                 $literal = ($match[1] ?? '') !== '' ? $match[1] : ($match[2] ?? '');
-
-                $literal = preg_replace('/\{\{.*?\}\}|\{!!.*?!!\}/s', "\0", $literal) ?? $literal;
 
                 foreach (preg_split('/\s+/', $literal, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
                     if (! str_contains($token, "\0") && ! str_contains($token, '$')) {
@@ -834,12 +893,16 @@ class BladeOutline
             return 'atom:'.$this->bareName($lower);
         }
 
-        if (str_contains($lower, '.') && ! str_contains($lower, ':')) {
+        if (str_contains($lower, '.') && ! str_contains($lower, ':') && ! str_starts_with($lower, 'x-')) {
             return 'atom:'.$lower;
         }
 
         if (preg_match('/^[a-z][a-z0-9]*$/', $lower) && $this->isAtomComponent($lower)) {
-            throw new \InvalidArgumentException("`{$name}` is both an atom component and an HTML name: write `atom:{$lower}` or `html:{$lower}`.");
+            if (in_array($lower, self::HTML_ELEMENTS, true)) {
+                throw new \InvalidArgumentException("`{$name}` is ambiguous, an atom component and an HTML element: write `atom:{$lower}` or `html:{$lower}`.");
+            }
+
+            return 'atom:'.$lower;
         }
 
         return $lower;
@@ -929,7 +992,8 @@ class BladeOutline
     /**
      * Charge a scan that read bytes and found nothing against the budget of failed
      * scans, which is what keeps a view of unfinished tags and argument lists from being
-     * read over and over. Once it is spent a tag or an argument list is read as text.
+     * read over and over. Once it is spent a tag or an argument list is read as text and
+     * `balanced()` is false. Only the scan spends it: `label()` has an allowance of its own.
      */
     protected function fail(int $bytes): void
     {
@@ -1174,9 +1238,15 @@ class BladeOutline
      * The offset after the `)` that closes the `(` at $open, strings respected; null
      * when it never closes
      */
-    protected function parensEnd(string $text, int $open): ?int
+    protected function parensEnd(string $text, int $open, ?int &$allowance = null): ?int
     {
-        if ($this->budget <= 0) {
+        $spent = $allowance ?? $this->budget;
+
+        if ($spent <= 0) {
+            if ($allowance === null) {
+                $this->balanced = false;
+            }
+
             return null;
         }
 
@@ -1203,7 +1273,11 @@ class BladeOutline
             }
         }
 
-        $this->fail($i - $open);
+        if ($allowance === null) {
+            $this->fail($i - $open);
+        } else {
+            $allowance -= $i - $open + 1;
+        }
 
         return null;
     }
@@ -1449,6 +1523,8 @@ class BladeOutline
     protected function readTag(int $from): ?array
     {
         if ($this->budget <= 0) {
+            $this->balanced = false;
+
             return null;
         }
 
@@ -1642,6 +1718,7 @@ class BladeOutline
         $n = strlen($source);
         $out = '';
         $i = 0;
+        $allowance = max(20000, 4 * $n);
 
         while ($i < $n) {
             $j = $i + strcspn($source, '{@', $i);
@@ -1679,7 +1756,7 @@ class BladeOutline
                 } elseif ($before !== '' && (ctype_alnum($before) || $before === '_')) {
                     $out .= '@';
                     $i = $j + 1;
-                } elseif (preg_match('/\G@lang[ \t]*(?=\()/i', $source, $lang, 0, $j) && ($end = $this->parensEnd($source, $j + strlen($lang[0]))) !== null) {
+                } elseif (preg_match('/\G@lang[ \t]*(?=\()/i', $source, $lang, 0, $j) && ($end = $this->parensEnd($source, $j + strlen($lang[0]), $allowance)) !== null) {
                     $literal = $this->literal('t'.substr($source, $j + strlen($lang[0]), $end - $j - strlen($lang[0])));
 
                     if ($literal === null) {
@@ -1719,7 +1796,9 @@ class BladeOutline
         if (preg_match('/^(?:t|__|trans)\s*\(\s*/i', $expression, $call)) {
             $open = strpos($expression, '(');
 
-            if ($this->parensEnd($expression, $open) !== strlen($expression)) {
+            $allowance = self::MAX_TAG_BYTES;
+
+            if ($this->parensEnd($expression, $open, $allowance) !== strlen($expression)) {
                 return null;
             }
 
