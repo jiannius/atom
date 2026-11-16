@@ -1,72 +1,12 @@
 <?php
 
 use Jiannius\Atom\Services\DesignCheck;
-use Jiannius\Atom\Services\DesignChecks\Context;
-use Jiannius\Atom\Services\DesignChecks\File;
-use Jiannius\Atom\Services\DesignChecks\Rule;
 use Jiannius\Atom\Tests\Support\DesignHost;
 
 /**
- * A check that reads PHP, so a marker in a PHP file has a finding to suppress: it flags each `return 'x';` line.
+ * A check that reads PHP, so a marker in a PHP file has a finding to suppress: it flags each `return '` line.
  */
-function phpProbe(): Rule
-{
-    return new class extends Rule
-    {
-        public const ID = 'php-probe';
-
-        public const SEVERITY = 'info';
-
-        public const GROUP = 'Copy and state';
-
-        public function title(): string
-        {
-            return 'A returned string';
-        }
-
-        public function fix(): string
-        {
-            return 'Return a `<atom:dd>`.';
-        }
-
-        public function rule(): string
-        {
-            return 'r';
-        }
-
-        public function detect(): string
-        {
-            return 'A `return \'..\';` line.';
-        }
-
-        public function kinds(): array
-        {
-            return ['php'];
-        }
-
-        public function structural(): bool
-        {
-            return false;
-        }
-
-        public function find(File $file, Context $context): iterable
-        {
-            preg_match_all('/return \'/', $file->text(), $found, PREG_OFFSET_CAPTURE);
-
-            foreach ($found[0] as [, $offset]) {
-                yield [$offset, null];
-            }
-        }
-    };
-}
-
-/**
- * The problems of a scan as [file, id, problem], without their lines
- */
-function markerProblems(array $result): array
-{
-    return array_map(fn ($problem) => [$problem['file'], $problem['id'] ?? null, $problem['problem']], $result['markers']);
-}
+$phpProbe = ['kinds' => ['php'], 'structural' => false, 'pattern' => "/return '/"];
 
 describe('design-check markers', function () {
     beforeEach(function () {
@@ -115,17 +55,17 @@ describe('design-check markers', function () {
 
     it('still honours a marker with no reason, and reports it', function () {
         expect($this->suppressed)->toContain('resources/views/ignore.blade.php:21:success-button')
-            ->and(markerProblems($this->result))->toContain(['resources/views/ignore.blade.php', null, 'no reason given']);
+            ->and(DesignHost::problems($this->result))->toContain(['resources/views/ignore.blade.php', null, 'no reason given']);
     });
 
     it('reports an unknown id, and does not apply it', function () {
-        expect(markerProblems($this->result))->toContain(['resources/views/ignore.blade.php', 'no-such-check', 'unknown check id'])
-            ->and(markerProblems($this->result))->toContain(['app/Tags.php', 'bogus-id', 'unknown check id'])
+        expect(DesignHost::problems($this->result))->toContain(['resources/views/ignore.blade.php', 'no-such-check', 'unknown check id'])
+            ->and(DesignHost::problems($this->result))->toContain(['app/Tags.php', 'bogus-id', 'unknown check id'])
             ->and($this->suppressed)->not->toContain('resources/views/ignore.blade.php:27:success-button');
     });
 
     it('reports an ignore that suppressed nothing, for a check that ran', function () {
-        expect(markerProblems($this->result))
+        expect(DesignHost::problems($this->result))
             ->toContain(['resources/views/ignore.blade.php', 'success-button', 'unused: `ignore` suppressed nothing'])
             ->toContain(['resources/views/ignore.blade.php', 'own-overflow', 'unused: `ignore` suppressed nothing']);
     });
@@ -134,10 +74,10 @@ describe('design-check markers', function () {
         $only = DesignHost::scan('_markers', ['own-overflow']);
 
         // success-button is not in this run: its markers are neither applied nor unused
-        expect(markerProblems($only))->not->toContain(['resources/views/ignore.blade.php', 'success-button', 'unused: `ignore` suppressed nothing'])
+        expect(DesignHost::problems($only))->not->toContain(['resources/views/ignore.blade.php', 'success-button', 'unused: `ignore` suppressed nothing'])
             ->and(array_unique(array_column($only['suppressed'], 'id')))->toBe(['own-overflow'])
             // and the PHP marker for a check that reads no PHP is not unused either
-            ->and(array_filter(markerProblems($this->result), fn ($problem) => $problem[0] === 'app/Tags.php' && str_contains($problem[2], 'unused')))->toBe([]);
+            ->and(array_filter(DesignHost::problems($this->result), fn ($problem) => $problem[0] === 'app/Tags.php' && str_contains($problem[2], 'unused')))->toBe([]);
     });
 
     it('does not judge a marker for a structural check on a view read as text only', function () {
@@ -148,20 +88,20 @@ describe('design-check markers', function () {
             $result = (new DesignCheck)->scan($dir, ['own-overflow']);
 
             expect($result['text_only'])->toContain('resources/views/ignore.blade.php')
-                ->and(array_filter(markerProblems($result), fn ($problem) => $problem[0] === 'resources/views/ignore.blade.php'))->toBe([]);
+                ->and(array_filter(DesignHost::problems($result), fn ($problem) => $problem[0] === 'resources/views/ignore.blade.php'))->toBe([]);
         } finally {
             DesignHost::remove($dir);
         }
     });
 
     it('reports `all` on an ignore, and an `on` with no `off`', function () {
-        expect(markerProblems($this->result))->toContain(['resources/views/ignore.blade.php', null, '`all` is for `off` only: name the checks to ignore'])
-            ->toContain(['resources/views/ignore.blade.php', null, '`on` with no `off` before it']);
+        expect(DesignHost::problems($this->result))->toContain(['resources/views/ignore.blade.php', null, '`all` is for `off` only: name the checks to ignore'])
+            ->toContain(['resources/views/ignore.blade.php', null, '`on` with no matching `off` before it']);
     });
 });
 
-describe('design-check markers in PHP', function () {
-    it('suppresses a PHP finding from a marker above, a trailing one and a block comment', function () {
+describe('design-check markers in PHP', function () use ($phpProbe) {
+    it('suppresses a PHP finding from a marker above, a trailing one and a block comment', function () use ($phpProbe) {
         $dir = sys_get_temp_dir().'/atom-design-php-'.bin2hex(random_bytes(4));
         mkdir($dir.'/app', 0777, true);
         file_put_contents($dir.'/app/A.php', <<<'PHP'
@@ -208,7 +148,7 @@ describe('design-check markers in PHP', function () {
         PHP);
 
         try {
-            $result = (new DesignCheck([phpProbe()]))->scan($dir);
+            $result = (new DesignCheck([DesignHost::probe('php-probe', $phpProbe)]))->scan($dir);
 
             expect(collect($result['checks']['php-probe']['findings'])->pluck('line')->all())->toBe([32, 38])
                 ->and(collect($result['suppressed'])->pluck('line')->all())->toBe([8, 13, 19, 27])
@@ -218,15 +158,78 @@ describe('design-check markers in PHP', function () {
         }
     });
 
-    it('reports a PHP marker that suppressed nothing when the check reads PHP', function () {
+    it('reports a PHP marker that suppressed nothing when the check reads PHP', function () use ($phpProbe) {
         $dir = sys_get_temp_dir().'/atom-design-php-'.bin2hex(random_bytes(4));
         mkdir($dir.'/app', 0777, true);
         file_put_contents($dir.'/app/A.php', "<?php\n// atom:design-check ignore php-probe: nothing below\n\$a = 1;\n");
 
         try {
-            $result = (new DesignCheck([phpProbe()]))->scan($dir);
+            $result = (new DesignCheck([DesignHost::probe('php-probe', $phpProbe)]))->scan($dir);
 
-            expect(markerProblems($result))->toBe([['app/A.php', 'php-probe', 'unused: `ignore` suppressed nothing']]);
+            expect(DesignHost::problems($result))->toBe([['app/A.php', 'php-probe', 'unused: `ignore` suppressed nothing']]);
+        } finally {
+            DesignHost::remove($dir);
+        }
+    });
+});
+
+describe('design-check: text that is not a marker', function () {
+    it('does not honour, and does not report, a marker inside an HTML comment or a verbatim block', function () {
+        $result = DesignHost::scan('_markers', ['success-button', 'own-overflow']);
+
+        expect(collect($result['checks']['success-button']['findings'])->where('file', 'resources/views/not-markers.blade.php')->pluck('line')->all())->toBe([4, 9])
+            ->and(array_filter(DesignHost::problems($result), fn ($problem) => $problem[0] === 'resources/views/not-markers.blade.php'))->toBe([]);
+    });
+
+    it('does not read a marker from a string in a PHP file', function () {
+        $dir = DesignHost::temp(['app/A.php' => "<?php\n\$a = '// atom:design-check ignore php-probe: in a string';\nreturn 'x';\n"]);
+
+        try {
+            $result = (new DesignCheck([DesignHost::probe('php-probe', ['kinds' => ['php'], 'structural' => false, 'pattern' => "/return '/"])]))->scan($dir);
+
+            expect($result['checks']['php-probe']['count'])->toBe(1)->and($result['markers'])->toBe([]);
+        } finally {
+            DesignHost::remove($dir);
+        }
+    });
+});
+
+describe('design-check: an `on` closes by id', function () {
+    it('ends only the ids it names, and a bare `on` or `on all` ends them all', function () {
+        $dir = DesignHost::temp(['resources/views/a.blade.php' => implode("\n", [
+            '{{-- atom:design-check off success-button, own-overflow: both --}}',                                            // 1
+            '<atom:button variant="success">a</atom:button>',                                                              // 2 suppressed
+            '<atom:dropdown><atom:button icon="more"/></atom:dropdown>',                                                   // 3 suppressed
+            '{{-- atom:design-check on success-button --}}',                                                               // 4
+            '<atom:button variant="success">b</atom:button>',                                                              // 5 found
+            '<atom:dropdown><atom:button icon="more"/></atom:dropdown>',                                                   // 6 suppressed
+            '{{-- atom:design-check on --}}',                                                                              // 7
+            '<atom:dropdown><atom:button icon="more"/></atom:dropdown>',                                                   // 8 found
+            '{{-- atom:design-check off success-button: again --}}',                                                       // 9
+            '<atom:button variant="success">c</atom:button>',                                                              // 10 suppressed
+            '{{-- atom:design-check on all --}}',                                                                          // 11
+            '<atom:button variant="success">d</atom:button>',                                                              // 12 found
+            '{{-- atom:design-check on own-overflow --}}',                                                                 // 13 nothing open: reported
+            '',
+        ])]);
+
+        try {
+            $result = (new DesignCheck)->scan($dir, ['success-button', 'own-overflow']);
+
+            expect(array_map(fn ($f) => $f['line'], $result['checks']['success-button']['findings']))->toBe([5, 12])
+                ->and(array_map(fn ($f) => $f['line'], $result['checks']['own-overflow']['findings']))->toBe([8])
+                ->and(DesignHost::problems($result))->toBe([['resources/views/a.blade.php', null, '`on` with no matching `off` before it']])
+                ->and($result['markers'][0]['line'])->toBe(13);
+        } finally {
+            DesignHost::remove($dir);
+        }
+    });
+
+    it('reports an `off <ids>` that suppressed nothing, as it does an `ignore`', function () {
+        $dir = DesignHost::temp(['resources/views/a.blade.php' => "{{-- atom:design-check off own-overflow: nothing here --}}\n<atom:button>x</atom:button>\n"]);
+
+        try {
+            expect(DesignHost::problems((new DesignCheck)->scan($dir, ['own-overflow'])))->toBe([['resources/views/a.blade.php', 'own-overflow', 'unused: `off` suppressed nothing']]);
         } finally {
             DesignHost::remove($dir);
         }

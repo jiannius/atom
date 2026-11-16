@@ -4,6 +4,7 @@ namespace Jiannius\Atom\Tests\Support;
 
 use FilesystemIterator;
 use Jiannius\Atom\Services\DesignCheck;
+use Jiannius\Atom\Services\DesignChecks\Rule;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -142,6 +143,94 @@ class DesignHost
         sort($files);
 
         return $files;
+    }
+
+    /**
+     * A temp host with these files, by path from its root; remove() it when done
+     *
+     * @param  array<string, string>  $files
+     */
+    public static function temp(array $files = []): string
+    {
+        $dir = sys_get_temp_dir().'/atom-design-check-'.bin2hex(random_bytes(6));
+        mkdir($dir, 0777, true);
+
+        foreach ($files as $path => $content) {
+            @mkdir(dirname($dir.'/'.$path), 0777, true);
+            file_put_contents($dir.'/'.$path, $content);
+        }
+
+        return $dir;
+    }
+
+    /**
+     * What one check finds in one Blade source: its findings
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function scanSource(string $source, string $id): array
+    {
+        $dir = static::temp(['resources/views/a.blade.php' => $source]);
+
+        try {
+            return (new DesignCheck)->scan($dir, [$id])['checks'][$id]['findings'];
+        } finally {
+            static::remove($dir);
+        }
+    }
+
+    /**
+     * The notes of what one check finds in one Blade source, by line
+     *
+     * @return array<int, ?string>
+     */
+    public static function notes(string $source, string $id): array
+    {
+        return array_column(static::scanSource($source, $id), 'note', 'line');
+    }
+
+    /**
+     * The marker problems of a scan as [file, id, problem], without their lines
+     *
+     * @param  array<string, mixed>  $result
+     * @return array<int, array{0: string, 1: ?string, 2: string}>
+     */
+    public static function problems(array $result): array
+    {
+        return array_map(fn ($problem) => [$problem['file'], $problem['id'] ?? null, $problem['problem']], $result['markers']);
+    }
+
+    /**
+     * A check made in a test, to hold the runner to what it promises one. `ID` is a constant, so each probe is its own
+     * class, compiled with its id. It flags every match of `pattern` (`<atom:button` by default) with the note "a match", leaves its
+     * file in the context under its id, and hands `finish()` a third element.
+     *
+     * @param  array<string, mixed>  $behaviour  kinds, structural, throws, throwsInFinish, finish, pattern, noNote
+     */
+    public static function probe(string $id, array $behaviour = []): Rule
+    {
+        return eval('return new class($behaviour) extends \Jiannius\Atom\Services\DesignChecks\Rule {
+            public const ID = '.var_export($id, true).';
+            public const SEVERITY = "info";
+            public const GROUP = "Copy and state";
+            public function __construct(protected array $behaviour) {}
+            public function title(): string { return "Probe"; }
+            public function fix(): string { return "Use `<atom:card>`."; }
+            public function rule(): string { return "r"; }
+            public function detect(): string { return "a probe"; }
+            public function kinds(): array { return $this->behaviour["kinds"] ?? ["blade"]; }
+            public function structural(): bool { return $this->behaviour["structural"] ?? true; }
+            public function find(\Jiannius\Atom\Services\DesignChecks\File $file, \Jiannius\Atom\Services\DesignChecks\Context $context): iterable {
+                if ($this->behaviour["throws"] ?? false) { throw new \RuntimeException("boom"); }
+                $context->add(static::ID, $file->path);
+                preg_match_all($this->behaviour["pattern"] ?? "/<atom:button/", $file->text(), $found, PREG_OFFSET_CAPTURE);
+                foreach ($found[0] as [, $offset]) { yield ($this->behaviour["noNote"] ?? false) ? [$offset] : [$offset, "a match", ["seen" => $file->path]]; }
+            }
+            public function finish(array $findings, \Jiannius\Atom\Services\DesignChecks\Context $context): array {
+                if ($this->behaviour["throwsInFinish"] ?? false) { throw new \RuntimeException("late"); }
+                return ($this->behaviour["finish"] ?? fn ($findings) => $findings)($findings, $context);
+            }
+        };');
     }
 
     /**

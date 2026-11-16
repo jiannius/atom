@@ -35,7 +35,7 @@
 
         <atom:table frameless :paginate="$invoices">
             <x-slot:checked>
-                <atom:button size="sm">Send reminders</atom:button>
+                <atom:button>Send reminders</atom:button>
             </x-slot:checked>
 
             <x-slot:checked-menu>
@@ -54,6 +54,7 @@
                         <atom:table.cell column="status"><atom:status :value="$invoice->status" /></atom:table.cell>
                         <atom:table.actions>
                             <atom:menu.item icon="eye">View</atom:menu.item>
+                            <atom:menu.separator />
                             <atom:menu.item variant="delete">Delete</atom:menu.item>
                         </atom:table.actions>
                     </atom:table.row>

@@ -94,9 +94,28 @@ describe('design-check: what a check says about itself', function () use ($ids, 
             ->and(array_diff($rule->kinds(), ['blade', 'php']))->toBe([]);
     })->with($checks);
 
-    it('names an atom tag or a prop to use instead', function (string $id) {
-        // `<atom:button>`, or a backticked prop or slot: `menu`, `variant="primary"`
-        expect((new DesignCheck)->rules()[$id]->fix())->toMatch('/<atom:[a-z]|`[a-z][a-z.-]*(?:="[^"]*")?`/');
+    it('names an atom component that exists, or a prop that a component declares', function (string $id) {
+        $fix = (new DesignCheck)->rules()[$id]->fix();
+        $components = __DIR__.'/../../components/';
+        preg_match_all('/<atom:([a-z][a-z0-9.-]*)/', $fix, $tags);
+
+        foreach ($tags[1] as $tag) {
+            $path = $components.str_replace('.', '/', $tag);
+
+            expect(is_file($path.'.blade.php') || is_file($path.'/index.blade.php'))->toBeTrue('<atom:'.$tag.'> is not a component');
+        }
+
+        if (! $tags[1]) {
+            // no tag: a backticked `prop="value"` that some component declares in its @props
+            preg_match_all('/`([a-z][a-z-]*)="[^"]*"`/', $fix, $props);
+            $declared = collect(glob($components.'{,*/,*/*/}*.blade.php', GLOB_BRACE))->map(fn ($file) => file_get_contents($file))->implode("\n");
+
+            expect($props[1])->not->toBeEmpty('the fix names no <atom:...> tag and no `prop="value"`');
+
+            foreach ($props[1] as $prop) {
+                expect($declared)->toContain("'{$prop}' =>");
+            }
+        }
     })->with($checks);
 
     it('quotes a phrase that the skill or the guideline holds', function (string $id) use ($skill, $guideline) {
@@ -105,11 +124,20 @@ describe('design-check: what a check says about itself', function () use ($ids, 
         expect(str_contains($skill, $phrase) || str_contains($guideline, $phrase))->toBeTrue('"'.$phrase.'" is in neither the skill nor the guideline');
     })->with($checks);
 
-    it('is one class for each id, found without a registry', function () use ($ids) {
-        $files = array_map(fn ($path) => basename($path, '.php'), glob(__DIR__.'/../../src/Services/DesignChecks/*.php'));
-        $classes = array_map(fn ($rule) => (new ReflectionClass($rule))->getShortName(), (new DesignCheck)->rules());
+    it('is one class for each id, found without a registry: every non-abstract Rule in the folder, and no other file', function () use ($ids) {
+        $classes = [];
 
-        expect(array_values($classes))->toEqualCanonicalizing(array_values(array_diff($files, ['Rule', 'File', 'Context'])))
+        foreach (glob(__DIR__.'/../../src/Services/DesignChecks/*.php') as $path) {
+            $class = 'Jiannius\\Atom\\Services\\DesignChecks\\'.basename($path, '.php');
+
+            if (is_subclass_of($class, Rule::class) && ! (new ReflectionClass($class))->isAbstract()) {
+                $classes[] = $class;
+            }
+        }
+
+        $found = array_map(fn ($rule) => get_class($rule), (new DesignCheck)->rules());
+
+        expect(array_values($found))->toEqualCanonicalizing($classes)
             ->and(count($ids))->toBe(count(array_unique($ids)));
     });
 

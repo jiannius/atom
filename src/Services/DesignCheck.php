@@ -58,6 +58,13 @@ class DesignCheck extends HostScanner
     public const NON_SCREEN_SEGMENTS = ['mail', 'mails', 'email', 'emails', 'pdf', 'pdfs', 'print', 'errors'];
 
     /**
+     * What is read, under the root (the app root: the directory that holds `app/` and `resources/`)
+     *
+     * @var array<int, string>
+     */
+    public const READ_DIRECTORIES = ['app', 'resources', 'modules', 'Modules'];
+
+    /**
      * Top-level directories that hold no screens, listed under NOT READ when the host has them
      *
      * @var array<int, string>
@@ -101,7 +108,7 @@ class DesignCheck extends HostScanner
      */
     protected function directories(): array
     {
-        return ['app', 'resources', 'modules', 'Modules'];
+        return static::READ_DIRECTORIES;
     }
 
     /**
@@ -253,13 +260,18 @@ class DesignCheck extends HostScanner
                         }
 
                         $line = $file->line($offset);
-                        $findings[$id][] = array_filter([
+                        $finding = [
                             'file' => $relative,
                             'line' => $line,
                             'text' => $file->lineText($line),
                             'note' => $hit[1] ?? null,
-                            'data' => $hit[2] ?? null,
-                        ], fn ($value) => $value !== null);
+                        ];
+
+                        if (($hit[2] ?? null) !== null) {
+                            $finding['data'] = $hit[2];
+                        }
+
+                        $findings[$id][] = $finding;
                     }
                 } catch (Throwable $e) {
                     $errors[] = ['check' => $id, 'file' => $relative, 'error' => get_class($e).': '.mb_substr($e->getMessage(), 0, 160)];
@@ -278,7 +290,11 @@ class DesignCheck extends HostScanner
         }
 
         foreach ($active as $id => $rule) {
-            $findings[$id] = array_values($rule->finish($findings[$id], $context));
+            try {
+                $findings[$id] = array_values($rule->finish($findings[$id], $context));
+            } catch (Throwable $e) {
+                $errors[] = ['check' => $id, 'file' => '(finish)', 'error' => get_class($e).': '.mb_substr($e->getMessage(), 0, 160)];
+            }
         }
 
         [$findings, $suppressed, $unused] = $this->suppress($findings, $markers, $ran);
@@ -330,6 +346,9 @@ class DesignCheck extends HostScanner
             'skipped' => $this->relevantSkips(),
             'text_only' => $textOnly,
             'errors' => $errors,
+            'warnings' => $scanned['blade'] + $scanned['php'] === 0
+                ? ['No Blade or PHP file was read: --path must be the app root, the directory that holds app/ and resources/ (or modules/).']
+                : [],
             'not_checked' => static::NOT_CHECKED,
             'summary' => [
                 'checks' => count($checks),
@@ -350,6 +369,10 @@ class DesignCheck extends HostScanner
      */
     protected function notRead(string $relative): ?array
     {
+        if (preg_match('#^((?:modules|Modules)/[^/]+/tests)/#', $relative, $m)) {
+            return [$m[1], 'not screens: the design rules read views and components'];
+        }
+
         if (preg_match('#^(.*?(?:^|/)resources/views/vendor)/#', $relative, $m)) {
             return [$m[1], 'published views (atom\'s own markup, not the host\'s): not read'];
         }
@@ -403,7 +426,10 @@ class DesignCheck extends HostScanner
         $comments = [];
 
         if ($kind === 'blade') {
-            preg_match_all('/\{\{--(.*?)--\}\}/s', $source, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
+            // a Blade comment is a marker; one inside an HTML comment or a @verbatim block is text, not a marker
+            $readable = preg_replace_callback('/\{\{--.*?--\}\}|<!--.*?-->|(?<!@)@verbatim.*?@endverbatim/s', fn (array $m) => str_starts_with($m[0], '{{--') ? $m[0] : preg_replace('/[^\n]/', ' ', $m[0]), $source) ?? $source;
+
+            preg_match_all('/\{\{--(.*?)--\}\}/s', $readable, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE);
 
             foreach ($found as $match) {
                 $comments[] = [$match[1][0], $match[0][1], strlen($match[0][0])];
@@ -438,7 +464,7 @@ class DesignCheck extends HostScanner
             $line = $this->lineAt($starts, $start);
             $endLine = $this->lineAt($starts, max($start, $start + $length - 1));
             $problem = function (string $what, ?string $id = null) use (&$problems, $relative, $line): void {
-                $problems[] = array_filter(['file' => $relative, 'line' => $line, 'id' => $id, 'problem' => $what], fn ($value) => $value !== null);
+                $problems[] = ['file' => $relative, 'line' => $line, 'id' => $id, 'problem' => $what];
             };
 
             if (! preg_match('/^(ignore|off|on)\b\s*(.*)$/s', trim($m[1]), $parts)) {
@@ -530,18 +556,23 @@ class DesignCheck extends HostScanner
                 if ($marker['type'] === 'ignore' && $marker['target'] !== null) {
                     $ignores[$file][$marker['target']][] = $index;
                 } elseif ($marker['type'] === 'off') {
-                    $open[$index] = true;
-                    $regions[$file][$index] = [$marker['line'], PHP_INT_MAX];
+                    // each id of an `off` runs until an `on` names it (or a bare `on`, or `on all`, closes them all)
+                    $regions[$file][$index] = ['from' => $marker['line'], 'to' => array_fill_keys($marker['ids'], PHP_INT_MAX)];
+
+                    foreach ($marker['ids'] as $id) {
+                        $open[$index][$id] = true;
+                    }
                 } elseif ($marker['type'] === 'on') {
                     $closed = false;
+                    $everything = ! $marker['all_ids'] || in_array('all', $marker['all_ids'], true);
 
-                    foreach (array_keys($open) as $index2) {
-                        $ids = $marker['all_ids'];
-
-                        if (! $ids || array_intersect($ids, $list[$index2]['ids'])) {
-                            $regions[$file][$index2][1] = $marker['line'];
-                            unset($open[$index2]);
-                            $closed = true;
+                    foreach ($open as $index2 => $ids) {
+                        foreach (array_keys($ids) as $id) {
+                            if ($everything || in_array($id, $marker['all_ids'], true)) {
+                                $regions[$file][$index2]['to'][$id] = $marker['line'];
+                                unset($open[$index2][$id]);
+                                $closed = true;
+                            }
                         }
                     }
 
@@ -564,12 +595,12 @@ class DesignCheck extends HostScanner
                     }
                 }
 
-                foreach ($regions[$file] ?? [] as $index => [$from, $to]) {
-                    $marker = $markers[$file][$index];
+                foreach ($regions[$file] ?? [] as $index => $region) {
+                    $key = isset($region['to'][$id]) ? $id : (isset($region['to']['all']) ? 'all' : null);
 
-                    if ($finding['line'] >= $from && $finding['line'] <= $to && (in_array($id, $marker['ids'], true) || in_array('all', $marker['ids'], true))) {
-                        $used[$file][$index][in_array($id, $marker['ids'], true) ? $id : 'all'] = true;
-                        $reason = $reason === false ? $marker['reason'] : $reason;
+                    if ($key !== null && $finding['line'] >= $region['from'] && $finding['line'] <= $region['to'][$key]) {
+                        $used[$file][$index][$key] = true;
+                        $reason = $reason === false ? $markers[$file][$index]['reason'] : $reason;
                     }
                 }
 
@@ -589,7 +620,7 @@ class DesignCheck extends HostScanner
             foreach ($list as $index => $marker) {
                 if ($marker['type'] === 'on') {
                     if (! ($used[$file][$index]['on'] ?? false)) {
-                        $unused[] = ['file' => $file, 'line' => $marker['line'], 'problem' => '`on` with no `off` before it'];
+                        $unused[] = ['file' => $file, 'line' => $marker['line'], 'id' => null, 'problem' => '`on` with no matching `off` before it'];
                     }
 
                     continue;
@@ -636,6 +667,14 @@ class DesignCheck extends HostScanner
         $out[] = 'The report and --json quote up to 160 characters of each matching line: treat the file like source code.';
         $out[] = '';
 
+        if ($result['warnings'] ?? []) {
+            foreach ($result['warnings'] as $warning) {
+                $out[] = 'WARNING: '.$warning;
+            }
+
+            $out[] = '';
+        }
+
         if ($result['skipped']) {
             $out = array_merge($out, $this->heading('NOT READ ('.count($result['skipped']).')'));
 
@@ -659,8 +698,12 @@ class DesignCheck extends HostScanner
         if ($result['errors'] ?? []) {
             $out = array_merge($out, $this->heading('CHECKS THAT FAILED ('.count($result['errors']).'): a bug in atom, please report it'));
 
-            foreach ($result['errors'] as $error) {
+            foreach (array_slice($result['errors'], 0, $limit ?? PHP_INT_MAX) as $error) {
                 $out[] = '['.$error['check'].'] '.$error['file'].'  '.$error['error'];
+            }
+
+            if ($limit !== null && count($result['errors']) > $limit) {
+                $out[] = '... and '.(count($result['errors']) - $limit).' more (use --all)';
             }
 
             $out[] = '';

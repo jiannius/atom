@@ -30,11 +30,24 @@ class DesignCheck extends Command
             return self::FAILURE;
         }
 
+        if (! array_filter(Scanner::READ_DIRECTORIES, fn ($directory) => is_dir($root.DIRECTORY_SEPARATOR.$directory))) {
+            $this->error('Nothing to read in '.$root.': --path is the app root, the directory that holds '.implode('/, ', array_slice(Scanner::READ_DIRECTORIES, 0, 3)).'/ (not resources/views).');
+
+            return self::FAILURE;
+        }
+
         $scanner = new Scanner;
         $only = null;
 
-        if ($this->option('only') !== null && trim((string) $this->option('only')) !== '') {
+        if ($this->option('only') !== null) {
             $only = array_values(array_unique(array_filter(array_map('trim', explode(',', (string) $this->option('only'))))));
+
+            if (! $only) {
+                $this->error('--only needs check ids, comma-separated. The checks are: '.implode(', ', $scanner->ruleIds()));
+
+                return self::FAILURE;
+            }
+
             $unknown = array_diff($only, $scanner->ruleIds());
 
             if ($unknown) {
