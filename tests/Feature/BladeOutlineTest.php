@@ -86,6 +86,18 @@ describe('pairing', function () {
             ->and($o->balanced())->toBeTrue();
     });
 
+    it('gives one slot name for <x-slot:name>, <x-slot name="name"> and the kebab form, as Blade does', function () {
+        $o = outline('<atom:c><x-slot:headerActions><atom:a/></x-slot:headerActions><x-slot name="headerActions"><atom:b/></x-slot><x-slot:header-actions><atom:d/></x-slot:header-actions><x-slot name="header-actions"><atom:e/></x-slot><x-slot:Menu></x-slot:Menu></atom:c>');
+
+        expect(array_column(array_filter($o->nodes(), fn ($node) => $node['kind'] === 'slot'), 'slot'))->toBe(['headerActions', 'headerActions', 'headerActions', 'header-actions', 'Menu'])
+            ->and($o->balanced())->toBeTrue()
+            ->and($o->slotOf(first($o, 'atom:a'))['name'])->toBe('headerActions')
+            ->and($o->slotOf(first($o, 'atom:b'))['name'])->toBe('headerActions')
+            ->and($o->inside(first($o, 'atom:a'), 'x-slot:headerActions')['slot'])->toBe('headerActions')
+            ->and($o->inside(first($o, 'atom:d'), 'x-slot:header-actions')['slot'])->toBe('headerActions')
+            ->and($o->inside(first($o, 'atom:b'), 'x-slot:headeractions'))->toBeNull();
+    });
+
     it('pairs nested tags of the same name by depth', function () {
         $o = outline('<atom:card id="a"><atom:card id="b">x</atom:card>y</atom:card>');
 
@@ -105,6 +117,21 @@ describe('pairing', function () {
             ->and(first($o, 'br')['close'])->toBeNull()
             ->and($o->parent(first($o, 'atom:button'))['tag'])->toBe('atom:card')
             ->and($o->balanced())->toBeTrue();
+    });
+
+    it('ends an element whose closer was left out where the next one starts, or its parent closes', function () {
+        $o = outline('<ul><li>A <b>x</b><li>B</ul><p>one<p>two');
+        [$one, $two] = array_values(array_filter($o->nodes(), fn ($node) => $node['tag'] === 'li'));
+        [$p1, $p2] = array_values(array_filter($o->nodes(), fn ($node) => $node['tag'] === 'p'));
+
+        expect($one['close'])->toBeNull()
+            ->and($one['end'])->toBe($two['offset'])
+            ->and(array_column($o->descendants($one), 'tag'))->toBe(['b'])
+            ->and($two['end'])->toBe(strpos($o->text(), '</ul>'))
+            ->and($p1['end'])->toBe($p2['offset'])
+            ->and($p2['end'])->toBe(strlen($o->text()))
+            ->and($o->parent($two)['tag'])->toBe('ul')
+            ->and($o->parent($p2))->toBeNull();
     });
 
     it('ignores a stray HTML closer and keeps HTML optional closers apart from balance', function () {
@@ -155,8 +182,29 @@ describe('pairing', function () {
         expect($div['directives'])->toHaveCount(2)
             ->and($div['directives'][0]['name'])->toBe('class')
             ->and($div['directives'][1]['name'])->toBe('if')
-            ->and($div['attributes'])->toHaveKeys(['data-a', 'data-b'])
+            ->and(array_keys($div['attributes']))->toBe(['data-a', 'data-b'])
+            ->and(array_keys($div['spans']))->toBe(['data-a', 'data-b'])
             ->and($o->parent(first($o, 'atom:button'))['tag'])->toBe('div');
+    });
+
+    it('does not take @else or @endif inside a tag for an attribute, with or without a space', function () {
+        $o = outline('<atom:card @if($a) x="1" @else y="2" @endif @elseif($b) z="3" @endisset/><atom:card @if($a) x="1" @endif @else/>');
+
+        expect(array_keys(first($o, 'atom:card')['attributes']))->toBe(['x', 'y', 'z'])
+            ->and(array_keys(first($o, 'atom:card', 1)['attributes']))->toBe(['x'])
+            ->and($o->balanced())->toBeTrue();
+    });
+
+    it('reads quotes and parentheses inside a directive argument', function () {
+        $o = outline('@if($a === \')\')<atom:card id="a"/>@elseif($b === "(")<atom:card id="b"/>@endif<atom:card id="c"/><atom:card @class([\'a\' => \')\', "b" => "("]) id="d"/>');
+
+        [$a, $b, $c, $d] = $o->atom('card');
+
+        expect($o->branch($a))->toBe([[1, 0]])
+            ->and($o->branch($b))->toBe([[1, 1]])
+            ->and($o->branch($c))->toBe([])
+            ->and($d['directives'][0]['args'])->toBe('[\'a\' => \')\', "b" => "("]')
+            ->and($d['attributes'])->toBe(['id' => 'd']);
     });
 
     it('ignores atom tags in an HTML comment, a Blade comment, an echo, PHP and a script', function () {
@@ -178,6 +226,98 @@ describe('pairing', function () {
             ->and($o->balanced())->toBeTrue();
     });
 
+    it('keeps a style and a script as raw text up to their closer', function () {
+        $o = outline('<style>.a > .b { color: red } @if($x) .c { } <atom:card/></style><atom:button id="a"/><script>@if($y) </script><atom:button id="b"/>');
+
+        expect(tags($o))->toBe(['style', 'atom:button', 'script', 'atom:button'])
+            ->and(first($o, 'style')['close'])->not->toBeNull()
+            ->and(first($o, 'script')['close'])->not->toBeNull()
+            ->and($o->branch(first($o, 'atom:button')))->toBe([])
+            ->and($o->branch(first($o, 'atom:button', 1)))->toBe([]);
+
+        $open = outline('<STYLE>.a > .b</STYLE><atom:card/><style>unclosed <atom:card/>');
+
+        expect(tags($open))->toBe(['style', 'atom:card', 'style'])
+            ->and(first($open, 'style')['close'])->not->toBeNull();
+    });
+
+    it('reads {{{ }}} as one echo, whatever is inside', function () {
+        $o = outline('{{{ \'}}<atom:card id="a"/>\' }}}<atom:card id="b"/><atom:button label="{{{ $a > 1 }}}" id="c"/>');
+
+        expect(array_column(array_column($o->nodes(), 'attributes'), 'id'))->toBe(['b', 'c'])
+            ->and(first($o, 'atom:button')['attributes']['label'])->toBe('{{{ $a > 1 }}}');
+    });
+
+    it('reads an unquoted value ending in /> as a self-closing tag, and a lone / as a value', function () {
+        $o = outline('<atom:card a=/x/><atom:card b=/>x</atom:card><atom:card c=x/y>z</atom:card>');
+
+        [$a, $b, $c] = $o->atom('card');
+
+        expect($a['selfClosing'])->toBeTrue()
+            ->and($a['attributes'])->toBe(['a' => '/x'])
+            ->and($b['selfClosing'])->toBeFalse()
+            ->and($b['attributes'])->toBe(['b' => '/'])
+            ->and($b['close'])->not->toBeNull()
+            ->and($c['attributes'])->toBe(['c' => 'x/y'])
+            ->and($o->balanced())->toBeTrue();
+    });
+
+    it('reads a bare closer with a slot name that is not open as stray, not as the slot open', function () {
+        $o = outline('<atom:card><x-slot:a><atom:button/></x-slot:b></atom:card>');
+
+        expect(first($o, 'x-slot')['close'])->toBeNull()
+            ->and($o->balanced())->toBeFalse()
+            ->and(first($o, 'atom:card')['close'])->not->toBeNull();
+
+        $paired = outline('<x-slot:a><x-slot:b></x-slot:a></x-slot:b>');
+
+        expect(first($paired, 'x-slot')['close'])->not->toBeNull()
+            ->and(first($paired, 'x-slot', 1)['end'])->toBe(first($paired, 'x-slot')['close']);
+    });
+
+    it('has no closer for a void element, whichever it is', function () {
+        foreach (['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen', 'link', 'meta', 'param', 'source', 'track', 'wbr'] as $void) {
+            $o = outline('<div><'.$void.'><atom:card/></div>');
+
+            expect(first($o, $void)['selfClosing'])->toBeTrue()
+                ->and($o->parent(first($o, 'atom:card'))['tag'])->toBe('div');
+        }
+    });
+
+    it('does not take an unquoted value that ends in a slash for a self-closing tag unless the > follows', function () {
+        $o = outline('<atom:card a=/x/ >text</atom:card>');
+
+        expect(first($o, 'atom:card')['selfClosing'])->toBeFalse()
+            ->and(first($o, 'atom:card')['attributes'])->toBe(['a' => '/x/'])
+            ->and(first($o, 'atom:card')['close'])->not->toBeNull();
+    });
+
+    it('steps over @php(...) and @php ... @endphp, and over a @verbatim block, never reading what is inside', function () {
+        $o = outline('@php($a = "<atom:badge>")<atom:card id="a"/>@php $x = "<atom:input>"; @endphp<atom:card id="b"/>@verbatim <atom:link/> @if($x) @endverbatim<atom:card id="c"/><atom:card id="d"/>');
+
+        expect(array_column(array_column($o->nodes(), 'attributes'), 'id'))->toBe(['a', 'b', 'c', 'd'])
+            ->and($o->branch(first($o, 'atom:card', 2)))->toBe([]);
+
+        $open = outline('<atom:card id="a"/>@verbatim <atom:card id="b"/>');
+        $php = outline('<atom:card id="a"/>@php $x = 1; <atom:card id="b"/>');
+
+        expect($open->nodes())->toHaveCount(1)
+            ->and($php->nodes())->toHaveCount(2);
+    });
+
+    it('ends a Blade comment at --}}, whatever }} is inside it', function () {
+        $o = outline('{{-- a }} <atom:card/> --}}<atom:badge/>');
+
+        expect(tags($o))->toBe(['atom:badge']);
+    });
+
+    it('does not let a failed tag that read ahead decide where an echo inside it ends', function () {
+        $o = outline('<a q="<b z={{ 1 }} k> y={{ 2 '.str_repeat(' ', 30000).'}}');
+
+        expect(tags($o))->toBe(['b'])
+            ->and(first($o, 'b')['attributes'])->toBe(['z' => '{{ 1 }}', 'k' => true]);
+    });
+
     it('does not read a bare < as a tag', function () {
         $o = outline('<p>1 < 2 and a<3 and <5</p><atom:card/>');
 
@@ -193,6 +333,13 @@ describe('pairing', function () {
             ->and($o->line(first($o, 'atom:card')['close']))->toBe(4);
     });
 
+    it('puts a newline on the line it ends', function () {
+        $o = outline("ab\ncd\n\nef");
+
+        expect([0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 99])->each->toBeInt()
+            ->and(array_map(fn ($offset) => $o->line($offset), [0, 2, 3, 5, 6, 7, 8]))->toBe([1, 1, 2, 2, 3, 4, 4]);
+    });
+
     it('finds the tag at an offset', function () {
         $o = outline('<atom:page><atom:card>text</atom:card><atom:tabs/></atom:page>');
         $card = first($o, 'atom:card');
@@ -201,6 +348,195 @@ describe('pairing', function () {
             ->and($o->at($card['end'] + 1)['tag'])->toBe('atom:tabs')
             ->and($o->at(0)['tag'])->toBe('atom:page')
             ->and($o->at(strlen($o->text()) + 5))->toBeNull();
+    });
+});
+
+describe('the reader', function () {
+    it('reads what the older scanners do not: names with _, a > in @class, an unquoted echo, absolute spans, tags in strings', function () {
+        $blade = "<atom:card data_x=\"1\" @class(['a' => \$b > 1, 'c' => \$d]) title={{ \$t }} :a=\"'<atom:badge>'\" id=\"{{ '<atom:link>' }}\">\n<atom:button wire:click=\"go('</atom:card>')\"/></atom:card>";
+        $o = outline($blade);
+        $card = first($o, 'atom:card');
+
+        expect(tags($o))->toBe(['atom:card', 'atom:button'])
+            ->and(array_keys($card['attributes']))->toBe(['data_x', 'title', ':a', 'id'])
+            ->and($card['attributes']['title'])->toBe('{{ $t }}')
+            ->and($card['directives'][0]['args'])->toBe("['a' => \$b > 1, 'c' => \$d]")
+            ->and($card['openEnd'])->toBe(strpos($blade, ">\n") + 1)
+            ->and(substr($blade, $card['spans']['id'][0], 4))->toBe('id="')
+            ->and($o->line($o->atom('button')[0]['spans']['wire:click'][0]))->toBe(2)
+            ->and($o->balanced())->toBeTrue();
+    });
+});
+
+/**
+ * A view of about two megabytes (the size HostScanner reads at most) that is shaped to
+ * be slow to read: something that never ends, repeated.
+ */
+function degenerate(string $shape, int $bytes = 2097152): string
+{
+    $repeat = fn (string $unit) => str_repeat($unit, intdiv($bytes, strlen($unit)));
+
+    return match ($shape) {
+        'open attribute quote' => $repeat('<a x="'),
+        'open atom tag' => $repeat('<atom:b '),
+        'open echo in an attribute' => $repeat('<a b="{{ '),
+        'open attribute quote with a > in reach' => $repeat(str_repeat('<a x="', 2501).'>'),
+        'echo with a far closer' => $repeat('<a b="{{ ').'}}',
+        'open echo' => $repeat('{{ '),
+        'open raw echo' => $repeat('{!! '),
+        'open blade comment' => $repeat('{{-- '),
+        'open lang' => $repeat('@lang('),
+        'open directive argument' => $repeat('@if('),
+        'php with no end' => $repeat('@php '),
+        'closer with no >' => $repeat('</a '),
+        'closer with a far >' => $repeat('</a ').'>',
+        'doctype with no >' => $repeat('<!x'),
+        'closers of nothing open' => str_repeat('<div>', 14000).$repeat('</span>'),
+        'slot closers of another name' => '<x-slot:a>'.str_repeat('<div>', 14000).$repeat('</x-slot:b>'),
+        'divs never closed' => $repeat('<div>'),
+        'tags never closed' => $repeat('<atom:card><x-slot:a>'),
+        'scripts never closed' => $repeat('<script>'),
+        'ifs never closed' => $repeat('@if($a)'),
+        'foreach and stray endif' => $repeat('@foreach($a as $b)').$repeat('@endif '),
+        'foreach under the cap and stray endif' => str_repeat('@foreach($a as $b)', 250).$repeat('@endif '),
+        'foreach under the cap and stray else' => str_repeat('@foreach($a as $b)', 250).$repeat('@else '),
+        'directive arguments never closed in a tag' => '<a '.str_repeat('@if(', 4000).'>',
+        'switch and else' => $repeat('@switch($a) @case(1) @else @endif '),
+        'forelse and empty' => $repeat('@forelse($a as $b) @empty @endforelse '),
+        'endifs of nothing' => $repeat('@endif '),
+        'ifs opened and closed' => $repeat("@if(\$a)<b>@else<i>@endif\n"),
+        'branches changing at depth' => str_repeat('@if($a)', 255).$repeat('@else '),
+        'buttons' => $repeat("<atom:button>x</atom:button>\n"),
+        'newlines' => $repeat("\n"),
+        default => throw new InvalidArgumentException($shape),
+    };
+}
+
+/**
+ * The CPU seconds this process has used, so that a busy machine does not fail a bound
+ */
+function cpuSeconds(): float
+{
+    $usage = getrusage();
+
+    return $usage['ru_utime.tv_sec'] + $usage['ru_utime.tv_usec'] / 1e6 + $usage['ru_stime.tv_sec'] + $usage['ru_stime.tv_usec'] / 1e6;
+}
+
+describe('cost bounds', function () {
+    afterEach(fn () => set_time_limit(0));
+
+    it('reads a degenerate view in bounded time and memory', function (string $shape) {
+        set_time_limit(60);
+
+        $blade = degenerate($shape);
+
+        memory_reset_peak_usage();
+        $before = memory_get_usage();
+        $start = cpuSeconds();
+
+        $o = outline($blade);
+
+        foreach ($o->nodes() as $node) {
+            if ($node['id'] % 997 === 0) {
+                $o->label($node);
+                $o->branch($node);
+                $o->ancestors($node);
+                $o->children($node);
+                $o->slotOf($node);
+            }
+        }
+
+        $o->line(strlen($blade));
+
+        expect(cpuSeconds() - $start)->toBeLessThan(6.0)
+            ->and(memory_get_peak_usage() - $before)->toBeLessThan(160 * 1024 * 1024)
+            ->and(count($o->nodes()))->toBeLessThanOrEqual(50000);
+    })->with([
+        'open attribute quote', 'open atom tag', 'open echo in an attribute', 'open attribute quote with a > in reach', 'echo with a far closer', 'open echo', 'open raw echo',
+        'open blade comment', 'open lang', 'open directive argument', 'php with no end', 'closer with no >', 'closer with a far >', 'doctype with no >', 'directive arguments never closed in a tag',
+        'closers of nothing open', 'slot closers of another name', 'divs never closed', 'tags never closed', 'scripts never closed',
+        'ifs never closed', 'foreach and stray endif', 'foreach under the cap and stray endif', 'foreach under the cap and stray else', 'switch and else', 'forelse and empty', 'endifs of nothing',
+        'ifs opened and closed', 'branches changing at depth', 'buttons', 'newlines',
+    ]);
+
+    it('answers every query on a view of 50000 tags without a quadratic walk', function () {
+        set_time_limit(60);
+
+        $o = outline('<atom:page>'.str_repeat('<atom:card><x-slot:a><atom:button>Go</atom:button></x-slot:a></atom:card>', 12000).'</atom:page>');
+
+        $start = cpuSeconds();
+
+        foreach ($o->nodes() as $node) {
+            $o->children($node);
+            $o->ancestors($node);
+            $o->inside($node, 'atom:page');
+            $o->slotOf($node);
+        }
+
+        $page = first($o, 'atom:page');
+
+        expect(count($o->nodes()))->toBe(36001)
+            ->and(count($o->children($page)))->toBe(12000)
+            ->and(cpuSeconds() - $start)->toBeLessThan(6.0);
+    });
+
+    it('keeps memory flat for blocks left open: no copy of the path in each directive', function () {
+        memory_reset_peak_usage();
+        $before = memory_get_usage();
+
+        $o = outline(str_repeat('@if($a)', 2000).'<atom:card/>');
+
+        expect(memory_get_peak_usage() - $before)->toBeLessThan(8 * 1024 * 1024)
+            ->and($o->branchesDeclined())->toBeTrue();
+    });
+
+    it('does not rescan for a closer it has already failed to find, nor for one far away', function () {
+        set_time_limit(60);
+
+        $start = cpuSeconds();
+        $o = outline(str_repeat('<a b="{{ ', 100000).'}}"/>');
+
+        expect(cpuSeconds() - $start)->toBeLessThan(6.0)
+            ->and($o->nodes())->toBeArray();
+    });
+
+    it('reads as text a tag, a closer or an argument list longer than MAX_TAG_BYTES, and keeps one that fits', function () {
+        $long = str_repeat('x', 20000);
+        $fits = str_repeat('x', 19900);
+
+        $tag = outline('<atom:card title="'.$long.'"/>');
+        expect($tag->nodes())->toBe([])
+            ->and($tag->balanced())->toBeFalse();
+
+        $tag = outline('<atom:card title="'.$fits.'"/>');
+        expect($tag->nodes())->toHaveCount(1)
+            ->and($tag->balanced())->toBeTrue();
+
+        $closer = outline('<atom:card></atom:card'.str_repeat(' ', 20001).'>');
+        expect(first($closer, 'atom:card')['close'])->toBeNull()
+            ->and($closer->balanced())->toBeFalse();
+
+        $closer = outline('<atom:card></atom:card'.str_repeat(' ', 19900).'>');
+        expect(first($closer, 'atom:card')['close'])->not->toBeNull()
+            ->and($closer->balanced())->toBeTrue();
+
+        $args = outline('@if('.$long.')<atom:card/>@endif');
+        expect($args->branch(first($args, 'atom:card')))->toBe([[1, 0]]);
+
+        $label = outline('<atom:card label="'.$fits.'"/>');
+        expect(strlen($label->label(first($label, 'atom:card'))))->toBe(19900);
+    });
+
+    it('reads as text what follows once the budget for failed scans is spent, and keeps what came before', function () {
+        $o = outline('<atom:card id="first"/>'.str_repeat('@lang(', 60000).'<atom:card id="last"/><x-slot:a></x-slot:a>');
+
+        expect(array_column(array_column($o->nodes(), 'attributes'), 'id'))->toBe(['first'])
+            ->and($o->balanced())->toBeFalse();
+
+        $fine = outline('<atom:card id="first"/>'.str_repeat('@lang(', 3).'<atom:card id="last"/>');
+
+        expect(array_column(array_column($fine->nodes(), 'attributes'), 'id'))->toBe(['first', 'last'])
+            ->and($fine->balanced())->toBeTrue();
     });
 });
 
@@ -247,8 +583,28 @@ describe('queries', function () {
             ->and($o->inside($button, 'x-slot:menu'))->toBeNull()
             ->and($o->inside($button, 'atom:table'))->toBeNull()
             ->and($o->inside(first($o, 'button'), 'atom:table')['tag'])->toBe('atom:table')
-            ->and($o->inside(first($o, 'button'), 'form')['tag'])->toBe('form')
-            ->and($o->inside(first($o, 'button'), 'card'))->toBeNull();
+            ->and($o->inside(first($o, 'button'), 'html:form')['tag'])->toBe('form');
+    });
+
+    it('takes a bare atom name with a dot, and refuses a bare name that is also an atom component', function () {
+        $o = outline('<atom:page><atom:page.header><x-slot:actions><atom:button/></x-slot:actions></atom:page.header><atom:card><button>x</button></atom:card></atom:page>');
+
+        expect($o->inside(first($o, 'atom:button'), 'page.header')['tag'])->toBe('atom:page.header')
+            ->and($o->inside(first($o, 'atom:button'), ['Page.Header'])['tag'])->toBe('atom:page.header')
+            ->and($o->inside(first($o, 'atom:button'), 'x-atom::page.header')['tag'])->toBe('atom:page.header')
+            ->and($o->inside(first($o, 'atom:button'), 'atom:page.header')['tag'])->toBe('atom:page.header')
+            ->and($o->inside(first($o, 'button'), 'atom:card')['tag'])->toBe('atom:card')
+            ->and($o->inside(first($o, 'button'), 'html:button'))->toBeNull()
+            ->and($o->inside(first($o, 'button'), 'page.header'))->toBeNull()
+            ->and($o->inside(first($o, 'button'), 'div'))->toBeNull();
+
+        foreach (['card', 'button', 'table', 'form', ['div', 'input']] as $ambiguous) {
+            expect(fn () => $o->inside(first($o, 'button'), $ambiguous))->toThrow(InvalidArgumentException::class);
+        }
+
+        $o = outline('<form><button>x</button></form>');
+
+        expect($o->inside(first($o, 'button'), 'html:form')['tag'])->toBe('form');
     });
 
     it('keeps an HTML button apart from an atom button by name', function () {
@@ -486,12 +842,30 @@ BLADE;
     });
 
     it('reads a deeply nested file without recursing', function () {
-        $o = outline(str_repeat('<div>', 5000).'<atom:card/>'.str_repeat('</div>', 5000));
+        $o = outline(str_repeat('<div>', 200).'<atom:card/>'.str_repeat('</div>', 200));
 
-        expect($o->nodes())->toHaveCount(5001)
-            ->and(first($o, 'atom:card')['depth'])->toBe(5000)
-            ->and($o->ancestors(first($o, 'atom:card')))->toHaveCount(5000)
+        expect($o->nodes())->toHaveCount(201)
+            ->and(first($o, 'atom:card')['depth'])->toBe(200)
+            ->and($o->ancestors(first($o, 'atom:card')))->toHaveCount(200)
             ->and($o->balanced())->toBeTrue();
+    });
+
+    it('declines a file nested deeper than it reads, and one with more tags than it reads', function () {
+        $deep = outline(str_repeat('<div>', 5000).'<atom:card/>'.str_repeat('</div>', 5000));
+
+        expect($deep->balanced())->toBeFalse()
+            ->and(max(array_column($deep->nodes(), 'depth')))->toBeLessThanOrEqual(256)
+            ->and(count($deep->ancestors(first($deep, 'atom:card'))))->toBeLessThanOrEqual(256);
+
+        $wide = outline(str_repeat('<i></i>', 60000));
+
+        expect($wide->nodes())->toHaveCount(50000)
+            ->and($wide->balanced())->toBeFalse();
+
+        $exact = outline(str_repeat('<i></i>', 50000));
+
+        expect($exact->nodes())->toHaveCount(50000)
+            ->and($exact->balanced())->toBeTrue();
     });
 });
 
@@ -636,6 +1010,69 @@ describe('branch paths', function () {
             ->and($o->branch($out))->toBe([]);
     });
 
+    it('reads @hasSection and @sectionMissing as @if blocks, closed by @endif', function (string $open) {
+        $o = outline('@if($edit)'.$open.'("x")<atom:button id="a"/>@endif<atom:button id="b"/>@else<atom:button id="c"/>@endif<atom:button id="d"/>');
+
+        [$a, $b, $c, $d] = $o->atom('button');
+
+        expect($o->branch($a))->toBe([[1, 0], [2, 0]])
+            ->and($o->branch($b))->toBe([[1, 0]])
+            ->and($o->branch($c))->toBe([[1, 1]])
+            ->and($o->branch($d))->toBe([])
+            ->and($o->together($b, $c))->toBeFalse()
+            ->and($o->together($a, $c))->toBeFalse()
+            ->and($o->together($a, $b))->toBeTrue();
+    })->with(['@hasSection', '@sectionMissing', '@hassection']);
+
+    it('drops what is left open inside a block that moves to its next branch', function () {
+        $o = outline('@if($a) @foreach($x as $y) <atom:button id="in"/> @else <atom:button id="b"/> @endif <atom:button id="out"/>');
+
+        [$in, $b, $out] = $o->atom('button');
+
+        expect($o->inLoop($in))->toBeTrue()
+            ->and($o->inLoop($b))->toBeFalse()
+            ->and($o->branch($b))->toBe([[1, 1]])
+            ->and($o->branch($out))->toBe([]);
+    });
+
+    it('takes a node for a branch and an offset for branchAt, never the one for the other', function () {
+        $o = outline('@if($a)<atom:button/>@endif');
+        $button = first($o, 'atom:button');
+
+        expect($o->branch($button))->toBe([[1, 0]])
+            ->and($o->branchAt($button['offset']))->toBe([[1, 0]])
+            ->and(fn () => $o->branch(7))->toThrow(TypeError::class)
+            ->and($o->inLoop(0))->toBeFalse()
+            ->and($o->together(0, 0))->toBeTrue();
+    });
+
+    it('stops reading branches at the 257th open block, and freezes the path there', function () {
+        $o = outline(str_repeat('@if($a)', 257).'<atom:button id="a"/>@else<atom:button id="b"/>@endif<atom:button id="c"/>');
+
+        [$a, $b, $c] = $o->atom('button');
+
+        expect($o->branchesDeclined())->toBeTrue()
+            ->and($o->branch($b))->toBe($o->branch($a))
+            ->and($o->branch($c))->toBe($o->branch($a))
+            ->and($o->branch($a))->toHaveCount(256);
+    });
+
+    it('stops reading branches past MAX_BLOCKS open blocks, and says so', function () {
+        $fine = outline(str_repeat('@if($a)', 256).'<atom:button/>');
+
+        expect($fine->branchesDeclined())->toBeFalse()
+            ->and($fine->branch(first($fine, 'atom:button')))->toHaveCount(256);
+
+        $deep = outline('@if($a)<atom:button id="a"/>@else<atom:button id="b"/>'.str_repeat('@if($a)', 300).'<atom:button id="c"/>@endif');
+
+        [$a, $b, $c] = $deep->atom('button');
+
+        expect($deep->branchesDeclined())->toBeTrue()
+            ->and($deep->together($a, $b))->toBeFalse()
+            ->and($deep->together($b, $c))->toBeFalse()
+            ->and($deep->inLoop($c))->toBeFalse();
+    });
+
     it('reads the path at an offset', function () {
         $o = outline('ab @if($a)xx @endif');
 
@@ -685,19 +1122,59 @@ describe('label', function () {
         'an unclosed echo' => ['{{ $x'],
     ]);
 
-    it('lets a label, heading or title attribute win over the text', function () {
-        $o = outline('<atom:button label="Save" title="Tip">Other</atom:button><atom:card heading="{{ t(\'Customer\') }}">x</atom:card><atom:page.header title="Invoices"/><atom:button title="Tip">Other</atom:button>');
+    it('lets a label, heading or title attribute win over the text on a component whose text is not its label', function () {
+        $o = outline('<atom:card heading="{{ t(\'Customer\') }}">x</atom:card><atom:page.header title="Invoices"><x-slot:primary><atom:button>Save</atom:button></x-slot:primary></atom:page.header><atom:modal heading="H" title="T">x</atom:modal><atom:empty title="Only a title"/>');
+
+        expect($o->label(first($o, 'atom:card')))->toBe('Customer')
+            ->and($o->label(first($o, 'atom:page.header')))->toBe('Invoices')
+            ->and($o->label(first($o, 'atom:modal')))->toBe('H')
+            ->and($o->label(first($o, 'atom:empty')))->toBe('Only a title')
+            ->and($o->label(first($o, 'x-slot')))->toBe('Save');
+    });
+
+    it('reads the text of a button, link or item, never its title or a label attribute over it', function () {
+        $o = outline(implode('', [
+            '<atom:button title="Archive">Delete</atom:button>',
+            '<atom:button label="Other" title="Tip">Delete</atom:button>',
+            '<atom:link title="Tip" href="/x">Open</atom:link>',
+            '<atom:menu.item title="Tip">Remove</atom:menu.item>',
+            '<atom:navlist.item heading="H">Home</atom:navlist.item>',
+            '<atom:tabs.item label="L">Overview</atom:tabs.item>',
+            '<atom:button title="Tip">{{ $dynamic }}</atom:button>',
+            '<atom:button title="Tip"><atom:icon.add/></atom:button>',
+            '<atom:button title="Tip" label="Fallback"><atom:icon.add/></atom:button>',
+            '<atom:button heading="Head"><atom:icon.add/></atom:button>',
+            '<atom:button :label="$x"><atom:icon.add/></atom:button>',
+            '<atom:button label="Self" />',
+            '<atom:button title="Tip" />',
+            '<atom:button.group title="G">x</atom:button.group>',
+        ]));
+
+        expect(array_map(fn ($node) => $o->label($node), array_values(array_filter($o->nodes(), fn ($node) => $node['kind'] === 'atom' && $node['component'] !== 'icon.add'))))->toBe([
+            'Delete', 'Delete', 'Open', 'Remove', 'Home', 'Overview',
+            null, '', 'Fallback', 'Head', null, 'Self', '', 'G',
+        ]);
+    });
+
+    it('takes a non-breaking space for whitespace', function () {
+        $o = outline("<atom:button>Save&nbsp;</atom:button><atom:button>&nbsp;Save&nbsp;&nbsp;now\u{00A0}</atom:button><atom:card heading=\"Pay&nbsp;now\"/>");
 
         expect($o->label(first($o, 'atom:button')))->toBe('Save')
-            ->and($o->label(first($o, 'atom:card')))->toBe('Customer')
-            ->and($o->label(first($o, 'atom:page.header')))->toBe('Invoices')
-            ->and($o->label(first($o, 'atom:button', 1)))->toBe('Tip');
+            ->and($o->label(first($o, 'atom:button', 1)))->toBe('Save now')
+            ->and($o->label(first($o, 'atom:card')))->toBe('Pay now');
+    });
+
+    it('reads an element whose closer was left out up to where it ended', function () {
+        $o = outline('<ul><li>One<li><b>Two</b> and<li>Three</ul><p>Para one<p>Para two');
+
+        expect(array_map(fn ($node) => $o->label($node), array_values(array_filter($o->nodes(), fn ($node) => in_array($node['tag'], ['li', 'p'], true)))))
+            ->toBe(['One', 'Two and', 'Three', 'Para one', 'Para two']);
     });
 
     it('is null for a bound label that is not a literal, and reads one that is', function () {
-        $o = outline('<atom:button :label="$x">A</atom:button><atom:button :label="\'Save\'">A</atom:button><atom:button :label="t(\'Pay now\')">A</atom:button><atom:button x-bind:label="$y">A</atom:button><atom:button label>A</atom:button>');
+        $o = outline('<atom:card :label="$x">A</atom:card><atom:card :label="\'Save\'">A</atom:card><atom:card :label="t(\'Pay now\')">A</atom:card><atom:card x-bind:label="$y">A</atom:card><atom:card label>A</atom:card>');
 
-        expect(array_map(fn ($b) => $o->label($b), $o->atom('button')))->toBe([null, 'Save', 'Pay now', null, null]);
+        expect(array_map(fn ($b) => $o->label($b), $o->atom('card')))->toBe([null, 'Save', 'Pay now', null, null]);
     });
 
     it('does not read the title of an HTML element as its label', function () {
@@ -743,6 +1220,12 @@ describe('classes', function () {
         $o = outline('<div class="a" :class="$on ? \'b c\' : \'d\'" x-bind:class="{ \'e\': open, \'f g\': x }" @class([\'h\', \'i j\' => $k, \'a\']) ></div>');
 
         expect($o->classes(first($o, 'div')))->toBe(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j']);
+    });
+
+    it('drops a literal token that holds a variable or an echo', function () {
+        $o = outline('<div :class="$on ? \'p-$n q\' : \'r\'" @class([\'s-{{ $x }}\', \'t\', "u-$v" => $w])></div>');
+
+        expect($o->classes(first($o, 'div')))->toBe(['q', 'r', 't']);
     });
 
     it('is empty for a tag with none', function () {
