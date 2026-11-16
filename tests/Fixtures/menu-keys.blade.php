@@ -176,6 +176,18 @@
         </atom:dropdown>
     </div>
 
+    {{-- a list that is not a menu (role="listbox") but holds menu items: the menu's keys leave it to whatever owns it --}}
+    <div data-testid="other-role">
+        <atom:dropdown>
+            <atom:button>Other role</atom:button>
+
+            <atom:menu popover role="listbox">
+                <atom:menu.item data-testid="r-one">One</atom:menu.item>
+                <atom:menu.item data-testid="r-two">Two</atom:menu.item>
+            </atom:menu>
+        </atom:dropdown>
+    </div>
+
     {{-- selects: their list is the same menu component with role="listbox" and keys of its own --}}
     <div data-testid="listbox">
         <atom:select variant="listbox" label="City" :options="[['value' => 'ny', 'label' => 'New York'], ['value' => 'nw', 'label' => 'Newark'], ['value' => 'th', 'label' => 'The Hague']]" />

@@ -395,6 +395,26 @@ test.describe('a trigger', () => {
     await expect(page.getByTestId('e-one')).toBeFocused()
   })
 
+  test('of a list with another role than menu is left alone, even with menu items in it', async ({ page }) => {
+    await open(page)
+
+    const trigger = page.getByTestId('other-role').getByRole('button', { name: 'Other role' })
+    const list = page.getByTestId('other-role').locator('[data-atom-menu]')
+
+    await trigger.focus()
+    await page.keyboard.press('ArrowDown')
+    await page.waitForTimeout(200)
+    await expect(list).toBeHidden()
+
+    // opened with the keyboard it takes no focus, and the arrows in it are not the menu's
+    await page.keyboard.press('Enter')
+    await expect(list).toBeVisible()
+    await expect(trigger).toBeFocused()
+    await page.getByTestId('r-one').focus()
+    await page.keyboard.press('ArrowDown')
+    await expect(page.getByTestId('r-one')).toBeFocused()
+  })
+
   test('of a panel with no items opens nothing on Down', async ({ page }) => {
     await open(page)
 
@@ -644,7 +664,8 @@ test.describe('a morph while the menu is open', () => {
 
     const menu = page.getByTestId('locked').locator('[data-atom-menu]')
     const box = await menu.boundingBox()
-    await page.mouse.click(box.x + 2, box.y + 2)
+    // the middle of the top padding: a point 2px in from the corner is outside the panel's rounded corner, and Firefox hit-tests there
+    await page.mouse.click(box.x + box.width / 2, box.y + 2)
     await page.waitForTimeout(100)
     expect(await menu.evaluate((el) => el.matches(':popover-open'))).toBe(true)
 
