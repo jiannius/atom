@@ -32,7 +32,11 @@ describe('action-misplaced', function () {
         expect($notes($in('<div x-show="open"><atom:action wire:click="a">A</atom:action></div>')))
             ->toBe([1 => 'an action inside `x-show`, which is left behind when the surface places the action: use `@if`'])
             ->and($notes($in('<atom:tooltip text="t"><atom:action wire:click="a">A</atom:action></atom:tooltip>')))
-            ->toBe([1 => 'an action inside `<atom:tooltip>`, which is left behind when the surface places the action: put `confirm` or the condition on the action itself']);
+            ->toBe([1 => 'an action inside `<atom:tooltip>`, which is left behind when the surface places the action: an action takes no tooltip, the surface draws it'])
+            ->and($notes($in('<atom:confirm.trigger heading="h" button-confirm="b"><atom:action wire:click="a">A</atom:action></atom:confirm.trigger>')))
+            ->toBe([1 => 'an action inside `<atom:confirm.trigger>`, which is left behind when the surface places the action: put `confirm` on the action itself'])
+            ->and($notes($in('<atom:dropdown><atom:action wire:click="a">A</atom:action></atom:dropdown>')))
+            ->toBe([1 => 'an action inside `<atom:dropdown>`, which is left behind when the surface places the action: the surface draws the action itself, so it cannot sit in a trigger or a group']);
     });
 
     it('reads a modal\'s own header, not the modal, and the header\'s slot, not the page around it', function () use ($notes) {
@@ -64,8 +68,24 @@ describe('action-cap', function () {
     $action = '<atom:action wire:click="a">A</atom:action>';
 
     it('counts the buttons and what atom makes visible of the actions, and names both', function () use ($notes, $header, $button, $action) {
-        expect($notes($header($button.$button.$action.$action)))->toBe([1 => 'page.header actions: 2 (cap 2) with 2 atom shows from `<atom:action>`s: make the buttons `<atom:action>`s'])
+        expect($notes($header($button.$button.$action.$action)))->toBe([1 => 'page.header actions: 2 buttons + 2 actions atom shows = 4 (cap 2): make the buttons `<atom:action>`s'])
             ->and($notes($header($button.$button.$button)))->toBe([1 => 'page.header actions: 3 (cap 2)']);
+    });
+
+    it('keeps the bulk bar\'s last delete out of the count, beside actions too', function () use ($notes, $button, $action) {
+        $bar = fn (string $slot) => "<atom:table><x-slot:checked>{$slot}</x-slot:checked></atom:table>";
+        $delete = '<atom:button type="delete">D</atom:button>';
+
+        expect($notes($bar($button.$button.$action.$delete)))->toBe([])
+            ->and($notes($bar($button.$button.$button.$action.$delete)))->toBe([1 => 'bulk bar (checked slot): 3 buttons + 1 actions atom shows = 4 (cap 3): make the buttons `<atom:action>`s'])
+            ->and($notes($bar($button.$button.$button.$delete)))->toBe([]);
+    });
+
+    it('does not model an action with attributes spread into its tag', function () use ($notes, $header, $button, $action) {
+        $spread = '<atom:action {{ $attributes }} wire:click="a">A</atom:action>';
+
+        expect($notes($header($button.$button.$spread)))->toBe([])
+            ->and($notes($header($button.$button.$action)))->toHaveCount(1);
     });
 
     it('reads the caps of the engine', function () use ($notes, $header, $button, $action) {
@@ -104,6 +124,8 @@ describe('menu-order', function () {
         expect($notes($menu('<atom:menu.item variant="warning" confirm>V</atom:menu.item><atom:action wire:click="a">A</atom:action>')))
             ->toBe([1 => 'a warning item before the actions\' rows: atom prints them after your items, so it is not last; make it `<atom:action tone="warning">`'])
             ->and($notes($menu('<atom:menu.item variant="delete">D</atom:menu.item><atom:action tone="warning" wire:click="a">A</atom:action>')))
+            ->toBe([1 => 'a danger item before the actions\' rows: atom prints them after your items, so it is not last; make it `<atom:action tone="delete">`'])
+            ->and($notes($menu('<atom:menu.item variant="danger" confirm>D</atom:menu.item><atom:action tone="warning" wire:click="a">A</atom:action>')))
             ->toBe([1 => 'a danger item before the actions\' rows: atom prints them after your items, so it is not last; make it `<atom:action tone="danger">`']);
     });
 
@@ -140,6 +162,8 @@ describe('extra-primary', function () {
             ->toBe([1 => 'a `priority="primary"` action in a `size="sm"` header is drawn as a plain action: it has no primary'])
             ->and($notes("<atom:page.header><x-slot:actions>{$action}</x-slot:actions><x-slot:primary><atom:button variant=\"primary\">P</atom:button></x-slot:primary></atom:page.header>"))
             ->toBe([1 => 'a `priority="primary"` action beside the host\'s own `primary` slot is drawn as a plain action: the slot is the primary'])
+            ->and($notes("<atom:table><x-slot:checked>{$action}</x-slot:checked></atom:table>"))
+            ->toBe([1 => 'a `priority="primary"` action in a bulk bar is drawn as a plain action: the screen\'s primary is the header\'s'])
             ->and($notes("<atom:card><x-slot:actions>{$action}</x-slot:actions></atom:card>"))
             ->toBe([1 => 'a `priority="primary"` action in a card is drawn as a plain action: the screen\'s primary is the header\'s']);
     });
@@ -175,6 +199,15 @@ describe('tone-missing, confirm-copy, dup-export', function () {
             ->and($notes('<atom:action wire:click="a">Delete draft</atom:action>'))->toBe([1 => '"Delete draft" is a danger: `tone="delete"`'])
             ->and($notes('<atom:action icon="delete" wire:click="a">Gone</atom:action>'))->toBe([1 => 'an action with the delete icon is a danger: `tone="delete"`'])
             ->and($notes('<atom:action tone="warning" wire:click="a">Void invoice</atom:action>'))->toBe([]);
+    });
+
+    it('reads an action\'s label, then its text, never its title', function () {
+        $notes = fn (string $source) => DesignHost::notes($source, 'tone-missing');
+
+        expect($notes('<atom:action title="Delete me" wire:click="a">Edit</atom:action>'))->toBe([])
+            ->and($notes('<atom:action :title="$hint" wire:click="a">Void invoice</atom:action>'))->toBe([1 => '"Void invoice" is a warning: `tone="warning"`'])
+            ->and($notes('<atom:action label="Void invoice" title="Edit" wire:click="a" />'))->toBe([1 => '"Void invoice" is a warning: `tone="warning"`'])
+            ->and($notes('<atom:action :label="$name" wire:click="a" />'))->toBe([]);
     });
 
     it('reads an action\'s confirm copy like a button\'s', function () {

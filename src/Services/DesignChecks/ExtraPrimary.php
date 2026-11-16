@@ -173,7 +173,7 @@ class ExtraPrimary extends ActionRule
                     }
 
                     $notes[$item['node']['offset']] ??= match (true) {
-                        $surface !== 'header' => 'a `priority="primary"` action in a '.$surface.' is drawn as a plain action: the screen\'s primary is the header\'s',
+                        $surface !== 'header' => 'a `priority="primary"` action in a '.(['bulk' => 'bulk bar', 'row' => 'table row'][$surface] ?? $surface).' is drawn as a plain action: the screen\'s primary is the header\'s',
                         $context['small'] => 'a `priority="primary"` action in a `size="sm"` header is drawn as a plain action: it has no primary',
                         $context['hostPrimary'] => 'a `priority="primary"` action beside the host\'s own `primary` slot is drawn as a plain action: the slot is the primary',
                         default => 'a second `priority="primary"` action in one header is drawn as a plain action: one primary per screen',

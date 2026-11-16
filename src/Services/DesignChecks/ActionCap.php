@@ -57,7 +57,7 @@ class ActionCap extends ActionRule
 
     public function detect(): string
     {
-        return 'The buttons in a surface\'s own slot (nothing but markup between), counting a `<atom:button.group>` or an `<atom:dropdown>` as one: `page.header` `actions` over 2 (over 1 with `size="sm"`), `table.toolbar` `actions` plus `end` over 2, the table\'s `checked` slot over 3 (a delete in the last place is not counted), `card` or `panel` `actions` over 1, `empty` `action` over 1. Buttons that cannot show together (the branches of one `@if` chain) are not counted together, and a button in a loop counts once. A button the browser can hide (`x-show`, `<template x-if>`, `wire:show`, `:hidden`) is not counted, and a surface with over 50 actions is not read. The shell\'s own `actions` slot is never counted, and neither is a button inside a component. The caps are `ActionPlacement::CAPS`. In a `page.header`, `table.toolbar`, bulk bar, `card` or `panel` that also holds `<atom:action>`s, the actions count as `ActionPlacement::place()` shows them (only the visible ones, over the largest set that can show together, with a static `priority` and `tone`; a bound one is not read), after the buttons: 2 buttons and 2 actions in a header show 4.';
+        return 'The buttons in a surface\'s own slot (nothing but markup between), counting a `<atom:button.group>` or an `<atom:dropdown>` as one: `page.header` `actions` over 2 (over 1 with `size="sm"`), `table.toolbar` `actions` plus `end` over 2, the table\'s `checked` slot over 3 (a delete in the last place is not counted, also beside actions), `card` or `panel` `actions` over 1, `empty` `action` over 1. Buttons that cannot show together (the branches of one `@if` chain) are not counted together, and a button in a loop counts once. A button the browser can hide (`x-show`, `<template x-if>`, `wire:show`, `:hidden`) is not counted, and a surface with over 50 actions is not read. The shell\'s own `actions` slot is never counted, and neither is a button inside a component. The caps are `ActionPlacement::CAPS`. In a `page.header`, `table.toolbar`, bulk bar, `card` or `panel` that also holds `<atom:action>`s, the actions count as `ActionPlacement::place()` shows them (only the visible ones, over the largest set that can show together, with a static `priority` and `tone`; a bound one is not read), after the buttons: 2 buttons and 2 actions in a header show 4.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -130,6 +130,10 @@ class ActionCap extends ActionRule
             $byId[$action['node']['id']] = $action;
         }
 
+        if ($name === 'bulk bar (checked slot)' && $hosts !== [] && $this->isDelete($outline, end($hosts))) {
+            array_pop($hosts);
+        }
+
         $hostIds = array_column($hosts, 'id');
         $best = null;
 
@@ -151,7 +155,9 @@ class ActionCap extends ActionRule
 
         usort($chained, fn ($a, $b) => $a['offset'] <=> $b['offset']);
 
-        yield [($chained[$cap] ?? $chained[0])['offset'], $name.': '.count($chained).' (cap '.$cap.')'.($visible > 0 ? ' with '.$visible.' atom shows from `<atom:action>`s: make the buttons `<atom:action>`s' : '')];
+        yield [($chained[$cap] ?? $chained[0])['offset'], $name.': '.($visible > 0
+            ? count($chained).' buttons + '.$visible.' actions atom shows = '.$shown.' (cap '.$cap.'): make the buttons `<atom:action>`s'
+            : count($chained).' (cap '.$cap.')')];
     }
 
     /**

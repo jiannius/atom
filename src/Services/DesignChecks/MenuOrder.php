@@ -45,7 +45,7 @@ class MenuOrder extends ActionRule
 
     public function detect(): string
     {
-        return 'In a `menu` slot (of `page.header`, `table.toolbar`, `card`, `panel`), the table\'s `checked-menu` slot, `<atom:table.actions>` and `<atom:menu>`: an `<atom:menu.item>` with no `variant` after a warning or danger one, a `warning` after a `danger`, the first warning or danger item right after a default one with no `<atom:menu.separator>` between, and an `<atom:separator>` or `<hr>` among the items. Items in the branches of one `@if` chain are not compared, and an item with a bound or other `variant` is not read. In a surface that also holds `<atom:action>`s, the rows `ActionPlacement::place()` puts in its menu are appended after the host\'s items, as they print (with the separator it draws), and the same rules run: a finding stays on the host\'s item, never on an action\'s row (a host warning item before an action\'s utility row is flagged on the host item).';
+        return 'In a `menu` slot (of `page.header`, `table.toolbar`, `card`, `panel`), the table\'s `checked-menu` slot, `<atom:table.actions>` and `<atom:menu>`: an `<atom:menu.item>` with no `variant` after a warning or danger one, a `warning` after a `danger`, the first warning or danger item right after a default one with no `<atom:menu.separator>` between, and an `<atom:separator>` or `<hr>` among the items. Items in the branches of one `@if` chain are not compared, and an item with a bound or other `variant` is not read. In a surface that also holds `<atom:action>`s, the rows `ActionPlacement::place()` puts in its menu are appended after the host\'s items, as they print, and the same rules run: a finding stays on the host\'s item, never on an action\'s row (a host warning item before an action\'s utility row is flagged on the host item).';
     }
 
     public function find(File $file, Context $context): iterable
@@ -84,10 +84,10 @@ class MenuOrder extends ActionRule
 
     /**
      * What a surface prints after the host's own items in a menu, one list for each set of actions that can show together: the menu's rows from
-     * `ActionPlacement::place()` as `[action node, tone]` (tone `default`, `warning` or `danger`), with `null` where the separator is drawn. Empty
+     * `ActionPlacement::place()` as `[action node, tone]` (tone `default`, `warning` or `danger`). The separator it draws is left out: it sits before the first toned row once something precedes it, so leaving it out changes no finding. Empty
      * when the menu is not a surface's own, or the surface has no actions it can read.
      *
-     * @return array<int, array<int, array{0: array, 1: ?string}>>
+     * @return array<int, array<int, array{0: array, 1: string}>>
      */
     protected function printedAfter(BladeOutline $outline, array $menu): array
     {
@@ -123,14 +123,10 @@ class MenuOrder extends ActionRule
         $lists = [];
 
         foreach ($this->chains($outline, array_column($actions, 'node')) as $chain) {
-            $placed = ActionPlacement::place($this->surfaceOf($owner), array_map(fn ($node) => $byId[$node['id']], $chain), [...$context, 'hostMenu' => true]);
+            $placed = ActionPlacement::place($this->surfaceOf($owner), array_map(fn ($node) => $byId[$node['id']], $chain), $context);
             $rows = [];
 
-            foreach ($placed['menu'] as $at => $row) {
-                if ($placed['separator'] === $at) {
-                    $rows[] = [$row['node'], null];
-                }
-
+            foreach ($placed['menu'] as $row) {
                 $rows[] = [$row['node'], match ($row['tone']) {
                     null => 'default',
                     'warning' => 'warning',
@@ -192,7 +188,7 @@ class MenuOrder extends ActionRule
 
     /**
      * @param  array<int, array{0: array, 1: string}>  $entries  a menu's nodes, in order
-     * @param  array<int, array{0: array, 1: ?string}>  $printed  what the surface prints after them (see `printedAfter()`): never reported, but the host's items are judged against it
+     * @param  array<int, array{0: array, 1: string}>  $printed  what the surface prints after them (see `printedAfter()`): never reported, but the host's items are judged against it
      * @return iterable<int, array{0: int, 1: string}>
      */
     protected function order(BladeOutline $outline, array $entries, array $printed = []): iterable
@@ -201,7 +197,7 @@ class MenuOrder extends ActionRule
         $previous = null;
         $separated = false;
 
-        foreach ([...array_map(fn ($entry) => [...$entry, null], $entries), ...array_map(fn ($row) => [$row[0], $row[1] === null ? 'separator' : 'item', $row[1]], $printed)] as $at => [$node, $kind, $given]) {
+        foreach ([...array_map(fn ($entry) => [...$entry, null], $entries), ...array_map(fn ($row) => [$row[0], 'item', $row[1]], $printed)] as $at => [$node, $kind, $given]) {
             $drawn = $at >= count($entries);
 
             if ($kind === 'hand') {
@@ -229,11 +225,11 @@ class MenuOrder extends ActionRule
             if ($note !== null && ! $drawn) {
                 yield [$node['offset'], $note];
             } elseif ($note !== null && $before !== null && $before[2] === null) {
-                yield [$before[0]['offset'], 'a '.$before[1].' item before the actions\' rows: atom prints them after your items, so it is not last; make it `<atom:action tone="'.$before[1].'">`'];
+                yield [$before[0]['offset'], 'a '.$before[1].' item before the actions\' rows: atom prints them after your items, so it is not last; make it `<atom:action tone="'.$before[3].'">`'];
             }
 
             if (in_array($tone, ['warning', 'danger'], true)) {
-                $toned[] = [$node, $tone, $drawn ? $given : null];
+                $toned[] = [$node, $tone, $drawn ? $given : null, $drawn ? $given : ($outline->value($node, 'variant') === 'delete' ? 'delete' : $tone)];
             }
 
             $previous = [$node, $tone];
@@ -244,9 +240,9 @@ class MenuOrder extends ActionRule
     /**
      * The earlier item of one of these tones that can show with this one (the first), or null
      *
-     * @param  array<int, array{0: array, 1: string, 2: ?string}>  $toned  `[node, tone, tone it was drawn with or null for a host item]`
+     * @param  array<int, array{0: array, 1: string, 2: ?string, 3: string}>  $toned  `[node, tone, tone it was drawn with or null for a host item, the `tone` an action says for it]`
      * @param  array<int, string>  $tones
-     * @return array{0: array, 1: string, 2: ?string}|null
+     * @return array{0: array, 1: string, 2: ?string, 3: string}|null
      */
     protected function follows(BladeOutline $outline, array $node, array $toned, array $tones): ?array
     {

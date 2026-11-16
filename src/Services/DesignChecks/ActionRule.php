@@ -7,7 +7,7 @@ use Jiannius\Atom\Services\BladeOutline;
 use WeakMap;
 
 /**
- * What the action checks (`extra-primary`, `action-cap`, `row-buttons`, `menu-order`, `bar-button-size`, `dup-export`)
+ * What the action checks (`action-misplaced`, `extra-primary`, `action-cap`, `row-buttons`, `menu-order`, `bar-button-size`, `dup-export`)
  * share: where a button sits (which surface's slot, which screen), whether it is a primary, and whether the tags
  * between two nodes are only markup (so the button is the surface's own and not a component's inner one). The outline
  * has no query for these, so they live here and not in `BladeOutline`.
@@ -124,7 +124,11 @@ abstract class ActionRule extends Rule
         foreach ($outline->ancestors($action) as $ancestor) {
             if ($ancestor['kind'] === 'html' || ($ancestor['kind'] === 'atom' && in_array($ancestor['tag'], static::LEFT_BEHIND, true))) {
                 if ($ancestor['kind'] === 'atom') {
-                    $lost ??= 'inside `<'.$ancestor['tag'].'>`, which is left behind when the surface places the action: put `confirm` or the condition on the action itself';
+                    $lost ??= match ($ancestor['tag']) {
+                        'atom:confirm.trigger' => 'inside `<atom:confirm.trigger>`, which is left behind when the surface places the action: put `confirm` on the action itself',
+                        'atom:tooltip' => 'inside `<atom:tooltip>`, which is left behind when the surface places the action: an action takes no tooltip, the surface draws it',
+                        default => 'inside `<'.$ancestor['tag'].'>`, which is left behind when the surface places the action: the surface draws the action itself, so it cannot sit in a trigger or a group',
+                    };
                 }
 
                 foreach (array_keys($ancestor['attributes']) as $name) {
@@ -185,7 +189,7 @@ abstract class ActionRule extends Rule
 
     /**
      * Every `<atom:action>` a surface places, as the surface sees it: its node, owner, slot, position in that slot, the `priority` and `tone` it states
-     * (null for none) and whether both are static (`modelled`: a bound or unknown value is not read, so the action is left out of what `ActionPlacement` is asked)
+     * (null for none) and whether both are static (`modelled`: a bound or unknown value, or attributes spread into the tag, are not read, so the action is left out of what `ActionPlacement` is asked)
      *
      * @return array<int, array<string, mixed>>
      */
@@ -210,6 +214,8 @@ abstract class ActionRule extends Rule
             $priority = $outline->has($action, 'priority') ? $outline->value($action, 'priority') : null;
             $tone = $outline->has($action, 'tone') ? $outline->value($action, 'tone') : null;
             $key = $where['owner']['id'].':'.$where['slot'];
+            $tag = preg_replace('/"[^"]*"|\'[^\']*\'/s', '', substr($outline->text(), $action['offset'], $action['openEnd'] - $action['offset'])) ?? '';
+            $spread = (bool) preg_match('/\{\{|\{!!|\$attributes|@(?:class|style|if|php)\b/', $tag);
 
             $found[] = [
                 'node' => $action,
@@ -219,7 +225,7 @@ abstract class ActionRule extends Rule
                 'priority' => $priority,
                 'tone' => $tone,
                 'lost' => $where['lost'],
-                'modelled' => (! $outline->has($action, 'priority') || in_array($priority, ActionPlacement::PRIORITIES, true))
+                'modelled' => ! $spread && (! $outline->has($action, 'priority') || in_array($priority, ActionPlacement::PRIORITIES, true))
                     && (! $outline->has($action, 'tone') || in_array($tone, ActionPlacement::TONES, true)),
             ];
         }

@@ -19,7 +19,7 @@ class ActionMisplaced extends ActionRule
 
     public function fix(): string
     {
-        return 'Put each `<atom:action>` in a slot its surface reads: `<atom:page.header>` (`primary`, `actions`, `menu`), `<atom:table.toolbar>` (`actions`, `end`, `menu`), the table\'s `checked` and `checked-menu`, `<atom:card>` or `<atom:panel>` (`actions`, `menu`), or `<atom:table.actions>`. Use `@if` for a condition and put `confirm` on the action itself: atom takes the action out of what is around it.';
+        return 'Put each `<atom:action>` in a slot its surface reads: `<atom:page.header>` (`primary`, `actions`, `menu`), `<atom:table.toolbar>` (`actions`, `end`, `menu`), the table\'s `checked` and `checked-menu`, `<atom:card>` or `<atom:panel>` (`actions`, `menu`), or `<atom:table.actions>`. Use `@if` for a condition and `confirm` on the action instead of `<atom:confirm.trigger>`; an action takes no tooltip, and a dropdown or button group around it is left behind: atom takes the action out of what is around it.';
     }
 
     public function rule(): string
