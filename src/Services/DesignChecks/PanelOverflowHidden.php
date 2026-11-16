@@ -29,7 +29,7 @@ class PanelOverflowHidden extends ListRule
 
     public function detect(): string
     {
-        return 'An `<atom:table>` with `paginate` (static or bound, but not a literal null, false, empty or `[]`) and the sticky pager on (a static `sticky-pager` is a string, so `sticky-pager="false"` still pins; a bound one counts only when literally `true`), inside an `<atom:card>` (it scrolls) or an element whose static `class` has `overflow-hidden`, `overflow-auto`, `overflow-scroll`, `overflow-y-auto|hidden|scroll` or `overflow-x-auto|hidden|scroll`; reported at that box, once, naming the first table in it. Not read: a box with a bounded height (`h-*` other than `h-auto|fit|min|max`, `size-*`, `max-h-*`, `fixed`, `absolute`, `inset-*`), which is its own scroll box, an `<atom:modal>`, `<dialog>`, `<atom:dropdown>` or an element with `popover` between them (the search ends there), a box that also writes `overflow-visible`, `overflow-clip` or a responsive `overflow-*`, and one that gets its overflow from a `:class`, `@class` or a host component\'s own markup.';
+        return 'An `<atom:table>` with `paginate` (static or bound, but not a literal null, false, empty or `[]`) and the sticky pager on (a static `sticky-pager` is a string, so `sticky-pager="false"` still pins; a bound one counts only when literally `true`), inside an `<atom:card>` (it scrolls) or an element whose static `class` has `overflow-hidden`, `overflow-auto`, `overflow-scroll`, `overflow-y-auto|hidden|scroll` or `overflow-x-auto|hidden|scroll`; reported at that box, once, naming the first table in it. Not read: a box with a bounded height (`h-*` other than `h-auto|fit|min|max`, `size-*`, `max-h-*`, `fixed`, `absolute`, `inset-*`; and a flex child that fills its parent, `flex-1`, `grow`, `min-h-0`: the app shell\'s scroller), which is its own scroll box (`h-full`, `size-full` and `h-screen` decline too, as the parent\'s height is not known), an `<atom:modal>`, `<dialog>`, `<atom:dropdown>` or an element with `popover` between them (the search ends there), a box that also writes `overflow-visible`, `overflow-clip` or a responsive `overflow-*`, and one that gets its overflow from a `:class`, `@class` or a host component\'s own markup.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -132,7 +132,7 @@ class PanelOverflowHidden extends ListRule
         foreach ($tokens as $token) {
             $utility = substr($token, ((int) strrpos($token, ':')) + (str_contains($token, ':') ? 1 : 0));
 
-            if (preg_match('/^(?:(?:max-)?h-.+|size-.+|inset-.+|fixed|absolute)$/', $utility) && ! preg_match('/^h-(?:auto|fit|min|max)$/', $utility)) {
+            if (preg_match('/^(?:(?:max-)?h-.+|size-.+|inset-.+|fixed|absolute|flex-1|grow|min-h-0)$/', $utility) && ! preg_match('/^h-(?:auto|fit|min|max)$/', $utility)) {
                 return true;
             }
         }

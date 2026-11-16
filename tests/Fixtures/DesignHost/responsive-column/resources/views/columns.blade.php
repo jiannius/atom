@@ -10,6 +10,7 @@
                 <atom:table.column name="bin" class="text-xs hidden md:table-cell">Bin</atom:table.column> {{-- expect: responsive-column --}}
                 <atom:table.column name="note" class="max-lg:hidden">Note</atom:table.column> {{-- expect: responsive-column --}}
                 <atom:table.column name="owner" class="dark:max-lg:hidden">Owner</atom:table.column> {{-- expect: responsive-column --}}
+                <atom:table.column name="desk" class="dark:print:max-lg:hidden">Desk</atom:table.column> {{-- expect: responsive-column --}}
                 <atom:table.column name="team" class="max-2xl:hidden">Team</atom:table.column> {{-- expect: responsive-column --}}
                 <atom:table.column name="region" hideable class="hidden md:table-cell">Region</atom:table.column>
                 <atom:table.column name="area" class="xmax-lg:hidden max-lg:hidden-x">Area</atom:table.column>

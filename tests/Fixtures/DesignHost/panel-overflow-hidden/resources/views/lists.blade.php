@@ -63,7 +63,33 @@
         <atom:table paginate />
     </div>
 
+    <div class="overflow-hidden h-min"> {{-- expect: panel-overflow-hidden --}}
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="overflow-hidden h-max"> {{-- expect: panel-overflow-hidden --}}
+        <atom:table :paginate="$orders" />
+    </div>
+
     {{-- Look-alikes: none of these is flagged. --}}
+    <div class="overflow-hidden">
+        <div class="h-96 overflow-auto">
+            <atom:table :paginate="$orders" />
+        </div>
+    </div>
+
+    <main class="flex-1 overflow-y-auto">
+        <atom:table :paginate="$orders" />
+    </main>
+
+    <main class="grow overflow-y-auto">
+        <atom:table :paginate="$orders" />
+    </main>
+
+    <main class="min-h-0 overflow-y-auto">
+        <atom:table :paginate="$orders" />
+    </main>
+
     <div class="rounded-panel border overflow-hidden">
         <atom:table frameless>
             <x-slot:columns><atom:table.column>No paginator, no pager to pin</atom:table.column></x-slot:columns>

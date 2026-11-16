@@ -19,6 +19,8 @@ describe('filter-outside-bar', function () {
     });
 
     it('reads a handler whose value has an echo, but not one whose key has', function () {
+        expect(DesignHost::scanSource("<atom:table />\n<b wire:click=\"\$set('filters.a.{{ \$v }}', 1)\"></b>\n<b x-on:click=\"\$wire.set('filters.a.{!! \$v !!}', 1)\"></b>\n", 'filter-outside-bar'))->toBe([]);
+
         expect(DesignHost::scanSource("<atom:table />\n<b wire:click=\"\$set('filters.a', '{{ \$v }}')\"></b>\n", 'filter-outside-bar'))->toHaveCount(1)
             ->and(DesignHost::scanSource("<atom:table />\n<b wire:click=\"\$set('filters.a{{ \$v }}', 1)\"></b>\n<b wire:click=\"\$set('filters.{{ \$v }}', 1)\"></b>\n", 'filter-outside-bar'))->toBe([]);
     });
@@ -119,11 +121,11 @@ describe('panel-overflow-hidden', function () {
     });
 
     it('declines a box with a bounded height, a fixed one, and a card that clips', function () use ($table) {
-        foreach (['max-h-96', 'h-96', 'h-full', 'h-screen', 'lg:h-[40rem]', 'size-80', 'fixed', 'absolute', 'inset-0', 'inset-x-0'] as $class) {
+        foreach (['max-h-96', 'h-96', 'h-full', 'h-screen', 'lg:h-[40rem]', 'size-80', 'size-full', 'flex-1', 'grow', 'min-h-0', 'fixed', 'absolute', 'inset-0', 'inset-x-0'] as $class) {
             expect(DesignHost::scanSource("<div class=\"overflow-hidden {$class}\">{$table}</div>", 'panel-overflow-hidden'))->toBe([], $class);
         }
 
-        foreach (['h-auto', 'h-fit', 'hover:bg-surface-sunken', 'rounded-panel'] as $class) {
+        foreach (['h-auto', 'h-fit', 'h-min', 'h-max', 'hover:bg-surface-sunken', 'rounded-panel'] as $class) {
             expect(DesignHost::scanSource("<div class=\"overflow-hidden {$class}\">{$table}</div>", 'panel-overflow-hidden'))->toHaveCount(1, $class);
         }
 

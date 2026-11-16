@@ -88,7 +88,7 @@ class FilterOutsideBar extends ListRule
                 continue;
             }
 
-            if (preg_match('/(?:\$set|\$wire\.set)\(\s*[\'"]filters\.([A-Za-z_][\w.]*)(?!\w|\{\{|\{!!)/', $value, $found)
+            if (preg_match('/(?:\$set|\$wire\.set)\(\s*[\'"]filters\.([A-Za-z_][\w.]*+)(?!\{\{|\{!!)/', $value, $found)
                 || preg_match('/\$wire\.filters\.([A-Za-z_][\w.]*)\s*=(?!=)/', $value, $found)) {
                 return $found[1];
             }
