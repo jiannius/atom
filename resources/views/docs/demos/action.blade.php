@@ -16,3 +16,8 @@
 title="In a page header"
 description="Two buttons, the rest in the ⋯ menu (utilities first, then a separator, then warning, then danger), the primary last. Duplicate is low, so it never shows as a button; Void and Delete are toned, so they never do either, and each asks before it acts, in its tone. Try the ⋯ menu."
 view="atom::docs.demos.action.header"/>
+
+<atom:docs.example
+title="In a card and a panel"
+description="A card or a panel draws one action as a link (an href) or a ghost button, 12px in a card and 14px in a panel; the rest, and every toned one, are rows of its ⋯, which is named for the box (More actions for Parts used). Write them in the actions slot; an action in the body draws nothing."
+view="atom::docs.demos.action.card"/>
