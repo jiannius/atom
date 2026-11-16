@@ -164,6 +164,37 @@ class DesignHost
     }
 
     /**
+     * The texts that describe the command, by name (README, skill, CLAUDE.md, UPGRADE.md)
+     *
+     * @return array<string, string>
+     */
+    public static function docs(): array
+    {
+        $root = dirname(__DIR__, 2);
+
+        return [
+            'README' => file_get_contents($root.'/README.md'),
+            'skill' => file_get_contents($root.'/resources/boost/skills/atom-components/SKILL.blade.php'),
+            'CLAUDE.md' => file_get_contents($root.'/CLAUDE.md'),
+            'UPGRADE' => file_get_contents($root.'/UPGRADE.md'),
+        ];
+    }
+
+    /**
+     * A temp host holding atom's pattern pages (resources/views/docs/patterns) as its `resources/views/`; remove() it when done
+     */
+    public static function patterns(): string
+    {
+        $files = [];
+
+        foreach (glob(dirname(__DIR__, 2).'/resources/views/docs/patterns/*.blade.php') as $path) {
+            $files['resources/views/'.basename($path)] = file_get_contents($path);
+        }
+
+        return static::temp($files);
+    }
+
+    /**
      * What one check finds in one Blade source: its findings
      *
      * @return array<int, array<string, mixed>>

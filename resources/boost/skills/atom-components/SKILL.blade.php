@@ -248,6 +248,8 @@ The always-on guideline lists these as a checklist; here they are in full. They 
 **Lists.** Every control that narrows a list sits in `<atom:table.filters>` and binds `filters.*` (so it gets a chip and Clear all); a show-inactive toggle is a filter or `trashed`, never a button. List pages use `chips="inline"`. Export sits once, in the toolbar's `actions`. Hide columns with `hideable` (plus `max-sm:hidden` for a phone), not `hidden md:table-cell`. Toolbar and bulk-bar buttons are the default size. Creating more than one kind of record is one primary with a menu of kinds (a `button.group` with a dropdown), not a row of tiles.
 
 **Spacing and boxes come from atom.** No margins or `space-y-*` between a page's blocks (`<atom:page>` spaces them), no arbitrary `gap-[..]`, `p-[..]` or `text-[..px]`, no hand `rounded-panel border bg-surface` box (`<atom:card>`, `<atom:panel>`), no `shadow-*`, no palette colours.
+
+**Check it.** `php artisan atom:design-check` reads the app's views and lists what drifts from these rules, by check, with `file:line` (read only; `--json`, `--path`, `--only`, `--all`). A deliberate exception is `{{-- atom:design-check ignore <id>: <reason> --}}` on the line above.
 @endverbatim
 
 ### Toast / Alert / Confirm

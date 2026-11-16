@@ -50,7 +50,7 @@ class EmptyGlyph extends CopyFormsRule
 
     public function detect(): string
     {
-        return 'In Blade and PHP: (a) a fallback to a dash (`?? \'—\'`, `?: \'--\'`, and `?: \'-\'` only inside an echo that is not directly followed by another echo or a digit, or as an array\'s `\'value\'`), (b) `\'value\' => \'—\'` in an array, (c) an `<atom:dd>` or `<atom:table.cell>` whose only text is a dash, (d) `filler="—"`, (e) `@else — @endif` or `@else <span>—</span> @endif` after an `@if` that echoes a value. Entity forms (`&mdash;`, `&#8212;`) are the same dash. A dash inside text ("2–3 days"), `implode(\' - \', …)`, a ternary (`$x ? $x : \'—\'`), `=> \'-\'`, a `<code>` or `<pre>` sample, and a PHP file under a mail, PDF, print or export directory are not read.';
+        return 'In Blade and PHP: (a) a fallback to a dash (`?? \'—\'`, `?: \'--\'`, and `?: \'-\'` only inside an echo that is not directly followed by another echo or a digit, or as an array\'s `\'value\'`), (b) `\'value\' => \'—\'` in an array, (c) an `<atom:dd>` or `<atom:table.cell>` whose only text is a dash, (d) `filler="—"`, (e) `@else — @endif` or `@else <span>—</span> @endif` after an `@if` that echoes a value. Entity forms (`&mdash;`, `&#8212;`) are the same dash. A dash inside text ("2–3 days"), `implode(\' - \', …)`, a ternary (`$x ? $x : \'—\'`), `=> \'-\'`, a `<code>` or `<pre>` sample, and a PHP file under a mail, PDF, print or export directory, or under `app/Ai`, `app/Mcp` or a module\'s `Ai` or `Mcp` (text for a language model) are not read.';
     }
 
     /**

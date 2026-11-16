@@ -51,7 +51,7 @@ Add only the traits a component uses: `WithTable`, `WithBreadcrumbs`, `WithEdito
 - Toast = what the user just did; one `<atom:callout>` under the header = what they must know.
 - Sentence case; buttons start with a verb ("Create …" a record, "Add …" a line). Never type `—` or `--` for a missing value.
 - Use `<atom:card>`, `<atom:panel>`, `<atom:dd>`, `<atom:timeline>`, `<atom:navlist>` (in `<atom:layouts.sidebar>` or `<atom:layouts.header>`) and `<atom:separator>`, not hand-built boxes or `<hr>`; no margins between blocks, no `gap-[..]`, no `shadow-*`. Colour with role tokens (`bg-surface`, `text-fg-muted`, `border-border`), not `zinc-*` or `dark:` pairs. `type="submit"` and `"delete"` add no icon (`icon=`).
-- Full tables: the skill's Design rules and Patterns section.
+- Tables: skill Design rules, Patterns section. Check: `atom:design-check`.
 @endverbatim
 
 

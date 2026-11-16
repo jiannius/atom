@@ -34,7 +34,7 @@ class RawControl extends BoxesColour
 
     public function detect(): string
     {
-        return 'A raw `<button>` or `<a>` whose own classes (no variant) hold a `rounded*` token, a border width or a `bg-*` fill, and a padding or `h-<n>` token. A text-only link is not flagged; neither is one that holds a block, a picture (`img`, `atom:avatar`) beside text or another element, or several elements besides an icon (a tile or a row), has a `role` other than button or link, or sits in the `brand` or `logo` slot.';
+        return 'A raw `<button>` or `<a>` whose own classes (no variant) hold a `rounded*` token, a border width or a `bg-*` fill, and a padding or `h-<n>` token. A text-only link is not flagged; neither is one that holds a block, a picture (`img`, `atom:avatar`) beside text or another element, or several elements besides an icon (a tile or a row), has a `role` other than button or link, shows a state of its own (`aria-pressed`, `aria-selected`, `aria-current`, `aria-checked`, or a bound class that names a selected, active, current, checked or pressed look or compares a value), or sits in the `brand` or `logo` slot.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -61,6 +61,41 @@ class RawControl extends BoxesColour
     }
 
     /**
+     * Whether a control shows a state of its own: an `aria-pressed`, `aria-selected`, `aria-current` or `aria-checked` (bound or
+     * not), or a bound class (`:class`, `x-bind:class`, `@class([...])`) that names a selected, active, current, checked or pressed
+     * look or compares a value (`$type === 'a'`). A pill, a tile or a segment that marks the chosen one is a toggle, which
+     * `<atom:button>` is not.
+     */
+    protected function reflectsSelection(array $node): bool
+    {
+        $expressions = [];
+
+        foreach ($node['attributes'] as $name => $value) {
+            if (preg_match('/^(?::|x-bind:)?aria-(?:pressed|selected|current|checked)$/', (string) $name)) {
+                return true;
+            }
+
+            if (is_string($value) && in_array($name, [':class', 'x-bind:class'], true)) {
+                $expressions[] = $value;
+            }
+        }
+
+        foreach ($node['directives'] as $directive) {
+            if ($directive['name'] === 'class' && $directive['args'] !== null) {
+                $expressions[] = $directive['args'];
+            }
+        }
+
+        foreach ($expressions as $expression) {
+            if (preg_match('/\b(?:selected|active|current|checked|pressed)\b|[=!]==?/i', $expression)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Whether an element is not a plain control: another role, or a block inside (a tile)
      */
     protected function declined(File $file, array $node): bool
@@ -68,7 +103,7 @@ class RawControl extends BoxesColour
         $outline = $file->outline();
         $role = $outline->has($node, 'role') ? $outline->value($node, 'role') : 'button';
 
-        if (! in_array($role, ['button', 'link'], true)) {
+        if (! in_array($role, ['button', 'link'], true) || $this->reflectsSelection($node)) {
             return true;
         }
 

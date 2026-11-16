@@ -27,6 +27,13 @@ abstract class CopyFormsRule extends Rule
     protected const NON_SCREEN_PHP = ['export', 'exports', 'csv'];
 
     /**
+     * Where the tools and agents of an AI package live (`app/Ai`, `app/Mcp`, `app/Support/Ai`, `modules/<name>/Ai`, `modules/<name>/app/Mcp`):
+     * PHP there writes text for a language model to read, not a screen. Only at these roots, so a Livewire component in
+     * `app/Livewire/Ai` (a chat screen) is still read.
+     */
+    protected const AI_ROOTS = '#^(?:app|app/support|modules/[^/]+|modules/[^/]+/app)/(?:ai|mcp)/#';
+
+    /**
      * Whether a string is only a typed dash (after decoding entities such as `&mdash;`)
      */
     protected function isDash(?string $text): bool
@@ -45,7 +52,12 @@ abstract class CopyFormsRule extends Rule
             return false;
         }
 
-        $segments = array_map('strtolower', array_slice(explode('/', str_replace('\\', '/', $file->path)), 0, -1));
+        $path = strtolower(str_replace('\\', '/', $file->path));
+        $segments = array_slice(explode('/', $path), 0, -1);
+
+        if (preg_match(static::AI_ROOTS, $path) === 1) {
+            return true;
+        }
 
         if (array_intersect($segments, [...DesignCheck::NON_SCREEN_SEGMENTS, ...static::NON_SCREEN_PHP]) !== []) {
             return true;

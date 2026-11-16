@@ -684,3 +684,20 @@ it('documents <atom:dev-login> in the skill and the README', function () {
     expect($readme)->toContain('## Signing in during local development')
         ->and(boostFile('guidelines/core.blade.php'))->not->toContain('dev-login');
 });
+
+// Design rules, phase 4: the skill closes its Design rules with the command that checks them, the guideline points at it
+// without growing, and the marker survives the render (it sits inside @verbatim, where Blade would read `{{-- --}}` as a comment).
+it('teaches atom:design-check in the skill and points at it from the guideline within the budget', function () {
+    $guideline = boostFile('guidelines/core.blade.php');
+
+    expect(boostFile('skills/atom-components/SKILL.blade.php'))->toContain('**Check it.** `php artisan atom:design-check`')
+        ->and($guideline)->toContain('Check: `atom:design-check`.')
+        ->and($guideline)->toContain('Patterns section')
+        ->and(str_word_count(strip_tags($guideline)))->toBeLessThan(825);
+
+    $rendered = boostRender('skills/atom-components/SKILL.blade.php');
+
+    expect($rendered)->toContain('{{-- atom:design-check ignore <id>: <reason> --}}')
+        ->and($rendered)->toContain('(read only; `--json`, `--path`, `--only`, `--all`)')
+        ->and(boostRender('guidelines/core.blade.php'))->toContain('Check: `atom:design-check`.');
+});

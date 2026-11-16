@@ -55,7 +55,7 @@ class EnumTitle extends CopyFormsRule
 
     public function detect(): string
     {
-        return 'In Blade and PHP: `str(…)`, `Str::of(…)` (with `->title()`, `->headline()`, `->ucfirst()` or `->ucwords()` after it, possibly after other calls), `Str::title(`, `Str::headline(`, `ucfirst(` or `ucwords(` around a chain that ends `->status->name`, `->stage->value` (or `->type->value`, `->kind->value`, `->state->value`, or a `$status->name`). One level (`str($user->name)->title()`) is a person\'s name, `->type->name` is as often a lookup model, and neither is read; nor is a call inside `Log::`, `logger(` or `cache(`, or a PHP file under a mail, PDF, print or export directory.';
+        return 'In Blade and PHP: `str(…)`, `Str::of(…)` (with `->title()`, `->headline()`, `->ucfirst()` or `->ucwords()` after it, possibly after other calls), `Str::title(`, `Str::headline(`, `ucfirst(` or `ucwords(` around a chain that ends `->status->name`, `->stage->value` (or `->type->value`, `->kind->value`, `->state->value`, or a `$status->name`). One level (`str($user->name)->title()`) is a person\'s name, `->type->name` is as often a lookup model, and neither is read; nor is a call inside `Log::`, `logger(` or `cache(`, or a PHP file under a mail, PDF, print or export directory, or under `app/Ai`, `app/Mcp` or a module\'s `Ai` or `Mcp` (text for a language model).';
     }
 
     public function structural(): bool
