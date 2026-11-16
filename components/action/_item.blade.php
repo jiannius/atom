@@ -34,6 +34,10 @@ if ($wrapped && $plain !== '' && $confirm !== false && $confirm !== null) {
     $confirm = [...['heading' => str_ends_with($plain, '?') ? $plain : $plain.'?', 'buttonConfirm' => $plain], ...$given];
 }
 
+/* the label is built here, not with an `@if` inside the tag: in a Livewire view a directive prints morph markers, and a label with a `<` in it is markup to the
+   button, which then neither wraps it nor reads its text for the dialog */
+$content = $wrapped ? '<span class="max-sm:sr-only">'.$html.'</span>' : $html;
+
 $link = in_array($surface, ['card', 'panel'], true) && $place === 'visible' && filled($href) && $confirm === null;
 
 $look = match (true) {
@@ -53,5 +57,5 @@ $look = match (true) {
 @elseif ($link)
 <atom:link :attributes="$bag" :icon="$icon" :href="$href" :newtab="$item['newtab']" :class="$surface === 'panel' ? 'text-sm' : 'text-xs'">{!! $html !!}</atom:link>
 @else
-<atom:button :attributes="$bag" :variant="$look['variant'] ?? null" :size="$look['size'] ?? null" :type="$look['type'] ?? null" :inverted="$look['inverted'] ?? null" :icon="$icon" :href="$href" :newtab="$item['newtab']" :passphrase="$item['passphrase']" :confirm="$confirm">@if ($wrapped)<span class="max-sm:sr-only">{!! $html !!}</span>@else{!! $html !!}@endif</atom:button>
+<atom:button :attributes="$bag" :variant="$look['variant'] ?? null" :size="$look['size'] ?? null" :type="$look['type'] ?? null" :inverted="$look['inverted'] ?? null" :icon="$icon" :href="$href" :newtab="$item['newtab']" :passphrase="$item['passphrase']" :confirm="$confirm">{!! $content !!}</atom:button>
 @endif

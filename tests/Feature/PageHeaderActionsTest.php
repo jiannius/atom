@@ -203,6 +203,17 @@ describe('Blade control flow', function () {
             ->and(headerMenu($html))->toBe(['Zulu']);
     });
 
+    it('keeps the label wrapped and the dialog\'s copy in a Livewire view, where a directive inside a tag would print markers into the label', function () {
+        $html = actionLivewire('<atom:page.header title="T"><x-slot:actions>
+            <atom:action wire:click="a">Alpha</atom:action><atom:action tone="warning" wire:click="b">Void invoice</atom:action>
+        </x-slot:actions></atom:page.header>');
+        $button = domQuery($html, '//*[@data-atom-action="visible"]')[0];
+        $row = domQuery($html, '//*[@data-atom-action="menu"]')[0];
+
+        expect(domQuery($html, '//*[@data-atom-action="visible"]//*[@data-atom-button-label]'))->toHaveCount(1)
+            ->and(json_decode($row->getAttribute('data-atom-confirm'), true))->toMatchArray(['heading' => 'Void invoice?', 'buttonConfirm' => 'Void invoice']);
+    });
+
     it('places an action written in an included partial', function () {
         $html = renderBlade('<atom:page.header title="T"><x-slot:actions><x-action-partial /></x-slot:actions></atom:page.header>');
 
