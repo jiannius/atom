@@ -215,7 +215,7 @@ abstract class ActionRule extends Rule
             $tone = $outline->has($action, 'tone') ? $outline->value($action, 'tone') : null;
             $key = $where['owner']['id'].':'.$where['slot'];
             $tag = preg_replace('/"[^"]*"|\'[^\']*\'/s', '', substr($outline->text(), $action['offset'], $action['openEnd'] - $action['offset'])) ?? '';
-            $spread = (bool) preg_match('/\{\{|\{!!|\$attributes|@(?:class|style|if|php)\b/', $tag);
+            $spread = (bool) preg_match('/\{\{|\{!!|@(?:class|style|if|php)\b/', $tag);
 
             $found[] = [
                 'node' => $action,
