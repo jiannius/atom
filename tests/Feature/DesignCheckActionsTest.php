@@ -357,7 +357,10 @@ describe('extra-primary: forms, the browser and host components', function () {
             ->and($notes("{$header}<form>{$submit}</form><form>{$submit}</form>"))->toBe([])
             ->and($notes("{$header}<atom:form.section>{$submit}</atom:form.section><atom:form.section>{$submit}</atom:form.section>"))->toBe([])
             ->and($notes("<atom:form>{$submit}</atom:form><atom:button variant=\"primary\">b</atom:button>"))->toBe([])
-            ->and($notes("{$header}<atom:button type=\"submit\" form=\"f\">a</atom:button>"))->toBe([1 => $screen]);
+            ->and($notes("{$header}<atom:button type=\"submit\" form=\"f\">a</atom:button><atom:button type=\"submit\" form=\"g\">b</atom:button>"))->toBe([])
+            ->and($notes("<atom:button type=\"submit\" form=\"f\">a</atom:button><atom:button variant=\"primary\" form=\"f\">b</atom:button>"))->toBe([1 => 'one primary in a form, its submit: a second submit takes `variant="default"`'])
+            ->and($notes("<atom:button type=\"submit\" :form=\"\$a\">a</atom:button><atom:button type=\"submit\" :form=\"\$a\">b</atom:button>"))->toBe([])
+            ->and($notes("<atom:form><atom:button type=\"submit\" form=\"f\">a</atom:button><atom:button type=\"submit\" form=\"g\">b</atom:button></atom:form>"))->toHaveCount(1);
     });
 
     it('says a second primary in one form is a second, in a plain form and a section too', function () use ($notes) {
@@ -398,7 +401,21 @@ describe('extra-primary: forms, the browser and host components', function () {
             ->and($notes("{$header}<x-card><x-slot:footer>{$one}</x-slot:footer></x-card>"))->toBe([])
             ->and($notes("<x-layouts.app>{$header}{$one}</x-layouts.app>"))->toHaveCount(1)
             ->and($notes("<x-app-layout>{$header}{$one}</x-app-layout>"))->toHaveCount(1)
-            ->and($notes("<x-app.shell>{$header}{$one}</x-app.shell>"))->toHaveCount(1)
+            ->and($notes("<x-app>{$header}{$one}</x-app>"))->toHaveCount(1)
+            ->and($notes("<x-guest>{$header}{$one}</x-guest>"))->toHaveCount(1)
+            ->and($notes("<x-admin-layout-modal>{$header}{$one}</x-admin-layout-modal>"))->toBe([])
+            ->and($notes("<x-guest-layout>{$header}{$one}</x-guest-layout>"))->toHaveCount(1)
+            ->and($notes("<x-layouts.admin.app>{$header}{$one}</x-layouts.admin.app>"))->toHaveCount(1)
+            ->and($notes("<x-app.shell>{$header}{$one}</x-app.shell>"))->toBe([])
+            ->and($notes("<x-app.modal>{$header}{$one}</x-app.modal>"))->toBe([])
+            ->and($notes("<x-app-modal>{$header}{$one}</x-app-modal>"))->toBe([])
+            ->and($notes("<x-app-dialog>{$header}{$one}</x-app-dialog>"))->toBe([])
+            ->and($notes("<x-app.confirm>{$header}{$one}</x-app.confirm>"))->toBe([])
+            ->and($notes("<x-app-card>{$header}{$one}</x-app-card>"))->toBe([])
+            ->and($notes("<x-guest.modal>{$header}{$one}</x-guest.modal>"))->toBe([])
+            ->and($notes("<x-layout-modal>{$header}{$one}</x-layout-modal>"))->toBe([])
+            ->and($notes("<x-layouts.modal>{$header}{$one}</x-layouts.modal>"))->toBe([])
+            ->and($notes("<x-layouts.admin.drawer>{$header}{$one}</x-layouts.admin.drawer>"))->toBe([])
             ->and($notes("<x-admin-layout>{$header}{$one}</x-admin-layout>"))->toHaveCount(1)
             ->and($notes("<x-dynamic-component component=\"x\">{$header}{$one}</x-dynamic-component>"))->toHaveCount(1)
             ->and($notes("<x-confirm-modal><atom:modal name=\"m\">{$one}{$one}</atom:modal></x-confirm-modal>"))->toHaveCount(1);

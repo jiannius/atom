@@ -30,7 +30,7 @@ class ExtraPrimary extends ActionRule
 
     public function detect(): string
     {
-        return 'A primary is an `<atom:button>` with a static `variant="primary"`, or `type="submit"` and no `variant`. A modal and a `<atom:form.modal>` (which draws its own Save) are screens of their own. A primary in a form (`<atom:form>`, `<form>`, or an `<atom:form.section>` that saves on its own) belongs to it: only a second one in the same form is flagged, and it is never paired with a primary of the screen. A primary that the browser can hide (`x-show`, `<template x-if>`, `wire:show`, `:hidden`) or that sits in a host component other than a layout is not paired. Flagged: one in `<atom:empty>`, `<atom:table.toolbar>`, the table\'s `checked` slot or a row (not a row that edits something); one in an `<atom:callout>` when the screen\'s `<atom:page.header>` has a `primary` slot; a second in one form; one in a loop (one per item); and a second that can show with an earlier one on a screen (the branches of one `@if` chain never do, and two separate `@if` blocks are not paired). A bound `variant` or `type` is not read.';
+        return 'A primary is an `<atom:button>` with a static `variant="primary"`, or `type="submit"` and no `variant`. A modal and a `<atom:form.modal>` (which draws its own Save) are screens of their own. A primary in a form (`<atom:form>`, `<form>`, or an `<atom:form.section>` that saves on its own), or one that names a form by a `form="id"` attribute, belongs to it: only a second one in the same form is flagged, and it is never paired with a primary of the screen. A primary that the browser can hide (`x-show`, `<template x-if>`, `wire:show`, `:hidden`) or that sits in a host component other than a layout is not paired. Flagged: one in `<atom:empty>`, `<atom:table.toolbar>`, the table\'s `checked` slot or a row (not a row that edits something); one in an `<atom:callout>` when the screen\'s `<atom:page.header>` has a `primary` slot; a second in one form; one in a loop (one per item); and a second that can show with an earlier one on a screen (the branches of one `@if` chain never do, and two separate `@if` blocks are not paired). A bound `variant` or `type` is not read.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -53,6 +53,7 @@ class ExtraPrimary extends ActionRule
 
             $screen = $this->screen($outline, $primary);
             $form = $this->form($outline, $primary);
+            $scope = $form['id'] ?? $this->formAttribute($outline, $primary);
             $placement = $this->placement($outline, $primary, $headed);
 
             if ($placement === false) {
@@ -61,12 +62,12 @@ class ExtraPrimary extends ActionRule
 
             $conditional = $this->clientConditional($outline, $primary);
             $note = $placement
-                ?? ($conditional ? null : $this->secondInForm($outline, $primary, $form, $inForm))
+                ?? ($conditional ? null : $this->secondInForm($outline, $primary, $form, $scope, $inForm))
                 ?? $this->inLoop($outline, $primary, $form, $screen);
 
             if ($note === null && ! $conditional) {
-                if ($form !== null) {
-                    $inForm[$form['id']][] = $primary;
+                if ($scope !== null) {
+                    $inForm[$scope][] = $primary;
                 } else {
                     foreach ($kept[$screen] ?? [] as $earlier) {
                         if ($outline->together($earlier, $primary)) {
@@ -130,6 +131,19 @@ class ExtraPrimary extends ActionRule
     }
 
     /**
+     * The form a button names with `form="id"` outside any form, as a key (the id, or a key of its own when the id is bound, so it
+     * is never paired); null when it names none
+     */
+    protected function formAttribute(BladeOutline $outline, array $button): ?string
+    {
+        if (! $outline->has($button, 'form')) {
+            return null;
+        }
+
+        return 'form:'.($outline->value($button, 'form') ?? '#'.$button['id']);
+    }
+
+    /**
      * The note when a primary sits where none belongs: an empty state, a toolbar, a bulk bar, a row, or a callout under a header that has one.
      * False when it is in a row that edits something: a control of the line, not a primary to count.
      *
@@ -173,19 +187,19 @@ class ExtraPrimary extends ActionRule
     /**
      * The note when a form already has a primary that can show with this one, or when this is in a modal form (which draws its own Save)
      *
-     * @param  array<int, array<int, array>>  $inForm
+     * @param  array<int|string, array<int, array>>  $inForm
      */
-    protected function secondInForm(BladeOutline $outline, array $button, ?array $form, array $inForm): ?string
+    protected function secondInForm(BladeOutline $outline, array $button, ?array $form, int|string|null $scope, array $inForm): ?string
     {
-        if ($form === null) {
+        if ($scope === null) {
             return null;
         }
 
-        if ($form['tag'] === 'atom:form.modal') {
+        if ($form !== null && $form['tag'] === 'atom:form.modal') {
             return 'a modal form draws its own Save as the primary: this one is a plain button';
         }
 
-        foreach ($inForm[$form['id']] ?? [] as $earlier) {
+        foreach ($inForm[$scope] ?? [] as $earlier) {
             if ($outline->together($earlier, $button)) {
                 return 'one primary in a form, its submit: a second submit takes `variant="default"`';
             }

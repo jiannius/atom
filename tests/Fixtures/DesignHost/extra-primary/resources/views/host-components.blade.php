@@ -16,6 +16,10 @@
             <atom:button variant="primary" wire:click="go">Go</atom:button>
         </x-confirm-modal>
 
+        <x-app.modal name="m"><atom:button variant="primary" wire:click="go">Go</atom:button></x-app.modal>
+        <x-app-modal name="n"><atom:button variant="primary" wire:click="go">Go</atom:button></x-app-modal>
+        <x-layouts.modal name="o"><atom:button variant="primary" wire:click="go">Go</atom:button></x-layouts.modal>
+
         <atom:button variant="primary" wire:click="again">Again</atom:button> {{-- expect: extra-primary --}}
     </atom:page>
 </x-layouts.app>

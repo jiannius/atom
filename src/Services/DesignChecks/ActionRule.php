@@ -48,9 +48,9 @@ abstract class ActionRule extends Rule
     protected const CLIENT_CONDITIONALS = ['x-show', 'x-if', 'wire:show', ':hidden', 'x-bind:hidden'];
 
     /**
-     * The tags of a layout around a page: its slot is the page, so a button in it is on the screen
+     * The tags of a layout around a page (`x-app`, `x-layouts.app`, `x-admin-layout`...): its slot is the page, so a button in it is on the screen. A name that ends in `modal`, `dialog`, `drawer`, `sheet` or `confirm` is not one
      */
-    protected const LAYOUT_TAG = '/^x-(dynamic-component$|layouts?(\.|-|$)|app(\.|-|$)|guest(\.|-|$)|.+-layout$)/';
+    protected const LAYOUT_TAG = '/^x-(dynamic-component|app|guest|layout|layouts\.(?:[\w-]+\.)*(?!(?:modal|dialog|drawer|sheet|confirm)$)[\w-]+|[\w-]+-layout)$/';
 
     /**
      * The slot's name with its case and hyphens folded, so `checked-menu` (a `name` attribute) and `checkedMenu`
