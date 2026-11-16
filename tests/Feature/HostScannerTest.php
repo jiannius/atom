@@ -30,6 +30,17 @@ function hostScannerFor(array $directories): HostScanner
         }
 
         /**
+         * @return array<int, array{0: string, 1: string, 2: string}> relative path, scope, kind
+         */
+        public function found(string $root): array
+        {
+            $this->root = $root;
+            $this->skipped = [];
+
+            return array_map(fn (array $file) => [$file[1], $file[2], $file[3]], iterator_to_array($this->discover($root), false));
+        }
+
+        /**
          * @return array<int, array{path: string, reason: string}>
          */
         public function skippedPaths(): array
@@ -104,4 +115,82 @@ it('defaults the hook to the DIRECTORIES constant, and UpgradeCheck is a HostSca
     expect($scanner->named())->toBe(HostScanner::DIRECTORIES)
         ->and(UpgradeCheck::DIRECTORIES)->toBe(HostScanner::DIRECTORIES)
         ->and(new UpgradeCheck)->toBeInstanceOf(HostScanner::class);
+});
+
+it('reads a nested directory named by its hook', function () {
+    $root = hostScannerTree();
+
+    expect(hostScannerFor(['resources/views/livewire'])->files($root))->toBe(['resources/views/livewire/app/vendor/supplier.blade.php']);
+});
+
+it('also yields the root vite.config, as kind config, and marks tests/ as the tests scope', function () {
+    $root = hostScannerTree();
+    file_put_contents($root.'/vite.config.js', 'export default {}');
+
+    expect(hostScannerFor(['app', 'tests'])->found($root))->toBe([
+        ['app/Thing.php', 'app', 'php'],
+        ['tests/ExampleTest.php', 'tests', 'php'],
+        ['vite.config.js', 'app', 'config'],
+    ]);
+});
+
+it('reads its size cap and directories from the class that scans, so a subclass can set its own', function () {
+    $root = hostScannerTree();
+    file_put_contents($root.'/app/Big.php', '<?php '.str_repeat('x', 100));
+
+    $scanner = new class extends HostScanner
+    {
+        public const MAX_BYTES = 50;
+
+        public const DIRECTORIES = ['app', 'routes'];
+
+        /**
+         * @return array<int, string>
+         */
+        public function files(string $root): array
+        {
+            $this->root = $root;
+            $this->skipped = [];
+
+            return array_map(fn (array $file) => $file[1], iterator_to_array($this->discover($root), false));
+        }
+
+        /**
+         * @return array<int, array{path: string, reason: string}>
+         */
+        public function skippedPaths(): array
+        {
+            return $this->skipped;
+        }
+    };
+
+    // DIRECTORIES and MAX_BYTES come from the subclass: the default hook reads static::DIRECTORIES (not tests/ or resources/)
+    expect($scanner->files($root))->toBe(['app/Thing.php', 'routes/web.php'])
+        ->and($scanner->skippedPaths())->toBe([['path' => 'app/Big.php', 'reason' => 'over '.(50 / 1048576).' MB']]);
+});
+
+it('skips a path its own SKIP_PATHS names, below a directory it reads', function () {
+    $root = hostScannerTree();
+
+    $scanner = new class extends HostScanner
+    {
+        public const SKIP_PATHS = ['resources/views/livewire'];
+
+        protected function directories(): array
+        {
+            return ['resources'];
+        }
+
+        /**
+         * @return array<int, string>
+         */
+        public function files(string $root): array
+        {
+            $this->root = $root;
+
+            return array_map(fn (array $file) => $file[1], iterator_to_array($this->discover($root), false));
+        }
+    };
+
+    expect($scanner->files($root))->toBe(['resources/views/page.blade.php', 'resources/views/vendor/atom/own.blade.php']);
 });

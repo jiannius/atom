@@ -4,8 +4,8 @@ use Jiannius\Atom\Services\UpgradeCheck;
 
 /**
  * UpgradeCheck's surface, pinned: its public methods (with their parameters,
- * return types and static-ness), its protected methods, its properties and the
- * value of every constant. The reading half of the class moves into a base
+ * return types and static-ness), its protected methods, its properties (visibility and
+ * type) and every constant (visibility and value). The reading half of the class moves into a base
  * class (HostScanner), and the codemod (Services\Upgrade) and the commands
  * reach UpgradeCheck through exactly this surface, so a move must not change
  * it. Reflection reports inherited members too, so a method that moves up
@@ -18,8 +18,8 @@ function upgradeCheckSurface(string $visibility): array
     if ($visibility === 'constants') {
         $constants = [];
 
-        foreach ($reflection->getConstants() as $name => $value) {
-            $constants[] = $name.' = '.md5(serialize($value));
+        foreach ($reflection->getReflectionConstants() as $constant) {
+            $constants[] = implode(' ', Reflection::getModifierNames($constant->getModifiers())).' '.$constant->getName().' = '.md5(serialize($constant->getValue()));
         }
 
         sort($constants);
@@ -28,7 +28,12 @@ function upgradeCheckSurface(string $visibility): array
     }
 
     if ($visibility === 'properties') {
-        $properties = array_map(fn (ReflectionProperty $property) => $property->getName(), $reflection->getProperties());
+        $properties = array_map(
+            fn (ReflectionProperty $property) => implode(' ', Reflection::getModifierNames($property->getModifiers()))
+                .($property->getType() ? ' '.$property->getType() : '')
+                .' $'.$property->getName(),
+            $reflection->getProperties(),
+        );
 
         sort($properties);
 
@@ -134,32 +139,32 @@ it('keeps the protected methods of UpgradeCheck', function () {
 
 it('keeps the properties of UpgradeCheck', function () {
     expect(upgradeCheckSurface('properties'))->toBe([
-        'guidelinePath',
-        'overlay',
-        'root',
-        'skipped',
+        'protected ?string $guidelinePath',
+        'protected array $overlay',
+        'protected array $skipped',
+        'protected string $root',
     ]);
 });
 
 it('keeps the constants of UpgradeCheck, name and value', function () {
     expect(upgradeCheckSurface('constants'))->toBe([
-        'BAG_MACROS = 30d05afc0bb1c56ce443797dffea936c',
-        'BREAKS = 5dad2db541174ea6a21c87f7ffdb97d2',
-        'COVERED_BY_DATE_USE = 588a226c22ef63902e7069974c1f937d',
-        'CURRENCY_OWNERS = f41f91882694ee2b197cc470a6e51b17',
-        'DIRECTORIES = 132e9de754064f177da0e8482aa429a4',
-        'GUIDE = 9d398f0e47a2ae28c796030c82c30592',
-        'HELPERS = d61d23f39c930da184d5b48d9c88f4e3',
-        'MAX_BYTES = b48676a4c5636a88f8fb157cb020aadc',
-        'MINIFIED_LINE = a9ab29b02d7de53220876821ca764574',
-        'RESTYLED = db4b4e94790ef1a61f4f0ecbcb7d457f',
-        'REVIEW = fad31e75ba52610f1c58d1a0c0ae149f',
-        'SKIP_DIRECTORIES = e3e961a5375ce390a95f716787b1e05e',
-        'SKIP_PATHS = 4655eb36ad35276b974c889f057ce2a2',
-        'TEST_CLASSES = 8dbfb36a902572504436610423c7b118',
-        'TONES = 31885f67fcdfb1d8a7223496b69dd499',
-        'TRAITS = 239ac38105a14fe4e2756de11bdd19d9',
-        'VENDOR_DIRECTORY = 3ec2051e98436fcd2945c9411732f63f',
-        'VISUAL = b10a542351a3b8961ec792e5686158a5',
+        'public BAG_MACROS = 30d05afc0bb1c56ce443797dffea936c',
+        'public BREAKS = 5dad2db541174ea6a21c87f7ffdb97d2',
+        'public COVERED_BY_DATE_USE = 588a226c22ef63902e7069974c1f937d',
+        'public CURRENCY_OWNERS = f41f91882694ee2b197cc470a6e51b17',
+        'public DIRECTORIES = 132e9de754064f177da0e8482aa429a4',
+        'public GUIDE = 9d398f0e47a2ae28c796030c82c30592',
+        'public HELPERS = d61d23f39c930da184d5b48d9c88f4e3',
+        'public MAX_BYTES = b48676a4c5636a88f8fb157cb020aadc',
+        'public MINIFIED_LINE = a9ab29b02d7de53220876821ca764574',
+        'public RESTYLED = db4b4e94790ef1a61f4f0ecbcb7d457f',
+        'public REVIEW = fad31e75ba52610f1c58d1a0c0ae149f',
+        'public SKIP_DIRECTORIES = e3e961a5375ce390a95f716787b1e05e',
+        'public SKIP_PATHS = 4655eb36ad35276b974c889f057ce2a2',
+        'public TEST_CLASSES = 8dbfb36a902572504436610423c7b118',
+        'public TONES = 31885f67fcdfb1d8a7223496b69dd499',
+        'public TRAITS = 239ac38105a14fe4e2756de11bdd19d9',
+        'public VENDOR_DIRECTORY = 3ec2051e98436fcd2945c9411732f63f',
+        'public VISUAL = b10a542351a3b8961ec792e5686158a5',
     ]);
 });
