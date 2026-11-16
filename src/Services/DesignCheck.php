@@ -281,7 +281,7 @@ class DesignCheck extends HostScanner
             $findings[$id] = array_values($rule->finish($findings[$id], $context));
         }
 
-        [$findings, $suppressed, $unused] = $this->suppress($findings, $markers, $ran, array_keys($active));
+        [$findings, $suppressed, $unused] = $this->suppress($findings, $markers, $ran);
 
         array_push($problems, ...$unused);
         usort($problems, fn ($a, $b) => [$a['file'], $a['line'], $a['problem']] <=> [$b['file'], $b['line'], $b['problem']]);
@@ -513,11 +513,10 @@ class DesignCheck extends HostScanner
      *
      * @param  array<string, array<int, array<string, mixed>>>  $findings
      * @param  array<string, array<int, array<string, mixed>>>  $markers  by file
-     * @param  array<string, array<string, true>>  $ran
-     * @param  array<int, string>  $active
+     * @param  array<string, array<string, true>>  $ran  the checks that ran on each file
      * @return array{0: array<string, array<int, array<string, mixed>>>, 1: array<int, array<string, mixed>>, 2: array<int, array<string, mixed>>}
      */
-    protected function suppress(array $findings, array $markers, array $ran, array $active): array
+    protected function suppress(array $findings, array $markers, array $ran): array
     {
         $suppressed = [];
         $used = [];
@@ -597,7 +596,7 @@ class DesignCheck extends HostScanner
                 }
 
                 foreach ($marker['ids'] as $id) {
-                    if ($id === 'all' || ! in_array($id, $active, true) || ! isset($ran[$file][$id]) || isset($used[$file][$index][$id])) {
+                    if ($id === 'all' || ! isset($ran[$file][$id]) || isset($used[$file][$index][$id])) {
                         continue;
                     }
 
