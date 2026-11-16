@@ -48,6 +48,9 @@ const calendarProjects = engines.flatMap(({ browser, device }) => [
   // Selectable tiles (`variant="tile"`): the `:has()` states, the grid and `:focus-visible` on the tile are the engine's to draw. CI runs it in the calendar
   // job (`e2e-engines`) after the totals specs.
   { name: `${browser}-tiles`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /tiles\.spec\.js$/ },
+  // Arrow keys in atom's menus (tests/e2e/menu-keys.spec.js): where the focus lands when a menu opens (Safari does not focus a button on click),
+  // what a morph does to the focused node, and the keys a field keeps. CI runs it in the calendar job (`e2e-engines`) after the tiles specs.
+  { name: `${browser}-menu-keys`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /menu-keys\.spec\.js$/ },
 ])
 
 // The shells' keyboard and focus specs run again in WebKit, for what Safari does and Chromium does not: it does not focus a button on click

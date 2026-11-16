@@ -98,7 +98,7 @@ test.describe('the keyboard', () => {
     await expect(page.getByTestId('send')).toBeFocused()
   })
 
-  test('Enter and Space open the ⋯, and its rows are reachable with Tab', async ({ page }) => {
+  test('Enter and Space open the ⋯ on its first row, and the arrows walk the rows', async ({ page }) => {
     await open(page)
 
     for (const key of ['Enter', 'Space']) {
@@ -106,9 +106,8 @@ test.describe('the keyboard', () => {
       await page.keyboard.press(key)
       await expect.poll(() => menu(page).evaluate((el) => el.matches(':popover-open'))).toBe(true)
 
-      await page.keyboard.press('Tab')
       await expect(page.getByTestId('duplicate')).toBeFocused()
-      await page.keyboard.press('Tab')
+      await page.keyboard.press('ArrowDown')
       await expect(page.getByTestId('void')).toBeFocused()
 
       await page.keyboard.press('Escape')

@@ -222,7 +222,9 @@ test('Enter on the focused trigger toggles the menu', async ({ page }) => {
   await expect(menu).toBeVisible()
   await expect(trigger).toHaveAttribute('aria-expanded', 'true')
 
-  // Focus is still on the trigger, so this is the same control pressed again.
+  // A keyboard open lands on the first item (menu-keys.spec.js has the rest); the focus goes back to the trigger, so this is the same control pressed again.
+  await expect(menu.getByRole('menuitem', { name: 'Alpha' })).toBeFocused()
+  await trigger.focus()
   await expect(trigger).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(menu).toBeHidden()
