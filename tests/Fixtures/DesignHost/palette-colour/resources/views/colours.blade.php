@@ -22,6 +22,12 @@
 
     <div class="bg-zinc-100 bg-zinc-100">One token twice counts once</div> {{-- expect: palette-colour --}}
 
+    <atom:select wrapper-class="text-rose-600" /> {{-- expect: palette-colour --}}
+
+    <div class="[&:hover]:bg-red-500 supports-[display:grid]:text-teal-700">A colon inside brackets is no variant</div> {{-- expect: palette-colour x2 --}}
+
+    <div class="dark:bg-[color:#111]">A typed colour in brackets</div> {{-- expect: palette-colour --}}
+
     {{-- expect: palette-colour --}}
     <div
         id="wide"

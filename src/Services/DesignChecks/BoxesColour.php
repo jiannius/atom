@@ -182,8 +182,8 @@ abstract class BoxesColour extends Rule
 
     /**
      * Every class token in the string literals of a PHP file that a matcher names. Only a string that reads as a class
-     * list counts (each word a class-shaped token or a bare utility such as `flex`, one with a hyphen), so `'shadow'` as an
-     * array key or a word in a sentence is not a class. An interpolated string is not read.
+     * list counts (each word a class-shaped token with a hyphen, a colon or a bracket, or a bare utility such as `flex`), so a
+     * word in a sentence is not a class. An interpolated string is not read.
      *
      * @param  callable(array<int, string>, string, string): ?string  $matcher
      * @return iterable<int, array{0: int, 1: ?string}>
@@ -215,19 +215,11 @@ abstract class BoxesColour extends Rule
             return;
         }
 
-        $hyphenated = false;
-
         foreach ($words[0] as [$word]) {
             if (! preg_match('/^[!A-Za-z0-9_\-:\[\]\/.%#&>*()=,~+@]+$/', $word)
                 || (! preg_match('/[-:\[]/', $word) && ! in_array($word, static::BARE_UTILITIES, true))) {
                 return;
             }
-
-            $hyphenated = $hyphenated || str_contains($word, '-');
-        }
-
-        if (! $hyphenated) {
-            return;
         }
 
         foreach ($words[0] as [$word, $at]) {

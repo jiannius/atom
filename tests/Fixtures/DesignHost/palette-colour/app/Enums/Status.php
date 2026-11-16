@@ -36,6 +36,11 @@ enum Status: string
         return "bg-{$tone}-100 text-red-500 {$tone}";
     }
 
+    public function placeholder(): string
+    {
+        return 'bg-red-500 $a-b';
+    }
+
     public function sentence(): string
     {
         return 'Use bg-zinc-100 for the paper';
