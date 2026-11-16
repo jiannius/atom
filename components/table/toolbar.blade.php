@@ -21,6 +21,10 @@
      table's columns, so it cannot tell whether any is `hideable`.
      Order of the end group: the row count, `actions`, `end`, the trashed toggle, the ⋯ menu, the divider and the column picker. A slot counts as content only if it holds more
      than comments and whitespace (hasActualContent), so a slot of `@if` blocks that all come out false draws nothing.
+     `<atom:action>` goes in any of the four slots (the default one too: it is taken out of the controls and drawn in the end group): atom draws the
+     first two untoned `normal` ones as ghost buttons after the host's `actions` and before its `end` (an action with an `icon` is icon-only below `sm`, its
+     label kept as `sr-only`), and the rest in the ⋯ after the host's `menu` items: untoned, the `low` ones (the `menu` slot is `low`), a separator, then warning
+     and danger. A toned action is never a button here. A toolbar with no action prints the bytes it always did.
      The row count ("1–50 of 128", from the table's paginator; `:count="false"` leaves it out) leads the end group. The table's header slot
      is a real element the server keeps current, but the paginator belongs to the table, not to this bar, so the count is not rendered here:
      the table prints it on a hidden element a morph keeps current, and this group reads it (`tableCount`,
@@ -37,15 +41,28 @@
      range there), so it never takes the room an icon-only end group shares with the search. --}}
 @php
 $has = fn ($slot) => isset($slot) && $slot->hasActualContent();
+
+/* the actions in the slots are taken out of them (a marker is what stands for each one there) and placed; a slot without one is the slot as it was */
+$registry = app(\Jiannius\Atom\Services\ActionItems::class);
+[$slot, $fromDefault] = $registry->collect($slot, 'default');
+[$actions, $fromActions] = $registry->collect($actions ?? null, 'actions');
+[$end, $fromEnd] = $registry->collect($end ?? null, 'end');
+[$menu, $fromMenu] = $registry->collect($menu ?? null, 'menu');
+
+$placed = \Jiannius\Atom\Services\ActionPlacement::place('toolbar', $registry->keyed([...$fromDefault, ...$fromActions, ...$fromEnd, ...$fromMenu]), [
+    'hostMenu' => $has($menu),
+]);
+
 $hasActions = $has($actions ?? null);
 $hasEnd = $has($end ?? null);
-$hasMenu = $has($menu ?? null);
+$hasPlaced = $placed['visible'] !== [];
+$hasMenu = $has($menu ?? null) || $placed['menu'] !== [];
 $hasColumns = (bool) $columns;
-$hasGroup = $hasActions || $hasEnd || $hasMenu || $hasColumns;
+$hasGroup = $hasActions || $hasEnd || $hasPlaced || $hasMenu || $hasColumns;
 $hasCount = (bool) $count;
 // what the picker's divider follows: the host's buttons, the trashed toggle and the ⋯ menu are always there when set; the row count
 // only while it has text (and not on a phone), so with the count alone the divider takes the count's own rules
-$hasBeforeColumns = $hasActions || $hasEnd || $hasMenu || $trashed;
+$hasBeforeColumns = $hasActions || $hasEnd || $hasPlaced || $hasMenu || $trashed;
 @endphp
 
 <div {{ $attributes->class(['flex min-w-0 grow basis-full flex-wrap items-start gap-2', 'border-b px-3 py-2.5' => $strip]) }} data-atom-table-toolbar>
@@ -67,7 +84,7 @@ $hasBeforeColumns = $hasActions || $hasEnd || $hasMenu || $trashed;
 
             @if ($hasActions)
                 {{ $actions }}
-            @endif
+            @endif<atom:action._list :items="$placed['visible']" place="visible" surface="toolbar" />
 
             @if ($hasEnd)
                 {{ $end }}
@@ -79,7 +96,7 @@ $hasBeforeColumns = $hasActions || $hasEnd || $hasMenu || $trashed;
 
             @if ($hasMenu)
                 <atom:menu._more variant="ghost" tooltip>
-                    {{ $menu }}
+                    {{ $menu }}<atom:action._list :items="$placed['menu']" place="menu" surface="toolbar" :separator="$placed['separator']" />
                 </atom:menu._more>
             @endif
 

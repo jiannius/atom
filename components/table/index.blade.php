@@ -14,8 +14,24 @@
 
 @php
 /* A table of columns and rows needs nothing from $_table: the checked bar is what reads it (the parts that do guard themselves) */
-$hasChecked = isset($checked) && $checked->isNotEmpty();
-$hasCheckedMenu = isset($checkedMenu) && $checkedMenu->hasActualContent();
+
+/* the actions in `checked` and `checked-menu` are taken out of the slots (a marker is what stands for each one there) and placed: the first three as buttons
+   (a `danger` or `delete` one that is not `low` is pinned after them, outside the three), the rest in the ⋯; a slot without one is the slot as it was, down to
+   the bytes. A slot that held markers (placed or not) counts as content only when something real is left, like the header's slots; one that held none keeps
+   the old rule (`isNotEmpty()`), so a bar whose slot is made of `@if` blocks that all come out false is drawn as it always was. */
+$registry = app(\Jiannius\Atom\Services\ActionItems::class);
+$checkedBefore = $checked ?? null;
+[$checked, $fromChecked] = $registry->collect($checkedBefore, 'checked');
+[$checkedMenu, $fromCheckedMenu] = $registry->collect($checkedMenu ?? null, 'checked-menu');
+
+$placed = \Jiannius\Atom\Services\ActionPlacement::place('bulk', $registry->keyed([...$fromChecked, ...$fromCheckedMenu]), [
+    'hostMenu' => isset($checkedMenu) && $checkedMenu->hasActualContent(),
+]);
+
+$checkedHeld = isset($checked) && ($checked === $checkedBefore ? $checked->isNotEmpty() : $checked->hasActualContent());
+$hasPlaced = $placed['visible'] !== [] || $placed['pinned'] !== [];
+$hasChecked = $checkedHeld || $hasPlaced;
+$hasCheckedMenu = (isset($checkedMenu) && $checkedMenu->hasActualContent()) || $placed['menu'] !== [];
 $showChecked = $hasChecked || $hasCheckedMenu;
 
 if ($showChecked) {
@@ -57,8 +73,8 @@ $frameless = (bool) $frameless;
 
 $stripClasses = $frameless ? 'border-b px-3 py-2.5' : '';
 
-$checkedAccent = $hasChecked && $checked->attributes->get('tone') === 'accent';
-$checkedBag = $hasChecked ? $checked->attributes : new \Illuminate\View\ComponentAttributeBag;
+$checkedAccent = $hasChecked && isset($checked) && $checked->attributes->get('tone') === 'accent';
+$checkedBag = $hasChecked && isset($checked) ? $checked->attributes : new \Illuminate\View\ComponentAttributeBag;
 $checkedClasses = Arr::toCssClasses([
     'min-h-10 flex flex-wrap items-center gap-3',
     $stripClasses,
@@ -169,12 +185,12 @@ data-atom-table
             <div {{ $checkedBag->except('tone')->class('grow flex flex-wrap items-center gap-2') }}>
                 @if ($hasChecked)
                     {{ $checked }}
-                @endif
+                @endif<atom:action._list :items="$placed['visible']" place="visible" surface="bulk" /><atom:action._list :items="$placed['pinned']" place="pinned" surface="bulk" />
 
                 @if ($hasCheckedMenu)
                     {{-- the ⋯ menu, last in the group after the host's buttons (delete included). It stays inside the bar, so a delete item counts the selection --}}
                     <atom:menu._more variant="ghost" tooltip>
-                        {{ $checkedMenu }}
+                        {{ $checkedMenu }}<atom:action._list :items="$placed['menu']" place="menu" surface="bulk" :separator="$placed['separator']" />
                     </atom:menu._more>
                 @endif
             </div>

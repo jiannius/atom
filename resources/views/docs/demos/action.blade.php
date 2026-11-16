@@ -16,3 +16,8 @@
 title="In a page header"
 description="Two buttons, the rest in the ⋯ menu (utilities first, then a separator, then warning, then danger), the primary last. Duplicate is low, so it never shows as a button; Void and Delete are toned, so they never do either, and each asks before it acts, in its tone. Try the ⋯ menu."
 view="atom::docs.demos.action.header"/>
+
+<atom:docs.example
+title="In a table's toolbar"
+description="Two ghost buttons in the end group, the rest in the ⋯ (Archive old, then Copy list, a separator and Void all). A button with an icon shows only the icon below sm and keeps its name for a screen reader. The bulk bar reads its checked and checked-menu slots the same way: three buttons, the first delete or danger action pinned after them, the rest in the ⋯."
+view="atom::docs.demos.action.toolbar"/>
