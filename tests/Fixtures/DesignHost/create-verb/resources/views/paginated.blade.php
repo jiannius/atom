@@ -3,6 +3,7 @@
     <atom:page.header title="Suppliers">
         <x-slot:primary>
             <atom:button variant="primary" icon="add">Add supplier</atom:button> {{-- expect: create-verb --}}
+            <atom:link href="#">Add contact</atom:link>
         </x-slot:primary>
     </atom:page.header>
 

@@ -162,6 +162,7 @@ describe('create-verb', function () {
         expect(DesignHost::scanSource($header, 'create-verb'))->toBe([])
             ->and(DesignHost::scanSource($header.'<atom:table />', 'create-verb'))->toBe([])
             ->and(DesignHost::scanSource($header.'<atom:table :paginate="$a" />', 'create-verb'))->toHaveCount(1)
+            ->and(DesignHost::scanSource($header.'<atom:table :paginate="false" />', 'create-verb'))->toBe([])
             ->and(DesignHost::scanSource($header.'<atom:table.toolbar />', 'create-verb'))->toHaveCount(1)
             ->and(DesignHost::scanSource($header.'<atom:table.filters />', 'create-verb'))->toHaveCount(1)
             ->and(DesignHost::scanSource($header.'<atom:table.search />', 'create-verb'))->toHaveCount(1);
@@ -171,7 +172,11 @@ describe('create-verb', function () {
         $new = fn (string $inside) => DesignHost::scanSource($inside, 'create-verb');
 
         expect($new('<atom:button>New message</atom:button><atom:menu.item>New chat</atom:menu.item>'))->toBe([])
-            ->and($new('<atom:page.header title="a"><x-slot:actions><atom:button>New version</atom:button></x-slot:actions></atom:page.header>'))->toBe([])
+            ->and($new('<atom:button>New message</atom:button><atom:link href="#">New chat</atom:link><atom:button icon="send">New message</atom:button>'))->toBe([])
+            ->and($new('<atom:page.header title="a"><x-slot:actions><atom:button>New version</atom:button></x-slot:actions></atom:page.header>'))->toHaveCount(1)
+            ->and($new('<atom:button icon="add">New thing</atom:button>'))->toHaveCount(1)
+            ->and($new('<atom:button variant="primary">New thing</atom:button>'))->toHaveCount(1)
+            ->and($new('<atom:card><x-slot:actions><atom:button>New note</atom:button></x-slot:actions></atom:card>'))->toBe([])
             ->and($new('<atom:page.header title="a"><x-slot:primary><atom:button>New invoice</atom:button></x-slot:primary></atom:page.header>'))->toHaveCount(1)
             ->and($new('<atom:empty heading="a"><x-slot:action><atom:button>New thing</atom:button></x-slot:action></atom:empty>'))->toHaveCount(1);
     });

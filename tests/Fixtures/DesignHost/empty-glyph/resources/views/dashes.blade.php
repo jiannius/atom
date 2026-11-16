@@ -37,6 +37,7 @@
     <p>@if ($a) yes @else — @endif</p>
     <p>@if ($a) {{ $a }} @else n/a @endif</p>
     <p>@if ($a) {{ $a }} @else - @endif</p>
+    @if ($a) {{ $a }} @else - @endif
     <p>@if ($a) @if ($b) {{ $b }} @endif @else — @endif</p>
     <p>@if ($a) {{ $a }} @elseif ($b) {{ $b }} @else — @endif</p>
     <p>{{ $a ?? '&hellip;' }}</p>

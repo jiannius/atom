@@ -1,11 +1,11 @@
-{{-- A view with no table: a header primary "Add ..." is a line or a child here, so it stays unflagged; "New ..." outside the header primary and an empty state is not read either. --}}
+{{-- A view with no table: a header primary "Add ..." is a line or a child here, so it stays unflagged; "New ..." in any header slot is still flagged. --}}
 <atom:page>
     <atom:page.header title="Invoice">
         <x-slot:primary>
             <atom:button variant="primary">Add line</atom:button>
         </x-slot:primary>
         <x-slot:actions>
-            <atom:button>New version</atom:button>
+            <atom:button>New version</atom:button> {{-- expect: create-verb --}}
         </x-slot:actions>
     </atom:page.header>
 </atom:page>

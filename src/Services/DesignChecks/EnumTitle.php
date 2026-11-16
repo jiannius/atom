@@ -110,12 +110,13 @@ class EnumTitle extends CopyFormsRule
     }
 
     /**
-     * Whether an offset is inside the arguments of a log or cache call of the same statement
+     * Whether an offset is inside the arguments of a log or cache call of the same statement: a `;`, a `{` or a `}` (a block
+     * or an echo boundary) ends the statement
      */
     protected function inLogOrCache(string $text, int $offset): bool
     {
         $before = substr($text, max(0, $offset - 400), min(400, $offset));
-        $cut = max((int) strrpos($before, ';'), (int) strrpos($before, '}}'), (int) strrpos($before, '{{'));
+        $cut = max((int) strrpos($before, ';'), (int) strrpos($before, '{'), (int) strrpos($before, '}'));
 
         return preg_match(static::NOT_SCREEN_CALL, substr($before, $cut)) === 1;
     }
