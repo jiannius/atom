@@ -20,11 +20,12 @@ abstract class CopyFormsRule extends Rule
     protected const DASHES = ['—', '–', '―', '--', '-'];
 
     /**
-     * Directory names, besides the views' own non-screen ones, whose PHP prints a file and not a screen
+     * Directory names, besides the views' own non-screen ones, whose PHP prints a file or text for a model and not a screen
+     * (`ai`: the tools and agents of an AI package, which write text for a language model to read)
      *
      * @var array<int, string>
      */
-    protected const NON_SCREEN_PHP = ['export', 'exports', 'csv'];
+    protected const NON_SCREEN_PHP = ['export', 'exports', 'csv', 'ai', 'mcp'];
 
     /**
      * Whether a string is only a typed dash (after decoding entities such as `&mdash;`)

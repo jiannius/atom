@@ -41,7 +41,7 @@ class HandPanel extends BoxesColour
 
     public function detect(): string
     {
-        return 'A `div`, `section`, `article`, `aside`, `nav`, `header`, list, `figure`, `fieldset`, `details` or `form` whose own classes hold a panel rounding (`rounded-panel`, `rounded-md`, `-lg`, `-xl`, `-2xl`), a border on all sides (`border`, `border-2`) and a fill (`bg-surface`, `bg-surface-sunken`, `bg-white`, with or without an opacity), all without a variant. Not flagged: a link or a button (`raw-control`), `rounded-full`, a small shell around one field (no 16px padding, at most three elements, one field, directly or in one wrapper: a field shell, a labelled checkbox), a dialog, a `border-dashed` or `border-dotted` box (a dropzone), an `inline-*` or `w-fit` box, an Alpine popover (`x-show`, `x-anchor` or `x-transition` on an absolutely or fixed positioned box), an `animate-pulse` placeholder, a host component, and the `brand` and `logo` slots. A class token written with an echo (`bg-{{ $c }}`) is not counted, so a box whose fill comes from one is not flagged; a `bg-surface/50` fill is.';
+        return 'A `div`, `section`, `article`, `aside`, `nav`, `header`, list, `figure`, `fieldset`, `details` or `form` whose own classes hold a panel rounding (`rounded-panel`, `rounded-md`, `-lg`, `-xl`, `-2xl`), a border on all sides (`border`, `border-2`) and a fill (`bg-surface`, `bg-surface-sunken`, `bg-white`, with or without an opacity), all without a variant. Not flagged: a link or a button (`raw-control`), `rounded-full`, a small shell around one field (no 16px padding, at most three elements, one field, directly or in one wrapper: a field shell, a labelled checkbox), a dialog, a `border-dashed` or `border-dotted` box (a dropzone), an `inline-*` or `w-fit` box, an Alpine popover (`x-show`, `x-anchor` or `x-transition` on an absolutely or fixed positioned box), an `animate-pulse` placeholder, a keycap, chip or one-line control (`h-1` to `h-12`, `size-1` to `size-12`), a bar that shows on hover (absolute or fixed with `opacity-0`), a host component, and the `brand` and `logo` slots. A class token written with an echo (`bg-{{ $c }}`) is not counted, so a box whose fill comes from one is not flagged; a `bg-surface/50` fill is.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -76,6 +76,11 @@ class HandPanel extends BoxesColour
         $resting = $this->resting($file, $node);
 
         if ($outline->has($node, 'popover') || $outline->has($node, 'role') || $this->any($resting, '/^(?:animate-pulse|border-(?:dashed|dotted)|inline(?:-[a-z]+)?|w-fit)$/')) {
+            return true;
+        }
+
+        // a keycap, a chip or a one-line control (a fixed height of 3rem or less), and a bar that only shows on hover
+        if ($this->any($resting, '/^(?:h|size)-(?:[1-9]|1[0-2])$/') || ($this->any($resting, '/^(?:absolute|fixed)$/') && $this->any($resting, '/^opacity-0$/'))) {
             return true;
         }
 

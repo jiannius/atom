@@ -130,6 +130,13 @@
     <div class="w-fit rounded-md border bg-surface">Fit</div>
     <div class="rounded-md border bg-surface p-2"><label><input type="checkbox"> A labelled checkbox</label></div>
     <div class="rounded-md border bg-surface p-2"><div><atom:select wire:model="x" /></div></div>
+    <div class="h-6 w-8 shrink-0 rounded-md border bg-surface text-center">A keycap</div>
+    <div class="flex h-10 items-center gap-2 rounded-lg border bg-surface px-3">One line</div>
+    <div class="size-9 rounded-md border bg-surface">A tile</div>
+    <div class="absolute right-3 top-3 rounded-md border bg-surface opacity-0 group-hover:opacity-100">A bar that shows on hover</div>
+    <div class="h-40 rounded-md border bg-surface">A tall box</div> {{-- expect: hand-panel --}}
+    <div class="h-13 rounded-md border bg-surface">Past 3rem</div> {{-- expect: hand-panel --}}
+    <div class="absolute rounded-md border bg-surface p-4">An absolute box in view</div> {{-- expect: hand-panel --}}
     <x-box class="rounded-md border bg-surface">A host component</x-box>
     <span class="rounded-md border bg-surface px-1">A badge</span>
 

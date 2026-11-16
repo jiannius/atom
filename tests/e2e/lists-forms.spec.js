@@ -1082,10 +1082,10 @@ for (const tw of ['floor', 'latest']) {
       expect(under[1].y).toBeGreaterThanOrEqual(under[0].bottom)
     })
 
-    test('the balance is a 24px figure in danger while overdue, and in success once paid', async ({ page }) => {
+    test('the balance is a 22px figure (text-2xl) in danger while overdue, and in success once paid', async ({ page }) => {
       await doc(page)
       const overdue = await styles(page.getByTestId('balance'), ['font-size', 'color', 'font-variant-numeric'])
-      expect(overdue['font-size']).toBe('24px')
+      expect(overdue['font-size']).toBe('22px')
       expect(overdue['font-variant-numeric']).toContain('tabular-nums')
 
       await doc(page, 'status=paid')
