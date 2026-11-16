@@ -24,7 +24,16 @@
     <p>@if ($a) {{ $a }} @else <span class="text-sm">--</span> @endif</p> {{-- expect: empty-glyph --}}
     <p>@if ($a) {!! $a !!} @else &mdash; @endif</p> {{-- expect: empty-glyph --}}
 
+    <p>{{ $sign ?: '-' }} {{ $amount }}</p> {{-- expect: empty-glyph --}}
+    <p>{{ $sign ?: '-' }}<b>{{ $amount }}</b></p> {{-- expect: empty-glyph --}}
+    <p>{{ $sign ?: '--' }}{{ $amount }}</p> {{-- expect: empty-glyph --}}
+    <p>{{ $sign ?: '—' }}5</p> {{-- expect: empty-glyph --}}
+
     {{-- look-alikes: nothing here is a missing value typed in --}}
+    <p>{{ $sign ?: '-' }}{{ $amount }}</p>
+    <p>{!! $sign ?: '-' !!}{{ $amount }}</p>
+    <p>{{ $sign ?: '-' }}{!! $amount !!}</p>
+    <p>{{ $sign ?: '-' }}5.00</p>
     <p>@if ($a) yes @else — @endif</p>
     <p>@if ($a) {{ $a }} @else n/a @endif</p>
     <p>@if ($a) {{ $a }} @else - @endif</p>
