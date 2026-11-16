@@ -217,6 +217,10 @@ jobs:
       - if: ${{ !cancelled() }}
         run: node_modules/.bin/playwright test --no-deps --project=${{ matrix.browser }}-tiles
 
+      # Arrow keys in atom's menus (tests/e2e/menu-keys.spec.js) in both engines: where the focus lands on open, a morph that moves the focused item.
+      - if: ${{ !cancelled() }}
+        run: node_modules/.bin/playwright test --no-deps --project=${{ matrix.browser }}-menu-keys
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
