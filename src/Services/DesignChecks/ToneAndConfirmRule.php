@@ -24,8 +24,8 @@ abstract class ToneAndConfirmRule extends Rule
      * The tone an element wears, by what it says itself:
      *  - `delete`: `type="delete"` on a button, `variant="delete"` on an item (both confirm themselves)
      *  - `danger`, `warning`: the tint of the tone (`error` is danger; an item's `remove` is danger too)
-     *  - `plain`: nothing toned (the default, `ghost` or `link`, an item with no variant)
-     *  - `other`: a choice that is not a tone (`primary`, `success`, `info`, a submit, a button's `variant="delete"`)
+     *  - `plain`: nothing toned (the default, `ghost` or `link`, an item with no variant; a button's `variant="delete"` or `remove` draws the default)
+     *  - `other`: a choice that is not a tone (`primary`, `success`, `info`, a submit)
      *  - null: bound, echoed or unknown, so a check says nothing
      */
     protected function tone(BladeOutline $outline, array $node): ?string
@@ -71,9 +71,9 @@ abstract class ToneAndConfirmRule extends Rule
         return match ($variant) {
             'warning' => 'warning',
             'danger', 'error' => 'danger',
-            'default', 'link' => 'plain',
+            'default', 'link', 'delete', 'remove' => 'plain',
             'ghost' => $this->colourTone($outline, $node, 'plain'),
-            'primary', 'accent', 'success', 'info', 'delete', 'remove' => 'other',
+            'primary', 'accent', 'success', 'info' => 'other',
             default => null,
         };
     }

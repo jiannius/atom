@@ -6,6 +6,9 @@
             <atom:menu.item variant="danger" wire:click="expel">Expel</atom:menu.item> {{-- expect: tone-unconfirmed --}}
             <atom:menu.item variant="remove" wire:click="removeLine({{ $id }})">Remove line</atom:menu.item> {{-- expect: tone-unconfirmed --}}
             <atom:menu.item variant="warning" wire:click.prevent="resume">Resume</atom:menu.item> {{-- expect: tone-unconfirmed --}}
+            <atom:menu.item variant="warning" wire:click="chain">Chain</atom:menu.item> {{-- expect: tone-unconfirmed --}}
+            <atom:menu.item variant="warning" wire:click="outer">Outer</atom:menu.item> {{-- expect: tone-unconfirmed --}}
+            <atom:menu.item variant="warning" wire:click="SUSPENDED">Upper</atom:menu.item> {{-- expect: tone-unconfirmed --}}
         </x-slot:menu>
 
         <x-slot:actions>
@@ -53,6 +56,25 @@
     <atom:menu.item variant="warning" wire:click="suspend({{ $id }})">Suspend</atom:menu.item>
     <atom:button variant="danger" x-on:click="$wire.suspend()">Suspend</atom:button>
     <atom:button variant="danger" wire:click="$parent.suspend">Suspend</atom:button>
+
+    {{-- the method hands over to one that asks, opens a modal or names the dialog event --}}
+    <atom:menu.item variant="warning" wire:click="hand">Hand</atom:menu.item>
+    <atom:menu.item variant="warning" wire:click="dialog">Dialog</atom:menu.item>
+    <atom:menu.item variant="warning" wire:click="viaEvent">Event</atom:menu.item>
+    <atom:menu.item variant="warning" wire:click="SUSPEND">Suspend</atom:menu.item>
+
+    {{-- a method that only opens a dialog --}}
+    <atom:button variant="danger" wire:click="confirmPurge">Purge</atom:button>
+    <atom:button variant="danger" wire:click="askToPurge">Purge</atom:button>
+    <atom:button variant="danger" wire:click="openPurge">Purge</atom:button>
+    <atom:button variant="danger" onclick="return confirm('Purge?')" wire:click="purge">Purge</atom:button>
+
+    {{-- plumbing, not an action of the host's --}}
+    <atom:button variant="danger" x-on:click="$wire.set('open', true)">Purge</atom:button>
+    <atom:button variant="danger" x-on:click="$wire.$set('open', true)">Purge</atom:button>
+    <atom:button variant="danger" x-on:click="$wire.dispatch('purge')">Purge</atom:button>
+    <atom:button variant="danger" wire:click="$set('open', true)">Purge</atom:button>
+    <atom:button variant="danger" wire:click="$toggle('open')">Purge</atom:button>
 
     {{-- a submit, a link, an Alpine-only handler, no handler, or a value that cannot be read --}}
     <atom:button variant="danger" type="submit">Close account</atom:button>

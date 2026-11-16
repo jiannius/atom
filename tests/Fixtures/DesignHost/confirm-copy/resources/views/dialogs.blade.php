@@ -56,6 +56,12 @@
     <atom:button x-on:click="atom.notify({ heading: 'Void invoice?' })">Void</atom:button>
     <atom:button x-on:click="window.confirm('Void?')">Void</atom:button>
     <atom:button wire:click="void">Void</atom:button>
+    <atom:button variant="danger" inverted :confirm="['message' => 'LHDN and KWSP both get the NRIC']">Void</atom:button>
+    <script>
+        // atom.confirm({ heading: 'Void invoice?' })
+        /* atom.confirm({ heading: 'Void invoice?', buttonConfirm: 'Yes' }) */
+        const url = 'https://example.test/path'; atom.confirm({ heading: 'Void invoice?', buttonConfirm: 'Void' })
+    </script>
 
     <!-- <atom:confirm.trigger heading="Archive?"><atom:button>Archive</atom:button></atom:confirm.trigger> -->
     {{-- <atom:confirm.trigger heading="Archive?"><atom:button>Archive</atom:button></atom:confirm.trigger> --}}

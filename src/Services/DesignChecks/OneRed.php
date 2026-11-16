@@ -27,7 +27,7 @@ class OneRed extends ToneAndConfirmRule
 
     public function detect(): string
     {
-        return 'An `<atom:button variant="danger">` (or `error`) with no `inverted` and no `type="delete"` that is not inside an `<atom:modal>` (a hand-built confirm dialog\'s button), and an `<atom:button variant="ghost">` with `color="danger"` or a `text-danger` class. A bound variant, color or type is not read.';
+        return 'An `<atom:button variant="danger">` (or `error`) with no `inverted` and no `type="delete"` that is not inside an `<atom:modal>` (a hand-built confirm dialog\'s button), and an `<atom:button variant="ghost">` with `color="danger"` or a `text-danger` class (one that only shows on hover is not red at rest). A bound variant, color or type is not read.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -64,7 +64,7 @@ class OneRed extends ToneAndConfirmRule
             }
 
             foreach ($outline->classes($button) as $class) {
-                if (preg_match('/(?:^|:)'.preg_quote('text-', '/').'danger/', $class)) {
+                if (preg_match('/^(?:dark:)?'.preg_quote('text-', '/').'danger/', $class)) {
                     yield [$button['offset'], 'a ghost in a red text class: use `type="delete"` or `variant="danger" inverted`'];
 
                     break;

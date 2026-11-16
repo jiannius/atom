@@ -46,7 +46,7 @@ class ConfirmTone extends ToneAndConfirmRule
             }
 
             $dialog = match ($variant) {
-                'danger', 'error' => 'danger',
+                'danger' => 'danger',
                 'warning' => 'warning',
                 'success' => 'success',
                 default => 'accent',

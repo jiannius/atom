@@ -14,6 +14,11 @@
                 <atom:button variant="warning" inverted>Void invoice</atom:button>
             </atom:confirm.trigger>
 
+ {{-- the dialog has no error tone: it draws the accent one --}}
+            <atom:confirm.trigger variant="error" heading="Purge?" button-confirm="Purge" x-on:confirmed="$wire.purge()"> {{-- expect: confirm-tone --}}
+                <atom:button variant="danger" inverted>Purge</atom:button>
+            </atom:confirm.trigger>
+
             <atom:confirm.trigger variant="success" heading="Void invoice?" button-confirm="Void" x-on:confirmed="$wire.void()"> {{-- expect: confirm-tone --}}
                 <atom:button variant="ghost" color="warning">Void invoice</atom:button>
             </atom:confirm.trigger>
@@ -42,7 +47,7 @@
         <atom:menu.item variant="remove">Remove line</atom:menu.item>
     </atom:confirm.trigger>
 
-    <atom:confirm.trigger variant="error" heading="Purge?" button-confirm="Purge" x-on:confirmed="$wire.purge()">
+    <atom:confirm.trigger variant="danger" heading="Purge?" button-confirm="Purge" x-on:confirmed="$wire.purge()">
         <atom:button variant="danger" inverted>Purge</atom:button>
     </atom:confirm.trigger>
 

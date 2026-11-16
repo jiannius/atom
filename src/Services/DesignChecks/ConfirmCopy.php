@@ -23,7 +23,7 @@ class ConfirmCopy extends ToneAndConfirmRule
      *
      * @var array<int, string>
      */
-    protected const ACRONYMS = ['HTML', 'JSON', 'HTTP', 'HTTPS', 'SMTP', 'IMAP', 'OAUTH', 'SAML', 'IBAN', 'SWIFT', 'WHATSAPP', 'LDAP', 'SFTP', 'WEBP', 'JPEG', 'DOCX', 'XLSX'];
+    protected const ACRONYMS = ['HTML', 'JSON', 'HTTP', 'HTTPS', 'SMTP', 'IMAP', 'OAUTH', 'SAML', 'IBAN', 'SWIFT', 'WHATSAPP', 'LDAP', 'SFTP', 'WEBP', 'JPEG', 'DOCX', 'XLSX', 'SOCSO', 'LHDN', 'KWSP', 'NRIC', 'PDPA', 'SST', 'GST', 'EPF'];
 
     /**
      * How a confirm call is written: `$this->confirm(`, `atom()->confirm(`, `app('atom')->confirm(` or `atom.confirm(`
@@ -66,6 +66,7 @@ class ConfirmCopy extends ToneAndConfirmRule
     public function find(File $file, Context $context): iterable
     {
         $text = $file->text();
+        $code = $file->isBlade() ? $this->withoutScriptComments($text) : $text;
         $outline = $file->outline();
 
         /** @var array<int, array{0: int, 1: string}> $hits offset => [priority, note] */
@@ -89,7 +90,7 @@ class ConfirmCopy extends ToneAndConfirmRule
         }
 
         // a button text written as a key, in PHP, JavaScript or a bound attribute
-        if (preg_match_all('/(?<![\w])buttonConfirm[\'"]?\s*(?:=>|:)\s*(?:(?:t|__|trans)\(\s*)?([\'"])([^\'"\\\\]*)\1/', $text, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+        if (preg_match_all('/(?<![\w])buttonConfirm[\'"]?\s*(?:=>|:)\s*(?:(?:t|__|trans)\(\s*)?([\'"])([^\'"\\\\]*)\1/', $code, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
             foreach ($found as $match) {
                 if ($this->generic($match[2][0])) {
                     $add($match[0][1], 1, 'the confirm button says "'.trim($match[2][0]).'": repeat the verb ("Archive")');
@@ -98,7 +99,11 @@ class ConfirmCopy extends ToneAndConfirmRule
         }
 
         if (! ($file->kind === 'php' && $this->isCommand($file))) {
-            foreach ($this->calls($text) as [$offset, $args]) {
+            foreach ($this->calls($code) as [$offset, $args, $receiver]) {
+                if ($receiver === '$this->' && ! $this->isComponent($file)) {
+                    continue;
+                }
+
                 if ($args !== '' && (! preg_match('/^(?:[{\[\'"]|\w+\s*:(?!:))/', $args) || str_contains($args, '...'))) {
                     continue;
                 }
@@ -245,7 +250,7 @@ class ConfirmCopy extends ToneAndConfirmRule
     /**
      * The confirm calls of a text: where each is and the text of its arguments
      *
-     * @return array<int, array{0: int, 1: string}>
+     * @return array<int, array{0: int, 1: string, 2: string}>
      */
     protected function calls(string $text): array
     {
@@ -260,7 +265,7 @@ class ConfirmCopy extends ToneAndConfirmRule
             $end = $this->close($text, $open, '(', ')');
 
             if ($end !== null) {
-                $calls[] = [$at, trim(substr($text, $open + 1, $end - $open - 1))];
+                $calls[] = [$at, trim(substr($text, $open + 1, $end - $open - 1)), str_starts_with($match, '$this->') ? '$this->' : ''];
             }
         }
 
@@ -299,6 +304,69 @@ class ConfirmCopy extends ToneAndConfirmRule
         }
 
         return null;
+    }
+
+    /**
+     * Whether `$this->confirm(` in this file is atom's: a Livewire component (a `livewire` folder, `AtomComponent`, a class that
+     * extends `Component`), which does not define a `confirm()` of its own
+     */
+    protected function isComponent(File $file): bool
+    {
+        $text = $file->text();
+
+        if (preg_match('/\bfunction\s+confirm\s*\(/i', $text)) {
+            return false;
+        }
+
+        return (bool) preg_match('#(^|/)livewire/#i', $file->path) || preg_match('/\bAtomComponent\b|\bextends\s+\\\\?(?:[\w\\\\]*\\\\)?Component\b|\buse\s+Livewire\\\\/', $text);
+    }
+
+    /**
+     * The text with the comments of its `<script>` blocks blanked, at the same length, so an `atom.confirm(` in a comment is
+     * not a call
+     */
+    protected function withoutScriptComments(string $text): string
+    {
+        return preg_replace_callback('/(<script\b[^>]*>)(.*?)(<\/script>)/is', function ($found) {
+            $js = $found[2];
+            $length = strlen($js);
+            $quote = null;
+
+            for ($i = 0; $i < $length; $i++) {
+                $char = $js[$i];
+
+                if ($quote !== null) {
+                    if ($char === '\\') {
+                        $i++;
+                    } elseif ($char === $quote) {
+                        $quote = null;
+                    }
+
+                    continue;
+                }
+
+                if ($char === '"' || $char === "'" || $char === '`') {
+                    $quote = $char;
+                } elseif ($char === '/' && ($js[$i + 1] ?? '') === '/') {
+                    for (; $i < $length && $js[$i] !== "\n"; $i++) {
+                        $js[$i] = ' ';
+                    }
+                } elseif ($char === '/' && ($js[$i + 1] ?? '') === '*') {
+                    $end = strpos($js, '*/', $i + 2);
+                    $end = $end === false ? $length : $end + 2;
+
+                    for (; $i < $end; $i++) {
+                        if ($js[$i] !== "\n") {
+                            $js[$i] = ' ';
+                        }
+                    }
+
+                    $i--;
+                }
+            }
+
+            return $found[1].$js.$found[3];
+        }, $text) ?? $text;
     }
 
     /**

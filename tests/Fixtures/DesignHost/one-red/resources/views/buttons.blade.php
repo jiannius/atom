@@ -8,7 +8,6 @@
             <atom:button variant="ghost" color="danger">Remove</atom:button> {{-- expect: one-red --}}
             <atom:button variant="ghost" color="error" icon="delete" /> {{-- expect: one-red --}}
             <atom:button variant="ghost" class="text-danger-fg">Remove</atom:button> {{-- expect: one-red --}}
-            <atom:button variant="ghost" class="px-2 hover:text-danger-fg">Remove</atom:button> {{-- expect: one-red --}}
             <atom:button variant="ghost" :class="['text-danger-fg' => $overdue]">Remove</atom:button> {{-- expect: one-red --}}
             {{-- expect: one-red --}}
             <atom:button
@@ -26,6 +25,7 @@
     <atom:button variant="ghost" color="warning">Void</atom:button>
     <atom:button variant="ghost" color="primary">View</atom:button>
     <atom:button variant="ghost" class="text-fg-muted">More</atom:button>
+    <atom:button variant="ghost" class="px-2 hover:text-danger-fg">Remove</atom:button>
     <atom:button variant="ghost" class="text-danger-{{ $level }}">More</atom:button>
     <atom:button class="text-danger-fg">Not a ghost</atom:button>
     <atom:button variant="default" color="danger" class="text-danger-fg">Not a ghost</atom:button>

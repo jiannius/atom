@@ -21,4 +21,35 @@ class Members
     {
         $this->toast('Member resumed');
     }
+
+    /**
+     * Hands over to a method that asks: one level counts
+     */
+    public function hand(): void
+    {
+        $this->suspend();
+    }
+
+    public function chain(): void
+    {
+        $this->resume();
+    }
+
+    public function outer(): void
+    {
+        $this->hand();
+    }
+
+    /**
+     * A dialog of its own
+     */
+    public function dialog(): void
+    {
+        $this->modal('purge')->show();
+    }
+
+    public function viaEvent(): void
+    {
+        $this->dispatch('atom-confirm-show', heading: 'Purge?');
+    }
 }

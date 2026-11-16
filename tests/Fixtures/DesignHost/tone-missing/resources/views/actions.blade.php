@@ -21,6 +21,8 @@
             <atom:button>
                 Decline
             </atom:button>
+            <atom:button variant="delete">Delete</atom:button> {{-- expect: tone-missing --}}
+            <atom:button variant="remove" icon="delete">Eliminate</atom:button> {{-- expect: tone-missing --}}
         </x-slot:actions>
     </atom:page.header>
 
@@ -33,6 +35,16 @@
     <atom:button>Reset password</atom:button>
     <atom:button>Reset view</atom:button>
     <atom:button>Remove filter</atom:button>
+    <atom:button>Cancel upload</atom:button>
+    <atom:button>Cancel and go back</atom:button>
+    <atom:button>Cancel & close</atom:button>
+    <atom:button>Reset all filters</atom:button>
+    <atom:button>Reset to defaults</atom:button>
+    <atom:button>Reset your password</atom:button>
+    <atom:menu.item>Reset to default</atom:menu.item>
+    <atom:menu.item href="{{ route('orders.archive') }}">Archive</atom:menu.item>
+    <atom:button wire:click="$set('tab', 'archive')">Archive</atom:button>
+    <atom:button x-on:click="$dispatch('open-trash')">Trash</atom:button>
     <atom:button>Discard changes</atom:button>
     <atom:menu.item>Cancellation policy</atom:menu.item>
     <atom:menu.item>Archived invoices</atom:menu.item>
@@ -66,10 +78,36 @@
         <atom:button variant="ghost" icon="x">Remove</atom:button>
     </div>
 
+    {{-- a line of a form, whatever the markup around it --}}
+    <atom:table.row>
+        <atom:table.cell><atom:input wire:model="lines.0.name" /></atom:table.cell>
+        <atom:table.cell><atom:button variant="ghost" icon="x" wire:click="removeLine(0)">Remove</atom:button></atom:table.cell>
+    </atom:table.row>
+    <tr>
+        <td><input wire:model="lines.0.qty"></td>
+        <td><atom:button variant="ghost" icon="x" wire:click="removeLine(0)">Remove</atom:button></td>
+    </tr>
+    <div class="grid grid-cols-3">
+        <div><atom:select.native wire:model="lines.0.unit" /></div>
+        <div><atom:button variant="ghost" icon="x" wire:click="removeLine(0)">Remove</atom:button></div>
+    </div>
+    <atom:card>
+        <atom:input wire:model="lines.0.note" />
+        <atom:button variant="ghost" wire:click="removeLine(0)">Remove</atom:button>
+    </atom:card>
+
+    {{-- a Remove with no control around it is the record's --}}
+    <atom:table.row>
+        <atom:table.cell>Part A</atom:table.cell>
+        <atom:table.cell><atom:button variant="ghost" icon="x" wire:click="removePart">Remove</atom:button></atom:table.cell> {{-- expect: tone-missing --}}
+    </atom:table.row>
+
     <atom:form wire:submit="save">
         <atom:button variant="ghost">Reset</atom:button>
         <atom:button variant="ghost">Discard</atom:button>
     </atom:form>
+
+    <atom:form.modal name="x"><atom:button variant="ghost">Discard</atom:button></atom:form.modal>
 
     <!-- <atom:button>Delete</atom:button> -->
     {{-- <atom:menu.item>Archive</atom:menu.item> --}}

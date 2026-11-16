@@ -270,3 +270,172 @@ describe('the tone and confirm group', function () {
         expect($group)->toContain('tone-missing', 'tone-unconfirmed', 'confirm-tone', 'confirm-copy', 'one-red');
     });
 });
+
+describe('tone-missing: what the label is about', function () {
+    it('does not flag the object a Cancel, Reset or Discard names, past a filler word', function (string $label) {
+        expect(DesignHost::notes('<atom:button>'.$label.'</atom:button>', 'tone-missing'))->toBe([]);
+    })->with(['Cancel upload', 'Cancel import', 'Cancel reorder', 'Cancel rename', 'Cancel and go back', 'Cancel & close', 'Reset all filters', 'Reset to defaults', 'Reset to default', 'Reset your password', 'Discard all changes', 'Remove all filters']);
+
+    it('still flags a Cancel or Reset of a record, a filler or not', function (string $label) {
+        expect(DesignHost::notes('<atom:button>'.$label.'</atom:button>', 'tone-missing'))->toHaveCount(1);
+    })->with(['Cancel this order', 'Cancel the subscription', 'Cancel your plan', 'Reset the account', 'Cancel and refund']);
+
+    it('does not flag an Archive or a Trash that only moves around the screen', function () {
+        expect(DesignHost::notes("<atom:button href=\"/archive\">Archive</atom:button>\n<atom:menu.item :href=\"\$url\">Trash</atom:menu.item>\n<atom:button wire:click=\"\$set('tab', 'archive')\">Archive</atom:button>\n<atom:button wire:click=\"\$toggle('trash')\">Trash</atom:button>\n<atom:button x-on:click=\"\$dispatch('x')\">Archive</atom:button>\n", 'tone-missing'))->toBe([])
+            ->and(array_keys(DesignHost::notes("<atom:button wire:click=\"archive\">Archive</atom:button>\n<atom:button href=\"/x\">Delete</atom:button>\n<atom:button wire:click=\"\$set('a', 1)\">Void</atom:button>\n", 'tone-missing')))->toBe([1, 2, 3]);
+    });
+
+    it('does not flag a lone Reset or Discard in a form modal', function () {
+        expect(DesignHost::notes('<atom:form.modal name="a"><atom:button>Discard</atom:button><atom:button>Reset</atom:button></atom:form.modal>', 'tone-missing'))->toBe([]);
+    });
+
+    it('says a button variant of delete or remove draws the default, with any label', function () {
+        expect(DesignHost::notes("<atom:button variant=\"delete\">Delete</atom:button>\n<atom:button variant=\"remove\">Eliminate</atom:button>\n<atom:button variant=\"delete\"></atom:button>\n<atom:menu.item variant=\"remove\">Remove</atom:menu.item>\n", 'tone-missing'))
+            ->toBe([
+                1 => '`variant="delete"` is not a button variant: it draws the default; use `type="delete"`',
+                2 => '`variant="remove"` is not a button variant: it draws the default; use `type="delete"`',
+                3 => '`variant="delete"` is not a button variant: it draws the default; use `type="delete"`',
+            ]);
+    });
+});
+
+describe('tone-missing: the row a Remove sits in', function () {
+    $input = '<atom:input wire:model="a" />';
+    $remove = '<atom:button variant="ghost" icon="x">Remove</atom:button>';
+
+    it('reads a control in a sibling cell, a sibling div or the card around it', function () use ($input, $remove) {
+        foreach ([
+            "<atom:table.row><atom:table.cell>{$input}</atom:table.cell><atom:table.cell>{$remove}</atom:table.cell></atom:table.row>",
+            "<table><tr><td>{$input}</td><td>{$remove}</td></tr></table>",
+            "<ul><li><div>{$input}</div><div>{$remove}</div></li></ul>",
+            "<div class=\"grid\"><div>{$input}</div><div>{$remove}</div></div>",
+            "<atom:card>{$input}{$remove}</atom:card>",
+            "<atom:form.grid>{$input}{$remove}</atom:form.grid>",
+            "<atom:form>{$input}{$remove}</atom:form>",
+        ] as $source) {
+            expect(DesignHost::notes($source, 'tone-missing'))->toBe([], $source);
+        }
+    });
+
+    it('flags a Remove whose row holds no control, and does not look past a form, a surface, a slot or three levels', function () use ($input, $remove) {
+        foreach ([
+            "<atom:table.row><atom:table.cell>Part</atom:table.cell><atom:table.cell>{$remove}</atom:table.cell></atom:table.row>",
+            "<atom:page>{$remove}<div>{$input}</div></atom:page>",
+            "<atom:form><div><div><div>{$remove}</div></div></div>{$input}</atom:form>",
+            "<div><div><div><div>{$remove}</div></div></div>{$input}</div>",
+            "<atom:table><x-slot:rows>{$remove}</x-slot:rows><x-slot:foot>{$input}</x-slot:foot></atom:table>",
+            "<atom:form><atom:form.actions>{$remove}</atom:form.actions>{$input}</atom:form>",
+        ] as $source) {
+            expect(DesignHost::notes($source, 'tone-missing'))->toHaveCount(1, $source);
+        }
+    });
+});
+
+describe('tone-unconfirmed: the methods that ask', function () {
+    $scan = function (array $files): array {
+        $dir = DesignHost::temp($files);
+
+        try {
+            return array_map(fn ($finding) => $finding['file'].':'.$finding['line'], (new DesignCheck)->scan($dir, ['tone-unconfirmed'])['checks']['tone-unconfirmed']['findings']);
+        } finally {
+            DesignHost::remove($dir);
+        }
+    };
+    $view = fn (string $method) => ['resources/views/a.blade.php' => '<atom:menu.item variant="warning" wire:click="'.$method.'">A</atom:menu.item>'];
+    $class = fn (string $body) => ['app/A.php' => "<?php\nclass A {\n{$body}\n}"];
+
+    it('compares a method name without case, from either side', function () use ($scan, $view, $class) {
+        $asks = $class('public function suspend() { $this->confirm(heading: "x"); }');
+
+        expect($scan($view('SUSPEND') + $asks))->toBe([])
+            ->and($scan($view('suspend') + $class('public function SUSPEND() { $this->confirm(heading: "x"); }')))->toBe([])
+            ->and($scan($view('Resume') + $asks))->toBe(['resources/views/a.blade.php:1']);
+    });
+
+    it('counts a method that opens a modal or names the dialog event', function () use ($scan, $view, $class) {
+        expect($scan($view('go') + $class('public function go() { $this->modal("a")->show(); }')))->toBe([])
+            ->and($scan($view('go') + $class('public function go() { atom()->modal("a")->show(); }')))->toBe([])
+            ->and($scan($view('go') + $class('public function go() { $this->dispatch("atom-confirm-show", heading: "x"); }')))->toBe([])
+            ->and($scan($view('go') + $class('public function go() { $this->dispatch("atom-toast-show"); }')))->toBe(['resources/views/a.blade.php:1']);
+    });
+
+    it('follows a call of $this one level, and no further', function () use ($scan, $view, $class) {
+        $chain = $class('public function ask() { $this->confirm(heading: "x"); } public function one() { $this->ask(); } public function two() { $this->one(); } public function other() { $other->ask(); }');
+
+        expect($scan($view('one') + $chain))->toBe([])
+            ->and($scan($view('two') + $chain))->toBe(['resources/views/a.blade.php:1'])
+            ->and($scan($view('other') + $chain))->toBe(['resources/views/a.blade.php:1']);
+    });
+
+    it('declines a method named to open a dialog, and a click on the component\'s plumbing', function (string $click) use ($scan) {
+        expect($scan(['resources/views/a.blade.php' => '<atom:button variant="danger" '.$click.'>A</atom:button>']))->toBe([]);
+    })->with([
+        'wire:click="confirmPurge"', 'wire:click="askToPurge"', 'wire:click="openPurge"', 'wire:click="$set(\'a\', 1)"', 'wire:click="$toggle(\'a\')"',
+        'x-on:click="$wire.set(\'a\', 1)"', 'x-on:click="$wire.$set(\'a\', 1)"', 'x-on:click="$wire.dispatch(\'a\')"', 'x-on:click="$wire.toggle()"', 'x-on:click="$wire.modal()"', 'x-on:click="$wire.call(\'a\')"', 'x-on:click="$wire.get(\'a\')"', 'x-on:click="$wire.refresh()"', 'x-on:click="$wire.entangle(\'a\')"',
+        'x-on:click="$wire.openPurge()"', 'onclick="return confirm(\'Sure?\')" wire:click="purge"',
+    ]);
+
+    it('reads a Volt closure as a method, in a view that has a PHP block', function () use ($scan) {
+        $item = '<atom:menu.item variant="warning" wire:click="freeze">A</atom:menu.item>';
+
+        expect($scan(['resources/views/livewire/a.blade.php' => "<?php\n\$freeze = function () { \$this->confirm(heading: 'x'); };\n?>\n".$item]))->toBe([])
+            ->and($scan(['resources/views/livewire/a.blade.php' => "<?php\n\$freeze = function () { \$this->toast('x'); };\n?>\n".$item]))->toBe(['resources/views/livewire/a.blade.php:4'])
+            ->and($scan(['resources/views/livewire/a.blade.php' => "<?php\n\$other = function () { \$this->confirm(heading: 'x'); };\n?>\n".$item]))->toBe(['resources/views/livewire/a.blade.php:4']);
+    });
+});
+
+describe('confirm-tone and one-red: the nits', function () {
+    it('draws a trigger of variant error as the accent dialog, since the dialog has no error tone', function () {
+        expect(DesignHost::notes('<atom:confirm.trigger variant="error" heading="a" button-confirm="b"><atom:button variant="danger" inverted>A</atom:button></atom:confirm.trigger>', 'confirm-tone'))
+            ->toBe([1 => 'the dialog is accent and the button is danger: drop the wrapper and use `confirm`']);
+    });
+
+    it('does not call a ghost red that is only red on hover, and does call one red at rest or in dark', function () {
+        expect(DesignHost::notes('<atom:button variant="ghost" class="hover:text-danger-fg focus:text-danger">A</atom:button>', 'one-red'))->toBe([])
+            ->and(DesignHost::notes('<atom:button variant="ghost" class="dark:text-danger-fg">A</atom:button>', 'one-red'))->toHaveCount(1);
+    });
+});
+
+describe('confirm-copy: where a call is atom\'s', function () {
+    $scan = function (array $files): array {
+        $dir = DesignHost::temp($files);
+
+        try {
+            return array_column((new DesignCheck)->scan($dir, ['confirm-copy'])['checks']['confirm-copy']['findings'], 'file');
+        } finally {
+            DesignHost::remove($dir);
+        }
+    };
+    $call = "\$this->confirm(heading: 'Void invoice?');";
+
+    it('reads $this->confirm( in a Livewire component and not in any other class', function () use ($scan, $call) {
+        expect($scan(['app/Livewire/A.php' => "<?php\nclass A { function a() { {$call} } }"]))->toBe(['app/Livewire/A.php'])
+            ->and($scan(['app/Http/A.php' => "<?php\nclass A extends Component { function a() { {$call} } }"]))->toBe(['app/Http/A.php'])
+            ->and($scan(['app/Http/A.php' => "<?php\nclass A { use AtomComponent; function a() { {$call} } }"]))->toBe(['app/Http/A.php'])
+            ->and($scan(['app/Http/A.php' => "<?php\nuse Livewire\\Component;\nclass A { function a() { {$call} } }"]))->toBe(['app/Http/A.php'])
+            ->and($scan(['app/Services/A.php' => "<?php\nclass A { function a() { {$call} } }"]))->toBe([])
+            ->and($scan(['app/Livewire/A.php' => "<?php\nclass A extends Component { function confirm() {} function a() { {$call} } }"]))->toBe([])
+            ->and($scan(['app/Services/A.php' => "<?php\nclass A { function a() { atom()->confirm(heading: 'Void invoice?'); } }"]))->toBe(['app/Services/A.php']);
+    });
+
+    it('reads atom()-> and app(\'atom\')-> as the receiver and no other object\'s atom()', function () use ($scan) {
+        $found = fn (string $receiver) => $scan(['app/Livewire/A.php' => "<?php\nclass A { function a() { {$receiver}->confirm(heading: 'Void invoice?'); } }"]) !== [];
+
+        expect($found('atom()'))->toBeTrue()
+            ->and($found("app('atom')"))->toBeTrue()
+            ->and($found('$this->atom()'))->toBeFalse()
+            ->and($found('$helper->atom()'))->toBeFalse()
+            ->and($found('myatom()'))->toBeFalse()
+            ->and($found("\$x->app('atom')"))->toBeFalse();
+    });
+
+    it('does not read an atom.confirm( in a JavaScript comment of a script', function () {
+        expect(DesignHost::notes("<script>\n// atom.confirm({ heading: 'a' })\n/* atom.confirm({ heading: 'b' }) */\n</script>", 'confirm-copy'))->toBe([])
+            ->and(DesignHost::notes("<script>\nconst u = 'http://x'; atom.confirm({ heading: 'a' })\n</script>", 'confirm-copy'))->toHaveCount(1)
+            ->and(DesignHost::notes("<script>\n/* one\n two */ atom.confirm({ heading: 'a' })\n</script>", 'confirm-copy'))->toHaveCount(1);
+    });
+
+    it('knows the Malaysian acronyms', function () {
+        expect(DesignHost::notes('<atom:confirm.trigger heading="Send to LHDN?" message="Your KWSP, SOCSO, EPF, PDPA and NRIC are shared" button-confirm="Send"><atom:link>A</atom:link></atom:confirm.trigger>', 'confirm-copy'))->toBe([]);
+    });
+});
