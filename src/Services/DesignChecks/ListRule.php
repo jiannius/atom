@@ -8,8 +8,8 @@ namespace Jiannius\Atom\Services\DesignChecks;
 abstract class ListRule extends Rule
 {
     /**
-     * The class tokens a tag carries in its static `class` attribute. A token that touches an echo is left out,
-     * and a `:class` or `@class` is not read at all: what it adds is conditional, so a check that holds a tag to a
+     * The class tokens a tag carries in its static `class` attribute. An echo is blanked to a character no class
+     * matches (so what is inside it is never read), and a `:class` or `@class` is not read at all: what it adds is conditional, so a check that holds a tag to a
      * class holds it only to the one written outright.
      *
      * @return array<int, string>
@@ -23,14 +23,7 @@ abstract class ListRule extends Rule
         }
 
         $marked = preg_replace('/\{\{.*?\}\}|\{!!.*?!!\}/s', "\0", $class) ?? $class;
-        $tokens = [];
 
-        foreach (preg_split('/\s+/', $marked, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
-            if (! str_contains($token, "\0")) {
-                $tokens[] = $token;
-            }
-        }
-
-        return $tokens;
+        return preg_split('/\s+/', $marked, -1, PREG_SPLIT_NO_EMPTY) ?: [];
     }
 }

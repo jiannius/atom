@@ -19,7 +19,7 @@ class PanelOverflowHidden extends ListRule
 
     public function fix(): string
     {
-        return 'Put the list in `<atom:panel>`: it clips (`overflow-clip`), so the pager pins to the screen. Never `overflow-hidden` or a scroll box around a table.';
+        return 'Put the list in `<atom:panel>`: it clips (`overflow-clip`), so the pager pins to the screen. Never `overflow-hidden` or a scroll box around a table: use the panel, or drop the overflow class.';
     }
 
     public function rule(): string
@@ -29,7 +29,7 @@ class PanelOverflowHidden extends ListRule
 
     public function detect(): string
     {
-        return 'An `<atom:table>` with `paginate` (static or bound) and the sticky pager on (no `sticky-pager` that is false or bound), inside an `<atom:card>` (it scrolls) or an element whose static `class` has `overflow-hidden`, `overflow-auto`, `overflow-scroll`, `overflow-y-auto|hidden|scroll` or `overflow-x-auto|hidden|scroll`; reported at that box, once, naming the first table in it. An `<atom:modal>` between them ends the search (it is its own scroll box, where pinning is right), and a box that also writes `overflow-visible` or a responsive `overflow-*` is not read. A box that gets its overflow from a `:class`, `@class` or a host component\'s own markup is not seen.';
+        return 'An `<atom:table>` with `paginate` (static or bound, but not a literal null, false, empty or `[]`) and the sticky pager on (a static `sticky-pager` is a string, so `sticky-pager="false"` still pins; a bound one counts only when literally `true`), inside an `<atom:card>` (it scrolls) or an element whose static `class` has `overflow-hidden`, `overflow-auto`, `overflow-scroll`, `overflow-y-auto|hidden|scroll` or `overflow-x-auto|hidden|scroll`; reported at that box, once, naming the first table in it. Not read: a box with a bounded height (`h-*` other than `h-auto|fit|min|max`, `size-*`, `max-h-*`, `fixed`, `absolute`, `inset-*`), which is its own scroll box, an `<atom:modal>`, `<dialog>`, `<atom:dropdown>` or an element with `popover` between them (the search ends there), a box that also writes `overflow-visible`, `overflow-clip` or a responsive `overflow-*`, and one that gets its overflow from a `:class`, `@class` or a host component\'s own markup.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -38,7 +38,7 @@ class PanelOverflowHidden extends ListRule
         $seen = [];
 
         foreach ($outline->atom('table') as $table) {
-            if (! $outline->has($table, 'paginate') || ! $this->pagerPins($table)) {
+            if (! $this->isPaginated($table) || ! $this->pagerPins($table)) {
                 continue;
             }
 
@@ -55,14 +55,39 @@ class PanelOverflowHidden extends ListRule
     }
 
     /**
-     * Whether the table pins its pager: `sticky-pager` is absent, bare or literally true. False, empty or an expression is the host's choice.
+     * Whether the table has a paginator: `paginate` is written, and not as a literal null, false, empty or `[]`
+     */
+    protected function isPaginated(array $table): bool
+    {
+        foreach (['paginate', ':paginate'] as $name) {
+            if (! array_key_exists($name, $table['attributes'])) {
+                continue;
+            }
+
+            $value = $table['attributes'][$name];
+
+            return ! (is_string($value) && in_array(strtolower(trim($value)), ['', 'null', 'false', '[]', 'array()'], true));
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether the table pins its pager: no `sticky-pager`, a static one (a string, so even "false" is on in Blade, but an empty one is
+     * off), or a bound one that is literally true. A bound one that is false or an expression is the host's choice.
      */
     protected function pagerPins(array $table): bool
     {
-        foreach (['sticky-pager', ':sticky-pager', 'x-bind:sticky-pager'] as $name) {
-            $value = $table['attributes'][$name] ?? true;
+        foreach ($table['attributes'] as $name => $value) {
+            if (in_array($name, ['sticky-pager', 'stickyPager'], true)) {
+                if (is_string($value) && (trim($value) === '' || str_contains($value, '{{') || str_contains($value, '{!!'))) {
+                    return false;
+                }
 
-            if (is_string($value) && strtolower(trim($value)) !== 'true') {
+                continue;
+            }
+
+            if (in_array($name, [':sticky-pager', ':stickyPager', 'x-bind:sticky-pager'], true) && strtolower(trim((string) $value)) !== 'true') {
                 return false;
             }
         }
@@ -71,12 +96,15 @@ class PanelOverflowHidden extends ListRule
     }
 
     /**
-     * The nearest box around a table that scrolls or hides its overflow; null when a modal comes first
+     * The nearest box around a table that scrolls or hides its overflow; null when a box that scrolls on its own comes first
+     * (a modal, a dialog, a popover) or the box has a bounded height (a scroll box the pager can pin to)
      */
     protected function scrollingBox(File $file, array $table): ?array
     {
-        foreach ($file->outline()->ancestors($table) as $ancestor) {
-            if ($ancestor['tag'] === 'atom:modal') {
+        $outline = $file->outline();
+
+        foreach ($outline->ancestors($table) as $ancestor) {
+            if (in_array($ancestor['tag'], ['atom:modal', 'atom:dropdown', 'dialog'], true) || $outline->has($ancestor, 'popover')) {
                 return null;
             }
 
@@ -87,7 +115,7 @@ class PanelOverflowHidden extends ListRule
             }
 
             if ($ancestor['tag'] === 'atom:card' || $this->clipsOrScrolls($tokens)) {
-                return $ancestor;
+                return $this->hasBoundedHeight($tokens) ? null : $ancestor;
             }
         }
 
@@ -95,7 +123,25 @@ class PanelOverflowHidden extends ListRule
     }
 
     /**
-     * Whether a class list takes the overflow back (`overflow-visible`) or varies it by breakpoint, so that it is unsure
+     * Whether a class list gives the box a height of its own, or takes it out of the flow, at any breakpoint
+     *
+     * @param  array<int, string>  $tokens
+     */
+    protected function hasBoundedHeight(array $tokens): bool
+    {
+        foreach ($tokens as $token) {
+            $utility = substr($token, ((int) strrpos($token, ':')) + (str_contains($token, ':') ? 1 : 0));
+
+            if (preg_match('/^(?:(?:max-)?h-.+|size-.+|inset-.+|fixed|absolute)$/', $utility) && ! preg_match('/^h-(?:auto|fit|min|max)$/', $utility)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a class list takes the overflow back (`overflow-visible`, `overflow-clip`, which beats the card's own) or varies it by breakpoint, so that it is unsure
      *
      * @param  array<int, string>  $tokens
      */
@@ -104,7 +150,7 @@ class PanelOverflowHidden extends ListRule
         foreach ($tokens as $token) {
             $utility = substr($token, ((int) strrpos($token, ':')) + (str_contains($token, ':') ? 1 : 0));
 
-            if ($token === 'overflow-visible' || (str_contains($token, ':') && str_starts_with($utility, 'overflow-'))) {
+            if (in_array($token, ['overflow-visible', 'overflow-clip'], true) || (str_contains($token, ':') && str_starts_with($utility, 'overflow-'))) {
                 return true;
             }
         }

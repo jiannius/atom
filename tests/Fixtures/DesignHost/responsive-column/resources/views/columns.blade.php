@@ -9,6 +9,11 @@
                 <atom:table.column name="supplier" class="hidden lg:table-cell">Supplier</atom:table.column> {{-- expect: responsive-column --}}
                 <atom:table.column name="bin" class="text-xs hidden md:table-cell">Bin</atom:table.column> {{-- expect: responsive-column --}}
                 <atom:table.column name="note" class="max-lg:hidden">Note</atom:table.column> {{-- expect: responsive-column --}}
+                <atom:table.column name="owner" class="dark:max-lg:hidden">Owner</atom:table.column> {{-- expect: responsive-column --}}
+                <atom:table.column name="team" class="max-2xl:hidden">Team</atom:table.column> {{-- expect: responsive-column --}}
+                <atom:table.column name="region" hideable class="hidden md:table-cell">Region</atom:table.column>
+                <atom:table.column name="area" class="xmax-lg:hidden max-lg:hidden-x">Area</atom:table.column>
+                <atom:table.column name="zone" class="hidden lg:table-cellx xlg:table-cell">Zone</atom:table.column>
                 <atom:table.column name="stock" hideable class="max-sm:hidden">Stock</atom:table.column>
                 <atom:table.column name="price" class="hidden sm:table-cell">Price</atom:table.column>
                 <atom:table.column name="age" class="md:hidden">Age</atom:table.column>

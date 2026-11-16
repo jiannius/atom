@@ -29,7 +29,7 @@ class ResponsiveColumn extends ListRule
 
     public function detect(): string
     {
-        return 'An `<atom:table.column>` or `<atom:table.cell>` whose static `class` has `hidden` with `md:`, `lg:`, `xl:` or `2xl:table-cell`, or `max-md:hidden` or a wider `max-*:hidden`. `max-sm:hidden` (and `hidden sm:table-cell`, the same phone rule) is the pattern\'s own and is not flagged; a `:class` or `@class` is not read.';
+        return 'An `<atom:table.column>` or `<atom:table.cell>` whose static `class` has `hidden` with `md:`, `lg:`, `xl:` or `2xl:table-cell`, or `max-md:hidden` or a wider `max-*:hidden` (after any variants, `dark:max-lg:hidden`). A column that is already `hideable` is not read (its cells are not known to follow). `max-sm:hidden` (and `hidden sm:table-cell`, the same phone rule) is the pattern\'s own and is not flagged; a `:class` or `@class` is not read.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -37,6 +37,10 @@ class ResponsiveColumn extends ListRule
         $outline = $file->outline();
 
         foreach ($outline->atom(['table.column', 'table.cell']) as $node) {
+            if ($node['component'] === 'table.column' && $outline->has($node, 'hideable')) {
+                continue;
+            }
+
             $note = $this->hiding($this->staticClasses($node));
 
             if ($note !== null) {
@@ -57,7 +61,7 @@ class ResponsiveColumn extends ListRule
                 return '`hidden '.$token.'`';
             }
 
-            if (preg_match('/^max-(?:md|lg|xl|2xl):hidden$/', $token)) {
+            if (preg_match('/^(?:[a-z0-9-]+:)*max-(?:md|lg|xl|2xl):hidden$/', $token)) {
                 return '`'.$token.'`';
             }
         }

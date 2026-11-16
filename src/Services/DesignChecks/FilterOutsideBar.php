@@ -36,7 +36,7 @@ class FilterOutsideBar extends ListRule
 
     public function detect(): string
     {
-        return 'In a view that has an `<atom:table>`: a tag with `wire:model*` or `x-model*` bound to `filters.…`, a `wire:click`, `x-on:` or `@` handler that runs `$set(\'filters.…\')`, `$wire.set(\'filters.…\')` or `$wire.filters.… =`, outside `<atom:table.filters>` (its `more` slot included), `<atom:table.search>`, `<atom:table.views>`, `<atom:empty>` and the table\'s `empty` slot. A view with no table (a chart\'s own filters) is not read, and neither is a binding built from an echo or a bound attribute.';
+        return 'In a view that has an `<atom:table>`: a tag with `wire:model*` or `x-model*` bound to `filters.…`, a `wire:click`, `x-on:` or `@` handler that runs `$set(\'filters.…\')`, `$wire.set(\'filters.…\')` or `$wire.filters.… =`, outside `<atom:table.filters>` (its `more` slot included), `<atom:table.search>`, `<atom:table.views>`, `<atom:empty>` and the table\'s `empty` slot. A view with no table (a chart\'s own filters) is not read, and neither is a binding whose key has an echo in it. The note names `<atom:table.search>` for the key `search` and `<atom:table.views>` for a tab.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -54,17 +54,29 @@ class FilterOutsideBar extends ListRule
                 continue;
             }
 
-            yield [$node['offset'], 'binds `filters.'.$key.'` outside `<atom:table.filters>`'];
+            yield [$node['offset'], 'binds `filters.'.$key.'` outside `<atom:table.filters>`'.$this->instead($node, $key)];
         }
     }
 
     /**
-     * The filter key a tag binds, from its model or its click handler
+     * The component made for it, when the control is a search or saved views
+     */
+    protected function instead(array $node, string $key): string
+    {
+        return match (true) {
+            $node['kind'] === 'atom' && str_starts_with((string) $node['component'], 'tabs') => ': saved views are `<atom:table.views>`',
+            $key === 'search' => ': the search is `<atom:table.search>`',
+            default => '',
+        };
+    }
+
+    /**
+     * The filter key a tag binds, from its model or its click handler. A key that has an echo in it is not read.
      */
     protected function boundKey(array $node): ?string
     {
         foreach ($node['attributes'] as $name => $value) {
-            if (! is_string($value) || str_contains($value, '{{') || str_contains($value, '{!!')) {
+            if (! is_string($value)) {
                 continue;
             }
 
@@ -76,7 +88,7 @@ class FilterOutsideBar extends ListRule
                 continue;
             }
 
-            if (preg_match('/(?:\$set|\$wire\.set)\(\s*[\'"]filters\.([A-Za-z_][\w.]*)/', $value, $found)
+            if (preg_match('/(?:\$set|\$wire\.set)\(\s*[\'"]filters\.([A-Za-z_][\w.]*)(?!\w|\{\{|\{!!)/', $value, $found)
                 || preg_match('/\$wire\.filters\.([A-Za-z_][\w.]*)\s*=(?!=)/', $value, $found)) {
                 return $found[1];
             }

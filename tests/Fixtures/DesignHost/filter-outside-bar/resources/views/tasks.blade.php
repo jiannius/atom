@@ -31,7 +31,11 @@
                 <atom:button variant="ghost" wire:click="$set('form.filters.x', 1)">Not the filters property</atom:button>
                 <atom:button variant="ghost" x-on:click="open = $wire.filters.state == 'open'">Compares, never assigns</atom:button>
                 <atom:button variant="ghost" wire:click="$set('filters.{{ $key }}', 1)">Built from an echo</atom:button>
-                <atom:button variant="ghost" wire:click="$set('filters.status', {{ $value }})">Value from an echo</atom:button>
+                <atom:button variant="ghost" wire:click="$set('filters.status', '{{ $status }}')">Value from an echo</atom:button> {{-- expect: filter-outside-bar --}}
+                <atom:button variant="ghost" wire:click="$set('filters.a{{ $key }}', 1)">Key ends in an echo</atom:button>
+                <atom:button variant="ghost" x-on:click="$wire.filters.a{{ $key }} = 1">Assigned key ends in an echo</atom:button>
+                <atom:button variant="ghost" wire:click="$set('filters.a{!! $key !!}', 1)">Key ends in a raw echo</atom:button>
+                <atom:button variant="ghost" x-on:click="$wire.filters.a{!! $key !!} = 1">Assigned key ends in a raw echo</atom:button>
             </x-slot:actions>
 
             <x-slot:end>
@@ -41,6 +45,10 @@
 
         <input type="search" wire:model.live.debounce.300ms="filters.name" placeholder="Name"> {{-- expect: filter-outside-bar --}}
         <input type="text" x-model.debounce="filters.sku" placeholder="Sku"> {{-- expect: filter-outside-bar --}}
+        <input type="search" wire:model="filters.search" placeholder="Hand-rolled search"> {{-- expect: filter-outside-bar --}}
+        <x-field wire:modelable="filters.sku" />
+        <x-field x-modelable="filters.sku" />
+        <input type="text" wire:model="filters.sku extra">
         <input type="text" wire:model="form.name" placeholder="Not filters.">
         <input type="text" wire:model="query" placeholder="Not a filter">
         <input type="text" wire:model="filters_note" placeholder="Not filters.">
@@ -67,6 +75,16 @@
             </x-slot:empty>
         </atom:table>
     </atom:panel>
+
+    <atom:tabs>
+        <atom:tabs.item wire:click="$set('filters.status', 'open')">Open</atom:tabs.item> {{-- expect: filter-outside-bar --}}
+    </atom:tabs>
+
+    <atom:card heading="Not the table">
+        <x-slot:empty>
+            <button wire:click="$set('filters.owner', null)">Clear owner</button> {{-- expect: filter-outside-bar --}}
+        </x-slot:empty>
+    </atom:card>
 
     @if ($tasks->isEmpty())
         <atom:empty heading="Nothing here">

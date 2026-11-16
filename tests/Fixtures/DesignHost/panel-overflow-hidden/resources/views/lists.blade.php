@@ -22,10 +22,38 @@
         </atom:panel>
     </section>
 
-    <div class="max-h-96 overflow-y-auto"> {{-- expect: panel-overflow-hidden --}}
+    <div class="rounded-panel border overflow-y-auto hover:bg-surface-sunken"> {{-- expect: panel-overflow-hidden --}}
         <atom:table :paginate="$orders" />
         <atom:table :paginate="$returns" />
     </div>
+
+    <div class="overflow-x-hidden"> {{-- expect: panel-overflow-hidden --}}
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="overflow-x-scroll"> {{-- expect: panel-overflow-hidden --}}
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="overflow-y-scroll"> {{-- expect: panel-overflow-hidden --}}
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="overflow-y-hidden h-auto"> {{-- expect: panel-overflow-hidden --}}
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <atom:card> {{-- expect: panel-overflow-hidden --}}
+        <atom:table :paginate="$orders" sticky-pager="false" />
+    </atom:card>
+
+    <atom:card> {{-- expect: panel-overflow-hidden --}}
+        <atom:table :paginate="$orders" x-data="{}" :stickyPager="true" />
+    </atom:card>
+
+    <atom:card> {{-- expect: panel-overflow-hidden --}}
+        <atom:table :paginate="$pages ? $rows : null" />
+    </atom:card>
 
     <div class="overflow-auto"> {{-- expect: panel-overflow-hidden --}}
         <atom:table :paginate="$orders" />
@@ -45,6 +73,87 @@
     <atom:card>
         <atom:table :paginate="$orders" :sticky-pager="false" />
     </atom:card>
+
+    <atom:card>
+        <atom:table :paginate="$orders" :stickyPager="false" />
+    </atom:card>
+
+    <atom:card>
+        <atom:table :paginate="$orders" :sticky-pager=" False " />
+    </atom:card>
+
+    <atom:card>
+        <atom:table :paginate="$orders" x-bind:sticky-pager="false" />
+    </atom:card>
+
+    <atom:card>
+        <atom:table :paginate="$orders" sticky-pager="" />
+    </atom:card>
+
+    <atom:card>
+        <atom:table :paginate="null" />
+        <atom:table :paginate=" false " />
+        <atom:table :paginate="[]" />
+        <atom:table paginate="" />
+    </atom:card>
+
+    <div class="max-h-96 overflow-y-auto">
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="h-96 overflow-hidden">
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="h-screen overflow-auto">
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="h-full overflow-hidden">
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="lg:h-[40rem] overflow-hidden">
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="size-96 overflow-hidden">
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="fixed overflow-hidden">
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="absolute inset-0 overflow-auto">
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <dialog class="overflow-hidden">
+        <atom:table :paginate="$orders" />
+    </dialog>
+
+    <div class="overflow-auto" popover>
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="overflow-auto">
+        <atom:dropdown>
+            <atom:table :paginate="$orders" />
+        </atom:dropdown>
+    </div>
+
+    <atom:card class="overflow-clip">
+        <atom:table :paginate="$orders" />
+    </atom:card>
+
+    <div class="xoverflow-hidden overflow-hidden-x overflow-x-hidden-y foo-overflow-y-auto">
+        <atom:table :paginate="$orders" />
+    </div>
+
+    <div class="{{ $wide ? overflow-hidden : '' }}">
+        <atom:table :paginate="$orders" />
+    </div>
 
     <atom:card>
         <atom:table :paginate="$orders" :sticky-pager="$pin" />
