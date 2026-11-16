@@ -36,7 +36,7 @@ class FilterOutsideBar extends ListRule
 
     public function detect(): string
     {
-        return 'In a view that has an `<atom:table>`: a tag with `wire:model*` or `x-model*` bound to `filters.…`, a `wire:click`, `x-on:` or `@` handler that runs `$set(\'filters.…\')`, `$wire.set(\'filters.…\')` or `$wire.filters.… =`, outside `<atom:table.filters>` (its `more` slot included), `<atom:table.search>`, `<atom:table.views>`, `<atom:empty>` and the table\'s `empty` slot. A view with no table (a chart\'s own filters) is not read, and neither is a binding whose key has an echo in it. The note names `<atom:table.search>` for the key `search` and `<atom:table.views>` for a tab.';
+        return 'In a view that has an `<atom:table>`: a tag with `wire:model*` or `x-model*` bound to `filters.…`, a `wire:click`, `x-on:` or `@` handler that runs `$set(\'filters.…\')`, `$wire.set(\'filters.…\')` or `$wire.filters.… =`, outside `<atom:table.filters>` (its `more` slot included), `<atom:table.search>`, `<atom:table.views>`, `<atom:empty>` and the table\'s `empty` slot. A view with no table (a chart\'s own filters) is not read; a control that shares no container with a table but the page (`<atom:page>`, `<atom:page.columns>` or the file\'s root) in a view that also draws a `<atom:stat>`, `<atom:stat.group>` or `<atom:chart>` outside a table is a dashboard\'s own and is not read, and neither is a binding whose key has an echo in it. The note names `<atom:table.search>` for the key `search` and `<atom:table.views>` for a tab.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -50,7 +50,7 @@ class FilterOutsideBar extends ListRule
         foreach ($outline->nodes() as $node) {
             $key = $this->boundKey($node);
 
-            if ($key === null || $this->isAllowedHere($file, $node)) {
+            if ($key === null || $this->isAllowedHere($file, $node) || $this->isDashboardWide($file, $node)) {
                 continue;
             }
 
@@ -95,6 +95,42 @@ class FilterOutsideBar extends ListRule
         }
 
         return null;
+    }
+
+    /**
+     * Whether the control is a dashboard's own, beside the table and not around it: it shares no container with any table
+     * but the page itself (the nearest ancestor of the two is `<atom:page>`, `<atom:page.columns>` or the file's root, never
+     * a wrapper, a card, a panel or a toolbar), and the view also draws a stat or a chart outside a table, which is what
+     * the control then narrows. A stray filter above a table of a plain list page has no stat or chart, so it is still read.
+     */
+    protected function isDashboardWide(File $file, array $node): bool
+    {
+        $outline = $file->outline();
+        $mine = array_column($outline->ancestors($node), 'id');
+
+        foreach ($outline->atom('table') as $table) {
+            $shared = null;
+
+            foreach ($outline->ancestors($table) as $ancestor) {
+                if (in_array($ancestor['id'], $mine, true)) {
+                    $shared = $ancestor;
+
+                    break;
+                }
+            }
+
+            if ($shared !== null && ! in_array($shared['component'] ?? null, ['page', 'page.columns'], true)) {
+                return false;
+            }
+        }
+
+        foreach ($outline->atom(['stat', 'stat.group', 'chart']) as $summary) {
+            if ($outline->inside($summary, 'atom:table') === null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

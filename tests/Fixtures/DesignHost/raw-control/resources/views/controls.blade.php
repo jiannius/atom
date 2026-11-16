@@ -30,6 +30,29 @@
     <a href="#" class="block rounded-panel border bg-surface p-4"><div>A tile holds blocks</div></a>
     <button class="rounded-md border px-2 py-1" role="switch" aria-checked="true">A switch</button>
     <button class="rounded-md border px-2 py-1" role="tab">A tab</button>
+    <button class="rounded-md border px-2 py-1" role="radio">A radio</button>
+    <button class="rounded-md border px-2 py-1" role="option">An option</button>
+    <button class="rounded-md border px-2 py-1" role="checkbox">A checkbox</button>
+
+    {{-- a control that shows a state of its own is a toggle, a pill or a segment --}}
+    <button class="rounded-md border px-2 py-1" aria-pressed="true">Pressed</button>
+    <button class="rounded-md border px-2 py-1" :aria-pressed="open">Bound pressed</button>
+    <button class="rounded-md border px-2 py-1" x-bind:aria-pressed="open">Bound pressed</button>
+    <button class="rounded-md border px-2 py-1" aria-selected="false">Selected</button>
+    <a href="#" class="rounded-md border px-2 py-1" aria-current="page">Current</a>
+    <button class="rounded-md border px-2 py-1" aria-checked="true">Checked</button>
+    <button class="rounded-md border px-2 py-1" :class="{ 'bg-accent': selected }">Selected class</button>
+    <button class="rounded-md border px-2 py-1" x-bind:class="{ 'bg-surface-sunken': tab.active }">Active class</button>
+    <button class="rounded-md border px-2 py-1" x-bind:class="{ 'bg-accent': pressed }">Pressed class</button>
+    <button class="rounded-md border px-2 py-1" x-bind:class="{ 'bg-accent': checked }">Checked class</button>
+    <button class="rounded-md border px-2 py-1" x-bind:class="{ 'bg-accent': interval === 'year' }">A compare</button>
+    <button @class(['rounded-md border px-2 py-1', 'font-medium' => $type === 'a'])>A compare in @class</button>
+    <button @class(['rounded-md border px-2 py-1', 'font-medium' => $current])>A current class</button>
+    <button class="rounded-md border px-2 py-1" :class="{ 'bg-accent': busy }">A bound class that is no state of a choice</button> {{-- expect: raw-control --}}
+    <button class="rounded-md border px-2 py-1" aria-label="Close">An aria-label is no state</button> {{-- expect: raw-control --}}
+    <button class="rounded-md border px-2 py-1 active:bg-surface" :class="{ 'bg-accent': busy }">A pseudo-class is no state</button> {{-- expect: raw-control --}}
+    <button class="rounded-md border px-2 py-1" aria-expanded="true">An expanded menu trigger is no choice</button> {{-- expect: raw-control --}}
+
     <atom:button variant="ghost">Atom's own</atom:button>
     <x-fancy-button class="rounded-md border px-2 py-1">A host component</x-fancy-button>
     <div class="rounded-md border px-2 py-1">Not a control</div>

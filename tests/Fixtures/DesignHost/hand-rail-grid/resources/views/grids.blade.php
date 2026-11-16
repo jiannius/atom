@@ -24,6 +24,9 @@
     <div class="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]"><nav><a href="#">Profile</a></nav><div>Main</div></div>
     <div class="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]"><atom:navlist><atom:navlist.item>Profile</atom:navlist.item></atom:navlist><div>Main</div></div>
     <div class="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]"><atom:tabs><atom:tab>Profile</atom:tab></atom:tabs><div>Main</div></div>
+    <div class="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]"><aside><nav><a href="#">Profile</a></nav></aside><div>Main</div></div>
+    <div class="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]"><div><atom:navlist><atom:navlist.item>Profile</atom:navlist.item></atom:navlist></div><div>Main</div></div>
+    <div class="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]"><div><div><nav>Two levels in</nav></div></div><div>Main</div></div> {{-- expect: hand-rail-grid --}}
     <div class="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]"><div>Menu</div><div>Main</div></div> {{-- expect: hand-rail-grid --}}
     <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]"><div>Main</div><nav>Index</nav></div> {{-- expect: hand-rail-grid --}}
 

@@ -45,7 +45,7 @@ class HandRailGrid extends PageRule
 
     public function detect(): string
     {
-        return 'An element in an `<atom:page>`, outside a card, panel, table, form, modal or description list (a form around the whole page does not count, and a `<form>` that is itself the grid does), whose classes (static, or a literal in `:class`) hold a two-track `grid-cols-[...]` of a flexible track (`1fr` or `minmax(0,1fr)`) and a fixed one of 12rem or 192px and more, with any variant but one that sends it to the children (`*:`, `[&>div]:`), and that has a block among its children (a `div`, `section`, `aside`, an atom or host component: a key and its value in two `span`s is no rail). A narrower fixed track (a column of figures) is not a rail, and neither is a fixed first track that holds a `<nav>`, `<atom:navlist>` or `<atom:tabs>` (a side menu). A grid built from a bound class, or a `grid-template-columns` style, is not seen.';
+        return 'An element in an `<atom:page>`, outside a card, panel, table, form, modal or description list (a form around the whole page does not count, and a `<form>` that is itself the grid does), whose classes (static, or a literal in `:class`) hold a two-track `grid-cols-[...]` of a flexible track (`1fr` or `minmax(0,1fr)`) and a fixed one of 12rem or 192px and more, with any variant but one that sends it to the children (`*:`, `[&>div]:`), and that has a block among its children (a `div`, `section`, `aside`, an atom or host component: a key and its value in two `span`s is no rail). A narrower fixed track (a column of figures) is not a rail, and neither is a fixed first track whose first child, or a child of that, is a `<nav>`, `<atom:navlist>` or `<atom:tabs>` (a side menu). A grid built from a bound class, or a `grid-template-columns` style, is not seen.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -76,7 +76,7 @@ class HandRailGrid extends PageRule
     }
 
     /**
-     * Whether the fixed track comes first and holds a navigation (a `<nav>`, `<atom:navlist>` or `<atom:tabs>`): a settings
+     * Whether the fixed track comes first and its first child, or a child of that, is a navigation (a `<nav>`, `<atom:navlist>` or `<atom:tabs>`): a settings
      * page's side menu, which `<atom:page.columns>` (a rail after the main column) does not replace
      */
     protected function hasSideNav(File $file, array $node): bool
@@ -89,9 +89,21 @@ class HandRailGrid extends PageRule
             }
         }
 
-        $first = $fixedFirst ? ($file->outline()->children($node)[0] ?? null) : null;
+        $outline = $file->outline();
+        $first = $fixedFirst ? ($outline->children($node)[0] ?? null) : null;
 
-        return $first !== null && ($first['tag'] === 'nav' || in_array($first['component'] ?? null, ['navlist', 'tabs'], true));
+        if ($first === null) {
+            return false;
+        }
+
+        // the first child, or one level in (`<aside><nav>`, `<div><atom:navlist>`)
+        foreach ([$first, ...$outline->children($first)] as $candidate) {
+            if ($candidate['tag'] === 'nav' || in_array($candidate['component'] ?? null, ['navlist', 'tabs'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
