@@ -24,7 +24,7 @@
     "src": "resources/fonts/GeistMono-Variable.woff2"
   },
   "resources/js/atom.js": {
-    "file": "assets/atom-CGJR5IFJ.js",
+    "file": "assets/atom-BcmVXAOh.js",
     "name": "atom",
     "src": "resources/js/atom.js",
     "isEntry": true,
@@ -36,7 +36,7 @@
     ]
   },
   "resources/js/tiptap.js": {
-    "file": "assets/tiptap-BLuFEhDQ.js",
+    "file": "assets/tiptap-BZNvgaNm.js",
     "name": "tiptap",
     "src": "resources/js/tiptap.js",
     "isDynamicEntry": true,
