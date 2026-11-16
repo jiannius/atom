@@ -106,7 +106,7 @@ test.describe('the keyboard', () => {
     await expect(trigger(panel(page))).toBeFocused()
   })
 
-  test('Enter and Space open the ⋯, its rows are reachable with Tab, and Escape closes it', async ({ page }) => {
+  test('Enter and Space open the ⋯ and focus its first row, Down walks the rows, and Escape closes it', async ({ page }) => {
     await open(page)
 
     for (const key of ['Enter', 'Space']) {
@@ -114,9 +114,8 @@ test.describe('the keyboard', () => {
       await page.keyboard.press(key)
       await expect.poll(() => isOpen(card(page))).toBe(true)
 
-      await page.keyboard.press('Tab')
       await expect(page.getByTestId('card-refresh')).toBeFocused()
-      await page.keyboard.press('Tab')
+      await page.keyboard.press('ArrowDown')
       await expect(page.getByTestId('card-print')).toBeFocused()
 
       await page.keyboard.press('Escape')
