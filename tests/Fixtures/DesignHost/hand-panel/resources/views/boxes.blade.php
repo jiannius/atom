@@ -43,6 +43,9 @@
     <div class="rounded-md border bg-surface px-2">
         <input type="text" class="w-full" />
     </div>
+    <div class="rounded-md border bg-surface px-2">
+        <atom:input wire:model="search" />
+    </div>
     <div popover class="rounded-md border bg-surface">A popover</div>
     <div role="dialog" class="rounded-md border bg-surface">A dialog</div>
     <div class="animate-pulse rounded-md border bg-surface-sunken">A placeholder</div>
