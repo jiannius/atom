@@ -82,6 +82,16 @@
         <atom:menu popover><atom:button icon="more" /></atom:menu>
     </atom:dropdown>
 
+    <atom:dropdown>
+        <atom:button><atom:icon.more /><atom:icon.add /></atom:button>
+        <atom:menu popover><atom:menu.item>Add</atom:menu.item></atom:menu>
+    </atom:dropdown>
+
+    <atom:dropdown>
+        <atom:button></atom:button>
+        <atom:menu popover><atom:menu.item>Nothing</atom:menu.item></atom:menu>
+    </atom:dropdown>
+
     <atom:button variant="ghost" icon="more" tooltip="More actions" />
 
     <!-- <atom:dropdown><atom:button icon="more" /></atom:dropdown> -->
