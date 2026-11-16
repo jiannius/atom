@@ -321,6 +321,8 @@ describe('tone-missing: the row a Remove sits in', function () {
         foreach ([
             "<atom:table.row><atom:table.cell>Part</atom:table.cell><atom:table.cell>{$remove}</atom:table.cell></atom:table.row>",
             "<atom:page>{$remove}<div>{$input}</div></atom:page>",
+            "<atom:form><div><div>{$remove}</div></div>{$input}</atom:form>",
+            "<div><x-slot:rows><div>{$remove}</div></x-slot:rows>{$input}</div>",
             "<atom:form><div><div><div>{$remove}</div></div></div>{$input}</atom:form>",
             "<div><div><div><div>{$remove}</div></div></div>{$input}</div>",
             "<atom:table><x-slot:rows>{$remove}</x-slot:rows><x-slot:foot>{$input}</x-slot:foot></atom:table>",
