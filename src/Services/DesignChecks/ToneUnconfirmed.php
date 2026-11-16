@@ -13,7 +13,14 @@ class ToneUnconfirmed extends ToneAndConfirmRule
     /**
      * A method that only opens a dialog: confirm…, ask…, open…
      */
-    protected const OPENS = '/^(?:confirm|ask|open)/i';
+    protected const OPENS = '/^(?:confirm|ask|open)(?!ed$)/i';
+
+    /**
+     * What a method that writes calls: a method named for a dialog that also writes is the record's action
+     *
+     * @var array<int, string>
+     */
+    protected const MUTATIONS = ['delete', 'update', 'save', 'forcedelete'];
 
     /**
      * What `$wire.` calls that is the component's plumbing, not an action of the host's
@@ -39,7 +46,7 @@ class ToneUnconfirmed extends ToneAndConfirmRule
 
     public function detect(): string
     {
-        return 'An `<atom:button variant="warning|danger">` (a danger that is not `type="delete"`) or an `<atom:menu.item variant="warning|danger|remove">` with a `wire:click` method (or `$wire.method()` in an `x-on:click`) and no `confirm` (static, bound or `:confirm="false"`) or `wire:confirm`. A delete confirms itself, so it is not read. Not flagged: a submit, a link (`href`), an element inside `<atom:confirm.trigger>` or `<atom:modal>`, a click that calls `atom.confirm(` or opens a modal, an Alpine-only handler, and a `wire:click` method (or one named `confirm…`, `ask…`, `open…`) that the app\'s PHP (`app/`, `resources/`, `modules/`) shows asking, by `->confirm(`, `->modal(` or the `atom-confirm-show` event in its body or in a `$this->method()` it calls (one level), a `$wire.set(` and the like, and `onclick="confirm(`. Methods are found by name, so two classes sharing a name hide each other\'s finding; a Volt closure (`$name = function () {`) in a `<?php` block is read, a method written some other way is a miss.';
+        return 'An `<atom:button variant="warning|danger">` (a danger that is not `type="delete"`) or an `<atom:menu.item variant="warning|danger|remove">` with a `wire:click` method (or `$wire.method()` in an `x-on:click`) and no `confirm` (static, bound or `:confirm="false"`) or `wire:confirm`. A delete confirms itself, so it is not read. Not flagged: a submit, a link (`href`), an element inside `<atom:confirm.trigger>` or `<atom:modal>`, a click that calls `atom.confirm(` or opens a modal (`atom.modal(...).show(`), an Alpine-only handler, and a `wire:click` method that the app\'s PHP (`app/`, `resources/`, `modules/`) shows asking, by `->confirm(`, `->modal(...)->show()`/`->slide()` or the `atom-confirm-show` event in its body or in a `$this->method()` it calls (one level), a method named `confirm…`, `ask…` or `open…` unless its body is seen calling `->delete(`, `->update(`, `->save(` or `->forceDelete(`, a `$wire.set(` and the like, and `onclick="confirm(`. Methods are found by name, so two classes sharing a name hide each other\'s finding; a Volt closure (`$name = function () {`) in a `<?php` block is read, a method written some other way is a miss.';
     }
 
     /**
@@ -81,7 +88,7 @@ class ToneUnconfirmed extends ToneAndConfirmRule
                 continue;
             }
 
-            yield [$node['offset'], '`variant="'.$tone.'"` acts without asking: add `confirm`', ['methods' => $methods]];
+            yield [$node['offset'], '`variant="'.$tone.'"` acts without asking: add `confirm`', ['methods' => $methods, 'openers' => array_values(array_filter($methods, fn ($method) => preg_match(static::OPENS, $method)))]];
         }
     }
 
@@ -89,10 +96,18 @@ class ToneUnconfirmed extends ToneAndConfirmRule
     {
         $facts = array_filter($context->get(static::ID), 'is_array');
         $confirming = [];
+        $mutating = [];
+        $known = [];
 
         foreach ($facts as $fact) {
+            $known[strtolower($fact['name'])] = true;
+
             if ($fact['asks']) {
                 $confirming[strtolower($fact['name'])] = true;
+            }
+
+            if ($fact['mutates']) {
+                $mutating[strtolower($fact['name'])] = true;
             }
         }
 
@@ -107,9 +122,16 @@ class ToneUnconfirmed extends ToneAndConfirmRule
             }
         }
 
-        return array_values(array_filter($findings, function ($finding) use ($confirming) {
+        return array_values(array_filter($findings, function ($finding) use ($confirming, $mutating) {
             foreach ($finding['data']['methods'] ?? [] as $method) {
                 if (isset($confirming[strtolower($method)])) {
+                    return false;
+                }
+            }
+
+            // a method named for a dialog (confirm…, ask…, open…) opens one, unless its body is seen writing
+            foreach ($finding['data']['openers'] ?? [] as $method) {
+                if (! isset($mutating[strtolower($method)])) {
                     return false;
                 }
             }
@@ -138,12 +160,12 @@ class ToneUnconfirmed extends ToneAndConfirmRule
                 continue;
             }
 
-            if (! is_string($value) || preg_match('/atom-confirm-show|atom-modal-show|atom\.modal\(|\bconfirm\(/', $value)) {
+            if (! is_string($value) || preg_match('/atom-confirm-show|atom-modal-show|atom\.modal\([^)]*\)\s*\.\s*(?:show|slide)\(|\bconfirm\(/', $value)) {
                 return null;
             }
 
             if (str_starts_with($name, 'wire:click')) {
-                if (! preg_match('/^\s*(?:\$parent\.)?([A-Za-z_]\w*)/', $value, $found) || preg_match(static::OPENS, $found[1])) {
+                if (! preg_match('/^\s*(?:\$parent\.)?([A-Za-z_]\w*)/', $value, $found)) {
                     return null;
                 }
 
@@ -154,10 +176,6 @@ class ToneUnconfirmed extends ToneAndConfirmRule
 
             if (preg_match_all('/\$wire\.([A-Za-z_]\w*)\s*\(/', $value, $found)) {
                 foreach ($found[1] as $method) {
-                    if (preg_match(static::OPENS, $method)) {
-                        return null;
-                    }
-
                     if (! in_array($method, static::WIRE_HELPERS, true)) {
                         $methods[] = $method;
                     }
@@ -173,7 +191,7 @@ class ToneUnconfirmed extends ToneAndConfirmRule
      * or names the `atom-confirm-show` event) and which methods of `$this` it calls. A Volt closure
      * (`$suspend = function () {...}`) is a method named for its variable.
      *
-     * @return array<int, array{name: string, asks: bool, calls: array<int, string>}>
+     * @return array<int, array{name: string, asks: bool, mutates: bool, calls: array<int, string>}>
      */
     protected function methodFacts(string $php): array
     {
@@ -224,6 +242,7 @@ class ToneUnconfirmed extends ToneAndConfirmRule
             }
 
             $asks = false;
+            $mutates = false;
             $calls = [];
             $depth = 0;
 
@@ -249,8 +268,12 @@ class ToneUnconfirmed extends ToneAndConfirmRule
 
                     $called = strtolower($tokens[$call][1]);
 
-                    if (in_array($called, ['confirm', 'modal'], true)) {
+                    if ($called === 'confirm' || ($called === 'modal' && $this->opensModal($tokens, $this->next($tokens, $call)))) {
                         $asks = true;
+                    }
+
+                    if (in_array($called, static::MUTATIONS, true)) {
+                        $mutates = true;
                     }
 
                     $before = $this->previous($tokens, $k);
@@ -261,10 +284,36 @@ class ToneUnconfirmed extends ToneAndConfirmRule
                 }
             }
 
-            $facts[] = ['name' => $name, 'asks' => $asks, 'calls' => array_values(array_unique($calls))];
+            $facts[] = ['name' => $name, 'asks' => $asks, 'mutates' => $mutates, 'calls' => array_values(array_unique($calls))];
         }
 
         return $facts;
+    }
+
+    /**
+     * Whether the `modal('x')` call whose `(` is at `$open` goes on to `->show(` or `->slide(`: a modal that is opened, not closed
+     *
+     * @param  array<int, mixed>  $tokens
+     */
+    protected function opensModal(array $tokens, int $open): bool
+    {
+        $depth = 0;
+
+        for ($k = $open; $k < count($tokens); $k++) {
+            if ($tokens[$k] === '(') {
+                $depth++;
+            } elseif ($tokens[$k] === ')' && --$depth === 0) {
+                $arrow = $this->next($tokens, $k);
+                $name = $this->next($tokens, $arrow);
+
+                return is_array($tokens[$arrow] ?? null)
+                    && in_array($tokens[$arrow][0], [T_OBJECT_OPERATOR, defined('T_NULLSAFE_OBJECT_OPERATOR') ? T_NULLSAFE_OBJECT_OPERATOR : -1], true)
+                    && is_array($tokens[$name] ?? null)
+                    && in_array(strtolower($tokens[$name][1]), ['show', 'slide'], true);
+            }
+        }
+
+        return false;
     }
 
     /**

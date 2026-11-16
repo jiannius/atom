@@ -441,3 +441,95 @@ describe('confirm-copy: where a call is atom\'s', function () {
         expect(DesignHost::notes('<atom:confirm.trigger heading="Send to LHDN?" message="Your KWSP, SOCSO, EPF, PDPA and NRIC are shared" button-confirm="Send"><atom:link>A</atom:link></atom:confirm.trigger>', 'confirm-copy'))->toBe([]);
     });
 });
+
+describe('round 2: what the declines may hide', function () {
+    $scan = function (array $files): array {
+        $dir = DesignHost::temp($files);
+
+        try {
+            return array_map(fn ($finding) => $finding['file'].':'.$finding['line'], (new DesignCheck)->scan($dir, ['tone-unconfirmed'])['checks']['tone-unconfirmed']['findings']);
+        } finally {
+            DesignHost::remove($dir);
+        }
+    };
+    $view = fn (string $method) => ['resources/views/a.blade.php' => '<atom:menu.item variant="danger" wire:click="'.$method.'">A</atom:menu.item>'];
+    $class = fn (string $body) => ['app/A.php' => "<?php\nclass A {\n{$body}\n}"];
+    $hit = ['resources/views/a.blade.php:1'];
+
+    it('counts a modal that is opened and not one that is closed', function () use ($scan, $view, $class, $hit) {
+        expect($scan($view('go') + $class('public function go() { $this->modal("a")->show(); }')))->toBe([])
+            ->and($scan($view('go') + $class('public function go() { $this->modal("a")->slide(); }')))->toBe([])
+            ->and($scan($view('go') + $class('public function go() { atom()->modal(name: "a")->show(); }')))->toBe([])
+            ->and($scan($view('go') + $class('public function go() { $this->modal("a")?->show(); }')))->toBe([])
+            ->and($scan($view('go') + $class('public function go() { $this->delete(); $this->modal("a")->close(); }')))->toBe($hit)
+            ->and($scan($view('go') + $class('public function go() { atom()->modal("a")->close(); }')))->toBe($hit)
+            ->and($scan($view('go') + $class('public function go() { $this->modal(strtolower("A"))->close(); }')))->toBe($hit)
+            ->and($scan($view('go') + $class('public function go() { $this->modal("a"); }')))->toBe($hit)
+            ->and($scan($view('go') + $class('public function go() { $this->closeEdit(); } public function closeEdit() { $this->modal("a")->close(); }')))->toBe($hit)
+            ->and($scan($view('go') + $class('public function go() { $this->ask(); } public function ask() { $this->modal("a")->show(); }')))->toBe([]);
+    });
+
+    it('reads a click that closes a modal as an action, and one that opens it as a question', function () use ($scan) {
+        $item = fn (string $click) => ['resources/views/a.blade.php' => '<atom:button variant="danger" wire:click="purge" x-on:click="'.$click.'">A</atom:button>'];
+
+        expect($scan($item("atom.modal('a').close()")))->toBe(['resources/views/a.blade.php:1'])
+            ->and($scan($item("atom.modal('a').show()")))->toBe([])
+            ->and($scan($item("atom.modal('a').slide()")))->toBe([]);
+    });
+
+    it('declines a method named for a dialog only when its body is not seen writing', function () use ($scan, $view, $class, $hit) {
+        expect($scan($view('openPurge')))->toBe([])
+            ->and($scan($view('openPurge') + $class('public function openPurge() { $this->show = true; }')))->toBe([])
+            ->and($scan($view('openPurge') + $class('public function openPurge() { $this->invoice->update(["a" => 1]); }')))->toBe($hit)
+            ->and($scan($view('confirmPayment') + $class('public function confirmPayment() { $this->payment->save(); }')))->toBe($hit)
+            ->and($scan($view('askToPurge') + $class('public function askToPurge() { $this->member->forceDelete(); }')))->toBe($hit)
+            ->and($scan($view('openInvoice') + $class('public function openInvoice() { $this->invoice->delete(); }')))->toBe($hit)
+            ->and($scan($view('OPENINVOICE') + $class('public function openInvoice() { $this->invoice->delete(); }')))->toBe($hit)
+            ->and($scan($view('confirmPayment') + $class('public function confirmPayment() { $this->payment->toast(); }')))->toBe([]);
+    });
+
+    it('does not take confirmed for a method that opens a dialog', function () use ($scan, $view) {
+        expect($scan($view('confirmed')))->toBe(['resources/views/a.blade.php:1'])
+            ->and($scan($view('confirmedPayment')))->toBe([])
+            ->and($scan($view('openedAt')))->toBe([]);
+    });
+});
+
+describe('round 2: tone-missing', function () {
+    it('flags a Cancel of an add-on and not a Cancel of an add', function () {
+        expect(DesignHost::notes('<atom:button>Cancel add-on</atom:button>', 'tone-missing'))->toHaveCount(1)
+            ->and(DesignHost::notes('<atom:button>Cancel add on</atom:button>', 'tone-missing'))->toHaveCount(1)
+            ->and(DesignHost::notes('<atom:button>Cancel add line</atom:button><atom:button>Cancel add</atom:button>', 'tone-missing'))->toBe([]);
+    });
+
+    it('does not take a bystander for the line\'s control', function () {
+        $remove = '<atom:button variant="ghost" icon="x">Remove</atom:button>';
+
+        foreach ([
+            "<div><atom:input type=\"search\" />{$remove}</div>",
+            "<div><input type=\"search\">{$remove}</div>",
+            "<atom:table.toolbar><atom:select wire:model=\"a\" />{$remove}</atom:table.toolbar>",
+            "<div><atom:table.search />{$remove}</div>",
+            "<div><atom:table.filters><atom:select wire:model=\"a\" /></atom:table.filters>{$remove}</div>",
+            "<atom:table.row><atom:table.cell><atom:checkbox wire:model=\"checked\" /></atom:table.cell><atom:table.cell>{$remove}</atom:table.cell></atom:table.row>",
+            "<table><tr><td><atom:checkbox wire:model=\"checked\" /></td><td>{$remove}</td></tr></table>",
+            "<div><atom:select wire:model=\"a\" /><atom:card><div>{$remove}</div></atom:card></div>",
+            "<atom:page.header title=\"a\"><atom:input wire:model=\"a\" />{$remove}</atom:page.header>",
+            "<ul><li>{$remove}</li><li><atom:input wire:model=\"a\" /></li></ul>",
+        ] as $source) {
+            expect(DesignHost::notes($source, 'tone-missing'))->toHaveCount(1, $source);
+        }
+    });
+
+    it('still takes a value control for the line\'s, a checkbox outside a table row included', function () {
+        $remove = '<atom:button variant="ghost" icon="x">Remove</atom:button>';
+
+        foreach ([
+            "<div><atom:checkbox wire:model=\"taxable\" />{$remove}</div>",
+            "<atom:table.row><atom:table.cell><atom:input wire:model=\"a\" /></atom:table.cell><atom:table.cell>{$remove}</atom:table.cell></atom:table.row>",
+            "<atom:card><atom:input wire:model=\"a\" />{$remove}</atom:card>",
+        ] as $source) {
+            expect(DesignHost::notes($source, 'tone-missing'))->toBe([], $source);
+        }
+    });
+});

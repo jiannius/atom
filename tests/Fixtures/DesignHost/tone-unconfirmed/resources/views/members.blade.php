@@ -9,6 +9,12 @@
             <atom:menu.item variant="warning" wire:click="chain">Chain</atom:menu.item> {{-- expect: tone-unconfirmed --}}
             <atom:menu.item variant="warning" wire:click="outer">Outer</atom:menu.item> {{-- expect: tone-unconfirmed --}}
             <atom:menu.item variant="warning" wire:click="SUSPENDED">Upper</atom:menu.item> {{-- expect: tone-unconfirmed --}}
+            <atom:menu.item variant="danger" wire:click="deleteThenClose">Expel and close</atom:menu.item> {{-- expect: tone-unconfirmed --}}
+            <atom:menu.item variant="danger" wire:click="viaClose">Expel via</atom:menu.item> {{-- expect: tone-unconfirmed --}}
+            <atom:menu.item variant="danger" wire:click="openInvoice">Open invoice</atom:menu.item> {{-- expect: tone-unconfirmed --}}
+            <atom:menu.item variant="danger" wire:click="confirmPayment">Confirm payment</atom:menu.item> {{-- expect: tone-unconfirmed --}}
+            <atom:menu.item variant="danger" wire:click="confirmed">Confirmed</atom:menu.item> {{-- expect: tone-unconfirmed --}}
+            <atom:button variant="danger" x-on:click="atom.modal('edit').close()" wire:click="expel">Expel</atom:button> {{-- expect: tone-unconfirmed --}}
         </x-slot:menu>
 
         <x-slot:actions>
@@ -67,6 +73,8 @@
     <atom:button variant="danger" wire:click="confirmPurge">Purge</atom:button>
     <atom:button variant="danger" wire:click="askToPurge">Purge</atom:button>
     <atom:button variant="danger" wire:click="openPurge">Purge</atom:button>
+    <atom:button variant="danger" wire:click="openNote">Purge</atom:button>
+    <atom:button variant="danger" wire:click="purge" x-on:click="atom.modal('purge').show()">Purge</atom:button>
     <atom:button variant="danger" onclick="return confirm('Purge?')" wire:click="purge">Purge</atom:button>
 
     {{-- plumbing, not an action of the host's --}}

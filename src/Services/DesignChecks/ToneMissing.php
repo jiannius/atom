@@ -144,7 +144,7 @@ class ToneMissing extends ToneAndConfirmRule
             array_shift($rest);
         }
 
-        if (in_array($rest[0] ?? null, static::OBJECTS[$verb] ?? [], true)) {
+        if (in_array($rest[0] ?? null, static::OBJECTS[$verb] ?? [], true) && ! ($rest[0] === 'add' && ($rest[1] ?? null) === 'on')) {
             return true;
         }
 
@@ -186,28 +186,49 @@ class ToneMissing extends ToneAndConfirmRule
 
     /**
      * Whether the element sits in a row with a form control: the "Remove" of a repeated line. The row is the nearest
-     * of its three parents that holds one (a cell, a row, a card, a grid or a div), and the search stops at a form
-     * (past its first level), a modal, a slot or a surface.
+     * of its three parents that holds one (a cell, a row, a card, a grid or a div). The search stops at a form (past
+     * its first level), a modal, a slot or a surface, and after a card, a table row, a `tr` or an `li`, which are a
+     * row of their own. A search box (`type="search"`) or filter of a table toolbar, and the selection checkbox of a table row, are not
+     * a line's control.
      */
     protected function inFormRow(BladeOutline $outline, array $node): bool
     {
         foreach (array_slice($outline->ancestors($node), 0, 3) as $level => $ancestor) {
-            if ($ancestor['kind'] === 'slot' || in_array($ancestor['tag'], ['atom:modal', 'atom:form.modal', 'atom:page', 'atom:panel', 'atom:table', 'atom:page.columns', 'atom:page.header', 'atom:form.actions'], true) || ($ancestor['tag'] === 'atom:form' && $level > 0)) {
+            if ($ancestor['kind'] === 'slot' || in_array($ancestor['tag'], ['atom:modal', 'atom:form.modal', 'atom:page', 'atom:panel', 'atom:table', 'atom:table.toolbar', 'atom:page.columns', 'atom:page.header', 'atom:form.actions'], true) || ($ancestor['tag'] === 'atom:form' && $level > 0)) {
                 return false;
             }
 
             foreach ($outline->descendants($ancestor) as $each) {
-                if ($each['kind'] === 'atom' && $this->isControl((string) $each['component'])) {
+                if ($this->isLineControl($outline, $each)) {
                     return true;
                 }
+            }
 
-                if ($each['kind'] === 'html' && in_array($each['tag'], ['input', 'select', 'textarea'], true)) {
-                    return true;
-                }
+            if (in_array($ancestor['tag'], ['atom:card', 'atom:table.row', 'tr', 'li'], true)) {
+                return false;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Whether a tag is a control that holds a line's value: not a search box or filter, and not a table row's selection checkbox
+     */
+    protected function isLineControl(BladeOutline $outline, array $each): bool
+    {
+        $control = ($each['kind'] === 'atom' && $this->isControl((string) $each['component']))
+            || ($each['kind'] === 'html' && in_array($each['tag'], ['input', 'select', 'textarea'], true));
+
+        if (! $control) {
+            return false;
+        }
+
+        if ($outline->value($each, 'type') === 'search' || $outline->inside($each, ['atom:table.toolbar', 'atom:table.search', 'atom:table.filters']) !== null) {
+            return false;
+        }
+
+        return ! ($each['component'] === 'checkbox' && $outline->inside($each, ['atom:table.row', 'html:tr']) !== null);
     }
 
     protected function isControl(string $component): bool

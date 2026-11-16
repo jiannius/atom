@@ -48,6 +48,42 @@ class Members
         $this->modal('purge')->show();
     }
 
+    /**
+     * Closing the modal is the end of an action, not its question
+     */
+    public function deleteThenClose(): void
+    {
+        $this->member->delete();
+        $this->modal('edit')->close();
+        atom()->modal('x')->close();
+    }
+
+    public function viaClose(): void
+    {
+        $this->deleteThenClose();
+    }
+
+    /**
+     * Named for a dialog but it writes: it is the record's action
+     */
+    public function openInvoice(): void
+    {
+        $this->invoice->update(['opened_at' => now()]);
+    }
+
+    public function confirmPayment(): void
+    {
+        $this->payment->save();
+    }
+
+    /**
+     * Named for a dialog and it only opens one
+     */
+    public function openNote(): void
+    {
+        $this->showNote = true;
+    }
+
     public function viaEvent(): void
     {
         $this->dispatch('atom-confirm-show', heading: 'Purge?');

@@ -36,6 +36,7 @@
     <atom:button>Reset view</atom:button>
     <atom:button>Remove filter</atom:button>
     <atom:button>Cancel upload</atom:button>
+    <atom:button>Cancel add line</atom:button>
     <atom:button>Cancel and go back</atom:button>
     <atom:button>Cancel & close</atom:button>
     <atom:button>Reset all filters</atom:button>
@@ -101,6 +102,29 @@
         <atom:table.cell>Part A</atom:table.cell>
         <atom:table.cell><atom:button variant="ghost" icon="x" wire:click="removePart">Remove</atom:button></atom:table.cell> {{-- expect: tone-missing --}}
     </atom:table.row>
+
+    {{-- a control that is not the line's own: a search box, a toolbar's select, a selection checkbox, one past a card or in the header --}}
+    <div class="flex">
+        <atom:input type="search" wire:model="search" />
+        <atom:button variant="ghost" icon="x" wire:click="removeFilterSet">Remove</atom:button> {{-- expect: tone-missing --}}
+    </div>
+    <atom:table.toolbar>
+        <atom:select wire:model="filters.status" />
+        <atom:button variant="ghost" icon="x" wire:click="removeView">Remove</atom:button> {{-- expect: tone-missing --}}
+    </atom:table.toolbar>
+    <atom:table.row>
+        <atom:table.cell><atom:checkbox wire:model="checked" /></atom:table.cell>
+        <atom:table.cell><atom:button variant="ghost" icon="x" wire:click="removePart">Remove</atom:button></atom:table.cell> {{-- expect: tone-missing --}}
+    </atom:table.row>
+    <div>
+        <atom:select wire:model="unit" />
+        <atom:card><div><atom:button variant="ghost" wire:click="removePart">Remove</atom:button></div></atom:card> {{-- expect: tone-missing --}}
+    </div>
+    <atom:page.header title="Part">
+        <atom:input wire:model="name" />
+        <atom:button variant="ghost" wire:click="removePart">Remove</atom:button> {{-- expect: tone-missing --}}
+    </atom:page.header>
+    <atom:button>Cancel add-on</atom:button> {{-- expect: tone-missing --}}
 
     <atom:form wire:submit="save">
         <atom:button variant="ghost">Reset</atom:button>
