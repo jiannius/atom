@@ -34,13 +34,26 @@ test.describe('placement', () => {
 
     expect(await placement(page)).toEqual(['Edit:visible', 'Print:visible', 'menu', 'Send invoice:primary'])
     await openMenu(page)
-    expect(await rows(page)).toEqual(['Duplicate', '|', 'Void invoice', 'Archive and leave', 'Delete invoice'])
+    expect(await rows(page)).toEqual(['Duplicate', '|', 'Void invoice', 'Archive and leave', 'Retire invoice', 'Delete invoice'])
+  })
+
+  test('a warning action with priority="primary" is a menu row in its tone, never the header\'s primary', async ({ page }) => {
+    await open(page)
+
+    expect(await placement(page)).not.toContain('Retire invoice:primary')
+    await expect(page.getByTestId('retire')).toHaveAttribute('data-atom-action', 'menu')
+    await openMenu(page)
+    await page.getByTestId('retire').click()
+    await expect(dialog(page).locator('button[type="submit"]')).toHaveClass(/bg-warning-fg/)
+    await dialog(page).locator('button[type="submit"]').click()
+
+    await expect.poll(() => log(page)).toEqual(['retire'])
   })
 
   test('every action is drawn once', async ({ page }) => {
     await open(page)
 
-    for (const name of ['edit', 'print', 'duplicate', 'void', 'leave', 'delete', 'send']) {
+    for (const name of ['edit', 'print', 'duplicate', 'void', 'leave', 'retire', 'delete', 'send']) {
       await expect(page.getByTestId(name)).toHaveCount(1)
     }
 
@@ -169,14 +182,14 @@ test.describe('a morph', () => {
   test('that adds an action moves the last visible one into the open ⋯, keeps it open and fires no call', async ({ page }) => {
     await open(page)
     await openMenu(page)
-    expect(await rows(page)).toEqual(['Duplicate', '|', 'Void invoice', 'Archive and leave', 'Delete invoice'])
+    expect(await rows(page)).toEqual(['Duplicate', '|', 'Void invoice', 'Archive and leave', 'Retire invoice', 'Delete invoice'])
 
     await page.evaluate(() => window.Livewire.first().call('addReminder'))
     await expect.poll(() => placement(page)).toEqual(['Send reminder:visible', 'Edit:visible', 'menu', 'Send invoice:primary'])
 
     expect(await menu(page).evaluate((el) => el.matches(':popover-open'))).toBe(true)
     await expect(trigger(page)).toHaveAttribute('aria-expanded', 'true')
-    expect(await rows(page)).toEqual(['Print', 'Duplicate', '|', 'Void invoice', 'Archive and leave', 'Delete invoice'])
+    expect(await rows(page)).toEqual(['Print', 'Duplicate', '|', 'Void invoice', 'Archive and leave', 'Retire invoice', 'Delete invoice'])
     expect(await log(page)).toEqual([])
   })
 
@@ -200,6 +213,6 @@ test.describe('a morph', () => {
     await expect(page.getByTestId('renders')).toHaveText('1')
 
     expect(await menu(page).evaluate((el) => el.matches(':popover-open'))).toBe(true)
-    expect(await rows(page)).toEqual(['Duplicate', '|', 'Void invoice', 'Archive and leave', 'Delete invoice'])
+    expect(await rows(page)).toEqual(['Duplicate', '|', 'Void invoice', 'Archive and leave', 'Retire invoice', 'Delete invoice'])
   })
 })

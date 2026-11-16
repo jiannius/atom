@@ -12,6 +12,7 @@
             <atom:action priority="low" wire:click="record('duplicate')" data-testid="duplicate">Duplicate</atom:action>
             <atom:action tone="warning" wire:click="record('void')" data-testid="void">Void invoice</atom:action>
             <atom:action tone="warning" href="/atom/e2e/actions/landing" data-testid="leave">Archive and leave</atom:action>
+            <atom:action tone="warning" priority="primary" wire:click="record('retire')" data-testid="retire">Retire invoice</atom:action>
             <atom:action tone="delete" data-testid="delete">Delete invoice</atom:action>
         </x-slot:actions>
 

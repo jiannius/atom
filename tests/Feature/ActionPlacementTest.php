@@ -96,10 +96,16 @@ describe('the primary', function () {
         'row' => ['row', []],
     ]);
 
-    it('may be toned: the tone sets its confirm, not its look, and it does not count as a button', function () {
-        $placed = ActionPlacement::place('header', [actionItem('v', 'primary', tone: 'warning'), ...normals(2)]);
+    it('is never toned: a toned primary goes to the menu in its tone group, and the next untoned primary is the header\'s', function () {
+        $items = [actionItem('v', 'primary', tone: 'warning'), actionItem('d', 'actions', 'primary', 'delete'), actionItem('p', 'actions', 'primary', position: 1), ...normals(1)];
+        $placed = ActionPlacement::place('header', $items);
 
-        expect(actionSummary($placed))->toBe(['primary' => 'v', 'visible' => ['a', 'b'], 'pinned' => [], 'menu' => []]);
+        expect(actionSummary($placed))->toBe(['primary' => 'p', 'visible' => ['a'], 'pinned' => [], 'menu' => ['v', 'd']]);
+
+        $none = ActionPlacement::place('header', [actionItem('v', 'primary', tone: 'danger')]);
+
+        expect(actionSummary($none))->toBe(['primary' => null, 'visible' => [], 'pinned' => [], 'menu' => ['v']])
+            ->and($none['menu'][0]['priority'])->toBe('normal');
     });
 
     it('goes to the toned menu rows when it is demoted', function () {
@@ -253,8 +259,8 @@ describe('the invariants, over a seeded random corpus', function () {
             expect(count($placed['visible']))->toBeLessThanOrEqual($caps['visible'], $why)
                 ->and(count($placed['pinned']))->toBeLessThanOrEqual($caps['pinned'], $why);
 
-            // I2: at most one primary, only where one is taken
-            expect($placed['primary'] === null || ($caps['primary'] > 0 && ! $context['hostPrimary']))->toBeTrue($why);
+            // I2: at most one primary, only where one is taken, and never a toned one
+            expect($placed['primary'] === null || ($caps['primary'] > 0 && ! $context['hostPrimary'] && $placed['primary']['tone'] === null))->toBeTrue($why);
 
             // I3: no toned action is a visible button
             foreach ($placed['visible'] as $item) {

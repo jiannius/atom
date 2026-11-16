@@ -122,12 +122,18 @@ describe('what shows', function () {
             ->and(domQuery($html, '//*[@data-atom-page-actions]//*[@data-atom-menu]/*[@role="separator"]'))->toBeEmpty();
     });
 
-    it('lets a toned action be the primary, drawn as the primary and confirming in its tone', function () {
-        $html = renderBlade('<atom:page.header title="T"><x-slot:primary><atom:action priority="primary" tone="danger" wire:click="x">Wipe</atom:action></x-slot:primary></atom:page.header>');
-        $primary = domQuery($html, '//*[@data-atom-action="primary"]')[0];
+    it('never makes a toned action the primary, even with priority="primary": it goes to the menu in its tone', function () {
+        $only = renderBlade('<atom:page.header title="T"><x-slot:primary><atom:action priority="primary" tone="danger" wire:click="x">Wipe</atom:action></x-slot:primary></atom:page.header>');
+        $next = renderBlade('<atom:page.header title="T"><x-slot:actions>
+            <atom:action priority="primary" tone="warning" wire:click="v">Void</atom:action><atom:action priority="primary" wire:click="s">Send</atom:action>
+        </x-slot:actions></atom:page.header>');
 
-        expect(domClasses($primary))->toContain('bg-accent')
-            ->and(json_decode($primary->getAttribute('data-atom-confirm'), true))->toMatchArray(['variant' => 'danger', 'heading' => 'Wipe?']);
+        expect(headerActions($only))->toBe(['menu'])
+            ->and(headerMenu($only))->toBe(['Wipe'])
+            ->and(domQuery($only, '//*[@data-atom-action="primary"]'))->toBeEmpty()
+            ->and(headerActions($next))->toBe(['menu', 'Send:primary'])
+            ->and(headerMenu($next))->toBe(['Void'])
+            ->and(json_decode(domQuery($next, '//*[@data-atom-menu]//*[@data-atom-action="menu"]')[0]->getAttribute('data-atom-confirm'), true))->toMatchArray(['variant' => 'warning']);
     });
 
     it('takes the primary slot\'s default and a menu slot\'s low default, so a tag rename keeps today\'s places', function () {

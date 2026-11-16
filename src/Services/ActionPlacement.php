@@ -12,8 +12,9 @@ use InvalidArgumentException;
  * caps table say the same numbers, and a test ties them (`ActionPlacementTest`).
  *
  * The rule, in order:
- *  1. Normalise: a `primary` goes to the first primary action of a surface that takes one (the header, unless it is `size="sm"` or the host fills its
- *     own `primary` slot); any other primary action is a `normal` one.
+ *  1. Normalise: a `primary` goes to the first untoned primary action of a surface that takes one (the header, unless it is `size="sm"` or the host fills its
+ *     own `primary` slot); any other primary action is a `normal` one. A toned action is never the primary: warning and danger are never visible on a record
+ *     header (design rules, phase 2), so a toned `primary` goes to the menu with its tone and the next untoned primary, if any, is the header's.
  *  2. Visible: the untoned `normal` actions, in order, up to the surface's cap. A toned action is never a visible button, except the bulk bar's pin.
  *  3. Pinned (bulk bar only): the first `danger` or `delete` action that is not `low`, drawn after the visible ones.
  *  4. Menu: the untoned `normal` actions left over, then the `low` ones; then a separator, then `warning`, then `danger` and `delete`. The separator
@@ -83,7 +84,7 @@ class ActionPlacement
             $tone = static::toneOf($item);
 
             if ($item['priority'] === 'primary') {
-                if ($primary === null && $primaryCap > 0) {
+                if ($primary === null && $primaryCap > 0 && $tone === null) {
                     $primary = $item;
 
                     continue;

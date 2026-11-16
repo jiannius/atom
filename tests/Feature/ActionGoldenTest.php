@@ -1,6 +1,6 @@
 <?php
 
-// The byte-for-byte promise of the action engine (design rules, phase 5): a surface that holds no <atom:action> prints exactly what it printed
+// The byte-for-byte promise of the action engine (design rules, phase 5): a surface that holds no <atom:action> prints, byte for byte (whitespace included, bar the tail of the file), what it printed
 // before the engine existed. The files under tests/Fixtures/golden were recorded from the surfaces BEFORE any of them was wired to read
 // actions (the commit that adds them changes no component). A later change that alters the markup of a surface with no action fails here by
 // name. To record a new case, run with GOLDEN_RECORD=1 and review the new file; never re-record an existing one to make this pass.
@@ -27,12 +27,6 @@ function goldenLivewire(string $blade): string
 
     // the component's root carries Livewire's snapshot and random ids; the rest is what a surface drew
     return preg_replace('/ wire:(?:key="lw-[^"]*"|snapshot="[^"]*"|effects="[^"]*"|id="[^"]*"|name="[^"]*")/', '', $html);
-}
-
-/** Markup with the whitespace between tags removed, so two renders compare by what they draw. */
-function goldenFlat(string $html): string
-{
-    return preg_replace('/\s+/', ' ', trim(preg_replace('/>\s+</', '><', $html)));
 }
 
 /** @return array<string, array{0: string, 1: bool}> name => [Blade, rendered inside a Livewire component] */
@@ -77,15 +71,15 @@ body</atom:card>', true],
 
 it('prints the same bytes as before the engine for every surface with no action', function (string $name) {
     [$blade, $livewire] = goldenCases()[$name];
-    $html = goldenFlat($livewire ? goldenLivewire($blade) : renderBlade($blade));
+    $html = $livewire ? goldenLivewire($blade) : renderBlade($blade);
     $file = __DIR__.'/../Fixtures/golden/'.$name.'.html';
 
     if (getenv('GOLDEN_RECORD') && ! is_file($file)) {
-        file_put_contents($file, $html."\n");
+        file_put_contents($file, rtrim($html));
     }
 
     expect(is_file($file))->toBeTrue('no golden file for '.$name)
-        ->and($html)->toBe(rtrim(file_get_contents($file), "\n"));
+        ->and(rtrim($html))->toBe(rtrim(file_get_contents($file)));
 })->with(fn () => array_keys(goldenCases()));
 
 it('has a golden case for each of the five surfaces', function () {

@@ -70,15 +70,8 @@ describe('visible buttons', function () {
 });
 
 describe('the primary and the pin', function () {
-    it('is the accent button, whatever its tone, and a delete keeps its handler', function () {
-        $plain = placedElement([], 'primary', 'header');
-        $delete = placedElement(['tone' => 'delete', 'attributes' => new ComponentAttributeBag], 'primary', 'header');
-        $warning = placedElement(['tone' => 'warning'], 'primary', 'header');
-
-        expect(domClasses($plain))->toContain('bg-accent')
-            ->and(domClasses($delete))->toContain('bg-accent')->not->toContain('bg-danger-bg')
-            ->and($delete->getAttribute('x-on:confirmed'))->toBe('$wire.delete()')
-            ->and(json_decode($warning->getAttribute('data-atom-confirm'), true))->toMatchArray(['variant' => 'warning']);
+    it('is the accent button', function () {
+        expect(domClasses(placedElement([], 'primary', 'header')))->toContain('bg-accent');
     });
 
     it('is the tint in the bulk bar: type="delete" for a delete, an inverted danger for a danger action', function () {

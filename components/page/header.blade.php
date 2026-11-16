@@ -133,23 +133,18 @@ $hasActions = $has($actions ?? null) || $placed['visible'] !== [] || $hasMenu ||
         <div @class(['flex flex-wrap items-center gap-2', 'max-w-full shrink-0' => ! $small]) data-atom-page-actions>
             @if ($has($actions ?? null))
                 {{ $actions }}
-            @endif
-
-            <atom:action._list :items="$placed['visible']" place="visible" surface="header" :small="$small" />
+            @endif<atom:action._list :items="$placed['visible']" place="visible" surface="header" :small="$small" />
 
             @if ($hasMenu)
                 {{-- the trigger is the size of the header's other buttons: the control's own on a page, `sm` in a modal or slide-over --}}
                 <atom:menu._more :size="$small ? 'sm' : null">
-                    {{ $menu }}
-                    <atom:action._list :items="$placed['menu']" place="menu" surface="header" :small="$small" :separator="$placed['separator']" />
+                    {{ $menu }}<atom:action._list :items="$placed['menu']" place="menu" surface="header" :small="$small" :separator="$placed['separator']" />
                 </atom:menu._more>
             @endif
 
             @if ($has($primary ?? null))
                 {{ $primary }}
-            @endif
-
-            <atom:action._list :items="array_filter([$placed['primary']])" place="primary" surface="header" :small="$small" />
+            @endif<atom:action._list :items="array_filter([$placed['primary']])" place="primary" surface="header" :small="$small" />
         </div>
     @endif
 </header>

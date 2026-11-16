@@ -9,10 +9,10 @@ use Jiannius\Atom\Services\ActionItems;
 beforeEach(fn () => view()->share('errors', new \Illuminate\Support\ViewErrorBag));
 
 /** The message of the InvalidArgumentException a render threw (a view wraps it in a ViewException), '' when nothing was thrown */
-function actionRefusal(string $blade): string
+function actionRefusal(string $blade, array $data = []): string
 {
     try {
-        renderBlade($blade);
+        renderBlade($blade, $data);
     }
     catch (Throwable $e) {
         while ($e !== null && ! $e instanceof InvalidArgumentException) {
@@ -45,6 +45,21 @@ describe('the tag\'s contract', function () {
             ->and(actionRefusal('<atom:action label="A">B</atom:action>'))->toContain('not both')
             ->and(actionRefusal('<atom:action label="A" priority="high" />'))->toContain('priority must be one of primary, normal, low')
             ->and(actionRefusal('<atom:action label="A" tone="success" />'))->toContain('tone must be one of warning, danger, delete');
+    });
+
+    it('refuses a markup label, an action inside an action, and a nameless icon-only one', function () {
+        expect(actionRefusal('<atom:action :label="$l" />', ['l' => new \Illuminate\Support\HtmlString('<b>x</b>')]))->toContain('`label` is text, not markup')
+            ->and(actionRefusal('<atom:action>Outer <atom:action label="Inner" wire:click="x" /></atom:action>'))->toContain('cannot hold another')
+            ->and(actionRefusal('<atom:action><atom:icon.edit /></atom:action>'))->toContain('pass `label`, or `aria-label`')
+            ->and(actionRefusal('<atom:action><atom:icon.edit /></atom:action>'))->not->toContain('needs a label')
+            ->and(actionRefusal('<atom:action aria-label="Edit"><atom:icon.edit /></atom:action>'))->toBe('')
+            ->and(actionRefusal('<atom:action>Edit <atom:icon.edit /></atom:action>'))->toBe('');
+    });
+
+    it('does not leave the nested action\'s marker in the registry or the output', function () {
+        actionRefusal('<atom:action>Outer <atom:action label="Inner" wire:click="x" /></atom:action>');
+
+        expect(app(ActionItems::class)->pending())->toBe(1);
     });
 
     it('takes the label from the prop or the slot, translated once', function () {
@@ -197,6 +212,18 @@ describe('the registry', function () {
         $other->reportUnplaced();
 
         Log::shouldHaveReceived('warning')->twice();
+    });
+
+    it('registers one terminating callback for the container, however many requests or jobs a worker serves', function () {
+        $callbacks = fn () => count((new ReflectionProperty(app(), 'terminatingCallbacks'))->getValue(app()));
+        $before = $callbacks();
+
+        foreach ([1, 2, 3] as $job) {
+            renderBlade('<atom:action label="Edit" wire:click="x" />');
+            app()->forgetScopedInstances();
+        }
+
+        expect($callbacks())->toBe($before);
     });
 
     it('is scoped, so a worker starts every request and job empty', function () {

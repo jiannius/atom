@@ -34,17 +34,36 @@ if ($tone !== null && ! in_array($tone, \Jiannius\Atom\Services\ActionPlacement:
     throw new \InvalidArgumentException('<atom:action> tone must be one of '.implode(', ', \Jiannius\Atom\Services\ActionPlacement::TONES).'; got ['.(is_scalar($tone) ? $tone : gettype($tone)).'].');
 }
 
+if ($label instanceof \Illuminate\Contracts\Support\Htmlable) {
+    throw new \InvalidArgumentException('<atom:action> `label` is text, not markup: put the markup in the slot (`<atom:action>Save <b>draft</b></atom:action>`) or pass a string.');
+}
+
 $hasSlot = $slot->hasActualContent();
 $hasLabel = $label !== null && $label !== '' && $label !== [];
+
+if (preg_match(\Jiannius\Atom\Services\ActionItems::PATTERN, (string) $slot)) {
+    throw new \InvalidArgumentException('An <atom:action> cannot hold another <atom:action>: write the actions side by side in the surface\'s slot.');
+}
 
 if ($hasSlot && $hasLabel) {
     throw new \InvalidArgumentException('<atom:action> takes a `label` or a slot, not both.');
 }
 
-$text = $hasLabel ? trim(app('atom')->translateOnce($label)) : trim(preg_replace('/\s+/', ' ', strip_tags((string) $slot)));
+/* the text of a slot: its markup stripped, and what an icon's `<style>` holds is not text */
+$text = $hasLabel
+    ? trim(app('atom')->translateOnce($label))
+    : trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags(preg_replace('#<(style|script)\b.*?</\1>#is', '', (string) $slot)))));
 
 if (! $hasSlot && $text === '') {
     throw new \InvalidArgumentException('<atom:action> needs a label: pass `label` or put the text in the slot.');
+}
+
+if ($text === '' && blank($attributes->get('aria-label'))) {
+    throw new \InvalidArgumentException('<atom:action> with markup and no text (an icon alone) would be a button with no name: pass `label`, or `aria-label` on the action.');
+}
+
+if ($text === '') {
+    $text = trim((string) $attributes->get('aria-label'));
 }
 
 $marker = app(\Jiannius\Atom\Services\ActionItems::class)->add([

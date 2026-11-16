@@ -8,7 +8,7 @@
 {{-- One placed action, drawn as the element the surface gives it: a button, a link or a row of the ⋯ menu. Private (underscore): the surfaces call it
      with the items `ActionPlacement::place()` returned. The host's attribute bag goes through `:attributes` and the engine's own props are written on the
      tag, so they win over it, and `wire:click`, `x-on:click`, `href` and `confirm` land on the one element exactly once. A toned action confirms in its tone
-     (A4); a delete is `type="delete"` / `variant="delete"` and keeps their copy, their bulk count and `$wire.delete()`. Looks: the header's buttons are
+     (A4) and is never the primary; a delete is `type="delete"` / `variant="delete"` and keeps their copy, their bulk count and `$wire.delete()`. Looks: the header's buttons are
      bordered (`sm` in a `size="sm"` header), its primary is `variant="primary"`; the toolbar's are ghost, and one with an icon keeps its label as `sr-only` on a phone;
      the bulk bar's are the control height, its pinned delete the tint; a card's are a link for an `href` (else ghost `xs`), a panel's the same at `sm`. --}}
 @php
@@ -41,7 +41,6 @@ $content = $wrapped ? '<span class="max-sm:sr-only">'.$html.'</span>' : $html;
 $link = in_array($surface, ['card', 'panel'], true) && $place === 'visible' && filled($href) && $confirm === null;
 
 $look = match (true) {
-    $place === 'primary' && $tone === 'delete' => ['variant' => 'primary', 'type' => 'delete', 'inverted' => false],
     $place === 'primary' => ['variant' => 'primary'],
     $place === 'pinned' && $tone === 'delete' => ['type' => 'delete'],
     $place === 'pinned' => ['variant' => 'danger', 'inverted' => true],

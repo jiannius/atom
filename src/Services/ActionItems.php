@@ -21,7 +21,8 @@ use Livewire\Mechanisms\ExtendBlade\ExtendBlade;
  *   own update.
  * - **A marker never reaches the browser from a surface.** Every well-formed marker in a slot a surface reads is stripped, placed or not. An id that is
  *   not in the registry (forged or stale) is stripped and ignored.
- * - **An action nobody placed draws nothing.** The registry logs it once when the request ends (`reportUnplaced()`), without its label, which can hold record data.
+ * - **An action nobody placed draws nothing.** The registry logs it once when the request ends (`reportUnplaced()`, called from the one `terminating()` callback
+ *   `AtomServiceProvider` registers for the container, so a worker that never terminates does not pile callbacks up), without its label, which can hold record data.
  * - **Scoped** (`AtomServiceProvider`): Octane and queue workers get a fresh registry per request and per job.
  */
 class ActionItems
@@ -39,8 +40,6 @@ class ActionItems
     protected array $items = [];
 
     protected int $counter = 0;
-
-    protected bool $watching = false;
 
     /**
      * Once per process, when neither the cache nor its fallback can remember: the ids already logged, capped at 100.
@@ -66,12 +65,6 @@ class ActionItems
             'order' => $this->counter++,
             'slug' => Str::slug((string) ($item['label'] ?? '')) ?: 'action',
         ];
-
-        if (! $this->watching) {
-            $this->watching = true;
-
-            app()->terminating(fn () => $this->reportUnplaced());
-        }
 
         return '<!--atom:action:'.$id.'-->';
     }
