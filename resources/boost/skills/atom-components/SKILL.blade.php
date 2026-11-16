@@ -289,6 +289,40 @@ For confirm-before-action in Blade, a button or a menu item takes `confirm`; `<a
 **Button labels.** A plain-text label truncates with an ellipsis when it is longer than its container and the start and end icons stay in view (a workspace switcher: `<atom:button block variant="ghost" icon-suffix="dropdown" class="justify-between!">`: the `!` is needed, a plain `justify-between` loses to the button's `justify-center`, and it puts the icon at the right edge). Markup in the slot (a badge, a kbd) is not truncated.
 @endverbatim
 
+### Action items
+
+@verbatim
+`<atom:action>` is a button or a menu item that the surface it sits in places for you. Write each action once, saying what it is; atom draws the first ones as buttons and the rest as rows of the surface's ⋯ menu, with the caps, the order, the separator and the confirm in the action's tone, so the same action sits in the same place on every record page.
+
+| Prop | Values | Default |
+|---|---|---|
+| `label` | plain text, a lang key or a `[key, replacements]` pair (translated once, so record data with a `\|` is safe); markup goes in the slot; one of the two, not both | none |
+| `icon` | an icon name | none |
+| `priority` | `primary` (the screen's next step), `normal` (frequent), `low` (a utility: duplicate, print, copy link, audit log) | from the slot: `primary` slot primary, `menu` low, any other normal |
+| `tone` | `warning`, `danger`, `delete` | none (neutral) |
+| `confirm` | as on `<atom:button>`: `true`, a heading, an array, `false` | `true` for a toned action, else none |
+| `href`, `newtab`, `passphrase` | as on the button | none |
+
+- **Every other attribute** (`wire:click`, `x-on:*`, `disabled`, `data-*`, `class`, `wire:key`) lands on the one element the action becomes, once. `variant`, `color`, `size`, `type`, `inverted`, `block`, `social` and `tooltip` throw: the surface sets the look; so do an `Htmlable` `label` (it is text; markup goes in the slot), an action inside an action, a slot with markup but no text (an icon alone; an `<img alt>` or an `aria-label` in it is a name) and no `label` or `aria-label`, and an empty label (a blank record field throws: guard an optional name with `@if`); there is no `name` (it would read as an `App\Actions` class).
+- **Placement:** the first untoned primary action is the screen's primary, last in the header (none in a `size="sm"` header, or beside a `primary` slot of your own); the untoned `normal` ones fill the visible buttons up to the cap (header 2, `size="sm"` 1); the rest go to the menu: untoned, then the `low` ones, then `<atom:menu.separator>` (drawn when something precedes it), then warning, then danger and delete last. A toned action is never a visible button and never the primary, even with `priority="primary"` (warning and danger are never visible on a record header): it goes to the menu in its tone and the next untoned primary, if any, is the header's. Adding a `low` or a toned action never changes the buttons; the same action stays in the same place.
+- **Tone and confirm:** a `warning` or `danger` action asks in its tone with its label's words ("Void invoice?"); `delete` is the delete's own copy, and with no handler of its own calls `$wire.delete()`. `:confirm="false"` opts out.
+- **Moving a surface:** rename `<atom:button>` / `<atom:menu.item>` in its slots to `<atom:action>`, `variant="warning"` to `tone="warning"`, `type="delete"` and `variant="delete"` to `tone="delete"`, and drop `size`. A `menu` slot's actions stay in the menu (low), a `primary` slot's stays the primary. Your own buttons and items in the same slots keep working and print first; atom counts only the actions.
+- **An action is placed only by a surface in the same view render** (not across a Livewire child or an island), and only from a slot the surface reads. Use `@if`, never `x-show` or `<template x-if>`, around one; a wrapper (`<atom:tooltip>`, `<atom:confirm.trigger>`, a dropdown, a `button.group`) is left behind. An action no surface takes draws nothing and is logged once. Markers are per request: a cached or minified slot that drops or reuses an HTML comment loses its actions, so do not cache the output of a slot that holds actions.
+- **Placed by:** `page.header` (`primary`, `actions`, `menu` and the default slot).
+
+```blade
+<atom:page.header title="INV-0042">
+    <x-slot:actions>
+        <atom:action priority="primary" wire:click="send">Send invoice</atom:action>
+        <atom:action icon="edit" :href="route('invoices.edit', $invoice)" wire:navigate>Edit</atom:action>
+        <atom:action icon="copy" priority="low" wire:click="duplicate">Duplicate</atom:action>
+        <atom:action tone="warning" wire:click="void">Void invoice</atom:action>
+        <atom:action tone="delete" wire:click="destroy">Delete invoice</atom:action>
+    </x-slot:actions>
+</atom:page.header>
+```
+@endverbatim
+
 ### Dropdown & menu
 
 @verbatim
@@ -364,7 +398,7 @@ Reach for these instead of hand-rolling coloured pills, notice boxes, or empty s
 
 ### Actions
 
-PHP classes in `App\Actions\` invoked by name. Names are dot-paths that map to namespaces (e.g. `Reports.Generate` → `Reports\Generate`). Resolution order: `App\Actions\{Name}` then `Jiannius\Atom\Actions\{Name}`. The host app's class wins, enabling per-app overrides of package actions.
+PHP classes in `App\Actions\` invoked by name. (Not the `atom:action` tag: that is a button or menu item a surface places, see "Action items".) Names are dot-paths that map to namespaces (e.g. `Reports.Generate` → `Reports\Generate`). Resolution order: `App\Actions\{Name}` then `Jiannius\Atom\Actions\{Name}`. The host app's class wins, enabling per-app overrides of package actions.
 
 **From PHP, any action is callable.** `app('atom')->action('SyncContacts', $params)`, or `$this->action(...)` inside a Livewire component. Pass `method` in `$params` to invoke something other than `handle`. This is a server-side path only — the helper is a macro, so `$wire.action(...)` cannot reach it (since 3.25 a protected trait method, a macro in v4; before 3.25 it could, bypassing the `WebAction` gate entirely).
 

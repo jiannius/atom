@@ -1,0 +1,77 @@
+<div class="flex min-w-0 grow basis-full flex-wrap items-start gap-2" data-atom-table-toolbar>
+    <div class="flex min-w-0 grow flex-wrap items-start gap-2 sm:basis-0 sm:min-w-48 [:where(&_[data-atom-table-search])]:w-full sm:[:where(&_[data-atom-table-search])]:w-60 basis-48" data-atom-table-toolbar-start>
+        
+    </div>
+
+            
+        <div
+         x-data="tableCount"                 class="ms-auto flex min-h-(--atom-control-h) shrink-0 flex-wrap items-center gap-2 self-start text-xs text-fg-subtle"
+        data-atom-table-toolbar-end>
+                            <span x-show="text" x-cloak x-text="text" class="tabular-nums text-xs text-fg-muted max-sm:hidden" data-atom-table-count></span>
+            
+            
+            
+            
+                            <div
+x-data="dropdown({
+    locked: false,
+    placement: 'bottom-end',
+})"
+class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100"
+data-atom-dropdown>
+    <div x-data="tooltip({
+        placement: 'top-center',
+        interactive: null,
+    })" class="inline-flex max-w-full min-w-0" data-atom-tooltip>
+        <button class="group/button relative items-center justify-center overflow-hidden inline-flex max-w-full whitespace-nowrap font-medium transition-colors disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [&amp;.is-loading]:opacity-50 [&amp;.is-loading]:pointer-events-none bg-transparent border border-transparent text-fg-muted hover:bg-fg/5 hover:text-fg h-control aspect-square rounded-control" type="button" aria-label="More actions" data-atom-button>
+    <div class="absolute inset-0 items-center justify-center hidden group-[.is-loading]/button:flex ">
+        <span aria-hidden="true" class="inline-flex shrink-0  *:w-full *:h-full size-4" data-atom-icon>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <style>
+         .spinner_ajPY {
+            transform-origin: center;
+            animation: spinner_AtaB 1s infinite linear
+         }
+
+         @keyframes spinner_AtaB {
+            100% {
+               transform: rotate(360deg)
+            }
+         }
+      </style>
+      <path d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity=".25" />
+      <path
+         d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z"
+         class="spinner_ajPY" />
+   </svg>
+</span>    </div>
+
+    <div class="inline-flex min-w-0 max-w-full items-center gap-2 justify-center group-[.is-loading]/button:opacity-0 ">
+                    <span aria-hidden="true" class="inline-flex shrink-0  *:w-full *:h-full shrink-0 size-4" data-atom-icon>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+</span>        
+                    
+        
+            </div>
+</button>
+
+                    <div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content>
+    More actions
+
+    </div>            </div>    
+    <div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised w-[220px]" data-atom-menu popover>
+    <button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]">
+    
+    <div class="grow leading-tight whitespace-nowrap truncate">
+        Edit
+    </div>
+
+    
+    
+    
+    </button>
+</div>
+</div>
+            
+                    </div>
+    </div>
