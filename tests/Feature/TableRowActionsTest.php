@@ -159,3 +159,12 @@ describe('render cost', function () {
             ->and($counts['menu-item'])->toBe(20);
     });
 });
+
+it('draws the docs row demo with every action in the ⋯, in the engine order', function () {
+    $html = view('atom::docs.demos.action.row')->render();
+
+    expect(tableRowActionsMenu($html))->toBe(['Edit', 'Send', 'Copy link', '|', 'Void', 'Delete'])
+        ->and(domQuery($html, '//*[@data-atom-table-actions]//*[@data-atom-action!="menu"]'))->toBeEmpty()
+        ->and(domQuery($html, '//*[@data-atom-table-actions]//*[@data-atom-confirm]'))->toHaveCount(2)
+        ->and($html)->not->toContain('atom:action:');
+});

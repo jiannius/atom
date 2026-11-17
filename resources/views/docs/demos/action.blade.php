@@ -26,3 +26,8 @@ view="atom::docs.demos.action.card"/>
 title="In a table's toolbar"
 description="Two ghost buttons in the end group, the rest in the ⋯ (Archive old, then Copy list, a separator and Void all). A button with an icon shows only the icon below sm and keeps its name for a screen reader. The bulk bar reads its checked and checked-menu slots the same way: three buttons, the first delete or danger action pinned after them, the rest in the ⋯."
 view="atom::docs.demos.action.toolbar"/>
+
+<atom:docs.example
+title="In a table row"
+description="A table row holds no button: every action is an item of its ⋯ menu (Edit and Send, then Copy link, a separator, then Void and Delete). Void and Delete ask before they act, in their tone. Try the ⋯."
+view="atom::docs.demos.action.row"/>
