@@ -15,7 +15,8 @@
 $tone = $item['tone'] ?? null;
 $html = (string) $item['html'];
 $icon = $item['icon'] ?? null;
-$href = $item['href'] ?? null;
+/* before `$link` picks the element: a blocked URL is a ghost button, not an anchor with no href */
+$href = safe_url($item['href'] ?? null);
 $confirm = \Jiannius\Atom\Services\ActionItems::confirmFor($tone, $item['confirm'] ?? null);
 
 $bag = new \Illuminate\View\ComponentAttributeBag([
