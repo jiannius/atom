@@ -1291,9 +1291,25 @@ arrives, and the two paths fail differently on purpose:
   the signed `raw:` sort. A `$wire.set()` of a key nobody declared is a deliberate request for
   something you never offered. Livewire fires the hook once per dotted path, so `filters` (the
   whole array: every key and value is checked), `filters.status` (one key) and
-  `filters.status.0` or deeper (never allowed: an array is only ever replaced whole) are all
-  covered. An excepted key is refused from the browser too, and survives a wholesale
-  `$wire.set('filters', {...})`.  A replacement that leaves a declared key out gets that key's default.
+  `filters.status.1` (one item of a list filter, which is how Livewire sends a multi-select
+  that keeps its length) are all covered. An item is accepted only for a filter declared as
+  a list, at an index that is a plain non-negative integer (`0`, `12`; not `01`, `-1`, ` 1`),
+  below `urlFilterMaxItems()` and no further than the end of the list (an index past it
+  would leave a gap), and it must be a scalar. After Livewire has applied it, the whole
+  list is checked again, and your `isUrlFilterValid()` gets the whole list, not the item;
+  a list it refuses is a 403, which discards the whole request. Anything deeper
+  (`filters.status.0.x`) is never allowed: a deeper path is how a string turns into an array.
+  An excepted key is refused from the browser too, and survives a wholesale
+  `$wire.set('filters', {...})` even when other paths ride in the same request. In that
+  case Livewire runs every update before any `updated` hook, so your own `updated($name)` or
+  `updatedFilters*` hook for one of the other paths runs before the internal keys are put back
+  and sees `$filters` without them: do not query from `$filters` inside an `updated*` hook,
+  query in `render()` or a computed property. A declared key an update removed, or a
+  replacement left out, gets that key's default. A number that is not
+  finite (`1e999` decodes to `INF`, which the snapshot cannot carry) is refused like any value
+  of the wrong shape. If you also define a generic `updated($name, $value)`, Livewire calls it
+  before this recheck for the same path, so it can briefly see a list the host has not yet
+  approved (the 403 follows); put the host's rule in `isUrlFilterValid()`, not there.
 - **On both paths** a string must be valid UTF-8 (Livewire cannot serialise the snapshot with
   an invalid one) and at most `urlFilterMaxLength()` bytes (default 1000), and a list at most
   `urlFilterMaxItems()` items (default 200: a `whereIn()` with thousands of placeholders fails
