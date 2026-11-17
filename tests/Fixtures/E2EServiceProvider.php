@@ -66,6 +66,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-confirm-prop', ConfirmPropFixture::class);
         Livewire::component('atom-e2e-menu-keys', MenuKeysFixture::class);
         Livewire::component('atom-e2e-actions', ActionsFixture::class);
+        Livewire::component('atom-e2e-actions-card-panel', ActionsCardPanelFixture::class);
         Livewire::component('atom-e2e-select-sibling-sync', SelectSiblingSyncFixture::class);
         Livewire::component('atom-e2e-modal-escape', ModalEscapeFixture::class);
         Livewire::component('atom-e2e-safe-url-breadcrumbs', SafeUrlBreadcrumbsFixture::class);
@@ -155,6 +156,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/menu-keys', fn () => view('atom::e2e.menu-keys'));
         Route::middleware('web')->get('/atom/e2e/menu-keys/landing', fn () => '<!doctype html><title>Landing</title><h1 data-testid="landing">Landing page</h1>');
         Route::middleware('web')->get('/atom/e2e/actions', fn () => view('atom::e2e.actions'));
+        Route::middleware('web')->get('/atom/e2e/actions-card-panel', fn () => view('atom::e2e.actions-card-panel'));
         Route::middleware('web')->get('/atom/e2e/actions/landing', fn () => '<!doctype html><title>Landing</title><h1 data-testid="landing">Landing page</h1>');
         Route::middleware('web')->get('/atom/e2e/confirm-prop/landing', fn () => '<!doctype html><title>Landing</title><h1 data-testid="landing">Landing page</h1>');
         // The two shell pattern pages (resources/views/docs/patterns), on the consumer's Tailwind: ?tw=floor|latest, ?dark=1.
