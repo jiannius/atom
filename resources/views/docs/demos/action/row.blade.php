@@ -1,5 +1,5 @@
-{{-- A row holds no visible button: every action in `<atom:table.actions>` is a row of its ⋯, untoned first, then the `low` ones, a separator,
-     then warning, then danger and delete. A toned row asks before it acts, in its tone; a delete with no handler of its own calls `$wire.delete()`. --}}
+{{-- A table row holds no visible button: every action in `<atom:table.actions>` is an item of its ⋯ menu, untoned first, then the `low` ones, a separator,
+     then warning, then danger and delete. A toned item asks before it acts, in its tone; in a Livewire page, a delete with no handler of its own calls `$wire.delete()`. --}}
 <atom:table :empty="false">
     <x-slot:columns>
         <atom:table.column>Number</atom:table.column>

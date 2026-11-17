@@ -29,5 +29,5 @@ view="atom::docs.demos.action.toolbar"/>
 
 <atom:docs.example
 title="In a table row"
-description="A row holds no button: every action is a row of its ⋯ (Edit and Send, then Copy link, a separator, then Void and Delete). Void and Delete ask before they act, in their tone. Try the ⋯."
+description="A table row holds no button: every action is an item of its ⋯ menu (Edit and Send, then Copy link, a separator, then Void and Delete). Void and Delete ask before they act, in their tone. Try the ⋯."
 view="atom::docs.demos.action.row"/>
