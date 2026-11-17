@@ -104,7 +104,7 @@ class BladeOutline
      *
      * @var array<int, string>
      */
-    protected const TEXT_LABELLED = ['button', 'link', 'menu.item', 'navlist.item', 'tabs.item'];
+    protected const TEXT_LABELLED = ['action', 'button', 'link', 'menu.item', 'navlist.item', 'tabs.item'];
 
     /**
      * Directives that open a block with branches (`@else` and its kin switch branch)
