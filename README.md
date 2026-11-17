@@ -6,6 +6,16 @@ A Laravel UI component library built on **Tailwind + Alpine + Livewire 4**. Atom
 - Namespace: `Jiannius\Atom\`
 - Custom Blade syntax: `<atom:button>`, `<atom:input.text>`, `<atom:button.group>` …
 
+## What it looks like
+
+Five whole screens built only from Atom's components, following the design rules (one primary action per screen, a list as one panel, money in `numeric` columns with the currency in the header, the missing-value mark, the save bar). Each image links to its source in `resources/views/docs/patterns/`, also served at `/atom/docs/patterns` in a local app. Copy the structure, not the data.
+
+| | |
+|---|---|
+| **List page**: saved views, filter chips, a frameless table in one panel<br>[![List page](docs/screenshots/list.png)](resources/views/docs/patterns/list-page.blade.php) | **Record page**: status, stage path, stats, tabs, a rail of cards<br>[![Record page](docs/screenshots/record.png)](resources/views/docs/patterns/record-page.blade.php) |
+| **Document page**: an invoice as paper, balance and activity beside it<br>[![Document page](docs/screenshots/document.png)](resources/views/docs/patterns/document-page.blade.php) | **Form page**: sections, optional markers, the save bar<br>[![Form page](docs/screenshots/form.png)](resources/views/docs/patterns/form-page.blade.php) |
+| **Slide-over form**: a short create form over its list<br>[![Slide-over form](docs/screenshots/slide-over.png)](resources/views/docs/patterns/slide-over-form.blade.php) | |
+
 ---
 
 ## Requirements
