@@ -60,6 +60,8 @@ php artisan atom:tiptap-migrate --restore[=ids] --force | --compare[=ids] | --pr
 
 Custom Blade precompiler (inspired by livewire/flux) translates `<atom:button>`, `<atom:icon.add/>`, `<atom:button.group>` into the corresponding `<x-atom::...>` component invocations before the normal Blade compile runs. Dot-paths map to subdirectories: `<atom:button.group>` → `components/button/group.blade.php`. This syntax is preferred throughout `components/` over `<x-atom::...>`.
 
+**A word glued to a closing slot tag** (`</x-slot:actions>Total`, `<atom:icon slot="x"/>Total`): Laravel compiles the closing tag to ` @endslot`, so the word becomes `@endslotTotal`, no directive, and the slot never closes (Laravel's own bug; its tag pass runs BEFORE any precompiler, so the glued form is what atom sees). `TagCompiler::compile()` puts an empty PHP block between `@endslot` and the word on both sides of the parent's work (the second covers atom's own inline-slot `@endslot`); it compiles to nothing, so no character is added to the output. Raw blocks (`@verbatim`) are already set aside when a precompiler runs. `tests/Feature/ClosingSlotWordTest.php`.
+
 ### The `Atom` singleton (`src/Atom.php`, aliased as `app('atom')` / via the `atom()` helper indirectly)
 
 Single entry point for cross-cutting UI operations that need to dispatch Livewire events from PHP:

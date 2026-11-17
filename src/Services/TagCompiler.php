@@ -22,6 +22,28 @@ class TagCompiler extends ComponentTagCompiler
         'atom::timeline' => ['kind' => "'event'", 'collapsible' => 'true'],
     ];
 
+    /**
+     * Compile the component and slot tags within the given string.
+     *
+     * Blade's own tag pass runs before this precompiler and has already turned `</x-slot>Total` into ` @endslotTotal`: the word is glued
+     * onto the directive, which Blade does not know, so the slot never closes and the text is printed. The inline `<atom:icon slot="x"/>Total`
+     * does the same in compileSelfClosingTags() below, so both sides of the parent's work are separated.
+     */
+    public function compile(string $value)
+    {
+        return $this->separateEndslot(parent::compile($this->separateEndslot($value)));
+    }
+
+    /**
+     * Put an empty PHP block between `@endslot` and a word glued to it. It compiles to nothing, so the word is printed exactly where it
+     * was written (a space would be output). An `@endslot` followed by anything but a word character is left alone, and a verbatim block
+     * is already set aside when a precompiler runs.
+     */
+    protected function separateEndslot(string $value): string
+    {
+        return preg_replace('/(?<= )@endslot(?=\w)/', '@endslot<?php ?>', $value);
+    }
+
     public function componentString(string $component, array $attributes)
     {
         $bag = $attributes['attributes'] ?? null;
