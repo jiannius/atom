@@ -153,3 +153,27 @@ test('the browser cannot set a key nobody declared, or the tenant: the server st
   // the tenant is still 7, nothing was added, and the other tenant's row is still not listed
   expect(await server()).toEqual(before)
 })
+
+test('a multi-select that keeps its length is accepted, not refused', async ({ page }) => {
+  // Livewire sends a list that keeps its length as a change by index (`filters.status.1`), not as the whole list
+  await page.goto('/atom/e2e/url-filters?status[0]=fresh&status[1]=dried')
+  await page.waitForLoadState('networkidle')
+
+  const server = () => page.evaluate(() => Livewire.all().find(c => c.name === 'atom-e2e-url-filters').canonical.filters.status)
+
+  expect(await server()).toEqual(['fresh', 'dried'])
+
+  const sent = []
+  page.on('response', response => { if (response.url().includes('/livewire')) sent.push(response.status()) })
+
+  await page.evaluate(() => {
+    const wire = Livewire.all().find(c => c.name === 'atom-e2e-url-filters').$wire
+
+    wire.filters.status = ['fresh', 'canned']   // deferred until the next request, which diffs it against the snapshot
+    wire.$refresh()
+  })
+
+  await expect.poll(server).toEqual(['fresh', 'canned'])   // the confirmed snapshot: a refused update never reaches it
+  expect(sent).toEqual([200])
+  await expect.poll(() => query(page)).toMatchObject({ 'status[0]': 'fresh', 'status[1]': 'canned' })
+})

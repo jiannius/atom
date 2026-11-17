@@ -1291,8 +1291,14 @@ arrives, and the two paths fail differently on purpose:
   the signed `raw:` sort. A `$wire.set()` of a key nobody declared is a deliberate request for
   something you never offered. Livewire fires the hook once per dotted path, so `filters` (the
   whole array: every key and value is checked), `filters.status` (one key) and
-  `filters.status.0` or deeper (never allowed: an array is only ever replaced whole) are all
-  covered. An excepted key is refused from the browser too, and survives a wholesale
+  `filters.status.1` (one item of a list filter, which is how Livewire sends a multi-select
+  that keeps its length) are all covered. An item is accepted only for a filter declared as
+  a list, at an index that is a plain non-negative integer (`0`, `12`; not `01`, `-1`, ` 1`),
+  below `urlFilterMaxItems()` and no further than the end of the list (an index past it
+  would leave a gap), and it must be a scalar. After Livewire has applied it, the whole
+  list is checked again, and your `isUrlFilterValid()` gets the whole list, not the item;
+  a list it refuses is a 403 and the list is put back as it was. Anything deeper
+  (`filters.status.0.x`) is never allowed: a deeper path is how a string turns into an array. An excepted key is refused from the browser too, and survives a wholesale
   `$wire.set('filters', {...})`.  A replacement that leaves a declared key out gets that key's default.
 - **On both paths** a string must be valid UTF-8 (Livewire cannot serialise the snapshot with
   an invalid one) and at most `urlFilterMaxLength()` bytes (default 1000), and a list at most

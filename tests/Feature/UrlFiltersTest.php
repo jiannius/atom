@@ -10,6 +10,7 @@ use Jiannius\Atom\Tests\Fixtures\TableFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersCapsFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersItemFixture;
+use Jiannius\Atom\Tests\Fixtures\UrlFiltersListHostFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersMountDefaultFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersNullClearFixture;
 use Jiannius\Atom\Tests\Fixtures\UrlFiltersPaginatedFixture;
@@ -161,7 +162,6 @@ describe('updates from the browser', function () {
         'list for a scalar' => ['filters.search', ['a']],
         'an array at the parent path, for a scalar' => ['filters', ['search' => ['a']]],
         'an array at the parent path, nested in a list' => ['filters', ['status' => [['a']]]],
-        'a deeper path into a list' => ['filters.status.0', 'fresh'],
         'a deeper path into a scalar, turning it into an array' => ['filters.search.0', 'a'],
         'a deeper path that is itself an array' => ['filters.search.a', ['b']],
         'something that is not an array, over the whole property' => ['filters', 'x'],
@@ -170,6 +170,178 @@ describe('updates from the browser', function () {
     it('refuses a value the host refuses', function () {
         urlFiltersMounted([])->set('filters.region', 'XX')->assertForbidden();
         urlFiltersMounted([])->set('filters', ['region' => 'XX'])->assertForbidden();
+    });
+});
+
+dataset('urlFiltersRefusedListPaths', [
+    'a deeper path into an item' => ['filters.status.0.x', 'a'],
+    'a deeper path, an array under an item' => ['filters.status.0.0', 'a'],
+    'a deeper path, whole' => ['filters.status.0.x.y', 'a'],
+    'an index past the item cap' => ['filters.status.200', 'a'],
+    'an index far past the item cap' => ['filters.status.999999999999', 'a'],
+    'a gap past the end of the list' => ['filters.status.5', 'a'],
+    'a leading zero' => ['filters.status.01', 'a'],
+    'a sign' => ['filters.status.-1', 'a'],
+    'a plus sign' => ['filters.status.+1', 'a'],
+    'a leading space' => ['filters.status. 1', 'a'],
+    'a trailing space' => ['filters.status.1 ', 'a'],
+    'a decimal' => ['filters.status.1e0', 'a'],
+    'a hexadecimal' => ['filters.status.0x1', 'a'],
+    'an empty index' => ['filters.status.', 'a'],
+    'a name' => ['filters.status.a', 'a'],
+    'an array item' => ['filters.status.1', ['a']],
+    'a keyed array item' => ['filters.status.1', ['a' => 'b']],
+    'an over-long item' => ['filters.status.1', str_repeat('a', 1001)],
+    'an index on a scalar filter' => ['filters.search.0', 'a'],
+    'an index on a scalar filter, in range' => ['filters.region.0', 'a'],
+    'an index on an internal key' => ['filters.tenant.0', 9],
+    'an index on an undeclared key' => ['filters.evil.0', 'a'],
+]);
+
+describe('a list changed by index', function () {
+    /** Mount with a two-item `status`, as ?status[0]=fresh&status[1]=dried would. */
+    function urlFiltersWithList(string $class = UrlFiltersFixture::class)
+    {
+        return urlFiltersMounted(['status' => ['fresh', 'dried']], $class);
+    }
+
+    it('lets a same-length swap through and keeps the new list', function () {
+        // what Livewire sends when one pick is swapped for another in the same request
+        $test = urlFiltersWithList()->set('filters.status.1', 'canned')->assertOk();
+
+        expect($test->get('filters.status'))->toBe(['fresh', 'canned']);
+
+        $test->set('filters.status.0', 'x')->set('filters.status.1', 'y')->assertOk();
+
+        expect($test->get('filters.status'))->toBe(['x', 'y']);
+        expect($test->get('filters'))->toBe(['search' => '', 'status' => ['x', 'y'], 'region' => 'MY', 'tenant' => 7]);
+    });
+
+    it('lets an index at the end of the list append, so it stays a list', function () {
+        expect(urlFiltersWithList()->set('filters.status.2', 'canned')->assertOk()->get('filters.status'))->toBe(['fresh', 'dried', 'canned']);
+    });
+
+    it('lets an item be null or a number, as a whole list could hold', function () {
+        expect(urlFiltersWithList()->set('filters.status.1', 3)->assertOk()->get('filters.status'))->toBe(['fresh', 3]);
+    });
+
+    it('refuses a path the rule does not cover', function (string $path, mixed $value) {
+        urlFiltersWithList()->set($path, $value)->assertForbidden();
+    })->with('urlFiltersRefusedListPaths');
+
+    it('refuses the same paths in the updating hook alone, before anything is set', function (string $path, mixed $value) {
+        // the updated hook's recheck would catch some of these too: this holds each clause of the first gate on its own
+        $instance = urlFiltersWithList()->instance();
+
+        expect(fn () => $instance->updatingWithUrlFilters($path, $value))->toThrow(HttpException::class);
+        expect($instance->filters['status'])->toBe(['fresh', 'dried']);
+    })->with('urlFiltersRefusedListPaths');
+
+    it('refuses an invalid UTF-8 item', function () {
+        $instance = urlFiltersWithList()->instance();
+
+        // the wire carries JSON, which cannot hold invalid UTF-8, so the hook is called as Livewire would
+        expect(fn () => $instance->updatingWithUrlFilters('filters.status.1', "\xFF"))->toThrow(HttpException::class);
+    });
+
+    it('leaves the list as it was when the host refuses it', function () {
+        // the test harness drops the component after a 403, so the hooks are called as Livewire would
+        $instance = urlFiltersMounted(['status' => ['fresh', 'canned']], UrlFiltersListHostFixture::class)->instance();
+
+        $instance->updatingWithUrlFilters('filters.status.1', 'rotten');
+        $instance->filters['status'][1] = 'rotten';
+
+        expect(fn () => $instance->updatedWithUrlFilters('filters.status.1', 'rotten'))->toThrow(HttpException::class);
+        expect($instance->filters['status'])->toBe(['fresh', 'canned']);
+    });
+
+    it('holds a host cap on the number of items', function () {
+        $test = urlFiltersMounted(['status' => ['a', 'b', 'c']], UrlFiltersCapsFixture::class);
+
+        $test->set('filters.status.2', 'd')->assertOk();
+        $test->set('filters.status.3', 'd')->assertForbidden();   // index 3 is not below the cap of 3
+    });
+
+    it('holds the item cap in the updating hook on its own, at the end of a full list', function () {
+        // index 3 is the end of a list of 3, so only the cap refuses it
+        $instance = urlFiltersMounted(['status' => ['a', 'b', 'c']], UrlFiltersCapsFixture::class)->instance();
+
+        $instance->updatingWithUrlFilters('filters.status.2', 'd');
+        expect(fn () => $instance->updatingWithUrlFilters('filters.status.3', 'd'))->toThrow(HttpException::class);
+    });
+
+    it('only sets by index a list filter that currently holds a list, and a scalar filter never', function () {
+        $instance = urlFiltersWithList()->instance();
+
+        // state only the host can have put there: the declaration decides, not what the value happens to be
+        $instance->filters['search'] = ['a'];
+        expect(fn () => $instance->updatingWithUrlFilters('filters.search.0', 'b'))->toThrow(HttpException::class);
+
+        $instance->filters['status'] = [1 => 'a'];
+        expect(fn () => $instance->updatingWithUrlFilters('filters.status.1', 'b'))->toThrow(HttpException::class);
+
+        $instance->filters['status'] = 'a';
+        expect(fn () => $instance->updatingWithUrlFilters('filters.status.0', 'b'))->toThrow(HttpException::class);
+    });
+
+    it('asks the host about the whole list, not the item', function () {
+        $test = urlFiltersMounted(['status' => ['fresh', 'canned']], UrlFiltersListHostFixture::class);
+
+        $test->set('filters.status.1', 'frozen')->assertOk();
+        expect($test->get('filters.status'))->toBe(['fresh', 'frozen']);
+    });
+
+    it('refuses an item that makes the whole list one the host refuses', function (string $item) {
+        // "rotten" alone is refused by this host, and so is "dried" beside "fresh"
+        $test = urlFiltersMounted(['status' => ['fresh', 'canned']], UrlFiltersListHostFixture::class);
+
+        $test->set('filters.status.1', $item)->assertForbidden();
+    })->with(['rotten', 'dried']);
+
+    it('refuses an item whose list makes the host check throw', function () {
+        urlFiltersMounted(['status' => ['fresh', 'canned']], UrlFiltersListHostFixture::class)
+            ->set('filters.status.1', 'boom')
+            ->assertForbidden();
+    });
+
+    it('rechecks the whole list in the updated hook, whatever the updating hook let through', function () {
+        // a list that grew past the cap, or lost its shape, between the two hooks
+        $instance = urlFiltersWithList(UrlFiltersCapsFixture::class)->instance();
+
+        $instance->filters['status'] = ['a', 'b', 'c', 'd'];
+        expect(fn () => $instance->updatedWithUrlFilters('filters.status.3', 'd'))->toThrow(HttpException::class);
+
+        $instance->filters['status'] = [0 => 'a', 5 => 'b'];
+        expect(fn () => $instance->updatedWithUrlFilters('filters.status.5', 'b'))->toThrow(HttpException::class);
+
+        $instance->filters['status'] = ['a', ['nested']];
+        expect(fn () => $instance->updatedWithUrlFilters('filters.status.1', ['nested']))->toThrow(HttpException::class);
+
+        $instance->filters['status'] = ['a', 'b'];
+        $instance->updatedWithUrlFilters('filters.status.1', 'b');
+    });
+
+    it('puts back the list as it was before the request, however many items it changed', function () {
+        $instance = urlFiltersMounted(['status' => ['fresh', 'canned']], UrlFiltersListHostFixture::class)->instance();
+
+        // two changes in one request: the host refuses the list they make together
+        $instance->updatingWithUrlFilters('filters.status.0', 'rotten');
+        $instance->filters['status'][0] = 'rotten';
+        $instance->updatingWithUrlFilters('filters.status.1', 'frozen');
+        $instance->filters['status'][1] = 'frozen';
+
+        expect(fn () => $instance->updatedWithUrlFilters('filters.status.0', 'rotten'))->toThrow(HttpException::class);
+        expect($instance->filters['status'])->toBe(['fresh', 'canned']);
+    });
+
+    it('keeps the internal keys when a list is changed by index and when it is replaced whole', function () {
+        $test = urlFiltersWithList()->set('filters.status.1', 'canned')->assertOk();
+
+        expect($test->get('filters.tenant'))->toBe(7);
+
+        $test->set('filters', ['status' => ['a']])->assertOk();
+
+        expect($test->get('filters.tenant'))->toBe(7);
     });
 });
 
@@ -279,6 +451,18 @@ describe('a host check that throws, in the logs', function () {
         Log::listen(function (MessageLogged $event) {
             $this->logged[] = $event;
         });
+    });
+
+    it('logs a throw on a list changed by index like any other, and puts nothing else in the report', function () {
+        urlFiltersMounted(['status' => ['fresh', 'canned']], UrlFiltersListHostFixture::class)
+            ->set('filters.status.1', 'boom')
+            ->assertForbidden();
+
+        $logged = urlFiltersLogged($this);
+
+        expect($logged)->toHaveCount(1);
+        expect($logged[0][1])->toMatchArray(['component' => UrlFiltersListHostFixture::class, 'key' => 'status', 'exception' => InvalidArgumentException::class]);
+        expect(urlFiltersReported())->toBe([]);
     });
 
     it('is logged once, however often a crafted link repeats it, and is still refused', function () {

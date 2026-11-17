@@ -48,6 +48,15 @@ trait WithUrlFilters
     protected ?array $urlFiltersStash = null;
 
     /**
+     * The list a browser update by index (`filters.brands.1`) found, held between
+     * Livewire's updating and updated hooks, so a list the host refuses can be put
+     * back before the request is aborted.
+     *
+     * @var array<string, list<mixed>>
+     */
+    protected array $urlFilterListStash = [];
+
+    /**
      * Whether this instance was mounted, which only the initial render does. Not
      * persisted: every Livewire update request hydrates a fresh instance, so it is
      * false there. Unlike the `X-Livewire` header it cannot be left off by a client.
@@ -208,9 +217,15 @@ trait WithUrlFilters
      * the wrong shape, or one the host refuses in the filters. Livewire fires this
      * once per dotted path a `$wire.set()` targets, so every shape is checked:
      * `filters` (the whole array, whose keys and values are all checked),
-     * `filters.status` (one key) and `filters.status.0` or deeper (never needed, so
-     * never allowed: an array is only ever replaced whole, and a deeper path is how
-     * a string turns into an array).
+     * `filters.status` (one key) and `filters.status.1`, one item of a list filter:
+     * Livewire sends a list that keeps its length as a change by index, not whole.
+     * The index must be a canonical non-negative integer below urlFilterMaxItems(),
+     * no further than the end of the list (a gap would turn it into a keyed array),
+     * and the item must be a scalar the page can carry. The host's check needs the
+     * whole list, so it runs in updatedWithUrlFilters(). Anything deeper
+     * (`filters.status.0.x`), any dotted path under a scalar filter and any index on
+     * an internal or undeclared key is never allowed: a deeper path is how a string
+     * turns into an array.
      *
      * Refused rather than dropped, as the signed `raw:` sort is: a URL value is
      * somebody else's link and the page should still open, but a `$wire.set()` of a
@@ -245,6 +260,15 @@ trait WithUrlFilters
 
         $path = substr((string) $name, strlen($property) + 1);
 
+        if ($this->isUrlFilterListItemAcceptable($path, $value)) {
+            $key = explode('.', $path)[0];
+
+            // the first update of a request holds the list as it was
+            $this->urlFilterListStash[$key] ??= $this->{$property}[$key];
+
+            return;
+        }
+
         // The dot test is defence in depth: a declared key never holds a dot, so the
         // undeclared-key check refuses every deeper path on its own today, and no
         // test can reach this clause alone. It stays so that a future key that may
@@ -274,8 +298,70 @@ trait WithUrlFilters
                 ...($this->urlFiltersStash ?? []),
             ];
         }
+        else if (str_starts_with($name, $property.'.')) {
+            $this->recheckUrlFilterList(explode('.', substr($name, strlen($property) + 1))[0]);
+        }
 
         $this->urlFiltersStash = null;
+    }
+
+    /**
+     * After a change by index: the whole list must still be what a whole replacement
+     * would have had to be (a list, within urlFilterMaxItems(), every item carriable)
+     * and the host must accept it as a whole. If not, the list goes back to what it
+     * was and the request is refused (403), like any other refused update.
+     */
+    protected function recheckUrlFilterList(string $key): void
+    {
+        $property = $this->urlFiltersProperty();
+
+        if (! is_array($this->urlFilterDefinitions()[$key] ?? null)) {
+            return;
+        }
+
+        $list = is_array($this->{$property}) ? ($this->{$property}[$key] ?? null) : null;
+
+        if ($this->urlFilterShapeMatches([], $list) && $this->urlFilterHostAccepts($key, $list)) {
+            unset($this->urlFilterListStash[$key]);
+
+            return;
+        }
+
+        if (array_key_exists($key, $this->urlFilterListStash)) {
+            $this->{$property}[$key] = $this->urlFilterListStash[$key];
+        }
+
+        abort(403, 'Invalid filters.');
+    }
+
+    /**
+     * Whether a dotted path below the filters property (`status.1`) is one item of a
+     * list filter that may be set by index: a declared key whose default is a list,
+     * a canonical index (`0`, `12`, not `01`, `-1`, ` 1` or `1.0`) below
+     * urlFilterMaxItems() and no further than the end of the current list, and a
+     * scalar item. Nothing deeper.
+     */
+    protected function isUrlFilterListItemAcceptable(string $path, mixed $value): bool
+    {
+        $segments = explode('.', $path);
+
+        if (count($segments) !== 2 || ! is_array($this->urlFilterDefinitions()[$segments[0]] ?? null)) {
+            return false;
+        }
+
+        [$key, $index] = $segments;
+
+        if (! preg_match('/^(0|[1-9][0-9]*)$/D', $index) || (int) $index >= $this->urlFilterMaxItems()) {
+            return false;
+        }
+
+        $property = $this->urlFiltersProperty();
+        $current = is_array($this->{$property}) ? ($this->{$property}[$key] ?? null) : null;
+
+        return is_array($current)
+            && array_is_list($current)
+            && (int) $index <= count($current)
+            && $this->urlFilterScalarMatches($value);
     }
 
     /**
