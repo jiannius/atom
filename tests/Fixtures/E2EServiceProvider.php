@@ -66,6 +66,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-confirm-prop', ConfirmPropFixture::class);
         Livewire::component('atom-e2e-menu-keys', MenuKeysFixture::class);
         Livewire::component('atom-e2e-actions', ActionsFixture::class);
+        Livewire::component('atom-e2e-action-rows', ActionRowsFixture::class);
         Livewire::component('atom-e2e-action-table', ActionTableFixture::class);
         Livewire::component('atom-e2e-actions-card-panel', ActionsCardPanelFixture::class);
         Livewire::component('atom-e2e-select-sibling-sync', SelectSiblingSyncFixture::class);
@@ -160,6 +161,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/action-table', fn () => view('atom::e2e.action-table'));
         Route::middleware('web')->get('/atom/e2e/actions-card-panel', fn () => view('atom::e2e.actions-card-panel'));
         Route::middleware('web')->get('/atom/e2e/actions/landing', fn () => '<!doctype html><title>Landing</title><h1 data-testid="landing">Landing page</h1>');
+        Route::middleware('web')->get('/atom/e2e/action-rows', fn () => view('atom::e2e.action-rows'));
+        Route::middleware('web')->get('/atom/e2e/action-rows/landing', fn () => '<!doctype html><title>Landing</title><h1 data-testid="landing">Landing page</h1>');
         Route::middleware('web')->get('/atom/e2e/confirm-prop/landing', fn () => '<!doctype html><title>Landing</title><h1 data-testid="landing">Landing page</h1>');
         // The two shell pattern pages (resources/views/docs/patterns), on the consumer's Tailwind: ?tw=floor|latest, ?dark=1.
         // header-wide is the worst case for the bar: long labels, a count on each, a context switcher and a search field.
