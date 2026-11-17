@@ -47,7 +47,7 @@ class ConfirmCopy extends ToneAndConfirmRule
 
     public function detect(): string
     {
-        return 'An `<atom:confirm.trigger>` with no `button-confirm` (its button reads "Confirm"); a `button-confirm`, a `\'buttonConfirm\' =>` or a `buttonConfirm:` of Confirm, Yes, OK, Okay, Proceed or Continue; a `$this->confirm(`, `atom()->confirm(`, `app(\'atom\')->confirm(` or `atom.confirm(` with literal arguments and no `buttonConfirm`; and a heading, subheading or message in a literal confirm with an all-caps word of four letters or more (HTML, JSON and the like excepted). The `confirm` prop of a button or an item is not flagged, since atom repeats the label. A call whose arguments are a variable or a spread, a tag that spreads `$attributes` and a command (`Console`) are not read.';
+        return 'An `<atom:confirm.trigger>` with no `button-confirm` (its button reads "Confirm"); a `button-confirm`, a `\'buttonConfirm\' =>` or a `buttonConfirm:` of Confirm, Yes, OK, Okay, Proceed or Continue; a `$this->confirm(`, `atom()->confirm(`, `app(\'atom\')->confirm(` or `atom.confirm(` with literal arguments and no `buttonConfirm`; and a heading, subheading or message in a literal confirm with an all-caps word of four letters or more (HTML, JSON and the like excepted). The `confirm` prop of a button, an item or an `<atom:action>` is not flagged (its copy is checked for all-caps words), since atom repeats the label. A call whose arguments are a variable or a spread, a tag that spreads `$attributes` and a command (`Console`) are not read.';
     }
 
     /**
@@ -160,7 +160,7 @@ class ConfirmCopy extends ToneAndConfirmRule
             return;
         }
 
-        if (in_array($component, ['button', 'menu.item'], true)) {
+        if (in_array($component, ['button', 'menu.item', 'action'], true)) {
             $strings = [];
 
             if (is_string($node['attributes']['confirm'] ?? null) && ! str_contains($node['attributes']['confirm'], '{')) {

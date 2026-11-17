@@ -66,7 +66,7 @@ class ToneMissing extends ToneAndConfirmRule
 
     public function fix(): string
     {
-        return 'A warning is `<atom:button variant="warning" inverted>` or `<atom:menu.item variant="warning">`, each with `confirm`; a danger is `<atom:button type="delete">` or `<atom:menu.item variant="delete">`.';
+        return 'A warning is `<atom:button variant="warning" inverted>` or `<atom:menu.item variant="warning">`, each with `confirm`; a danger is `<atom:button type="delete">` or `<atom:menu.item variant="delete">`. An `<atom:action>` takes `tone="warning"` or `tone="delete"` and confirms by itself.';
     }
 
     public function rule(): string
@@ -76,19 +76,27 @@ class ToneMissing extends ToneAndConfirmRule
 
     public function detect(): string
     {
-        return 'An `<atom:button>` with no tone variant and no `type="delete"` (`default`, `ghost`, `link` or none; a `ghost` takes its tone from `color`), or an `<atom:menu.item>` on the default variant, whose plain-text label starts with a warning verb (archive, void, suspend, deactivate, revoke, reject, decline, cancel, disconnect, reset, unpublish, withdraw, trash) or a danger verb (delete, remove, discard, purge, destroy, erase), or an item with `icon="delete"`. The verb lists are a default: the consequence decides, so an over-toned element is never flagged. A label that is unknown (an echo), a bound variant, a submit, a lone "Cancel", "Reset filters" and the like, a "Remove" in a row (cell, row, card, grid or div, up to three levels) holding a form control and "Discard changes" are not flagged. A button with `variant="delete"` or `variant="remove"` is flagged with its own note: it draws the default and never confirms.';
+        return 'An `<atom:button>` with no tone variant and no `type="delete"` (`default`, `ghost`, `link` or none; a `ghost` takes its tone from `color`), or an `<atom:menu.item>` on the default variant, whose plain-text label starts with a warning verb (archive, void, suspend, deactivate, revoke, reject, decline, cancel, disconnect, reset, unpublish, withdraw, trash) or a danger verb (delete, remove, discard, purge, destroy, erase), or an item with `icon="delete"`; an `<atom:action>` with no `tone` is read the same way (a `tone` of any value, bound or not, is not flagged), and one with `icon="delete"` is flagged. The verb lists are a default: the consequence decides, so an over-toned element is never flagged. A label that is unknown (an echo), a bound variant, a submit, a lone "Cancel", "Reset filters" and the like, a "Remove" in a row (cell, row, card, grid or div, up to three levels) holding a form control and "Discard changes" are not flagged. A button with `variant="delete"` or `variant="remove"` is flagged with its own note: it draws the default and never confirms.';
     }
 
     public function find(File $file, Context $context): iterable
     {
         $outline = $file->outline();
 
-        foreach ([...$outline->atom('button'), ...$outline->atom('menu.item')] as $node) {
-            if ($this->tone($outline, $node) !== 'plain') {
+        foreach ([...$outline->atom('button'), ...$outline->atom('menu.item'), ...$outline->atom('action')] as $node) {
+            $action = $node['component'] === 'action';
+
+            if ($action ? $outline->has($node, 'tone') : $this->tone($outline, $node) !== 'plain') {
                 continue;
             }
 
             $item = $node['component'] === 'menu.item';
+
+            if ($action && $outline->value($node, 'icon') === 'delete') {
+                yield [$node['offset'], 'an action with the delete icon is a danger: `tone="delete"`'];
+
+                continue;
+            }
 
             if ($item && $outline->value($node, 'icon') === 'delete') {
                 yield [$node['offset'], 'an item with the delete icon is a danger: `variant="delete"`'];
@@ -121,6 +129,7 @@ class ToneMissing extends ToneAndConfirmRule
             $label = mb_substr(trim((string) $outline->label($node)), 0, 40);
 
             yield [$node['offset'], '"'.$label.'" is a '.$tone.': '.match (true) {
+                $action => $tone === 'warning' ? '`tone="warning"`' : '`tone="delete"`',
                 $tone === 'warning' && $item => '`variant="warning"` with `confirm`',
                 $tone === 'warning' => '`variant="warning" inverted` with `confirm`',
                 $item => '`variant="delete"`',
