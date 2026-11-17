@@ -2,7 +2,8 @@
      cannot open it: these are its two looks, drawn with the classes the table prints. In a Livewire page you write
      `<x-slot:checked tone="accent"> ...bulk actions... </x-slot:checked>` and the table does the rest. The ⋯ at the end of each group is the
      table's `checked-menu` slot: `<x-slot:checked-menu><atom:menu.item>Export</atom:menu.item></x-slot:checked-menu>`, and atom draws the button
-     last, after your buttons. --}}
+     last, after your buttons. The slots take `<atom:action>`s too, in place of the buttons and items: atom draws the first three as buttons, the first `tone="delete"`
+     (or danger) one after them, kept visible and asking with the count, and the rest in the ⋯. --}}
 <div class="max-w-2xl space-y-8">
     {{-- framed: the bar is its own strip above the panel --}}
     <div class="space-y-4">
