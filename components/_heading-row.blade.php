@@ -15,16 +15,30 @@
      as content only if it holds more than comments and whitespace (hasActualContent), so a slot of `@if` blocks that all come out
      false in a Livewire view, which still prints its `<!--[if BLOCK]-->` markers, draws nothing. The title sits in the heading
      element and the count beside it, so the count is not read as part of the heading. The ⋯ is named "More actions for" and the title's text when there is one. The trailing group has a negative block
-     margin so the ghost `sm` ⋯ trigger, which is taller than the text, does not make a row with a menu taller than one without. --}}
+     margin so the ghost `sm` ⋯ trigger, which is taller than the text, does not make a row with a menu taller than one without.
+     The `actions` and `menu` slots may also hold `<atom:action>`s: they are taken out of the two slots (a marker stands for each one there) and
+     placed by ActionPlacement, one visible (a link for an `href`, else a ghost button: `xs` in a card, `sm` in a panel) and the rest in the ⋯,
+     after what the host wrote. The body is never read: an action there draws nothing. A row with no action prints the bytes it always did. --}}
 @php
 $panel = $variant === 'panel';
 $level = in_array((int) $level, [2, 3, 4], true) ? (int) $level : 2;
 $el = 'h'.$level;
 
+$surface = $panel ? 'panel' : 'card';
+
 $has = fn ($s) => $s instanceof \Illuminate\View\ComponentSlot ? $s->hasActualContent() : filled($s);
+
+/* the actions in the two slots are taken out of them (a marker is what stands for each one there) and placed; a slot without one is the slot as it was */
+$registry = app(\Jiannius\Atom\Services\ActionItems::class);
+[$actions, $fromActions] = $registry->collect($actions, 'actions');
+[$menu, $fromMenu] = $registry->collect($menu, 'menu');
+
+$placed = \Jiannius\Atom\Services\ActionPlacement::place($surface, $registry->keyed([...$fromActions, ...$fromMenu]), ['hostMenu' => $has($menu)]);
+
 $hasTitle = $has($title);
 $hasActions = $has($actions);
-$hasMenu = $has($menu);
+$hasMenu = $has($menu) || $placed['menu'] !== [];
+$showActions = $hasActions || $placed['visible'] !== [] || $hasMenu;
 
 /* the ⋯ is named for the box it belongs to ("More actions for Parts used"), so two of them on a page are not both "More actions";
    the heading is the plain text of the title (a slot's markup stripped), translated once, and no heading leaves the plain name */
@@ -36,7 +50,7 @@ $titleText = match (true) {
 $moreLabel = $titleText !== '' ? t('More actions for :heading', ['heading' => $titleText]) : null;
 @endphp
 
-@if ($hasTitle || $hasActions || $hasMenu)
+@if ($hasTitle || $showActions)
     <div {{ $attributes->class([
         'flex items-center justify-between gap-3',
         'border-b px-row py-2.5' => $panel,
@@ -55,15 +69,15 @@ $moreLabel = $titleText !== '' ? t('More actions for :heading', ['heading' => $t
             @endif
         </div>
 
-        @if ($hasActions || $hasMenu)
+        @if ($showActions)
             <div @class(['flex shrink-0 items-center gap-2', 'text-sm -my-1' => $panel, 'text-xs -my-1.5' => ! $panel]) data-atom-heading-row-actions>
                 @if ($hasActions)
                     {{ $actions }}
-                @endif
+                @endif<atom:action._list :items="$placed['visible']" place="visible" :surface="$surface" />
 
                 @if ($hasMenu)
                     <atom:menu._more variant="ghost" size="sm" :label="$moreLabel">
-                        {{ $menu }}
+                        {{ $menu }}<atom:action._list :items="$placed['menu']" place="menu" :surface="$surface" :separator="$placed['separator']" />
                     </atom:menu._more>
                 @endif
             </div>
