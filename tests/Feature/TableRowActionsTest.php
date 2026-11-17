@@ -14,7 +14,7 @@ beforeEach(function () {
  *
  * @return list<string>
  */
-function rowMenu(string $html): array
+function tableRowActionsMenu(string $html): array
 {
     $menu = domQuery($html, '//*[@data-atom-table-actions]//*[@data-atom-menu]')[0] ?? null;
     $rows = [];
@@ -39,7 +39,7 @@ it('puts every action in the ⋯ menu, none as a button: untoned, the low ones, 
         <atom:action wire:click="send">Send</atom:action>
     </atom:table.actions></tr></table>');
 
-    expect(rowMenu($html))->toBe(['Edit', 'Send', 'Copy link', '|', 'Void', 'Delete'])
+    expect(tableRowActionsMenu($html))->toBe(['Edit', 'Send', 'Copy link', '|', 'Void', 'Delete'])
         ->and(domQuery($html, '//*[@data-atom-table-actions]//*[@data-atom-action]'))->toHaveCount(5)
         ->and(domQuery($html, '//*[@data-atom-table-actions]//*[@data-atom-action!="menu"]'))->toBeEmpty()
         ->and(domQuery($html, '//*[@data-atom-table-actions]/*[@data-atom-dropdown]'))->toHaveCount(1)
@@ -52,8 +52,8 @@ it('draws no separator when only toned rows are there, and none before them when
     </atom:table.actions></tr></table>');
     $plain = renderBlade('<table><tr><atom:table.actions><atom:action wire:click="a">Alpha</atom:action><atom:action priority="low" wire:click="b">Bravo</atom:action></atom:table.actions></tr></table>');
 
-    expect(rowMenu($toned))->toBe(['Void', 'Delete'])
-        ->and(rowMenu($plain))->toBe(['Alpha', 'Bravo']);
+    expect(tableRowActionsMenu($toned))->toBe(['Void', 'Delete'])
+        ->and(tableRowActionsMenu($plain))->toBe(['Alpha', 'Bravo']);
 });
 
 it('prints the host\'s own menu items first, and the actions after them, with a separator before a toned one', function () {
@@ -62,13 +62,13 @@ it('prints the host\'s own menu items first, and the actions after them, with a 
         <atom:action tone="delete" wire:click="destroy">Delete</atom:action>
     </atom:table.actions></tr></table>');
 
-    expect(rowMenu($html))->toBe(['Host item', '|', 'Delete']);
+    expect(tableRowActionsMenu($html))->toBe(['Host item', '|', 'Delete']);
 });
 
 it('keeps the host\'s own markup as it was when no action is in the slot', function () {
     $html = renderBlade('<table><tr><atom:table.actions><atom:menu.item>Edit</atom:menu.item><atom:menu.separator /><atom:menu.item variant="delete">Delete</atom:menu.item></atom:table.actions></tr></table>');
 
-    expect(rowMenu($html))->toBe(['Edit', '|', 'Delete'])
+    expect(tableRowActionsMenu($html))->toBe(['Edit', '|', 'Delete'])
         ->and(domQuery($html, '//*[@data-atom-action]'))->toBeEmpty();
 });
 
