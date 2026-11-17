@@ -8,7 +8,9 @@
        panel around it, stays framed. The panel clips (`overflow-clip`) rather than hides: a hidden overflow makes the panel a scroll
        container, and the table's pager, which is pinned to the bottom of the screen while the table runs past it, would stick to a
        panel that never scrolls.
-     - ONE primary action: the header's "Create invoice". The toolbar's buttons are plain, and so is the header's secondary "Import".
+     - ONE primary action: the header's "Create invoice". The header's and the toolbar's actions are `<atom:action>`s: atom draws the
+       toolbar's as ghost buttons (an icon one is icon-only on a phone, with its name kept), and the header's secondary "Import" as a
+       plain one.
      - Filters are sentence pills after the search, in the toolbar (`<atom:table.filters chips="inline">`): an active one reads
        "Issued is 01 Apr 2026 to 31 Oct 2026" with an x, and a filter that is not set is a dashed "+ Customer" pill (`add` on a select
        filter or a date range). In a real page each is bound with `wire:model="filters.customer"` (that is the chip's key; here
@@ -103,11 +105,11 @@ $money = fn (float $amount) => number_format($amount, 2);
             </x-slot:meta>
 
             <x-slot:actions>
-                <atom:button icon="upload">Import</atom:button>
+                <atom:action icon="upload">Import</atom:action>
             </x-slot:actions>
 
             <x-slot:primary>
-                <atom:button variant="primary" icon="add" data-testid="list-primary">Create invoice</atom:button>
+                <atom:action icon="add" data-testid="list-primary">Create invoice</atom:action>
             </x-slot:primary>
         </atom:page.header>
 
@@ -148,7 +150,7 @@ $money = fn (float $amount) => number_format($amount, 2);
                 </atom:table.filters>
 
                 <x-slot:actions>
-                    <atom:button variant="ghost" icon="download" aria-label="Export"><span class="max-sm:sr-only">Export</span></atom:button>
+                    <atom:action icon="download">Export</atom:action>
                 </x-slot:actions>
             </atom:table.toolbar>
 

@@ -3,7 +3,7 @@
         <code>&lt;atom:action&gt;</code> is a button or a menu item the surface it sits in places for you. Write each action once, with what it
         is (<code>priority</code> and <code>tone</code>), and atom draws the first ones as buttons and the rest as rows of the surface's ⋯ menu:
         the caps, the order, the separator and the confirm in the action's tone come from atom, so a record's actions sit in the same places on
-        every page. <code>page.header</code> places them today.
+        every page. A page header, a table's toolbar and bulk bar, a card or panel heading and a row's ⋯ place them.
     </p>
 
     <p>

@@ -1138,3 +1138,52 @@ it('draws no hand panel, hand rail grid, hand card title, hand crumbs, typed "(o
         ->not->toContain('<atom:confirm.trigger')
         ->not->toMatch('/\?:\s*[\'"][—-]{1,2}[\'"]|\?\?\s*[\'"][—-]{1,2}[\'"]|>\s*(?:—|--)\s*</');
 })->with(['record-page', 'list-page', 'document-page', 'form-page', 'page', 'crumbs']);
+
+describe('pattern pages: the actions are <atom:action>s that atom places', function () {
+    it('places the record page header: two buttons, the primary last, the rest in the menu', function () {
+        $html = view('atom::docs.patterns.record-page')->render();
+        $placed = fn (string $place) => array_map(fn ($node) => actionText($node), domQuery($html, '//*[@data-atom-page-header]//*[@data-atom-action="'.$place.'"]'));
+
+        expect($placed('visible'))->toBe(['Edit', 'PDF'])
+            ->and($placed('primary'))->toBe(['Mark as done'])
+            ->and($placed('menu'))->toBe(['Duplicate', 'Cancel job'])
+            // the primary is the one button with the primary look, and it is last in the row
+            ->and(domQuery($html, '//*[@data-atom-page-actions]/*[last()][@data-testid="record-primary"][@data-atom-action="primary"]'))->toHaveCount(1)
+            // the menu rows are menu items and the warning one asks in warning
+            ->and(domQuery($html, '//*[@data-atom-menu]//*[@data-atom-action="menu"][@data-atom-menu-item]'))->toHaveCount(2)
+            ->and(json_decode(domQuery($html, '//*[@data-testid="record-cancel"]')[0]->getAttribute('data-atom-confirm'), true))->toMatchArray(['variant' => 'warning'])
+            // no marker reaches the browser
+            ->and($html)->not->toContain('atom:action:');
+    });
+
+    it('places the document page header, and the overdue reminder only while it is overdue', function (string $status, array $visible, array $menu) {
+        request()->query->set('status', $status);
+
+        $html = view('atom::docs.patterns.document-page')->render();
+        $placed = fn (string $place) => array_map(fn ($node) => actionText($node), domQuery($html, '//*[@data-atom-page-header]//*[@data-atom-action="'.$place.'"]'));
+
+        expect($placed('visible'))->toBe($visible)
+            ->and($placed('menu'))->toBe($menu)
+            ->and(domQuery($html, '//*[@data-testid="document-primary"][@data-atom-action="primary"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-testid="document-void"][@data-atom-action="menu"]'))->toHaveCount(1)
+            ->and($html)->not->toContain('atom:action:');
+    })->with([
+        ['overdue', ['Send reminder', 'Edit'], ['Duplicate', 'Download PDF', 'Void invoice']],
+        ['draft', ['Edit'], ['Duplicate', 'Download PDF', 'Void invoice']],
+        ['paid', ['Edit'], ['Duplicate', 'Download PDF', 'Void invoice']],
+    ]);
+
+    it('places the list page header and toolbar: Import beside the primary, Export as a ghost button that keeps its name on a phone', function () {
+        $html = view('atom::docs.patterns.list-page')->render();
+        $header = domQuery($html, '//*[@data-atom-page-header]//*[@data-atom-action]');
+        $export = domQuery($html, '//*[@data-testid="list-panel"]//*[@data-atom-table-toolbar]//*[@data-atom-action="visible"]');
+
+        expect(array_map(fn ($node) => $node->getAttribute('data-atom-action'), $header))->toBe(['visible', 'primary'])
+            ->and(actionText($header[0]))->toBe('Import')
+            ->and($header[1]->getAttribute('data-testid'))->toBe('list-primary')
+            ->and($export)->toHaveCount(1)
+            ->and(domClasses($export[0]))->toContain('bg-transparent')
+            ->and(domQuery($html, '//*[@data-testid="list-panel"]//*[@data-atom-table-toolbar]//*[@data-atom-action="visible"]//span[contains(@class, "max-sm:sr-only")]'))->toHaveCount(1)
+            ->and($html)->not->toContain('atom:action:');
+    });
+});
