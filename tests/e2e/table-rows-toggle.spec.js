@@ -110,6 +110,28 @@ test('a click that ends a drag-select of the row text neither ticks nor opens it
   await expect(page).not.toHaveURL(/go=/)
 })
 
+test('a selection outside the row does not swallow the click (rows with user-select: none)', async ({ page }) => {
+  await open(page, '&ticked=2')
+  await page.addStyleTag({ content: 'table, table * { user-select: none }' })
+  await page.evaluate(() => {
+    const el = document.querySelector('[data-testid="opened"]')
+    el.textContent = 'outside the table'
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    const sel = window.getSelection()
+    sel.removeAllRanges()
+    sel.addRange(range)
+  })
+  expect(await page.evaluate(() => String(window.getSelection()))).not.toBe('')
+
+  // the row is not selectable, so the click does not clear the selection
+  await nameCell(page, 'Plain row').click()
+
+  expect(await page.evaluate(() => String(window.getSelection()))).not.toBe('')
+  expect(await checked(page)).toEqual(['2', '1'])
+  await expect(page).not.toHaveURL(/go=/)
+})
+
 test('a row of a table inside a row belongs to that table, not the outer one', async ({ page }) => {
   await open(page, '&ticked=1&nested=1')
 

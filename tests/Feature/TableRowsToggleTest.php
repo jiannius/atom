@@ -87,7 +87,7 @@ it('swallows a repeated Enter, a double-click and a click after a text selection
     $enter = rowsToggleRootAttribute($html, 'x-on:keydown.enter.capture');
 
     expect($click)->toContain('e.detail > 1')
-        ->and($click)->toContain("String(window.getSelection()) !== ''")
+        ->and($click)->toContain('row.contains(sel.anchorNode)')
         ->and($enter)->toContain('e.repeat');
 });
 

@@ -83,11 +83,11 @@ $stripClasses = $frameless ? 'border-b px-3 py-2.5' : '';
 // and sticky selection behave as for a click on the box (that click lands on the box itself, which the guard skips, so it is not read again).
 // What would open the row right after the last tick went is swallowed, not passed on: a second click of a double-click (`e.detail > 1`), an
 // auto-repeated Enter (`e.repeat`: the first press unticked the last row, the repeat would find nothing ticked), and a click that ends a
-// drag-select of the row's text while rows are ticked. Each is stopped on a toggle row only, and does not tick.
+// drag-select of the row's text (a selection that starts or ends in this row; one elsewhere on the page does not count) while rows are ticked. Each is stopped on a toggle row only, and does not tick.
 $rowsToggle = (bool) $rowsToggleWhenSelected;
 $rowsToggleTicked = '$wire._table?.checkboxes?.length || $wire._table?.select_all';
 $rowsToggleClick = $rowsToggle
-    ? "(e) => { if (e.ctrlKey || e.metaKey) return; const row = e.composedPath().find((n) => n.nodeType === 1 && n.hasAttribute('data-atom-table-row')); const box = row?.querySelector('[data-atom-table-checkbox]'); if (!box || row.closest('[data-atom-table]') !== e.currentTarget) return; ".\Jiannius\Atom\Services\Attributes::rowGuard('row')." const ticked = !!($rowsToggleTicked); if (e.detail > 1 || (ticked && String(window.getSelection()) !== '')) { e.stopPropagation(); e.preventDefault(); return } if (!ticked) return; e.stopPropagation(); e.preventDefault(); box.click() }"
+    ? "(e) => { if (e.ctrlKey || e.metaKey) return; const row = e.composedPath().find((n) => n.nodeType === 1 && n.hasAttribute('data-atom-table-row')); const box = row?.querySelector('[data-atom-table-checkbox]'); if (!box || row.closest('[data-atom-table]') !== e.currentTarget) return; ".\Jiannius\Atom\Services\Attributes::rowGuard('row')." const ticked = !!($rowsToggleTicked); const sel = window.getSelection(); if (e.detail > 1 || (ticked && sel && !sel.isCollapsed && sel.rangeCount && (row.contains(sel.anchorNode) || row.contains(sel.focusNode)))) { e.stopPropagation(); e.preventDefault(); return } if (!ticked) return; e.stopPropagation(); e.preventDefault(); box.click() }"
     : '';
 $rowsToggleEnter = $rowsToggle
     ? "(e) => { if (e.ctrlKey || e.metaKey || !e.target.matches('[data-atom-table-row]') || e.target.closest('[data-atom-table]') !== e.currentTarget) return; const box = e.target.querySelector('[data-atom-table-checkbox]'); if (!box) return; if (e.repeat) { e.stopPropagation(); e.preventDefault(); return } if (!($rowsToggleTicked)) return; e.stopPropagation(); e.preventDefault(); box.click() }"
