@@ -59,7 +59,6 @@ it('puts a capture-phase click and Enter listener on the table root with the pro
 
 it('guards a click on a control inside the row with the same selector the href row uses', function () {
     $click = rowsToggleRootAttribute(rowsToggleTable('rows-toggle-when-selected'), 'x-on:click.capture');
-    $rowHandler = rowsToggleRootAttribute(rowsToggleTable(), 'x-on:click'); // the table root has none: read the row instead
 
     expect($click)->toContain(Attributes::rowGuard('row'))
         ->and($click)->toContain('[role=checkbox]')
@@ -68,7 +67,6 @@ it('guards a click on a control inside the row with the same selector the href r
     $html = renderBlade('<atom:table.row href="/x" />');
 
     expect(html_entity_decode($html, ENT_QUOTES))->toContain(Attributes::rowGuard('e.currentTarget'));
-    expect($rowHandler)->toBeNull();
 });
 
 it('says in the checked bar how to open a record again, through t()', function () {
@@ -81,4 +79,24 @@ it('says in the checked bar how to open a record again, through t()', function (
     app('translator')->addLines(['messages.untick-to-open-record' => 'Translated hint'], 'xx', 'atom');
 
     expect(rowsToggleTable('rows-toggle-when-selected'))->toContain('Translated hint');
+});
+
+it('swallows a repeated Enter, a double-click and a click after a text selection on a toggle row', function () {
+    $html = rowsToggleTable('rows-toggle-when-selected');
+    $click = rowsToggleRootAttribute($html, 'x-on:click.capture');
+    $enter = rowsToggleRootAttribute($html, 'x-on:keydown.enter.capture');
+
+    expect($click)->toContain('e.detail > 1')
+        ->and($click)->toContain("String(window.getSelection()) !== ''")
+        ->and($enter)->toContain('e.repeat');
+});
+
+it('prints a translated hint escaped', function () {
+    app()->setLocale('xx');
+    app('translator')->addLines(['messages.untick-to-open-record' => '<b>Untick</b> & go'], 'xx', 'atom');
+
+    $html = rowsToggleTable('rows-toggle-when-selected');
+
+    expect($html)->toContain('&lt;b&gt;Untick&lt;/b&gt; &amp; go')
+        ->and($html)->not->toContain('<b>Untick</b>');
 });

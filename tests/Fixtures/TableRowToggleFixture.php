@@ -9,7 +9,7 @@ use Livewire\WithPagination;
 /**
  * Drives the E2E for `<atom:table rows-toggle-when-selected>` (#235): rows that open an `href` (plain and `wire:navigate`), one with a
  * `wire:click`, each with a checkbox cell and controls inside. The query string picks the shape: `off=1` leaves the prop off,
- * `sticky=1` adds `sticky-selection`, `all=1` starts in select-all mode, `ticked=1,2` starts with those rows ticked.
+ * `sticky=1` adds `sticky-selection`, `nested=1` adds a row holding a table of its own (no prop), `all=1` starts in select-all mode, `ticked=1,2` starts with those rows ticked.
  */
 class TableRowToggleFixture extends Component
 {
@@ -20,6 +20,8 @@ class TableRowToggleFixture extends Component
 
     public bool $sticky = false;
 
+    public bool $nested = false;
+
     public int $pings = 0;
 
     /**
@@ -29,6 +31,7 @@ class TableRowToggleFixture extends Component
     {
         $this->off = request()->boolean('off');
         $this->sticky = request()->boolean('sticky');
+        $this->nested = request()->boolean('nested');
 
         if (request()->boolean('all')) {
             $this->_table['select_all'] = true;

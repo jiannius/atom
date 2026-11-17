@@ -85,6 +85,39 @@ test('a row with no checkbox cell still opens while rows are ticked', async ({ p
   await expect(page).toHaveURL(/go=nocheck$/)
 })
 
+test('a double-click on the only ticked row unticks it and does not open it', async ({ page }) => {
+  await open(page, '&ticked=1')
+
+  await nameCell(page, 'Plain row').dblclick()
+  await page.waitForTimeout(300)
+
+  expect(await checked(page)).toEqual([])
+  await expect(page).not.toHaveURL(/go=/)
+})
+
+test('a click that ends a drag-select of the row text neither ticks nor opens it', async ({ page }) => {
+  await open(page, '&ticked=2')
+
+  const cellBox = await nameCell(page, 'Plain row').boundingBox()
+  await page.mouse.move(cellBox.x + 2, cellBox.y + cellBox.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(cellBox.x + 40, cellBox.y + cellBox.height / 2, { steps: 5 })
+  await page.mouse.up()
+  await page.waitForTimeout(300)
+
+  expect(await page.evaluate(() => String(window.getSelection()))).not.toBe('')
+  expect(await checked(page)).toEqual(['2'])
+  await expect(page).not.toHaveURL(/go=/)
+})
+
+test('a row of a table inside a row belongs to that table, not the outer one', async ({ page }) => {
+  await open(page, '&ticked=1&nested=1')
+
+  await nameCell(page, 'Inner row').click()
+
+  await expect(page).toHaveURL(/go=inner$/)
+})
+
 test('the cell of the checkbox itself ticks the row once, not twice', async ({ page }) => {
   await open(page, '&ticked=1')
 
@@ -136,6 +169,19 @@ test('Enter on a focused row ticks it while rows are ticked and does not open it
   await page.keyboard.press('Enter')
 
   expect(await checked(page)).toEqual(['2'])
+})
+
+test('Enter held down on the only ticked row unticks it once and the repeat does not open it', async ({ page }) => {
+  await open(page, '&ticked=1')
+
+  await row(page, 'plain').focus()
+  await page.keyboard.down('Enter')
+  await page.keyboard.down('Enter') // the second keydown of a held key is an auto-repeat
+  await page.keyboard.up('Enter')
+  await page.waitForTimeout(300)
+
+  expect(await checked(page)).toEqual([])
+  await expect(page).not.toHaveURL(/go=/)
 })
 
 test('Enter on a focused row opens it when nothing is ticked', async ({ page }) => {

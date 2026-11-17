@@ -41,6 +41,24 @@
                 <atom:table.cell />
                 <atom:table.cell />
             </atom:table.row>
+            @if ($nested)
+                <atom:table.row href="/atom/e2e/table-row-toggle?go=outer" data-row="outer">
+                    <atom:table.cell checkbox="4" />
+                    <atom:table.cell>Outer row</atom:table.cell>
+                    <atom:table.cell>
+                        <atom:table>
+                            <x-slot:columns><atom:table.column checkbox /><atom:table.column>Inner</atom:table.column></x-slot:columns>
+                            <x-slot:rows>
+                                <atom:table.row href="/atom/e2e/table-row-toggle?go=inner" data-row="inner">
+                                    <atom:table.cell checkbox="5" />
+                                    <atom:table.cell>Inner row</atom:table.cell>
+                                </atom:table.row>
+                            </x-slot:rows>
+                        </atom:table>
+                    </atom:table.cell>
+                    <atom:table.cell />
+                </atom:table.row>
+            @endif
         </x-slot:rows>
     </atom:table>
 

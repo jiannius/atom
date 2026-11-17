@@ -1182,7 +1182,7 @@ table that doesn't opt in is unaffected. It deliberately does **not** default to
 tenant-safe only where scoping is a global scope, and the consuming app is the only party
 that can say what "unfiltered but still scoped" means.
 
-### Rows that tick while rows are selected — `rows-toggle-when-selected`
+### Rows that tick while rows are selected
 
 A row with an `href` (or a `wire:click`) opens on any click. On a table used to build a batch, one stray click on a row
 opens the record and the ticks are lost. Add `rows-toggle-when-selected` and, **while anything is ticked** (a checked
@@ -1202,9 +1202,14 @@ rows open as before. Opt-in: a table without the prop prints exactly what it did
 - A row with no checkbox cell keeps its own behaviour. The tick is the checkbox's own click, so select-all mode (which
   leaves it) and `:sticky-selection` work as they do for a click on the box.
 - The checked bar prints a short hint, "Untick all to open a record" (translatable through `atom::messages.untick-to-open-record`).
+  The prop pairs with a `checked` bulk bar: without a `checked` or `checked-menu` slot rows still toggle, but no bar or hint shows.
+- What would open the row right after the last tick went is swallowed, not followed: the second click of a double-click,
+  an Enter held down (auto-repeat), and the click that ends a drag-select of the row's text while rows are ticked.
+  On a toggle row, a double-click with nothing ticked therefore opens it once.
 
 The prop works from one capture-phase listener on the table (it also catches a row's `wire:click` and `x-on:click`);
-nothing is printed on the rows.
+nothing is printed on the rows. A click it toggles is stopped there (`stopPropagation()`), so a `document` or `window`
+click listener (an `x-on:click.window`, or `@click.outside` on another component) does not see it.
 
 ### Clearing from a custom filter control
 
