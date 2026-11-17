@@ -1300,8 +1300,12 @@ arrives, and the two paths fail differently on purpose:
   a list it refuses is a 403, which discards the whole request. Anything deeper
   (`filters.status.0.x`) is never allowed: a deeper path is how a string turns into an array.
   An excepted key is refused from the browser too, and survives a wholesale
-  `$wire.set('filters', {...})` even when other paths ride in the same request. A declared key
-  an update removed, or a replacement left out, gets that key's default. A number that is not
+  `$wire.set('filters', {...})` even when other paths ride in the same request. In that
+  case Livewire runs every update before any `updated` hook, so your own `updated($name)` or
+  `updatedFilters*` hook for one of the other paths runs before the internal keys are put back
+  and sees `$filters` without them: do not query from `$filters` inside an `updated*` hook,
+  query in `render()` or a computed property. A declared key an update removed, or a
+  replacement left out, gets that key's default. A number that is not
   finite (`1e999` decodes to `INF`, which the snapshot cannot carry) is refused like any value
   of the wrong shape. If you also define a generic `updated($name, $value)`, Livewire calls it
   before this recheck for the same path, so it can briefly see a list the host has not yet
