@@ -345,6 +345,98 @@ describe('a list changed by index', function () {
     });
 });
 
+describe('several paths in one request', function () {
+    /** A whole replacement that leaves the internal key out, as a browser's would. */
+    function urlFiltersReplacement(): array
+    {
+        return ['search' => 'y', 'status' => ['dried'], 'region' => 'SG'];
+    }
+
+    it('keeps the internal keys when the whole array is replaced beside another path', function (array $updates) {
+        $test = urlFiltersWithList()->update(updates: $updates)->assertOk();
+
+        expect($test->get('filters'))->toBe(['search' => 'y', 'status' => ['dried'], 'region' => 'SG', 'tenant' => 7]);
+    })->with([
+        'a key before it' => [fn () => ['filters.search' => 'x', 'filters' => urlFiltersReplacement()]],
+        'a key after it' => [fn () => ['filters' => urlFiltersReplacement(), 'filters.search' => 'y']],
+        'another property before it' => [fn () => ['record' => true, 'filters' => urlFiltersReplacement()]],
+        'another property after it' => [fn () => ['filters' => urlFiltersReplacement(), 'record' => true]],
+        'a list item before it' => [fn () => ['filters.status.1' => 'c', 'filters' => urlFiltersReplacement()]],
+        'a list item after it' => [fn () => ['filters' => urlFiltersReplacement(), 'filters.status.0' => 'dried']],
+    ]);
+
+    it('lets several indices through in any order that leaves a list', function (array $updates, array $expected) {
+        expect(urlFiltersWithList()->update(updates: $updates)->assertOk()->get('filters.status'))->toBe($expected);
+    })->with([
+        'in order' => [['filters.status.0' => 'a', 'filters.status.1' => 'b'], ['a', 'b']],
+        'out of order' => [['filters.status.1' => 'b', 'filters.status.0' => 'a'], ['a', 'b']],
+        'appending then the next' => [['filters.status.2' => 'c', 'filters.status.3' => 'd'], ['fresh', 'dried', 'c', 'd']],
+        'the last item removed' => [['filters.status.1' => '__rm__'], ['fresh']],
+        'an item swapped and the last removed' => [['filters.status.0' => 'a', 'filters.status.1' => '__rm__'], ['a']],
+    ]);
+
+    it('refuses several indices that leave a gap or a keyed array', function (array $updates) {
+        urlFiltersWithList()->update(updates: $updates)->assertForbidden();
+    })->with([
+        'the next index before the one it follows' => [['filters.status.3' => 'd', 'filters.status.2' => 'c']],
+        'the first item removed' => [['filters.status.0' => '__rm__']],
+        'every item removed from the front' => [['filters.status.0' => '__rm__', 'filters.status.1' => '__rm__']],
+    ]);
+
+    it('refuses an item removed from the middle of a list, and takes one off the end', function () {
+        $three = fn () => urlFiltersMounted(['status' => ['a', 'b', 'c']]);
+
+        $three()->update(updates: ['filters.status.1' => '__rm__'])->assertForbidden();   // [0 => a, 2 => c], not a list
+        expect($three()->update(updates: ['filters.status.2' => '__rm__'])->assertOk()->get('filters.status'))->toBe(['a', 'b']);
+    });
+
+    it('judges an index and a whole replacement of the same list together, in either order', function () {
+        $replace = ['status' => ['x', 'y', 'z']];
+
+        expect(urlFiltersWithList()->update(updates: ['filters.status.1' => 'c', 'filters' => $replace])->assertOk()->get('filters.status'))->toBe(['x', 'y', 'z']);
+        expect(urlFiltersWithList()->update(updates: ['filters' => $replace, 'filters.status.1' => 'c'])->assertOk()->get('filters.status'))->toBe(['x', 'c', 'z']);
+
+        // a replacement that leaves the list out gives it its default back, whichever came first
+        expect(urlFiltersWithList()->update(updates: ['filters.status.1' => 'c', 'filters' => ['search' => 'a']])->assertOk()->get('filters.status'))->toBe([]);
+        urlFiltersWithList()->update(updates: ['filters' => ['search' => 'a'], 'filters.status.1' => 'c'])->assertForbidden();   // index 1 of an empty list is a gap
+    });
+
+    it('refuses an index whose list the host refuses beside a whole replacement the host accepts', function () {
+        urlFiltersMounted(['status' => ['fresh', 'canned']], UrlFiltersListHostFixture::class)
+            ->update(updates: ['filters' => ['status' => ['fresh', 'canned']], 'filters.status.1' => 'dried'])
+            ->assertForbidden();
+    });
+
+    it('gives a declared scalar key an update removed its default back', function () {
+        $test = urlFiltersMounted(['search' => 'ap'])->update(updates: ['filters.search' => '__rm__'])->assertOk();
+
+        expect($test->get('filters'))->toEqual(['search' => '', 'status' => [], 'region' => 'MY', 'tenant' => 7]);   // key order aside
+    });
+
+    it('does not let an update remove an internal key', function () {
+        urlFiltersMounted([])->update(updates: ['filters.tenant' => '__rm__'])->assertForbidden();
+    });
+
+    it('refuses a number that is not finite, which the snapshot cannot carry', function (string $path, mixed $value) {
+        // `1e999` in the wire's JSON decodes to INF
+        urlFiltersMounted([])->update(updates: [$path => $value])->assertForbidden();
+    })->with([
+        'a scalar, INF' => ['filters.search', INF],
+        'a scalar, -INF' => ['filters.search', -INF],
+        'a scalar, NAN' => ['filters.search', NAN],
+        'a list' => ['filters.status', ['a', INF]],
+        'the whole array' => ['filters', ['search' => INF]],
+    ]);
+
+    it('refuses a number that is not finite as a list item', function () {
+        urlFiltersWithList()->update(updates: ['filters.status.1' => INF])->assertForbidden();
+    });
+
+    it('accepts a finite float', function () {
+        urlFiltersMounted([])->update(updates: ['filters.search' => 1.5])->assertOk();
+    });
+});
+
 describe('strings and lists the page cannot carry', function () {
     it('falls back to the default for invalid UTF-8 from the URL, and still renders', function (array $query, string $key, mixed $default) {
         // Livewire cannot JSON-encode the snapshot with such a string in it: a 500

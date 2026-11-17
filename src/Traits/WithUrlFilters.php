@@ -297,12 +297,38 @@ trait WithUrlFilters
                 ...(is_array($this->{$property}) ? $this->{$property} : []),
                 ...($this->urlFiltersStash ?? []),
             ];
-        }
-        else if (str_starts_with($name, $property.'.')) {
-            $this->recheckUrlFilterList(explode('.', substr($name, strlen($property) + 1))[0]);
+
+            // Only here: Livewire runs every updated hook after every set, in payload order, so
+            // a `filters.search` update that comes before `filters` in the same payload must not
+            // clear what this one has yet to put back.
+            $this->urlFiltersStash = null;
+
+            return;
         }
 
-        $this->urlFiltersStash = null;
+        if (str_starts_with($name, $property.'.')) {
+            $this->fillMissingUrlFilters();
+            $this->recheckUrlFilterList(explode('.', substr($name, strlen($property) + 1))[0]);
+        }
+    }
+
+    /**
+     * A declared key an update removed (Livewire sends `__rm__` to unset a key) gets
+     * its default again, as a whole replacement that left it out does.
+     */
+    protected function fillMissingUrlFilters(): void
+    {
+        $property = $this->urlFiltersProperty();
+
+        if (! is_array($this->{$property})) {
+            return;
+        }
+
+        foreach ($this->urlFilterDefinitions() as $key => $default) {
+            if (! array_key_exists($key, $this->{$property})) {
+                $this->{$property}[$key] = $default;
+            }
+        }
     }
 
     /**
@@ -564,12 +590,18 @@ trait WithUrlFilters
     }
 
     /**
-     * Null, or a scalar that, when it is a string, is valid UTF-8 and not too long.
+     * Null, or a scalar that, when it is a string, is valid UTF-8 and not too long, and when it
+     * is a float, is finite.
      */
     protected function urlFilterScalarMatches(mixed $value): bool
     {
         if (is_string($value)) {
             return strlen($value) <= $this->urlFilterMaxLength() && preg_match('//u', $value) === 1;
+        }
+
+        // 1e999 is INF once decoded, which json_encode() cannot write into the snapshot: a 500
+        if (is_float($value) && ! is_finite($value)) {
+            return false;
         }
 
         return $value === null || is_scalar($value);

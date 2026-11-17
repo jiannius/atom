@@ -1297,9 +1297,15 @@ arrives, and the two paths fail differently on purpose:
   below `urlFilterMaxItems()` and no further than the end of the list (an index past it
   would leave a gap), and it must be a scalar. After Livewire has applied it, the whole
   list is checked again, and your `isUrlFilterValid()` gets the whole list, not the item;
-  a list it refuses is a 403 and the list is put back as it was. Anything deeper
-  (`filters.status.0.x`) is never allowed: a deeper path is how a string turns into an array. An excepted key is refused from the browser too, and survives a wholesale
-  `$wire.set('filters', {...})`.  A replacement that leaves a declared key out gets that key's default.
+  a list it refuses is a 403, which discards the whole request. Anything deeper
+  (`filters.status.0.x`) is never allowed: a deeper path is how a string turns into an array.
+  An excepted key is refused from the browser too, and survives a wholesale
+  `$wire.set('filters', {...})` even when other paths ride in the same request. A declared key
+  an update removed, or a replacement left out, gets that key's default. A number that is not
+  finite (`1e999` decodes to `INF`, which the snapshot cannot carry) is refused like any value
+  of the wrong shape. If you also define a generic `updated($name, $value)`, Livewire calls it
+  before this recheck for the same path, so it can briefly see a list the host has not yet
+  approved (the 403 follows); put the host's rule in `isUrlFilterValid()`, not there.
 - **On both paths** a string must be valid UTF-8 (Livewire cannot serialise the snapshot with
   an invalid one) and at most `urlFilterMaxLength()` bytes (default 1000), and a list at most
   `urlFilterMaxItems()` items (default 200: a `whereIn()` with thousands of placeholders fails
