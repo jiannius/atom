@@ -8,8 +8,9 @@
        invoice also has a secondary "Send reminder" in `actions`.
      - Crumbs are `<atom:breadcrumbs :items>` in the shell's `crumbs` slot (with the previous and next document as ghost icon buttons in
        its `actions` slot), so the document's own title is the one heading; the header's `crumbs` prop is the alternative where the
-       shell has no slot to spare. "Void invoice" withdraws the document but keeps the record, so it is a `warning` item behind a
-       `<atom:menu.separator>` that asks first (`confirm`, in warning); only what destroys data is `variant="delete"`.
+       shell has no slot to spare. The header's actions are `<atom:action>`s, placed by atom (two buttons at most, the primary last, the
+       rest in the menu). "Void invoice" withdraws the document but keeps the record, so it is `tone="warning"`: atom puts it last in the
+       menu behind a separator and it asks first, in warning (`confirm` gives its copy); only what destroys data is `tone="delete"`.
      - The paper is deliberately not themed: it is a document, so it keeps its own warm white and near-black in the dark theme
        too, and the 500 and 600 weights a printed page uses. It is plain markup, not <atom:table>: a document table has a
        dark rule under its header and no hover.
@@ -110,20 +111,19 @@ $money = fn (float $amount) => number_format($amount, 2);
 
             <x-slot:actions>
                 @if ($status === 'overdue')
-                    <atom:button icon="send" data-testid="document-reminder">Send reminder</atom:button>
+                    <atom:action icon="send" data-testid="document-reminder">Send reminder</atom:action>
                 @endif
-                <atom:button>Edit</atom:button>
+                <atom:action>Edit</atom:action>
             </x-slot:actions>
 
             <x-slot:menu>
-                <atom:menu.item icon="copy">Duplicate</atom:menu.item>
-                <atom:menu.item icon="download">Download PDF</atom:menu.item>
-                <atom:menu.separator/>
-                <atom:menu.item variant="warning" :confirm="['heading' => 'Void this invoice?', 'message' => 'The invoice no longer counts as owed, and its record stays.', 'buttonCancel' => 'Keep invoice']" data-testid="document-void">Void invoice</atom:menu.item>
+                <atom:action icon="copy">Duplicate</atom:action>
+                <atom:action icon="download">Download PDF</atom:action>
+                <atom:action tone="warning" :confirm="['heading' => 'Void this invoice?', 'message' => 'The invoice no longer counts as owed, and its record stays.', 'buttonCancel' => 'Keep invoice']" data-testid="document-void">Void invoice</atom:action>
             </x-slot:menu>
 
             <x-slot:primary>
-                <atom:button variant="primary" data-testid="document-primary">{{ $primaryLabel }}</atom:button>
+                <atom:action data-testid="document-primary">{{ $primaryLabel }}</atom:action>
             </x-slot:primary>
         </atom:page.header>
 

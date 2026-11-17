@@ -6,7 +6,9 @@
      - The shell's <main> is unpadded; <atom:page> pads the page. Header first, then the stage path, stats and tabs, then the
        content, as siblings.
      - ONE primary action, and it is the action for the record's CURRENT status (look at the four states below: the
-       `primary` slot changes with the status, the rest stays). Secondary actions are plain buttons; the rest is in the menu.
+       `primary` slot changes with the status, the rest stays). The header's actions are `<atom:action>`s: atom draws the first two
+       as plain buttons, the primary last, and the rest in the menu, a warning one after a separator, with no cap or order to write.
+       The `menu` slot's actions default to a utility (`low`), so Duplicate never shows as a button.
      - A status is a tone plus a word; `running` only while something is actually in progress, and then it says for how long.
      - A record that moves through stages shows them as `<atom:timeline kind="path">` under the header, the current segment
        matching the status (done, current, pending, failed; a time and a person on each).
@@ -25,9 +27,9 @@
        step is a plain button: the header's primary stays the one primary on the screen.
      - A person in a list is `<atom:avatar size="xs">` and their name. Something the reader has to act on, such as a blocked
        job, is one `<atom:callout>` under the header, in the tone of the status (warning here), never a hand-built box.
-     - Tone follows consequence in the menu: an action that stops or withdraws but keeps the record (cancel, archive, void) is a
-       `warning` item that confirms in warning (`confirm` on the item), with no delete icon; only what destroys data is `danger`
-       (`variant="delete"`).
+     - Tone follows consequence in the menu: an action that stops or withdraws but keeps the record (cancel, archive, void) is
+       `tone="warning"`, which confirms in warning (a `confirm` array gives its copy), with no delete icon; only what destroys data is
+       `tone="delete"`.
      - A process log is `<atom:timeline kind="step">` and a conversation is `<atom:timeline kind="message">`: the Log and Messages tabs.
 
      Open it with ?status=draft|in-progress|blocked|done to see the primary action and the stage path follow the status. --}}
@@ -138,18 +140,17 @@ $people = [['Assigned', 'Ana Lim', 'A07'], ['Technician', 'Ben Ooi', 'T12'], ['C
             </x-slot:status>
 
             <x-slot:actions>
-                <atom:button>Edit</atom:button>
-                <atom:button icon="download">PDF</atom:button>
+                <atom:action>Edit</atom:action>
+                <atom:action icon="download">PDF</atom:action>
             </x-slot:actions>
 
             <x-slot:menu>
-                <atom:menu.item icon="copy">Duplicate</atom:menu.item>
-                <atom:menu.separator/>
-                <atom:menu.item variant="warning" :confirm="['heading' => 'Cancel this job?', 'message' => 'The job stops here, and its record stays.', 'buttonCancel' => 'Keep job']" data-testid="record-cancel">Cancel job</atom:menu.item>
+                <atom:action icon="copy">Duplicate</atom:action>
+                <atom:action tone="warning" :confirm="['heading' => 'Cancel this job?', 'message' => 'The job stops here, and its record stays.', 'buttonCancel' => 'Keep job']" data-testid="record-cancel">Cancel job</atom:action>
             </x-slot:menu>
 
             <x-slot:primary>
-                <atom:button variant="primary" data-testid="record-primary">{{ $primaryLabel }}</atom:button>
+                <atom:action data-testid="record-primary">{{ $primaryLabel }}</atom:action>
             </x-slot:primary>
         </atom:page.header>
 
