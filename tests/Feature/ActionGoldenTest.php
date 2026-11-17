@@ -59,14 +59,12 @@ function goldenCases(): array
         'bulk-menu-only' => ['<atom:table :empty="false"><x-slot:checked-menu>'.$item.'</x-slot:checked-menu>'.$rows.'</atom:table>', false],
         'bulk-false-blocks' => ['<atom:table :empty="false"><x-slot:checked>'.$falses.'</x-slot:checked><x-slot:checked-menu>'.$falses.'</x-slot:checked-menu>'.$rows.'</atom:table>', true],
         'card-heading-only' => ['<atom:card heading="Customer">body</atom:card>', false],
-        'card-actions-menu' => ['<atom:card heading="Parts"><x-slot:actions><atom:link href="/parts">View all</atom:link></x-slot:actions><x-slot:menu><atom:menu.item>Export</atom:menu.item></x-slot:menu>body</atom:card>', false],
-        // whitespace after `</x-slot:menu>`, so the slot closes (the two cases above write `</x-slot:menu>body`, which never does): the ⋯ path, recorded from fd05d0e
+        // whitespace after `</x-slot:menu>`: the ⋯ path, recorded from fd05d0e. `</x-slot:menu>body` closes the slot too now (ClosingSlotWordTest holds it)
         'card-menu-ws' => ['<atom:card heading="Parts"><x-slot:actions><atom:link href="/parts">View all</atom:link></x-slot:actions><x-slot:menu><atom:menu.item>Export</atom:menu.item></x-slot:menu>
 body</atom:card>', false],
         'card-no-row' => ['<atom:card>body</atom:card>', false],
         'card-false-blocks' => ['<atom:card heading="T"><x-slot:actions>'.$falses.'</x-slot:actions><x-slot:menu>'.$falses.'</x-slot:menu>
 body</atom:card>', true],
-        'panel-actions-menu' => ['<atom:panel heading="Lines"><x-slot:actions><atom:link href="/l">All</atom:link></x-slot:actions><x-slot:menu><atom:menu.item>Export</atom:menu.item><atom:menu.separator /><atom:menu.item variant="delete">Clear</atom:menu.item></x-slot:menu>body</atom:panel>', false],
         'panel-menu-ws' => ['<atom:panel heading="Lines"><x-slot:actions><atom:link href="/l">All</atom:link></x-slot:actions><x-slot:menu><atom:menu.item>Export</atom:menu.item><atom:menu.separator /><atom:menu.item variant="delete">Clear</atom:menu.item></x-slot:menu>
 body</atom:panel>', false],
         'panel-heading-only' => ['<atom:panel heading="Lines">body</atom:panel>', false],
