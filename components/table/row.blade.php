@@ -19,8 +19,7 @@ $clickable = $href || \Jiannius\Atom\Services\Attributes::hasLike($attributes, '
 if ($href) {
     $target = \Illuminate\Support\Js::from($href)->toHtml();
     $go = $attributes->has('wire:navigate') ? "Livewire.navigate($target)" : "window.location.href = $target";
-    $interactive = 'a, button, input, select, textarea, label, summary, [contenteditable], [role=button], [role=link], [role=menuitem], [role=checkbox], [role=switch], [tabindex], [data-atom-row-ignore]';
-    $guard = "for (const n of e.composedPath()) { if (n === e.currentTarget) break; if (n.nodeType !== 1) continue; if (n.matches('$interactive') || n.getAttributeNames().some((a) => ['wire:click', 'x-on:click', '@click'].some((p) => a.startsWith(p)))) return }";
+    $guard = \Jiannius\Atom\Services\Attributes::rowGuard('e.currentTarget');
     $open = "(e) => { $guard if (e.ctrlKey || e.metaKey) { window.open($target, '_blank', 'noopener'); return } $go }";
     $aux = "(e) => { if (e.button !== 1) return; $guard e.preventDefault(); window.open($target, '_blank', 'noopener') }";
 }

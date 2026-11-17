@@ -21,6 +21,7 @@ return [
     'select-row' => 'Select row',
     'deselect-all' => 'Deselect all',
     'clear-selection' => 'Clear selection',
+    'untick-to-open-record' => 'Untick all to open a record',
     'show-selected' => 'Show selected',
     'show-all' => 'Show all',
     'recaptcha-failed' => 'Verification failed, please try again.',

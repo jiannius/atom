@@ -14,6 +14,25 @@ use Illuminate\View\ComponentAttributeBag;
 class Attributes
 {
     /**
+     * What a click on a table row leaves to the control it landed on: a link, button, field, label, summary, contenteditable, an element
+     * with an interactive role, a `tabindex`, or `data-atom-row-ignore` (a selector; the `wire:click*`, `x-on:click*` and `@click*` attribute-name
+     * prefixes cannot be one, so `rowGuard()` walks for them).
+     */
+    public const ROW_INTERACTIVE = 'a, button, input, select, textarea, label, summary, [contenteditable], [role=button], [role=link], [role=menuitem], [role=checkbox], [role=switch], [tabindex], [data-atom-row-ignore]';
+
+    /**
+     * The JS statement a table row's click handlers start with: it `return`s when the click landed on an interactive descendant of the row
+     * (`$row` is the JS expression for the row element), walking the event's composed path. `<atom:table.row href>` and the table's
+     * `rows-toggle-when-selected` share it, so a control is the same control for both.
+     */
+    public static function rowGuard(string $row) : string
+    {
+        $interactive = self::ROW_INTERACTIVE;
+
+        return "for (const n of e.composedPath()) { if (n === $row) break; if (n.nodeType !== 1) continue; if (n.matches('$interactive') || n.getAttributeNames().some((a) => ['wire:click', 'x-on:click', '@click'].some((p) => a.startsWith(p)))) return }";
+    }
+
+    /**
      * Whether any attribute name matches one of the patterns (`x-on:click*`).
      */
     public static function hasLike(ComponentAttributeBag $attributes, string ...$patterns) : bool
