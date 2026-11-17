@@ -35,13 +35,14 @@ class TagCompiler extends ComponentTagCompiler
     }
 
     /**
-     * Put an empty PHP block between `@endslot` and a word glued to it. It compiles to nothing, so the word is printed exactly where it
-     * was written (a space would be output). An `@endslot` followed by anything but a word character is left alone, and a verbatim block
-     * is already set aside when a precompiler runs.
+     * Put an empty PHP block between `@endslot` and a word glued to it, or a `(` that follows it (glued or after spaces: Blade would read
+     * `(Total)` as the directive's argument list and drop it). It compiles to nothing, so what follows is printed exactly where it was
+     * written (the spaces stay), and the block goes straight after `@endslot`. An `@endslot` followed by anything else is left alone, and a
+     * verbatim block is already set aside when a precompiler runs.
      */
     protected function separateEndslot(string $value): string
     {
-        return preg_replace('/(?<= )@endslot(?=\w)/', '@endslot<?php ?>', $value);
+        return preg_replace('/(?<= )@endslot(?=[\w(]|[ \t]+\()/', '@endslot<?php ?>', $value);
     }
 
     public function componentString(string $component, array $attributes)

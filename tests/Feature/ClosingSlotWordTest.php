@@ -62,3 +62,24 @@ it('leaves a newline or a space after the closing tag, and a tag after it, as th
 it('does not touch a closing slot tag inside @verbatim', function () {
     expect(renderBlade('@verbatim<x-slot:a>A</x-slot:a>Total@endverbatim'))->toBe('<x-slot:a>A</x-slot:a>Total');
 });
+
+it('keeps a parenthesis after the closing tag, glued or after spaces', function () {
+    // Blade reads `@endslot (Total)` as the directive's argument list and drops it: the empty block goes straight after `@endslot`.
+    $glued = renderBlade('<x-endslot::probe><i>x</i><x-slot:actions>A</x-slot:actions>(Total)</x-endslot::probe>');
+    $spaced = renderBlade('<x-endslot::probe><i>x</i><x-slot:actions>A</x-slot:actions> (Total)</x-endslot::probe>');
+    $tabbed = renderBlade("<x-endslot::probe><i>x</i><x-slot:actions>A</x-slot:actions>\t(Total)</x-endslot::probe>");
+
+    expect($glued)->not->toContain('@endslot')->toContain('<b class="body"><i>x</i> (Total)</b>')
+        ->and($spaced)->toContain('<b class="body"><i>x</i>  (Total)</b>')
+        ->and($tabbed)->toContain("<b class=\"body\"><i>x</i> \t(Total)</b>");
+});
+
+it('still leaves @endslot alone when a newline or a tag follows it', function () {
+    expect(Blade::compileString('<x-slot:a>A</x-slot:a>'."\n".'(Total)'))->not->toContain('<?php ?>');
+});
+
+it('documents a limit: literal text of a space, @endslot and a word is read as a closing slot tag', function () {
+    // A precompiler cannot tell this text from the ` @endslot` Laravel emits for a closing tag, so it is compiled as the directive
+    // (it printed as written before). This test pins the limit; it is not a promise.
+    expect(fn () => renderBlade('<p>a @endslotx</p>'))->toThrow(Illuminate\View\ViewException::class);
+});
