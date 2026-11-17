@@ -30,7 +30,7 @@ class DupExport extends ActionRule
 
     public function detect(): string
     {
-        return 'A button in the table\'s `checked` slot whose text (case and spaces folded) is also a button\'s in the `actions` or `end` slot of that table\'s toolbar: one inside the table\'s `header` slot, or the one just before the table in the same parent. A button with a text that is not known (an echo) is not read.';
+        return 'A button in the table\'s `checked` slot whose text (case and spaces folded) is also a button\'s in the `actions` or `end` slot of that table\'s toolbar: one inside the table\'s `header` slot, or the one just before the table in the same parent. An `<atom:action>` is read like a button, in the same slots (and the toolbar\'s default slot). A button with a text that is not known (an echo) is not read.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -67,7 +67,7 @@ class DupExport extends ActionRule
                 continue;
             }
 
-            foreach ($this->buttons($outline, $toolbar, ['atom:table.toolbar'], ['actions', 'end']) as $button) {
+            foreach ($this->buttons($outline, $toolbar, ['atom:table.toolbar'], ['actions', 'end'], ['default']) as $button) {
                 $label = $this->label($outline, $button);
 
                 if ($label !== null) {
@@ -102,11 +102,18 @@ class DupExport extends ActionRule
      *
      * @param  array<int, string>  $owners
      * @param  array<int, string>  $names
+     * @param  array<int, string>  $also  more slots an `<atom:action>` is read in (the toolbar's default slot)
      * @return array<int, array>
      */
-    protected function buttons(BladeOutline $outline, array $owner, array $owners, array $names): array
+    protected function buttons(BladeOutline $outline, array $owner, array $owners, array $names, array $also = []): array
     {
         $buttons = [];
+
+        foreach ($this->actionsOf($outline, $owner) as $action) {
+            if (in_array($action['slot'], [...$names, ...$also], true)) {
+                $buttons[] = $action['node'];
+            }
+        }
 
         foreach ($this->slots($outline, $owners, $names) as $slot) {
             if (($outline->owner($slot)['id'] ?? null) !== $owner['id']) {

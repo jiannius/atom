@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom\Services\DesignChecks;
 
+use Jiannius\Atom\Services\ActionPlacement;
 use Jiannius\Atom\Services\BladeOutline;
 use Jiannius\Atom\Services\DesignCheck;
 
@@ -20,7 +21,7 @@ class ExtraPrimary extends ActionRule
 
     public function fix(): string
     {
-        return 'One `variant="primary"` per screen: the header\'s `primary` slot, or the form\'s submit. Anything else is a plain `<atom:button>` (a second submit takes `variant="default"`).';
+        return 'One `variant="primary"` per screen: the header\'s `primary` slot (an `<atom:action priority="primary">` there is the same), or the form\'s submit. Anything else is a plain `<atom:button>` or `<atom:action>` (a second submit takes `variant="default"`).';
     }
 
     public function rule(): string
@@ -30,7 +31,7 @@ class ExtraPrimary extends ActionRule
 
     public function detect(): string
     {
-        return 'A primary is an `<atom:button>` with a static `variant="primary"`, or `type="submit"` and no `variant`. A modal and a `<atom:form.modal>` (which draws its own Save) are screens of their own. A primary in a form (`<atom:form>`, `<form>`, or an `<atom:form.section>` that saves on its own), or one that names a form by a `form="id"` attribute, belongs to it: only a second one in the same form is flagged, and it is never paired with a primary of the screen. A primary that the browser can hide (`x-show`, `<template x-if>`, `wire:show`, `:hidden`) or that sits in a host component other than a layout is not paired. Flagged: one in `<atom:empty>`, `<atom:table.toolbar>`, the table\'s `checked` slot or a row (not a row that edits something); one in an `<atom:callout>` when the screen\'s `<atom:page.header>` has a `primary` slot; a second in one form; one in a loop (one per item); and a second that can show with an earlier one on a screen (the branches of one `@if` chain never do, and two separate `@if` blocks are not paired). A bound `variant` or `type` is not read.';
+        return 'A primary is an `<atom:button>` with a static `variant="primary"`, or `type="submit"` and no `variant`. A modal and a `<atom:form.modal>` (which draws its own Save) are screens of their own. A primary in a form (`<atom:form>`, `<form>`, or an `<atom:form.section>` that saves on its own), or one that names a form by a `form="id"` attribute, belongs to it: only a second one in the same form is flagged, and it is never paired with a primary of the screen. A primary that the browser can hide (`x-show`, `<template x-if>`, `wire:show`, `:hidden`) or that sits in a host component other than a layout is not paired. Flagged: one in `<atom:empty>`, `<atom:table.toolbar>`, the table\'s `checked` slot or a row (not a row that edits something); one in an `<atom:callout>` when the screen\'s `<atom:page.header>` has a `primary` slot; a second in one form; one in a loop (one per item); and a second that can show with an earlier one on a screen (the branches of one `@if` chain never do, and two separate `@if` blocks are not paired). A bound `variant` or `type` is not read. An `<atom:action>` is a primary where `ActionPlacement::place()` takes it: the first untoned `priority="primary"` action (or one in the header\'s `primary` slot) of a `page.header` that is not `size="sm"` and whose `primary` slot the host does not fill; it counts toward the screen\'s one like a button, so a callout\'s primary is judged against it. Flagged on the action: a `priority="primary"` one drawn as a plain action (in a toolbar, bulk bar, card, panel or row, in a `size="sm"` header, beside the host\'s `primary` slot, or a second in one header). A toned action is never a primary, and a bound `priority` or `tone` is not read.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -38,11 +39,24 @@ class ExtraPrimary extends ActionRule
         $outline = $file->outline();
         $primaries = array_values(array_filter($outline->atom('button'), fn ($button) => $this->isPrimary($outline, $button)));
 
-        if ($primaries === [] || $outline->branchesDeclined()) {
+        if ($outline->branchesDeclined()) {
             return;
         }
 
-        $headed = $this->screensWithHeaderPrimary($outline);
+        [$taken, $notes] = $this->actionPrimaries($outline);
+
+        foreach ($notes as $offset => $note) {
+            yield [$offset, $note];
+        }
+
+        $primaries = [...$primaries, ...$taken];
+        usort($primaries, fn ($a, $b) => $a['offset'] <=> $b['offset']);
+
+        if ($primaries === []) {
+            return;
+        }
+
+        $headed = $this->screensWithHeaderPrimary($outline, $taken);
         $inForm = [];
         $kept = [];
 
@@ -90,11 +104,12 @@ class ExtraPrimary extends ActionRule
     }
 
     /**
-     * The screens (a modal's id, or -1 for the page) whose `page.header` has a `primary` slot
+     * The screens (a modal's id, or -1 for the page) whose `page.header` has a `primary` slot, or an `<atom:action>` the header draws as its primary
      *
+     * @param  array<int, array>  $taken  the actions a header takes for its primary
      * @return array<int, true>
      */
-    protected function screensWithHeaderPrimary(BladeOutline $outline): array
+    protected function screensWithHeaderPrimary(BladeOutline $outline, array $taken = []): array
     {
         $screens = [];
 
@@ -102,7 +117,75 @@ class ExtraPrimary extends ActionRule
             $screens[$this->screen($outline, $slot)] = true;
         }
 
+        foreach ($taken as $action) {
+            $screens[$this->screen($outline, $action)] = true;
+        }
+
         return $screens;
+    }
+
+    /**
+     * What `ActionPlacement::place()` does with the primaries of each surface, over every set of actions that can show together: the actions a header draws as
+     * its primary (they count toward the one of the screen), and where an action says `priority="primary"` and is drawn as a plain one (another surface, a
+     * `size="sm"` header, a header whose `primary` slot the host fills, a second one in a header). A toned action is never a primary: it goes to the menu,
+     * and is not counted here. A bound `priority` or `tone` is not read.
+     *
+     * @return array{0: array<int, array>, 1: array<int, string>} the taken actions' nodes, and the notes by offset
+     */
+    protected function actionPrimaries(BladeOutline $outline): array
+    {
+        $taken = [];
+        $notes = [];
+        $owners = [];
+
+        foreach ($this->placedActions($outline) as $action) {
+            if ($action['modelled']) {
+                $owners[$action['owner']] = true;
+            }
+        }
+
+        foreach (array_keys($owners) as $ownerId) {
+            $owner = $outline->node($ownerId);
+            $actions = $this->actionsOf($outline, $owner, true);
+            $surface = $this->surfaceOf($owner);
+            $context = $this->contextOf($outline, $owner);
+            $byId = [];
+
+            foreach ($actions as $action) {
+                $byId[$action['node']['id']] = $action;
+            }
+
+            if ($context === null || count($actions) > 50) {
+                continue;
+            }
+
+            foreach ($this->chains($outline, array_column($actions, 'node')) as $chain) {
+                $items = array_map(fn ($node) => $byId[$node['id']], $chain);
+                $placed = ActionPlacement::place($surface, $items, $context);
+
+                if ($placed['primary'] !== null) {
+                    $taken[$placed['primary']['node']['id']] = $placed['primary']['node'];
+                }
+
+                foreach ($items as $item) {
+                    if (ActionPlacement::priorityOf($item) !== 'primary' || $item['tone'] !== null || $item['node']['id'] === ($placed['primary']['node']['id'] ?? null)) {
+                        continue;
+                    }
+
+                    $notes[$item['node']['offset']] ??= match (true) {
+                        $surface !== 'header' => 'a `priority="primary"` action in a '.(['bulk' => 'bulk bar', 'row' => 'table row'][$surface] ?? $surface).' is drawn as a plain action: the screen\'s primary is the header\'s',
+                        $context['small'] => 'a `priority="primary"` action in a `size="sm"` header is drawn as a plain action: it has no primary',
+                        $context['hostPrimary'] => 'a `priority="primary"` action beside the host\'s own `primary` slot is drawn as a plain action: the slot is the primary',
+                        default => 'a second `priority="primary"` action in one header is drawn as a plain action: one primary per screen',
+                    };
+                }
+            }
+        }
+
+        usort($taken, fn ($a, $b) => $a['offset'] <=> $b['offset']);
+        ksort($notes);
+
+        return [array_values($taken), $notes];
     }
 
     /**

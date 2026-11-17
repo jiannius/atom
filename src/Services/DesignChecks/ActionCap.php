@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom\Services\DesignChecks;
 
+use Jiannius\Atom\Services\ActionPlacement;
 use Jiannius\Atom\Services\BladeOutline;
 use Jiannius\Atom\Services\DesignCheck;
 
@@ -26,11 +27,11 @@ class ActionCap extends ActionRule
      * @var array<int, array{0: array<int, string>, 1: array<int, string>, 2: int, 3: string}>
      */
     protected const SURFACES = [
-        [['atom:page.header'], ['actions'], 2, 'page.header actions'],
-        [['atom:table.toolbar'], ['actions', 'end'], 2, 'table.toolbar actions'],
-        [['atom:table'], ['checked'], 3, 'bulk bar (checked slot)'],
-        [['atom:card'], ['actions'], 1, 'card actions'],
-        [['atom:panel'], ['actions'], 1, 'panel actions'],
+        [['atom:page.header'], ['actions'], ActionPlacement::CAPS['header']['visible'], 'page.header actions'],
+        [['atom:table.toolbar'], ['actions', 'end'], ActionPlacement::CAPS['toolbar']['visible'], 'table.toolbar actions'],
+        [['atom:table'], ['checked'], ActionPlacement::CAPS['bulk']['visible'], 'bulk bar (checked slot)'],
+        [['atom:card'], ['actions'], ActionPlacement::CAPS['card']['visible'], 'card actions'],
+        [['atom:panel'], ['actions'], ActionPlacement::CAPS['panel']['visible'], 'panel actions'],
         [['atom:empty'], ['action'], 1, 'empty state action'],
     ];
 
@@ -56,7 +57,7 @@ class ActionCap extends ActionRule
 
     public function detect(): string
     {
-        return 'The buttons in a surface\'s own slot (nothing but markup between), counting a `<atom:button.group>` or an `<atom:dropdown>` as one: `page.header` `actions` over 2 (over 1 with `size="sm"`), `table.toolbar` `actions` plus `end` over 2, the table\'s `checked` slot over 3 (a delete in the last place is not counted), `card` or `panel` `actions` over 1, `empty` `action` over 1. Buttons that cannot show together (the branches of one `@if` chain) are not counted together, and a button in a loop counts once. A button the browser can hide (`x-show`, `<template x-if>`, `wire:show`, `:hidden`) is not counted, and a surface with over 50 actions is not read. The shell\'s own `actions` slot is never counted, and neither is a button inside a component.';
+        return 'The buttons in a surface\'s own slot (nothing but markup between), counting a `<atom:button.group>` or an `<atom:dropdown>` as one: `page.header` `actions` over 2 (over 1 with `size="sm"`), `table.toolbar` `actions` plus `end` over 2, the table\'s `checked` slot over 3 (a delete in the last place is not counted, also beside actions), `card` or `panel` `actions` over 1, `empty` `action` over 1. Buttons that cannot show together (the branches of one `@if` chain) are not counted together, and a button in a loop counts once. A button the browser can hide (`x-show`, `<template x-if>`, `wire:show`, `:hidden`) is not counted, and a surface with over 50 actions is not read. The shell\'s own `actions` slot is never counted, and neither is a button inside a component. The caps are `ActionPlacement::CAPS`. In a `page.header`, `table.toolbar`, bulk bar, `card` or `panel` that also holds `<atom:action>`s, the actions count as `ActionPlacement::place()` shows them (only the visible ones, over the largest set that can show together, with a static `priority` and `tone`; a bound one is not read), after the buttons: 2 buttons and 2 actions in a header show 4.';
     }
 
     public function find(File $file, Context $context): iterable
@@ -89,6 +90,15 @@ class ActionCap extends ActionRule
 
                 usort($found, fn ($a, $b) => $a['offset'] <=> $b['offset']);
 
+                $actions = isset(static::PLACING[$owner['tag']]) ? $this->actionsOf($outline, $owner, true) : [];
+                $context = $actions === [] ? null : $this->contextOf($outline, $owner);
+
+                if ($context !== null && count($found) + count($actions) <= static::MAX_UNITS) {
+                    yield from $this->mixed($outline, $owner, $found, $actions, $context, $cap, $name);
+
+                    continue;
+                }
+
                 if ($name === 'bulk bar (checked slot)' && $found !== [] && $this->isDelete($outline, end($found))) {
                     array_pop($found);
                 }
@@ -103,6 +113,54 @@ class ActionCap extends ActionRule
     }
 
     /**
+     * A surface that holds the host's buttons and `<atom:action>`s: the buttons draw first, then what `ActionPlacement::place()` makes visible of the
+     * actions, so a surface of 2 buttons and 2 actions shows 4 where it holds 2. The finding sits on a host unit (the first one over the cap, else the
+     * first), since an action is the surface's to place.
+     *
+     * @param  array<int, array>  $hosts
+     * @param  array<int, array<string, mixed>>  $actions
+     * @param  array{small: bool, hostPrimary: bool, hostMenu: bool}  $context
+     * @return iterable<int, array{0: int, 1: string}>
+     */
+    protected function mixed(BladeOutline $outline, array $owner, array $hosts, array $actions, array $context, int $cap, string $name): iterable
+    {
+        $byId = [];
+
+        foreach ($actions as $action) {
+            $byId[$action['node']['id']] = $action;
+        }
+
+        if ($name === 'bulk bar (checked slot)' && $hosts !== [] && $this->isDelete($outline, end($hosts))) {
+            array_pop($hosts);
+        }
+
+        $hostIds = array_column($hosts, 'id');
+        $best = null;
+
+        foreach ($this->chains($outline, [...$hosts, ...array_column($actions, 'node')]) as $chain) {
+            $chained = array_values(array_filter($chain, fn ($node) => in_array($node['id'], $hostIds, true)));
+            $items = array_map(fn ($node) => $byId[$node['id']], array_values(array_filter($chain, fn ($node) => isset($byId[$node['id']]))));
+            $visible = count(ActionPlacement::place($this->surfaceOf($owner), $items, $context)['visible']);
+
+            if ($best === null || count($chained) + $visible > $best[0]) {
+                $best = [count($chained) + $visible, $chained, $visible];
+            }
+        }
+
+        [$shown, $chained, $visible] = $best ?? [0, [], 0];
+
+        if ($shown <= $cap || $chained === []) {
+            return;
+        }
+
+        usort($chained, fn ($a, $b) => $a['offset'] <=> $b['offset']);
+
+        yield [($chained[$cap] ?? $chained[0])['offset'], $name.': '.($visible > 0
+            ? count($chained).' buttons + '.$visible.' actions atom shows = '.$shown.' (cap '.$cap.'): make the buttons `<atom:action>`s'
+            : count($chained).' (cap '.$cap.')')];
+    }
+
+    /**
      * The cap of a surface: a `page.header size="sm"` holds 1 button, not 2; null when the header's `size` is bound (not read)
      */
     protected function capFor(BladeOutline $outline, array $owner, int $cap): ?int
@@ -113,7 +171,7 @@ class ActionCap extends ActionRule
 
         $size = $outline->value($owner, 'size');
 
-        return $size === null ? null : ($size === 'sm' ? 1 : $cap);
+        return $size === null ? null : ($size === 'sm' ? ActionPlacement::CAPS['header-sm']['visible'] : $cap);
     }
 
     /**
