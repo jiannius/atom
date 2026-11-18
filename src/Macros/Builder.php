@@ -33,7 +33,7 @@ class Builder
                 && ($parts[1] === '' || $parts[1] === $this->getModel()->getTable())
             ) {
                 try {
-                    // asks the default connection, as filter() does
+                    // asks the builder's own connection, as filter() does
                     $wholeDays = preg_match('/^(datetime|timestamp)(\(\d+\))?$/', strtolower((string) $this->tableColumnType($parts[2]))) === 1;
                 }
                 catch (\Throwable) {
@@ -142,22 +142,20 @@ class Builder
     public function tableColumns()
     {
         return function () {
-            // Memoize per connection + prefixed table for the lifetime of the
-            // request, so filtering multiple raw columns on the same table costs
-            // at most one cache read (which is itself a DB query when
-            // cache.driver=database). The connection is the builder's own, not
-            // the default one, and its table prefix is part of the real name.
-            static $memo = [];
-
+            // Cached per connection, database and prefixed table: the select goes
+            // to the builder's own connection, not the default one, and a host may
+            // point one connection name at a different database per tenant.
             $connection = $this->getQuery()->getConnection();
             $table = $connection->getTablePrefix().$this->getModel()->getTable();
-            $key = 'table_'.$connection->getName().'_'.$table.'_columns';
-
-            if (isset($memo[$key])) {
-                return $memo[$key];
-            }
+            $key = 'table_'.$connection->getName().'_'.$connection->getDatabaseName().'_'.$table.'_columns';
 
             $columns = cache()->remember($key, now()->addDays(7), function () use ($connection, $table) {
+                // `show columns` is MySQL's: another driver has nothing to ask, and a
+                // failed statement aborts an open Postgres transaction
+                if (! in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
+                    return [];
+                }
+
                 $quoted = str_replace('`', '``', $table);
 
                 return collect($connection->select("show columns from `$quoted`"))
@@ -165,7 +163,7 @@ class Builder
                     ->all();
             });
 
-            return $memo[$key] = collect($columns)->map(fn($val) => [
+            return collect($columns)->map(fn($val) => [
                 'name' => data_get($val, 'Field'),
                 'type' => data_get($val, 'Type'),
             ])->values();

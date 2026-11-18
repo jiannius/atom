@@ -50,8 +50,6 @@ class FilterTestMixedHiddenItem extends Item
 /**
  * The raw-column branch needs tableColumnType(), which runs the MySQL-only
  * `show columns`. Seed the cache it reads so the branch is reachable on sqlite.
- * tableColumns() memoises per table for the whole process, so every test in
- * this file must seed the same set.
  */
 function seedItemColumns(): void
 {
@@ -74,8 +72,8 @@ function seedItemColumns(): void
     ];
 
     // keyed by connection: the sqlite default, and the MySQL grammar the dry-run builders use
-    foreach (['testing', 'mysql_dry'] as $connection) {
-        cache()->put("table_{$connection}_items_columns", $columns, now()->addDays(7));
+    foreach (['testing' => ':memory:', 'mysql_dry' => 'dry'] as $connection => $database) {
+        cache()->put("table_{$connection}_{$database}_items_columns", $columns, now()->addDays(7));
     }
 }
 

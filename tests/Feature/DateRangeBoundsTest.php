@@ -36,8 +36,8 @@ function seedRangeColumns(): void
         ['Field' => 'stamp', 'Type' => 'timestamp'],
     ];
 
-    foreach (['testing', 'mysql_dry', 'maria_dry', 'other_dry'] as $connection) {
-        cache()->put("table_{$connection}_range_rows_columns", $columns, now()->addDays(7));
+    foreach (['testing' => ':memory:', 'mysql_dry' => 'dry', 'maria_dry' => 'dry', 'other_dry' => 'dry'] as $connection => $database) {
+        cache()->put("table_{$connection}_{$database}_range_rows_columns", $columns, now()->addDays(7));
     }
 }
 
@@ -272,8 +272,8 @@ describe('whereDateBetween()', function () {
 
         // cached or not: the driver decides, so the bare dates are compared as dates
         $query = DateRangeRow::on('other_dry')->whereDateBetween('at', '2026-09-01 to 2026-09-30');
-        foreach (['testing', 'mysql_dry', 'maria_dry', 'other_dry'] as $connection) {
-            cache()->forget("table_{$connection}_range_rows_columns");
+        foreach (['testing' => ':memory:', 'mysql_dry' => 'dry', 'maria_dry' => 'dry', 'other_dry' => 'dry'] as $connection => $database) {
+            cache()->forget("table_{$connection}_{$database}_range_rows_columns");
         }
         $uncached = DateRangeRow::on('other_dry')->whereDateBetween('at', '2026-09-01 to 2026-09-30');
 
