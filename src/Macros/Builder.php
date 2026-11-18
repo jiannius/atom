@@ -142,24 +142,30 @@ class Builder
     public function tableColumns()
     {
         return function () {
-            // Memoize per table for the lifetime of the request, so filtering
-            // multiple raw columns on the same table costs at most one cache
-            // read (which is itself a DB query when cache.driver=database).
+            // Memoize per connection + prefixed table for the lifetime of the
+            // request, so filtering multiple raw columns on the same table costs
+            // at most one cache read (which is itself a DB query when
+            // cache.driver=database). The connection is the builder's own, not
+            // the default one, and its table prefix is part of the real name.
             static $memo = [];
 
-            $table = $this->getModel()->getTable();
+            $connection = $this->getQuery()->getConnection();
+            $table = $connection->getTablePrefix().$this->getModel()->getTable();
+            $key = 'table_'.$connection->getName().'_'.$table.'_columns';
 
-            if (isset($memo[$table])) {
-                return $memo[$table];
+            if (isset($memo[$key])) {
+                return $memo[$key];
             }
 
-            $columns = cache()->remember('table_'.$table.'_columns', now()->addDays(7), function () use ($table) {
-                return collect(DB::select("show columns from `$table`"))
+            $columns = cache()->remember($key, now()->addDays(7), function () use ($connection, $table) {
+                $quoted = str_replace('`', '``', $table);
+
+                return collect($connection->select("show columns from `$quoted`"))
                     ->map(fn ($row) => (array) $row)
                     ->all();
             });
 
-            return $memo[$table] = collect($columns)->map(fn($val) => [
+            return $memo[$key] = collect($columns)->map(fn($val) => [
                 'name' => data_get($val, 'Field'),
                 'type' => data_get($val, 'Type'),
             ])->values();

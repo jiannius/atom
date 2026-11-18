@@ -60,7 +60,7 @@ function seedItemColumns(): void
     // to `database`, whose `cache` table isn't migrated here → a write error.
     config()->set('cache.default', 'array');
 
-    cache()->put('table_items_columns', [
+    $columns = [
         ['Field' => 'id', 'Type' => 'integer'],
         ['Field' => 'name', 'Type' => 'varchar(255)'],
         ['Field' => 'amount', 'Type' => 'integer'],
@@ -71,7 +71,12 @@ function seedItemColumns(): void
         ['Field' => 'secret_token', 'Type' => 'varchar(64)'],
         ['Field' => 'api_key', 'Type' => 'varchar(64)'],
         ['Field' => 'Secret_Token', 'Type' => 'varchar(64)'],
-    ], now()->addDays(7));
+    ];
+
+    // keyed by connection: the sqlite default, and the MySQL grammar the dry-run builders use
+    foreach (['testing', 'mysql_dry'] as $connection) {
+        cache()->put("table_{$connection}_items_columns", $columns, now()->addDays(7));
+    }
 }
 
 it('applies the search named scope via filter()', function () {
