@@ -6,6 +6,7 @@ import { caseOf, openCase } from './disabled-helpers.js'
 // numbers. This spec opens the panel, picks a day and types a date, and reads what the model and the calendar hold, and runs in WebKit too (see
 // `disabledRigSpecs` in playwright.config.js). It also makes `Date.parse` refuse that string in every engine, as the strict WebKit does, so it fails on the
 // string in Chromium as well and does not depend on the build it runs in.
+// It also types an hour into the date-time picker (issue #196, below).
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -51,4 +52,28 @@ test('date picker with a time: a date typed into the open panel moves the calend
   await expect(page.locator(`[data-case="${def.id}"] .pika-table td.is-selected button`)).toHaveText('17')
   await expect(page.locator(`[data-case="${def.id}"] .pika-label`).first()).toContainText('March')
   expect(page.errors).toEqual([])
+})
+
+// Issue #196: before beta.30 `setTime()` built `dayjs("1970-01-01 HH:mm AM")`, which is Invalid Date in WebKit: opening a date-time picker threw a
+// RangeError and an hour typed into it was dropped. This types the hour and reads the model, in a zone that makes the expected instant exact. dayjs
+// reaches `new Date(string)`, not `Date.parse`, so the stub above does not cover it: Chromium reads that string, and only WebKit and Firefox catch it.
+test.describe('in UTC', () => {
+  test.use({ timezoneId: 'UTC' })
+
+  test('date picker with a time: typing the hour writes it, and nothing throws', async ({ page }) => {
+    await openCase(page, def)
+    await input(page).click()
+
+    const hour = page.locator(`[data-case="${def.id}"] input[aria-label="Hour"]`)
+    await expect(hour).toHaveValue('02')
+    expect(page.errors, 'opening the panel').toEqual([])
+
+    await hour.click()
+    await page.keyboard.press('ControlOrMeta+A')
+    await page.keyboard.type('09')
+    await page.keyboard.press('Tab')
+
+    await expect.poll(() => model(page)).toBe('2026-03-04T09:30:00.000Z')
+    expect(page.errors).toEqual([])
+  })
 })
