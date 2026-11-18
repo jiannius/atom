@@ -52,3 +52,26 @@ test('date picker with a time: a date typed into the open panel moves the calend
   await expect(page.locator(`[data-case="${def.id}"] .pika-label`).first()).toContainText('March')
   expect(page.errors).toEqual([])
 })
+
+// Before beta.30 `setTime()` built `dayjs("1970-01-01 HH:mm AM")`, which is Invalid Date in WebKit: opening a date-time picker threw a RangeError and
+// an hour typed into it was dropped. This types the hour and reads the model, in a zone that makes the expected instant exact.
+test.describe('in UTC', () => {
+  test.use({ timezoneId: 'UTC' })
+
+  test('date picker with a time: typing the hour writes it, and nothing throws', async ({ page }) => {
+    await openCase(page, def)
+    await input(page).click()
+
+    const hour = page.locator(`[data-case="${def.id}"] input[aria-label="Hour"]`)
+    await expect(hour).toHaveValue('02')
+    expect(page.errors, 'opening the panel').toEqual([])
+
+    await hour.click()
+    await page.keyboard.press('ControlOrMeta+A')
+    await page.keyboard.type('09')
+    await page.keyboard.press('Tab')
+
+    await expect.poll(() => model(page)).toBe('2026-03-04T09:30:00.000Z')
+    expect(page.errors).toEqual([])
+  })
+})
