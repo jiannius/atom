@@ -6,6 +6,7 @@ import { caseOf, openCase } from './disabled-helpers.js'
 // numbers. This spec opens the panel, picks a day and types a date, and reads what the model and the calendar hold, and runs in WebKit too (see
 // `disabledRigSpecs` in playwright.config.js). It also makes `Date.parse` refuse that string in every engine, as the strict WebKit does, so it fails on the
 // string in Chromium as well and does not depend on the build it runs in.
+// It also types an hour into the date-time picker (issue #196, below).
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -53,8 +54,9 @@ test('date picker with a time: a date typed into the open panel moves the calend
   expect(page.errors).toEqual([])
 })
 
-// Before beta.30 `setTime()` built `dayjs("1970-01-01 HH:mm AM")`, which is Invalid Date in WebKit: opening a date-time picker threw a RangeError and
-// an hour typed into it was dropped. This types the hour and reads the model, in a zone that makes the expected instant exact.
+// Issue #196: before beta.30 `setTime()` built `dayjs("1970-01-01 HH:mm AM")`, which is Invalid Date in WebKit: opening a date-time picker threw a
+// RangeError and an hour typed into it was dropped. This types the hour and reads the model, in a zone that makes the expected instant exact. dayjs
+// reaches `new Date(string)`, not `Date.parse`, so the stub above does not cover it: Chromium reads that string, and only WebKit and Firefox catch it.
 test.describe('in UTC', () => {
   test.use({ timezoneId: 'UTC' })
 
