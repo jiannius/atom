@@ -2,7 +2,7 @@
 $layout = ($shell ?? null) === 'header' ? 'atom::layouts.header' : 'atom::layouts.sidebar';
 @endphp
 
-{{-- The account menu in atom's own brand row (no `brand` slot), in either shell: ?shell=header, ?account=end, ?caption=1 (the `logo` and `caption` slots). --}}
+{{-- The account menu in atom's own brand row (no `brand` slot), in either shell: ?shell=header, ?account=end, ?caption=1 (the `logo` and `caption` slots), ?lw=1 (a Livewire component in the `dropdown` slot). --}}
 <x-dynamic-component :component="$layout" title="E2E: shell account" :vite="[]" :styles="$styles" :dark="$dark" :account="request()->query('account') === 'end' ? 'end' : 'brand'" :theme-switcher="request()->query('own') !== '1'">
     <x-slot:nav>
         <atom:navlist>
@@ -24,6 +24,11 @@ $layout = ($shell ?? null) === 'header' ? 'atom::layouts.header' : 'atom::layout
     @endif
 
     <x-slot:dropdown>
+        {{-- ?lw=1: a Livewire component in the slot, which has to be live from every trigger (issue #267) --}}
+        @if (request()->query('lw') === '1')
+            <livewire:atom-e2e-account-menu />
+        @endif
+
         <atom:menu.item icon="settings" href="?page=settings">Settings</atom:menu.item>
         <atom:menu.item icon="logout" href="?page=logout">Log out</atom:menu.item>
     </x-slot>

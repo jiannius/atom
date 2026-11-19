@@ -65,7 +65,7 @@ const shellProject = {
   name: 'webkit-shell',
   dependencies: ['chromium'],
   use: { ...devices['Desktop Safari'] },
-  testMatch: /(shells|shell-escape|shell-escape-focus|shell-drawer|shell-menu-panel|modal-escape|modal-escape-layers|command-escape|command-morph)\.spec\.js$/,
+  testMatch: /(shells|shell-account-once|shell-escape|shell-escape-focus|shell-drawer|shell-menu-panel|modal-escape|modal-escape-layers|command-escape|command-morph)\.spec\.js$/,
 }
 
 export default defineConfig({

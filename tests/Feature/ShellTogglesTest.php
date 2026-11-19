@@ -17,8 +17,8 @@ describe('the theme row in the account menu', function () {
     it('is a labelled group of three pressable buttons inside the account menu', function (string $layout) {
         $html = shellHtml($layout, 'dark');
         $row = '//*[@data-atom-menu]//*[@data-atom-theme-row]';
-        // the sidebar has two account menus (the brand row's, and the phone one in the bar); the header one
-        $menus = $layout === 'layouts.sidebar' ? 2 : 1;
+        // one account menu in either shell (the sidebar prints it once for its brand row or foot and for the phone button in the bar)
+        $menus = 1;
 
         expect(domQuery($html, $row))->toHaveCount($menus)
             ->and(domQuery($html, $row.'//*[@role="group"][@aria-label="Theme"]'))->toHaveCount($menus)

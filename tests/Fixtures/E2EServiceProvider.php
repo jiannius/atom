@@ -82,6 +82,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-form-dirty-child', FormDirtyChildFixture::class);
         Livewire::component('atom-e2e-url-filters', UrlFiltersFixture::class);
         Livewire::component('atom-e2e-shell-actions', ShellActionsFixture::class);
+        Livewire::component('atom-e2e-account-menu', AccountMenuFixture::class);
         Livewire::component('atom-e2e-page-header-slide', PageHeaderSlideFixture::class);
         Livewire::component('atom-e2e-card-panel', CardPanelFixture::class);
         Livewire::component('atom-e2e-tiles', TilesFixture::class);
