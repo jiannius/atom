@@ -221,6 +221,10 @@ jobs:
       - if: ${{ !cancelled() }}
         run: node_modules/.bin/playwright test --no-deps --project=${{ matrix.browser }}-menu-keys
 
+      # The context menu's real right-click (tests/e2e/context-menu.spec.js) in both engines: the release of the press that opened the menu must not close it.
+      - if: ${{ !cancelled() }}
+        run: node_modules/.bin/playwright test --no-deps --project=${{ matrix.browser }}-context-menu
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

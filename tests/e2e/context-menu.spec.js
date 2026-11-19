@@ -68,3 +68,62 @@ test('the native browser context menu is suppressed', async ({ page }) => {
 
   expect(prevented).toBe(true)
 })
+
+// A real right-click presses and releases the button where the pointer is (on a Mac the menu opens on the press).
+// The popover is a light-dismiss one, and the release is outside it unless the panel is under the pointer, so a
+// menu opened with its corner exactly at the pointer shut the moment the button came up: the rounded corner
+// leaves the pointer outside the painted shape and hit-testing follows it. The synthetic `click({ button: 'right' })`
+// above never tells; a held button does. /atom/docs ships no Tailwind, so the panel gets the radius `rounded-panel`
+// would give it, and the target is pinned in view (its unstyled neighbours are page-sized icons).
+const openWithRealRightClick = async (page, [px, py]) => {
+  const root = page.locator('[data-atom-context-menu]').first()
+  const menu = root.locator('[data-atom-menu]')
+
+  await page.goto('/atom/docs/context-menu')
+  await page.addStyleTag({ content: '[data-atom-context-menu] [data-atom-menu] { border-radius: 10px; padding: 4px; border: 1px solid #999 }' })
+
+  await targetOf(root).evaluate((el, [x, y]) => {
+    Object.assign(el.style, { position: 'fixed', left: `${x - 40}px`, top: `${y - 40}px`, width: '80px', height: '80px', zIndex: '9999' })
+  }, [px, py])
+
+  await page.mouse.move(px, py)
+  await page.mouse.down({ button: 'right' })
+  await page.waitForTimeout(100)
+  await page.mouse.up({ button: 'right' })
+
+  return { root, menu }
+}
+
+const expectStillOpenUnderPointer = async (page, root, menu, [px, py]) => {
+  await page.waitForTimeout(300)
+
+  await expect(menu).toBeVisible()
+  await expect(root).toHaveAttribute('data-open', '')
+  expect(await menu.evaluate((el) => el.matches(':popover-open'))).toBe(true)
+
+  // the panel holds the pointer, so the next release is never read as a click outside
+  expect(await menu.evaluate((el, [x, y]) => el.contains(document.elementFromPoint(x, y)), [px, py])).toBe(true)
+
+  const panel = await menu.boundingBox()
+  const { width, height } = page.viewportSize()
+  expect(panel.x).toBeGreaterThanOrEqual(0)
+  expect(panel.y).toBeGreaterThanOrEqual(0)
+  expect(panel.x + panel.width).toBeLessThanOrEqual(width)
+  expect(panel.y + panel.height).toBeLessThanOrEqual(height)
+}
+
+test('the menu stays open after the release of a real right-click', async ({ page }) => {
+  const at = [300, 200]
+  const { root, menu } = await openWithRealRightClick(page, at)
+
+  await expectStillOpenUnderPointer(page, root, menu, at)
+})
+
+test('the menu stays open after a real right-click near the bottom-right corner', async ({ page }) => {
+  const { width, height } = page.viewportSize()
+  const at = [width - 20, height - 20]
+  const { root, menu } = await openWithRealRightClick(page, at)
+
+  // no room below or to the right: the panel flips and shifts, and still holds the pointer
+  await expectStillOpenUnderPointer(page, root, menu, at)
+})
