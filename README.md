@@ -1369,6 +1369,9 @@ arrives, so keep scopes safe for arbitrary input.
 - **"All" is `''`, not `null`, when the default is not null.** `null` is not written to the
   URL, so a reload would bring the default back; `''` is written (`?region=`) and a reload
   keeps it. A filter whose default is `null` or `''` needs no such care.
+  A native `<atom:select>`'s placeholder writes `null` (as its × does), so give such a filter
+  its own `<atom:select.option value="">All</atom:select.option>` with `:placeholder="false"`,
+  which writes `''`.
 - **Declare a static default once, in `urlFilters()`**; the trait fills it into `$filters`. If
   a default is computed in `mount()` (this month's range), declare `null` and fill it with
   `??=`, not `blank()` / `empty()`: the URL is read *before* your `mount()`, and `blank()`

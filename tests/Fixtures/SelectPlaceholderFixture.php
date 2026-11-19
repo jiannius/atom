@@ -10,6 +10,8 @@ class SelectPlaceholderFixture extends Component
 
     public ?string $live = null;
 
+    public ?string $region = 'north';
+
     /** @var array<int, string> */
     public array $multi = [];
 

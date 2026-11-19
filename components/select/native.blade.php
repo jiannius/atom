@@ -100,8 +100,9 @@ x-init="
 x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && !$el.closest('[data-atom-disabled]') && (value = multiple ? [] : null)"
 @endif
 x-on:input="() => {
-    {{-- The placeholder is the empty value: null for a single select, as the clear button writes, and nothing for a multiple one. --}}
+    {{-- The placeholder option means no value: null for a single select, as the clear button writes, and nothing for a multiple one (#265). A host's own value="" option still writes '' (the "All" of a URL filter with a non-null default). --}}
     const picked = $event.target.value
+    const placeholder = !!$event.target.selectedOptions?.[0]?.classList.contains('placeholder')
 
     if (multiple) {
         if (picked === '') return
@@ -109,7 +110,7 @@ x-on:input="() => {
         value.push(picked)
         $root.querySelector('select').value = ''
     }
-    else value = picked === '' ? null : picked
+    else value = placeholder ? null : picked
 }"
 x-on:click="openPicker($event)"
 class="group/select w-full relative"

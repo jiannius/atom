@@ -63,3 +63,14 @@ test('a multiple select ignores the placeholder', async ({ page }) => {
   await select(page, 'multi').selectOption('31')
   await expect(server(page, 'multi')).toHaveText('["30","31"]')
 })
+
+test("a host's own value=\"\" option still writes an empty string (the \"All\" of a non-null default)", async ({ page }) => {
+  await page.goto('/atom/e2e/select-placeholder')
+  await expect(server(page, 'region')).toHaveText('"north"')
+
+  await select(page, 'region').selectOption('')
+  await expect(server(page, 'region')).toHaveText('""')
+
+  await select(page, 'region').selectOption('south')
+  await expect(server(page, 'region')).toHaveText('"south"')
+})
