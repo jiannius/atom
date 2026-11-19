@@ -100,11 +100,16 @@ x-init="
 x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && !$el.closest('[data-atom-disabled]') && (value = multiple ? [] : null)"
 @endif
 x-on:input="() => {
+    {{-- The placeholder is the empty value: null for a single select, as the clear button writes, and nothing for a multiple one. --}}
+    const picked = $event.target.value
+
     if (multiple) {
-        value.push($event.target.value)
+        if (picked === '') return
+
+        value.push(picked)
         $root.querySelector('select').value = ''
     }
-    else value = $event.target.value
+    else value = picked === '' ? null : picked
 }"
 x-on:click="openPicker($event)"
 class="group/select w-full relative"

@@ -55,6 +55,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-input-morph', InputMorphFixture::class);
         Livewire::component('atom-e2e-stable-ids', StableIdsFixture::class);
         Livewire::component('atom-e2e-clearable-input', ClearableInputFixture::class);
+        Livewire::component('atom-e2e-select-placeholder', SelectPlaceholderFixture::class);
         Livewire::component('atom-e2e-table-loading', TableLoadingFixture::class);
         Livewire::component('atom-e2e-table-only', TableOnlyFixture::class);
         Livewire::component('atom-e2e-table-search-chip', TableSearchChipFixture::class);
@@ -109,6 +110,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/input-morph', fn () => view('atom::e2e.input-morph'));
         Route::middleware('web')->get('/atom/e2e/stable-ids', fn () => view('atom::e2e.stable-ids'));
         Route::middleware('web')->get('/atom/e2e/clearable-input', fn () => view('atom::e2e.clearable-input'));
+        Route::middleware('web')->get('/atom/e2e/select-placeholder', fn () => view('atom::e2e.select-placeholder'));
         Route::middleware('web')->get('/atom/e2e/date-range-morph', fn () => view('atom::e2e.date-range-morph'));
         Route::middleware('web')->get('/atom/e2e/date-picker-time-morph', fn () => view('atom::e2e.date-picker-time-morph'));
         Route::middleware('web')->get('/atom/e2e/date-picker-typed', fn () => view('atom::e2e.date-picker-typed'));
