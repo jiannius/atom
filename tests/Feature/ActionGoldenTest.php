@@ -4,6 +4,8 @@
 // before the engine existed. The files under tests/Fixtures/golden were recorded from the surfaces BEFORE any of them was wired to read
 // actions (the commit that adds them changes no component). A later change that alters the markup of a surface with no action fails here by
 // name. To record a new case, run with GOLDEN_RECORD=1 and review the new file; never re-record an existing one to make this pass.
+// One deliberate hand edit: bulk-false-blocks.html had recorded the #263 defect (a cell's unclosed morph BLOCK marker); only the missing
+// ENDBLOCK marker was added. That fixed a bug the golden had pinned; it is not a precedent for re-recording.
 
 beforeEach(fn () => view()->share('errors', new \Illuminate\Support\ViewErrorBag));
 

@@ -46,6 +46,7 @@ $classes = Arr::toCssClasses([
         'right' => 'text-right justify-end',
     },
 ]);
+/* The cell's two closing endif directives stay on separate lines: Livewire gives a directive glued after a word character no morph end marker, and a morph then throws (#263). */
 @endphp
 
 @if ($checkbox)
@@ -62,6 +63,7 @@ $classes = Arr::toCssClasses([
     </td>
 @else
     <td {{ $attributes->class($classes) }}>
-        @if ($slot->hasActualContent()){{ $slot }}@elseif ($filler && ! ($filler === '—' && $attributes->has('colspan')))@if ($filler === '—')<atom:_missing />@else{{ $filler }}@endif@endif
+        @if ($slot->hasActualContent()){{ $slot }}@elseif ($filler && ! ($filler === '—' && $attributes->has('colspan')))@if ($filler === '—')<atom:_missing />@else{{ $filler }}@endif
+@endif
     </td>
 @endif
