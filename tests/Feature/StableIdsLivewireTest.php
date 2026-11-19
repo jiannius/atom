@@ -44,7 +44,7 @@ describe('stableId() inside Livewire components', function () {
         $first = stableIdsIn($components[0]['html']);
         $second = stableIdsIn($components[1]['html']);
 
-        // each id is printed several times (button, panel, state key), so compare the sets
+        // the accordion toggles, the slider and the rating track of each instance, compared as sets
         expect(array_unique($first))->not->toBeEmpty()
             // the siblings share every part, so only the Livewire component tells their ids apart
             ->and(array_intersect($first, $second))->toBe([]);
