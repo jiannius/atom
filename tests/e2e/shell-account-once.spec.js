@@ -288,13 +288,69 @@ test.describe('the account menu is printed once', () => {
 
     await page.setViewportSize(DESKTOP)
     // the sidebar slides in from the start edge (a transition) when the window grows to lg: wait for it to settle
-    await expect.poll(async () => (await box(brandTrigger(page))).x).toBeGreaterThan(0)
-    await page.waitForTimeout(500)
+    // (two reads a frame apart that agree)
+    let last = null
+    await expect.poll(async () => {
+      const x = (await box(brandTrigger(page))).x
+      const settled = last !== null && x === last && x > 0
+      last = x
+      return settled
+    }).toBe(true)
     await page.evaluate(() => window.Alpine.$data(document.querySelector('[data-atom-dropdown-detached]')).show())
     await expect(menu(page)).toBeVisible()
     t = await box(brandTrigger(page))
     m = await box(menu(page))
     expect(Math.abs(m.x - t.x)).toBeLessThan(16)
     await expect(brandTrigger(page)).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  // Opening the menu from another trigger shows it before the last close has reported: the first open's ResizeObserver and floating-ui watcher
+  // have to be stopped then, not at destroy().
+  test('switching triggers and closing leaves no ResizeObserver of the menu running', async ({ page }) => {
+    await page.addInitScript(() => {
+      const Native = window.ResizeObserver
+      window.__liveObservers = new Set()
+      window.ResizeObserver = class extends Native {
+        constructor (callback) {
+          super(callback)
+          this.__atomWatching = 0
+        }
+
+        observe (target, options) {
+          this.__atomWatching++
+          window.__liveObservers.add(this)
+          return super.observe(target, options)
+        }
+
+        disconnect () {
+          window.__liveObservers.delete(this)
+          return super.disconnect()
+        }
+      }
+    })
+
+    await open(page, PHONE)
+    const live = () => page.evaluate(() => window.__liveObservers.size)
+    // what the page itself watches, with the menu closed
+    const baseline = await live()
+
+    await page.locator('[data-atom-sidebar-toggle]').click()
+    await expect.poll(() => page.evaluate(() => document.querySelector('[data-atom-sidebar]').getBoundingClientRect().right)).toBeGreaterThan(200)
+
+    await brandTrigger(page).click()
+    await expect(menu(page)).toBeVisible()
+    const opened = await live()
+    expect(opened).toBeGreaterThan(baseline)
+
+    // press the avatar with the mouse: the menu opens again from there
+    await phoneTrigger(page).click()
+    await expect(phoneTrigger(page)).toHaveAttribute('aria-expanded', 'true')
+    await expect(menu(page)).toBeVisible()
+    // the menu's own watchers: those of the first open are gone, not added to
+    await expect.poll(live).toBe(opened)
+
+    await page.keyboard.press('Escape')
+    await expect(menu(page)).toBeHidden()
+    await expect.poll(live).toBe(baseline)
   })
 })

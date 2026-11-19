@@ -201,6 +201,7 @@ export default (config) => {
                     this.$root.removeAttribute('data-open')
                     this._atomSetExpanded(false)
                     this.cleanup?.()
+                    this.cleanup = null
 
                     // The popover gives the focus back to what had it before it opened. A menu opened with the keyboard moves the focus onto an item,
                     // and in WebKit that return ends on <body> (the next Escape then reaches the page, not the layer around the menu), after this event
@@ -445,6 +446,11 @@ export default (config) => {
             let placement = this.remote && trigger.getAttribute('data-atom-dropdown-placement') || this.placement
 
             if (this.remote) this.opener = trigger
+
+            // A menu opened again from another trigger is shown before the close of the last one has reported: its placement and watcher are
+            // stopped here, or they would run until destroy().
+            this.cleanup?.()
+            this.cleanup = null
 
             this.popover.showPopover()
             this.$root.setAttribute('data-open', '')
