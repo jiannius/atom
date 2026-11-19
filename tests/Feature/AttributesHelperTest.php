@@ -281,7 +281,6 @@ describe('disabledBy()', function () {
 
 describe('stableId()', function () {
     it('is the same for the same parts on every render and numbers a repeat within one render', function () {
-        $bag = new ComponentAttributeBag();
         $template = '{{ \\Jiannius\\Atom\\Services\\Attributes::stableId(new \\Illuminate\\View\\ComponentAttributeBag(), "p", "a") }} {{ \\Jiannius\\Atom\\Services\\Attributes::stableId(new \\Illuminate\\View\\ComponentAttributeBag(), "p", "a") }}';
 
         $first = renderBlade($template);

@@ -130,10 +130,12 @@ class Attributes
      * Mint a stable DOM id for a component that has no field name to derive one from (an accordion item, an unnamed slider or rating).
      *
      * Same rule as fieldId(): never random, so a Livewire re-render of the same markup prints the same id and the morph patches the node
-     * instead of replacing it. A caller-supplied id wins. Two elements that share the parts are numbered by how many this render has already
-     * printed with that seed, using the view factory's "rendered once" ledger (emptied when a top-level render ends, so the same page gets
-     * the same ids on every render; the ledger is per top-level render, so a layout and a Livewire component that print the same parts
-     * should be given distinct ids).
+     * instead of replacing it. A caller-supplied id wins. When a Livewire component is rendering, its id is part of the seed: the view
+     * factory's "rendered once" ledger is shared by every component mounted during one page render, but an update re-renders a single
+     * component with an empty ledger, so two sibling instances with the same parts would be numbered on the page load and not on the update.
+     * Scoped, each instance numbers only its own repeats (`-1`, `-2`, in render order), and an update prints what the page load did. The ledger
+     * is emptied when a top-level render ends, so the same page gets the same ids on every render. Known limit: a repeat outside any
+     * component (a layout and a view rendered separately) is numbered per top-level render; give those an explicit id.
      */
     public static function stableId(ComponentAttributeBag $attributes, string $prefix, mixed ...$parts) : string
     {
@@ -141,7 +143,11 @@ class Attributes
             return $attributes->get('id');
         }
 
-        $seed = $prefix.'-'.substr(md5(collect($parts)->map(fn ($part) => is_scalar($part) || $part instanceof \Stringable ? (string) $part : '')->join('|')), 0, 8);
+        $component = app()->bound('livewire') ? app('livewire')->current() : null;
+        $scope = is_object($component) && method_exists($component, 'getId') ? (string) $component->getId() : null;
+
+        $parts = collect($parts)->map(fn ($part) => is_scalar($part) || $part instanceof \Stringable ? (string) $part : '');
+        $seed = $prefix.'-'.substr(md5($parts->when($scope !== null, fn ($parts) => $parts->push('livewire:'.$scope))->join('|')), 0, 8);
         $views = app('view');
         $occurrence = 0;
 
