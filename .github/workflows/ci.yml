@@ -155,7 +155,7 @@ jobs:
     name: Playwright calendar (${{ matrix.browser }})
     needs: consumer
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -220,6 +220,10 @@ jobs:
       # Arrow keys in atom's menus (tests/e2e/menu-keys.spec.js) in both engines: where the focus lands on open, a morph that moves the focused item.
       - if: ${{ !cancelled() }}
         run: node_modules/.bin/playwright test --no-deps --project=${{ matrix.browser }}-menu-keys
+
+      # The context menu's real right-click (tests/e2e/context-menu.spec.js) in both engines: the release of the press that opened the menu must not close it.
+      - if: ${{ !cancelled() }}
+        run: node_modules/.bin/playwright test --no-deps --project=${{ matrix.browser }}-context-menu
 
       - uses: actions/upload-artifact@v4
         if: failure()

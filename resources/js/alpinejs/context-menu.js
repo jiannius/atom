@@ -74,7 +74,13 @@ export default (config = {}) => ({
 
         this.cleanup = atom.floatingui(anchor, this.popover, {
             placement: 'bottom-start',
-            offset: 0,
+            // The panel's corner sits a little over the pointer, not at it: the menu opens on the press
+            // and its popover closes on a release outside it, so a release over the rounded corner (outside
+            // the painted shape) shut the menu at once. Six px puts the pointer inside a 10px radius.
+            // `alignmentAxis`, not `crossAxis`: it is mirrored in RTL (and for an end alignment), so the
+            // panel still overhangs the pointer there. A pointer within 5px of a viewport edge can still
+            // end up outside the panel once shift() pads it in.
+            offset: { mainAxis: -6, alignmentAxis: -6 },
             autoUpdate: false,
         })
     },

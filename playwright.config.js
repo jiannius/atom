@@ -51,6 +51,9 @@ const calendarProjects = engines.flatMap(({ browser, device }) => [
   // Arrow keys in atom's menus (tests/e2e/menu-keys.spec.js): where the focus lands when a menu opens (Safari does not focus a button on click),
   // what a morph does to the focused node, and the keys a field keeps. CI runs it in the calendar job (`e2e-engines`) after the tiles specs.
   { name: `${browser}-menu-keys`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /menu-keys\.spec\.js$/ },
+  // The context menu's real right-click (tests/e2e/context-menu.spec.js): when the menu opens (on the press on a Mac) and what the popover's light dismiss
+  // makes of the release is the engine's to decide. CI runs it in the calendar job (`e2e-engines`) after the menu-keys specs.
+  { name: `${browser}-context-menu`, dependencies: ['chromium'], use: { ...devices[device] }, testMatch: /context-menu\.spec\.js$/ },
 ])
 
 // The shells' keyboard and focus specs run again in WebKit, for what Safari does and Chromium does not: it does not focus a button on click
