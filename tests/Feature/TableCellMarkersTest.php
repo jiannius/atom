@@ -60,7 +60,7 @@ it('still draws the mark, the filler and the content as before', function () {
 });
 
 it('has no block directive glued after a word character in any component or view', function () {
-    $pattern = '/\w@(if|endif|else|elseif|foreach|endforeach|forelse|endforelse|for|endfor|while|endwhile|unless|endunless|isset|endisset|empty|endempty|switch|endswitch|auth|endauth|guest|endguest|can|endcan|cannot|endcannot)\b/';
+    $pattern = '/\w@(if|endif|else|elseif|foreach|endforeach|forelse|endforelse|for|endfor|while|endwhile|unless|endunless|isset|endisset|empty|endempty|switch|endswitch|auth|endauth|guest|endguest|can|endcan|cannot|endcannot|canany|endcanany|error|enderror|env|endenv|production|endproduction|break|continue)\b(?![\w.-]*\.\w)/';
     $found = [];
 
     foreach (['components', 'resources/views'] as $dir) {
