@@ -127,10 +127,10 @@ class Attributes
     }
 
     /**
-     * Mint a stable DOM id for a component that has no field name to derive one from (an accordion item, an unnamed slider or rating).
+     * Mint a stable DOM id for a component that has no field name to derive one from (an accordion item, an unnamed slider or rating, a navlist group's panel).
      *
      * Same rule as fieldId(): never random, so a Livewire re-render of the same markup prints the same id and the morph patches the node
-     * instead of replacing it. A caller-supplied id wins. When a Livewire component is rendering, its id is part of the seed: the view
+     * instead of replacing it. A caller-supplied id wins (a navlist group keeps an explicit id on its root and gives its panel `{id}-items` itself, before calling this). When a Livewire component is rendering, its id is part of the seed: the view
      * factory's "rendered once" ledger is shared by every component mounted during one page render, but an update re-renders a single
      * component with an empty ledger, so two sibling instances with the same parts would be numbered on the page load and not on the update.
      * Scoped, each instance numbers only its own repeats (`-1`, `-2`, in render order), and an update prints what the page load did. The ledger

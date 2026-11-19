@@ -7,15 +7,12 @@
 ])
 
 {{-- The header shell's dropdown trigger points at its panel (aria-controls). The id is derived, never random: it is a
-     morph key where it falls back to one, and a random one would make every render replace the control. Two groups
-     with the same heading and no persist-key share a seed, so the seed is numbered by how many groups this render
-     has already printed with it. The view factory's "rendered once" ledger is the counter: it is emptied when a
-     top-level render ends, so the same page gets the same ids on every render.
-
-     Known limit: that ledger is per top-level render. A layout and a Livewire component (or two Livewire
-     components) are rendered separately, so groups that share a heading across them can each be "first" and print the
-     same id, or be numbered differently on a later render. Groups that share a heading across a layout and a Livewire
-     component need distinct `persist-key`s: the key is part of the seed, and nothing then depends on order. --}}
+     morph key where it falls back to one, and a random one would make every render replace the control.
+     Attributes::stableId() mints it from the persist-key and heading, scoped by the Livewire component that renders
+     the group, and numbers repeats (two groups with the same heading and no persist-key) in render order, so a
+     single-component update prints what the page load did and sibling components do not collide. See its PHPDoc for
+     the limit (a repeat across a layout and a Livewire component needs distinct `persist-key`s or an explicit id).
+     An explicit `id` stays on the root, as it always did; the panel then takes `{id}-items` so the two never share an id. --}}
 @php
 // Namespaced so a caller's "sidebar" can't collide with the app's own entries.
 $storageKey = $persistKey ? 'atom:navlist-group:'.$persistKey : null;
@@ -29,16 +26,11 @@ $storageKey = $persistKey ? 'atom:navlist-group:'.$persistKey : null;
 // rather than waiting on Alpine to reveal it.
 $cloak = $expandable && ($persistKey || $expanded !== true);
 
-$itemsSeed = 'atom-navlist-group-'.substr(md5($persistKey.'|'.$heading), 0, 8);
-$occurrence = 0;
+$explicitId = $attributes->get('id');
 
-while ($__env->hasRenderedOnce($itemsSeed.'-'.$occurrence)) {
-    $occurrence++;
-}
-
-$__env->markAsRenderedOnce($itemsSeed.'-'.$occurrence);
-
-$itemsId = $occurrence ? $itemsSeed.'-'.$occurrence : $itemsSeed;
+$itemsId = filled($explicitId)
+    ? $explicitId.'-items'
+    : \Jiannius\Atom\Services\Attributes::stableId($attributes, 'atom-navlist-group', $persistKey, $heading);
 @endphp
 
 @if ($hiddenIfEmpty && $slot->isEmpty())
