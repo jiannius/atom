@@ -33,7 +33,7 @@ class Builder
                 && ($parts[1] === '' || $parts[1] === $this->getModel()->getTable())
             ) {
                 try {
-                    // asks the default connection, as filter() does
+                    // asks the builder's own connection, as filter() does
                     $wholeDays = preg_match('/^(datetime|timestamp)(\(\d+\))?$/', strtolower((string) $this->tableColumnType($parts[2]))) === 1;
                 }
                 catch (\Throwable) {
@@ -142,24 +142,28 @@ class Builder
     public function tableColumns()
     {
         return function () {
-            // Memoize per table for the lifetime of the request, so filtering
-            // multiple raw columns on the same table costs at most one cache
-            // read (which is itself a DB query when cache.driver=database).
-            static $memo = [];
+            // Cached per connection, database and prefixed table: the select goes
+            // to the builder's own connection, not the default one, and a host may
+            // point one connection name at a different database per tenant.
+            $connection = $this->getQuery()->getConnection();
+            $table = $connection->getTablePrefix().$this->getModel()->getTable();
+            $key = 'table_'.$connection->getName().'_'.$connection->getDatabaseName().'_'.$table.'_columns';
 
-            $table = $this->getModel()->getTable();
+            $columns = cache()->remember($key, now()->addDays(7), function () use ($connection, $table) {
+                // `show columns` is MySQL's: another driver has nothing to ask, and a
+                // failed statement aborts an open Postgres transaction
+                if (! in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
+                    return [];
+                }
 
-            if (isset($memo[$table])) {
-                return $memo[$table];
-            }
+                $quoted = str_replace('`', '``', $table);
 
-            $columns = cache()->remember('table_'.$table.'_columns', now()->addDays(7), function () use ($table) {
-                return collect(DB::select("show columns from `$table`"))
+                return collect($connection->select("show columns from `$quoted`"))
                     ->map(fn ($row) => (array) $row)
                     ->all();
             });
 
-            return $memo[$table] = collect($columns)->map(fn($val) => [
+            return collect($columns)->map(fn($val) => [
                 'name' => data_get($val, 'Field'),
                 'type' => data_get($val, 'Type'),
             ])->values();

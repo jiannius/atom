@@ -27,14 +27,18 @@ function seedRangeColumns(): void
 {
     config()->set('cache.default', 'array');
 
-    cache()->put('table_range_rows_columns', [
+    $columns = [
         ['Field' => 'id', 'Type' => 'integer'],
         ['Field' => 'name', 'Type' => 'varchar(255)'],
         ['Field' => 'day', 'Type' => 'date'],
         ['Field' => 'at', 'Type' => 'datetime'],
         ['Field' => 'at6', 'Type' => 'datetime(6)'],
         ['Field' => 'stamp', 'Type' => 'timestamp'],
-    ], now()->addDays(7));
+    ];
+
+    foreach (['testing' => ':memory:', 'mysql_dry' => 'dry', 'maria_dry' => 'dry', 'other_dry' => 'dry'] as $connection => $database) {
+        cache()->put("table_{$connection}_{$database}_range_rows_columns", $columns, now()->addDays(7));
+    }
 }
 
 /** A query on a MySQL grammar: compiling needs no server, and it quotes with backticks. */
@@ -268,7 +272,9 @@ describe('whereDateBetween()', function () {
 
         // cached or not: the driver decides, so the bare dates are compared as dates
         $query = DateRangeRow::on('other_dry')->whereDateBetween('at', '2026-09-01 to 2026-09-30');
-        cache()->forget('table_range_rows_columns');
+        foreach (['testing' => ':memory:', 'mysql_dry' => 'dry', 'maria_dry' => 'dry', 'other_dry' => 'dry'] as $connection => $database) {
+            cache()->forget("table_{$connection}_{$database}_range_rows_columns");
+        }
         $uncached = DateRangeRow::on('other_dry')->whereDateBetween('at', '2026-09-01 to 2026-09-30');
 
         foreach ([$query, $uncached] as $each) {
