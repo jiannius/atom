@@ -62,6 +62,8 @@ $classes = Arr::toCssClasses([
     </td>
 @else
     <td {{ $attributes->class($classes) }}>
-        @if ($slot->hasActualContent()){{ $slot }}@elseif ($filler && ! ($filler === '—' && $attributes->has('colspan')))@if ($filler === '—')<atom:_missing />@else{{ $filler }}@endif@endif
+        @if ($slot->hasActualContent()){{ $slot }}@elseif ($filler && ! ($filler === '—' && $attributes->has('colspan')))@if ($filler === '—')<atom:_missing />@else{{ $filler }}@endif
+        {{-- the two closings stay on separate lines: a directive glued after a word character gets no morph end marker (#263) --}}
+        @endif
     </td>
 @endif
