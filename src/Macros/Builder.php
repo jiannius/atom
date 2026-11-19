@@ -149,7 +149,7 @@ class Builder
             $table = $connection->getTablePrefix().$this->getModel()->getTable();
             $key = 'table_'.$connection->getName().'_'.$connection->getDatabaseName().'_'.$table.'_columns';
 
-            $columns = cache()->remember($key, now()->addDays(7), function () use ($connection, $table) {
+            $columns = app(\Jiannius\Atom\Services\TableColumnsMemo::class)->remember($key, fn () => cache()->remember($key, now()->addDays(7), function () use ($connection, $table) {
                 // `show columns` is MySQL's: another driver has nothing to ask, and a
                 // failed statement aborts an open Postgres transaction
                 if (! in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
@@ -161,7 +161,7 @@ class Builder
                 return collect($connection->select("show columns from `$quoted`"))
                     ->map(fn ($row) => (array) $row)
                     ->all();
-            });
+            }));
 
             return collect($columns)->map(fn($val) => [
                 'name' => data_get($val, 'Field'),

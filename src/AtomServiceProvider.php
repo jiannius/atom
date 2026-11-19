@@ -32,6 +32,9 @@ class AtomServiceProvider extends ServiceProvider
         // the actions a request's `<atom:action>`s wait in until a surface takes them; scoped, so Octane and queue workers start each request and job empty
         $this->app->scoped(\Jiannius\Atom\Services\ActionItems::class);
 
+        // the column rows `tableColumns()` read this request, so N filtered columns are one cache read; scoped, so Octane and tests never see a stale entry
+        $this->app->scoped(\Jiannius\Atom\Services\TableColumnsMemo::class);
+
         // once per container, not per registry: it reads the current scoped instance when the request ends (through the global container: under Octane the request runs on a clone of this app), and a worker that never terminates adds none
         $this->app->terminating(fn () => app()->make(\Jiannius\Atom\Services\ActionItems::class)->reportUnplaced());
 
