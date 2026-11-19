@@ -219,4 +219,82 @@ test.describe('the account menu is printed once', () => {
     await expect(phoneTrigger(page)).toHaveAttribute('aria-controls', 'atom-account-menu')
     expect(await box(menu(page))).toEqual(before)
   })
+
+  // The avatar is `lg:hidden` and the foot row `hidden lg:block`: a menu open from one that stops being drawn closes, instead of floating at the page
+  // corner over the brand row with aria-expanded on a hidden button.
+  test('open from the avatar and resized to lg: the menu closes, nothing is expanded, and the brand row opens it', async ({ page }) => {
+    await open(page, PHONE)
+
+    await phoneTrigger(page).click()
+    await expect(menu(page)).toBeVisible()
+
+    await page.setViewportSize(DESKTOP)
+    await expect(menu(page)).toBeHidden()
+    expect(await expanded(page)).not.toContain('true')
+
+    await brandTrigger(page).click()
+    await expect(menu(page)).toBeVisible()
+    await expect(brandTrigger(page)).toHaveAttribute('aria-expanded', 'true')
+
+    const t = await box(brandTrigger(page))
+    const m = await box(menu(page))
+    expect(Math.abs(m.x - t.x)).toBeLessThan(16)
+    expect(m.y).toBeGreaterThanOrEqual(t.bottom - 1)
+  })
+
+  test('open from the foot row and narrowed below lg: the menu closes, nothing is expanded, and the avatar opens it', async ({ page }) => {
+    await open(page, DESKTOP, '&account=end')
+
+    await footTrigger(page).click()
+    await expect(menu(page)).toBeVisible()
+
+    await page.setViewportSize(PHONE)
+    await expect(menu(page)).toBeHidden()
+    expect(await expanded(page)).not.toContain('true')
+
+    await phoneTrigger(page).click()
+    await expect(menu(page)).toBeVisible()
+    await page.getByTestId('account-bump').click()
+    await expect(count(page)).toHaveText('1')
+  })
+
+  test('a menu closed because its trigger went away leaves the focus alone', async ({ page }) => {
+    await open(page, PHONE)
+
+    await phoneTrigger(page).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('account-bump')).toBeFocused()
+
+    await page.setViewportSize(DESKTOP)
+    await expect(menu(page)).toBeHidden()
+    // not given to a hidden button, nor to the brand row's
+    await expect(phoneTrigger(page)).not.toBeFocused()
+    await expect(brandTrigger(page)).not.toBeFocused()
+  })
+
+  test('a show() before any press anchors to the trigger that is drawn: the avatar below lg (the closed drawer is hidden), the brand row from lg', async ({ page }) => {
+    await open(page, PHONE)
+
+    await page.evaluate(() => window.Alpine.$data(document.querySelector('[data-atom-dropdown-detached]')).show())
+    await expect(menu(page)).toBeVisible()
+    let t = await box(phoneTrigger(page))
+    let m = await box(menu(page))
+    expect(Math.abs(m.right - t.right)).toBeLessThan(16)
+    expect(m.y).toBeGreaterThanOrEqual(t.bottom - 1)
+    await expect(phoneTrigger(page)).toHaveAttribute('aria-expanded', 'true')
+
+    await page.keyboard.press('Escape')
+    await expect(menu(page)).toBeHidden()
+
+    await page.setViewportSize(DESKTOP)
+    // the sidebar slides in from the start edge (a transition) when the window grows to lg: wait for it to settle
+    await expect.poll(async () => (await box(brandTrigger(page))).x).toBeGreaterThan(0)
+    await page.waitForTimeout(500)
+    await page.evaluate(() => window.Alpine.$data(document.querySelector('[data-atom-dropdown-detached]')).show())
+    await expect(menu(page)).toBeVisible()
+    t = await box(brandTrigger(page))
+    m = await box(menu(page))
+    expect(Math.abs(m.x - t.x)).toBeLessThan(16)
+    await expect(brandTrigger(page)).toHaveAttribute('aria-expanded', 'true')
+  })
 })

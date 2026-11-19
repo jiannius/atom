@@ -19,7 +19,9 @@ export default (config) => {
             if (this.remote) {
                 let all = this._atomRemoteTriggers()
 
-                return all.includes(this.opener) ? this.opener : all.find((el) => el.checkVisibility?.() ?? true) || all[0]
+                // the one pressed last while it is still shown, else one that is shown (a stale opener, hidden by a resize or a closed drawer, is not
+                // anchored to), else whatever is left
+                return all.find((el) => el === this.opener && this._atomShown(el)) || all.find((el) => this._atomShown(el)) || all.find((el) => el === this.opener) || all[0]
             }
 
             // Every lookup must skip the popover. With a trigger that is not a
@@ -145,6 +147,8 @@ export default (config) => {
                 document.addEventListener('keydown', (e) => {
                     if (!this.$root.contains(e.target)) this._atomMenuKey(e)
                 }, { signal })
+
+                window.addEventListener('resize', () => this._atomCheckOpener(), { signal })
             }
 
             // A held Enter opened the menu and its repeats now land on the first item, which would run it: swallow them until the key is up. The first
@@ -202,7 +206,7 @@ export default (config) => {
                     // and in WebKit that return ends on <body> (the next Escape then reaches the page, not the layer around the menu), after this event
                     // (the item is still the active element here): so, in the next task, put it on the trigger, but only when nothing else has it (a
                     // dialog an item opened, the field a click went to).
-                    if (this.$root._atomMenuHadFocus) {
+                    if (this.$root._atomMenuHadFocus && !this.$root._atomLostOpener) {
                         setTimeout(() => {
                             let active = document.activeElement
                             let lost = !active || active === document.body || active === document.documentElement || !!this.popover?.contains(active)
@@ -212,6 +216,7 @@ export default (config) => {
                     }
 
                     this.$root._atomMenuHadFocus = false
+                    this.$root._atomLostOpener = false
                 }
             }, { capture: true, signal })
 
@@ -242,6 +247,25 @@ export default (config) => {
 
         // The methods below carry an `_atom` prefix, as the tooltip's do: an Alpine expression inside the dropdown (`x-on:keydown="menuKey($event)"` on the
         // column picker's menu and the breadcrumbs menu's) reads this object first, so a plain `menuKey` here would be called instead of their own.
+
+        /**
+         * Whether a remote trigger can be pressed: in the document, and drawn (not `display: none`, and not `visibility: hidden` as the closed drawer is).
+         */
+        _atomShown(el) {
+            return el.isConnected && (el.checkVisibility?.({ visibilityProperty: true }) ?? true)
+        },
+
+        /**
+         * A remote menu whose trigger stops being drawn while it is open (the window resized across lg: the top bar's avatar is `lg:hidden`, the foot
+         * row `hidden lg:block`) closes: its popover would otherwise float at the page corner with aria-expanded on a hidden button. The focus is not
+         * given back to anything, the trigger it would go to is gone.
+         */
+        _atomCheckOpener() {
+            if (!this.remote || !this.opener || !this.popover?.matches(':popover-open') || this._atomShown(this.opener)) return
+
+            this.$root._atomLostOpener = true
+            this.hide()
+        },
 
         /**
          * The buttons of a remote menu: those that name the popover in `aria-controls` and are marked `data-atom-dropdown-remote`.
@@ -420,10 +444,27 @@ export default (config) => {
             // a remote trigger may ask for its own placement (the top bar's avatar sits at the end of the bar)
             let placement = this.remote && trigger.getAttribute('data-atom-dropdown-placement') || this.placement
 
+            if (this.remote) this.opener = trigger
+
             this.popover.showPopover()
             this.$root.setAttribute('data-open', '')
             this._atomSetExpanded(true)
-            this.cleanup = atom.floatingui(trigger, this.popover, { placement })
+
+            let stopPlacing = atom.floatingui(trigger, this.popover, { placement })
+            let stopWatching = null
+
+            // a trigger that is hidden by a display change that is not a window resize (a ResizeObserver sees it go to no size)
+            if (this.remote && typeof ResizeObserver !== 'undefined') {
+                let observer = new ResizeObserver(() => this._atomCheckOpener())
+
+                observer.observe(trigger)
+                stopWatching = () => observer.disconnect()
+            }
+
+            this.cleanup = () => {
+                stopPlacing?.()
+                stopWatching?.()
+            }
         },
 
         hide() {
