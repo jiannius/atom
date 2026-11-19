@@ -53,4 +53,24 @@ describe('slider', function () {
         expect(renderBlade('<atom:slider caption="Pick a level."/>'))->toContain('Pick a level.');
         expect(renderBlade('<atom:slider error="This field is required."/>'))->toContain('This field is required.');
     });
+
+    it('derives the same id on every render when it has no id, name or wire:model', function () {
+        $id = fn (string $template) => preg_match('/<input\\s[^>]*id="([^"]+)"/s', renderBlade($template), $m) ? $m[1] : null;
+
+        $first = $id('<atom:slider label="Volume"/>');
+
+        expect($first)->toStartWith('atom-slider-')
+            ->and($id('<atom:slider label="Volume"/>'))->toBe($first)
+            ->and($id('<atom:slider label="Volume"/>'))->toBe($first)
+            ->and($id('<atom:slider label="Brightness"/>'))->not->toBe($first)
+            ->and($id('<atom:slider label="Volume" id="mine"/>'))->toBe('mine')
+            ->and($id('<atom:slider label="Volume" wire:model="level"/>'))->toBe('atom-slider-level');
+    });
+
+    it('keys an unnamed slider by its x-model target', function () {
+        $id = fn (string $model) => preg_match('/<input\\s[^>]*id="([^"]+)"/s', renderBlade('<atom:slider x-model="'.$model.'"/>'), $m) ? $m[1] : null;
+
+        expect($id('a'))->toBe($id('a'))
+            ->and($id('a'))->not->toBe($id('b'));
+    });
 });

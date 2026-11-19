@@ -278,3 +278,17 @@ describe('disabledBy()', function () {
             ->and(disabledAnswers('<x-disabled-host />'))->toBe(['none']);
     });
 });
+
+describe('stableId()', function () {
+    it('is the same for the same parts on every render and numbers a repeat within one render', function () {
+        $template = '{{ \\Jiannius\\Atom\\Services\\Attributes::stableId(new \\Illuminate\\View\\ComponentAttributeBag(), "p", "a") }} {{ \\Jiannius\\Atom\\Services\\Attributes::stableId(new \\Illuminate\\View\\ComponentAttributeBag(), "p", "a") }}';
+
+        $first = renderBlade($template);
+        [$one, $two] = explode(' ', $first);
+
+        expect($one)->toMatch('/^p-[0-9a-f]{8}$/')
+            ->and($two)->toBe($one.'-1')
+            ->and(renderBlade($template))->toBe($first)
+            ->and(Attributes::stableId(new ComponentAttributeBag(['id' => 'mine']), 'p', 'a'))->toBe('mine');
+    });
+});

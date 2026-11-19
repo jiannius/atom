@@ -100,4 +100,17 @@ describe('rating', function () {
         expect(renderBlade('<atom:rating caption="Tap to rate."/>'))->toContain('Tap to rate.');
         expect(renderBlade('<atom:rating error="Please rate."/>'))->toContain('Please rate.');
     });
+
+    it('derives the same id on every render when it has no id, name or wire:model', function () {
+        $id = fn (string $template) => preg_match('/<div\\s[^>]*id="([^"]+)"[^>]*data-atom-rating-track/s', renderBlade($template), $m) ? $m[1] : null;
+
+        $first = $id('<atom:rating label="Score"/>');
+
+        expect($first)->toStartWith('atom-rating-')
+            ->and($id('<atom:rating label="Score"/>'))->toBe($first)
+            ->and($id('<atom:rating label="Score"/>'))->toBe($first)
+            ->and($id('<atom:rating label="Quality"/>'))->not->toBe($first)
+            ->and($id('<atom:rating label="Score" id="mine"/>'))->toBe('mine')
+            ->and($id('<atom:rating label="Score" wire:model="score"/>'))->toBe('atom-rating-score');
+    });
 });
