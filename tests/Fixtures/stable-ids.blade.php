@@ -13,4 +13,10 @@
     <atom:slider label="Volume" data-probe="slider"/>
 
     <atom:rating label="Score" data-probe="rating"/>
+
+    {{-- two groups that share a heading: the second is numbered, inside this component --}}
+    <atom:navlist>
+        <atom:navlist.group heading="Reports"><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>
+        <atom:navlist.group heading="Reports"><atom:navlist.item href="/b">B</atom:navlist.item></atom:navlist.group>
+    </atom:navlist>
 </div>

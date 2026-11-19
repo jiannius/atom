@@ -10,13 +10,13 @@ beforeEach(function () {
 });
 
 /**
- * The ids a rendered fixture prints, in order: accordion toggles, the slider input and the rating track.
+ * The ids a rendered fixture prints, in order: accordion toggles, the slider input, the rating track and the navlist group panels.
  */
 function stableIdsIn(string $html): array
 {
-    preg_match_all("/toggle\\('([^']+)'\\)|<input[^>]*\\sid=\"([^\"]+)\"[^>]*type=\"range\"|<div\\s[^>]*id=\"([^\"]+)\"[^>]*data-atom-rating-track/s", $html, $m);
+    preg_match_all("/toggle\\('([^']+)'\\)|<input[^>]*\\sid=\"([^\"]+)\"[^>]*type=\"range\"|<div\\s[^>]*id=\"([^\"]+)\"[^>]*data-atom-rating-track|<div\\s[^>]*id=\"([^\"]+)\"[^>]*data-atom-navlist-group-items/s", $html, $m);
 
-    return array_values(array_filter(array_merge($m[1], $m[2], $m[3])));
+    return array_values(array_filter(array_merge($m[1], $m[2], $m[3], $m[4])));
 }
 
 /**
@@ -44,7 +44,7 @@ describe('stableId() inside Livewire components', function () {
         $first = stableIdsIn($components[0]['html']);
         $second = stableIdsIn($components[1]['html']);
 
-        // the accordion toggles, the slider and the rating track of each instance, compared as sets
+        // the accordion toggles, the slider, the rating track and the navlist panels of each instance, compared as sets
         expect(array_unique($first))->not->toBeEmpty()
             // the siblings share every part, so only the Livewire component tells their ids apart
             ->and(array_intersect($first, $second))->toBe([]);

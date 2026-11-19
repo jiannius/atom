@@ -200,6 +200,30 @@ describe('navlist.group in the header shell', function () {
             ->not->toBe($id($single));
     });
 
+    // Attributes::stableId(): the id is the persist-key and heading, never random, and an explicit id wins.
+    it('mints a stable panel id, lets an explicit id win, and numbers same-heading groups apart', function () {
+        $group = fn (string $attrs = '', string $heading = 'Reports') => '<atom:navlist.group heading="'.$heading.'" '.$attrs.'><atom:navlist.item href="/a">A</atom:navlist.item></atom:navlist.group>';
+        $panels = fn (string $html) => array_map(fn ($panel) => $panel->getAttribute('id'), domQuery($html, '//*[@data-atom-navlist-group-items]'));
+
+        // stable across two renders
+        expect($panels(Blade::render($group())))->toBe($panels(Blade::render($group())));
+
+        // an explicit id stays on the root, the panel derives from it and the trigger points at the panel
+        $html = Blade::render($group('id="reports"'));
+        $trigger = domQuery($html, '//button[@data-atom-navlist-group-trigger]')[0];
+
+        expect(domQuery($html, '//*[@data-atom-navlist-group]')[0]->getAttribute('id'))->toBe('reports')
+            ->and($panels($html))->toBe(['reports-items'])
+            ->and($trigger->getAttribute('aria-controls'))->toBe('reports-items');
+
+        // two groups with one heading are told apart, and a different heading differs
+        $both = $panels(Blade::render($group().$group()));
+
+        expect($both)->toHaveCount(2)->and(array_unique($both))->toHaveCount(2)
+            ->and($both[0])->toBe($panels(Blade::render($group()))[0])
+            ->and($panels(Blade::render($group('', 'Settings')))[0])->not->toBe($both[0]);
+    });
+
     it('prints the items once', function () {
         $html = Blade::render('<atom:navlist.group heading="Reports"><atom:navlist.item href="/only-once">A</atom:navlist.item></atom:navlist.group>');
 
