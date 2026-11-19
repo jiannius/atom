@@ -7,6 +7,7 @@ namespace Jiannius\Atom\Services;
  *
  * Scoped (`AtomServiceProvider`), not a static: a macro closure is rebound on every call, which copies its statics, and a class static would outlive
  * an Octane request and a test's application, so a cache entry changed in between would never be seen.
+ * A process that changes the schema and then filters in the same scope (a looping CLI command) must call `app()->forgetScopedInstances()`, and forget the cache entry, to see the new columns.
  */
 class TableColumnsMemo
 {
