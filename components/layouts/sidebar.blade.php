@@ -41,6 +41,9 @@ $initials = $user && blank($initials)
    (`account="end"`). Either way it needs a `dropdown` slot; without one the brand row stays a plain link. */
 $accountInBrand = $account !== 'end' && isset($dropdown);
 
+/* The id of the one account menu, named by aria-controls on every trigger (a layout is on a page once, so it is fixed). */
+$menuId = 'atom-account-menu';
+
 /* The theme switcher lives in the account menu (a row there); the bar's own toggle is only for a shell with no account menu.
    `theme-switcher="false"` draws neither, and `dark` still emits the bootstrap, so the host's own control can call window.darkmode(). */
 $showTheme = $dark && $themeSwitcher;
@@ -193,16 +196,12 @@ $trailEmpty = $crumbsOnly
                 @isset ($brand)
                     <div class="min-w-0 grow">{{ $brand }}</div>
 
-                    <atom:dropdown class="shrink-0">
-                        <button type="button" class="flex h-control items-center rounded-control px-1.5 hover:bg-fg/5" data-atom-account-trigger>
+                    <div class="relative shrink-0">
+                        <button type="button" class="flex h-control items-center rounded-control px-1.5 hover:bg-fg/5" data-atom-dropdown-remote aria-controls="{{ $menuId }}" aria-haspopup="menu" data-atom-account-trigger>
                             <span class="sr-only">{{ t('Account') }}</span>
                             <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                         </button>
-
-                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
-                            {{ $dropdown }}
-                        </atom:layouts._account-menu>
-                    </atom:dropdown>
+                    </div>
 
                     <atom:layouts._sidebar-circle anchor="center"/>
                 @else
@@ -214,8 +213,8 @@ $trailEmpty = $crumbsOnly
                         @endif
                     </a>
 
-                    <atom:dropdown class="min-w-0 grow">
-                        <button type="button" class="flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-start hover:bg-fg/5" data-atom-account-trigger>
+                    <div class="relative min-w-0 grow">
+                        <button type="button" class="flex w-full min-w-0 items-center gap-2 rounded-control px-1.5 py-1 text-start hover:bg-fg/5" data-atom-dropdown-remote aria-controls="{{ $menuId }}" aria-haspopup="menu" data-atom-account-trigger>
                             <span class="grid min-w-0 grow leading-tight">
                                 <span class="truncate text-sm font-semibold">{{ config('app.name') }}</span>
                                 @if (isset($caption) && $present($caption))
@@ -227,11 +226,7 @@ $trailEmpty = $crumbsOnly
                             <span class="sr-only">{{ t('Account') }}</span>
                             <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                         </button>
-
-                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
-                            {{ $dropdown }}
-                        </atom:layouts._account-menu>
-                    </atom:dropdown>
+                    </div>
 
                     <atom:layouts._sidebar-circle anchor="center"/>
                 @endisset
@@ -286,8 +281,8 @@ $trailEmpty = $crumbsOnly
         {{-- User menu at the foot (`account="end"`; large screens, small screens have it in the top bar). The row is a
              button only when there is a menu behind it: a `profile` with no `dropdown` is plain content. --}}
         @if (isset($dropdown) && ! $accountInBrand)
-            <atom:dropdown class="mt-2.5 hidden lg:block">
-                <button type="button" class="flex min-h-9 w-full items-center gap-2 rounded-nav px-2 py-1 hover:bg-fg/5">
+            <div class="relative mt-2.5 hidden lg:block">
+                <button type="button" class="flex min-h-9 w-full items-center gap-2 rounded-nav px-2 py-1 hover:bg-fg/5" data-atom-dropdown-remote aria-controls="{{ $menuId }}" aria-haspopup="menu">
                     @isset ($profile)
                         {{ $profile }}
                     @else
@@ -313,17 +308,7 @@ $trailEmpty = $crumbsOnly
 
                     <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                 </button>
-
-                <atom:menu class="w-[220px]" popover>
-                    @if ($showTheme)
-                        <atom:layouts._theme-row/>
-
-                        <atom:menu.separator/>
-                    @endif
-
-                    {{ $dropdown }}
-                </atom:menu>
-            </atom:dropdown>
+            </div>
         @elseif (! isset($dropdown) && isset($profile))
             <div class="mt-2.5 flex min-h-9 items-center gap-2 px-2 py-1" data-atom-shell-profile>{{ $profile }}</div>
         @endif
@@ -386,10 +371,11 @@ $trailEmpty = $crumbsOnly
                     <atom:darkmode-toggle/>
                 @endif
 
-                {{-- Account menu (small screens, where the sidebar is stashed; large screens have it in the sidebar's brand row or foot) --}}
+                {{-- Account menu button (small screens, where the sidebar is stashed; large screens have theirs in the sidebar's brand row or foot).
+                     It opens the one menu printed after the bar. --}}
                 @isset ($dropdown)
-                    <atom:dropdown class="lg:hidden">
-                        <button type="button" class="flex items-center gap-1 rounded-full p-0.5 hover:bg-fg/5" aria-label="{{ t('Account') }}">
+                    <div class="relative lg:hidden">
+                        <button type="button" class="flex items-center gap-1 rounded-full p-0.5 hover:bg-fg/5" aria-label="{{ t('Account') }}" data-atom-dropdown-remote aria-controls="{{ $menuId }}" aria-haspopup="menu" data-atom-dropdown-placement="bottom-end">
                             <div class="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-bg text-xs font-semibold text-neutral-fg">
                                 @if ($avatar)
                                     <img src="{{ $avatar }}" alt="{{ $name }}" class="h-full w-full object-cover">
@@ -400,15 +386,22 @@ $trailEmpty = $crumbsOnly
 
                             <atom:icon.dropdown class="size-3.5 text-fg-subtle"/>
                         </button>
-
-                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
-                            {{ $dropdown }}
-                        </atom:layouts._account-menu>
-                    </atom:dropdown>
+                    </div>
                 @endisset
             </div>
         </div>
     </header>
+
+    {{-- The account menu, printed once: the `dropdown` slot may hold a Livewire component, and two copies would be two roots with one wire:id
+         (the second dead). The triggers (the brand row's or the foot's, and the top bar's avatar below lg) are buttons elsewhere that
+         name it in aria-controls; atom.css gives its root no box, and it is a top-layer popover, so it needs no place of its own. --}}
+    @isset ($dropdown)
+        <atom:dropdown remote>
+            <atom:layouts._account-menu :id="$menuId" :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
+                {{ $dropdown }}
+            </atom:layouts._account-menu>
+        </atom:dropdown>
+    @endisset
 
     {{-- <main> is unpadded on purpose: padding comes from <atom:page>, so a host's own section partials don't pad twice. --}}
     <main class="[grid-area:main]" data-atom-main>

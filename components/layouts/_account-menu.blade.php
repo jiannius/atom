@@ -9,7 +9,7 @@
 
 {{-- The shells' account menu: the profile card (or the host's `profile` slot), a divider, the theme row when the shell asks for it
      (`theme`) and the host's `dropdown` items. --}}
-<atom:menu class="w-[220px]" popover>
+<atom:menu :attributes="$attributes->class('w-[220px]')" popover>
     @if (! is_null($profile))
         {{ $profile }}
     @else

@@ -7,9 +7,21 @@ export default (config) => {
         locked: config.locked,
         placement: config.placement,
 
+        // A menu printed once for triggers that live elsewhere in the page (layouts.sidebar's account menu: the brand row or the foot of the
+        // sidebar, and the top bar's avatar below lg). Its triggers are the buttons marked `data-atom-dropdown-remote` whose `aria-controls` is
+        // the popover's id; the one that was pressed last is the trigger (placement, aria-expanded, the focus on close).
+        remote: !!config.remote,
+        opener: null,
+
         // helpers/confirm-gate.js reads this getter (`Alpine.$data(root).trigger`, again once its dialog is gone) to put the focus back on a menu's trigger
         // after Cancel or Escape: keep it a getter that finds the trigger in the DOM each time it is asked, never a field set at init.
         get trigger() {
+            if (this.remote) {
+                let all = this._atomRemoteTriggers()
+
+                return all.includes(this.opener) ? this.opener : all.find((el) => el.checkVisibility?.() ?? true) || all[0]
+            }
+
             // Every lookup must skip the popover. With a trigger that is not a
             // <button> (a link), the first menu item would be picked, and a click
             // on it would count as a trigger click and never close the menu. The
@@ -99,6 +111,42 @@ export default (config) => {
                 else if (!this.locked && this.popover?.contains(e.target)) this.hide()
             }, { signal })
 
+            // The triggers of a remote menu are outside the root, so they are heard on the document. A press on another trigger than the one
+            // that opened the menu opens it again from there.
+            if (this.remote) {
+                document.addEventListener('pointerdown', (e) => {
+                    let trigger = this._atomRemoteAt(e.target)
+
+                    if (trigger) this.openBeforePress = trigger === this.opener && !!this.popover?.matches(':popover-open')
+                }, { capture: true, signal })
+
+                document.addEventListener('click', (e) => {
+                    let trigger = this._atomRemoteAt(e.target)
+
+                    if (!trigger) return
+
+                    let open = !!this.popover?.matches(':popover-open')
+                    let wasOpen = e.detail > 0 && this.openBeforePress !== null
+                        ? this.openBeforePress
+                        : open && trigger === this.opener
+
+                    this.openBeforePress = null
+
+                    if (wasOpen) return this.hide()
+
+                    if (open) {
+                        // open from the other trigger: close first, and open again once the toggle event of the close has run
+                        this.hide()
+                        setTimeout(() => this._atomOpenFrom(trigger, e.detail === 0))
+                    }
+                    else this._atomOpenFrom(trigger, e.detail === 0)
+                }, { signal })
+
+                document.addEventListener('keydown', (e) => {
+                    if (!this.$root.contains(e.target)) this._atomMenuKey(e)
+                }, { signal })
+            }
+
             // A held Enter opened the menu and its repeats now land on the first item, which would run it: swallow them until the key is up. The first
             // press (not a repeat) or any key up ends it.
             this.$root.addEventListener('keydown', (e) => {
@@ -147,7 +195,7 @@ export default (config) => {
                     this.$dispatch('close')
                     this.$root._atomMenuHeld = null
                     this.$root.removeAttribute('data-open')
-                    this.trigger?.setAttribute('aria-expanded', 'false')
+                    this._atomSetExpanded(false)
                     this.cleanup?.()
 
                     // The popover gives the focus back to what had it before it opened. A menu opened with the keyboard moves the focus onto an item,
@@ -182,7 +230,7 @@ export default (config) => {
             // the previous registration.
             this.$root._atomDropdownStopMorph?.()
             this.$root._atomDropdownStopMorph = onMorphed((el) => {
-                if (!el || el.contains(this.$root)) {
+                if (!el || el.contains(this.$root) || (this.remote && this._atomRemoteTriggers().some((trigger) => el.contains(trigger)))) {
                     // an open popup closes when a morph disables the control around it
                     if (this.disabled) this.hide()
 
@@ -194,6 +242,46 @@ export default (config) => {
 
         // The methods below carry an `_atom` prefix, as the tooltip's do: an Alpine expression inside the dropdown (`x-on:keydown="menuKey($event)"` on the
         // column picker's menu and the breadcrumbs menu's) reads this object first, so a plain `menuKey` here would be called instead of their own.
+
+        /**
+         * The buttons of a remote menu: those that name the popover in `aria-controls` and are marked `data-atom-dropdown-remote`.
+         */
+        _atomRemoteTriggers() {
+            let id = this.popover?.id
+
+            return id ? [...document.querySelectorAll('[data-atom-dropdown-remote]')].filter((el) => el.getAttribute('aria-controls') === id) : []
+        },
+
+        /**
+         * The remote trigger that holds a node (a click lands on its icon), or null.
+         */
+        _atomRemoteAt(node) {
+            return node instanceof Element ? this._atomRemoteTriggers().find((trigger) => trigger.contains(node)) ?? null : null
+        },
+
+        /**
+         * Open the remote menu from a trigger, which becomes the one it is anchored to. A keyboard press lands on the first item.
+         */
+        _atomOpenFrom(trigger, byKey = false) {
+            this.opener = trigger
+            this.show()
+
+            if (byKey && this.popover?.matches(':popover-open') && this._atomFocusItem('first')) this.$root._atomOpenedByKey = true
+        },
+
+        /**
+         * Write aria-expanded: on the trigger, or on every remote trigger (true only on the one the menu is open from).
+         */
+        _atomSetExpanded(open) {
+            let trigger = this.trigger
+
+            for (let el of this.remote ? this._atomRemoteTriggers() : [trigger]) {
+                let expanded = open && el === trigger ? 'true' : 'false'
+
+                // Only when it differs: a write that changes nothing still queues a mutation record for every observer on the page
+                if (el && el.getAttribute('aria-expanded') !== expanded) el.setAttribute('aria-expanded', expanded)
+            }
+        },
 
         /**
          * The popover when it is a menu (`<atom:menu popover>`: `role="menu"`), else null. A select's list is the same component with `role="listbox"`
@@ -265,8 +353,13 @@ export default (config) => {
             // the trigger, unless it is a field (Home and End are its own), and only a menu that has items to land on
             let field = e.target.closest('input, textarea, select, [contenteditable]')
 
-            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && this.trigger?.contains(e.target) && !(field && this.trigger.contains(field)) && menu.querySelector('[data-atom-menu-item]')) {
+            let trigger = this.remote ? this._atomRemoteAt(e.target) : this.trigger?.contains(e.target) ? this.trigger : null
+
+            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && trigger && !(field && trigger.contains(field)) && menu.querySelector('[data-atom-menu-item]')) {
                 e.preventDefault()
+
+                if (this.remote) this.opener = trigger
+
                 this.show()
                 this._atomFocusItem(to === 1 ? 'first' : 'last')
             }
@@ -296,19 +389,15 @@ export default (config) => {
 
             this.$root.toggleAttribute('data-open', open)
 
-            let trigger = this.trigger
-            let expanded = open ? 'true' : 'false'
-
             // Respect a popup role the trigger already declares (e.g. a select
             // sets aria-haspopup=listbox); only default to menu otherwise.
-            if (trigger && !trigger.hasAttribute('aria-haspopup')) {
-                trigger.setAttribute('aria-haspopup', 'menu')
+            for (let trigger of this.remote ? this._atomRemoteTriggers() : [this.trigger]) {
+                if (trigger && !trigger.hasAttribute('aria-haspopup')) {
+                    trigger.setAttribute('aria-haspopup', 'menu')
+                }
             }
-            // Only when it differs: a write that changes nothing still queues a mutation record
-            // for every observer on the page, and this runs after every morph.
-            if (trigger && trigger.getAttribute('aria-expanded') !== expanded) {
-                trigger.setAttribute('aria-expanded', expanded)
-            }
+
+            this._atomSetExpanded(open)
         },
 
         destroy() {
@@ -323,10 +412,18 @@ export default (config) => {
         show() {
             if (this.disabled || this.popover?.matches(':popover-open')) return
 
+            let trigger = this.trigger
+
+            // a remote menu with no trigger on the page has nothing to anchor to
+            if (this.remote && !trigger) return
+
+            // a remote trigger may ask for its own placement (the top bar's avatar sits at the end of the bar)
+            let placement = this.remote && trigger.getAttribute('data-atom-dropdown-placement') || this.placement
+
             this.popover.showPopover()
             this.$root.setAttribute('data-open', '')
-            this.trigger?.setAttribute('aria-expanded', 'true')
-            this.cleanup = atom.floatingui(this.trigger, this.popover, { placement: this.placement })
+            this._atomSetExpanded(true)
+            this.cleanup = atom.floatingui(trigger, this.popover, { placement })
         },
 
         hide() {

@@ -74,8 +74,9 @@ for (const tw of ['floor', 'latest']) {
           await expect(brand.getByRole('link', { name: 'Home' }).locator('[data-logo-slot]')).toHaveText('T')
 
           await brand.locator('[data-caption-slot]').click()
-          await expect(brand.getByRole('menu')).toBeVisible()
-          await expect(brand.getByRole('menuitem', { name: 'Log out' })).toBeVisible()
+          // the sidebar prints its menu once, outside the brand row (the top nav keeps it in its row), so it is looked for on the page
+          await expect(page.getByRole('menu')).toBeVisible()
+          await expect(page.getByRole('menuitem', { name: 'Log out' })).toBeVisible()
         })
       }
 

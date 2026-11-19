@@ -687,20 +687,25 @@ describe('the account menu in the brand row', function () {
         '<atom:'.$layout.' :vite="false" '.$props.">\n".$slots."\n<x-slot:dropdown>\n<atom:menu.item>OUT</atom:menu.item>\n</x-slot>\nx</atom:".$layout.'>'
     );
 
+    // Where the menu is printed: the top nav keeps it in its brand row; the sidebar prints it once after the bar, for its triggers to name
+    $home = fn (string $layout) => $layout === 'layouts.sidebar' ? '//*[@data-atom-dropdown-detached]' : '//*[@data-atom-shell-brand]';
+
     beforeEach(fn () => Auth::setUser(new class(['name' => 'Ada Lovelace', 'email' => 'ada@example.com']) extends \Illuminate\Foundation\Auth\User {
         protected $guarded = [];
     }));
 
-    it('opens from the brand row by default: the logo goes home, the name and caret open the menu', function (string $layout) use ($render) {
+    it('opens from the brand row by default: the logo goes home, the name and caret open the menu', function (string $layout) use ($render, $home) {
         $html = $render($layout);
         $brand = '//*[@data-atom-shell-brand]';
 
         expect(domQuery($html, $brand.'/a[@href="/app"][@aria-label="Home"]'))->toHaveCount(1)
             ->and(domQuery($html, $brand.'//button[@data-atom-account-trigger][contains(., "'.config('app.name').'")][contains(., "Account")]'))->toHaveCount(1)
-            ->and(domQuery($html, $brand.'//*[@data-atom-menu][contains(., "ada@example.com")][contains(., "OUT")]'))->toHaveCount(1)
+            ->and(domQuery($html, $home($layout).'//*[@data-atom-menu][contains(., "ada@example.com")][contains(., "OUT")]'))->toHaveCount(1)
             // no second desktop account trigger: the sidebar's foot row and the top nav's end avatar are gone
-            ->and(domQuery($html, '//*[@data-atom-sidebar]/*[@data-atom-sidebar-scroll]/*[@data-atom-dropdown][contains(@class, "mt-2.5")]'))->toHaveCount(0)
-            ->and(domQuery($html, '//*[@data-atom-shell-actions]//*[@data-atom-dropdown]'))->toHaveCount($layout === 'layouts.sidebar' ? 1 : 0);
+            ->and(domQuery($html, '//*[@data-atom-sidebar]/*[@data-atom-sidebar-scroll]//button[@data-atom-dropdown-remote]'))->toHaveCount(0)
+            ->and(domQuery($html, '//*[@data-atom-shell-actions]//*[@data-atom-dropdown]'))->toHaveCount(0)
+            // the sidebar's phone button in the bar opens the one menu
+            ->and(domQuery($html, '//*[@data-atom-shell-actions]//button[@data-atom-dropdown-remote]'))->toHaveCount($layout === 'layouts.sidebar' ? 1 : 0);
     })->with(['layouts.sidebar', 'layouts.header']);
 
     it('puts the user\'s name under the app name in the sidebar\'s brand row', function () use ($render) {
@@ -750,44 +755,45 @@ describe('the account menu in the brand row', function () {
     ]);
 
     it('keeps the phone account button in the sidebar shell\'s top bar, where the sidebar is stashed', function () use ($render) {
-        expect(domQuery($render('layouts.sidebar'), '//*[@data-atom-header]//*[@data-atom-dropdown][contains(@class, "lg:hidden")]//button[@aria-label="Account"]'))->toHaveCount(1);
+        expect(domQuery($render('layouts.sidebar'), '//*[@data-atom-header]//*[contains(@class, "lg:hidden")]//button[@aria-label="Account"][@data-atom-dropdown-remote]'))->toHaveCount(1);
     });
 
-    it('keeps the old place with account="end"', function (string $layout) use ($render) {
+    it('keeps the old place with account="end"', function (string $layout) use ($render, $home) {
         $html = $render($layout, 'account="end"');
 
         expect(domQuery($html, '//*[@data-atom-shell-brand]'))->toHaveCount(0)
             ->and(domQuery($html, '//button[@data-atom-account-trigger]'))->toHaveCount(0)
             ->and(domQuery($html, '//a[@href="/app"][contains(., "'.config('app.name').'")]'))->toHaveCount(1)
             ->and(domQuery($html, $layout === 'layouts.sidebar'
-                ? '//*[@data-atom-sidebar]/*[@data-atom-sidebar-scroll]/*[@data-atom-dropdown][contains(@class, "mt-2.5")][contains(., "OUT")]'
-                : '//*[@data-atom-shell-actions]//button[@aria-label="Account"]'))->toHaveCount(1);
+                ? '//*[@data-atom-sidebar]/*[@data-atom-sidebar-scroll]/*[contains(@class, "mt-2.5")]/button[@data-atom-dropdown-remote]'
+                : '//*[@data-atom-shell-actions]//button[@aria-label="Account"]'))->toHaveCount(1)
+            ->and(domQuery($html, $home($layout).'//*[@data-atom-menu][contains(., "OUT")]'))->toHaveCount($layout === 'layouts.sidebar' ? 1 : 0);
     })->with(['layouts.sidebar', 'layouts.header']);
 
-    it('keeps a host\'s brand slot as it is, with a compact trigger beside it', function (string $layout) use ($render) {
+    it('keeps a host\'s brand slot as it is, with a compact trigger beside it', function (string $layout) use ($render, $home) {
         $html = $render($layout, '', '<x-slot:brand><a href="/home">BRAND-SLOT</a></x-slot>');
 
         expect(substr_count($html, 'BRAND-SLOT'))->toBe(1)
             ->and(domQuery($html, '//*[@data-atom-shell-brand]//a[@href="/home"]'))->toHaveCount(1)
             ->and(domQuery($html, '//button//a'))->toHaveCount(0)
             ->and(domQuery($html, '//*[@data-atom-shell-brand]//button[@data-atom-account-trigger][contains(., "Account")]'))->toHaveCount(1)
-            ->and(domQuery($html, '//*[@data-atom-shell-brand]//*[@data-atom-menu][contains(., "OUT")]'))->toHaveCount(1);
+            ->and(domQuery($html, $home($layout).'//*[@data-atom-menu][contains(., "OUT")]'))->toHaveCount(1);
     })->with(['layouts.sidebar', 'layouts.header']);
 
-    it('lets the profile slot replace the card at the head of the menu', function (string $layout) use ($render) {
+    it('lets the profile slot replace the card at the head of the menu', function (string $layout) use ($render, $home) {
         $html = $render($layout, '', '<x-slot:profile><span>PROFILE-SLOT</span></x-slot>');
 
-        expect(domQuery($html, '//*[@data-atom-shell-brand]//*[@data-atom-menu][contains(., "PROFILE-SLOT")][contains(., "OUT")]'))->toHaveCount(1)
-            ->and(domQuery($html, '//*[@data-atom-shell-brand]//*[@data-atom-account-card]'))->toHaveCount(0);
+        expect(domQuery($html, $home($layout).'//*[@data-atom-menu][contains(., "PROFILE-SLOT")][contains(., "OUT")]'))->toHaveCount(1)
+            ->and(domQuery($html, $home($layout).'//*[@data-atom-account-card]'))->toHaveCount(0);
     })->with(['layouts.sidebar', 'layouts.header']);
 
     // A profile with a dropdown lives in the menu only: never also printed as the plain content a profile alone gets.
     it('prints the profile slot only inside the account menus', function (string $layout, string $props) use ($render) {
         $html = $render($layout, $props, '<x-slot:profile><span>PROFILE-SLOT</span></x-slot>');
 
-        // the sidebar shell: its desktop place (the brand menu or the foot row) and the phone top-bar menu
+        // the menu (printed once in either shell), and with account="end" the sidebar's foot row, which is the profile itself
         expect(domQuery($html, '//*[@data-atom-shell-profile]'))->toHaveCount(0)
-            ->and(substr_count($html, 'PROFILE-SLOT'))->toBe($layout === 'layouts.sidebar' ? 2 : 1);
+            ->and(substr_count($html, 'PROFILE-SLOT'))->toBe($layout === 'layouts.sidebar' && $props !== '' ? 2 : 1);
     })->with(['layouts.sidebar', 'layouts.header'])->with(['' => [''], 'end' => ['account="end"']]);
 
     it('leaves the brand a plain link when there is no dropdown', function (string $layout) {
@@ -896,4 +902,38 @@ describe('one nav slot in both shells', function () {
             expect(domQuery($html, '//*[@data-atom-nav-shell="'.$shell.'"]//a[@href="/sites"]'))->toHaveCount(1);
         }
     });
+});
+
+// The `dropdown` slot may hold a Livewire component, and two copies are two roots with one wire:id (the second dead, issue #267):
+// the sidebar shell prints it once, whichever trigger opens it.
+describe('the sidebar shell prints the dropdown slot once', function () {
+    beforeEach(fn () => Auth::setUser(new class(['name' => 'Ada Lovelace', 'email' => 'ada@example.com']) extends \Illuminate\Foundation\Auth\User {
+        protected $guarded = [];
+    }));
+
+    it('has one copy of the slot, and every trigger names that one menu', function (string $props, string $slots) {
+        $html = renderBlade('<atom:layouts.sidebar :vite="false" '.$props.">\n".$slots."\n<x-slot:dropdown>\n<span>ONCE-MARKER</span>\n</x-slot>\nx</atom:layouts.sidebar>");
+        $menu = domQuery($html, '//*[@data-atom-menu][@popover][contains(., "ONCE-MARKER")]');
+
+        expect(substr_count($html, 'ONCE-MARKER'))->toBe(1)
+            ->and($menu)->toHaveCount(1);
+
+        $id = $menu[0]->getAttribute('id');
+        $triggers = domQuery($html, '//button[@data-atom-dropdown-remote]');
+
+        // the desktop trigger (brand row, caret or foot) and the phone one in the bar
+        expect($id)->not->toBe('')
+            ->and($triggers)->toHaveCount(2);
+
+        foreach ($triggers as $trigger) {
+            expect($trigger->getAttribute('aria-controls'))->toBe($id);
+        }
+
+        $ids = array_map(fn ($el) => $el->getAttribute('id'), domQuery($html, '//*[@id]'));
+        expect(array_unique($ids))->toHaveCount(count($ids));
+    })->with([
+        'account="brand"' => ['', ''],
+        'account="end"' => ['account="end"', ''],
+        'a brand slot' => ['', '<x-slot:brand><a href="/home">B</a></x-slot>'],
+    ]);
 });
