@@ -275,6 +275,8 @@ describe('whereDateBetween()', function () {
         foreach (['testing' => ':memory:', 'mysql_dry' => 'dry', 'maria_dry' => 'dry', 'other_dry' => 'dry'] as $connection => $database) {
             cache()->forget("table_{$connection}_{$database}_range_rows_columns");
         }
+        // the memo would answer the uncached call from the first one, so the driver gate would go untested
+        app()->forgetScopedInstances();
         $uncached = DateRangeRow::on('other_dry')->whereDateBetween('at', '2026-09-01 to 2026-09-30');
 
         foreach ([$query, $uncached] as $each) {

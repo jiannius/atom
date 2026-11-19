@@ -1,6 +1,9 @@
 <?php
 
+use Illuminate\Cache\Events\CacheHit;
+use Illuminate\Cache\Events\CacheMissed;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Jiannius\Atom\Tests\Fixtures\Item;
 
 /** A builder on the `items` table of a second connection, from a model that names it. */
@@ -84,4 +87,46 @@ it('keeps one connection name apart when the database behind it changes', functi
     $second = Item::on('cols_plain')->tableColumnType('id');
 
     expect($first)->toBe('integer')->and($second)->toBe('varchar(36)');
+});
+
+/** Counts the cache reads the callback makes. */
+function colsCacheReads(callable $callback): int
+{
+    $reads = 0;
+    $listener = function () use (&$reads) {
+        $reads++;
+    };
+    Event::listen([CacheHit::class, CacheMissed::class], $listener);
+
+    $callback();
+
+    return $reads;
+}
+
+it('reads the cache once per request however many times it is asked', function () {
+    cache()->put('table_cols_plain_:memory:_items_columns', [['Field' => 'id', 'Type' => 'integer']], now()->addDay());
+
+    $reads = colsCacheReads(function () {
+        $first = Item::on('cols_plain')->tableColumns();
+        $second = Item::on('cols_plain')->tableColumns();
+        Item::on('cols_plain')->tableColumnType('id');
+
+        expect($second->all())->toBe($first->all())->and($first->pluck('name')->all())->toBe(['id']);
+    });
+
+    expect($reads)->toBe(1);
+});
+
+it('does not carry a column list over to the next request', function () {
+    $key = 'table_cols_plain_:memory:_items_columns';
+
+    cache()->put($key, [['Field' => 'id', 'Type' => 'integer']], now()->addDay());
+    expect(Item::on('cols_plain')->tableColumnType('id'))->toBe('integer');
+
+    cache()->put($key, [['Field' => 'id', 'Type' => 'varchar(36)']], now()->addDay());
+    expect(Item::on('cols_plain')->tableColumnType('id'))->toBe('integer');
+
+    app()->forgetScopedInstances();
+
+    expect(Item::on('cols_plain')->tableColumnType('id'))->toBe('varchar(36)');
 });
