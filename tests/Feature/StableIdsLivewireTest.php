@@ -10,7 +10,7 @@ beforeEach(function () {
 });
 
 /**
- * The ids a rendered fixture prints, in order: accordion toggles, the slider input, the rating track and the navlist group panels.
+ * The ids a rendered fixture prints, grouped by kind (each kind in document order): accordion toggles, the slider input, the rating track and the navlist group panels.
  */
 function stableIdsIn(string $html): array
 {
