@@ -4,7 +4,8 @@
 ])
 
 @php
-$id = 'atom-accordion-'.Str::random(8);
+// Derived, never random: the open state is keyed by this id, so a new one on every render closes an open item.
+$id = \Jiannius\Atom\Services\Attributes::stableId($attributes, 'atom-accordion', $heading);
 @endphp
 
 <div data-atom-accordion-item x-init="@if ($expanded) open('{{ $id }}') @endif">

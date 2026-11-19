@@ -127,6 +127,34 @@ class Attributes
     }
 
     /**
+     * Mint a stable DOM id for a component that has no field name to derive one from (an accordion item, an unnamed slider or rating).
+     *
+     * Same rule as fieldId(): never random, so a Livewire re-render of the same markup prints the same id and the morph patches the node
+     * instead of replacing it. A caller-supplied id wins. Two elements that share the parts are numbered by how many this render has already
+     * printed with that seed, using the view factory's "rendered once" ledger (emptied when a top-level render ends, so the same page gets
+     * the same ids on every render; the ledger is per top-level render, so a layout and a Livewire component that print the same parts
+     * should be given distinct ids).
+     */
+    public static function stableId(ComponentAttributeBag $attributes, string $prefix, mixed ...$parts) : string
+    {
+        if (filled($attributes->get('id'))) {
+            return $attributes->get('id');
+        }
+
+        $seed = $prefix.'-'.substr(md5(collect($parts)->map(fn ($part) => is_scalar($part) || $part instanceof \Stringable ? (string) $part : '')->join('|')), 0, 8);
+        $views = app('view');
+        $occurrence = 0;
+
+        while ($views->hasRenderedOnce($seed.'-'.$occurrence)) {
+            $occurrence++;
+        }
+
+        $views->markAsRenderedOnce($seed.'-'.$occurrence);
+
+        return $occurrence ? $seed.'-'.$occurrence : $seed;
+    }
+
+    /**
      * Why a control is disabled: `'self'` for its own `disabled`, `'inherited'` from a disabled ancestor (`<atom:form disabled>`, a group), or null.
      * A control's own `disabled` wins, `:disabled="false"` included, and the same attribute on a wrapper in a template ends the inheritance below
      * it. Laravel reads the data of the component being rendered, merged with its parent's, before its stack of ancestors, so a disabled component's

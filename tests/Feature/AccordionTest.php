@@ -51,4 +51,25 @@ describe('accordion', function () {
             ->toContain('x-init=""')     // empty x-init, no open() call
             ->not->toContain("open('atom-accordion-");
     });
+
+    it('derives the same item id on every render, so a re-render keeps an open item open', function () {
+        $template = '<atom:accordion><atom:accordion.item heading="First" expanded>a</atom:accordion.item><atom:accordion.item heading="Second">b</atom:accordion.item></atom:accordion>';
+
+        $ids = fn (string $html) => preg_match_all("/toggle\\('(atom-accordion-[^']+)'\\)/", $html, $m) ? array_values(array_unique($m[1])) : [];
+
+        $first = $ids(renderBlade($template));
+
+        expect($first)->toHaveCount(2)
+            ->and($ids(renderBlade($template)))->toBe($first)
+            ->and($ids(renderBlade($template)))->toBe($first);
+    });
+
+    it('numbers items that share a heading, and lets an explicit id win', function () {
+        $html = renderBlade('<atom:accordion><atom:accordion.item heading="Same">a</atom:accordion.item><atom:accordion.item heading="Same">b</atom:accordion.item><atom:accordion.item heading="Own" id="faq-own">c</atom:accordion.item></atom:accordion>');
+
+        preg_match_all("/toggle\\('([^']+)'\\)/", $html, $m);
+
+        expect(array_unique($m[1]))->toHaveCount(3)
+            ->and($m[1])->toContain('faq-own');
+    });
 });

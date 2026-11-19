@@ -53,6 +53,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-table-columns', TableColumnsFixture::class);
         Livewire::component('atom-e2e-table-totals', TableTotalsFixture::class);
         Livewire::component('atom-e2e-input-morph', InputMorphFixture::class);
+        Livewire::component('atom-e2e-stable-ids', StableIdsFixture::class);
         Livewire::component('atom-e2e-clearable-input', ClearableInputFixture::class);
         Livewire::component('atom-e2e-table-loading', TableLoadingFixture::class);
         Livewire::component('atom-e2e-table-only', TableOnlyFixture::class);
@@ -106,6 +107,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/modal-escape-layers', fn () => view('atom::e2e.modal-escape-layers'));
         Route::middleware('web')->get('/atom/e2e/select-native-reopen', fn () => view('atom::e2e.select-native-reopen'));
         Route::middleware('web')->get('/atom/e2e/input-morph', fn () => view('atom::e2e.input-morph'));
+        Route::middleware('web')->get('/atom/e2e/stable-ids', fn () => view('atom::e2e.stable-ids'));
         Route::middleware('web')->get('/atom/e2e/clearable-input', fn () => view('atom::e2e.clearable-input'));
         Route::middleware('web')->get('/atom/e2e/date-range-morph', fn () => view('atom::e2e.date-range-morph'));
         Route::middleware('web')->get('/atom/e2e/date-picker-time-morph', fn () => view('atom::e2e.date-picker-time-morph'));

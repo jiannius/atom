@@ -22,7 +22,9 @@ $max = is_numeric($max) ? $max + 0 : 100;
 $step = is_numeric($step) ? $step + 0 : 1;
 $value = $attributes->get('value', $min);
 
-$id = $attributes->get('id') ?? ($name ? 'atom-slider-'.$name : 'atom-slider-'.\Illuminate\Support\Str::random(6));
+// An unnamed control is keyed by its `x-model` target, then by what it is: never random, or every render replaces the input.
+$xModel = $attributes->whereStartsWith('x-model')->first();
+$id = $attributes->get('id') ?? ($name ? 'atom-slider-'.$name : \Jiannius\Atom\Services\Attributes::stableId($attributes, 'atom-slider', $xModel, $label, $min, $max, $step));
 
 // wire:model / x-on / etc. and the caller's class ride on the wrapper (x-modelable target); input-only attrs go to the input.
 $wrapper = $attributes->except(['id', 'name', 'value', 'min', 'max', 'step', 'required', 'disabled']);
