@@ -135,7 +135,7 @@ class Attributes
      * component with an empty ledger, so two sibling instances with the same parts would be numbered on the page load and not on the update.
      * Scoped, each instance numbers only its own repeats (`-1`, `-2`, in render order), and an update prints what the page load did. The ledger
      * is emptied when a top-level render ends, so the same page gets the same ids on every render. Known limit: a repeat outside any
-     * component (a layout and a view rendered separately) is numbered per top-level render; give those an explicit id.
+     * component (a layout and a view rendered separately) is numbered per top-level render; give those an explicit id, as for a repeat across a Livewire island boundary (an island update counts only what the island prints).
      */
     public static function stableId(ComponentAttributeBag $attributes, string $prefix, mixed ...$parts) : string
     {
