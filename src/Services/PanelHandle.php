@@ -3,11 +3,11 @@
 namespace Jiannius\Atom\Services;
 
 /**
- * What `atom()->command($name)` returns: show or close a panel of this kind (`command`) on the current Livewire component, by name.
+ * What `atom()->command($name)` returns: show or close a panel of this kind (`command`, `modal`) on the current Livewire component, by name.
  */
 class PanelHandle
 {
-    public function __construct(public $name, protected string $kind = 'command') {}
+    public function __construct(public $name, protected string $kind) {}
 
     /**
      * Show the panel.

@@ -206,7 +206,7 @@ class Atom
      */
     public function command($name)
     {
-        return new PanelHandle($name);
+        return new PanelHandle($name, 'command');
     }
 
     /**
