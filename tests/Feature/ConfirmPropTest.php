@@ -265,7 +265,7 @@ describe('a delete with no action of its own', function () {
 });
 
 describe('the confirm prop and atom()->confirm() read a message the same way', function () {
-    it('gives the same message list for a string, a [key, replacements] pair, a list of either and an Htmlable', function (mixed $message) {
+    it('gives the same message list for a string, a [key, replacements] pair, a list of either and an Htmlable', function (mixed $message, array $expected) {
         $fake = new class {
             public array $dispatched = [];
 
@@ -282,13 +282,15 @@ describe('the confirm prop and atom()->confirm() read a message the same way', f
 
         withLivewireContext($fake, fn () => app('atom')->confirm(message: $message));
 
-        expect(\Jiannius\Atom\Services\ConfirmProp::given(['message' => $message])['message'])->toBe($fake->dispatched[0]['message']);
+        $given = \Jiannius\Atom\Services\ConfirmProp::given(['message' => $message])['message'];
+
+        expect($given)->toBe($fake->dispatched[0]['message'])->and($given)->toBe($expected);
     })->with([
-        'a string' => ['Are you sure?'],
-        'a pair' => [[':name is going', ['name' => 'Ada']]],
-        'a pair inside a list' => [[['Hello :name', ['name' => 'Ada']], 'Second line']],
-        'a list' => [['First', 'Second']],
-        'an Htmlable' => [fn () => new \Illuminate\Support\HtmlString('<b>Bold</b>')],
+        'a string' => ['Are you sure?', ['Are you sure?']],
+        'a pair' => [[':name is going', ['name' => 'Ada']], ['Ada is going']],
+        'a pair inside a list' => [[['Hello :name', ['name' => 'Ada']], 'Second line'], ['Hello Ada', 'Second line']],
+        'a list' => [['First', 'Second'], ['First', 'Second']],
+        'an Htmlable' => [new \Illuminate\Support\HtmlString('<b>Bold</b>'), ['<b>Bold</b>']],
     ]);
 });
 
