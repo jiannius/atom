@@ -114,7 +114,7 @@ class ConfirmProp
         foreach ($given as $key => $value) {
             $given[$key] = match ($key) {
                 'heading', 'subheading' => app('atom')->translateOnce($value),
-                'message' => Arr::map(static::isPair($value) ? [$value] : Arr::wrap($value), fn ($line) => app('atom')->translateOnce($line)),
+                'message' => Arr::map(app('atom')->messageList($value), fn ($line) => app('atom')->translateOnce($line)),
                 'buttonConfirm', 'buttonCancel', 'reasonLabel', 'reasonPlaceholder' => t($value),
                 'password', 'reason' => (bool) $value,
                 default => $value,
@@ -138,13 +138,5 @@ class ConfirmProp
         $text = html_entity_decode(trim(preg_replace('/\s+/', ' ', $label)), ENT_QUOTES);
 
         return mb_strlen($text) <= 40 ? $text : '';
-    }
-
-    /**
-     * Whether a value is a `[key, replacements]` translation pair.
-     */
-    protected static function isPair(mixed $value): bool
-    {
-        return is_array($value) && count($value) === 2 && array_is_list($value) && is_string($value[0]) && is_array($value[1]);
     }
 }

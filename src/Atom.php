@@ -259,7 +259,7 @@ class Atom
     /**
      * Whether a value is a `[key, replacements]` pair for translateOnce().
      */
-    protected function isTranslationPair(mixed $value) : bool
+    public function isTranslationPair(mixed $value) : bool
     {
         return is_array($value) && count($value) === 2 && array_is_list($value) && is_string($value[0]) && is_array($value[1]);
     }
@@ -269,9 +269,24 @@ class Atom
      *
      * @return array<int|string, mixed>
      */
-    protected function messageList(mixed $message) : array
+    public function messageList(mixed $message) : array
     {
-        return $this->isTranslationPair($message) ? [$message] : (array) $message;
+        return $this->isTranslationPair($message) ? [$message] : Arr::wrap($message);
+    }
+
+    /**
+     * The heading, subheading and message of a toast, alert or confirm, translated once.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    protected function translatedParams(array $params) : array
+    {
+        if (data_get($params, 'heading')) $params['heading'] = $this->translateOnce($params['heading']);
+        if (data_get($params, 'subheading')) $params['subheading'] = $this->translateOnce($params['subheading']);
+        if (data_get($params, 'message')) $params['message'] = Arr::map($this->messageList($params['message']), fn ($m) => $this->translateOnce($m));
+
+        return $params;
     }
 
     /**
@@ -302,9 +317,7 @@ class Atom
             'url',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = $this->translateOnce($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = $this->translateOnce($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map($this->messageList($params['message']), fn ($m) => $this->translateOnce($m));
+        $params = $this->translatedParams($params);
 
         app('livewire')->current()->dispatch('atom-toast-show', ...$params);
     }
@@ -331,9 +344,7 @@ class Atom
             'onDismissed',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = $this->translateOnce($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = $this->translateOnce($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map($this->messageList($params['message']), fn ($m) => $this->translateOnce($m));
+        $params = $this->translatedParams($params);
 
         $component = app('livewire')->current();
 
@@ -415,9 +426,7 @@ class Atom
             'onRejected',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = $this->translateOnce($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = $this->translateOnce($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map($this->messageList($params['message']), fn ($m) => $this->translateOnce($m));
+        $params = $this->translatedParams($params);
 
         $component = app('livewire')->current();
 
