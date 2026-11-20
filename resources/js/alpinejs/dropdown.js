@@ -1,5 +1,6 @@
 import onMorphed, { stopMorphed } from '../helpers/morphed'
 import step from '../helpers/step'
+import { closeOnNavigate, listen, unlisten } from '../helpers/scope'
 import floatingui from '../helpers/floatingui'
 
 export default (config) => {
@@ -64,8 +65,7 @@ export default (config) => {
             // Re-binding is idempotent — the controller is kept on the element,
             // not on `this`, so a morph that re-evaluates x-data (a new data
             // object) still drops the previous instance's listeners.
-            this.$root._atomDropdownListeners?.abort()
-            let { signal } = this.$root._atomDropdownListeners = new AbortController()
+            let signal = listen(this.$root, '_atomDropdownListeners')
 
             // A popover=auto closes itself on pointerdown (light dismiss), before
             // the click lands, so by then the menu always reads as closed and a
@@ -227,7 +227,7 @@ export default (config) => {
             // navigation so it can't outlive a wire:navigate page swap (the
             // removal of an open popover doesn't reliably fire `toggle`, so the
             // close handler above wouldn't run cleanup otherwise).
-            document.addEventListener('livewire:navigating', () => this.hide(), { signal })
+            closeOnNavigate(() => this.hide(), signal)
 
             // A Livewire morph strips what the server did not render: `data-open` on the
             // root (the panel turns opacity-0 while the popover is still in the top layer,
@@ -247,8 +247,8 @@ export default (config) => {
             }, { owner: this.$root, key: '_atomDropdownStopMorph' })
         },
 
-        // The methods below carry an `_atom` prefix, as the tooltip's do: an Alpine expression inside the dropdown (`x-on:keydown="menuKey($event)"` on the
-        // column picker's menu and the breadcrumbs menu's) reads this object first, so a plain `menuKey` here would be called instead of their own.
+        // The methods below carry an `_atom` prefix, as the tooltip's do: an Alpine expression inside the dropdown reads this object first, so a plain
+        // name here would be called instead of the host component's own.
 
         /**
          * Whether a remote trigger can be pressed: in the document, and drawn (not `display: none`, and not `visibility: hidden` as the closed drawer is).
@@ -321,10 +321,13 @@ export default (config) => {
 
         /**
          * The menu items a key can reach: without a disabled one, one marked `aria-disabled` or one that is not drawn (hidden by
-         * `x-show`, or inside a popover that is closed). A separator is not an item.
+         * `x-show`, or inside a popover that is closed). A separator is not an item. A menu marked `data-atom-menu-keep-disabled` keeps its
+         * `aria-disabled` items as stops (the column picker's locked rows stay focusable); a `:disabled` control never is.
          */
         _atomMenuItems(menu) {
-            return [...menu.querySelectorAll('[data-atom-menu-item]')].filter((item) => !item.matches(':disabled, [aria-disabled="true"]')
+            let skipped = menu.hasAttribute('data-atom-menu-keep-disabled') ? ':disabled' : ':disabled, [aria-disabled="true"]'
+
+            return [...menu.querySelectorAll('[data-atom-menu-item]')].filter((item) => !item.matches(skipped)
                 && (item.checkVisibility?.() ?? true))
         },
 
@@ -355,7 +358,7 @@ export default (config) => {
          * Arrow Down and Up, Home and End walk the items of a menu (`<atom:menu popover>`), wrapping at the ends, and on the trigger Down and Up
          * open the menu on its first or last item. Tab and Escape stay the browser's: Escape closes the popover and gives the focus back to the
          * trigger. Only an item (or the menu itself) hears the keys, never a field or another control inside the menu (a search box, a date picker),
-         * and a key a menu's own handler already took (the column picker, the breadcrumbs menu) is left alone.
+         * and a key another handler already took is left alone.
          */
         _atomMenuKey(e) {
             if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
@@ -430,7 +433,7 @@ export default (config) => {
             this.hide()
             this.cleanup?.()
             stopMorphed(this.$root, '_atomDropdownStopMorph')
-            this.$root._atomDropdownListeners?.abort()
+            unlisten(this.$root, '_atomDropdownListeners')
         },
 
         show() {

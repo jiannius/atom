@@ -260,22 +260,6 @@ export default (config) => {
             items[((n % items.length) + items.length) % items.length]?.focus()
         },
 
-        // Arrow Up and Down, Home and End walk the menu; Tab and Escape are the browser's (the popover closes on Escape and
-        // gives focus back to the button).
-        menuKey (event) {
-            let keys = { ArrowDown: 1, ArrowUp: -1, Home: 'first', End: 'last' }
-
-            if (!(event.key in keys)) return
-
-            event.preventDefault()
-
-            let items = [...event.currentTarget.querySelectorAll('[data-atom-menu-item]')]
-            let step = keys[event.key]
-            let next = step === 'first' ? 0 : step === 'last' ? items.length - 1 : items.indexOf(document.activeElement) + step
-
-            items[((next % items.length) + items.length) % items.length]?.focus()
-        },
-
         back () {
             let url = this.backCrumb?.href
             if (url) Livewire.navigate(url)

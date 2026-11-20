@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 
-// Up, Down, Home and End in atom's menus (resources/js/alpinejs/dropdown.js menuKey(), the fixture is tests/Fixtures/MenuKeysFixture.php): the ⋯ menu of a
+// Up, Down, Home and End in atom's menus (resources/js/alpinejs/dropdown.js _atomMenuKey(), the fixture is tests/Fixtures/MenuKeysFixture.php): the ⋯ menu of a
 // page header, a table toolbar and a table row, and a plain `<atom:menu popover>`. Opening with the keyboard lands on the first item, the keys wrap, a
 // disabled, hidden or separator row is never a stop, and a field inside a menu keeps its own keys. The page is on the consumer's Tailwind (latest).
 //

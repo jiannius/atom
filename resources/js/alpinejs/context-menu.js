@@ -1,4 +1,5 @@
 import floatingui from '../helpers/floatingui'
+import { closeOnNavigate, listen, unlisten } from '../helpers/scope'
 
 export default (config = {}) => ({
     cleanup: null,
@@ -15,14 +16,23 @@ export default (config = {}) => ({
     },
 
     init () {
-        this.trigger?.addEventListener('contextmenu', (e) => {
+        // Everything is bound on $root, not on the trigger and popover nodes: a Livewire morph can replace those nodes, which orphans a
+        // listener bound to the old one (as for the dropdown). Capture, so the contextmenu is prevented before a listener on the trigger
+        // or its target runs, and for `toggle`, which does not bubble.
+        const signal = listen(this.$root, '_atomContextMenuListeners')
+
+        this.$root.addEventListener('contextmenu', (e) => {
+            if (!this.trigger?.contains(e.target)) return
+
             e.preventDefault()
             this.x = e.clientX
             this.y = e.clientY
             this.show()
-        })
+        }, { capture: true, signal })
 
-        this.popover?.addEventListener('toggle', (e) => {
+        this.$root.addEventListener('toggle', (e) => {
+            if (e.target !== this.popover) return
+
             if (e.newState === 'open') {
                 this.$dispatch('open')
             }
@@ -33,21 +43,22 @@ export default (config = {}) => ({
                 this.$root.removeAttribute('data-open')
                 this.cleanup?.()
             }
-        })
+        }, { capture: true, signal })
 
         if (!this.locked) {
-            this.popover?.addEventListener('click', () => this.hide())
+            this.$root.addEventListener('click', (e) => {
+                if (this.popover?.contains(e.target)) this.hide()
+            }, { signal })
         }
 
         // Close on SPA nav so the menu can't outlive a wire:navigate page swap.
-        this.onNavigate = () => this.hide()
-        document.addEventListener('livewire:navigating', this.onNavigate)
+        closeOnNavigate(() => this.hide(), signal)
     },
 
     destroy () {
         this.hide()
         this.cleanup?.()
-        document.removeEventListener('livewire:navigating', this.onNavigate)
+        unlisten(this.$root, '_atomContextMenuListeners')
     },
 
     show () {
