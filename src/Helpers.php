@@ -91,7 +91,7 @@ if (!function_exists('is_enum')) {
 if (!function_exists('is_using_trait')) {
     function is_using_trait($class, $trait)
     {
-        return in_array($trait, class_uses_recursive($class));
+        return in_array($trait, class_uses_recursive($class), true);
     }
 }
 

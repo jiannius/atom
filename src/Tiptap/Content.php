@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom\Tiptap;
 
+use Jiannius\Atom\Services\LogOnce;
 use Jiannius\Atom\Tiptap\Extensions\AtomCodeBlock;
 use Jiannius\Atom\Tiptap\Extensions\AtomColor;
 use Jiannius\Atom\Tiptap\Extensions\AtomHighlight;
@@ -322,7 +323,7 @@ class Content
      */
     public static function carriesPlaceholder(string $html): bool
     {
-        return stripos($html, 'MINIFYHTML') !== false;
+        return stripos($html, static::MINIFY_TOKEN) !== false;
     }
 
     /**
@@ -461,13 +462,7 @@ class Content
     {
         $key = md5($text);
 
-        if ($log && $reason !== null && $reason !== 'invalid document' && ! isset(static::$logged[$key])) {
-            if (count(static::$logged) >= 100) {
-                static::$logged = [];
-            }
-
-            static::$logged[$key] = true;
-
+        if ($log && $reason !== null && $reason !== 'invalid document' && LogOnce::first($key, static::$logged)) {
             \Illuminate\Support\Facades\Log::warning('Content::render() refused stored content and rendered it empty.', [
                 'reason' => $reason,
                 'bytes' => strlen($text),

@@ -302,30 +302,9 @@ class BladeOutline
      */
     public function line(int $offset): int
     {
-        if ($this->lineStarts === null) {
-            $this->lineStarts = [0];
-            $at = 0;
+        $this->lineStarts ??= LineIndex::starts($this->text);
 
-            while (($position = strpos($this->text, "\n", $at)) !== false) {
-                $this->lineStarts[] = $position + 1;
-                $at = $position + 1;
-            }
-        }
-
-        $low = 0;
-        $high = count($this->lineStarts) - 1;
-
-        while ($low < $high) {
-            $middle = intdiv($low + $high + 1, 2);
-
-            if ($this->lineStarts[$middle] <= $offset) {
-                $low = $middle;
-            } else {
-                $high = $middle - 1;
-            }
-        }
-
-        return $low + 1;
+        return LineIndex::lineAt($this->lineStarts, $offset);
     }
 
     /**

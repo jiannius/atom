@@ -263,3 +263,59 @@ describe('a delete with no action of its own', function () {
             ->and($item)->toContain('x-on:click="$wire.delete()"')->not->toContain('atom.confirm')->not->toContain('data-atom-confirm');
     });
 });
+
+describe('the confirm prop and atom()->confirm() read a message the same way', function () {
+    it('gives the same message list for a string, a [key, replacements] pair, a list of either and an Htmlable', function (mixed $message, array $expected) {
+        $fake = new class {
+            public array $dispatched = [];
+
+            public function dispatch(string $event, ...$params): void
+            {
+                $this->dispatched[] = $params;
+            }
+
+            public function getId(): string
+            {
+                return 'fake-id';
+            }
+        };
+
+        withLivewireContext($fake, fn () => app('atom')->confirm(message: $message));
+
+        $given = \Jiannius\Atom\Services\ConfirmProp::given(['message' => $message])['message'];
+
+        expect($given)->toBe($fake->dispatched[0]['message'])->and($given)->toBe($expected);
+    })->with([
+        'a string' => ['Are you sure?', ['Are you sure?']],
+        'a pair' => [[':name is going', ['name' => 'Ada']], ['Ada is going']],
+        'a pair inside a list' => [[['Hello :name', ['name' => 'Ada']], 'Second line'], ['Hello Ada', 'Second line']],
+        'a list' => [['First', 'Second'], ['First', 'Second']],
+        'an Htmlable' => [new \Illuminate\Support\HtmlString('<b>Bold</b>'), ['<b>Bold</b>']],
+    ]);
+});
+
+describe('ConfirmProp::merges()', function () {
+    $merges = fn (mixed $confirm, bool $delete, string $attributes = '', string $el = 'button', ?string $type = 'button', ?string $phrase = null) => \Jiannius\Atom\Services\ConfirmProp::merges(
+        $confirm, null, $delete, new \Illuminate\View\ComponentAttributeBag($attributes === '' ? [] : ['wire:click' => $attributes]), $el, $type, 'Delete', null, $phrase,
+    );
+
+    it('is empty for an element that asks nothing', function () use ($merges) {
+        expect($merges(null, false))->toBe([])->and($merges(false, false))->toBe([]);
+    });
+
+    it('carries the gate as data for a plain confirm, and for a delete with an action of its own', function () use ($merges) {
+        expect(array_keys($merges(true, false)))->toBe(['data-atom-confirm'])
+            ->and(array_keys($merges(null, true, 'go')))->toBe(['data-atom-confirm'])
+            ->and(array_keys($merges(null, true, '', 'a')))->toBe(['data-atom-confirm']);
+    });
+
+    it('keeps the delete handler for a bare delete, and $wire.delete() when it opts out, but not for a submit', function () use ($merges) {
+        expect(array_keys($merges(null, true)))->toBe(['x-on:click', 'x-on:confirmed'])
+            ->and($merges(false, true))->toBe(['x-on:click' => '$wire.delete()'])
+            ->and($merges(false, true, '', 'button', 'submit'))->toBe([]);
+    });
+
+    it('reads the phrase as the passphrase', function () use ($merges) {
+        expect(json_decode($merges(true, false, '', 'button', 'button', 'gone')['data-atom-confirm'], true)['passphrase'])->toBe('gone');
+    });
+});

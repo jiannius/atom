@@ -661,15 +661,7 @@ abstract class HostScanner
      */
     protected function lineStarts(string $source): array
     {
-        $starts = [0];
-        $offset = 0;
-
-        while (($position = strpos($source, "\n", $offset)) !== false) {
-            $starts[] = $position + 1;
-            $offset = $position + 1;
-        }
-
-        return $starts;
+        return LineIndex::starts($source);
     }
 
     /**
@@ -679,20 +671,7 @@ abstract class HostScanner
      */
     protected function lineAt(array $starts, int $offset): int
     {
-        $low = 0;
-        $high = count($starts) - 1;
-
-        while ($low < $high) {
-            $middle = intdiv($low + $high + 1, 2);
-
-            if ($starts[$middle] <= $offset) {
-                $low = $middle;
-            } else {
-                $high = $middle - 1;
-            }
-        }
-
-        return $low + 1;
+        return LineIndex::lineAt($starts, $offset);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace Jiannius\Atom\Services\DesignChecks;
 
 use Jiannius\Atom\Services\BladeOutline;
+use Jiannius\Atom\Services\LineIndex;
 
 /**
  * One file a check reads: its path from the root, its kind and its texts, shared by every check.
@@ -80,21 +81,7 @@ class File
      */
     public function line(int $offset): int
     {
-        $starts = $this->lineStarts();
-        $low = 0;
-        $high = count($starts) - 1;
-
-        while ($low < $high) {
-            $middle = intdiv($low + $high + 1, 2);
-
-            if ($starts[$middle] <= $offset) {
-                $low = $middle;
-            } else {
-                $high = $middle - 1;
-            }
-        }
-
-        return $low + 1;
+        return LineIndex::lineAt($this->lineStarts(), $offset);
     }
 
     /**
@@ -112,15 +99,7 @@ class File
      */
     protected function lineStarts(): array
     {
-        if ($this->lineStarts === null) {
-            $this->lineStarts = [0];
-            $at = 0;
-
-            while (($position = strpos($this->text, "\n", $at)) !== false) {
-                $this->lineStarts[] = $position + 1;
-                $at = $position + 1;
-            }
-        }
+        $this->lineStarts ??= LineIndex::starts($this->text);
 
         return $this->lineStarts;
     }

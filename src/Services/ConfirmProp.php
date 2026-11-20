@@ -3,6 +3,7 @@
 namespace Jiannius\Atom\Services;
 
 use Illuminate\Support\Arr;
+use Illuminate\View\ComponentAttributeBag;
 
 /**
  * The `confirm` prop of `<atom:button>` and `<atom:menu.item>`: what it asks and how the element is wired to ask it.
@@ -39,6 +40,50 @@ class ConfirmProp
             'config' => static::config($confirm, $variant, $delete, $label, $passphrase),
             'given' => static::given($confirm),
         ];
+    }
+
+    /**
+     * The attributes a trigger merges for its confirm: the delete's own handler, the gate's data, or `$wire.delete()` for a delete that opted out
+     * of the dialog and has no action of its own. Empty when the element asks nothing. Shared by `<atom:button>` and `<atom:menu.item>`.
+     *
+     * @param  mixed  $confirm  the `confirm` prop (see resolve())
+     * @param  ?string  $variant  the element's variant
+     * @param  bool  $delete  `type="delete"` on a button, `variant="delete"` on an item
+     * @param  \Illuminate\View\ComponentAttributeBag  $attributes  the element's attributes, for a click handler of the host's own
+     * @param  string  $el  `a` or `button`
+     * @param  ?string  $type  the element's type, for a submit
+     * @param  ?string  $label  the slot's HTML
+     * @param  ?string  $passphrase  the text to type before a delete goes through
+     * @param  ?string  $phrase  the alias of `$passphrase`
+     * @return array<string, mixed>
+     */
+    public static function merges(mixed $confirm, ?string $variant, bool $delete, ComponentAttributeBag $attributes, string $el, ?string $type, ?string $label, ?string $passphrase, ?string $phrase = null): array
+    {
+        $handled = (bool) ($attributes->wire('click')->value() || Attributes::hasLike($attributes, 'x-on:click*', '@click*'));
+
+        $confirmation = static::resolve($confirm, $variant, $delete, $handled, $el === 'a' || $type === 'submit', $label, $passphrase ?: $phrase);
+
+        if (data_get($confirmation, 'mode') === 'handler') {
+            return [
+                'x-on:click' => app('atom')->deleteConfirmHandler(
+                    data_get($confirmation, 'config.passphrase'),
+                    (string) data_get($confirmation, 'config.buttonConfirm', ''),
+                    $confirmation['given'],
+                ),
+
+                'x-on:confirmed' => "\$wire.delete()",
+            ];
+        }
+
+        if ($confirmation) {
+            return ['data-atom-confirm' => json_encode($confirmation['config'])];
+        }
+
+        if ($delete && $confirm === false && ! $handled && $el === 'button' && $type !== 'submit') {
+            return ['x-on:click' => "\$wire.delete()"];
+        }
+
+        return [];
     }
 
     /**
@@ -114,7 +159,7 @@ class ConfirmProp
         foreach ($given as $key => $value) {
             $given[$key] = match ($key) {
                 'heading', 'subheading' => app('atom')->translateOnce($value),
-                'message' => Arr::map(static::isPair($value) ? [$value] : Arr::wrap($value), fn ($line) => app('atom')->translateOnce($line)),
+                'message' => Arr::map(app('atom')->messageList($value), fn ($line) => app('atom')->translateOnce($line)),
                 'buttonConfirm', 'buttonCancel', 'reasonLabel', 'reasonPlaceholder' => t($value),
                 'password', 'reason' => (bool) $value,
                 default => $value,
@@ -138,13 +183,5 @@ class ConfirmProp
         $text = html_entity_decode(trim(preg_replace('/\s+/', ' ', $label)), ENT_QUOTES);
 
         return mb_strlen($text) <= 40 ? $text : '';
-    }
-
-    /**
-     * Whether a value is a `[key, replacements]` translation pair.
-     */
-    protected static function isPair(mixed $value): bool
-    {
-        return is_array($value) && count($value) === 2 && array_is_list($value) && is_string($value[0]) && is_array($value[1]);
     }
 }

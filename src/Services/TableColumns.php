@@ -17,9 +17,6 @@ class TableColumns
     /** What a column `name` or a cell `column` may be. It is interpolated into a stylesheet, so this is the gate. */
     public const NAME = '/^[A-Za-z0-9_-]{1,64}$/';
 
-    /** Where the browser keeps the user's choices: this prefix plus the table's persist-key. */
-    public const STORAGE_PREFIX = 'atom:table-columns:';
-
     /**
      * The first-paint script, printed as the first child of the table's scroll box when the table has a persist-key and the host
      * gave no `columns-state`. It is constant text (no key, no name is ever spliced into it), so a strict CSP can allow it by hash.
