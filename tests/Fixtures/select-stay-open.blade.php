@@ -24,6 +24,15 @@
         <atom:select variant="listbox" label="Sizes" wire:model.live="sizes" :options="$sizeOptions" multiple />
     </div>
 
+    <div data-probe="codes">
+        <atom:select variant="listbox" label="Codes" wire:model.live="codes" :options="$codeOptions" multiple />
+    </div>
+
+    {{-- remote: the options come from GetOptions by name, fetched on open and on a search --}}
+    <div data-probe="countries">
+        <atom:select variant="listbox" label="Countries" wire:model.live="countries" options="countries" multiple searchable />
+    </div>
+
     <div data-probe="status">
         <atom:select variant="filter" label="Status" wire:model.live="status" :options="$statusOptions" />
     </div>
@@ -32,5 +41,5 @@
         <atom:select variant="listbox" label="Priority" wire:model.live="priority" :options="$statusOptions" />
     </div>
 
-    <pre data-server>{{ json_encode(['clients' => $clients, 'regions' => $regions, 'tags' => $tags, 'sizes' => $sizes, 'status' => $status, 'priority' => $priority]) }}</pre>
+    <pre data-server>{{ json_encode(['clients' => $clients, 'regions' => $regions, 'tags' => $tags, 'sizes' => $sizes, 'codes' => $codes, 'countries' => $countries, 'status' => $status, 'priority' => $priority]) }}</pre>
 </div>

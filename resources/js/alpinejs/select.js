@@ -37,8 +37,9 @@ export default (config) => {
         selectValue: config.multiple ? [] : null,
         // an `add` filter in an inline bar draws its own chip (helpers/filter-chip.js); set when the select starts
         selfChip: false,
-        // The options ticked from the list, so a value stays named once a search has filtered its option out of `options`. A
-        // multiple list stays open and keeps its search, so the next search drops what was ticked before it from the list.
+        // A multiple select's options ticked from the list, so a value stays named once a search has filtered its option out of
+        // `options` (the list stays open and keeps its search, so the next search drops what was ticked before it). Only what
+        // is still in the value is kept.
         picked: [],
 
         get isEmpty () {
@@ -150,14 +151,22 @@ export default (config) => {
             // a blank picker for a record it is actually holding. Picking from
             // an open list labels itself locally, so this cannot loop.
             this.$watch('selectValue', () => {
+                // a value taken off (a deselect, a clear, the server) is not named from memory if it comes back
+                if (config.multiple) this.picked = this.picked.filter(opt => [].concat(this.selectValue ?? []).some(val => val == opt.value))
+
                 if (this.hasUnlabelledValue) this.fetch()
             })
 
             // A multiple list stays open through the Livewire update a tick sends (`wire:model.live`), and the morph strips the
-            // aria-activedescendant written on the search box or the trigger: write it again. The rows are `wire:ignore`, so the
-            // active row keeps its own marker.
+            // aria-activedescendant written on the search box or the trigger: write it again. Not through setActive(): that
+            // scrolls the active row into view, and a click far down the list does not move the active row.
             onMorphed(() => {
-                if (this.open && this.activeIndex > -1) this.setActive(this.activeIndex)
+                let el = this.open && this.activeIndex > -1 ? this.getOptionsElements(this.activeIndex) : null
+
+                if (!el?.id) return
+
+                el.setAttribute('data-active', '')
+                this.focusHost?.setAttribute('aria-activedescendant', el.id)
             }, { owner: this.$root, key: '_atomSelectStopMorph', scope: this.$root })
         },
 
@@ -188,6 +197,9 @@ export default (config) => {
         onClose () {
             this.open = false
             this.setActive(-1)
+
+            // a multiple select keeps its search while open (see afterPick()); the list opens again on everything
+            if (config.multiple) this.text = null
         },
 
         clear () {
@@ -262,7 +274,7 @@ export default (config) => {
                 this.selectValue = opt.value
             }
 
-            this.picked = [...this.picked.filter(item => item.value != opt.value), opt]
+            if (config.multiple) this.picked = [...this.picked.filter(item => item.value != opt.value), opt]
             this.afterPick()
             this.loading = false
             this.$dispatch('input', this.selectValue)

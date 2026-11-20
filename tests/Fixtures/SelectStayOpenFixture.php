@@ -24,6 +24,12 @@ class SelectStayOpenFixture extends Component
     /** @var array<int, string> */
     public array $sizes = [];
 
+    /** @var array<int, string> */
+    public array $codes = [];
+
+    /** @var array<int, string> */
+    public array $countries = [];
+
     public ?string $status = null;
 
     public ?string $priority = null;
@@ -49,6 +55,8 @@ class SelectStayOpenFixture extends Component
             'tagOptions' => $options(['Red', 'Rose', 'Ruby', 'Green', 'Blue']),
             'sizeOptions' => $options(['Small', 'Medium', 'Large', 'Huge']),
             'statusOptions' => $options(['Draft', 'Sent', 'Paid']),
+            // a list taller than its 400px cap
+            'codeOptions' => collect(range(1, 60))->map(fn ($n) => ['value' => 'code-'.$n, 'label' => 'Code '.$n])->all(),
         ]);
     }
 }
