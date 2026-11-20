@@ -1017,17 +1017,7 @@ class UpgradeCss
      */
     protected function lineOf(array $starts, int $offset): int
     {
-        $line = 1;
-
-        foreach ($starts as $index => $start) {
-            if ($start > $offset) {
-                break;
-            }
-
-            $line = $index + 1;
-        }
-
-        return $line;
+        return LineIndex::lineAt($starts, $offset);
     }
 
     /**
@@ -1035,14 +1025,6 @@ class UpgradeCss
      */
     protected function lineStarts(string $css): array
     {
-        $starts = [0];
-
-        for ($i = 0, $n = strlen($css); $i < $n; $i++) {
-            if ($css[$i] === "\n") {
-                $starts[] = $i + 1;
-            }
-        }
-
-        return $starts;
+        return LineIndex::starts($css);
     }
 }
