@@ -465,6 +465,19 @@ describe('atom:purge-editor-images scope', function () {
         $real->assertExists('tenant/editor/orphan.jpg');
     });
 
+    it('aborts without deleting anything when the editor disk cannot be resolved', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'orphan.jpg');
+        DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
+        config(['atom.editor.disk' => 'no_such_disk']);
+
+        $this->artisan('atom:purge-editor-images')
+            ->expectsOutputToContain('disk [no_such_disk]:')
+            ->assertFailed();
+
+        Storage::disk('tiptap_disk')->assertExists('tenant/editor/orphan.jpg');
+        Storage::disk('local')->assertMissing('editor-purged/orphan.jpg');
+    });
+
     it('finds a model declared after another class in the same file', function () {
         purgeEditorFiles('tiptap_disk', 'tenant/editor', 'multi-kept.jpg', 'multi-orphan.jpg');
         DB::table('purge_multi_things')->insert(['doc' => purgeTiptapDoc('https://cdn.test/tenant/editor/multi-kept.jpg')]);
