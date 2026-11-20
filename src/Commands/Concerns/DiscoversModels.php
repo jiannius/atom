@@ -4,6 +4,10 @@ namespace Jiannius\Atom\Commands\Concerns;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Jiannius\Atom\Casts\AsTiptapContent;
+use Jiannius\Atom\Services\EditorBackups;
 use Throwable;
 
 /**
@@ -15,6 +19,11 @@ use Throwable;
  */
 trait DiscoversModels
 {
+    /**
+     * The cast v4 removed, by name: a column still cast as it is not read
+     */
+    protected const REMOVED_CAST = 'Jiannius\\Atom\\Casts\\AsEditorContent';
+
     /**
      * Everything that stopped a model, column, directory or disk from being
      * read. The run is aborted before any file is touched when this is not
@@ -63,6 +72,103 @@ trait DiscoversModels
         }
 
         return app($class);
+    }
+
+    /**
+     * The columns of a model cast as AsTiptapContent and the ones still cast as
+     * the removed AsEditorContent, in cast order. Records nothing: what a
+     * removed column means is the command's to say.
+     *
+     * @return array{tiptap: array<int, string>, removed: array<int, string>}
+     */
+    protected function castColumns(Model $model): array
+    {
+        $columns = ['tiptap' => [], 'removed' => []];
+
+        foreach ($model->getCasts() as $column => $cast) {
+            $class = is_string($cast) ? Str::before($cast, ':') : '';
+
+            if ($class === '') {
+                continue;
+            }
+
+            if (strcasecmp(ltrim($class, '\\'), self::REMOVED_CAST) === 0) {
+                $columns['removed'][] = $column;
+            }
+            elseif (is_a($class, AsTiptapContent::class, true)) {
+                $columns['tiptap'][] = $column;
+            }
+        }
+
+        return $columns;
+    }
+
+    /**
+     * Whether a model casts any column as AsTiptapContent, or as the removed AsEditorContent
+     */
+    protected function hasEditorColumn(Model $model): bool
+    {
+        $columns = $this->castColumns($model);
+
+        return (bool) ($columns['tiptap'] || $columns['removed']);
+    }
+
+    /**
+     * Note a model's connection in $names, by its resolved name (so the default
+     * connection is one, whether a model names it or not), as the name to hand
+     * EditorBackups::on(). A connection this config does not define cannot hold
+     * backups this config wrote: a model without an editor column on one is
+     * warned about and skipped (returns false), one with a column throws, since
+     * its rows cannot be read and the caller records the problem.
+     *
+     * @param  array<string, string|null>  $names
+     * @param  bool|\Closure(): bool  $hasEditorColumn  what counts as an editor column is the caller's rule
+     */
+    protected function addConnection(array &$names, Model $model, string $class, bool|\Closure $hasEditorColumn): bool
+    {
+        try {
+            $names[$model->getConnection()->getName()] = $model->getConnectionName();
+
+            return true;
+        }
+        catch (\InvalidArgumentException $e) {
+            if ($hasEditorColumn instanceof \Closure ? $hasEditorColumn() : $hasEditorColumn) {
+                throw $e;
+            }
+
+            if (isset($this->output)) {
+                $this->warn($class.': '.EditorBackups::describe($e).' (no editor column, so it is skipped)');
+            }
+
+            return false;
+        }
+    }
+
+    /**
+     * The connections that may hold backups, by their resolved name: the
+     * default one and every connection a discovered model uses. A connection
+     * that cannot be resolved is a problem, never skipped.
+     *
+     * @return array<int, string|null> the name to hand EditorBackups::on()
+     */
+    protected function connectionNames(): array
+    {
+        $names = [DB::connection()->getName() => null];
+
+        foreach ($this->getModels() as $class) {
+            try {
+                $model = $this->resolveModel($class);
+
+                if ($model) {
+                    $this->addConnection($names, $model, $class, fn () => $this->hasEditorColumn($model));
+                }
+            }
+            catch (Throwable $e) {
+                $this->problems[] = $class.': '.EditorBackups::describe($e);
+            }
+        }
+
+        return array_values($names);
     }
 
     /**
