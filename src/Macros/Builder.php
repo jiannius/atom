@@ -81,7 +81,8 @@ class Builder
             // public $_table of its own has no signed-sort gate (the update listener), so a
             // client could set an unsigned raw: column that would read as PHP-set here.
             $component = app('livewire')->current() ?: null;
-            $config = $component && is_using_trait($component, \Jiannius\Atom\Traits\WithTable::class)
+            // inline, not is_using_trait(): that helper is guarded by function_exists(), so a host's own definition would decide this gate
+            $config = $component && in_array(\Jiannius\Atom\Traits\WithTable::class, class_uses_recursive($component), true)
                 ? $component->_table
                 : null;
 
