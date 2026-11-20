@@ -141,7 +141,7 @@ describe('the More filters button', function () {
 it('does not register a select that has no wire:model', function () {
     view()->share('errors', new \Illuminate\Support\ViewErrorBag);
     $html = Blade::render('<atom:select variant="filter" label="Status" :options="[]" />');
-    expect($html)->not->toContain('table-filter:set');
+    expect($html)->not->toContain('atom.tableFilter');
 });
 
 // The inline chips and the add-filter pill.
@@ -306,7 +306,7 @@ describe('the add-filter pill', function () {
             ->and(domQuery($html, '//*[@data-atom-date-range][@x-show="selfChip || !dateRangeValue"]'))->toHaveCount(1)
             ->and(domQuery($html, '//button[@aria-label="Open calendar"]'))->toBeEmpty()
             // it still registers its chip, and opens the same calendar menu
-            ->and($html)->toContain('table-filter:set')
+            ->and($html)->toContain('atom.tableFilter.register(')
             ->and(domQuery($html, '//*[@data-atom-menu]'))->not->toBeEmpty();
     });
 

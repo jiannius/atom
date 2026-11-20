@@ -25,12 +25,13 @@ describe('filter bar', function () {
 
         // the wrapper owns the chip: it reports on init and on blur, and clears on request
         expect($wrapper->getAttribute('x-data'))
-            ->toContain('table-filter:set')
+            ->toContain('atom.tableFilter.set(')
             ->toContain('filters.search')
             ->toContain('Search customers')
             ->and($wrapper->getAttribute('x-init'))->toContain('emit()')
             ->and($wrapper->getAttribute('x-on:change'))->toBe('emit()')
             ->and($wrapper->getAttribute('x-on:table-filter:do-clear.window'))
+            ->toContain('atom.tableFilter.cleared(')
             ->toContain('filters.search')
             ->toContain('$wire.$refresh()')
             ->toContain("new Event('input'")
@@ -48,7 +49,7 @@ describe('filter bar', function () {
                 '//*[@data-atom-table-search]',
             )[0];
 
-            expect($wrapper->getAttribute('x-data'))->toContain("label: '".$label."',");
+            expect($wrapper->getAttribute('x-data'))->toContain(", '".$label."', {");
         }
     });
 
@@ -93,7 +94,7 @@ describe('filter bar', function () {
             ->not->toContain('emit()')
             ->toContain('table-filter:changed')
             ->toContain('$wire.$refresh()')
-            ->and($html)->not->toContain('table-filter:set');
+            ->and($html)->not->toContain('atom.tableFilter');
     });
 });
 

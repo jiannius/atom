@@ -25,7 +25,7 @@ if (!filled($attributes->get('label'))) {
 // do-clear listener so "Clear all" (or the chip's own x) empties the box too.
 // The key is the one the select and date filters use. A search with no binding
 // keeps the plain enter-to-refresh behaviour.
-$filterKey = $attributes->wire('model')->value() ?: $attributes->get('data-filter-key');
+$filterKey = \Jiannius\Atom\Services\TableFilterChip::key($attributes);
 
 // The chip is named by the placeholder, and the bar appends its own ':', so a
 // trailing "..." or ellipsis would read "Search customers...:".
@@ -70,7 +70,7 @@ x-data="{
     report (value) {
         value = String(value ?? '').trim()
 
-        this.$dispatch('table-filter:set', { key: @js($filterKey), label: @js($chipLabel), operator: ':', display: value === '' ? null : value })
+        atom.tableFilter.set(this.$dispatch, @js($filterKey), @js($chipLabel), { operator: ':', display: value === '' ? null : value })
     },
     emit () {
         // $el is whichever element is calling (the input on Enter, the wrapper otherwise)
@@ -80,7 +80,7 @@ x-data="{
 x-init="$nextTick(() => emit())"
 x-on:change="emit()"
 x-on:table-filter:do-clear.window="
-    if ($event.detail.key === @js($filterKey)) {
+    if (atom.tableFilter.cleared($event, @js($filterKey))) {
         const input = $el.querySelector('input')
 
         if (input.hasAttribute('data-atom-disabled')) return

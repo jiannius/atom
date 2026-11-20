@@ -13,18 +13,17 @@ function renderSelect(string $attrs): string
 it('leaves a select alone when the flag is absent', function (string $variant) {
     $html = renderSelect('variant="'.$variant.'" label="Colour" wire:model="filters.colour"');
 
-    expect($html)->not->toContain('table-filter:set')
+    expect($html)->not->toContain('atom.tableFilter')
         ->and($html)->not->toContain('table-filter:do-clear');
 })->with(['listbox', 'native']);
 
 it('registers as a chip when flagged, keyed by the model', function (string $variant) {
     $html = renderSelect('variant="'.$variant.'" label="Colour" wire:model="filters.colour" table-filter');
 
-    expect($html)->toContain('table-filter:set')
+    // the helper dispatches table-filter:set and, on a change, the table's selection reset (resources/js/helpers/table-filter.js)
+    expect($html)->toContain('atom.tableFilter.register(')
         ->and($html)->toContain("key: 'filters.colour'")
-        ->and($html)->toContain('table-filter:do-clear.window')
-        // and the change fires the table's selection reset, as a bar control does
-        ->and($html)->toContain('table-filter:changed');
+        ->and($html)->toContain('table-filter:do-clear.window');
 })->with(['listbox', 'native']);
 
 it('names the chip after the field label', function (string $variant) {
@@ -43,7 +42,7 @@ it('falls back to the key when the field has no label', function (string $varian
 it('takes data-filter-key when there is no wire:model', function (string $variant) {
     $html = renderSelect('variant="'.$variant.'" label="Colour" x-model="filters.colour" data-filter-key="filters.colour" table-filter');
 
-    expect($html)->toContain('table-filter:set')
+    expect($html)->toContain('atom.tableFilter.register(')
         ->and($html)->toContain("key: 'filters.colour'");
 })->with(['listbox', 'native']);
 
@@ -52,7 +51,7 @@ it('stays silent when flagged with nothing to key the chip by', function (string
     // the flag is a no-op rather than half a registration
     $html = renderSelect('variant="'.$variant.'" label="Colour" table-filter');
 
-    expect($html)->not->toContain('table-filter:set');
+    expect($html)->not->toContain('atom.tableFilter');
 })->with(['listbox', 'native']);
 
 it('keeps the flag out of the rendered markup', function (string $variant) {

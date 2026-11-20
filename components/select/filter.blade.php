@@ -11,7 +11,7 @@
 ])
 
 @php
-$filterKey = $attributes->wire('model')->value() ?: $attributes->get('data-filter-key');
+$filterKey = \Jiannius\Atom\Services\TableFilterChip::key($attributes);
 
 $options = is_array($options) || $options instanceof \Illuminate\Support\Collection
     ? collect($options)->map(fn ($option) => is_enum($option) ? $option->option() : $option)->toArray()
@@ -80,18 +80,17 @@ class="group/select"
 @if ($add && ! $multiple) x-show="selfChip || isEmpty" @endif
 @if ($add) x-bind:data-atom-filter-active="chipState ? '' : null" @endif
 @if ($filterKey)
-x-init="
-    const emit = () => $dispatch('table-filter:set', {
-        key: @js($filterKey),
-        label: @js(t($label)),
+x-init="atom.tableFilter.register({ $dispatch, $nextTick, $watch }, {
+    key: @js($filterKey),
+    label: @js(t($label)),
+    watch: 'selectValue',
+    detail: () => ({
         display: filterDisplay,
         self: selfChip,
         @if ($multiple) operator: selfChip ? @js(t('is any of')) : undefined, @endif
-    });
-    $nextTick(emit);
-    $watch('selectValue', () => { $nextTick(emit); $dispatch('table-filter:changed') });
-"
-x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clear()"
+    }),
+})"
+x-on:table-filter:do-clear.window="atom.tableFilter.cleared($event, @js($filterKey)) && clear()"
 @endif
 {{ $attributes->except('class') }}>
     {{-- the dropdown root is the own chip while there is one (body + x), so it answers to the bar's chip selector --}}
