@@ -280,6 +280,17 @@ for (const tw of ['floor', 'latest']) {
       })
     }
 
+    // the nearest tint wins whatever the order of the tint blocks: blush comes after sage in the file, and a per-tint
+    // `[blush] .dark` selector once beat the sage island inside it
+    for (const outer of ['slate', 'blush']) {
+      test(`a dark island inside a sage subtree of a ${outer} page is dark sage`, async ({ page }) => {
+        await open(page, { tw, tint: outer })
+
+        expect(await colorOf(page, 'tint-island-dark', 'backgroundColor')).toBe('rgb(18, 21, 19)')
+        expect(await colorOf(page, 'tint-dark-self', 'backgroundColor')).toBe('rgb(18, 21, 19)')
+      })
+    }
+
     test('an unknown tint leaves the page warm', async ({ page }) => {
       await open(page, { tw, tint: 'nope' })
       expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(251, 250, 248)')

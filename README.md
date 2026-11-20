@@ -73,7 +73,7 @@ A tint changes the neutral feel of a product while every component stays the sam
 | `mist` | A faint violet. |
 | `blush` | A faint rose. |
 
-Set one for the whole app in `config/atom.php` (`'tint' => 'slate'`), or per page with `<atom:html tint="slate">` or a layout's `tint`. It is a `data-atom-tint` attribute, so any element can carry one for its subtree (a preview, a dark island inside a tinted page follows the tint too). Pair a tint with an accent of your own; the tint never sets one.
+Set one for the whole app in `config/atom.php` (`'tint' => 'slate'`), or per page with `<atom:html tint="slate">` or a layout's `tint`. It is a `data-atom-tint` attribute, so any element can carry one for its subtree; the nearest tint wins, and a dark island inside a tinted element takes that tint's dark side. Pair a tint with an accent of your own; the tint never sets one. A tint set per page or per layout carries across `wire:navigate`, which copies the new page's `<html>` attributes. The modal and palette scrims stay atom's warm near-black and the lightbox's black; at their opacity the tint does not show.
 
 ### Page boilerplate
 

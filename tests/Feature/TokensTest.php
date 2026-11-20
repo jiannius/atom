@@ -502,20 +502,53 @@ describe('type, radius and the integration file', function () {
 const TOKEN_TINTS = ['paper', 'slate', 'graphite', 'sage', 'mist', 'blush'];
 
 /**
- * The light and dark blocks of a tint, then each laid over the theme it overrides.
+ * A tint's light values (the ramps and --atom-tint-* read as the roles they feed) and its dark values (--atom-tint-dark-*
+ * read the same way), then each laid over the theme it overrides.
  *
  * @return array{0: array<string, string>, 1: array<string, string>, light: array<string, string>, dark: array<string, string>}
  */
 function tintBlocks(string $tint): array
 {
     $css = tokenCss();
-    $light = tokenBlock($css, '[data-atom-tint="'.$tint.'"]');
-    $dark = tokenBlock($css, '.dark[data-atom-tint="'.$tint.'"], .dark [data-atom-tint="'.$tint.'"], [data-atom-tint="'.$tint.'"] .dark');
+    $light = [];
+    $dark = [];
+
+    foreach (tokenBlock($css, '[data-atom-tint="'.$tint.'"]') as $name => $value) {
+        match (true) {
+            str_starts_with($name, '--atom-tint-dark-') => $dark['--atom-'.substr($name, 17)] = $value,
+            str_starts_with($name, '--atom-tint-') => $light['--atom-'.substr($name, 12)] = $value,
+            default => $light[$name] = $value,
+        };
+    }
 
     return [$light, $dark, 'light' => $light + tokenBlock($css, ':root'), 'dark' => $dark + tokenBlock($css, '.dark')];
 }
 
 describe('tints', function () {
+    it('turns every tint variable into its role in one shared rule per theme, with the default as the fallback', function () {
+        $css = tokenCss();
+        $sharedLight = tokenBlock($css, '[data-atom-tint]');
+        $sharedDark = tokenBlock($css, '.dark[data-atom-tint], .dark [data-atom-tint], [data-atom-tint] .dark');
+        $root = tokenBlock($css, ':root');
+        $rootDark = tokenBlock($css, '.dark');
+        [$light, $dark] = tintBlocks('paper');
+        $roles = array_filter(array_keys($light), fn (string $name) => str_starts_with($name, '--atom-'));
+
+        expect(array_keys($sharedLight))->toBe(array_values($roles))
+            ->and(array_keys($sharedDark))->toBe(array_keys($dark));
+
+        foreach ($sharedLight as $name => $value) {
+            expect($value)->toBe('var(--atom-tint-'.substr($name, 7).', '.$root[$name].')', $name);
+        }
+
+        foreach ($sharedDark as $name => $value) {
+            expect($value)->toBe('var(--atom-tint-dark-'.substr($name, 7).', '.$rootDark[$name].')', $name);
+        }
+
+        // no per-tint selector may set a role itself: only the shared rules do, so the nearest tint wins by inheritance
+        expect(preg_match('/\[data-atom-tint="[a-z-]+"\][^{]*\.dark|\.dark[^{,]*\[data-atom-tint="/', $css))->toBe(0);
+    });
+
     it('defines the same tokens in every tint, and every light-tint role again in dark', function () {
         [$paperLight, $paperDark] = tintBlocks('paper');
 

@@ -273,11 +273,49 @@
     /* ----------------------------------------------------------------------------------------------
        Tints. A product's neutral feel: data-atom-tint on any element (<atom:html tint> puts it on <html>) swaps the hue of the
        neutral roles and of the zinc and gray ramps, in light and dark. Each step keeps the lightness of the warm default (paper),
-       so every contrast ratio above holds in every tint; the tones, the accent, radius, type and density do not change. paper
+       so every contrast ratio above holds in every tint; the tones, the accent, radius, type and density do not change.
+
+       A tint sets only --atom-tint-* variables (and the ramps); two shared rules turn them into the roles, the light one on a
+       tinted element and the dark one on a tinted element inside or on .dark and on a .dark inside a tinted element. The
+       variables inherit, so the NEAREST tint wins whatever the order of the blocks below (a per-tint dark selector would let a
+       later tint's `[x] .dark` beat an inner tint). A name with no block falls back to the inherited tint, or to paper. paper
        restates the defaults so a subtree can return to them. Generated, not hand-tuned: each value is the paper value with its
        OKLCH hue set to the tint's and its chroma scaled (slate 255 x1.5, graphite x0, sage 155 x1.35, mist 290 x1.4,
-       blush 25 x1.25). The dark selectors are two classes deep so they beat the one-class light block on the same element.
+       blush 25 x1.25).
        ---------------------------------------------------------------------------------------------- */
+
+    /* every tinted element reads its roles from the tint variables the nearest tint left it */
+    [data-atom-tint] {
+        --atom-canvas: var(--atom-tint-canvas, #fbfaf8);
+        --atom-surface-sunken: var(--atom-tint-surface-sunken, #f3f1ed);
+        --atom-fg: var(--atom-tint-fg, #1b1a17);
+        --atom-fg-muted: var(--atom-tint-fg-muted, #5f5b53);
+        --atom-fg-subtle: var(--atom-tint-fg-subtle, #6f6b62);
+        --atom-neutral-bg: var(--atom-tint-neutral-bg, #eeece7);
+        --atom-neutral-fg: var(--atom-tint-neutral-fg, #57534b);
+        --atom-border: var(--atom-tint-border, rgba(45, 32, 8, 0.1));
+        --atom-border-strong: var(--atom-tint-border-strong, rgba(45, 32, 8, 0.17));
+        --atom-control-border: var(--atom-tint-control-border, rgba(45, 32, 8, 0.17));
+        --atom-shadow-pop: var(--atom-tint-shadow-pop, 0 8px 28px rgba(30, 20, 0, 0.1), 0 1px 3px rgba(30, 20, 0, 0.08));
+    }
+
+    .dark[data-atom-tint],
+    .dark [data-atom-tint],
+    [data-atom-tint] .dark {
+        --atom-canvas: var(--atom-tint-dark-canvas, #151412);
+        --atom-surface: var(--atom-tint-dark-surface, #1c1b19);
+        --atom-surface-sunken: var(--atom-tint-dark-surface-sunken, #111110);
+        --atom-surface-raised: var(--atom-tint-dark-surface-raised, #242321);
+        --atom-control-border: var(--atom-tint-dark-control-border, #726e65);
+        --atom-fg: var(--atom-tint-dark-fg, #ecebe7);
+        --atom-fg-muted: var(--atom-tint-dark-fg-muted, #a6a297);
+        --atom-fg-subtle: var(--atom-tint-dark-fg-subtle, #928e84);
+        --atom-neutral-bg: var(--atom-tint-dark-neutral-bg, #2a2926);
+        --atom-neutral-fg: var(--atom-tint-dark-neutral-fg, #b8b3a8);
+        --atom-border: var(--atom-tint-dark-border, rgba(255, 245, 225, 0.085));
+        --atom-border-strong: var(--atom-tint-dark-border-strong, rgba(255, 245, 225, 0.15));
+        --atom-shadow-pop: var(--atom-tint-dark-shadow-pop, 0 8px 28px rgba(0, 0, 0, 0.45));
+    }
 
     /* paper: warm stone, the default */
     [data-atom-tint="paper"] {
@@ -303,35 +341,30 @@
         --color-gray-800: #2a2926;
         --color-gray-900: #1c1b19;
         --color-gray-950: #151412;
-        --atom-canvas: #fbfaf8;
-        --atom-surface-sunken: #f3f1ed;
-        --atom-fg: #1b1a17;
-        --atom-fg-muted: #5f5b53;
-        --atom-fg-subtle: #6f6b62;
-        --atom-neutral-bg: #eeece7;
-        --atom-neutral-fg: #57534b;
-        --atom-border: rgba(45, 32, 8, 0.1);
-        --atom-border-strong: rgba(45, 32, 8, 0.17);
-        --atom-control-border: rgba(45, 32, 8, 0.17);
-        --atom-shadow-pop: 0 8px 28px rgba(30, 20, 0, 0.1), 0 1px 3px rgba(30, 20, 0, 0.08);
-    }
-
-    .dark[data-atom-tint="paper"],
-    .dark [data-atom-tint="paper"],
-    [data-atom-tint="paper"] .dark {
-        --atom-canvas: #151412;
-        --atom-surface: #1c1b19;
-        --atom-surface-sunken: #111110;
-        --atom-surface-raised: #242321;
-        --atom-control-border: #726e65;
-        --atom-fg: #ecebe7;
-        --atom-fg-muted: #a6a297;
-        --atom-fg-subtle: #928e84;
-        --atom-neutral-bg: #2a2926;
-        --atom-neutral-fg: #b8b3a8;
-        --atom-border: rgba(255, 245, 225, 0.085);
-        --atom-border-strong: rgba(255, 245, 225, 0.15);
-        --atom-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
+        --atom-tint-canvas: #fbfaf8;
+        --atom-tint-surface-sunken: #f3f1ed;
+        --atom-tint-fg: #1b1a17;
+        --atom-tint-fg-muted: #5f5b53;
+        --atom-tint-fg-subtle: #6f6b62;
+        --atom-tint-neutral-bg: #eeece7;
+        --atom-tint-neutral-fg: #57534b;
+        --atom-tint-border: rgba(45, 32, 8, 0.1);
+        --atom-tint-border-strong: rgba(45, 32, 8, 0.17);
+        --atom-tint-control-border: rgba(45, 32, 8, 0.17);
+        --atom-tint-shadow-pop: 0 8px 28px rgba(30, 20, 0, 0.1), 0 1px 3px rgba(30, 20, 0, 0.08);
+        --atom-tint-dark-canvas: #151412;
+        --atom-tint-dark-surface: #1c1b19;
+        --atom-tint-dark-surface-sunken: #111110;
+        --atom-tint-dark-surface-raised: #242321;
+        --atom-tint-dark-control-border: #726e65;
+        --atom-tint-dark-fg: #ecebe7;
+        --atom-tint-dark-fg-muted: #a6a297;
+        --atom-tint-dark-fg-subtle: #928e84;
+        --atom-tint-dark-neutral-bg: #2a2926;
+        --atom-tint-dark-neutral-fg: #b8b3a8;
+        --atom-tint-dark-border: rgba(255, 245, 225, 0.085);
+        --atom-tint-dark-border-strong: rgba(255, 245, 225, 0.15);
+        --atom-tint-dark-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
     }
 
     /* slate: cool blue-grey */
@@ -358,35 +391,30 @@
         --color-gray-800: #26292d;
         --color-gray-900: #191b1e;
         --color-gray-950: #121417;
-        --atom-canvas: #f8fafd;
-        --atom-surface-sunken: #edf2f7;
-        --atom-fg: #171a1e;
-        --atom-fg-muted: #545c67;
-        --atom-fg-subtle: #636c78;
-        --atom-neutral-bg: #e8edf3;
-        --atom-neutral-fg: #4c545f;
-        --atom-border: rgba(12, 35, 63, 0.1);
-        --atom-border-strong: rgba(12, 35, 63, 0.17);
-        --atom-control-border: rgba(12, 35, 63, 0.17);
-        --atom-shadow-pop: 0 8px 28px rgba(4, 11, 24, 0.1), 0 1px 3px rgba(4, 11, 24, 0.08);
-    }
-
-    .dark[data-atom-tint="slate"],
-    .dark [data-atom-tint="slate"],
-    [data-atom-tint="slate"] .dark {
-        --atom-canvas: #121417;
-        --atom-surface: #191b1e;
-        --atom-surface-sunken: #101112;
-        --atom-surface-raised: #212326;
-        --atom-control-border: #666f7b;
-        --atom-fg: #e7ebf1;
-        --atom-fg-muted: #98a3b2;
-        --atom-fg-subtle: #858f9d;
-        --atom-neutral-bg: #26292d;
-        --atom-neutral-fg: #a9b5c3;
-        --atom-border: rgba(227, 248, 255, 0.085);
-        --atom-border-strong: rgba(227, 248, 255, 0.15);
-        --atom-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
+        --atom-tint-canvas: #f8fafd;
+        --atom-tint-surface-sunken: #edf2f7;
+        --atom-tint-fg: #171a1e;
+        --atom-tint-fg-muted: #545c67;
+        --atom-tint-fg-subtle: #636c78;
+        --atom-tint-neutral-bg: #e8edf3;
+        --atom-tint-neutral-fg: #4c545f;
+        --atom-tint-border: rgba(12, 35, 63, 0.1);
+        --atom-tint-border-strong: rgba(12, 35, 63, 0.17);
+        --atom-tint-control-border: rgba(12, 35, 63, 0.17);
+        --atom-tint-shadow-pop: 0 8px 28px rgba(4, 11, 24, 0.1), 0 1px 3px rgba(4, 11, 24, 0.08);
+        --atom-tint-dark-canvas: #121417;
+        --atom-tint-dark-surface: #191b1e;
+        --atom-tint-dark-surface-sunken: #101112;
+        --atom-tint-dark-surface-raised: #212326;
+        --atom-tint-dark-control-border: #666f7b;
+        --atom-tint-dark-fg: #e7ebf1;
+        --atom-tint-dark-fg-muted: #98a3b2;
+        --atom-tint-dark-fg-subtle: #858f9d;
+        --atom-tint-dark-neutral-bg: #26292d;
+        --atom-tint-dark-neutral-fg: #a9b5c3;
+        --atom-tint-dark-border: rgba(227, 248, 255, 0.085);
+        --atom-tint-dark-border-strong: rgba(227, 248, 255, 0.15);
+        --atom-tint-dark-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
     }
 
     /* graphite: neutral grey, no tint */
@@ -413,35 +441,30 @@
         --color-gray-800: #292929;
         --color-gray-900: #1b1b1b;
         --color-gray-950: #141414;
-        --atom-canvas: #fafafa;
-        --atom-surface-sunken: #f1f1f1;
-        --atom-fg: #1a1a1a;
-        --atom-fg-muted: #5b5b5b;
-        --atom-fg-subtle: #6b6b6b;
-        --atom-neutral-bg: #ececec;
-        --atom-neutral-fg: #535353;
-        --atom-border: rgba(34, 34, 34, 0.1);
-        --atom-border-strong: rgba(34, 34, 34, 0.17);
-        --atom-control-border: rgba(34, 34, 34, 0.17);
-        --atom-shadow-pop: 0 8px 28px rgba(11, 11, 11, 0.1), 0 1px 3px rgba(11, 11, 11, 0.08);
-    }
-
-    .dark[data-atom-tint="graphite"],
-    .dark [data-atom-tint="graphite"],
-    [data-atom-tint="graphite"] .dark {
-        --atom-canvas: #141414;
-        --atom-surface: #1b1b1b;
-        --atom-surface-sunken: #111111;
-        --atom-surface-raised: #232323;
-        --atom-control-border: #6e6e6e;
-        --atom-fg: #ebebeb;
-        --atom-fg-muted: #a2a2a2;
-        --atom-fg-subtle: #8e8e8e;
-        --atom-neutral-bg: #292929;
-        --atom-neutral-fg: #b3b3b3;
-        --atom-border: rgba(246, 246, 246, 0.085);
-        --atom-border-strong: rgba(246, 246, 246, 0.15);
-        --atom-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
+        --atom-tint-canvas: #fafafa;
+        --atom-tint-surface-sunken: #f1f1f1;
+        --atom-tint-fg: #1a1a1a;
+        --atom-tint-fg-muted: #5b5b5b;
+        --atom-tint-fg-subtle: #6b6b6b;
+        --atom-tint-neutral-bg: #ececec;
+        --atom-tint-neutral-fg: #535353;
+        --atom-tint-border: rgba(34, 34, 34, 0.1);
+        --atom-tint-border-strong: rgba(34, 34, 34, 0.17);
+        --atom-tint-control-border: rgba(34, 34, 34, 0.17);
+        --atom-tint-shadow-pop: 0 8px 28px rgba(11, 11, 11, 0.1), 0 1px 3px rgba(11, 11, 11, 0.08);
+        --atom-tint-dark-canvas: #141414;
+        --atom-tint-dark-surface: #1b1b1b;
+        --atom-tint-dark-surface-sunken: #111111;
+        --atom-tint-dark-surface-raised: #232323;
+        --atom-tint-dark-control-border: #6e6e6e;
+        --atom-tint-dark-fg: #ebebeb;
+        --atom-tint-dark-fg-muted: #a2a2a2;
+        --atom-tint-dark-fg-subtle: #8e8e8e;
+        --atom-tint-dark-neutral-bg: #292929;
+        --atom-tint-dark-neutral-fg: #b3b3b3;
+        --atom-tint-dark-border: rgba(246, 246, 246, 0.085);
+        --atom-tint-dark-border-strong: rgba(246, 246, 246, 0.15);
+        --atom-tint-dark-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
     }
 
     /* sage: a faint green */
@@ -468,35 +491,30 @@
         --color-gray-800: #262a27;
         --color-gray-900: #191c1a;
         --color-gray-950: #121513;
-        --atom-canvas: #f8fbf9;
-        --atom-surface-sunken: #edf3ef;
-        --atom-fg: #171b18;
-        --atom-fg-muted: #545f57;
-        --atom-fg-subtle: #636f66;
-        --atom-neutral-bg: #e8eee9;
-        --atom-neutral-fg: #4c574f;
-        --atom-border: rgba(5, 42, 22, 0.1);
-        --atom-border-strong: rgba(5, 42, 22, 0.17);
-        --atom-control-border: rgba(5, 42, 22, 0.17);
-        --atom-shadow-pop: 0 8px 28px rgba(2, 15, 6, 0.1), 0 1px 3px rgba(2, 15, 6, 0.08);
-    }
-
-    .dark[data-atom-tint="sage"],
-    .dark [data-atom-tint="sage"],
-    [data-atom-tint="sage"] .dark {
-        --atom-canvas: #121513;
-        --atom-surface: #191c1a;
-        --atom-surface-sunken: #101110;
-        --atom-surface-raised: #212422;
-        --atom-control-border: #667269;
-        --atom-fg: #e7ede9;
-        --atom-fg-muted: #98a79c;
-        --atom-fg-subtle: #859289;
-        --atom-neutral-bg: #262a27;
-        --atom-neutral-fg: #a9b8ad;
-        --atom-border: rgba(227, 254, 235, 0.085);
-        --atom-border-strong: rgba(227, 254, 235, 0.15);
-        --atom-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
+        --atom-tint-canvas: #f8fbf9;
+        --atom-tint-surface-sunken: #edf3ef;
+        --atom-tint-fg: #171b18;
+        --atom-tint-fg-muted: #545f57;
+        --atom-tint-fg-subtle: #636f66;
+        --atom-tint-neutral-bg: #e8eee9;
+        --atom-tint-neutral-fg: #4c574f;
+        --atom-tint-border: rgba(5, 42, 22, 0.1);
+        --atom-tint-border-strong: rgba(5, 42, 22, 0.17);
+        --atom-tint-control-border: rgba(5, 42, 22, 0.17);
+        --atom-tint-shadow-pop: 0 8px 28px rgba(2, 15, 6, 0.1), 0 1px 3px rgba(2, 15, 6, 0.08);
+        --atom-tint-dark-canvas: #121513;
+        --atom-tint-dark-surface: #191c1a;
+        --atom-tint-dark-surface-sunken: #101110;
+        --atom-tint-dark-surface-raised: #212422;
+        --atom-tint-dark-control-border: #667269;
+        --atom-tint-dark-fg: #e7ede9;
+        --atom-tint-dark-fg-muted: #98a79c;
+        --atom-tint-dark-fg-subtle: #859289;
+        --atom-tint-dark-neutral-bg: #262a27;
+        --atom-tint-dark-neutral-fg: #a9b8ad;
+        --atom-tint-dark-border: rgba(227, 254, 235, 0.085);
+        --atom-tint-dark-border-strong: rgba(227, 254, 235, 0.15);
+        --atom-tint-dark-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
     }
 
     /* mist: a faint violet */
@@ -523,35 +541,30 @@
         --color-gray-800: #29282d;
         --color-gray-900: #1b1b1e;
         --color-gray-950: #141417;
-        --atom-canvas: #fafafd;
-        --atom-surface-sunken: #f1f0f6;
-        --atom-fg: #1a191e;
-        --atom-fg-muted: #5b5a66;
-        --atom-fg-subtle: #6b6a77;
-        --atom-neutral-bg: #ecebf3;
-        --atom-neutral-fg: #53525e;
-        --atom-border: rgba(34, 29, 61, 0.1);
-        --atom-border-strong: rgba(34, 29, 61, 0.17);
-        --atom-control-border: rgba(34, 29, 61, 0.17);
-        --atom-shadow-pop: 0 8px 28px rgba(11, 9, 23, 0.1), 0 1px 3px rgba(11, 9, 23, 0.08);
-    }
-
-    .dark[data-atom-tint="mist"],
-    .dark [data-atom-tint="mist"],
-    [data-atom-tint="mist"] .dark {
-        --atom-canvas: #141417;
-        --atom-surface: #1b1b1e;
-        --atom-surface-sunken: #111112;
-        --atom-surface-raised: #232326;
-        --atom-control-border: #6e6d7a;
-        --atom-fg: #ebeaf0;
-        --atom-fg-muted: #a2a0b0;
-        --atom-fg-subtle: #8e8c9b;
-        --atom-neutral-bg: #29282d;
-        --atom-neutral-fg: #b3b1c2;
-        --atom-border: rgba(245, 242, 255, 0.085);
-        --atom-border-strong: rgba(245, 242, 255, 0.15);
-        --atom-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
+        --atom-tint-canvas: #fafafd;
+        --atom-tint-surface-sunken: #f1f0f6;
+        --atom-tint-fg: #1a191e;
+        --atom-tint-fg-muted: #5b5a66;
+        --atom-tint-fg-subtle: #6b6a77;
+        --atom-tint-neutral-bg: #ecebf3;
+        --atom-tint-neutral-fg: #53525e;
+        --atom-tint-border: rgba(34, 29, 61, 0.1);
+        --atom-tint-border-strong: rgba(34, 29, 61, 0.17);
+        --atom-tint-control-border: rgba(34, 29, 61, 0.17);
+        --atom-tint-shadow-pop: 0 8px 28px rgba(11, 9, 23, 0.1), 0 1px 3px rgba(11, 9, 23, 0.08);
+        --atom-tint-dark-canvas: #141417;
+        --atom-tint-dark-surface: #1b1b1e;
+        --atom-tint-dark-surface-sunken: #111112;
+        --atom-tint-dark-surface-raised: #232326;
+        --atom-tint-dark-control-border: #6e6d7a;
+        --atom-tint-dark-fg: #ebeaf0;
+        --atom-tint-dark-fg-muted: #a2a0b0;
+        --atom-tint-dark-fg-subtle: #8e8c9b;
+        --atom-tint-dark-neutral-bg: #29282d;
+        --atom-tint-dark-neutral-fg: #b3b1c2;
+        --atom-tint-dark-border: rgba(245, 242, 255, 0.085);
+        --atom-tint-dark-border-strong: rgba(245, 242, 255, 0.15);
+        --atom-tint-dark-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
     }
 
     /* blush: a faint rose */
@@ -578,35 +591,30 @@
         --color-gray-800: #2c2827;
         --color-gray-900: #1d1a1a;
         --color-gray-950: #161313;
-        --atom-canvas: #fdf9f9;
-        --atom-surface-sunken: #f6f0ef;
-        --atom-fg: #1d1918;
-        --atom-fg-muted: #655857;
-        --atom-fg-subtle: #766866;
-        --atom-neutral-bg: #f2eae9;
-        --atom-neutral-fg: #5d504f;
-        --atom-border: rgba(56, 23, 21, 0.1);
-        --atom-border-strong: rgba(56, 23, 21, 0.17);
-        --atom-control-border: rgba(56, 23, 21, 0.17);
-        --atom-shadow-pop: 0 8px 28px rgba(22, 6, 5, 0.1), 0 1px 3px rgba(22, 6, 5, 0.08);
-    }
-
-    .dark[data-atom-tint="blush"],
-    .dark [data-atom-tint="blush"],
-    [data-atom-tint="blush"] .dark {
-        --atom-canvas: #161313;
-        --atom-surface: #1d1a1a;
-        --atom-surface-sunken: #121110;
-        --atom-surface-raised: #262222;
-        --atom-control-border: #796b69;
-        --atom-fg: #f0e9e9;
-        --atom-fg-muted: #af9e9c;
-        --atom-fg-subtle: #9a8a88;
-        --atom-neutral-bg: #2c2827;
-        --atom-neutral-fg: #c0afad;
-        --atom-border: rgba(255, 237, 234, 0.085);
-        --atom-border-strong: rgba(255, 237, 234, 0.15);
-        --atom-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
+        --atom-tint-canvas: #fdf9f9;
+        --atom-tint-surface-sunken: #f6f0ef;
+        --atom-tint-fg: #1d1918;
+        --atom-tint-fg-muted: #655857;
+        --atom-tint-fg-subtle: #766866;
+        --atom-tint-neutral-bg: #f2eae9;
+        --atom-tint-neutral-fg: #5d504f;
+        --atom-tint-border: rgba(56, 23, 21, 0.1);
+        --atom-tint-border-strong: rgba(56, 23, 21, 0.17);
+        --atom-tint-control-border: rgba(56, 23, 21, 0.17);
+        --atom-tint-shadow-pop: 0 8px 28px rgba(22, 6, 5, 0.1), 0 1px 3px rgba(22, 6, 5, 0.08);
+        --atom-tint-dark-canvas: #161313;
+        --atom-tint-dark-surface: #1d1a1a;
+        --atom-tint-dark-surface-sunken: #121110;
+        --atom-tint-dark-surface-raised: #262222;
+        --atom-tint-dark-control-border: #796b69;
+        --atom-tint-dark-fg: #f0e9e9;
+        --atom-tint-dark-fg-muted: #af9e9c;
+        --atom-tint-dark-fg-subtle: #9a8a88;
+        --atom-tint-dark-neutral-bg: #2c2827;
+        --atom-tint-dark-neutral-fg: #c0afad;
+        --atom-tint-dark-border: rgba(255, 237, 234, 0.085);
+        --atom-tint-dark-border-strong: rgba(255, 237, 234, 0.15);
+        --atom-tint-dark-shadow-pop: 0 8px 28px rgba(0, 0, 0, 0.45);
     }
 
     /* ----------------------------------------------------------------------------------------------

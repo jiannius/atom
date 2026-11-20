@@ -118,7 +118,11 @@ $roles = [
     {{-- a sage subtree inside the page, in the page's own theme --}}
     <section class="rounded-panel border bg-canvas p-3 text-fg" data-atom-tint="sage" data-testid="tint-island">
         <span class="inline-block rounded-control bg-zinc-100 px-2 text-sm" data-testid="tint-island-zinc">zinc-100</span>
+        <div class="dark rounded-control bg-canvas p-2 text-fg" data-testid="tint-island-dark">dark inside sage</div>
     </section>
+
+    {{-- a dark sage island that carries its own tint --}}
+    <section class="dark rounded-panel bg-canvas p-3 text-fg" data-atom-tint="sage" data-testid="tint-dark-self">dark sage</section>
 </div>
 
 @livewireScripts
