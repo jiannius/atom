@@ -13,12 +13,12 @@ $disabledBy = $attributes->get('data-atom-disabled');
 
 /* The field recipe (see input/general); two 16px icons (clear, calendar) sit at the end. */
 $classes = Arr::toCssClasses([
-    'h-control w-full pl-2.5 pr-14 no-spinner rounded-control border bg-surface text-sm text-fg cursor-text',
+    'h-control w-full pl-2.5 pr-14 no-spinner rounded-control border text-sm',
+    $disabledBy ? 'cursor-not-allowed bg-surface-sunken text-fg-subtle' : 'cursor-text bg-surface text-fg',
     'placeholder:text-fg-subtle',
-    'disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-fg-subtle',
+    'disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-sunken disabled:text-fg-subtle',
     $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
     'focus-visible:outline-offset-0',
-    $disabledBy ? 'bg-surface-sunken text-fg-subtle cursor-not-allowed' : '',
     $disabledBy ? 'border-border' : ($invalid ? 'border-danger-fg' : 'border-control-border'),
     'group-has-[[data-atom-error]]/field:border-danger-fg' => ! $disabledBy,
     'group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',

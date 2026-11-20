@@ -19,11 +19,12 @@ $filterKey = $attributes->wire('model')->value() ?: $attributes->get('data-filte
 $classes = Arr::toCssClasses([
     'h-control w-full pl-2.5 pr-14 no-spinner rounded-control border bg-surface text-sm text-fg cursor-text',
     'placeholder:text-fg-subtle',
-    'disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-fg-subtle',
+    'disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-sunken disabled:text-fg-subtle',
     $invalid ? 'focus-visible:border-danger-fg' : 'focus-visible:border-focus',
     'focus-visible:outline-offset-0',
     $invalid ? 'border-danger-fg' : 'border-control-border',
-    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
+    'group-has-[[data-atom-error]]/field:border-danger-fg' => ! $disabledBy,
+    'group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
     '[[data-atom-disabled]_&]:bg-surface-sunken [[data-atom-disabled]_&]:text-fg-subtle [[data-atom-disabled]_&]:cursor-not-allowed [[data-atom-disabled]_&]:border-border',
     /* the faint border of the marker sorts above the focus variant, so a focused field in a disabled form gets its focus border back, one step more specific */
     $invalid ? '[[data-atom-disabled]_&]:focus-visible:border-danger-fg' : '[[data-atom-disabled]_&]:focus-visible:border-focus',

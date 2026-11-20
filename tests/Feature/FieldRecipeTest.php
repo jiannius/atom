@@ -106,3 +106,82 @@ it('pins the class set of every control in every state', function () {
     expect(file_exists($path))->toBeTrue("no snapshot at {$path}: run with UPDATE_FIELD_RECIPE=1 to write it");
     expect($matrix)->toBe(json_decode(file_get_contents($path), true));
 });
+
+/**
+ * The controls that pick their border from the state on the server (a disabled one is drawn with `border-border`, and a disabled
+ * one is never also drawn invalid), and so are held to the state rules below. A textarea, a native select and the range picker
+ * take the disabled look from a variant or the root's marker instead, so a plain border class says nothing about them.
+ *
+ * @return list<string>
+ */
+function fieldRecipeStateful(): array
+{
+    return ['input', 'input-email-single', 'input-tel', 'input-color', 'input-email-multiple', 'input-otp', 'date-picker', 'time-picker', 'select-listbox'];
+}
+
+/**
+ * Assert a control's tokens, naming the control and state in the failure.
+ *
+ * @param  list<string>  $classes
+ * @param  list<string>  $has
+ * @param  list<string>  $lacks
+ */
+function expectFieldTokens(array $classes, string $label, array $has = [], array $lacks = []): void
+{
+    foreach ($has as $token) {
+        expect(in_array($token, $classes, true))->toBeTrue("{$label} should carry {$token}");
+    }
+
+    foreach ($lacks as $token) {
+        expect(in_array($token, $classes, true))->toBeFalse("{$label} should not carry {$token}");
+    }
+}
+
+it('draws every control with one border per state: control, danger when invalid, faint when disabled (and then never danger)', function () {
+    $matrix = fieldRecipeMatrix();
+
+    foreach (array_keys(fieldRecipeControls()) as $control) {
+        expectFieldTokens($matrix["{$control} / default"], "{$control} / default", ['border-control-border'], ['border-danger-fg']);
+        expectFieldTokens($matrix["{$control} / invalid"], "{$control} / invalid", ['border-danger-fg']);
+    }
+
+    foreach (fieldRecipeStateful() as $control) {
+        foreach (['disabled', 'form-disabled', 'invalid-disabled'] as $state) {
+            expectFieldTokens($matrix["{$control} / {$state}"], "{$control} / {$state}", ['border-border'], ['border-control-border', 'border-danger-fg']);
+        }
+    }
+});
+
+it('keeps a field error from painting a disabled control, while a focused one still takes the focus border', function () {
+    $matrix = fieldRecipeMatrix();
+    $error = 'group-has-[[data-atom-error]]/field:border-danger-fg';
+    $focus = fn (string $control) => in_array($control, ['input-email-multiple', 'time-picker', 'select-native'], true)
+        ? 'group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg'
+        : 'group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg';
+
+    foreach (array_keys(fieldRecipeControls()) as $control) {
+        expectFieldTokens($matrix["{$control} / default"], "{$control} / default", [$error, $focus($control)]);
+
+        foreach (['disabled', 'form-disabled', 'invalid-disabled'] as $state) {
+            expectFieldTokens($matrix["{$control} / {$state}"], "{$control} / {$state}", [$focus($control)], [$error]);
+        }
+    }
+});
+
+it('gives every control the disabled variants of a client-driven disabled, and the shared geometry', function () {
+    $matrix = fieldRecipeMatrix();
+    $direct = ['disabled:cursor-not-allowed', 'disabled:border-border', 'disabled:bg-surface-sunken', 'disabled:text-fg-subtle'];
+
+    foreach (['input', 'input-email-single', 'input-tel', 'input-color', 'input-otp', 'textarea', 'date-picker', 'date-range', 'select-listbox'] as $control) {
+        expectFieldTokens($matrix["{$control} / default"], "{$control} / default", $direct);
+    }
+
+    foreach (['input-email-multiple' => 'input', 'time-picker' => 'input', 'select-native' => 'select'] as $control => $inner) {
+        expectFieldTokens($matrix["{$control} / default"], "{$control} / default", array_map(fn (string $utility) => "has-[{$inner}:disabled]:{$utility}", ['cursor-not-allowed', 'border-border', 'bg-surface-sunken', 'text-fg-subtle']));
+    }
+
+    foreach (array_keys(fieldRecipeControls()) as $control) {
+        // an OTP box is a 40px square digit, not a text line, so its size and type are its own
+        expectFieldTokens($matrix["{$control} / default"], "{$control} / default", $control === 'input-otp' ? ['rounded-control', 'border'] : ['rounded-control', 'border', 'text-sm', 'w-full']);
+    }
+});
