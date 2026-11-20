@@ -218,5 +218,11 @@ fbq('track', 'PageView');
 
 <script type="module" src="{{ app('atom')->asset()->version('atom.js') }}" data-navigate-once></script>
 
+@foreach ((array) $scripts as $script)
+@if ($src = safe_url($script))
+<script src="{{ $src }}" defer data-navigate-once></script>
+@endif
+@endforeach
+
 @stack('scripts')
 </html>

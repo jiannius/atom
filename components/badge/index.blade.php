@@ -30,6 +30,7 @@ $tone = \Jiannius\Atom\Services\Color::tone($color);
 
 $classes = Arr::toCssClasses([
     'inline-flex items-center justify-center rounded-pill font-medium whitespace-nowrap',
+    'gap-1' => $icon,
 
     match ($size) {
         'lg' => 'h-[26px] px-3 text-sm',
@@ -58,6 +59,10 @@ $classes = Arr::toCssClasses([
     {{ $attributes->except(['class', 'style']) }}
     style="{{ $style }}"
     data-atom-badge>
+        @if ($icon)
+            <x-dynamic-component :component="'atom::icon.'.$icon" @class([$size === 'lg' ? 'size-4' : 'size-3.5'])/>
+        @endif
+
         @if ($slot->isNotEmpty())
             {{ $slot }}
         @else
@@ -80,6 +85,10 @@ $classes = Arr::toCssClasses([
     {{ $attributes->except('class') }}
     data-atom-badge
     data-tone="{{ $tone }}">
+        @if ($icon)
+            <x-dynamic-component :component="'atom::icon.'.$icon" @class([$size === 'lg' ? 'size-4' : 'size-3.5'])/>
+        @endif
+
         @if ($slot->isNotEmpty())
             {{ $slot }}
         @else
