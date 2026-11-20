@@ -273,6 +273,31 @@ describe('dark mode is opt-in', function () {
     })->with(['layouts.sidebar', 'layouts.header', 'layouts.auth']);
 });
 
+describe('tint', function () {
+    it('prints no tint by default', function () {
+        expect(renderBlade('<atom:html :vite="false">x</atom:html>'))->not->toContain('data-atom-tint');
+    });
+
+    it('puts the tint on <html>, lowercased', function () {
+        expect(renderBlade('<atom:html :vite="false" tint="Slate">x</atom:html>'))->toMatch('/<html[^>]*data-atom-tint="slate"/');
+    });
+
+    it('reads config("atom.tint") when the tag passes none, and the tag wins', function () {
+        config(['atom.tint' => 'sage']);
+
+        expect(renderBlade('<atom:html :vite="false">x</atom:html>'))->toMatch('/<html[^>]*data-atom-tint="sage"/')
+            ->and(renderBlade('<atom:html :vite="false" tint="mist">x</atom:html>'))->toMatch('/<html[^>]*data-atom-tint="mist"/');
+    });
+
+    it('drops a value that is not a plain name', function (mixed $tint) {
+        expect(renderBlade('<atom:html :vite="false" :tint="$tint">x</atom:html>', ['tint' => $tint]))->not->toContain('data-atom-tint');
+    })->with(['quote' => '" onload="x', 'newline' => "slate\n", 'space' => 'sl ate', 'empty' => '', 'list' => [['slate']], 'bool' => true]);
+
+    it('is forwarded by every layout', function (string $layout) {
+        expect(renderBlade('<atom:'.$layout.' :vite="false" tint="graphite">Body</atom:'.$layout.'>'))->toMatch('/<html[^>]*data-atom-tint="graphite"/');
+    })->with(['layouts.sidebar', 'layouts.header', 'layouts.auth']);
+});
+
 // layouts.auth declared no `vite` prop and forwarded none, so the <atom:html>
 // inside it always resolved atom's own defaults — an app whose entries differ
 // could not use the layout at all, and it could not be render-tested.

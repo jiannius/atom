@@ -60,6 +60,21 @@ Import atom's tokens once, after Tailwind itself, and set your brand colour as t
 
 The file scans atom's own markup for utilities (no `@source` lines of your own), maps the type scale, weights, warm neutral ramp (`zinc` and `gray`), role and tone colours (light and dark), radius, density and the focus ring, and derives `accent-foreground`, `accent-hover`, `accent-soft` and `accent-ink` from the accent. Set one of those yourself only if you must. Overriding `--color-accent-ink` in `@theme` changes the `accent-ink` utilities only: `accent-content` and the focus ring read atom's own accent-ink role directly, so they keep following the accent. That is deliberate, so a nested `.dark` island still gets its own values; to recolour them too, set `--atom-accent-ink` and `--atom-focus` on the element that should carry them. Dark follows the `.dark` class that `<atom:html dark>` adds. With no `--color-accent` set the accent is near-black in light and flips to near-white (with a near-black label) in dark, so a primary button stays visible; a colour you set is the same in both themes. (atom owns the root's `color-scheme`: `light !important` on `<html>` while it is light and `dark !important` while `<html>` has the `dark` class, so keep `.dark` on `<html>` and know that a `html { color-scheme: ... }` of your own no longer applies; it would otherwise flip that default.)
 
+#### Tints
+
+A tint changes the neutral feel of a product while every component stays the same: it swaps the hue of the canvas, the sunken fill, the borders, the text greys, the neutral badge and the `zinc` and `gray` ramps, in light and dark. Each step keeps the lightness of the warm default, so every contrast ratio holds in every tint; the accent, the tones (success, warning and the rest), radius, type and density do not change.
+
+| Tint | Feel |
+|---|---|
+| `paper` | Warm stone, the default. |
+| `slate` | Cool blue-grey. |
+| `graphite` | Neutral grey, no tint. |
+| `sage` | A faint green. |
+| `mist` | A faint violet. |
+| `blush` | A faint rose. |
+
+Set one for the whole app in `config/atom.php` (`'tint' => 'slate'`), or per page with `<atom:html tint="slate">` or a layout's `tint`. It is a `data-atom-tint` attribute, so any element can carry one for its subtree (a preview, a dark island inside a tinted page follows the tint too). Pair a tint with an accent of your own; the tint never sets one.
+
 ### Page boilerplate
 
 Use `<atom:html>` once at the top of any full-page Blade view. It writes the `<html>`, `<head>`, meta tags, Tailwind base, atom's bundled CSS/JS, and your host app's Vite entry.
@@ -90,6 +105,7 @@ Useful `<atom:html>` props (all optional):
 | `gtm` / `ga` / `fbp` | Tracking IDs for GTM, GA, Facebook Pixel.                   |
 | `fonts`       | `geist` (default, also what `true` or `null` mean): Geist and Geist Mono, served by atom and both preloaded. Any other value is a Bunny Fonts family (`inter`, `open-sans`: letters, digits and hyphens only; anything else loads nothing) loaded from the CDN and put first in `--font-sans`. `false` loads no font, and `--font-sans` and `--font-mono` become the system stacks. |
 | `density`     | `comfortable` (default) or `compact`, in any case; anything else is `comfortable`. Printed as `data-atom-density` on `<body>`; `layouts.sidebar` and `layouts.header` default to `compact`, `layouts.auth` to `comfortable`. |
+| `tint`        | The neutral feel of the page: `paper` (the warm default), `slate`, `graphite`, `sage`, `mist` or `blush` (see [Tints](#tints)). Defaults to `config('atom.tint')`; printed lowercased as `data-atom-tint` on `<html>`, and a value that is not letters, digits and hyphens prints nothing. Every layout forwards it. |
 | `dark`        | Opts the page into dark mode (off by default, on every layout too). Adds `class="dark"` to `<html>` and emits the `window.darkmode()` bootstrap, which then follows the stored preference or, with none, the visitor's `prefers-color-scheme`. Required for `<atom:darkmode-toggle>` to work. |
 | `styles`      | Additional stylesheet URLs.                                         |
 | `scripts`     | Additional script URLs, each checked with `safe_url()` (an unsafe one is skipped), loaded `defer` and once across `wire:navigate`. |

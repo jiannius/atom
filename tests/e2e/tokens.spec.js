@@ -10,12 +10,12 @@ import { readFileSync } from 'node:fs'
 const ACCENTS = ['#f5c518', '#e8a011', '#1c1b18', '#e8632b', '#9f5afd', '#4c55c9', '#ffffff']
 const TONES = ['neutral', 'info', 'success', 'warning', 'danger', 'accent']
 
-async function open(page, { tw, dark = false, density = 'compact' }) {
+async function open(page, { tw, dark = false, density = 'compact', tint = null }) {
   const css = await page.request.get(`/atom/e2e/consumer-css/${tw}`)
   expect(css.status(), 'run `node tests/consumer/build.mjs` first').toBe(200)
 
   await page.emulateMedia({ colorScheme: dark ? 'dark' : 'light' })
-  await page.goto(`/atom/e2e/tokens?tw=${tw}&density=${density}${dark ? '&dark=1' : ''}`)
+  await page.goto(`/atom/e2e/tokens?tw=${tw}&density=${density}${dark ? '&dark=1' : ''}${tint ? `&tint=${tint}` : ''}`)
   await page.evaluate(() => document.fonts.ready)
 }
 
@@ -237,6 +237,52 @@ for (const tw of ['floor', 'latest']) {
         return { bg: s.backgroundColor, fg: s.color, scheme: getComputedStyle(document.documentElement).colorScheme }
       })
       expect(dark).toEqual({ bg: 'rgb(21, 20, 18)', fg: 'rgb(236, 235, 231)', scheme: 'dark' })
+    })
+
+    // A tint on <html> swaps the neutral roles and the zinc and gray ramps; the dark selectors must beat the light one on the
+    // same element, and a subtree can carry its own tint (or its own .dark) inside a tinted page.
+    test('a tint on <html> swaps the canvas, the ramps and the hairline in light', async ({ page }) => {
+      await open(page, { tw, tint: 'slate' })
+
+      const got = await page.evaluate(() => {
+        const s = getComputedStyle(document.documentElement)
+        return {
+          tint: document.documentElement.dataset.atomTint,
+          body: getComputedStyle(document.body).backgroundColor,
+          fg: getComputedStyle(document.body).color,
+          zinc: s.getPropertyValue('--color-zinc-100').trim(),
+          gray: s.getPropertyValue('--color-gray-900').trim(),
+        }
+      })
+      expect(got).toEqual({ tint: 'slate', body: 'rgb(248, 250, 253)', fg: 'rgb(23, 26, 30)', zinc: '#edf2f7', gray: '#191b1e' })
+      expect(await colorOf(page, 'role-canvas', 'borderTopColor')).toBe('rgba(12, 35, 63, 0.1)')
+      // the surfaces stay white and the tones stay as they are
+      expect(await colorOf(page, 'role-surface', 'backgroundColor')).toBe('rgb(255, 255, 255)')
+      expect(await colorOf(page, 'tone-success', 'backgroundColor')).toBe('rgb(226, 242, 230)')
+    })
+
+    test('the dark tint beats the light one on the same element, and a dark island in a tinted page is the dark tint', async ({ page }) => {
+      await open(page, { tw, tint: 'slate', dark: true })
+      expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(18, 20, 23)')
+      expect(await colorOf(page, 'role-surface', 'backgroundColor')).toBe('rgb(25, 27, 30)')
+
+      await open(page, { tw, tint: 'slate' })
+      expect(await colorOf(page, 'island', 'backgroundColor')).toBe('rgb(18, 20, 23)')
+      expect(await colorOf(page, 'island-focus', 'backgroundColor')).toBe('rgb(25, 27, 30)')
+    })
+
+    for (const dark of [false, true]) {
+      test(`a tinted subtree takes its own tint inside the page, in ${dark ? 'dark' : 'light'}`, async ({ page }) => {
+        await open(page, { tw, dark, tint: 'slate' })
+
+        expect(await colorOf(page, 'tint-island', 'backgroundColor')).toBe(dark ? 'rgb(18, 21, 19)' : 'rgb(248, 251, 249)')
+        expect(await colorOf(page, 'tint-island-zinc', 'backgroundColor')).toBe('rgb(237, 243, 239)')
+      })
+    }
+
+    test('an unknown tint leaves the page warm', async ({ page }) => {
+      await open(page, { tw, tint: 'nope' })
+      expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(251, 250, 248)')
     })
 
     for (const dark of [false, true]) {

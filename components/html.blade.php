@@ -12,6 +12,7 @@
     'fonts' => 'geist',
     'density' => 'comfortable',
     'dark' => false,
+    'tint' => null,
     'styles' => [],
     'scripts' => [],
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
@@ -34,10 +35,13 @@ $fonts = $fonts === null || $fonts === true ? 'geist' : $fonts;
 $family = is_string($fonts) && preg_match('/^[a-z0-9-]+\z/i', $fonts) ? $fonts : null;
 $selfHosted = $family && strtolower($family) === 'geist';
 $density = in_array(strtolower((string) $density), ['compact', 'comfortable'], true) ? strtolower((string) $density) : 'comfortable';
+// The neutral tint (atom.tailwind.css: paper, slate, graphite, sage, mist, blush). A name the CSS does not know matches no rule and the page stays paper.
+$tint ??= config('atom.tint');
+$tint = is_string($tint) && preg_match('/^[a-z0-9-]+\z/', strtolower($tint)) ? strtolower($tint) : null;
 @endphp
 
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @if ($dark) class="dark" @endif>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" @if ($dark) class="dark" @endif @if ($tint) data-atom-tint="{{ $tint }}" @endif>
 <head>
 <title>{{ $title }}</title>
 <meta charset="utf-8" />
