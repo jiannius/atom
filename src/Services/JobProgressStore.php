@@ -464,13 +464,7 @@ final class JobProgressStore
         } catch (Throwable $e) {
             $id = md5($context.'|'.$e->getFile().':'.$e->getLine().'|'.$e::class);
 
-            if (! isset(self::$logged[$id])) {
-                if (count(self::$logged) >= 100) {
-                    self::$logged = [];
-                }
-
-                self::$logged[$id] = true;
-
+            if (LogOnce::first($id, self::$logged)) {
                 Log::warning('Job progress could not be stored.', [
                     'job' => $context,
                     'exception' => $e::class,
