@@ -43,6 +43,7 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
     $classes = Arr::toCssClasses([
         'h-control relative flex w-full items-center pl-2.5 pr-8 no-spinner rounded-control border text-sm',
         $disabledBy ? 'bg-surface-sunken text-fg-subtle cursor-not-allowed' : 'bg-surface text-fg cursor-default',
+        'has-[input:disabled]:cursor-not-allowed has-[input:disabled]:border-border has-[input:disabled]:bg-surface-sunken has-[input:disabled]:text-fg-subtle',
         $invalid ? 'has-[:focus-visible]:border-danger-fg' : 'has-[:focus-visible]:border-focus',
         'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
         $disabledBy ? 'border-border' : ($invalid ? 'border-danger-fg' : 'border-control-border'),

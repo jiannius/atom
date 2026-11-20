@@ -179,8 +179,10 @@ describe('modal.trigger', function () {
         expect($html)
             ->toContain('data-atom-modal-trigger')
             ->toContain("atom.modal('m').show()")
-            ->toContain('$el.querySelector(\'button[disabled]\')')
             ->toContain('<button>Open</button>');
+
+        /* the guard is escaped in the attribute (`&#039;`), which the browser reads back as the same value */
+        expect(html_entity_decode($html, ENT_QUOTES))->toContain('$el.querySelector(\'button[disabled]\')');
     });
 
     it('slides the modal when the slide prop is set', function () {

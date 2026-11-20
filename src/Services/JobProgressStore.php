@@ -428,7 +428,7 @@ final class JobProgressStore
     /** Does this job use ReportsProgress? Cached per class: the payload hook runs for every job. */
     private static function reportsProgress(object $job): bool
     {
-        return self::$reports[$job::class] ??= in_array(ReportsProgress::class, class_uses_recursive($job), true);
+        return self::$reports[$job::class] ??= is_using_trait($job, ReportsProgress::class);
     }
 
     /**
@@ -464,13 +464,7 @@ final class JobProgressStore
         } catch (Throwable $e) {
             $id = md5($context.'|'.$e->getFile().':'.$e->getLine().'|'.$e::class);
 
-            if (! isset(self::$logged[$id])) {
-                if (count(self::$logged) >= 100) {
-                    self::$logged = [];
-                }
-
-                self::$logged[$id] = true;
-
+            if (LogOnce::first($id, self::$logged)) {
                 Log::warning('Job progress could not be stored.', [
                     'job' => $context,
                     'exception' => $e::class,

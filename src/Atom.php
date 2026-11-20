@@ -8,6 +8,8 @@ use Illuminate\Support\Js;
 use Jiannius\Atom\Contracts\WebAction;
 use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\Broadcast;
+use Jiannius\Atom\Services\ModalHandle;
+use Jiannius\Atom\Services\PanelHandle;
 use Jiannius\Atom\Services\Recaptcha;
 use Jiannius\Atom\Services\Sitemap;
 
@@ -112,7 +114,7 @@ class Atom
             ? $top
             : (app('view')->shared('__livewire') === $current ? $current : null);
 
-        if (!$component || in_array($trait, class_uses_recursive($component), true)) {
+        if (!$component || is_using_trait($component, $trait)) {
             return;
         }
 
@@ -196,24 +198,7 @@ class Atom
      */
     public function modal($name)
     {
-        return new class ($name) {
-            public function __construct(public $name) {}
-
-            public function show()
-            {
-                app('livewire')->current()->dispatch('atom-modal-show', name: $this->name);
-            }
-
-            public function slide($position = null)
-            {
-                app('livewire')->current()->dispatch('atom-modal-show', name: $this->name, variant: 'slide', position: $position);
-            }
-
-            public function close()
-            {
-                app('livewire')->current()->dispatch('atom-modal-close', name: $this->name);
-            }
-        };
+        return new ModalHandle($name);
     }
 
     /**
@@ -221,19 +206,38 @@ class Atom
      */
     public function command($name)
     {
-        return new class ($name) {
-            public function __construct(public $name) {}
+        return new PanelHandle($name, 'command');
+    }
 
-            public function show()
-            {
-                app('livewire')->current()->dispatch('atom-command-show', name: $this->name);
-            }
+    /**
+     * The `x-on:click` prefix of a trigger: a click on a disabled button inside it does nothing.
+     */
+    public const TRIGGER_DISABLED_GUARD = "\$el.querySelector('button[disabled]') ||";
 
-            public function close()
-            {
-                app('livewire')->current()->dispatch('atom-command-close', name: $this->name);
-            }
-        };
+    /**
+     * The name of the Livewire component being rendered, or null outside one: a bare modal or command trigger pairs with a bare modal or
+     * palette of the same component. `current()` returns false (not null) when no component is on the stack.
+     */
+    public function currentComponentName() : ?string
+    {
+        return (app('livewire')->current() ?: null)?->getName();
+    }
+
+    /**
+     * The payload a toast, alert or confirm trigger hands to JS, empty values dropped: the heading and subheading translated once, then `$rest` as given.
+     *
+     * @param  array<string, mixed>  $rest
+     * @return array<string, mixed>
+     */
+    public function triggerPayload(mixed $variant, mixed $heading, mixed $subheading, mixed $html, array $rest = []) : array
+    {
+        return array_filter([
+            'variant' => $variant,
+            'heading' => $this->translateOnce($heading),
+            'subheading' => $this->translateOnce($subheading),
+            'html' => $html,
+            ...$rest,
+        ]);
     }
 
     /**
@@ -259,7 +263,7 @@ class Atom
     /**
      * Whether a value is a `[key, replacements]` pair for translateOnce().
      */
-    protected function isTranslationPair(mixed $value) : bool
+    public function isTranslationPair(mixed $value) : bool
     {
         return is_array($value) && count($value) === 2 && array_is_list($value) && is_string($value[0]) && is_array($value[1]);
     }
@@ -269,9 +273,24 @@ class Atom
      *
      * @return array<int|string, mixed>
      */
-    protected function messageList(mixed $message) : array
+    public function messageList(mixed $message) : array
     {
-        return $this->isTranslationPair($message) ? [$message] : (array) $message;
+        return $this->isTranslationPair($message) ? [$message] : Arr::wrap($message);
+    }
+
+    /**
+     * The heading, subheading and message of a toast, alert or confirm, translated once.
+     *
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    protected function translatedParams(array $params) : array
+    {
+        if (data_get($params, 'heading')) $params['heading'] = $this->translateOnce($params['heading']);
+        if (data_get($params, 'subheading')) $params['subheading'] = $this->translateOnce($params['subheading']);
+        if (data_get($params, 'message')) $params['message'] = Arr::map($this->messageList($params['message']), fn ($m) => $this->translateOnce($m));
+
+        return $params;
     }
 
     /**
@@ -302,9 +321,7 @@ class Atom
             'url',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = $this->translateOnce($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = $this->translateOnce($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map($this->messageList($params['message']), fn ($m) => $this->translateOnce($m));
+        $params = $this->translatedParams($params);
 
         app('livewire')->current()->dispatch('atom-toast-show', ...$params);
     }
@@ -331,9 +348,7 @@ class Atom
             'onDismissed',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = $this->translateOnce($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = $this->translateOnce($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map($this->messageList($params['message']), fn ($m) => $this->translateOnce($m));
+        $params = $this->translatedParams($params);
 
         $component = app('livewire')->current();
 
@@ -415,9 +430,7 @@ class Atom
             'onRejected',
         ));
 
-        if (data_get($params, 'heading')) $params['heading'] = $this->translateOnce($params['heading']);
-        if (data_get($params, 'subheading')) $params['subheading'] = $this->translateOnce($params['subheading']);
-        if (data_get($params, 'message')) $params['message'] = Arr::map($this->messageList($params['message']), fn ($m) => $this->translateOnce($m));
+        $params = $this->translatedParams($params);
 
         $component = app('livewire')->current();
 

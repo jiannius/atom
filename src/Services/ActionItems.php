@@ -2,7 +2,6 @@
 
 namespace Jiannius\Atom\Services;
 
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\View\ComponentSlot;
@@ -162,27 +161,8 @@ class ActionItems
         $this->items = [];
 
         $id = md5(json_encode($left));
-        $cacheKey = 'atom:unplaced-action:'.$id;
 
-        try {
-            $first = Cache::add($cacheKey, 1, 3600);
-            $remembers = $first || Cache::has($cacheKey);
-        }
-        catch (\Throwable) {
-            $first = $remembers = false;
-        }
-
-        if (! $remembers) {
-            $first = ! isset(static::$reported[$id]);
-
-            if (count(static::$reported) >= 100) {
-                static::$reported = [];
-            }
-
-            static::$reported[$id] = true;
-        }
-
-        if (! $first) {
+        if (! LogOnce::first($id, static::$reported, 'atom:unplaced-action:'.$id)) {
             return;
         }
 

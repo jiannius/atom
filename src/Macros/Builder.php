@@ -41,16 +41,18 @@ class Builder
                 }
             }
 
-            if ($from) {
-                if ($wholeDays && DateRange::isDate($from)) $this->where($column, '>=', DateRange::dayStart($from));
-                else if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $from)) $this->whereDate($column, '>=', $from); // date in YYYY-MM-DD
-                else $this->where($column, '>=', $from);
-            }
+            /* each end: its comparison, the whole-day comparison and the instant a whole-day end stands for */
+            $ends = [
+                [$from, '>=', '>=', fn ($day) => DateRange::dayStart($day)],
+                [$to, '<=', '<', fn ($day) => DateRange::nextDayStart($day)],
+            ];
 
-            if ($to) {
-                if ($wholeDays && DateRange::isDate($to)) $this->where($column, '<', DateRange::nextDayStart($to));
-                else if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) $this->whereDate($column, '<=', $to); // date in YYYY-MM-DD
-                else $this->where($column, '<=', $to);
+            foreach ($ends as [$end, $operator, $wholeDayOperator, $instant]) {
+                if (! $end) continue;
+
+                if ($wholeDays && DateRange::isDate($end)) $this->where($column, $wholeDayOperator, $instant($end));
+                else if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $end)) $this->whereDate($column, $operator, $end); // date in YYYY-MM-DD
+                else $this->where($column, $operator, $end);
             }
 
             return $this;
@@ -79,6 +81,7 @@ class Builder
             // public $_table of its own has no signed-sort gate (the update listener), so a
             // client could set an unsigned raw: column that would read as PHP-set here.
             $component = app('livewire')->current() ?: null;
+            // inline, not is_using_trait(): that helper is guarded by function_exists(), so a host's own definition would decide this gate
             $config = $component && in_array(\Jiannius\Atom\Traits\WithTable::class, class_uses_recursive($component), true)
                 ? $component->_table
                 : null;

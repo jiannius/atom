@@ -19,7 +19,8 @@ $disabledBy = $attributes->get('data-atom-disabled');
 
 /* The field recipe, shared by every text control (input, textarea, select, date and time pickers): the control token's height,
    the 7px radius, a strong hairline on the surface, no shadow. The ring is the base :focus-visible rule, hugging the border
-   (offset 0) with the border in the focus colour, so a focused field reads as a 3px accent frame. */
+   (offset 0) with the border in the focus colour, so a focused field reads as a 3px accent frame. The classes are written out in each control, where a host's
+   Tailwind scan finds them; tests/Feature/FieldRecipeTest.php pins every control's set per state and holds them to the same border, disabled and error rules. */
 $classes = Arr::toCssClasses([
     'h-control w-full no-spinner rounded-control border text-sm',
     $disabledBy ? 'cursor-not-allowed bg-surface-sunken text-fg-subtle' : 'bg-surface text-fg',

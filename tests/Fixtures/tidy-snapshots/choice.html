@@ -1,0 +1,837 @@
+=== checkbox / plain / default ===
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== checkbox / tile / default ===
+<div class="group/group" name="g" data-atom-tiles>
+<label class="group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-checkbox data-atom-tile>
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== checkbox / plain / disabled ===
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer" disabled="disabled" data-atom-disabled="self">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== checkbox / tile / disabled ===
+<div class="group/group" name="g" data-atom-tiles>
+<label class="group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-checkbox data-atom-tile>
+<input type="checkbox" class="sr-only peer" disabled="disabled" data-atom-disabled="self">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== checkbox / plain / error ===
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+<div class="error text-danger-fg text-sm font-medium" data-atom-error> Pick one </div>
+</label>
+=== checkbox / tile / error ===
+<div class="group/group" name="g" data-atom-tiles>
+<label class="group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-checkbox data-atom-tile>
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+<div class="error text-danger-fg text-sm font-medium" data-atom-error> Pick one </div>
+</label>
+</div>
+=== checkbox / plain / required ===
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer" required="required">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== checkbox / tile / required ===
+<div class="group/group" name="g" data-atom-tiles>
+<label class="group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-checkbox data-atom-tile>
+<input type="checkbox" class="sr-only peer" required="required">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== checkbox / plain / caption ===
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+<div class="inline-flex ml-6">
+<div class="text-sm text-fg-muted" data-atom-caption> Helper text </div>
+</div>
+</div>
+</label>
+=== checkbox / tile / caption ===
+<div class="group/group" name="g" data-atom-tiles>
+<label class="group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-checkbox data-atom-tile>
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+<div class="text-sm text-fg-muted pe-6" data-atom-caption> Helper text </div>
+</label>
+</div>
+=== checkbox / plain / align start ===
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-start">
+<div class="shrink-0 pt-1">
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+<div class="inline-flex ml-6">
+<div class="text-sm text-fg-muted" data-atom-caption> Helper </div>
+</div>
+</div>
+</label>
+=== checkbox / tile / align start ===
+<div class="group/group" name="g" data-atom-tiles>
+<label class="group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-checkbox data-atom-tile>
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+<div class="text-sm text-fg-muted pe-6" data-atom-caption> Helper </div>
+</label>
+</div>
+=== checkbox / plain / align end ===
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-end">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== checkbox / tile / align end ===
+<div class="group/group" name="g" data-atom-tiles>
+<label class="group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-checkbox data-atom-tile>
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== checkbox / plain / checked ===
+<label class="group/checkbox inline-block space-y-2 extra" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer" checked="checked" id="c1">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== checkbox / tile / checked ===
+<div class="group/group" name="g" data-atom-tiles>
+<label class="group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3 extra" data-atom-checkbox data-atom-tile>
+<input type="checkbox" class="sr-only peer" checked="checked" id="c1">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== checkbox / plain / wire model ===
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer" name="agree" wire:model="agree">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== checkbox / tile / wire model ===
+<div class="group/group" name="g" data-atom-tiles>
+<label class="group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-checkbox data-atom-tile>
+<input type="checkbox" class="sr-only peer" name="agree" wire:model="agree">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== checkbox / plain / slot ===
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg">
+<b>Rich</b> label </div>
+</div>
+</div>
+</label>
+=== checkbox / tile / slot ===
+<div class="group/group" name="g" data-atom-tiles>
+<label class="group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-checkbox data-atom-tile>
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body>
+<b>Rich</b> label </div>
+</label>
+</div>
+=== checkbox / disabled form ===
+<form wire:target="submit" wire:loading.class="is-loading" novalidate="novalidate" onsubmit="return false" class="group/form relative flex flex-col gap-6" data-atom-form>
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer" disabled="disabled" data-atom-disabled="inherited" value="a">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+</form>
+=== checkbox / no label ===
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+</div>
+</div>
+</label>
+=== radio / plain / default ===
+<label class="group/radio inline-block" data-atom-radio>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="radio" class="sr-only peer" value="a">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</label>
+=== radio / tile / default ===
+<div class="group/group" data-atom-tiles>
+<label class="group/radio min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-radio data-atom-tile>
+<input type="radio" class="sr-only peer" value="a">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== radio / plain / disabled ===
+<label class="group/radio inline-block" data-atom-radio>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="radio" class="sr-only peer" disabled="disabled" data-atom-disabled="self" value="a">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</label>
+=== radio / tile / disabled ===
+<div class="group/group" data-atom-tiles>
+<label class="group/radio min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-radio data-atom-tile>
+<input type="radio" class="sr-only peer" disabled="disabled" data-atom-disabled="self" value="a">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== radio / plain / error ===
+<label class="group/radio inline-block" data-atom-radio>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="radio" class="sr-only peer" value="a" error="Pick one">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</label>
+=== radio / tile / error ===
+<div class="group/group" data-atom-tiles>
+<label class="group/radio min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-radio data-atom-tile>
+<input type="radio" class="sr-only peer" value="a" error="Pick one">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== radio / plain / required ===
+<label class="group/radio inline-block" data-atom-radio>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="radio" class="sr-only peer" value="a" required="required">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</label>
+=== radio / tile / required ===
+<div class="group/group" data-atom-tiles>
+<label class="group/radio min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-radio data-atom-tile>
+<input type="radio" class="sr-only peer" value="a" required="required">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== radio / plain / caption ===
+<label class="group/radio inline-block" data-atom-radio>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="radio" class="sr-only peer" value="a">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+<div class="inline-flex ml-6">
+<div class="text-sm text-fg-muted" data-atom-caption> Helper text </div>
+</div>
+</label>
+=== radio / tile / caption ===
+<div class="group/group" data-atom-tiles>
+<label class="group/radio min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-radio data-atom-tile>
+<input type="radio" class="sr-only peer" value="a">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+<div class="text-sm text-fg-muted pe-6" data-atom-caption> Helper text </div>
+</label>
+</div>
+=== radio / plain / align start ===
+<label class="group/radio inline-block" data-atom-radio>
+<div class="flex gap-2 items-start">
+<div class="shrink-0 pt-1">
+<input type="radio" class="sr-only peer" value="a">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+<div class="inline-flex ml-6">
+<div class="text-sm text-fg-muted" data-atom-caption> Helper </div>
+</div>
+</label>
+=== radio / tile / align start ===
+<div class="group/group" data-atom-tiles>
+<label class="group/radio min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-radio data-atom-tile>
+<input type="radio" class="sr-only peer" value="a">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+<div class="text-sm text-fg-muted pe-6" data-atom-caption> Helper </div>
+</label>
+</div>
+=== radio / plain / align end ===
+<label class="group/radio inline-block" data-atom-radio>
+<div class="flex gap-2 items-end">
+<div class="shrink-0">
+<input type="radio" class="sr-only peer" value="a">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</label>
+=== radio / tile / align end ===
+<div class="group/group" data-atom-tiles>
+<label class="group/radio min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-radio data-atom-tile>
+<input type="radio" class="sr-only peer" value="a">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== radio / plain / checked ===
+<label class="group/radio inline-block extra" data-atom-radio>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="radio" class="sr-only peer" value="a" checked="checked" id="c1">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</label>
+=== radio / tile / checked ===
+<div class="group/group" data-atom-tiles>
+<label class="group/radio min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3 extra" data-atom-radio data-atom-tile>
+<input type="radio" class="sr-only peer" value="a" checked="checked" id="c1">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== radio / plain / wire model ===
+<label class="group/radio inline-block" data-atom-radio>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="radio" class="sr-only peer" value="a" wire:model="agree">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</label>
+=== radio / tile / wire model ===
+<div class="group/group" data-atom-tiles>
+<label class="group/radio min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-radio data-atom-tile>
+<input type="radio" class="sr-only peer" value="a" wire:model="agree">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body> Label </div>
+</label>
+</div>
+=== radio / plain / slot ===
+<label class="group/radio inline-block" data-atom-radio>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="radio" class="sr-only peer" value="a">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+<div class="text-fg">
+<b>Rich</b> label </div>
+</div>
+</label>
+=== radio / tile / slot ===
+<div class="group/group" data-atom-tiles>
+<label class="group/radio min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3" data-atom-radio data-atom-tile>
+<input type="radio" class="sr-only peer" value="a">
+<div aria-hidden="true" data-atom-tile-indicator class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+<div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body>
+<b>Rich</b> label </div>
+</label>
+</div>
+=== radio / disabled form ===
+<form wire:target="submit" wire:loading.class="is-loading" novalidate="novalidate" onsubmit="return false" class="group/form relative flex flex-col gap-6" data-atom-form>
+<label class="group/radio inline-block" data-atom-radio>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="radio" class="sr-only peer" disabled="disabled" data-atom-disabled="inherited" value="a">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</label>
+</form>
+=== radio / no label ===
+<label class="group/radio inline-block" data-atom-radio>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="radio" class="sr-only peer">
+<div aria-hidden="true" class="size-4 rounded-full flex items-center justify-center bg-surface border border-fg-subtle peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/radio:outline-1 group-has-[.error]/radio:outline-danger-fg group-has-[.error]/radio:outline-offset-1">
+<div class="size-1.5 opacity-0 rounded-full bg-surface">
+</div>
+</div>
+</div>
+</div>
+</label>
+=== toggle / plain / default ===
+<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== toggle / plain / disabled ===
+<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only" disabled="disabled" data-atom-disabled="self">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== toggle / plain / error ===
+<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+<div class="error text-danger-fg text-sm font-medium" data-atom-error> Pick one </div>
+</label>
+=== toggle / plain / required ===
+<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only" required="required">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== toggle / plain / caption ===
+<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+<div class="inline-flex ml-11">
+<div class="text-sm text-fg-muted" data-atom-caption> Helper text </div>
+</div>
+</div>
+</label>
+=== toggle / plain / align start ===
+<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only" align="start">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+<div class="inline-flex ml-11">
+<div class="text-sm text-fg-muted" data-atom-caption> Helper </div>
+</div>
+</div>
+</label>
+=== toggle / plain / align end ===
+<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only" align="end">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== toggle / plain / checked ===
+<label class="group/toggle inline-block space-y-2 extra" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only" checked="checked" id="c1">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== toggle / plain / wire model ===
+<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only" name="agree" wire:model="agree">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+=== toggle / plain / slot ===
+<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg">
+<b>Rich</b> label </div>
+</div>
+</div>
+</label>
+=== toggle / disabled form ===
+<form wire:target="submit" wire:loading.class="is-loading" novalidate="novalidate" onsubmit="return false" class="group/form relative flex flex-col gap-6" data-atom-form>
+<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only" disabled="disabled" data-atom-disabled="inherited" value="a">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg"> Label </div>
+</div>
+</div>
+</label>
+</form>
+=== toggle / no label ===
+<label class="group/toggle inline-block space-y-2" data-atom-toggle>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0 pt-0.5">
+<input type="checkbox" class="peer sr-only">
+<div aria-hidden="true" class="group h-5 w-9 relative inline-flex items-center rounded-full transition bg-surface border border-fg-subtle peer-checked:bg-accent-ink peer-checked:border-accent-ink peer-checked:[&>span]:translate-x-[19px] peer-checked:[&>span]:bg-surface peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/toggle:outline-1 group-has-[.error]/toggle:outline-danger-fg group-has-[.error]/toggle:outline-offset-1">
+<span class="size-3 rounded-full transition translate-x-[3px] bg-fg-subtle">
+</span>
+</div>
+</div>
+<div class="text-fg">
+</div>
+</div>
+</div>
+</label>

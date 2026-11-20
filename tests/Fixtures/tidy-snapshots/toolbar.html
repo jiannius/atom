@@ -1,0 +1,1261 @@
+=== toolbar.text ===
+<div x-data="dropdown({ locked: false, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" data-atom-dropdown>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Text Formatting" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M8 11H12.5C13.8807 11 15 9.88071 15 8.5C15 7.11929 13.8807 6 12.5 6H8V11ZM18 15.5C18 17.9853 15.9853 20 13.5 20H6V4H12.5C14.9853 4 17 6.01472 17 8.5C17 9.70431 16.5269 10.7981 15.7564 11.6058C17.0979 12.3847 18 13.837 18 15.5ZM8 13V18H13.5C14.8807 18 16 16.8807 16 15.5C16 14.1193 14.8807 13 13.5 13H8Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Text Formatting </div>
+</div>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleBold()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M8 11H12.5C13.8807 11 15 9.88071 15 8.5C15 7.11929 13.8807 6 12.5 6H8V11ZM18 15.5C18 17.9853 15.9853 20 13.5 20H6V4H12.5C14.9853 4 17 6.01472 17 8.5C17 9.70431 16.5269 10.7981 15.7564 11.6058C17.0979 12.3847 18 13.837 18 15.5ZM8 13V18H13.5C14.8807 18 16 16.8807 16 15.5C16 14.1193 14.8807 13 13.5 13H8Z">
+</path>
+</svg>
+<div class="grow">Bold</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleItalic()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M15 20H7V18H9.92661L12.0425 6H9V4H17V6H14.0734L11.9575 18H15V20Z">
+</path>
+</svg>
+<div class="grow">Italic</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleStrike()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M17.1538 14C17.3846 14.5161 17.5 15.0893 17.5 15.7196C17.5 17.0625 16.9762 18.1116 15.9286 18.867C14.8809 19.6223 13.4335 20 11.5862 20C9.94674 20 8.32335 19.6185 6.71592 18.8555V16.6009C8.23538 17.4783 9.7908 17.917 11.3822 17.917C13.9333 17.917 15.2128 17.1846 15.2208 15.7196C15.2208 15.0939 15.0049 14.5598 14.5731 14.1173C14.5339 14.0772 14.4939 14.0381 14.4531 14H3V12H21V14H17.1538ZM13.076 11H7.62908C7.4566 10.8433 7.29616 10.6692 7.14776 10.4778C6.71592 9.92084 6.5 9.24559 6.5 8.45207C6.5 7.21602 6.96583 6.165 7.89749 5.299C8.82916 4.43299 10.2706 4 12.2219 4C13.6934 4 15.1009 4.32808 16.4444 4.98426V7.13591C15.2448 6.44921 13.9293 6.10587 12.4978 6.10587C10.0187 6.10587 8.77917 6.88793 8.77917 8.45207C8.77917 8.87172 8.99709 9.23796 9.43293 9.55079C9.86878 9.86362 10.4066 10.1135 11.0463 10.3004C11.6665 10.4816 12.3431 10.7148 13.076 11H13.076Z">
+</path>
+</svg>
+<div class="grow">Strikethrough</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleSubscript()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M5.59567 4L10.5 9.92831L15.4043 4H18L11.7978 11.4971L18 18.9943V19H15.4091L10.5 13.0659L5.59092 19H3V18.9943L9.20216 11.4971L3 4H5.59567ZM21.8 16C21.8 15.5582 21.4418 15.2 21 15.2C20.5582 15.2 20.2 15.5582 20.2 16C20.2 16.0762 20.2107 16.15 20.2306 16.2198L19.0765 16.5496C19.0267 16.375 19 16.1906 19 16C19 14.8954 19.8954 14 21 14C22.1046 14 23 14.8954 23 16C23 16.5727 22.7593 17.0892 22.3735 17.4538L20.7441 19H23V20H19V19L21.5507 16.5803C21.7042 16.4345 21.8 16.2284 21.8 16Z">
+</path>
+</svg>
+<div class="grow">Subscript</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleSuperscript()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M5.59567 4L10.5 9.92831L15.4043 4H18L11.7978 11.4971L18 18.9943V19H15.4091L10.5 13.0659L5.59092 19H3V18.9943L9.20216 11.4971L3 4H5.59567ZM21.8 16C21.8 15.5582 21.4418 15.2 21 15.2C20.5582 15.2 20.2 15.5582 20.2 16C20.2 16.0762 20.2107 16.15 20.2306 16.2198L19.0765 16.5496C19.0267 16.375 19 16.1906 19 16C19 14.8954 19.8954 14 21 14C22.1046 14 23 14.8954 23 16C23 16.5727 22.7593 17.0892 22.3735 17.4538L20.7441 19H23V20H19V19L21.5507 16.5803C21.7042 16.4345 21.8 16.2284 21.8 16Z">
+</path>
+</svg>
+<div class="grow">Superscript</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleUnderline()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M8 3V12C8 14.2091 9.79086 16 12 16C14.2091 16 16 14.2091 16 12V3H18V12C18 15.3137 15.3137 18 12 18C8.68629 18 6 15.3137 6 12V3H8ZM4 20H20V22H4V20Z">
+</path>
+</svg>
+<div class="grow">Underline</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleBlockquote()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M4.58341 17.3211C3.55316 16.2274 3 15 3 13.0103C3 9.51086 5.45651 6.37366 9.03059 4.82318L9.92328 6.20079C6.58804 8.00539 5.93618 10.346 5.67564 11.822C6.21263 11.5443 6.91558 11.4466 7.60471 11.5105C9.40908 11.6778 10.8312 13.159 10.8312 15C10.8312 16.933 9.26416 18.5 7.33116 18.5C6.2581 18.5 5.23196 18.0095 4.58341 17.3211ZM14.5834 17.3211C13.5532 16.2274 13 15 13 13.0103C13 9.51086 15.4565 6.37366 19.0306 4.82318L19.9233 6.20079C16.588 8.00539 15.9362 10.346 15.6756 11.822C16.2126 11.5443 16.9156 11.4466 17.6047 11.5105C19.4091 11.6778 20.8312 13.159 20.8312 15C20.8312 16.933 19.2642 18.5 17.3312 18.5C16.2581 18.5 15.232 18.0095 14.5834 17.3211Z">
+</path>
+</svg>
+<div class="grow">Blockquote</div>
+</div>
+</div>
+</button>
+</div>
+</div>
+=== toolbar.bullet ===
+<div x-data="dropdown({ locked: false, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" data-atom-dropdown>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="List" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M8 4H21V6H8V4ZM3 3.5H6V6.5H3V3.5ZM3 10.5H6V13.5H3V10.5ZM3 17.5H6V20.5H3V17.5ZM8 11H21V13H8V11ZM8 18H21V20H8V18Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> List </div>
+</div>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleBulletList()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M8 4H21V6H8V4ZM3 3.5H6V6.5H3V3.5ZM3 10.5H6V13.5H3V10.5ZM3 17.5H6V20.5H3V17.5ZM8 11H21V13H8V11ZM8 18H21V20H8V18Z">
+</path>
+</svg>
+<div class="grow">Bullet List</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleOrderedList()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M8 4H21V6H8V4ZM5 3V6H6V7H3V6H4V4H3V3H5ZM3 14V11.5H5V11H3V10H6V12.5H4V13H6V14H3ZM5 19.5H3V18.5H5V18H3V17H6V21H3V20H5V19.5ZM8 11H21V13H8V11ZM8 18H21V20H8V18Z">
+</path>
+</svg>
+<div class="grow">Ordered List</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().sinkListItem(&quot;listItem&quot;)">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M3 4H21V6H3V4ZM3 19H21V21H3V19ZM11 14H21V16H11V14ZM11 9H21V11H11V9ZM3 12.5L7 9V16L3 12.5Z">
+</path>
+</svg>
+<div class="grow">Indent</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().liftListItem(&quot;listItem&quot;)">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M3 4H21V6H3V4ZM3 19H21V21H3V19ZM11 14H21V16H11V14ZM11 9H21V11H11V9ZM7 12.5L3 16V9L7 12.5Z">
+</path>
+</svg>
+<div class="grow">Outdent</div>
+</div>
+</div>
+</button>
+</div>
+</div>
+=== toolbar.text-align ===
+<div x-data="dropdown({ locked: false, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" data-atom-dropdown>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Text Align" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M3 4H21V6H3V4ZM3 19H17V21H3V19ZM3 14H21V16H3V14ZM3 9H17V11H3V9Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Text Align </div>
+</div>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().setTextAlign('left')">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M3 4H21V6H3V4ZM3 19H17V21H3V19ZM3 14H21V16H3V14ZM3 9H17V11H3V9Z">
+</path>
+</svg>
+<div class="grow">Left</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().setTextAlign('center')">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M3 4H21V6H3V4ZM5 19H19V21H5V19ZM3 14H21V16H3V14ZM5 9H19V11H5V9Z">
+</path>
+</svg>
+<div class="grow">Center</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().setTextAlign('right')">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M3 4H21V6H3V4ZM7 19H21V21H7V19ZM3 14H21V16H3V14ZM7 9H21V11H7V9Z">
+</path>
+</svg>
+<div class="grow">Right</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().setTextAlign('justify')">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M3 4H21V6H3V4ZM3 19H21V21H3V19ZM3 14H21V16H3V14ZM3 9H21V11H3V9Z">
+</path>
+</svg>
+<div class="grow">Justify</div>
+</div>
+</div>
+</button>
+</div>
+</div>
+=== toolbar.heading ===
+<div x-data="dropdown({ locked: false, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" data-atom-dropdown>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Heading" x-bind:aria-pressed="isActive(&#039;heading&#039;)" x-bind:data-active="isActive(&#039;heading&#039;)" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M17 11V4H19V21H17V13H7V21H5V4H7V11H17Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Heading </div>
+</div>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleHeading({ level: 1 })">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M13 20H11V13H4V20H2V4H4V11H11V4H13V20ZM21.0005 8V20H19.0005L19 10.204L17 10.74V8.67L19.5005 8H21.0005Z">
+</path>
+</svg>
+<div class="grow">Heading 1</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleHeading({ level: 2 })">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M4 4V11H11V4H13V20H11V13H4V20H2V4H4ZM18.5 8C20.5711 8 22.25 9.67893 22.25 11.75C22.25 12.6074 21.9623 13.3976 21.4781 14.0292L21.3302 14.2102L18.0343 18H22V20H15L14.9993 18.444L19.8207 12.8981C20.0881 12.5908 20.25 12.1893 20.25 11.75C20.25 10.7835 19.4665 10 18.5 10C17.5818 10 16.8288 10.7071 16.7558 11.6065L16.75 11.75H14.75C14.75 9.67893 16.4289 8 18.5 8Z">
+</path>
+</svg>
+<div class="grow">Heading 2</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleHeading({ level: 3 })">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M22 8L21.9984 10L19.4934 12.883C21.0823 13.3184 22.25 14.7728 22.25 16.5C22.25 18.5711 20.5711 20.25 18.5 20.25C16.674 20.25 15.1528 18.9449 14.8184 17.2166L16.7821 16.8352C16.9384 17.6413 17.6481 18.25 18.5 18.25C19.4665 18.25 20.25 17.4665 20.25 16.5C20.25 15.5335 19.4665 14.75 18.5 14.75C18.214 14.75 17.944 14.8186 17.7056 14.9403L16.3992 13.3932L19.3484 10H15V8H22ZM4 4V11H11V4H13V20H11V13H4V20H2V4H4Z">
+</path>
+</svg>
+<div class="grow">Heading 3</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleHeading({ level: 4 })">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M13 20H11V13H4V20H2V4H4V11H11V4H13V20ZM22 8V16H23.5V18H22V20H20V18H14.5V16.66L19.5 8H22ZM20 11.133L17.19 16H20V11.133Z">
+</path>
+</svg>
+<div class="grow">Heading 4</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().setParagraph()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M12 6V21H10V16C6.68629 16 4 13.3137 4 10C4 6.68629 6.68629 4 10 4H20V6H17V21H15V6H12ZM10 6C7.79086 6 6 7.79086 6 10C6 12.2091 7.79086 14 10 14V6Z">
+</path>
+</svg>
+<div class="grow">Paragraph</div>
+</div>
+</div>
+</button>
+</div>
+</div>
+=== toolbar.font-size ===
+<div x-data="dropdown({ locked: false, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" data-atom-dropdown>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Font Size" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M11.246 15H4.75416L2.75416 20H0.600098L7.0001 4H9.0001L15.4001 20H13.246L11.246 15ZM10.446 13L8.0001 6.88516L5.55416 13H10.446ZM21.0001 12.5351V12H23.0001V20H21.0001V19.4649C20.4118 19.8052 19.7287 20 19.0001 20C16.791 20 15.0001 18.2091 15.0001 16C15.0001 13.7909 16.791 12 19.0001 12C19.7287 12 20.4118 12.1948 21.0001 12.5351ZM19.0001 18C20.1047 18 21.0001 17.1046 21.0001 16C21.0001 14.8954 20.1047 14 19.0001 14C17.8955 14 17.0001 14.8954 17.0001 16C17.0001 17.1046 17.8955 18 19.0001 18Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Font Size </div>
+</div>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().setFontSize('0.75rem')">
+<div class="grow leading-tight whitespace-nowrap truncate"> Smaller </div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().setFontSize('0.875rem')">
+<div class="grow leading-tight whitespace-nowrap truncate"> Small </div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().setFontSize('1rem')">
+<div class="grow leading-tight whitespace-nowrap truncate"> Medium </div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().setFontSize('1.125rem')">
+<div class="grow leading-tight whitespace-nowrap truncate"> Large </div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().setFontSize('1.25rem')">
+<div class="grow leading-tight whitespace-nowrap truncate"> Extra Large </div>
+</button>
+<div role="none" class="w-full flex items-center" data-atom-separator>
+<div class="border-0 bg-border h-px w-full">
+</div>
+</div>
+<div class="p-2" x-on:click.stop>
+<input type="number" class="appearance-none bg-transparent text-sm w-full rounded-nav" placeholder="Size" step=".1" max="999" x-on:input.stop x-on:keydown.enter.prevent="() => { let val = +$event.target.value if (val < 999) { commands().setFontSize(`${val}px`) $event.target.value = '' } }">
+</div>
+</div>
+</div>
+=== toolbar.table ===
+<div x-data="dropdown({ locked: false, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" data-atom-dropdown>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Table" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M3 3C2.44772 3 2 3.44772 2 4V20C2 20.5523 2.44772 21 3 21H21C21.5523 21 22 20.5523 22 20V4C22 3.44772 21.5523 3 21 3H3ZM8 5V8H4V5H8ZM4 14V10H8V14H4ZM4 16H8V19H4V16ZM10 16H20V19H10V16ZM20 14H10V10H20V14ZM20 5V8H10V5H20Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Table </div>
+</div>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<div x-data="{ rows: null, cols: null }" class="flex flex-col gap-2 p-3 w-max">
+<div class="grid grid-cols-10 gap-1">
+<div x-on:mouseover="rows = 1; cols = 1" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 1 && cols >= 1 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 1; cols = 2" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 1 && cols >= 2 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 1; cols = 3" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 1 && cols >= 3 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 1; cols = 4" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 1 && cols >= 4 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 1; cols = 5" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 1 && cols >= 5 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 1; cols = 6" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 1 && cols >= 6 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 1; cols = 7" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 1 && cols >= 7 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 1; cols = 8" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 1 && cols >= 8 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 1; cols = 9" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 1 && cols >= 9 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 1; cols = 10" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 1 && cols >= 10 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 2; cols = 1" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 2 && cols >= 1 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 2; cols = 2" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 2 && cols >= 2 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 2; cols = 3" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 2 && cols >= 3 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 2; cols = 4" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 2 && cols >= 4 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 2; cols = 5" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 2 && cols >= 5 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 2; cols = 6" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 2 && cols >= 6 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 2; cols = 7" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 2 && cols >= 7 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 2; cols = 8" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 2 && cols >= 8 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 2; cols = 9" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 2 && cols >= 9 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 2; cols = 10" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 2 && cols >= 10 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 3; cols = 1" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 3 && cols >= 1 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 3; cols = 2" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 3 && cols >= 2 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 3; cols = 3" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 3 && cols >= 3 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 3; cols = 4" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 3 && cols >= 4 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 3; cols = 5" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 3 && cols >= 5 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 3; cols = 6" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 3 && cols >= 6 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 3; cols = 7" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 3 && cols >= 7 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 3; cols = 8" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 3 && cols >= 8 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 3; cols = 9" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 3 && cols >= 9 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 3; cols = 10" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 3 && cols >= 10 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 4; cols = 1" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 4 && cols >= 1 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 4; cols = 2" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 4 && cols >= 2 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 4; cols = 3" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 4 && cols >= 3 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 4; cols = 4" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 4 && cols >= 4 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 4; cols = 5" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 4 && cols >= 5 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 4; cols = 6" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 4 && cols >= 6 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 4; cols = 7" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 4 && cols >= 7 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 4; cols = 8" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 4 && cols >= 8 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 4; cols = 9" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 4 && cols >= 9 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 4; cols = 10" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 4 && cols >= 10 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 5; cols = 1" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 5 && cols >= 1 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 5; cols = 2" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 5 && cols >= 2 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 5; cols = 3" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 5 && cols >= 3 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 5; cols = 4" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 5 && cols >= 4 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 5; cols = 5" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 5 && cols >= 5 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 5; cols = 6" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 5 && cols >= 6 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 5; cols = 7" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 5 && cols >= 7 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 5; cols = 8" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 5 && cols >= 8 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 5; cols = 9" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 5 && cols >= 9 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 5; cols = 10" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 5 && cols >= 10 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 6; cols = 1" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 6 && cols >= 1 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 6; cols = 2" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 6 && cols >= 2 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 6; cols = 3" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 6 && cols >= 3 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 6; cols = 4" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 6 && cols >= 4 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 6; cols = 5" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 6 && cols >= 5 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 6; cols = 6" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 6 && cols >= 6 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 6; cols = 7" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 6 && cols >= 7 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 6; cols = 8" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 6 && cols >= 8 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 6; cols = 9" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 6 && cols >= 9 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 6; cols = 10" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 6 && cols >= 10 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 7; cols = 1" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 7 && cols >= 1 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 7; cols = 2" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 7 && cols >= 2 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 7; cols = 3" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 7 && cols >= 3 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 7; cols = 4" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 7 && cols >= 4 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 7; cols = 5" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 7 && cols >= 5 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 7; cols = 6" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 7 && cols >= 6 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 7; cols = 7" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 7 && cols >= 7 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 7; cols = 8" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 7 && cols >= 8 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 7; cols = 9" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 7 && cols >= 9 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 7; cols = 10" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 7 && cols >= 10 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 8; cols = 1" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 8 && cols >= 1 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 8; cols = 2" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 8 && cols >= 2 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 8; cols = 3" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 8 && cols >= 3 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 8; cols = 4" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 8 && cols >= 4 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 8; cols = 5" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 8 && cols >= 5 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 8; cols = 6" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 8 && cols >= 6 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 8; cols = 7" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 8 && cols >= 7 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 8; cols = 8" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 8 && cols >= 8 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 8; cols = 9" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 8 && cols >= 9 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 8; cols = 10" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 8 && cols >= 10 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 9; cols = 1" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 9 && cols >= 1 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 9; cols = 2" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 9 && cols >= 2 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 9; cols = 3" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 9 && cols >= 3 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 9; cols = 4" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 9 && cols >= 4 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 9; cols = 5" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 9 && cols >= 5 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 9; cols = 6" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 9 && cols >= 6 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 9; cols = 7" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 9 && cols >= 7 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 9; cols = 8" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 9 && cols >= 8 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 9; cols = 9" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 9 && cols >= 9 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 9; cols = 10" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 9 && cols >= 10 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 10; cols = 1" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 10 && cols >= 1 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 10; cols = 2" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 10 && cols >= 2 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 10; cols = 3" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 10 && cols >= 3 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 10; cols = 4" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 10 && cols >= 4 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 10; cols = 5" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 10 && cols >= 5 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 10; cols = 6" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 10 && cols >= 6 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 10; cols = 7" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 10 && cols >= 7 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 10; cols = 8" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 10 && cols >= 8 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 10; cols = 9" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 10 && cols >= 9 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+<div x-on:mouseover="rows = 10; cols = 10" x-on:click="commands().insertTable({ rows, cols }); close()" x-bind:class="rows >= 10 && cols >= 10 ? 'bg-accent-soft border-accent-ink' : 'border-control-border'" class="size-5 border rounded">
+</div>
+</div>
+<div x-show="rows && cols" class="flex items-center justify-center gap-2">
+<span x-text="rows">
+</span>
+<span>x</span>
+<span x-text="cols">
+</span>
+</div>
+</div>
+</div>
+</div>
+=== toolbar.text-color ===
+<div x-data="dropdown({ locked: false, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" data-atom-dropdown>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Text Color" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M15.2459 14H8.75407L7.15407 18H5L11 3H13L19 18H16.8459L15.2459 14ZM14.4459 12L12 5.88516L9.55407 12H14.4459ZM3 20H21V22H3V20Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Text Color </div>
+</div>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<div class="grow grid grid-cols-11 gap-1 p-2 max-h-[300px] overflow-auto" data-atom-scroll-region>
+<div x-on:click="commands().setColor('#f8fafc'); close()" x-bind:style="{ backgroundColor: '#f8fafc' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f1f5f9'); close()" x-bind:style="{ backgroundColor: '#f1f5f9' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#e2e8f0'); close()" x-bind:style="{ backgroundColor: '#e2e8f0' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#cbd5e1'); close()" x-bind:style="{ backgroundColor: '#cbd5e1' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#94a3b8'); close()" x-bind:style="{ backgroundColor: '#94a3b8' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#64748b'); close()" x-bind:style="{ backgroundColor: '#64748b' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#475569'); close()" x-bind:style="{ backgroundColor: '#475569' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#334155'); close()" x-bind:style="{ backgroundColor: '#334155' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#1e293b'); close()" x-bind:style="{ backgroundColor: '#1e293b' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#0f172a'); close()" x-bind:style="{ backgroundColor: '#0f172a' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#020617'); close()" x-bind:style="{ backgroundColor: '#020617' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fafaf9'); close()" x-bind:style="{ backgroundColor: '#fafaf9' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f5f5f4'); close()" x-bind:style="{ backgroundColor: '#f5f5f4' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#e7e5e4'); close()" x-bind:style="{ backgroundColor: '#e7e5e4' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#d6d3d1'); close()" x-bind:style="{ backgroundColor: '#d6d3d1' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#a8a29e'); close()" x-bind:style="{ backgroundColor: '#a8a29e' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#78716c'); close()" x-bind:style="{ backgroundColor: '#78716c' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#57534e'); close()" x-bind:style="{ backgroundColor: '#57534e' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#44403c'); close()" x-bind:style="{ backgroundColor: '#44403c' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#292524'); close()" x-bind:style="{ backgroundColor: '#292524' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#1c1917'); close()" x-bind:style="{ backgroundColor: '#1c1917' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#0c0a09'); close()" x-bind:style="{ backgroundColor: '#0c0a09' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fef2f2'); close()" x-bind:style="{ backgroundColor: '#fef2f2' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fee2e2'); close()" x-bind:style="{ backgroundColor: '#fee2e2' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fecaca'); close()" x-bind:style="{ backgroundColor: '#fecaca' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fca5a5'); close()" x-bind:style="{ backgroundColor: '#fca5a5' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f87171'); close()" x-bind:style="{ backgroundColor: '#f87171' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ef4444'); close()" x-bind:style="{ backgroundColor: '#ef4444' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#dc2626'); close()" x-bind:style="{ backgroundColor: '#dc2626' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#b91c1c'); close()" x-bind:style="{ backgroundColor: '#b91c1c' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#991b1b'); close()" x-bind:style="{ backgroundColor: '#991b1b' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#7f1d1d'); close()" x-bind:style="{ backgroundColor: '#7f1d1d' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#450a0a'); close()" x-bind:style="{ backgroundColor: '#450a0a' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fff7ed'); close()" x-bind:style="{ backgroundColor: '#fff7ed' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ffedd5'); close()" x-bind:style="{ backgroundColor: '#ffedd5' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fed7aa'); close()" x-bind:style="{ backgroundColor: '#fed7aa' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fdba74'); close()" x-bind:style="{ backgroundColor: '#fdba74' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fb923c'); close()" x-bind:style="{ backgroundColor: '#fb923c' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f97316'); close()" x-bind:style="{ backgroundColor: '#f97316' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ea580c'); close()" x-bind:style="{ backgroundColor: '#ea580c' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#c2410c'); close()" x-bind:style="{ backgroundColor: '#c2410c' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#9a3412'); close()" x-bind:style="{ backgroundColor: '#9a3412' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#7c2d12'); close()" x-bind:style="{ backgroundColor: '#7c2d12' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#431407'); close()" x-bind:style="{ backgroundColor: '#431407' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fffbeb'); close()" x-bind:style="{ backgroundColor: '#fffbeb' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fef3c7'); close()" x-bind:style="{ backgroundColor: '#fef3c7' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fde68a'); close()" x-bind:style="{ backgroundColor: '#fde68a' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fcd34d'); close()" x-bind:style="{ backgroundColor: '#fcd34d' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fbbf24'); close()" x-bind:style="{ backgroundColor: '#fbbf24' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f59e0b'); close()" x-bind:style="{ backgroundColor: '#f59e0b' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#d97706'); close()" x-bind:style="{ backgroundColor: '#d97706' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#b45309'); close()" x-bind:style="{ backgroundColor: '#b45309' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#92400e'); close()" x-bind:style="{ backgroundColor: '#92400e' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#78350f'); close()" x-bind:style="{ backgroundColor: '#78350f' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#451a03'); close()" x-bind:style="{ backgroundColor: '#451a03' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fefce8'); close()" x-bind:style="{ backgroundColor: '#fefce8' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fef9c3'); close()" x-bind:style="{ backgroundColor: '#fef9c3' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fef08a'); close()" x-bind:style="{ backgroundColor: '#fef08a' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fde047'); close()" x-bind:style="{ backgroundColor: '#fde047' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#facc15'); close()" x-bind:style="{ backgroundColor: '#facc15' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#eab308'); close()" x-bind:style="{ backgroundColor: '#eab308' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ca8a04'); close()" x-bind:style="{ backgroundColor: '#ca8a04' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#a16207'); close()" x-bind:style="{ backgroundColor: '#a16207' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#854d0e'); close()" x-bind:style="{ backgroundColor: '#854d0e' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#713f12'); close()" x-bind:style="{ backgroundColor: '#713f12' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#422006'); close()" x-bind:style="{ backgroundColor: '#422006' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f7fee7'); close()" x-bind:style="{ backgroundColor: '#f7fee7' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ecfccb'); close()" x-bind:style="{ backgroundColor: '#ecfccb' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#d9f99d'); close()" x-bind:style="{ backgroundColor: '#d9f99d' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#bef264'); close()" x-bind:style="{ backgroundColor: '#bef264' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#a3e635'); close()" x-bind:style="{ backgroundColor: '#a3e635' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#84cc16'); close()" x-bind:style="{ backgroundColor: '#84cc16' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#65a30d'); close()" x-bind:style="{ backgroundColor: '#65a30d' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#4d7c0f'); close()" x-bind:style="{ backgroundColor: '#4d7c0f' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#3f6212'); close()" x-bind:style="{ backgroundColor: '#3f6212' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#365314'); close()" x-bind:style="{ backgroundColor: '#365314' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#1a2e05'); close()" x-bind:style="{ backgroundColor: '#1a2e05' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f0fdf4'); close()" x-bind:style="{ backgroundColor: '#f0fdf4' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#dcfce7'); close()" x-bind:style="{ backgroundColor: '#dcfce7' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#bbf7d0'); close()" x-bind:style="{ backgroundColor: '#bbf7d0' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#86efac'); close()" x-bind:style="{ backgroundColor: '#86efac' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#4ade80'); close()" x-bind:style="{ backgroundColor: '#4ade80' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#22c55e'); close()" x-bind:style="{ backgroundColor: '#22c55e' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#16a34a'); close()" x-bind:style="{ backgroundColor: '#16a34a' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#15803d'); close()" x-bind:style="{ backgroundColor: '#15803d' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#166534'); close()" x-bind:style="{ backgroundColor: '#166534' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#14532d'); close()" x-bind:style="{ backgroundColor: '#14532d' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#052e16'); close()" x-bind:style="{ backgroundColor: '#052e16' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ecfdf5'); close()" x-bind:style="{ backgroundColor: '#ecfdf5' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#d1fae5'); close()" x-bind:style="{ backgroundColor: '#d1fae5' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#a7f3d0'); close()" x-bind:style="{ backgroundColor: '#a7f3d0' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#6ee7b7'); close()" x-bind:style="{ backgroundColor: '#6ee7b7' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#34d399'); close()" x-bind:style="{ backgroundColor: '#34d399' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#10b981'); close()" x-bind:style="{ backgroundColor: '#10b981' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#059669'); close()" x-bind:style="{ backgroundColor: '#059669' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#047857'); close()" x-bind:style="{ backgroundColor: '#047857' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#065f46'); close()" x-bind:style="{ backgroundColor: '#065f46' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#064e3b'); close()" x-bind:style="{ backgroundColor: '#064e3b' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#022c22'); close()" x-bind:style="{ backgroundColor: '#022c22' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f0fdfa'); close()" x-bind:style="{ backgroundColor: '#f0fdfa' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ccfbf1'); close()" x-bind:style="{ backgroundColor: '#ccfbf1' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#99f6e4'); close()" x-bind:style="{ backgroundColor: '#99f6e4' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#5eead4'); close()" x-bind:style="{ backgroundColor: '#5eead4' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#2dd4bf'); close()" x-bind:style="{ backgroundColor: '#2dd4bf' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#14b8a6'); close()" x-bind:style="{ backgroundColor: '#14b8a6' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#0d9488'); close()" x-bind:style="{ backgroundColor: '#0d9488' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#0f766e'); close()" x-bind:style="{ backgroundColor: '#0f766e' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#115e59'); close()" x-bind:style="{ backgroundColor: '#115e59' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#134e4a'); close()" x-bind:style="{ backgroundColor: '#134e4a' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#042f2e'); close()" x-bind:style="{ backgroundColor: '#042f2e' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ecfeff'); close()" x-bind:style="{ backgroundColor: '#ecfeff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#cffafe'); close()" x-bind:style="{ backgroundColor: '#cffafe' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#a5f3fc'); close()" x-bind:style="{ backgroundColor: '#a5f3fc' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#67e8f9'); close()" x-bind:style="{ backgroundColor: '#67e8f9' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#22d3ee'); close()" x-bind:style="{ backgroundColor: '#22d3ee' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#06b6d4'); close()" x-bind:style="{ backgroundColor: '#06b6d4' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#0891b2'); close()" x-bind:style="{ backgroundColor: '#0891b2' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#0e7490'); close()" x-bind:style="{ backgroundColor: '#0e7490' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#155e75'); close()" x-bind:style="{ backgroundColor: '#155e75' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#164e63'); close()" x-bind:style="{ backgroundColor: '#164e63' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#083344'); close()" x-bind:style="{ backgroundColor: '#083344' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f0f9ff'); close()" x-bind:style="{ backgroundColor: '#f0f9ff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#e0f2fe'); close()" x-bind:style="{ backgroundColor: '#e0f2fe' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#bae6fd'); close()" x-bind:style="{ backgroundColor: '#bae6fd' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#7dd3fc'); close()" x-bind:style="{ backgroundColor: '#7dd3fc' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#38bdf8'); close()" x-bind:style="{ backgroundColor: '#38bdf8' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#0ea5e9'); close()" x-bind:style="{ backgroundColor: '#0ea5e9' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#0284c7'); close()" x-bind:style="{ backgroundColor: '#0284c7' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#0369a1'); close()" x-bind:style="{ backgroundColor: '#0369a1' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#075985'); close()" x-bind:style="{ backgroundColor: '#075985' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#0c4a6e'); close()" x-bind:style="{ backgroundColor: '#0c4a6e' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#082f49'); close()" x-bind:style="{ backgroundColor: '#082f49' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#eff6ff'); close()" x-bind:style="{ backgroundColor: '#eff6ff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#dbeafe'); close()" x-bind:style="{ backgroundColor: '#dbeafe' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#bfdbfe'); close()" x-bind:style="{ backgroundColor: '#bfdbfe' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#93c5fd'); close()" x-bind:style="{ backgroundColor: '#93c5fd' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#60a5fa'); close()" x-bind:style="{ backgroundColor: '#60a5fa' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#3b82f6'); close()" x-bind:style="{ backgroundColor: '#3b82f6' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#2563eb'); close()" x-bind:style="{ backgroundColor: '#2563eb' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#1d4ed8'); close()" x-bind:style="{ backgroundColor: '#1d4ed8' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#1e40af'); close()" x-bind:style="{ backgroundColor: '#1e40af' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#1e3a8a'); close()" x-bind:style="{ backgroundColor: '#1e3a8a' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#172554'); close()" x-bind:style="{ backgroundColor: '#172554' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#eef2ff'); close()" x-bind:style="{ backgroundColor: '#eef2ff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#e0e7ff'); close()" x-bind:style="{ backgroundColor: '#e0e7ff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#c7d2fe'); close()" x-bind:style="{ backgroundColor: '#c7d2fe' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#a5b4fc'); close()" x-bind:style="{ backgroundColor: '#a5b4fc' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#818cf8'); close()" x-bind:style="{ backgroundColor: '#818cf8' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#6366f1'); close()" x-bind:style="{ backgroundColor: '#6366f1' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#4f46e5'); close()" x-bind:style="{ backgroundColor: '#4f46e5' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#4338ca'); close()" x-bind:style="{ backgroundColor: '#4338ca' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#3730a3'); close()" x-bind:style="{ backgroundColor: '#3730a3' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#312e81'); close()" x-bind:style="{ backgroundColor: '#312e81' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#1e1b4b'); close()" x-bind:style="{ backgroundColor: '#1e1b4b' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f5f3ff'); close()" x-bind:style="{ backgroundColor: '#f5f3ff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ede9fe'); close()" x-bind:style="{ backgroundColor: '#ede9fe' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ddd6fe'); close()" x-bind:style="{ backgroundColor: '#ddd6fe' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#c4b5fd'); close()" x-bind:style="{ backgroundColor: '#c4b5fd' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#a78bfa'); close()" x-bind:style="{ backgroundColor: '#a78bfa' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#8b5cf6'); close()" x-bind:style="{ backgroundColor: '#8b5cf6' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#7c3aed'); close()" x-bind:style="{ backgroundColor: '#7c3aed' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#6d28d9'); close()" x-bind:style="{ backgroundColor: '#6d28d9' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#5b21b6'); close()" x-bind:style="{ backgroundColor: '#5b21b6' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#4c1d95'); close()" x-bind:style="{ backgroundColor: '#4c1d95' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#2e1065'); close()" x-bind:style="{ backgroundColor: '#2e1065' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#faf5ff'); close()" x-bind:style="{ backgroundColor: '#faf5ff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f3e8ff'); close()" x-bind:style="{ backgroundColor: '#f3e8ff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#e9d5ff'); close()" x-bind:style="{ backgroundColor: '#e9d5ff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#d8b4fe'); close()" x-bind:style="{ backgroundColor: '#d8b4fe' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#c084fc'); close()" x-bind:style="{ backgroundColor: '#c084fc' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#a855f7'); close()" x-bind:style="{ backgroundColor: '#a855f7' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#9333ea'); close()" x-bind:style="{ backgroundColor: '#9333ea' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#7e22ce'); close()" x-bind:style="{ backgroundColor: '#7e22ce' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#6b21a8'); close()" x-bind:style="{ backgroundColor: '#6b21a8' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#581c87'); close()" x-bind:style="{ backgroundColor: '#581c87' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#3b0764'); close()" x-bind:style="{ backgroundColor: '#3b0764' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fdf4ff'); close()" x-bind:style="{ backgroundColor: '#fdf4ff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fae8ff'); close()" x-bind:style="{ backgroundColor: '#fae8ff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f5d0fe'); close()" x-bind:style="{ backgroundColor: '#f5d0fe' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f0abfc'); close()" x-bind:style="{ backgroundColor: '#f0abfc' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#e879f9'); close()" x-bind:style="{ backgroundColor: '#e879f9' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#d946ef'); close()" x-bind:style="{ backgroundColor: '#d946ef' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#c026d3'); close()" x-bind:style="{ backgroundColor: '#c026d3' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#a21caf'); close()" x-bind:style="{ backgroundColor: '#a21caf' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#86198f'); close()" x-bind:style="{ backgroundColor: '#86198f' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#701a75'); close()" x-bind:style="{ backgroundColor: '#701a75' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#4a044e'); close()" x-bind:style="{ backgroundColor: '#4a044e' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fdf2f8'); close()" x-bind:style="{ backgroundColor: '#fdf2f8' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fce7f3'); close()" x-bind:style="{ backgroundColor: '#fce7f3' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fbcfe8'); close()" x-bind:style="{ backgroundColor: '#fbcfe8' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f9a8d4'); close()" x-bind:style="{ backgroundColor: '#f9a8d4' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f472b6'); close()" x-bind:style="{ backgroundColor: '#f472b6' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ec4899'); close()" x-bind:style="{ backgroundColor: '#ec4899' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#db2777'); close()" x-bind:style="{ backgroundColor: '#db2777' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#be185d'); close()" x-bind:style="{ backgroundColor: '#be185d' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#9d174d'); close()" x-bind:style="{ backgroundColor: '#9d174d' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#831843'); close()" x-bind:style="{ backgroundColor: '#831843' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#500724'); close()" x-bind:style="{ backgroundColor: '#500724' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fff1f2'); close()" x-bind:style="{ backgroundColor: '#fff1f2' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ffe4e6'); close()" x-bind:style="{ backgroundColor: '#ffe4e6' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fecdd3'); close()" x-bind:style="{ backgroundColor: '#fecdd3' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fda4af'); close()" x-bind:style="{ backgroundColor: '#fda4af' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#fb7185'); close()" x-bind:style="{ backgroundColor: '#fb7185' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#f43f5e'); close()" x-bind:style="{ backgroundColor: '#f43f5e' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#e11d48'); close()" x-bind:style="{ backgroundColor: '#e11d48' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#be123c'); close()" x-bind:style="{ backgroundColor: '#be123c' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#9f1239'); close()" x-bind:style="{ backgroundColor: '#9f1239' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#881337'); close()" x-bind:style="{ backgroundColor: '#881337' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#4c0519'); close()" x-bind:style="{ backgroundColor: '#4c0519' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#ffffff'); close()" x-bind:style="{ backgroundColor: '#ffffff' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().setColor('#000000'); close()" x-bind:style="{ backgroundColor: '#000000' }" class="cursor-pointer w-6 h-6 border border-border-strong rounded-nav hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+</div>
+<div x-on:click="commands().unsetColor(); close()" class="cursor-pointer w-6 h-6 border border-danger-fg rounded-nav flex items-center justify-center text-danger-fg hover:ring-1 hover:ring-fg hover:ring-offset-1 hover:ring-offset-surface-raised">
+<span aria-hidden="true" class="inline-flex shrink-0 *:w-full *:h-full size-4" data-atom-icon>
+<svg/>
+</span>
+</div>
+</div>
+</div>
+</div>
+=== toolbar.link ===
+<div x-data="dropdown({ locked: false, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" x-on:open="if (editor().isActive('link')) $el.querySelector('.link-menu').dispatchEvent(new CustomEvent('link-menu-on', { bubbles: true, detail: editor() })) else $el.querySelector('.link-menu').dispatchEvent(new CustomEvent('link-menu-edit'))" data-atom-dropdown>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Link" x-bind:aria-pressed="isActive(&#039;link&#039;)" x-bind:data-active="isActive(&#039;link&#039;)" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M18.3638 15.5355L16.9496 14.1213L18.3638 12.7071C20.3164 10.7545 20.3164 7.58866 18.3638 5.63604C16.4112 3.68341 13.2453 3.68341 11.2927 5.63604L9.87849 7.05025L8.46428 5.63604L9.87849 4.22182C12.6122 1.48815 17.0443 1.48815 19.778 4.22182C22.5117 6.95549 22.5117 11.3876 19.778 14.1213L18.3638 15.5355ZM15.5353 18.364L14.1211 19.7782C11.3875 22.5118 6.95531 22.5118 4.22164 19.7782C1.48797 17.0445 1.48797 12.6123 4.22164 9.87868L5.63585 8.46446L7.05007 9.87868L5.63585 11.2929C3.68323 13.2455 3.68323 16.4113 5.63585 18.364C7.58847 20.3166 10.7543 20.3166 12.7069 18.364L14.1211 16.9497L15.5353 18.364ZM14.8282 7.75736L16.2425 9.17157L9.17139 16.2426L7.75717 14.8284L14.8282 7.75736Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Link </div>
+</div>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<div x-on:click.stop class="[&_.link-menu]:border-0 [&_.link-menu]:shadow-none [&_.link-menu]:bg-transparent">
+<div x-data="{ link: null, isEditing: false, init () { this.$el.shouldShow = (editor) => this.shouldShow(editor) }, shouldShow (editor) { if (editor?.isActive('link')) this.getLink(editor) return editor?.isActive('link') }, getLink (editor) { this.$nextTick(() => { editor.chain().focus().extendMarkRange('link').run() this.link = { href: editor.getAttributes('link').href, target: editor.getAttributes('link').target, } }) }, edit () { this.href = this.link?.href this.newtab = this.link?.target === '_blank' this.isEditing = true }, remove () { if (isLocked()) return editor().chain().focus().extendMarkRange('link').unsetLink().run() this.link = null }, save () { if (isLocked()) return if (!this.href.startsWith('https://') && !this.href.startsWith('http://')) { this.$dispatch('alert', { message: 'Invalid URL', type: 'error' }) } else { let target = this.newtab ? '_blank' : '_self' let link = { href: this.href, target } editor().chain().focus().extendMarkRange('link').setLink(link).run() this.link = link this.isEditing = false } }, }" x-on:link-menu-edit="link = null; edit()" x-on:link-menu-on="isEditing = false; getLink($event.detail)" class="link-menu bg-surface-raised rounded-panel border-border-strong has-[>div]:border has-[>div]:shadow-pop">
+<template x-if="link && !isEditing">
+<div class="py-2 px-3 flex items-center gap-4 cursor-pointer max-w-xl">
+<div class="grow flex items-center gap-2">
+<span aria-hidden="true" class="inline-flex shrink-0 *:w-full *:h-full size-4 shrink-0 text-fg-muted" data-atom-icon>
+<svg/>
+</span>
+<div class="grow grid">
+<div x-text="link.href" class="font-medium truncate text-accent-ink">
+</div>
+</div>
+</div>
+<div class="shrink-0 text-fg-muted" x-on:click="edit()">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M15.7279 9.57627L14.3137 8.16206L5 17.4758V18.89H6.41421L15.7279 9.57627ZM17.1421 8.16206L18.5563 6.74785L17.1421 5.33363L15.7279 6.74785L17.1421 8.16206ZM7.24264 20.89H3V16.6473L16.435 3.21231C16.8256 2.82179 17.4587 2.82179 17.8492 3.21231L20.6777 6.04074C21.0682 6.43126 21.0682 7.06443 20.6777 7.45495L7.24264 20.89Z">
+</path>
+</svg>
+</div>
+<div class="shrink-0 text-fg-muted" x-on:click="remove()">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M17 6H22V8H20V21C20 21.5523 19.5523 22 19 22H5C4.44772 22 4 21.5523 4 21V8H2V6H7V3C7 2.44772 7.44772 2 8 2H16C16.5523 2 17 2.44772 17 3V6ZM18 8H6V20H18V8ZM9 11H11V17H9V11ZM13 11H15V17H13V11ZM9 4V6H15V4H9Z">
+</path>
+</svg>
+</div>
+</div>
+</template>
+<template x-if="isEditing">
+<div x-on:keydown.enter.prevent="save()" class="p-4 flex flex-col gap-2 w-80">
+<div class="group/input relative" data-atom-input>
+<input type="text" placeholder="Link URL" class="h-control w-full no-spinner rounded-control border text-sm bg-surface text-fg placeholder:text-fg-subtle disabled:cursor-not-allowed disabled:border-border disabled:bg-surface-sunken disabled:text-fg-subtle focus-visible:border-focus focus-visible:outline-offset-0 border-control-border group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg pl-2.5 pr-2.5" x-model="href">
+<div class="z-1 absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pr-1.5 right-0 [&amp;_button]:flex [&amp;_button]:items-center [&amp;_button]:justify-center [&amp;_button]:text-fg-muted [&amp;_button]:rounded-nav [&amp;_button]:p-1 [&amp;_button]:hover:bg-fg/5">
+<button type="button" x-on:click="save()">
+<span aria-hidden="true" class="inline-flex shrink-0 *:w-full *:h-full size-4" data-atom-icon>
+<svg/>
+</span>
+</button>
+</div>
+</div>
+<label class="group/checkbox inline-block space-y-2" data-atom-checkbox>
+<div>
+<div class="flex gap-2 items-center">
+<div class="shrink-0">
+<input type="checkbox" class="sr-only peer" x-model="newtab">
+<div aria-hidden="true" class="size-4 rounded flex items-center justify-center bg-surface border border-fg-subtle text-surface peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1">
+<div class="size-3 opacity-0 flex items-center justify-center">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M20 6 9 17l-5-5"/>
+</svg>
+</div>
+</div>
+</div>
+<div class="text-fg"> Open in new tab </div>
+</div>
+</div>
+</label>
+</div>
+</template>
+</div>
+</div>
+</div>
+</div>
+=== toolbar.image ===
+<div x-data="{ uploading: false, progress: 0, read (files) { if (isLocked()) return this.uploading = true this.$wire.uploadMultiple('_editor.images', Array.from(files), () => this.finish(true), () => this.finish('error'), (e) => this.progress = e.detail.progress, () => this.finish(), ) }, finish (response) { if (response === 'error') atom.alert({ heading: 'Error', message: 'Failed to upload images', variant: 'danger' }) else if (response) this.$wire.get('_editor.images').forEach(url => commands().setImage({ src: url })) this.uploading = false this.progress = 0 }, }">
+<input type="file" x-ref="fileinput" x-on:change="read($event.target.files)" class="hidden" accept="image/*" multiple>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Image" x-bind:aria-pressed="isActive(&#039;image&#039;)" x-bind:data-active="isActive(&#039;image&#039;)" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg" x-show="!uploading" x-on:click="$refs.fileinput.click()">
+<span aria-hidden="true" class="inline-flex shrink-0 *:w-full *:h-full size-4" data-atom-icon>
+<svg/>
+</span>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Image </div>
+</div>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Uploading" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg opacity-50 pointer-events-none gap-1" x-show="uploading">
+<span aria-hidden="true" class="inline-flex shrink-0 *:w-full *:h-full size-4 shrink-0" data-atom-icon>
+<svg/>
+</span>
+<span x-show="progress > 0 && progress < 100" x-text="`${progress}%`" class="text-xs">
+</span>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Uploading </div>
+</div>
+</div>
+=== toolbar.youtube ===
+<div x-data="dropdown({ locked: false, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" data-atom-dropdown>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Youtube Video" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M19.6069 6.99482C19.5307 6.69695 19.3152 6.47221 19.0684 6.40288C18.6299 6.28062 16.501 6 12.001 6C7.50098 6 5.37252 6.28073 4.93225 6.40323C4.68776 6.47123 4.4723 6.69593 4.3951 6.99482C4.2863 7.41923 4.00098 9.19595 4.00098 12C4.00098 14.804 4.2863 16.5808 4.3954 17.0064C4.47126 17.3031 4.68676 17.5278 4.93251 17.5968C5.37252 17.7193 7.50098 18 12.001 18C16.501 18 18.6299 17.7194 19.0697 17.5968C19.3142 17.5288 19.5297 17.3041 19.6069 17.0052C19.7157 16.5808 20.001 14.8 20.001 12C20.001 9.2 19.7157 7.41923 19.6069 6.99482ZM21.5442 6.49818C22.001 8.28 22.001 12 22.001 12C22.001 12 22.001 15.72 21.5442 17.5018C21.2897 18.4873 20.547 19.2618 19.6056 19.5236C17.8971 20 12.001 20 12.001 20C12.001 20 6.10837 20 4.39637 19.5236C3.45146 19.2582 2.70879 18.4836 2.45774 17.5018C2.00098 15.72 2.00098 12 2.00098 12C2.00098 12 2.00098 8.28 2.45774 6.49818C2.71227 5.51273 3.45495 4.73818 4.39637 4.47636C6.10837 4 12.001 4 12.001 4C12.001 4 17.8971 4 19.6056 4.47636C20.5505 4.74182 21.2932 5.51636 21.5442 6.49818ZM10.001 15.5V8.5L16.001 12L10.001 15.5Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Youtube Video </div>
+</div>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<div x-data="{ url: null, insert () { if (!this.url) return commands().setYoutubeVideo({ src: this.url }) this.url = null close() }, }" x-on:click.stop x-on:keydown.enter.prevent="insert()" class="p-2 flex items-center gap-2">
+<input type="text" x-model="url" class="max-w-lg w-full appearance-none bg-transparent text-sm rounded-nav" placeholder="Youtube URL"/>
+<button type="button" x-show="url" x-on:click="insert()" class="flex items-center justify-center text-success-fg">
+<span aria-hidden="true" class="inline-flex shrink-0 *:w-full *:h-full size-4" data-atom-icon>
+<svg/>
+</span>
+</button>
+</div>
+</div>
+</div>
+=== toolbar.undo ===
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Undo" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg" x-on:click="commands().undo()">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M5.82843 6.99955L8.36396 9.53509L6.94975 10.9493L2 5.99955L6.94975 1.0498L8.36396 2.46402L5.82843 4.99955H13C17.4183 4.99955 21 8.58127 21 12.9996C21 17.4178 17.4183 20.9996 13 20.9996H4V18.9996H13C16.3137 18.9996 19 16.3133 19 12.9996C19 9.68584 16.3137 6.99955 13 6.99955H5.82843Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Undo </div>
+</div>
+=== toolbar.redo ===
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Redo" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg" x-on:click="commands().redo()">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M18.1716 6.99955H11C7.68629 6.99955 5 9.68584 5 12.9996C5 16.3133 7.68629 18.9996 11 18.9996H20V20.9996H11C6.58172 20.9996 3 17.4178 3 12.9996C3 8.58127 6.58172 4.99955 11 4.99955H18.1716L15.636 2.46402L17.0503 1.0498L22 5.99955L17.0503 10.9493L15.636 9.53509L18.1716 6.99955Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Redo </div>
+</div>
+=== toolbar.horizontal-rule ===
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Horizontal Rule" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg" x-on:click="commands().setHorizontalRule()">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M19 11H5V13H19V11Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Horizontal Rule </div>
+</div>
+=== toolbar.remove-formatting ===
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Remove Formatting" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg" x-on:click="commands().unsetAllMarks(); commands().clearNodes();">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M12.6512 14.0654L11.6047 20H9.57389L10.9247 12.339L3.51465 4.92892L4.92886 3.51471L20.4852 19.0711L19.071 20.4853L12.6512 14.0654ZM11.7727 7.53009L12.0425 5.99999H10.2426L8.24257 3.99999H19.9999V5.99999H14.0733L13.4991 9.25652L11.7727 7.53009Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Remove Formatting </div>
+</div>
+=== toolbar.text-highlight ===
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Text Highlight" x-bind:aria-pressed="isActive(&#039;highlight&#039;)" x-bind:data-active="isActive(&#039;highlight&#039;)" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg" x-on:click="commands().setHighlight()">
+<span aria-hidden="true" class="inline-flex shrink-0 *:w-full *:h-full size-4" data-atom-icon>
+<svg/>
+</span>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Text Highlight </div>
+</div>
+=== toolbar.separator ===
+<div class="w-px h-5 mx-1 bg-border" aria-hidden="true">
+</div>
+=== chat.formatting ===
+<div x-data="dropdown({ locked: false, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" data-atom-dropdown>
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Text Formatting" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M8 11H12.5C13.8807 11 15 9.88071 15 8.5C15 7.11929 13.8807 6 12.5 6H8V11ZM18 15.5C18 17.9853 15.9853 20 13.5 20H6V4H12.5C14.9853 4 17 6.01472 17 8.5C17 9.70431 16.5269 10.7981 15.7564 11.6058C17.0979 12.3847 18 13.837 18 15.5ZM8 13V18H13.5C14.8807 18 16 16.8807 16 15.5C16 14.1193 14.8807 13 13.5 13H8Z">
+</path>
+</svg>
+</button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Text Formatting </div>
+</div>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleBold()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M8 11H12.5C13.8807 11 15 9.88071 15 8.5C15 7.11929 13.8807 6 12.5 6H8V11ZM18 15.5C18 17.9853 15.9853 20 13.5 20H6V4H12.5C14.9853 4 17 6.01472 17 8.5C17 9.70431 16.5269 10.7981 15.7564 11.6058C17.0979 12.3847 18 13.837 18 15.5ZM8 13V18H13.5C14.8807 18 16 16.8807 16 15.5C16 14.1193 14.8807 13 13.5 13H8Z">
+</path>
+</svg>
+<div class="grow">Bold</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleItalic()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M15 20H7V18H9.92661L12.0425 6H9V4H17V6H14.0734L11.9575 18H15V20Z">
+</path>
+</svg>
+<div class="grow">Italic</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleStrike()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M17.1538 14C17.3846 14.5161 17.5 15.0893 17.5 15.7196C17.5 17.0625 16.9762 18.1116 15.9286 18.867C14.8809 19.6223 13.4335 20 11.5862 20C9.94674 20 8.32335 19.6185 6.71592 18.8555V16.6009C8.23538 17.4783 9.7908 17.917 11.3822 17.917C13.9333 17.917 15.2128 17.1846 15.2208 15.7196C15.2208 15.0939 15.0049 14.5598 14.5731 14.1173C14.5339 14.0772 14.4939 14.0381 14.4531 14H3V12H21V14H17.1538ZM13.076 11H7.62908C7.4566 10.8433 7.29616 10.6692 7.14776 10.4778C6.71592 9.92084 6.5 9.24559 6.5 8.45207C6.5 7.21602 6.96583 6.165 7.89749 5.299C8.82916 4.43299 10.2706 4 12.2219 4C13.6934 4 15.1009 4.32808 16.4444 4.98426V7.13591C15.2448 6.44921 13.9293 6.10587 12.4978 6.10587C10.0187 6.10587 8.77917 6.88793 8.77917 8.45207C8.77917 8.87172 8.99709 9.23796 9.43293 9.55079C9.86878 9.86362 10.4066 10.1135 11.0463 10.3004C11.6665 10.4816 12.3431 10.7148 13.076 11H13.076Z">
+</path>
+</svg>
+<div class="grow">Strikethrough</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleSubscript()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M5.59567 4L10.5 9.92831L15.4043 4H18L11.7978 11.4971L18 18.9943V19H15.4091L10.5 13.0659L5.59092 19H3V18.9943L9.20216 11.4971L3 4H5.59567ZM21.8 16C21.8 15.5582 21.4418 15.2 21 15.2C20.5582 15.2 20.2 15.5582 20.2 16C20.2 16.0762 20.2107 16.15 20.2306 16.2198L19.0765 16.5496C19.0267 16.375 19 16.1906 19 16C19 14.8954 19.8954 14 21 14C22.1046 14 23 14.8954 23 16C23 16.5727 22.7593 17.0892 22.3735 17.4538L20.7441 19H23V20H19V19L21.5507 16.5803C21.7042 16.4345 21.8 16.2284 21.8 16Z">
+</path>
+</svg>
+<div class="grow">Subscript</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleSuperscript()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M5.59567 4L10.5 9.92831L15.4043 4H18L11.7978 11.4971L18 18.9943V19H15.4091L10.5 13.0659L5.59092 19H3V18.9943L9.20216 11.4971L3 4H5.59567ZM21.8 16C21.8 15.5582 21.4418 15.2 21 15.2C20.5582 15.2 20.2 15.5582 20.2 16C20.2 16.0762 20.2107 16.15 20.2306 16.2198L19.0765 16.5496C19.0267 16.375 19 16.1906 19 16C19 14.8954 19.8954 14 21 14C22.1046 14 23 14.8954 23 16C23 16.5727 22.7593 17.0892 22.3735 17.4538L20.7441 19H23V20H19V19L21.5507 16.5803C21.7042 16.4345 21.8 16.2284 21.8 16Z">
+</path>
+</svg>
+<div class="grow">Superscript</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleUnderline()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M8 3V12C8 14.2091 9.79086 16 12 16C14.2091 16 16 14.2091 16 12V3H18V12C18 15.3137 15.3137 18 12 18C8.68629 18 6 15.3137 6 12V3H8ZM4 20H20V22H4V20Z">
+</path>
+</svg>
+<div class="grow">Underline</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleBulletList()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M8 4H21V6H8V4ZM3 3.5H6V6.5H3V3.5ZM3 10.5H6V13.5H3V10.5ZM3 17.5H6V20.5H3V17.5ZM8 11H21V13H8V11ZM8 18H21V20H8V18Z">
+</path>
+</svg>
+<div class="grow">Bullet List</div>
+</div>
+</div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" x-on:click="commands().toggleOrderedList()">
+<div class="grow leading-tight whitespace-nowrap truncate">
+<div class="flex items-center gap-3">
+<svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+<path d="M8 4H21V6H8V4ZM5 3V6H6V7H3V6H4V4H3V3H5ZM3 14V11.5H5V11H3V10H6V12.5H4V13H6V14H3ZM5 19.5H3V18.5H5V18H3V17H6V21H3V20H5V19.5ZM8 11H21V13H8V11ZM8 18H21V20H8V18Z">
+</path>
+</svg>
+<div class="grow">Ordered List</div>
+</div>
+</div>
+</button>
+</div>
+</div>
+=== toolbar.button ===
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" aria-label="Bold" x-bind:aria-pressed="isActive(&#039;bold&#039;)" x-bind:data-active="isActive(&#039;bold&#039;)" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg"> B </button>
+<div popover="manual" wire:key="atom-tooltip-content" class="px-2 py-1 rounded-nav text-xs text-canvas font-medium bg-fg overflow-visible" data-atom-tooltip-content> Bold </div>
+</div>
+=== toolbar.button plain ===
+<div x-data="tooltip({ placement: 'top-center', interactive: null, })" data-atom-tooltip>
+<button type="button" class="h-control aspect-square rounded-nav flex items-center justify-center text-fg-muted hover:bg-fg/5 hover:text-fg [&amp;[data-active=true]]:bg-fg/10 [&amp;[data-active=true]]:text-fg"> B </button>
+</div>

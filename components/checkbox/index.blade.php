@@ -15,6 +15,8 @@ $variant = \Jiannius\Atom\Services\ChoiceTile::resolve($atomChoiceTile) ? 'tile'
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
 $merges = ['name' => $name, 'required' => $required ?: null];
+// what a tile holds: the slot, else the label
+$content = $slot->isNotEmpty() ? $slot : ($label ? t($label) : null);
 
 // 'self', or 'inherited' from a disabled <atom:form> or group; its own `disabled` wins (`:disabled="false"` included). A checkbox is a
 // native choice, so both are a real `disabled` input, which also carries the marker for a test or a selector.
@@ -31,31 +33,9 @@ if ($disabledBy) {
     <label {{ $attributes->only('class')->class('group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3') }} data-atom-checkbox data-atom-tile>
         <input type="checkbox" class="sr-only peer" {{ $attributes->except('class')->merge($merges) }}>
 
-        <div
-        aria-hidden="true"
-        data-atom-tile-indicator
-        @class([
-            'size-4 rounded flex items-center justify-center',
-            'bg-surface border border-fg-subtle text-surface',
-            'peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100',
-            'peer-disabled:opacity-50',
-        ])>
-            <div class="size-3 opacity-0 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-            </div>
-        </div>
+        <atom:checkbox._indicator kind="checkbox" tile />
 
-        <div class="min-w-0 pe-6 text-fg peer-disabled:text-fg-subtle" data-atom-tile-body>
-            @if ($slot->isNotEmpty())
-                {{ $slot }}
-            @elseif ($label)
-                {{ t($label) }}
-            @endif
-        </div>
-
-        @if ($caption)
-            <atom:caption class="pe-6">{{ t($caption) }}</atom:caption>
-        @endif
+        <atom:checkbox._tile-body :content="$content" :caption="$caption" />
 
         <atom:error>{{ t($error) }}</atom:error>
     </label>
@@ -74,20 +54,7 @@ if ($disabledBy) {
             ])>
                 <input type="checkbox" class="sr-only peer" {{ $attributes->except('class')->merge($merges) }}>
 
-                <div
-                aria-hidden="true"
-                @class([
-                    'size-4 rounded flex items-center justify-center',
-                    'bg-surface border border-fg-subtle text-surface',
-                    'peer-checked:border-accent-ink peer-checked:bg-accent-ink peer-checked:*:opacity-100',
-                    'peer-disabled:opacity-50 peer-disabled:cursor-not-allowed',
-                    'peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus',
-                    'group-has-[.error]/checkbox:outline-1 group-has-[.error]/checkbox:outline-danger-fg group-has-[.error]/checkbox:outline-offset-1',
-                ])>
-                    <div class="size-3 opacity-0 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="size-3" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                    </div>
-                </div>
+                <atom:checkbox._indicator kind="checkbox" />
             </div>
             
             @if ($slot->isNotEmpty())

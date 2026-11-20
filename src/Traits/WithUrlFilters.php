@@ -3,8 +3,8 @@
 namespace Jiannius\Atom\Traits;
 
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Jiannius\Atom\Services\LogOnce;
 use Livewire\Features\SupportQueryString\BaseUrl;
 use Livewire\WithPagination;
 use LogicException;
@@ -521,27 +521,7 @@ trait WithUrlFilters
     {
         $id = static::class.'|'.$key.'|'.$e::class;
 
-        $cacheKey = 'atom:url-filter-failure:'.md5($id);
-
-        try {
-            $first = Cache::add($cacheKey, 1, 3600);
-            $remembers = $first || Cache::has($cacheKey);
-        }
-        catch (\Throwable) {
-            $first = $remembers = false;
-        }
-
-        if (! $remembers) {
-            $first = ! isset(static::$urlFilterReported[$id]);
-
-            if (count(static::$urlFilterReported) >= 100) {
-                static::$urlFilterReported = [];
-            }
-
-            static::$urlFilterReported[$id] = true;
-        }
-
-        if (! $first) {
+        if (! LogOnce::first($id, static::$urlFilterReported, 'atom:url-filter-failure:'.md5($id))) {
             return;
         }
 

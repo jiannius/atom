@@ -20,7 +20,6 @@ $icons = [
 ];
 
 $href = safe_url($href);
-$passphrase = $passphrase ?: $phrase;
 
 /* A link is never `:disabled`, so `disabled` on a link item dimmed nothing and still navigated. A disabled item is a real
    disabled button: no href, out of the tab order. */
@@ -53,30 +52,7 @@ $merges = [
 ];
 
 /* Asks before it acts when `confirm` says so, and a delete always does (`:confirm="false"` opts out); see button/index.blade.php. */
-$handled = $attributes->wire('click')->value()
-    || \Jiannius\Atom\Services\Attributes::hasLike($attributes, 'x-on:click*', '@click*');
-
-$confirmation = \Jiannius\Atom\Services\ConfirmProp::resolve($confirm, $variant, $variant === 'delete', (bool) $handled, $el === 'a' || $type === 'submit', (string) $slot, $passphrase);
-
-if (data_get($confirmation, 'mode') === 'handler') {
-    $merges = [
-        ...$merges,
-
-        'x-on:click' => app('atom')->deleteConfirmHandler(
-            data_get($confirmation, 'config.passphrase'),
-            (string) data_get($confirmation, 'config.buttonConfirm', ''),
-            $confirmation['given'],
-        ),
-
-        'x-on:confirmed' => "\$wire.delete()",
-    ];
-}
-else if ($confirmation) {
-    $merges = [...$merges, 'data-atom-confirm' => json_encode($confirmation['config'])];
-}
-else if ($variant === 'delete' && $confirm === false && !$handled && $el === 'button' && $type !== 'submit') {
-    $merges = [...$merges, 'x-on:click' => "\$wire.delete()"];
-}
+$merges = [...$merges, ...\Jiannius\Atom\Services\ConfirmProp::merges($confirm, $variant, $variant === 'delete', $attributes, $el, $type, (string) $slot, $passphrase, $phrase)];
 @endphp
 
 <{{ $el }} {{ $attributes->class($classes)->merge($merges) }}>
