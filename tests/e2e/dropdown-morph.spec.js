@@ -406,6 +406,23 @@ test('a context menu opens and closes once per press after morphs and a re-run i
   await expect.poll(() => page.evaluate(() => window.__ctx)).toEqual({ open: 2, close: 2 })
 })
 
+test('a context menu closes on an item that its own click removes (an x-if or x-for re-render in a microtask)', async ({ page }) => {
+  const target = probe(page, 'context').locator('[data-context-target]')
+  const menu = probe(page, 'context').locator('[data-atom-menu][popover]')
+
+  await target.click({ button: 'right', position: { x: 40, y: 20 } })
+  expect(await isOpen(menu)).toBe(true)
+
+  // the clicked node is out of the menu by the time the click reaches the context menu's own listener
+  await menu.evaluate((el) => {
+    const item = el.querySelector('[role=menuitem]')
+    item.addEventListener('click', () => queueMicrotask(() => item.remove()))
+  })
+
+  await menu.getByRole('menuitem').first().click()
+  await expect.poll(() => isOpen(menu)).toBe(false)
+})
+
 test('a command palette keeps its filtered list and its highlighted item through a morph', async ({ page }) => {
   const palette = page.locator('dialog[data-atom-command]')
   const items = palette.locator('[data-atom-command-item]')

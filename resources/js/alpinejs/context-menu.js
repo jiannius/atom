@@ -17,8 +17,7 @@ export default (config = {}) => ({
 
     init () {
         // Everything is bound on $root, not on the trigger and popover nodes: a Livewire morph can replace those nodes, which orphans a
-        // listener bound to the old one (as for the dropdown). Capture, so the contextmenu is prevented before a listener on the trigger
-        // or its target runs, and for `toggle`, which does not bubble.
+        // listener bound to the old one (as for the dropdown). `toggle` does not bubble, so it is caught on the way down.
         const signal = listen(this.$root, '_atomContextMenuListeners')
 
         this.$root.addEventListener('contextmenu', (e) => {
@@ -28,7 +27,7 @@ export default (config = {}) => ({
             this.x = e.clientX
             this.y = e.clientY
             this.show()
-        }, { capture: true, signal })
+        }, { signal })
 
         this.$root.addEventListener('toggle', (e) => {
             if (e.target !== this.popover) return
@@ -47,7 +46,9 @@ export default (config = {}) => ({
 
         if (!this.locked) {
             this.$root.addEventListener('click', (e) => {
-                if (this.popover?.contains(e.target)) this.hide()
+                // the path, not `contains(e.target)`: an item removed by its own click (an x-if or x-for re-render in a microtask) is out of
+                // the popover by the time this runs
+                if (e.composedPath().includes(this.popover)) this.hide()
             }, { signal })
         }
 

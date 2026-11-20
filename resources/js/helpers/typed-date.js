@@ -86,7 +86,6 @@ export const splitTypedRange = (text) => String(text ?? '')
     .split(/\s+(?:to|-|–|—|~)\s+/i)
     .map(part => part.trim())
 
-
 // The text a picker prints for a day (and reads back through parseTypedDate()): `01 Oct 2024`, with `time` `01 Oct 2024 09:30 PM`.
 // A day that is not there prints nothing.
 export const formatDisplay = (day, time = false) => day?.format(time ? 'DD MMM YYYY hh:mm A' : 'DD MMM YYYY')
