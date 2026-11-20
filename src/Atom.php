@@ -210,6 +210,37 @@ class Atom
     }
 
     /**
+     * The `x-on:click` prefix of a trigger: a click on a disabled button inside it does nothing.
+     */
+    public const TRIGGER_DISABLED_GUARD = "\$el.querySelector('button[disabled]') ||";
+
+    /**
+     * The name of the Livewire component being rendered, or null outside one: a bare modal or command trigger pairs with a bare modal or
+     * palette of the same component. `current()` returns false (not null) when no component is on the stack.
+     */
+    public function currentComponentName() : ?string
+    {
+        return (app('livewire')->current() ?: null)?->getName();
+    }
+
+    /**
+     * The payload a toast, alert or confirm trigger hands to JS, empty values dropped: the heading and subheading translated once, then `$rest` as given.
+     *
+     * @param  array<string, mixed>  $rest
+     * @return array<string, mixed>
+     */
+    public function triggerPayload(mixed $variant, mixed $heading, mixed $subheading, mixed $html, array $rest = []) : array
+    {
+        return array_filter([
+            'variant' => $variant,
+            'heading' => $this->translateOnce($heading),
+            'subheading' => $this->translateOnce($subheading),
+            'html' => $html,
+            ...$rest,
+        ]);
+    }
+
+    /**
      * Translate a host-supplied heading, subheading or message exactly once.
      *
      * A plain string is a lang key (or the text itself) and goes through `__()`: never `trans_choice()`, which cuts a `|` in the text

@@ -5,7 +5,7 @@
 @php
 // Mirror the palette's own name default so a bare trigger pairs with a bare
 // command inside the same Livewire component.
-$name ??= (app('livewire')->current() ?: null)?->getName();
+$name ??= app('atom')->currentComponentName();
 @endphp
 
 <div

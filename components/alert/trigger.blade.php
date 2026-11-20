@@ -9,11 +9,7 @@
 
 <div
 x-data
-x-on:click="$el.querySelector('button[disabled]') || atom.alert(@js(array_filter([
-    'variant' => $variant,
-    'heading' => app('atom')->translateOnce($heading),
-    'subheading' => app('atom')->translateOnce($subheading ?? $message),
-    'html' => $html,
+x-on:click="{!! \Jiannius\Atom\Atom::TRIGGER_DISABLED_GUARD !!} atom.alert(@js(app('atom')->triggerPayload($variant, $heading, $subheading ?? $message, $html, [
     'button' => t($button),
 ]))).then(() => $dispatch('dismissed'))"
 {{ $attributes->class('contents') }}
