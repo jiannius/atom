@@ -216,6 +216,9 @@ function normaliseTidy(string $html): string
     $html = preg_replace('#(</main>).*#s', '$1', $html);
     $html = preg_replace('/\s+/', ' ', trim($html));
 
+    // a space before the `>` that ends a tag is not output a reader sees
+    $html = preg_replace('/(?<=["\'\w-]) >/', '>', $html);
+
     return preg_replace('/>\s*</', ">\n<", $html);
 }
 
