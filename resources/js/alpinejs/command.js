@@ -1,6 +1,6 @@
 import onMorphed, { stopMorphed } from '../helpers/morphed'
 import step from '../helpers/step'
-import { tookEscape } from '../helpers/dialog-escape'
+import dialog from '../helpers/dialog'
 
 export default (config) => {
     return {
@@ -60,29 +60,11 @@ export default (config) => {
             this.text = ''
         },
 
-        // The browser closed the dialog without closeCommand(): an Escape the dialog's own keydown handler never heard (the focus on
-        // <body>, because a Tab walked off the end, or a morph replaced the focused item; a control in the slot that stops the key), a
-        // <form method="dialog">, a direct close(). `close` is queued, so after closeCommand() it finds the state already clean, and
-        // after a close and a reopen in one tick it finds the dialog open again.
-        syncClosed () {
-            if (this.$root.open || !this.open) return
-
-            this.resetCommand()
-        },
-
-        escapeClose (e) {
-            // A popover inside took this press (helpers/dialog-escape.js).
-            if (tookEscape(e)) return
-
-            e.preventDefault()
-            this.closeCommand()
-        },
-
-        backdropClick (e) {
-            // Only a click on the dialog element itself is the backdrop; clicks
-            // on inner content have a descendant target.
-            if (e.target === this.$root) this.closeCommand()
-        },
+        ...dialog({
+            shown: (c) => c.open,
+            close: (c) => c.closeCommand(),
+            reset: (c) => c.resetCommand(),
+        }),
 
         items () {
             return Array.from(this.$root.querySelectorAll('[data-atom-command-item]'))
