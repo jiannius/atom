@@ -13,6 +13,7 @@ import recaptcha from './recaptcha'
 import safeUrl from './safe-url'
 import toastLift from './toast-lift'
 import tableColumns from './table-columns'
+import tableFilter from './table-filter'
 
 export default {
     alert,
@@ -29,6 +30,7 @@ export default {
     safeUrl,
     toastLift,
     tableColumns,
+    tableFilter,
 
     ajax: (url, headers = null) => new ajax(url, headers),
     json: (data) => JSON.stringify(data, null, 2),

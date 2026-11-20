@@ -117,16 +117,16 @@ describe('clear on filter change (wiring)', function () {
         expect(filterHandler($html))->toContain('resetTableCheckboxes');
     });
 
-    it('select filter dispatches table-filter:changed on value change', function () {
+    it('select filter registers with the helper that dispatches table-filter:changed on value change', function () {
         $html = renderBlade('<atom:select.filter wire:model.live="status" label="Status" :options="[]" />');
 
-        expect($html)->toContain('table-filter:changed');
+        expect($html)->toContain("watch: 'selectValue'");
     });
 
-    it('date range filter dispatches table-filter:changed on value change', function () {
+    it('date range filter registers with the helper that dispatches table-filter:changed on value change', function () {
         $html = renderBlade('<atom:date-picker.range wire:model.live="range" />');
 
-        expect($html)->toContain('table-filter:changed');
+        expect($html)->toContain("watch: 'dateRangeValue'");
     });
 
     it('search dispatches table-filter:changed on submit', function () {

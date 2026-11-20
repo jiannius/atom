@@ -24,13 +24,8 @@ $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value(
 // See the note in select/listbox.blade.php. This variant holds raw values and
 // keeps its labels in the <option> elements, so the chip's display is read back
 // out of the DOM rather than from a selected-option object.
-$filterKey = $tableFilter
-    ? ($attributes->wire('model')->value() ?: $attributes->get('data-filter-key'))
-    : null;
-
-$filterLabel = $filterKey
-    ? t($tableFilterLabel ?: (string) str($filterKey)->afterLast('.')->headline())
-    : null;
+$filterKey = $tableFilter ? \Jiannius\Atom\Services\TableFilterChip::key($attributes) : null;
+$filterLabel = $filterKey ? \Jiannius\Atom\Services\TableFilterChip::label($filterKey, $tableFilterLabel) : null;
 
 /* The field recipe (see input/general). The ring belongs to the wrapper (the <select> inside has none of its own). */
 $classes = Arr::toCssClasses([
@@ -90,16 +85,13 @@ x-data="{
 }"
 x-modelable="value"
 @if ($filterKey)
-x-init="
-    const emit = () => $dispatch('table-filter:set', {
-        key: @js($filterKey),
-        label: @js($filterLabel),
-        display: tableFilterDisplay(),
-    });
-    $nextTick(emit);
-    $watch('value', () => { $nextTick(emit); $dispatch('table-filter:changed') });
-"
-x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && !$el.closest('[data-atom-disabled]') && (value = multiple ? [] : null)"
+x-init="atom.tableFilter.register({ $dispatch, $nextTick, $watch }, {
+    key: @js($filterKey),
+    label: @js($filterLabel),
+    watch: 'value',
+    detail: () => ({ display: tableFilterDisplay() }),
+})"
+x-on:table-filter:do-clear.window="atom.tableFilter.cleared($event, @js($filterKey)) && !$el.closest('[data-atom-disabled]') && (value = multiple ? [] : null)"
 @endif
 x-on:input="() => {
     {{-- The placeholder option means no value: null for a single select, as the clear button writes, and nothing for a multiple one (#265). A host's own value="" option still writes '' (the "All" of a URL filter with a non-null default). --}}
