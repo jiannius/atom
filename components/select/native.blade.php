@@ -45,7 +45,8 @@ $classes = Arr::toCssClasses([
     $invalid ? 'border-danger-fg' : 'border-control-border',
     $multiple ? 'min-h-control py-1' : 'h-control',
     $icon ? 'pl-8' : 'pl-2.5',
-    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
+    'group-has-[[data-atom-error]]/field:border-danger-fg' => ! $disabled,
+    'group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
     '[[data-atom-input-prefix]+[data-atom-select-native]>&]:rounded-l-none',
     '[[data-atom-input-suffix]+[data-atom-select-native]>&]:rounded-r-none',
 ]);

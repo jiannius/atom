@@ -27,8 +27,9 @@ $classes = Arr::toCssClasses([
     'has-[input:disabled]:cursor-not-allowed has-[input:disabled]:border-border has-[input:disabled]:bg-surface-sunken has-[input:disabled]:text-fg-subtle',
     $invalid ? 'has-[:focus-visible]:border-danger-fg' : 'has-[:focus-visible]:border-focus',
     'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus',
-    $invalid ? 'border-danger-fg' : ($disabledBy ? 'border-border' : 'border-control-border'),
-    'group-has-[[data-atom-error]]/field:border-danger-fg group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
+    $disabledBy ? 'border-border' : ($invalid ? 'border-danger-fg' : 'border-control-border'),
+    'group-has-[[data-atom-error]]/field:border-danger-fg' => ! $disabledBy,
+    'group-has-[[data-atom-error]]/field:has-[:focus-visible]:border-danger-fg',
     $icon ? 'pl-8' : 'pl-2.5',
     /* pr-9: the clear button is 36px wide (16px icon, 10px each side), so a chip that fills the row ends where it starts */
     $clearable ? 'pr-9' : 'pr-2.5',
