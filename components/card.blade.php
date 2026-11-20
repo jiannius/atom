@@ -94,7 +94,7 @@ $merges = [
         @isset($cover)
             <figure {{ $cover->attributes->class([
                 'first:rounded-t-panel last:rounded-b-panel overflow-hidden',
-                '[&>*:not(video)]:transistion-transform [&>*:not(video)]:duration-200 [&>*:not(video):hover]:scale-105',
+                '[&>*:not(video)]:transition-transform [&>*:not(video)]:duration-200 [&>*:not(video):hover]:scale-105',
                 $subtle ? 'bg-neutral-bg' : 'bg-surface-sunken',
                 $inset ? '' : '-mx-4 -mt-4 mb-4',
             ]) }}>

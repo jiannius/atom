@@ -7,6 +7,7 @@
     'newtab' => false,
 ])
 
+{{-- `variant` is declared only to keep it off the anchor: the link has one look (the accent ink), so `variant="accent"` changes nothing. --}}
 @php
 // a link that was given an href which safe_url() refused goes nowhere, so it
 // must not look or act like one (a link with no href at all may carry wire:click)

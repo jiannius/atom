@@ -5,7 +5,6 @@
     'iconDot' => false,
     'iconSuffix' => null,
     'badgeColor' => null,
-    'accent' => true,
     'badge' => null,
     'current' => null,
     'count' => null,
@@ -107,7 +106,11 @@ $classes = Arr::toCssClasses([
     @endif
 
     @if ($badge)
-        <atom:navlist.badge :attributes="$badge->attributes" class="-me-1">{{ $badge }}</atom:navlist.badge>
+        {{-- a slot badge brings its own attributes (`color` among them), a string badge takes `badgeColor`; a slot's own colour wins --}}
+        @php
+        $badgeAttributes = $badge instanceof \Illuminate\View\ComponentSlot ? $badge->attributes : new \Illuminate\View\ComponentAttributeBag;
+        @endphp
+        <atom:navlist.badge :attributes="$badgeAttributes->merge(['color' => $badgeColor])" class="-me-1">{{ $badge }}</atom:navlist.badge>
     @elseif ($count)
         <div class="ms-auto text-xs tabular-nums text-fg-subtle" data-atom-navlist-count>
             {{ $count }}

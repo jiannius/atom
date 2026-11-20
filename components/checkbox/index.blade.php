@@ -14,7 +14,7 @@
 $variant = \Jiannius\Atom\Services\ChoiceTile::resolve($atomChoiceTile) ? 'tile' : null;
 $name ??= $attributes->wire('model')->value();
 $error ??= $errors?->first($name);
-$merges = ['name' => $name];
+$merges = ['name' => $name, 'required' => $required ?: null];
 
 // 'self', or 'inherited' from a disabled <atom:form> or group; its own `disabled` wins (`:disabled="false"` included). A checkbox is a
 // native choice, so both are a real `disabled` input, which also carries the marker for a test or a selector.

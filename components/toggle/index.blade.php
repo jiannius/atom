@@ -15,6 +15,7 @@ $disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
 
 $merges = [
     'name' => $name,
+    'required' => $required ?: null,
     'disabled' => $disabledBy ? true : null,
     'data-atom-disabled' => $disabledBy,
 ];

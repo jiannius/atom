@@ -16,6 +16,7 @@
     'tableFilterLabel' => null,  // the chip's name; the select wrapper forwards its label
 ])
 
+{{-- `prefix` and `suffix` (printed around the field by <atom:select>), `searchable` (a native <select> has no search box) and `size` (the control height, not the HTML `size` rows) are declared only to keep them off the <select> tag. --}}
 @php
 $clearable = $clearable && !$disabled;
 $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value();
