@@ -291,3 +291,29 @@ describe('the confirm prop and atom()->confirm() read a message the same way', f
         'an Htmlable' => [fn () => new \Illuminate\Support\HtmlString('<b>Bold</b>')],
     ]);
 });
+
+describe('ConfirmProp::merges()', function () {
+    $merges = fn (mixed $confirm, bool $delete, string $attributes = '', string $el = 'button', ?string $type = 'button', ?string $phrase = null) => \Jiannius\Atom\Services\ConfirmProp::merges(
+        $confirm, null, $delete, new \Illuminate\View\ComponentAttributeBag($attributes === '' ? [] : ['wire:click' => $attributes]), $el, $type, 'Delete', null, $phrase,
+    );
+
+    it('is empty for an element that asks nothing', function () use ($merges) {
+        expect($merges(null, false))->toBe([])->and($merges(false, false))->toBe([]);
+    });
+
+    it('carries the gate as data for a plain confirm, and for a delete with an action of its own', function () use ($merges) {
+        expect(array_keys($merges(true, false)))->toBe(['data-atom-confirm'])
+            ->and(array_keys($merges(null, true, 'go')))->toBe(['data-atom-confirm'])
+            ->and(array_keys($merges(null, true, '', 'a')))->toBe(['data-atom-confirm']);
+    });
+
+    it('keeps the delete handler for a bare delete, and $wire.delete() when it opts out, but not for a submit', function () use ($merges) {
+        expect(array_keys($merges(null, true)))->toBe(['x-on:click', 'x-on:confirmed'])
+            ->and($merges(false, true))->toBe(['x-on:click' => '$wire.delete()'])
+            ->and($merges(false, true, '', 'button', 'submit'))->toBe([]);
+    });
+
+    it('reads the phrase as the passphrase', function () use ($merges) {
+        expect(json_decode($merges(true, false, '', 'button', 'button', 'gone')['data-atom-confirm'], true)['passphrase'])->toBe('gone');
+    });
+});
