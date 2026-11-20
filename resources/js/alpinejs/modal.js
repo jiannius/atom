@@ -1,4 +1,4 @@
-import { tookEscape } from '../helpers/dialog-escape'
+import dialog from '../helpers/dialog'
 
 export default (config) => {
     return {
@@ -52,48 +52,19 @@ export default (config) => {
             this.$dispatch('closed', config.name)
         },
 
-        // The browser closed the dialog without closeModal(): an Escape the dialog's own keydown handler never heard (the focus on
-        // <body>, a select that stops the key), a <form method="dialog">, a direct close(). `close` is queued, so after closeModal()
-        // it finds the state already clean, and after a close and a reopen in one tick it finds the dialog open again.
-        syncClosed () {
-            if (this.$root.open || !this.$root.hasAttribute('data-open')) return
-
-            this.resetModal()
-        },
-
         // A non-escapable modal also refuses the cancel where closedby="none" does not exist (Safari). Chromium and Firefox let
         // a page prevent only two cancels in a row, which is why this is not the only guard.
         cancelModal (e) {
             if (!this.escapable) e.preventDefault()
         },
 
-        escapeClose (e) {
-            // A popover inside took this press (helpers/dialog-escape.js). A dialog already closed: the browser moves the focus out
-            // of a closed dialog at its next frame, so a key before that still lands here and would say `closed` again.
-            if (tookEscape(e) || !this.$root.open) return
-
-            e.preventDefault()
-
-            // The keydown only arrives while the focus is inside the dialog; with the focus on <body>, or in a
-            // control that stops the key, the browser's own cancel is what Escape does (see cancelModal and
-            // syncClosed). Only close when the modal is escapable.
-            if (this.escapable) this.closeModal()
-        },
-
-        backdropClick (e) {
-            if (e.target !== this.$root) return
-            if (e.target.tagName !== 'DIALOG') return
-
-            const rect = e.target.getBoundingClientRect()
-
-            const clickedInDialog = (
-                rect.top <= e.clientY &&
-                e.clientY <= rect.top + rect.height &&
-                rect.left <= e.clientX &&
-                e.clientX <= rect.left + rect.width
-            )
-
-            if (!clickedInDialog) this.closeModal(e)
-        },
+        ...dialog({
+            shown: (c) => c.$root.hasAttribute('data-open'),
+            close: (c, e) => c.closeModal(e),
+            reset: (c) => c.resetModal(),
+            escapable: (c) => c.escapable,
+            requireOpen: true,
+            insideRect: true,
+        }),
     }
 }

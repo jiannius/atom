@@ -1,3 +1,5 @@
+import { closeOnNavigate } from './scope'
+
 // A shell's panel that behaves as a modal layer below lg (layouts.sidebar's drawer, layouts.header's menu panel).
 //
 // While `isOpen()` is true the page behind (`page`, a selector of nodes the LAYOUT renders, outside any Livewire component, so a
@@ -30,7 +32,7 @@ export default ({ isOpen, page, container, scroll = null, returnTo = null, close
     let modal = false
     let observer = null
     let unlisten = null
-    let leaving = null
+    let leaving = null // the AbortController of the navigating listener
 
     /**
      * The focus is nowhere (the page, or a node that has just become inert).
@@ -123,8 +125,7 @@ export default ({ isOpen, page, container, scroll = null, returnTo = null, close
         unlisten?.()
         unlisten = null
 
-        if (leaving) document.removeEventListener('livewire:navigating', leaving)
-
+        leaving?.abort()
         leaving = null
     }
 
@@ -139,14 +140,14 @@ export default ({ isOpen, page, container, scroll = null, returnTo = null, close
         unlisten = listen?.(sync) ?? null
 
         // the page is cached for Back as it is when it is left: leave it closed
-        leaving = () => {
+        leaving = new AbortController()
+
+        closeOnNavigate(() => {
             open = false
             modal = false
             setInert(false)
             close()
-        }
-
-        document.addEventListener('livewire:navigating', leaving)
+        }, leaving.signal)
 
         sync()
     }

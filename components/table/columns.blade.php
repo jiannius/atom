@@ -31,7 +31,7 @@ data-atom-column-picker>
     <atom:dropdown position="bottom" align="end" locked>
         <atom:button variant="ghost" icon="columns" tooltip="Columns" data-atom-column-picker-trigger />
 
-        <atom:menu class="w-60" popover aria-label="{{ t('Show columns') }}" x-on:keydown="menuKey($event)" data-atom-column-menu>
+        <atom:menu class="w-60" popover aria-label="{{ t('Show columns') }}" data-atom-menu-keep-disabled data-atom-column-menu>
             <div class="px-2.5 pb-1 pt-1.5 text-xs font-medium text-fg-subtle" aria-hidden="true">{{ t('Show columns') }}</div>
 
             <template x-for="row in rows" x-bind:key="row.name">

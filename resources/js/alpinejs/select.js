@@ -2,6 +2,7 @@ import empty from '../helpers/empty'
 import { drawsOwnChip } from '../helpers/filter-chip'
 import withDisabled from '../helpers/disabled'
 import step from '../helpers/step'
+import { listen } from '../helpers/scope'
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;',
@@ -119,8 +120,7 @@ export default (config) => {
             // fetches callback options — never ran again. The controller lives
             // on the element so a re-evaluated x-data replaces its listeners
             // instead of stacking a second set on top.
-            this.$root._atomSelectListeners?.abort()
-            let { signal } = this.$root._atomSelectListeners = new AbortController()
+            let signal = listen(this.$root, '_atomSelectListeners')
 
             this.$root.addEventListener('open', () => this.onOpen(), { signal })
             this.$root.addEventListener('close', () => this.onClose(), { signal })

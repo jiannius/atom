@@ -1,5 +1,6 @@
 import onMorphed, { stopMorphed } from '../helpers/morphed'
 import floatingui from '../helpers/floatingui'
+import { closeOnNavigate, listen, unlisten } from '../helpers/scope'
 
 // The members carry an `_atom` prefix: a tooltip is also the implicit wrapper of `<atom:button tooltip>`, so its x-data
 // scope sits around the host's own expressions on that button, and a generic name (`show`, `hide`) would shadow the
@@ -80,17 +81,20 @@ export default (config) => {
                 this._atomWatchTrigger()
             }, { owner: this.$root, key: '_atomTooltipStopMorph', scope: this.$root })
 
+            // Kept on the element, so a re-run init() drops the listeners it bound before.
+            const signal = listen(this.$root, '_atomTooltipListeners')
+
             // Show on hover and on keyboard focus (WCAG 1.4.13).
-            this.$root.addEventListener('mouseenter', () => this._atomShow())
-            this.$root.addEventListener('mouseleave', () => this._atomScheduleHide())
-            this.$root.addEventListener('focusin', () => this._atomShow())
-            this.$root.addEventListener('focusout', () => this._atomScheduleHide())
+            this.$root.addEventListener('mouseenter', () => this._atomShow(), { signal })
+            this.$root.addEventListener('mouseleave', () => this._atomScheduleHide(), { signal })
+            this.$root.addEventListener('focusin', () => this._atomShow(), { signal })
+            this.$root.addEventListener('focusout', () => this._atomScheduleHide(), { signal })
 
             // Interactive tooltips stay open while the pointer is over their
             // content, so users can select text or click links inside them.
             if (this._atomInteractive) {
-                this._atomPopover?.addEventListener('mouseenter', () => this._atomCancelHide())
-                this._atomPopover?.addEventListener('mouseleave', () => this._atomScheduleHide())
+                this._atomPopover?.addEventListener('mouseenter', () => this._atomCancelHide(), { signal })
+                this._atomPopover?.addEventListener('mouseleave', () => this._atomScheduleHide(), { signal })
             }
 
             // The content lives in the browser top layer, so it must never
@@ -101,22 +105,19 @@ export default (config) => {
             // trigger scrolls it into view, and that very scroll would dismiss
             // the tooltip the instant it appeared. The autoUpdate loop keeps it
             // glued to the anchor while shown instead, and is torn down below.
-            this._atomOnNavigate = () => this._atomHide()
-            this._atomOnKeydown = (e) => { if (e.key === 'Escape') this._atomHide() }
-            document.addEventListener('livewire:navigating', this._atomOnNavigate)
-            document.addEventListener('keydown', this._atomOnKeydown, true)
+            closeOnNavigate(() => this._atomHide(), signal)
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') this._atomHide() }, { capture: true, signal })
         },
 
         destroy () {
             stopMorphed(this.$root, '_atomTooltipStopMorph')
             this.$root._atomTooltipObserver?.disconnect()
             // Alpine teardown (incl. morph removal): force-close, stop the
-            // positioning loop, and drop the document listeners so nothing
-            // lingers in the top layer.
+            // positioning loop, and drop the listeners so nothing lingers in
+            // the top layer.
             this._atomCancelHide()
             this._atomHide()
-            document.removeEventListener('livewire:navigating', this._atomOnNavigate)
-            document.removeEventListener('keydown', this._atomOnKeydown, true)
+            unlisten(this.$root, '_atomTooltipListeners')
         },
 
         _atomShow () {

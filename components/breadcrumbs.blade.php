@@ -144,7 +144,7 @@ data-atom-breadcrumbs>
                                         <atom:icon.ellipsis class="size-4"/>
                                     </button>
 
-                                    <atom:menu popover class="max-w-72" x-on:keydown="menuKey($event)" data-atom-crumb-menu>
+                                    <atom:menu popover class="max-w-72" data-atom-crumb-menu>
                                         <template x-for="crumb in item.items" x-bind:key="crumb.key">
                                             <div class="contents">
                                                 <template x-if="crumb.linked">

@@ -1,5 +1,6 @@
 import floatingui from '../helpers/floatingui.js'
 import safeUrl from '../helpers/safe-url.js'
+import { closeOnNavigate } from '../helpers/scope.js'
 import { edgeColors, parseHex } from './calendar/colors.js'
 import { addDays, addMonths, clamp, dateOf, fromLocalDate, minuteOf, monthOf, nowAt, pad, parseDate, toLocalDate } from './calendar/dates.js'
 import { format } from './calendar/format.js'
@@ -394,11 +395,11 @@ export default () => ({
         document.addEventListener('pointerdown', () => { this.focusItem = null }, { signal, capture: true })
 
         // The day list lives in the top layer: it must not outlive a wire:navigate page swap. Nor does a gesture, which is on the document.
-        document.addEventListener('livewire:navigating', () => {
+        closeOnNavigate(() => {
             this.cancelGesture()
             this.closeDay(false)
             this.unpick()
-        }, { signal })
+        }, signal)
 
         // The now line moves with the minute. The clock is read off an attribute the observer above does not watch, so a
         // render that only moves the clock lays nothing out again; from there the browser's own elapsed time carries it.

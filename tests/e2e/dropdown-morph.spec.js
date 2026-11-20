@@ -364,6 +364,65 @@ test('a context menu keeps its position through a morph', async ({ page }) => {
   expect(await rect(menu)).toEqual(before)
 })
 
+test('a context menu opens and closes once per press after morphs and a re-run init: no listener is stacked or lost', async ({ page }) => {
+  const root = probe(page, 'context').locator('[data-atom-context-menu]')
+  const target = probe(page, 'context').locator('[data-context-target]')
+  const menu = probe(page, 'context').locator('[data-atom-menu][popover]')
+
+  // what the menu says on its root: one `open` and one `close` per press means one listener of each
+  await root.evaluate((el) => {
+    window.__ctx = { open: 0, close: 0 }
+    el.addEventListener('open', () => window.__ctx.open++)
+    el.addEventListener('close', () => window.__ctx.close++)
+  })
+
+  await renderNow(page)
+  await renderNow(page)
+
+  // Alpine can re-enter init() on a node it has already set up: the second run must replace the first one's listeners
+  await root.evaluate((el) => window.Alpine.$data(el).init())
+
+  await target.click({ button: 'right', position: { x: 40, y: 20 } })
+  expect(await isOpen(menu)).toBe(true)
+  await expect(root).toHaveAttribute('data-open', '')
+  expect(await page.evaluate(() => window.__ctx)).toEqual({ open: 1, close: 0 })
+
+  // a second right-click while it is open only repositions it
+  await target.evaluate((el) => el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 300, clientY: 120 })))
+  expect(await isOpen(menu)).toBe(true)
+  expect(await page.evaluate(() => window.__ctx)).toEqual({ open: 1, close: 0 })
+
+  await page.keyboard.press('Escape')
+  await expect.poll(() => isOpen(menu)).toBe(false)
+  await expect(root).not.toHaveAttribute('data-open', '')
+  await expect.poll(() => page.evaluate(() => window.__ctx)).toEqual({ open: 1, close: 1 })
+
+  // and a click on an item still closes it, after the morphs
+  await renderNow(page)
+  await target.click({ button: 'right', position: { x: 40, y: 20 } })
+  expect(await isOpen(menu)).toBe(true)
+  await menu.getByRole('menuitem', { name: 'Copy' }).click()
+  await expect.poll(() => isOpen(menu)).toBe(false)
+  await expect.poll(() => page.evaluate(() => window.__ctx)).toEqual({ open: 2, close: 2 })
+})
+
+test('a context menu closes on an item that its own click removes (an x-if or x-for re-render in a microtask)', async ({ page }) => {
+  const target = probe(page, 'context').locator('[data-context-target]')
+  const menu = probe(page, 'context').locator('[data-atom-menu][popover]')
+
+  await target.click({ button: 'right', position: { x: 40, y: 20 } })
+  expect(await isOpen(menu)).toBe(true)
+
+  // the clicked node is out of the menu by the time the click reaches the context menu's own listener
+  await menu.evaluate((el) => {
+    const item = el.querySelector('[role=menuitem]')
+    item.addEventListener('click', () => queueMicrotask(() => item.remove()))
+  })
+
+  await menu.getByRole('menuitem').first().click()
+  await expect.poll(() => isOpen(menu)).toBe(false)
+})
+
 test('a command palette keeps its filtered list and its highlighted item through a morph', async ({ page }) => {
   const palette = page.locator('dialog[data-atom-command]')
   const items = palette.locator('[data-atom-command-item]')

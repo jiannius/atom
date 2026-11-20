@@ -56,12 +56,12 @@ test('the native browser context menu is suppressed', async ({ page }) => {
 
   const trigger = page.locator('[data-atom-context-menu-trigger]').first()
 
-  // the component registers its contextmenu listener at init (before this one),
-  // so it runs first and preventDefault()s — our listener then sees it prevented
+  // the component listens on its root, so it has prevented the event by the time it
+  // reaches the document, which sees it prevented
   const prevented = await trigger.evaluate(
     (el) =>
       new Promise((resolve) => {
-        el.addEventListener('contextmenu', (e) => resolve(e.defaultPrevented), { once: true })
+        document.addEventListener('contextmenu', (e) => resolve(e.defaultPrevented), { once: true })
         el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
       })
   )

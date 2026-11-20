@@ -41,28 +41,25 @@ it('prints the same table for a false prop as for no prop', function () {
     expect(rowsToggleTable(':rows-toggle-when-selected="false"'))->toBe(rowsToggleTable());
 });
 
-it('puts a capture-phase click and Enter listener on the table root with the prop', function () {
+it('puts the rows-toggle directive on the table root with the prop, given the selector of the controls a click is left to', function () {
     $html = rowsToggleTable('rows-toggle-when-selected');
-    $click = rowsToggleRootAttribute($html, 'x-on:click.capture');
-    $enter = rowsToggleRootAttribute($html, 'x-on:keydown.enter.capture');
+    $directive = rowsToggleRootAttribute($html, 'x-atom-rows-toggle');
 
     expect($html)->toContain('data-atom-rows-toggle')
-        ->and($click)->toContain('$wire._table?.checkboxes?.length || $wire._table?.select_all')
-        ->and($click)->toContain('e.ctrlKey || e.metaKey')
-        ->and($click)->toContain('[data-atom-table-checkbox]')
-        ->and($click)->toContain('e.stopPropagation()')
-        ->and($click)->toContain('box.click()')
-        ->and($enter)->toContain('$wire._table?.checkboxes?.length || $wire._table?.select_all')
-        ->and($enter)->toContain('[data-atom-table-row]')
-        ->and($enter)->toContain('box.click()');
+        ->and(json_decode($directive))->toBe(Attributes::ROW_INTERACTIVE)
+        ->and($directive)->toContain('[role=checkbox]')
+        ->and(rowsToggleRootAttribute($html, 'x-on:click.capture'))->toBeNull()
+        ->and(rowsToggleRootAttribute($html, 'x-on:keydown.enter.capture'))->toBeNull();
 });
 
-it('guards a click on a control inside the row with the same selector the href row uses', function () {
-    $click = rowsToggleRootAttribute(rowsToggleTable('rows-toggle-when-selected'), 'x-on:click.capture');
+it('guards a click on a control inside the row with the same controls the href row uses', function () {
+    $js = file_get_contents(dirname(__DIR__, 2).'/resources/js/helpers/rows-toggle.js');
+    $guard = Attributes::rowGuard('row');
 
-    expect($click)->toContain(Attributes::rowGuard('row'))
-        ->and($click)->toContain('[role=checkbox]')
-        ->and($click)->toContain("['wire:click', 'x-on:click', '@click']");
+    // the selector comes from the same constant; the attribute prefixes rowGuard() walks for are the ones the directive walks for
+    expect($guard)->toContain(Attributes::ROW_INTERACTIVE)
+        ->and($guard)->toContain("['wire:click', 'x-on:click', '@click']")
+        ->and($js)->toContain("['wire:click', 'x-on:click', '@click']");
 
     $html = renderBlade('<atom:table.row href="/x" />');
 
@@ -82,13 +79,16 @@ it('says in the checked bar how to open a record again, through t()', function (
 });
 
 it('swallows a repeated Enter, a double-click and a click after a text selection on a toggle row', function () {
-    $html = rowsToggleTable('rows-toggle-when-selected');
-    $click = rowsToggleRootAttribute($html, 'x-on:click.capture');
-    $enter = rowsToggleRootAttribute($html, 'x-on:keydown.enter.capture');
+    $js = file_get_contents(dirname(__DIR__, 2).'/resources/js/helpers/rows-toggle.js');
 
-    expect($click)->toContain('e.detail > 1')
-        ->and($click)->toContain('row.contains(sel.anchorNode)')
-        ->and($enter)->toContain('e.repeat');
+    expect($js)->toContain('$wire._table?.checkboxes?.length || $wire._table?.select_all')
+        ->and($js)->toContain('e.ctrlKey || e.metaKey')
+        ->and($js)->toContain('[data-atom-table-checkbox]')
+        ->and($js)->toContain('[data-atom-table-row]')
+        ->and($js)->toContain('box.click()')
+        ->and($js)->toContain('e.detail > 1')
+        ->and($js)->toContain('row.contains(selection.anchorNode)')
+        ->and($js)->toContain('e.repeat');
 });
 
 it('prints a translated hint escaped', function () {

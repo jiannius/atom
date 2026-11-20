@@ -119,21 +119,5 @@ export default () => {
 
             items[((n % items.length) + items.length) % items.length]?.focus()
         },
-
-        // Arrow Up and Down, Home and End walk the items (a locked one is focusable); Tab and Escape are the browser's: the
-        // popover closes on Escape and gives focus back to the button. As the breadcrumbs "..." menu does.
-        menuKey (event) {
-            let keys = { ArrowDown: 1, ArrowUp: -1, Home: 'first', End: 'last' }
-
-            if (! (event.key in keys)) return
-
-            event.preventDefault()
-
-            let items = [...event.currentTarget.querySelectorAll('[data-atom-menu-item]')]
-            let step = keys[event.key]
-            let next = step === 'first' ? 0 : step === 'last' ? items.length - 1 : items.indexOf(document.activeElement) + step
-
-            items[((next % items.length) + items.length) % items.length]?.focus()
-        },
     }
 }
