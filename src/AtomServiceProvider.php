@@ -211,7 +211,7 @@ class AtomServiceProvider extends ServiceProvider
         \Livewire\before('update', function ($component, $path, $value) {
             if (is_string($path)
                 && str_starts_with($path, '_table')
-                && in_array(\Jiannius\Atom\Traits\WithTable::class, class_uses_recursive($component), true)
+                && is_using_trait($component, \Jiannius\Atom\Traits\WithTable::class)
                 && \Jiannius\Atom\Services\TableSort::isUnsafeUpdate($path, $value)
             ) {
                 abort(403, 'Invalid table sort.');
@@ -303,7 +303,7 @@ class AtomServiceProvider extends ServiceProvider
             return false;
         }
 
-        if (in_array(\Jiannius\Atom\Traits\WithBreadcrumbs::class, class_uses_recursive($component), true)) {
+        if (is_using_trait($component, \Jiannius\Atom\Traits\WithBreadcrumbs::class)) {
             return false;
         }
 

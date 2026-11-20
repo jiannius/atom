@@ -114,7 +114,7 @@ class Atom
             ? $top
             : (app('view')->shared('__livewire') === $current ? $current : null);
 
-        if (!$component || in_array($trait, class_uses_recursive($component), true)) {
+        if (!$component || is_using_trait($component, $trait)) {
             return;
         }
 

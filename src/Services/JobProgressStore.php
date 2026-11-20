@@ -428,7 +428,7 @@ final class JobProgressStore
     /** Does this job use ReportsProgress? Cached per class: the payload hook runs for every job. */
     private static function reportsProgress(object $job): bool
     {
-        return self::$reports[$job::class] ??= in_array(ReportsProgress::class, class_uses_recursive($job), true);
+        return self::$reports[$job::class] ??= is_using_trait($job, ReportsProgress::class);
     }
 
     /**
