@@ -10,24 +10,15 @@
     'themeSwitcher' => true,
 ])
 
-{{-- A host's User model may have no public initials() method (or one that returns no usable string): the initials are then derived from the display name,
-     and an avatar, name or email the model refuses to read (MissingAttributeException only) reads as null. --}}
+{{-- The signed-in user as the shell shows it (avatar, name, initials; the email is read when the account menu asks): see Services\ShellUser. --}}
 @php
-$user = auth()->user();
-$read = function (string $attribute) use ($user) {
-    try {
-        return isset($user->{$attribute}) ? $user->{$attribute} : null;
-    } catch (\Illuminate\Database\Eloquent\MissingAttributeException) {
-        return null;
-    }
-};
-$avatar = $read('avatar');
-$name = $read('name');
-$initials = $user && method_exists($user, 'initials') && (new \ReflectionMethod($user, 'initials'))->isPublic() ? $user->initials() : null;
-$initials = is_string($initials) || $initials instanceof \Stringable ? trim((string) $initials) : null;
-$initials = $user && blank($initials)
-    ? str((string) $name)->squish()->initials()->take(2)->upper()->toString()
-    : $initials;
+$shell = \Jiannius\Atom\Services\ShellUser::from(auth()->user());
+$avatar = $shell->avatar;
+$name = $shell->name;
+$initials = $shell->initials;
+
+/* Where the logo links to. */
+$home = '/app';
 
 /* The account menu opens from the logo on the left (`account="brand"`, the default) or from the avatar at the bar's end
    (`account="end"`). Either way it needs a `dropdown` slot; without one the logo stays a plain link. */
@@ -106,12 +97,12 @@ $trailEmpty = isset($crumbs)
                                 <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                             </button>
 
-                            <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
+                            <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$shell->email()" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                                 {{ $dropdown }}
                             </atom:layouts._account-menu>
                         </atom:dropdown>
                     @else
-                        <a href="/app" class="flex size-[22px] shrink-0 items-center justify-center rounded-nav bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
+                        <a href="{{ $home }}" class="flex size-[22px] shrink-0 items-center justify-center rounded-nav bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
                             @if (isset($logo) && $present($logo))
                                 {{ $logo }}
                             @else
@@ -126,7 +117,7 @@ $trailEmpty = isset($crumbs)
                                 <atom:icon.dropdown class="size-3.5 shrink-0 text-fg-subtle"/>
                             </button>
 
-                            <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
+                            <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$shell->email()" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                                 {{ $dropdown }}
                             </atom:layouts._account-menu>
                         </atom:dropdown>
@@ -135,7 +126,7 @@ $trailEmpty = isset($crumbs)
             @elseif (isset($brand))
                 {{ $brand }}
             @else
-                <a href="/app" class="flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight" wire:navigate>
+                <a href="{{ $home }}" class="flex shrink-0 items-center gap-2 text-sm font-semibold tracking-tight" wire:navigate>
                     <div class="flex size-[22px] items-center justify-center rounded-nav bg-accent text-accent-foreground">
                         @if (isset($logo) && $present($logo))
                             {{ $logo }}
@@ -235,7 +226,7 @@ $trailEmpty = isset($crumbs)
                             @endif
                         </button>
 
-                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
+                        <atom:layouts._account-menu :avatar="$avatar" :name="$name" :email="$shell->email()" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                             {{ $dropdown }}
                         </atom:layouts._account-menu>
                     </atom:dropdown>
