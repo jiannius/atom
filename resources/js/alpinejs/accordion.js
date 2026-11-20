@@ -8,9 +8,8 @@ export default (config = {}) => ({
     },
 
     toggle(id) {
-        this.isOpen(id)
-            ? (this.active = this.active.filter(i => i !== id))
-            : this.open(id)
+        if (this.isOpen(id)) this.active = this.active.filter(i => i !== id)
+        else this.open(id)
     },
 
     isOpen(id) {

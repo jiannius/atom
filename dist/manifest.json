@@ -24,19 +24,17 @@
     "src": "resources/fonts/GeistMono-Variable.woff2"
   },
   "resources/js/atom.js": {
-    "file": "assets/atom-Cxy_WQx1.js",
+    "file": "assets/atom-ndYqsMty.js",
     "name": "atom",
     "src": "resources/js/atom.js",
     "isEntry": true,
     "dynamicImports": [
       "resources/js/tiptap.js",
-      "node_modules/apexcharts/dist/apexcharts.esm.js",
-      "node_modules/apexcharts/dist/apexcharts.esm.js",
       "node_modules/apexcharts/dist/apexcharts.esm.js"
     ]
   },
   "resources/js/tiptap.js": {
-    "file": "assets/tiptap-DaBjO1EP.js",
+    "file": "assets/tiptap-DAeyA_wC.js",
     "name": "tiptap",
     "src": "resources/js/tiptap.js",
     "isDynamicEntry": true,

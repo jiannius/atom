@@ -454,10 +454,13 @@ describe('V4-3d text, editor and chart', function () {
     });
 
     it('takes the theme listener off the document when a chart goes, and reads the tokens from the chart\'s own element', function () {
+        // the three factories share chart/factory.js, which owns the lifecycle
+        expect(file_get_contents(__DIR__.'/../../resources/js/alpinejs/chart/factory.js'))->toContain('destroy ()')->toContain("removeEventListener('darkmode-changed'")->toContain('isConnected')->toContain('this.$el');
+
         foreach (['bar', 'area', 'trend'] as $name) {
             $js = file_get_contents(__DIR__.'/../../resources/js/alpinejs/chart/'.$name.'.js');
 
-            expect($js, $name)->toContain('destroy ()')->toContain("removeEventListener('darkmode-changed'")->toContain('isConnected')->toContain('this.$el');
+            expect($js, $name)->toContain('chartFactory(')->toContain('this.$el');
         }
 
         expect(file_get_contents(__DIR__.'/../../resources/js/alpinejs/chart/colors.js'))->toContain('el.append(probe)')->not->toContain('documentElement.append')->toContain('var(${name}, ${FALLBACK[name]');

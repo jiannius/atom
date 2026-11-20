@@ -1,7 +1,7 @@
 import floatingui from '../helpers/floatingui.js'
 import safeUrl from '../helpers/safe-url.js'
-import { edgeColors } from './calendar/colors.js'
-import { addDays, addMonths, dateOf, fromLocalDate, minuteOf, monthOf, nowAt, parseDate, toLocalDate } from './calendar/dates.js'
+import { edgeColors, parseHex } from './calendar/colors.js'
+import { addDays, addMonths, clamp, dateOf, fromLocalDate, minuteOf, monthOf, nowAt, pad, parseDate, toLocalDate } from './calendar/dates.js'
 import { format } from './calendar/format.js'
 import { allDayGhost, allDayShape, DAY_MINUTES, isLifted, previewShapes, timeGrid } from './calendar/grid.js'
 import { selectionRange } from './calendar/gestures.js'
@@ -27,11 +27,6 @@ const MIN_BLOCK = 'calc(var(--atom-calendar-hour) / 2)'
 
 // How far under the header the scroll-time line is put, in px
 const SCROLL_MARGIN = 8
-
-const pad = (n) => String(n).padStart(2, '0')
-
-// 3, 4, 6 or 8 digits (#rgb, #rgba, #rrggbb, #rrggbbaa), as the server's Color::isHex() and colors.js read them: a 5 or 7 digit one is no colour
-const HEX = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i
 
 // a title's year, when the locale writes it last
 const YEAR_AT_END = /\s*Y$/
@@ -992,7 +987,7 @@ export default () => ({
     // Preset names map to the classes the Blade file printed; a hex colour has none and is painted
     // from --atom-calendar-hue by atom.css instead.
     isHex (chip) {
-        return typeof chip.color === 'string' && HEX.test(chip.color)
+        return parseHex(chip.color) !== null
     },
 
     colorClass (chip, part) {
@@ -1113,7 +1108,7 @@ export default () => ({
     // trans_choice() for the counts 1 up (the string for a count is at count - 1, and a count past the end reuses the last), with `:count` left in
     // each form: the number is filled in here, so a count past the end of the list is still the count it is.
     countText (line, count) {
-        if (Array.isArray(line)) line = line[Math.min(Math.max(count, 1), line.length) - 1]
+        if (Array.isArray(line)) line = line[clamp(count, 1, line.length) - 1]
 
         // Laravel keeps `:COUNT` when it is asked with ':count' (it upper-cases the replacement too), and writes `:Count` as `:count`; a longer word (`:country`) is not it
         return (typeof line === 'string' ? line : '').replace(/:count(?![a-z0-9_])/gi, () => String(count))

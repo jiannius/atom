@@ -1,5 +1,7 @@
 import empty from '../helpers/empty'
 import { drawsOwnChip } from '../helpers/filter-chip'
+import withDisabled from '../helpers/disabled'
+import step from '../helpers/step'
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;',
@@ -20,7 +22,7 @@ const safeColor = (value) => {
 }
 
 export default (config) => {
-    return {
+    return withDisabled({
         text: null,
         timer: null,
         open: false,
@@ -33,12 +35,6 @@ export default (config) => {
         selectValue: config.multiple ? [] : null,
         // an `add` filter in an inline bar draws its own chip (helpers/filter-chip.js); set when the select starts
         selfChip: false,
-
-        // Disabled is the marker the server prints on the root, read when a handler runs: it is not in x-data (a morph does not rebuild
-        // that), and it is not reactive, so a binding must not read it. A disabled control writes nothing to its model, on any gesture.
-        get disabled () {
-            return this.$root.hasAttribute('data-atom-disabled')
-        },
 
         get isEmpty () {
             return !this.selectedOptions || (Array.isArray(this.selectedOptions) && !this.selectedOptions.length)
@@ -192,6 +188,15 @@ export default (config) => {
         },
 
         fetch () {
+            // once the list is in: size the panel, focus the search field, pick the active option
+            const settle = () => {
+                this.setWidth()
+                this.$nextTick(() => {
+                    this.$root.querySelector('[data-atom-select-search]')?.focus({ preventScroll: true })
+                    this.resetActive()
+                })
+            }
+
             if (this.callback) {
                 this.loading = true
                 atom.action('get-options', { name: this.callback, filters: {
@@ -201,22 +206,12 @@ export default (config) => {
                 }})
                     .then(res => this.options = [...res])
                     .then(() => this.loading = false)
-                    .then(() => {
-                        this.setWidth()
-                        this.$nextTick(() => {
-                            this.$root.querySelector('[data-atom-select-search]')?.focus({ preventScroll: true })
-                            this.resetActive()
-                        })
-                    })
+                    .then(settle)
             }
             else {
                 this.options = this.filterOptions()
 
-                this.setWidth()
-                this.$nextTick(() => {
-                    this.$root.querySelector('[data-atom-select-search]')?.focus({ preventScroll: true })
-                    this.resetActive()
-                })
+                settle()
             }
         },
 
@@ -368,11 +363,7 @@ export default (config) => {
             let els = this.getOptionsElements()
             if (!els.length) return
 
-            let next = this.activeIndex < 0
-                ? (dir > 0 ? 0 : els.length - 1)
-                : (this.activeIndex + dir + els.length) % els.length
-
-            this.setActive(next)
+            this.setActive(step(this.activeIndex, dir, els.length))
         },
 
         keyUp () {
@@ -428,5 +419,5 @@ export default (config) => {
             let match = els.findIndex(el => (el.getAttribute('data-label') || '').toLowerCase().startsWith(this.typeahead))
             if (match > -1) this.setActive(match)
         },
-    }
+    })
 }

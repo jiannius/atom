@@ -1,4 +1,5 @@
-import onMorphed from '../helpers/morphed'
+import onMorphed, { stopMorphed } from '../helpers/morphed'
+import floatingui from '../helpers/floatingui'
 
 // The members carry an `_atom` prefix: a tooltip is also the implicit wrapper of `<atom:button tooltip>`, so its x-data
 // scope sits around the host's own expressions on that button, and a generic name (`show`, `hide`) would shadow the
@@ -74,13 +75,10 @@ export default (config) => {
             // The link lives on the trigger, a node of the host's, which a morph strips
             // of any attribute the server did not render. Write it again afterwards.
             // Kept on the element, so a re-run init() drops the registration it made before.
-            this.$root._atomTooltipStopMorph?.()
-            this.$root._atomTooltipStopMorph = onMorphed((el) => {
-                if (!el || el.contains(this.$root)) {
-                    this._atomLink()
-                    this._atomWatchTrigger()
-                }
-            })
+            onMorphed(() => {
+                this._atomLink()
+                this._atomWatchTrigger()
+            }, { owner: this.$root, key: '_atomTooltipStopMorph', scope: this.$root })
 
             // Show on hover and on keyboard focus (WCAG 1.4.13).
             this.$root.addEventListener('mouseenter', () => this._atomShow())
@@ -110,7 +108,7 @@ export default (config) => {
         },
 
         destroy () {
-            this.$root._atomTooltipStopMorph?.()
+            stopMorphed(this.$root, '_atomTooltipStopMorph')
             this.$root._atomTooltipObserver?.disconnect()
             // Alpine teardown (incl. morph removal): force-close, stop the
             // positioning loop, and drop the document listeners so nothing
@@ -131,7 +129,7 @@ export default (config) => {
             this._atomCancelHide()
             if (!this._atomPopover.matches(':popover-open')) this._atomPopover.showPopover()
             this._atomCleanup?.()
-            this._atomCleanup = atom.floatingui(this.$root, this._atomPopover, { placement: this._atomPlacement })
+            this._atomCleanup = floatingui(this.$root, this._atomPopover, { placement: this._atomPlacement })
         },
 
         _atomHide () {

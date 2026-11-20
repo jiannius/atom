@@ -1,4 +1,4 @@
-import { WEEKDAYS, isoWeekday, parseDate, parseTime } from './dates.js'
+import { WEEKDAYS, isoWeekday, pad, parseDate, parseTime } from './dates.js'
 
 // The PHP date() tokens a display format may use. This is Calendar::FORMAT_TOKENS in
 // src/Services/Calendar.php, and the two are pinned to each other by a test: a token added
@@ -7,8 +7,6 @@ export const TOKENS = {
     date: 'djDlmnMFyY',
     time: 'gGhHiaA',
 }
-
-const pad = (n, length = 2) => String(n).padStart(length, '0')
 
 const isDay = (char) => char === 'd' || char === 'j'
 

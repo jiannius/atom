@@ -8,7 +8,9 @@
 
 const DAY = 86400000
 
-const pad = (n, length = 2) => String(n).padStart(length, '0')
+export const pad = (n, length = 2) => String(n).padStart(length, '0')
+
+export const clamp = (value, low, high) => Math.min(Math.max(value, low), high)
 
 // UTC midnight of a date (`month` counted from 0). Not Date.UTC(): that reads a year of 0 to 99 as 1900 to 1999.
 const utc = (year, month, day) => {

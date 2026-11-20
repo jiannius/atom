@@ -2,24 +2,16 @@ import Pikaday from 'pikaday'
 import dayjs from 'dayjs'
 import { parseTypedDate } from '../helpers/typed-date'
 import { zoneOf } from '../helpers/zone'
+import withDisabled from '../helpers/disabled'
 
 export default (config) => {
     // With `config.timezone` the picker reads and writes the wall clock in that zone (helpers/zone.js); without one, the browser's.
     const zone = zoneOf(config.timezone)
 
-    return {
+    return withDisabled({
         pikaday: null,
         visible: false,
         datePickerValue: null,
-
-        /**
-         * Whether the server marked this picker disabled (its own `disabled`, or a disabled form's). Read from the DOM at event time, never held in `x-data`:
-         * a morph re-renders the marker and does not rebuild the factory. Not reactive, so a binding must not read it. The dropdown reads the same marker
-         * and opens nothing; this keeps the picker from writing through the paths that do not need the panel (typing, the clear x, a Pikaday select).
-         */
-        get disabled () {
-            return this.$root.hasAttribute('data-atom-disabled')
-        },
 
         get datePickerObject () {
             return this.datePickerValue ? zone.read(this.datePickerValue) : null
@@ -188,5 +180,5 @@ export default (config) => {
             this.pikaday = null
             this.calendar.innerHTML = ''
         },
-    }
+    })
 }

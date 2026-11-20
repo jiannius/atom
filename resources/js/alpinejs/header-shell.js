@@ -1,5 +1,6 @@
-import onMorphed from '../helpers/morphed'
-import modalLayer from '../helpers/modal-layer'
+import onMorphed, { stopMorphed } from '../helpers/morphed'
+import modalLayer, { FOCUSABLE } from '../helpers/modal-layer'
+import { LG, onMedia } from '../helpers/media'
 
 // layouts.header: the menu panel below lg, the search field, and the priority-plus nav from lg up.
 //
@@ -15,12 +16,10 @@ import modalLayer from '../helpers/modal-layer'
 // `wire:ignore`d and rebuilt by fit(), which runs again after every morph (a morph also strips the attributes JS
 // wrote). The "More" trigger gets the current underline from CSS (:has([data-current])) because a copy of the
 // current item is inside it.
-const LG = '(min-width: 64rem)'
 const XL = '(min-width: 80rem)'
 // the page behind the open menu panel: the layout's own nodes, outside any Livewire component (the bar itself stays live)
 const PAGE = '[data-atom-main], [data-atom-footer], [data-atom-shell-crumbs]'
 const REFERENCES = ['aria-describedby', 'aria-labelledby', 'aria-controls', 'for']
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 const FIELD = 'input:not([type=hidden]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable=""], [contenteditable="true"]'
 
 export default () => ({
@@ -44,13 +43,7 @@ export default () => ({
             container: () => this.$refs.nav,
             scroll: '[data-atom-header-nav]',
             close: () => this.closeAll(),
-            listen: (sync) => {
-                let lg = window.matchMedia(LG)
-
-                lg.addEventListener('change', sync)
-
-                return () => lg.removeEventListener('change', sync)
-            },
+            listen: (sync) => onMedia(LG, sync),
         })
 
         this.$el._atomMenuLayer.start()
@@ -75,31 +68,23 @@ export default () => ({
 
         // crossing lg changes what the panel, "More" and the search field are, and crossing xl what the search field is:
         // whatever was open belongs to the layout that is gone, and would still be open when the width comes back
-        let lg = window.matchMedia(LG)
-        let xl = window.matchMedia(XL)
-        let leaveLg = () => this.closeAll()
-        let leaveXl = () => { this.search = false }
-
-        lg.addEventListener('change', leaveLg)
-        xl.addEventListener('change', leaveXl)
+        let stopLg = onMedia(LG, () => this.closeAll())
+        let stopXl = onMedia(XL, () => { this.search = false })
 
         this.$el._atomHeaderStopListening?.()
         this.$el._atomHeaderStopListening = () => {
             document.fonts?.removeEventListener?.('loadingdone', refit)
-            lg.removeEventListener('change', leaveLg)
-            xl.removeEventListener('change', leaveXl)
+            stopLg()
+            stopXl()
         }
 
         // a morph strips every attribute the server did not render: data-open on the panel and the search field,
         // data-menu-open on "More", the overflow marks. Write them again from the state, then measure again.
-        this.$el._atomHeaderStopMorph?.()
-        this.$el._atomHeaderStopMorph = onMorphed((el) => {
-            if (!el || el.contains(this.$el) || this.$el.contains(el)) {
-                this.sync()
-                this.watch()
-                this.fit()
-            }
-        })
+        onMorphed(() => {
+            this.sync()
+            this.watch()
+            this.fit()
+        }, { owner: this.$el, key: '_atomHeaderStopMorph', scope: this.$el, nested: true })
     },
 
     destroy () {
@@ -107,7 +92,7 @@ export default () => ({
         this.$el._atomMenuLayer?.stop()
         this.$el._atomMenuLayer?.release()
         this.observer?.disconnect()
-        this.$el._atomHeaderStopMorph?.()
+        stopMorphed(this.$el, '_atomHeaderStopMorph')
         this.$el._atomHeaderStopListening?.()
     },
 

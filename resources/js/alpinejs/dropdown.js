@@ -1,4 +1,6 @@
-import onMorphed from '../helpers/morphed'
+import onMorphed, { stopMorphed } from '../helpers/morphed'
+import step from '../helpers/step'
+import floatingui from '../helpers/floatingui'
 
 export default (config) => {
     return {
@@ -234,8 +236,7 @@ export default (config) => {
             // would also freeze a server-driven class or attribute on it. Dropped by
             // destroy(); kept on the element like the listeners, so a re-run init() drops
             // the previous registration.
-            this.$root._atomDropdownStopMorph?.()
-            this.$root._atomDropdownStopMorph = onMorphed((el) => {
+            onMorphed((el) => {
                 if (!el || el.contains(this.$root) || (this.remote && this._atomRemoteTriggers().some((trigger) => el.contains(trigger)))) {
                     // an open popup closes when a morph disables the control around it
                     if (this.disabled) this.hide()
@@ -243,7 +244,7 @@ export default (config) => {
                     this.syncState()
                     this._atomRestoreFocus()
                 }
-            })
+            }, { owner: this.$root, key: '_atomDropdownStopMorph' })
         },
 
         // The methods below carry an `_atom` prefix, as the tooltip's do: an Alpine expression inside the dropdown (`x-on:keydown="menuKey($event)"` on the
@@ -343,9 +344,7 @@ export default (config) => {
             let current = items.indexOf(document.activeElement?.closest('[data-atom-menu-item]'))
             let next = to === 'first' ? 0
                 : to === 'last' ? items.length - 1
-                // nothing focused yet: Down lands on the first, Up on the last
-                : current < 0 ? (to > 0 ? 0 : items.length - 1)
-                : (current + to + items.length) % items.length
+                : step(current, to, items.length)
 
             items[next].focus({ preventScroll: to === 'first' })
 
@@ -430,7 +429,7 @@ export default (config) => {
             // positioning loop and every listener bound in init().
             this.hide()
             this.cleanup?.()
-            this.$root._atomDropdownStopMorph?.()
+            stopMorphed(this.$root, '_atomDropdownStopMorph')
             this.$root._atomDropdownListeners?.abort()
         },
 
@@ -456,11 +455,11 @@ export default (config) => {
             this.$root.setAttribute('data-open', '')
             this._atomSetExpanded(true)
 
-            let stopPlacing = atom.floatingui(trigger, this.popover, { placement })
+            let stopPlacing = floatingui(trigger, this.popover, { placement })
             let stopWatching = null
 
             // a trigger that is hidden by a display change that is not a window resize (a ResizeObserver sees it go to no size)
-            if (this.remote && typeof ResizeObserver !== 'undefined') {
+            if (this.remote && typeof ResizeObserver === 'function') {
                 let observer = new ResizeObserver(() => this._atomCheckOpener())
 
                 observer.observe(trigger)

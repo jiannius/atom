@@ -1,4 +1,5 @@
-import onMorphed from '../helpers/morphed'
+import onMorphed, { stopMorphed } from '../helpers/morphed'
+import step from '../helpers/step'
 import { tookEscape } from '../helpers/dialog-escape'
 
 export default (config) => {
@@ -17,14 +18,13 @@ export default (config) => {
             // at. A poll or an unrelated request landing while the palette is open is enough.
             // Apply the query again, keeping the highlighted position.
             // Kept on the element, so a re-run init() drops the registration it made before.
-            this.$root._atomCommandStopMorph?.()
-            this.$root._atomCommandStopMorph = onMorphed((el) => {
-                if (this.open && (!el || el.contains(this.$root))) this.filter(true)
-            })
+            onMorphed(() => {
+                if (this.open) this.filter(true)
+            }, { owner: this.$root, key: '_atomCommandStopMorph', scope: this.$root })
         },
 
         destroy () {
-            this.$root._atomCommandStopMorph?.()
+            stopMorphed(this.$root, '_atomCommandStopMorph')
         },
 
         // Bound to the keyboard shortcut in the blade.
@@ -150,11 +150,7 @@ export default (config) => {
             let els = this.visibleItems()
             if (!els.length) return
 
-            let next = this.activeIndex < 0
-                ? (dir > 0 ? 0 : els.length - 1)
-                : (this.activeIndex + dir + els.length) % els.length
-
-            this.setActive(next)
+            this.setActive(step(this.activeIndex, dir, els.length))
         },
 
         keyDown () { this.move(1) },

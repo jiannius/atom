@@ -1,4 +1,4 @@
-import onMorphed from '../helpers/morphed'
+import onMorphed, { stopMorphed } from '../helpers/morphed'
 
 export default (config) => {
     let tiptap
@@ -54,12 +54,10 @@ export default (config) => {
             root = this.$root
             this.readState()
 
-            this.$root._atomTiptapStopMorph?.()
-            this.$root._atomTiptapStopMorph = onMorphed((el) => {
-                if (el && !el.contains(root)) return
+            onMorphed(() => {
                 this.readState()
                 this.applyState()
-            })
+            }, { owner: this.$root, key: '_atomTiptapStopMorph', scope: root })
 
             import('../tiptap.js').then(() => this.createTiptap())
 
@@ -134,8 +132,7 @@ export default (config) => {
         },
 
         destroy () {
-            this.$root._atomTiptapStopMorph?.()
-            delete this.$root._atomTiptapStopMorph
+            stopMorphed(this.$root, '_atomTiptapStopMorph')
         },
 
         editor () { return tiptap },

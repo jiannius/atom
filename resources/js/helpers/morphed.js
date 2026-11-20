@@ -82,9 +82,33 @@ const hook = () => {
 hook()
 if (typeof document !== 'undefined') document.addEventListener('livewire:init', hook, { once: true })
 
-export default (callback) => {
+/**
+ * Run `callback(el)` after every morph. With `owner` and `key` the stop function is kept on `owner[key]` and the
+ * registration a re-run init() made before is dropped first (a re-run must replace it, not stack another). With
+ * `scope` the callback only runs for a morph that touched it: `el` is unknown, or contains `scope`, or (with
+ * `nested`) is inside `scope`. Returns the stop function.
+ */
+export default (callback, { owner, key, scope, nested = false } = {}) => {
     hook()
-    callbacks.add(callback)
 
-    return () => callbacks.delete(callback)
+    const run = scope === undefined ? callback : (el) => {
+        if (!el || el.contains(scope) || (nested && scope.contains(el))) callback(el)
+    }
+
+    owner?.[key]?.()
+    callbacks.add(run)
+
+    const stop = () => callbacks.delete(run)
+
+    if (owner) owner[key] = stop
+
+    return stop
+}
+
+/**
+ * Drop the registration kept on `owner[key]` (for a component's destroy()).
+ */
+export const stopMorphed = (owner, key) => {
+    owner?.[key]?.()
+    if (owner) owner[key] = null
 }

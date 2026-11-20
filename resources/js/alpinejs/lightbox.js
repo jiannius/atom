@@ -1,3 +1,5 @@
+import step from '../helpers/step'
+
 export default () => {
     return {
         gallery: [],
@@ -26,16 +28,19 @@ export default () => {
             return { id, url, name, isImage: /\.(jpe?g|png|gif|webp|bmp|svg|tiff?)$/i.test(url.split('?')[0]) }
         },
 
-        prev () {
-            let prev = ((this.pointer + this.gallery.length) - 1) % this.gallery.length
+        // the slide blanks for a beat, so the new one fades in
+        go (dir) {
+            let target = step(this.pointer, dir, this.gallery.length)
             this.pointer = null
-            setTimeout(() => this.pointer = prev, 150)
+            setTimeout(() => this.pointer = target, 150)
+        },
+
+        prev () {
+            this.go(-1)
         },
 
         next () {
-            let next = (this.pointer + 1) % this.gallery.length
-            this.pointer = null
-            setTimeout(() => this.pointer = next, 150)
+            this.go(1)
         },
     }
 }

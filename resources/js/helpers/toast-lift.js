@@ -28,14 +28,7 @@ const BAR = '[data-atom-save-bar], [data-atom-table-pager]'
 const viewportHeight = () => document.documentElement.clientHeight
 
 // the open modal dialogs: the page behind one cannot be reached, so a bar there is not in anyone's way
-const openModals = () => {
-    try {
-        return [...document.querySelectorAll('dialog:modal')]
-    }
-    catch (e) {
-        return [...document.querySelectorAll('dialog[open]')]
-    }
-}
+const openModals = () => [...document.querySelectorAll('dialog:modal')]
 
 const visibleBars = () => [...document.querySelectorAll(BAR)].filter((bar) => {
     if (bar.closest('[inert]')) return false

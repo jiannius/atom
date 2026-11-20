@@ -1,4 +1,5 @@
 import modalLayer from '../helpers/modal-layer'
+import { LG, onMedia } from '../helpers/media'
 
 // layouts.sidebar: the stashed sidebar below lg behaves as a modal drawer (helpers/modal-layer.js holds the behaviour: inert page,
 // focus in, a modal lifting the inert, Back).
@@ -14,7 +15,6 @@ import modalLayer from '../helpers/modal-layer'
 // `inert` is not set from lg up (a stale flag must never lock the page).
 //
 // The closed drawer needs none of this: atom.css hides it with `visibility` below lg.
-const LG = '(min-width: 64rem)'
 const FLAG = 'data-show-stashed-sidebar'
 const PAGE = '[data-atom-main], [data-atom-footer], [data-atom-shell-crumbs], [data-atom-shell-page-actions]'
 
@@ -29,13 +29,7 @@ export default () => ({
             returnTo: () => document.querySelector('[data-atom-sidebar-toggle]'),
             close: () => document.body.removeAttribute(FLAG),
             attributes: [FLAG],
-            listen: (sync) => {
-                let lg = window.matchMedia(LG)
-
-                lg.addEventListener('change', sync)
-
-                return () => lg.removeEventListener('change', sync)
-            },
+            listen: (sync) => onMedia(LG, sync),
         })
 
         this.$el._atomDrawerLayer.start()
