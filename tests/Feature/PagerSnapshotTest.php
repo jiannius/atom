@@ -77,4 +77,13 @@ describe('pager snapshots', function () {
         'page-name' => ['page-name', '<atom:table.pagination :paginate="$p"/>', fn () => pagerOf(2, 200, ['pageName' => 'leads'])],
         'bag' => ['bag', '<atom:table.pagination :paginate="$p" id="pg" class="mt-6" data-x="1"/>', fn () => pagerOf(2)],
     ]);
+
+    it('labels the table pager arrows with atom\'s own strings, as the standalone pager does', function () {
+        $html = renderBlade('<atom:table.pagination :paginate="$p"/>', ['p' => pagerOf(5)]);
+        $labels = fn (string $html) => collect(domQuery($html, '//button[contains(@aria-label, "Prev") or contains(@aria-label, "Next") or contains(@aria-label, "laquo") or contains(@aria-label, "raquo")]'))->map->getAttribute('aria-label')->all();
+
+        expect($labels($html))->toBe(['Prev', 'Next'])
+            ->and($labels(renderBlade('<atom:pagination :paginator="$p"/>', ['p' => pagerOf(5)])))->toBe(['Prev', 'Next'])
+            ->and($html)->not->toContain('laquo')->not->toContain('raquo');
+    });
 });
