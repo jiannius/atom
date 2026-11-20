@@ -428,16 +428,6 @@ class UpgradeCss
     }
 
     /**
-     * Offsets of the copied border-color base rule the rewrite removes
-     *
-     * @return array<int, int>
-     */
-    public function borderRules(string $css): array
-    {
-        return array_column($this->borderRuleSites($css), 'start');
-    }
-
-    /**
      * The path from a CSS file to atom's entry, given the file's path from the root
      */
     public function relativeEntry(string $file): string

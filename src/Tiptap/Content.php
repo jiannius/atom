@@ -323,7 +323,7 @@ class Content
      */
     public static function carriesPlaceholder(string $html): bool
     {
-        return stripos($html, 'MINIFYHTML') !== false;
+        return stripos($html, static::MINIFY_TOKEN) !== false;
     }
 
     /**
