@@ -92,7 +92,7 @@ Useful `<atom:html>` props (all optional):
 | `density`     | `comfortable` (default) or `compact`, in any case; anything else is `comfortable`. Printed as `data-atom-density` on `<body>`; `layouts.sidebar` and `layouts.header` default to `compact`, `layouts.auth` to `comfortable`. |
 | `dark`        | Opts the page into dark mode (off by default, on every layout too). Adds `class="dark"` to `<html>` and emits the `window.darkmode()` bootstrap, which then follows the stored preference or, with none, the visitor's `prefers-color-scheme`. Required for `<atom:darkmode-toggle>` to work. |
 | `styles`      | Additional stylesheet URLs.                                         |
-| `scripts`     | Additional script URLs.                                             |
+| `scripts`     | Additional script URLs, each checked with `safe_url()` (an unsafe one is skipped), loaded `defer` and once across `wire:navigate`. |
 | `vite`        | Vite entries from your host app.                                    |
 | `noindex`     | Sets `robots` to `noindex,nofollow`.                                |
 
@@ -942,7 +942,7 @@ there's no server-side or cross-device state.
 | --- | ------------- |
 | `<atom:copy>` | `value` — copy-to-clipboard button. Flips to a check when the copy succeeds and to a cross when the browser refuses it. |
 | `<atom:darkmode-toggle>` | Dark-mode switcher. Needs the page to pass `dark` to `<atom:html>` or its layout — without it `window.darkmode()` is never defined. Both shells put a Light / Dark / System row in the account menu when `dark` is set, and draw this toggle in the bar only when they have no `dropdown` slot (or never, with `:theme-switcher="false"`). |
-| `<atom:dd>` | A label (muted) and its value (an empty one draws the "—" mark; `filler="n/a"` prints your own text, `:filler="false"` nothing). `label`, `block` (stack them), `filler`. Wrap several in `<atom:dd.group cols="1\|2\|3">`. |
+| `<atom:dd>` | A label (muted) and its value (an empty one draws the "—" mark; `filler="n/a"` prints your own text, `:filler="false"` nothing). `label`, `block` (stack them), `filler`. Wrap several in `<atom:dd.group cols="1\|2\|3\|4">` (anything else is one column). |
 | `<atom:dev-login>` | `limit` (5), `label` (`name`) — buttons that sign in as one of your first accounts, local environment only. See [Signing in during local development](#signing-in-during-local-development). |
 | `<atom:embed>` | `src`, `icon`, `file` — embeds image / video / YouTube / file preview. |
 | `<atom:error>` | Plain error message slot. |

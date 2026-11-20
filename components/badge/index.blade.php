@@ -60,7 +60,7 @@ $classes = Arr::toCssClasses([
     style="{{ $style }}"
     data-atom-badge>
         @if ($icon)
-            <x-dynamic-component :component="'atom::icon.'.$icon" @class(['shrink-0', $size === 'lg' ? 'size-4' : 'size-3.5'])/>
+            <x-dynamic-component :component="'atom::icon.'.$icon" @class([$size === 'lg' ? 'size-4' : 'size-3.5'])/>
         @endif
 
         @if ($slot->isNotEmpty())
@@ -86,7 +86,7 @@ $classes = Arr::toCssClasses([
     data-atom-badge
     data-tone="{{ $tone }}">
         @if ($icon)
-            <x-dynamic-component :component="'atom::icon.'.$icon" @class(['shrink-0', $size === 'lg' ? 'size-4' : 'size-3.5'])/>
+            <x-dynamic-component :component="'atom::icon.'.$icon" @class([$size === 'lg' ? 'size-4' : 'size-3.5'])/>
         @endif
 
         @if ($slot->isNotEmpty())

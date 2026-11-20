@@ -10,7 +10,7 @@
 ])
 
 @php
-$step ??= $type === 'number' ? 'any' : null;
+$step = $step ?: ($type === 'number' ? 'any' : null);
 
 /* 'self', or 'inherited' from a disabled <atom:form> (a read-only field, not a disabled one), printed by the input tag as `data-atom-disabled`. The look
    comes from that as plain utilities, so a form's field is drawn as one with its own `disabled` (the `disabled:` variants stay, for a client-driven `disabled`),

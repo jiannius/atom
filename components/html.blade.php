@@ -220,7 +220,7 @@ fbq('track', 'PageView');
 
 @foreach ((array) $scripts as $script)
 @if ($src = safe_url($script))
-<script src="{{ $src }}" defer></script>
+<script src="{{ $src }}" defer data-navigate-once></script>
 @endif
 @endforeach
 

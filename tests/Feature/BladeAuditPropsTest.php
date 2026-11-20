@@ -17,6 +17,9 @@ it('keeps a host step on a number input and defaults to any', function () {
     $default = domQuery(renderBlade('<atom:input type="number" />'), '//input');
     expect($default[0]->getAttribute('step'))->toBe('any');
 
+    $empty = domQuery(renderBlade('<atom:input type="number" step="" />'), '//input');
+    expect($empty[0]->getAttribute('step'))->toBe('any');
+
     $text = domQuery(renderBlade('<atom:input type="text" />'), '//input');
     expect($text[0]->hasAttribute('step'))->toBeFalse();
 });
@@ -43,6 +46,10 @@ it('prints the scripts of atom:html', function () {
     $html = renderBlade('<atom:html :vite="false" :fonts="false" :scripts="[\'/js/a.js\', \'https://cdn.example/b.js\', \'javascript:alert(1)\']">Hi</atom:html>');
 
     $scripts = collect(domQuery($html, '//script[@src]'))->map(fn (DOMElement $el) => $el->getAttribute('src'));
+
+    foreach (domQuery($html, '//script[@src="/js/a.js"]') as $script) {
+        expect($script->hasAttribute('data-navigate-once'))->toBeTrue();
+    }
 
     expect($scripts->all())->toContain('/js/a.js', 'https://cdn.example/b.js')
         ->and($html)->not->toContain('javascript:alert');
