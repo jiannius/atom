@@ -9,7 +9,10 @@
 //    render, so state a component writes with JS (aria-expanded, aria-describedby, a filtered list) is
 //    gone once it lands, and the component has to write it again. The callback gets the element that was
 //    morphed (a component root, or the container of a re-rendered island) and returns nothing. It
-//    returns a function that stops listening, for the component's destroy().
+//    returns a function that stops listening, for the component's destroy(). Options, as one object: `owner` and `key` keep the stop
+//    function on `owner[key]` and drop the registration a re-run init() made before it (a re-run must replace it, not stack another);
+//    `scope` runs the callback only for a morph that touched that element (the morphed `el` is unknown, contains
+//    `scope`, or with `nested: true` is inside it). Without `scope` it runs for every morph on the page.
 // 3. A control behind `wire:ignore` takes no attribute from the server, and what says whether it is
 //    disabled is one: a date range, a tiptap editor (its `readonly` follows a morph too), and an autosize textarea
 //    (the autosize plugin sets `wire:ignore` on a `wire:model` textarea itself). Livewire fires `morph.updating` with the new markup (`toEl`) before it

@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import { zoneOf } from '../helpers/zone'
 import withDisabled from '../helpers/disabled'
-import { pad } from './calendar/dates.js'
+import { pad } from '../helpers/num.js'
 
 export default (config = {}) => {
     // A full date-time value is read and written as the wall clock in `config.timezone` (a date-picker's); a bare time never is.

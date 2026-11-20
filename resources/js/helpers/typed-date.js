@@ -85,3 +85,50 @@ export const splitTypedRange = (text) => String(text ?? '')
     .trim()
     .split(/\s+(?:to|-|–|—|~)\s+/i)
     .map(part => part.trim())
+
+
+// The text a picker prints for a day (and reads back through parseTypedDate()): `01 Oct 2024`, with `time` `01 Oct 2024 09:30 PM`.
+// A day that is not there prints nothing.
+export const formatDisplay = (day, time = false) => day?.format(time ? 'DD MMM YYYY hh:mm A' : 'DD MMM YYYY')
+
+// The two ends of a stored range, `<from> to <to>`, as non-empty trimmed strings: one is missing when its side is empty.
+// Splits on the bare `to`, as the pickers always have: an ISO value holds no such text, so it also reads a value with no spaces round it.
+export const splitRange = (value) => (value || '').split('to').map(str => str.trim()).filter(Boolean)
+
+// The skeleton of a picker's commitTyped(input), which the date picker and the range share. `picker.disabled` takes nothing typed; text that
+// is what the picker already shows is 'unchanged' (Enter may submit); empty text calls `clear()`; anything else is read with `read(text)`
+// and handed to `apply(parsed)`, and when either gives nothing (a half-typed date), or `apply` answers `false` (an end before the start), the input is
+// put back to `shown()`, the last good text. Returns 'unchanged', 'committed' or 'reverted'.
+export const commitTyped = (picker, input, { shown, clear, read, apply }) => {
+    if (picker.disabled) {
+        input.value = shown()
+        return 'unchanged'
+    }
+
+    let text = input.value.trim()
+    if (text === shown()) return 'unchanged'
+
+    if (!text) {
+        clear()
+        return 'committed'
+    }
+
+    let parsed = read(text)
+
+    if (!parsed || apply(parsed) === false) {
+        input.value = shown()
+        return 'reverted'
+    }
+
+    return 'committed'
+}
+
+// The skeleton of a picker's typedEnter(event): an edited entry is committed (or put back) and the form is not submitted; an untouched one lets
+// Enter submit as it always has. `then(result)` runs after a commit or a revert.
+export const typedEnter = (picker, event, then = null) => {
+    let result = picker.commitTyped(event.target)
+    if (result === 'unchanged') return
+
+    event.preventDefault()
+    then?.(result)
+}

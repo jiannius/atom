@@ -1,6 +1,6 @@
 import Pikaday from 'pikaday'
 import dayjs from 'dayjs'
-import { parseTypedDate } from '../helpers/typed-date'
+import { commitTyped, formatDisplay, parseTypedDate, typedEnter } from '../helpers/typed-date'
 import { zoneOf } from '../helpers/zone'
 import withDisabled from '../helpers/disabled'
 
@@ -24,9 +24,7 @@ export default (config) => {
         },
 
         get datePickerString () {
-            return config.time
-                ? this.datePickerObject?.format('DD MMM YYYY hh:mm A')
-                : this.datePickerObject?.format('DD MMM YYYY')
+            return formatDisplay(this.datePickerObject, config.time)
         },
 
         get popover () {
@@ -53,48 +51,34 @@ export default (config) => {
         // Commit what was typed into the input (on blur / Enter). A whole date
         // becomes the value; an empty input clears it; anything else is put back
         // to the last good value, so a half-typed date never wipes the model.
-        // Returns 'unchanged', 'committed' or 'reverted'.
+        // Returns 'unchanged', 'committed' or 'reverted'. A disabled picker takes nothing typed: the input shows the value again, and the model
+        // is left as the server sent it.
         commitTyped (input) {
-            // a disabled picker takes nothing typed: the input shows the value again, and the model is left as the server sent it
-            if (this.disabled) {
-                this.revertTyped(input)
-                return 'unchanged'
-            }
+            return commitTyped(this, input, {
+                shown: () => this.datePickerString ?? '',
+                clear: () => this.setTypedValue(null),
+                read: (text) => parseTypedDate(text, { time: config.time }),
+                apply: (parsed) => {
+                    // With no time and nothing but a day set (or nothing), the day is the value. Otherwise a date-only entry keeps the time already set.
+                    if (!config.time && !parsed.hasTime && !this.carriesTime) {
+                        this.setTypedValue(zone.date(parsed.date))
+                    }
+                    else {
+                        let value = this.datePickerObject && !parsed.hasTime
+                            ? this.datePickerObject
+                                .set('year', parsed.date.get('year'))
+                                .set('month', parsed.date.get('month'))
+                                .set('date', parsed.date.get('date'))
+                            : parsed.date
 
-            let text = input.value.trim()
-            if (text === (this.datePickerString ?? '')) return 'unchanged'
+                        this.setTypedValue(zone.write(value))
+                    }
 
-            if (!text) {
-                this.setTypedValue(null)
-                return 'committed'
-            }
-
-            let parsed = parseTypedDate(text, { time: config.time })
-
-            if (!parsed) {
-                this.revertTyped(input)
-                return 'reverted'
-            }
-
-            // With no time and nothing but a day set (or nothing), the day is the value. Otherwise a date-only entry keeps the time already set.
-            if (!config.time && !parsed.hasTime && !this.carriesTime) {
-                this.setTypedValue(zone.date(parsed.date))
-            }
-            else {
-                let value = this.datePickerObject && !parsed.hasTime
-                    ? this.datePickerObject
-                        .set('year', parsed.date.get('year'))
-                        .set('month', parsed.date.get('month'))
-                        .set('date', parsed.date.get('date'))
-                    : parsed.date
-
-                this.setTypedValue(zone.write(value))
-            }
-            // The display re-renders only if the formatted string differs, so a
-            // re-spelling of the same date (`1/10/2024`) is tidied by hand.
-            this.$nextTick(() => input.value = this.datePickerString ?? '')
-
-            return 'committed'
+                    // The display re-renders only if the formatted string differs, so a
+                    // re-spelling of the same date (`1/10/2024`) is tidied by hand.
+                    this.$nextTick(() => input.value = this.datePickerString ?? '')
+                },
+            })
         },
 
         revertTyped (input) {
@@ -121,16 +105,11 @@ export default (config) => {
         },
 
         typedEnter (event) {
-            // An edited entry is committed (or put back) and the form is not
-            // submitted; an untouched one lets Enter submit as it always has.
-            let result = this.commitTyped(event.target)
-            if (result === 'unchanged') return
-
-            event.preventDefault()
-
-            if (result === 'committed' && !config.time && this.popover?.matches(':popover-open')) {
-                this.popover.hidePopover()
-            }
+            typedEnter(this, event, (result) => {
+                if (result === 'committed' && !config.time && this.popover?.matches(':popover-open')) {
+                    this.popover.hidePopover()
+                }
+            })
         },
 
         setCalendar () {

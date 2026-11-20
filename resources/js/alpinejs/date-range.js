@@ -2,7 +2,7 @@ import Pikaday from 'pikaday'
 import dayjs from 'dayjs'
 import { drawsOwnChip } from '../helpers/filter-chip'
 import onMorphed, { stopMorphed } from '../helpers/morphed'
-import { parseTypedDate, splitTypedRange } from '../helpers/typed-date'
+import { commitTyped, formatDisplay, parseTypedDate, splitRange, splitTypedRange, typedEnter } from '../helpers/typed-date'
 import { zoneOf } from '../helpers/zone'
 import withDisabled from '../helpers/disabled'
 
@@ -27,8 +27,9 @@ export default (config) => {
         },
 
         get dateRangeString () {
-            let start = config.time ? this.dateObjects[0]?.format('DD MMM YYYY hh:mm A') : this.dateObjects[0]?.format('DD MMM YYYY')
-            let end = config.time ? this.dateObjects[1]?.format('DD MMM YYYY hh:mm A') : this.dateObjects[1]?.format('DD MMM YYYY')
+            let [from, to] = this.dateObjects
+            let start = formatDisplay(from, config.time)
+            let end = formatDisplay(to, config.time)
 
             if (start || end) {
                 start = start || '∞'
@@ -44,7 +45,7 @@ export default (config) => {
         },
 
         get dateObjects () {
-            let split = (this.dateRangeValue || '').split('to').map(str => str.trim()).filter(Boolean)
+            let split = splitRange(this.dateRangeValue)
 
             let read = (value) => {
                 let day = value ? zone.read(value) : null
@@ -57,7 +58,7 @@ export default (config) => {
 
         // The model's two ends as they were stored: ISO strings with a time (never a round trip through the zone's wall clock), else plain dates.
         get isoValues () {
-            let split = (this.dateRangeValue || '').split('to').map(str => str.trim()).filter(Boolean)
+            let split = splitRange(this.dateRangeValue)
 
             // With no time each end is the day it stands for, so a seeded date stays itself and an old instant stays the right day in the zone
             // when the other end is edited.
@@ -91,8 +92,7 @@ export default (config) => {
 
             this.$nextTick(() => {
                 this.setCalendar()
-                this.startValue = this.isoValues[0]
-                this.endValue = this.isoValues[1]
+                this.parse()
 
                 this.$watch('startValue', () => this.updateValue())
                 this.$watch('endValue', () => this.updateValue())
@@ -100,8 +100,10 @@ export default (config) => {
         },
 
         parse () {
-            this.startValue = this.isoValues[0]
-            this.endValue = this.isoValues[1]
+            let [start, end] = this.isoValues
+
+            this.startValue = start
+            this.endValue = end
         },
 
         // The own chip's x: clear the range and put the focus on the add pill that comes back (it is the same button).
@@ -154,59 +156,47 @@ export default (config) => {
         // `from - to`, or one date for a one-day range. An empty input clears
         // the range; anything else (a half-typed date, one end missing, an end
         // before the start) is put back to the last good value, so it never
-        // wipes the model. Returns 'unchanged', 'committed' or 'reverted'.
+        // wipes the model. Returns 'unchanged', 'committed' or 'reverted'. A disabled
+        // range takes nothing typed: the input shows the value again, and the model is left as the server sent it.
         commitTyped (input) {
-            // a disabled range takes nothing typed: the input shows the value again, and the model is left as the server sent it
-            if (this.disabled) {
-                this.revertTyped(input)
-                return 'unchanged'
-            }
+            return commitTyped(this, input, {
+                shown: () => this.dateRangeString,
+                clear: () => {
+                    this.dateRangeValue = null
+                    this.parse()
+                },
+                read: (text) => {
+                    let parts = splitTypedRange(text)
+                    if (parts.length === 1) parts = [parts[0], parts[0]]
 
-            let text = input.value.trim()
-            if (text === this.dateRangeString) return 'unchanged'
+                    let [start, end] = parts.length === 2
+                        ? parts.map(part => parseTypedDate(part, { time: config.time }))
+                        : [null, null]
 
-            if (!text) {
-                this.dateRangeValue = null
-                this.parse()
-                return 'committed'
-            }
+                    return start && end ? { start, end } : null
+                },
+                apply: ({ start, end }) => {
+                    // Like a calendar pick: a date-only end covers its whole day (with no time, it is the day itself).
+                    let startValue = start.hasTime ? zone.write(start.date) : this.writeStart(start.date)
+                    let endValue = end.hasTime ? zone.write(end.date) : this.writeEnd(end.date)
 
-            let parts = splitTypedRange(text)
-            if (parts.length === 1) parts = [parts[0], parts[0]]
+                    // two plain dates compare as strings; instants as times
+                    if (config.time ? new Date(endValue) < new Date(startValue) : endValue < startValue) return false
 
-            let [start, end] = parts.length === 2
-                ? parts.map(part => parseTypedDate(part, { time: config.time }))
-                : [null, null]
+                    this.startValue = startValue
+                    this.endValue = endValue
 
-            if (!start || !end) {
-                this.revertTyped(input)
-                return 'reverted'
-            }
-
-            // Like a calendar pick: a date-only end covers its whole day (with no time, it is the day itself).
-            let startValue = start.hasTime ? zone.write(start.date) : this.writeStart(start.date)
-            let endValue = end.hasTime ? zone.write(end.date) : this.writeEnd(end.date)
-
-            // two plain dates compare as strings; instants as times
-            if (config.time ? new Date(endValue) < new Date(startValue) : endValue < startValue) {
-                this.revertTyped(input)
-                return 'reverted'
-            }
-
-            this.startValue = startValue
-            this.endValue = endValue
-
-            this.$nextTick(() => {
-                // The display re-renders only if the formatted string differs,
-                // so a re-spelling of the same range is tidied by hand.
-                input.value = this.dateRangeString
-                if (this.pikaday[0] && this.pikaday[1]) {
-                    this.setCalendarDates()
-                    this.setCalendarRange()
-                }
+                    this.$nextTick(() => {
+                        // The display re-renders only if the formatted string differs,
+                        // so a re-spelling of the same range is tidied by hand.
+                        input.value = this.dateRangeString
+                        if (this.pikaday[0] && this.pikaday[1]) {
+                            this.setCalendarDates()
+                            this.setCalendarRange()
+                        }
+                    })
+                },
             })
-
-            return 'committed'
         },
 
         // A day picked or typed becomes the range's start or end: with a time, the first or last instant of the day in the zone; without,
@@ -224,9 +214,7 @@ export default (config) => {
         },
 
         typedEnter (event) {
-            // An edited entry is committed (or put back) and the form is not
-            // submitted; an untouched one lets Enter submit as it always has.
-            if (this.commitTyped(event.target) !== 'unchanged') event.preventDefault()
+            typedEnter(this, event)
         },
 
         // The one write to the range from the two ends, and where a nested time-picker's edit, a preset and a Pikaday select all end, so a disabled
@@ -277,15 +265,19 @@ export default (config) => {
         },
 
         setCalendarDates () {
-            if (this.dateObjects[0]) this.pikaday[0].setDate(this.dateObjects[0].toDate(), true)
-            if (this.dateObjects[1]) this.pikaday[1].setDate(this.dateObjects[1].toDate(), true)
+            let [from, to] = this.dateObjects
 
-            if (this.dateObjects[0] && !this.dateObjects[1]) this.pikaday[1].setMinDate(this.dateObjects[0].toDate())
-            if (!this.dateObjects[0] && this.dateObjects[1]) this.pikaday[0].setMaxDate(this.dateObjects[1].toDate())
+            if (from) this.pikaday[0].setDate(from.toDate(), true)
+            if (to) this.pikaday[1].setDate(to.toDate(), true)
+
+            if (from && !to) this.pikaday[1].setMinDate(from.toDate())
+            if (!from && to) this.pikaday[0].setMaxDate(to.toDate())
         },
 
         setCalendarRange () {
-            if (!this.dateObjects[0] || !this.dateObjects[1]) return
+            let [from, to] = this.dateObjects
+
+            if (!from || !to) return
             if (!this.pikaday[0] || !this.pikaday[1]) return
 
             this.pikaday[0].hide()
