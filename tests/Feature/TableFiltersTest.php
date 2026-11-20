@@ -277,8 +277,10 @@ describe('the add-filter pill', function () {
             ->and(domQuery(renderBlade('<atom:table.search data-filter-key="filters.q" placeholder="Find" />'), '//*[@data-atom-table-search][@data-atom-filter-key="filters.q"]'))->toHaveCount(1);
     });
 
-    it('keeps a multiple chip menu open on a pick (the bar draws the chip when the select is not in an inline bar, and the menu closes there)', function () use ($select) {
-        expect($select('add multiple'))->toContain('stayOpen && $event.stopPropagation()');
+    it('keeps a multiple menu open on a pick, in the filter and the listbox variant (select.js stayOpen is every multiple select, #280)', function () use ($select) {
+        expect($select('add multiple'))->toContain('stayOpen && $event.stopPropagation()')
+            ->and($select('multiple'))->toContain('stayOpen && $event.stopPropagation()')
+            ->and(renderBlade('<atom:select variant="listbox" multiple :options="[[\'value\' => \'a\', \'label\' => \'A\']]" />'))->toContain('stayOpen && $event.stopPropagation()');
     });
 
     it('is the plain bordered filter control without add', function () use ($select) {

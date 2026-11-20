@@ -150,11 +150,12 @@ for (const tw of ['floor', 'latest']) {
       await multi.click()
       await page.locator('[data-atom-option]').filter({ hasText: 'Group One' }).first().click()
 
-      // a multiple select closes on a pick here, as it always did, and its pill stays
-      await expect(page.locator('[data-atom-option]').filter({ hasText: 'Group Two' })).toBeHidden()
+      // a multiple select stays open on a pick (#280), and its pill stays
+      await expect(page.locator('[data-atom-option]').filter({ hasText: 'Group Two' }).first()).toBeVisible()
       await expect(multi).toBeVisible()
-      await multi.click()
       await page.locator('[data-atom-option]').filter({ hasText: 'Group Two' }).first().click()
+      await page.keyboard.press('Escape')
+      await expect(page.locator('[data-atom-option]').filter({ hasText: 'Group Two' }).first()).toBeHidden()
 
       await expect(below.locator('[data-atom-table-filter-chip]').filter({ hasText: '2 selected' })).toHaveCount(1)
       await expect(below.locator('[data-atom-table-filter-chip]').filter({ hasText: 'is any of' })).toHaveCount(0)

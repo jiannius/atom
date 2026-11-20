@@ -77,10 +77,11 @@ for (const tw of ['floor', 'latest']) {
         await menuOf(zones).locator('[data-atom-option]').filter({ hasText: 'Zone 1' }).click()
         await expect(count).toHaveText('2')
 
-        // a second value in the same filter is still one filter (a control in the slot is not the own chip: its list closes on a pick, as it did)
-        await zones.click()
+        // a second value in the same filter is still one filter (a multiple list stays open on a pick, #280: Escape closes it)
         await menuOf(zones).locator('[data-atom-option]').filter({ hasText: 'Zone 2' }).click()
         await expect(count).toHaveText('2')
+        await page.keyboard.press('Escape')
+        await expect(menuOf(zones)).toBeHidden()
 
         // back out of the panel (a popover and a modal are over the bar), then clear them from the bar's chips
         if (mode !== 'card') await page.keyboard.press('Escape')

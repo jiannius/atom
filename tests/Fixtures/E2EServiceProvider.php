@@ -75,6 +75,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-action-table', ActionTableFixture::class);
         Livewire::component('atom-e2e-actions-card-panel', ActionsCardPanelFixture::class);
         Livewire::component('atom-e2e-select-sibling-sync', SelectSiblingSyncFixture::class);
+        Livewire::component('atom-e2e-select-stay-open', SelectStayOpenFixture::class);
         Livewire::component('atom-e2e-modal-escape', ModalEscapeFixture::class);
         Livewire::component('atom-e2e-safe-url-breadcrumbs', SafeUrlBreadcrumbsFixture::class);
         Livewire::component('atom-e2e-form-error-toast', FormErrorToastFixture::class);
@@ -107,6 +108,7 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/attr-sweep', fn () => view('atom::e2e.attr-sweep'));
         Route::middleware('web')->get('/atom/e2e/select-xss', fn () => view('atom::e2e.select-xss'));
         Route::middleware('web')->get('/atom/e2e/select-sibling-sync', fn () => view('atom::e2e.select-sibling-sync'));
+        Route::middleware('web')->get('/atom/e2e/select-stay-open', fn () => view('atom::e2e.select-stay-open'));
         Route::middleware('web')->get('/atom/e2e/modal-escape', fn () => view('atom::e2e.modal-escape'));
         Route::middleware('web')->get('/atom/e2e/modal-escape-layers', fn () => view('atom::e2e.modal-escape-layers'));
         Route::middleware('web')->get('/atom/e2e/select-native-reopen', fn () => view('atom::e2e.select-native-reopen'));

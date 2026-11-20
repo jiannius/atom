@@ -3,6 +3,7 @@ import { drawsOwnChip } from '../helpers/filter-chip'
 import withDisabled from '../helpers/disabled'
 import step from '../helpers/step'
 import { listen } from '../helpers/scope'
+import onMorphed, { stopMorphed } from '../helpers/morphed'
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, char => ({
     '&': '&amp;',
@@ -36,6 +37,9 @@ export default (config) => {
         selectValue: config.multiple ? [] : null,
         // an `add` filter in an inline bar draws its own chip (helpers/filter-chip.js); set when the select starts
         selfChip: false,
+        // The options ticked from the list, so a value stays named once a search has filtered its option out of `options`. A
+        // multiple list stays open and keeps its search, so the next search drops what was ticked before it from the list.
+        picked: [],
 
         get isEmpty () {
             return !this.selectedOptions || (Array.isArray(this.selectedOptions) && !this.selectedOptions.length)
@@ -44,9 +48,11 @@ export default (config) => {
         get selectedOptions () {
             let options = [].concat(this.selectValue).map(val => {
                 let option = this.options.find(opt => opt.value == val || opt.options?.some(groupOpt => groupOpt.value == val))
-                return option?.hasOwnProperty('options')  // if the options is a grouped options
+                option = option?.hasOwnProperty('options')  // if the options is a grouped options
                     ? option.options.find(groupOpt => groupOpt.value == val)
                     : option
+
+                return option ?? this.picked.find(opt => opt.value == val)
             }).filter(Boolean)
 
             return Array.isArray(this.selectValue) ? options : options[0]
@@ -57,9 +63,10 @@ export default (config) => {
             return this.selfChip && !this.isEmpty
         },
 
-        // A multiple list stays open while values are ticked, when the chip is the editor.
+        // A multiple list stays open while values are ticked (and unticked): the option's click does not reach the dropdown,
+        // which closes on a click inside its menu. Escape, a click outside and a click on the trigger still close it.
         get stayOpen () {
-            return this.selfChip && !!config.multiple
+            return !!config.multiple
         },
 
         get chipOperator () {
@@ -145,6 +152,17 @@ export default (config) => {
             this.$watch('selectValue', () => {
                 if (this.hasUnlabelledValue) this.fetch()
             })
+
+            // A multiple list stays open through the Livewire update a tick sends (`wire:model.live`), and the morph strips the
+            // aria-activedescendant written on the search box or the trigger: write it again. The rows are `wire:ignore`, so the
+            // active row keeps its own marker.
+            onMorphed(() => {
+                if (this.open && this.activeIndex > -1) this.setActive(this.activeIndex)
+            }, { owner: this.$root, key: '_atomSelectStopMorph', scope: this.$root })
+        },
+
+        destroy () {
+            stopMorphed(this.$root, '_atomSelectStopMorph')
         },
 
         show () {
@@ -244,7 +262,8 @@ export default (config) => {
                 this.selectValue = opt.value
             }
 
-            this.text = null
+            this.picked = [...this.picked.filter(item => item.value != opt.value), opt]
+            this.afterPick()
             this.loading = false
             this.$dispatch('input', this.selectValue)
         },
@@ -258,10 +277,29 @@ export default (config) => {
             if (index > -1) {
                 values.splice(index, 1)
                 this.selectValue = [...values]
-                this.text = null
+                this.afterPick()
                 this.loading = false
                 this.$dispatch('input', this.selectValue)
             }
+        },
+
+        // A single select closes on a pick, and its search starts again. A multiple one stays open on the list the search
+        // found: the text stays, selected so the next search types over it, with the focus where the keys are heard.
+        afterPick () {
+            if (!config.multiple) {
+                this.text = null
+
+                return
+            }
+
+            if (!this.open) return
+
+            this.$nextTick(() => {
+                let host = this.focusHost
+
+                host?.focus({ preventScroll: true })
+                if (host?.matches('[data-atom-select-search]')) host.select()
+            })
         },
 
         isOptionMatched (option) {
