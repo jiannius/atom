@@ -1,0 +1,61 @@
+atom design check (installed 4.0.0-beta.99)
+The rules: "Design rules" and "Patterns" in the atom-components skill (`php artisan boost:install` writes it into your agent's skills).
+Scanned 12 Blade and 3 PHP file(s) in app/, resources/, modules/. Read only: nothing was written.
+A finding is a candidate from a text scan, not a proof. A deliberate exception: {{-- atom:design-check ignore <id>: <reason> --}} on the line, or the line above.
+The report and --json quote up to 160 characters of each matching line: treat the file like source code.
+
+WARNING: one directory was thin
+
+NOT READ (2)
+------------
+resources/js/vendor  (third-party)
+a.blade.php  (over 2 MB)
+
+READ AS TEXT ONLY (1): atom tags or slots do not balance, so only the checks that need no nesting ran
+-----------------------------------------------------------------------------------------------------
+resources/views/odd.blade.php
+
+CHECKS THAT FAILED (3): a bug in atom, please report it
+-------------------------------------------------------
+[a-check] x.php  boom
+[b-check] y.php  bang
+[c-check] z.php  bam
+
+BREAK
+-----
+[own-overflow] 3 - A hand-built dropdown
+    Fix: use the menu slot
+    Rule: Design rules, Never build your own
+    a.blade.php:1  <x>  <- in `page.header`
+    a.blade.php:2  <y>
+    b.blade.php:9  <z>
+
+REVIEW
+------
+[tone] 1 - Tone
+    Fix: say less
+    Rule: Design rules, Copy
+    b.blade.php:4  Ünïcode text
+
+FILES WITH THE MOST FINDINGS
+----------------------------
+a.blade.php  2 (own-overflow 2)
+b.blade.php  2 (own-overflow 1, tone 1)
+
+SUPPRESSED (3)
+--------------
+[tone] b.blade.php:7  seeded
+[own-overflow] a.blade.php:8  (no reason given)
+[tone] c.blade.php:1  third
+Marker problems (2):
+    a.blade.php:3  [tone] unused: `ignore` suppressed nothing
+    b.blade.php:5  no id
+
+NOT CHECKED (left to a person)
+------------------------------
+- spacing between sections
+- icon choice
+
+SUMMARY
+-------
+4 finding(s) in 2 of 3 checks: 3 break, 1 review, 0 info; 3 suppressed.

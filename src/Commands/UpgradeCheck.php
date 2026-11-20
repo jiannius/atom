@@ -3,12 +3,14 @@
 namespace Jiannius\Atom\Commands;
 
 use Illuminate\Console\Command;
+use Jiannius\Atom\Commands\Concerns\PrintsScanReport;
 use Jiannius\Atom\Services\UpgradeCheck as Scanner;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
 
 class UpgradeCheck extends Command
 {
+    use PrintsScanReport;
+
     protected $signature = 'atom:upgrade-check
         {--json : Print the result as JSON (the shape the v4 codemod reads) instead of the report}
         {--output= : Also write what is printed to this file (the only thing the command ever writes)}
@@ -23,11 +25,7 @@ class UpgradeCheck extends Command
      */
     public function handle(): int
     {
-        $root = (string) ($this->option('path') ?: base_path());
-
-        if (! is_dir($root)) {
-            $this->error('Not a directory: '.$root);
-
+        if (($root = $this->scanRoot()) === null) {
             return self::FAILURE;
         }
 
@@ -43,7 +41,7 @@ class UpgradeCheck extends Command
         $result = $scanner->scan($root);
 
         $content = $this->option('json')
-            ? json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)."\n"
+            ? $this->scanJson($result)
             : $scanner->format($result, $this->option('all') ? null : 10);
 
         if ($output = $this->option('output')) {
@@ -54,8 +52,7 @@ class UpgradeCheck extends Command
             }
         }
 
-        // raw: a matching line may hold <info> or <error>, which the console would read as a style
-        $this->output->write($content, false, OutputInterface::OUTPUT_RAW);
+        $this->raw($content);
 
         if ($failOn === 'breaks') {
             $remaining = collect($result['checks'])->filter(fn ($check) => $check['severity'] === Scanner::BREAKS && $check['count'] > 0);

@@ -17,7 +17,7 @@ class PurgeMatcherProbe extends PurgeEditorImages
      */
     public function load(array $names): array
     {
-        $needles = $this->buildNeedles(['disk' => ['files' => new Collection(array_map(fn ($name) => 'editor/'.$name, $names))]]);
+        $needles = $this->buildNeedles(new Collection(array_map(fn ($name) => 'editor/'.$name, $names)));
         $this->indexNeedles($needles);
 
         return $needles;

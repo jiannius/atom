@@ -643,16 +643,6 @@ class DesignCheck extends HostScanner
     }
 
     /**
-     * A report heading and its underline
-     *
-     * @return array<int, string>
-     */
-    protected function heading(string $title): array
-    {
-        return [$title, str_repeat('-', mb_strlen($title))];
-    }
-
-    /**
      * The text report, raw (a quoted `<info>` is not a console style)
      *
      * @param  array<string, mixed>  $result
@@ -676,13 +666,7 @@ class DesignCheck extends HostScanner
         }
 
         if ($result['skipped']) {
-            $out = array_merge($out, $this->heading('NOT READ ('.count($result['skipped']).')'));
-
-            foreach ($result['skipped'] as $skipped) {
-                $out[] = $skipped['path'].'  ('.$skipped['reason'].')';
-            }
-
-            $out[] = '';
+            $out = array_merge($out, $this->notReadLines($result['skipped']));
         }
 
         if ($result['text_only']) {
@@ -698,13 +682,7 @@ class DesignCheck extends HostScanner
         if ($result['errors'] ?? []) {
             $out = array_merge($out, $this->heading('CHECKS THAT FAILED ('.count($result['errors']).'): a bug in atom, please report it'));
 
-            foreach (array_slice($result['errors'], 0, $limit ?? PHP_INT_MAX) as $error) {
-                $out[] = '['.$error['check'].'] '.$error['file'].'  '.$error['error'];
-            }
-
-            if ($limit !== null && count($result['errors']) > $limit) {
-                $out[] = '... and '.(count($result['errors']) - $limit).' more (use --all)';
-            }
+            $out = array_merge($out, $this->limitedLines($result['errors'], $limit, fn ($error) => '['.$error['check'].'] '.$error['file'].'  '.$error['error']));
 
             $out[] = '';
         }
@@ -725,17 +703,17 @@ class DesignCheck extends HostScanner
                 $out[] = '    Fix: '.$check['fix'];
                 $out[] = '    Rule: Design rules, '.$check['rule'];
 
-                foreach ($check['findings'] as $i => $finding) {
+                foreach ($check['findings'] as $finding) {
                     $byFile[$finding['file']][$check['id']] = ($byFile[$finding['file']][$check['id']] ?? 0) + 1;
-
-                    if ($limit === null || $i < $limit) {
-                        $out[] = '    '.$finding['file'].':'.$finding['line'].'  '.$finding['text'].(isset($finding['note']) ? '  <- '.$finding['note'] : '');
-                    }
                 }
 
-                if ($limit !== null && $check['count'] > $limit) {
-                    $out[] = '    ... and '.($check['count'] - $limit).' more (use --all, or --only='.$check['id'].')';
-                }
+                $out = array_merge($out, $this->limitedLines(
+                    $check['findings'],
+                    $limit,
+                    fn ($finding) => '    '.$finding['file'].':'.$finding['line'].'  '.$finding['text'].(isset($finding['note']) ? '  <- '.$finding['note'] : ''),
+                    '    ',
+                    'use --all, or --only='.$check['id'],
+                ));
             }
 
             $out[] = '';
@@ -756,13 +734,7 @@ class DesignCheck extends HostScanner
         if ($result['suppressed'] || $result['markers']) {
             $out = array_merge($out, $this->heading('SUPPRESSED ('.count($result['suppressed']).')'));
 
-            foreach (array_slice($result['suppressed'], 0, $limit ?? PHP_INT_MAX) as $item) {
-                $out[] = '['.$item['id'].'] '.$item['file'].':'.$item['line'].'  '.($item['reason'] !== '' ? $item['reason'] : '(no reason given)');
-            }
-
-            if ($limit !== null && count($result['suppressed']) > $limit) {
-                $out[] = '... and '.(count($result['suppressed']) - $limit).' more (use --all)';
-            }
+            $out = array_merge($out, $this->limitedLines($result['suppressed'], $limit, fn ($item) => '['.$item['id'].'] '.$item['file'].':'.$item['line'].'  '.($item['reason'] !== '' ? $item['reason'] : '(no reason given)')));
 
             if ($result['markers']) {
                 $out[] = 'Marker problems ('.count($result['markers']).'):';

@@ -3,12 +3,14 @@
 namespace Jiannius\Atom\Commands;
 
 use Illuminate\Console\Command;
+use Jiannius\Atom\Commands\Concerns\PrintsScanReport;
 use Jiannius\Atom\Services\Upgrade as Codemod;
-use Symfony\Component\Console\Output\OutputInterface;
 use Throwable;
 
 class Upgrade extends Command
 {
+    use PrintsScanReport;
+
     protected $signature = 'atom:upgrade
         {--dry-run : Print the diff and the ATOM-UPGRADE-TODO.md it would write, and write nothing}
         {--path= : Upgrade this directory instead of base_path()}';
@@ -20,11 +22,7 @@ class Upgrade extends Command
      */
     public function handle(): int
     {
-        $root = (string) ($this->option('path') ?: base_path());
-
-        if (! is_dir($root)) {
-            $this->error('Not a directory: '.$root);
-
+        if (($root = $this->scanRoot()) === null) {
             return self::FAILURE;
         }
 
@@ -128,13 +126,5 @@ class Upgrade extends Command
     protected function pointer(): string
     {
         return 'Run `php artisan atom:tiptap-migrate --status` for the detail, and follow "Moving an app to v4" in the README (migrate on 3.x first: dry run, --force, switch the casts, --compare, --status).';
-    }
-
-    /**
-     * Print text as it is: a diff line may hold <info> or <error>, which the console would read as a style
-     */
-    protected function raw(string $text): void
-    {
-        $this->output->write($text, false, OutputInterface::OUTPUT_RAW);
     }
 }

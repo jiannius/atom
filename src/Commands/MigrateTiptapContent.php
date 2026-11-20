@@ -4,9 +4,7 @@ namespace Jiannius\Atom\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Jiannius\Atom\Casts\AsTiptapContent;
 use Jiannius\Atom\Commands\Concerns\DiscoversModels;
 use Jiannius\Atom\Services\EditorBackupException;
 use Jiannius\Atom\Services\EditorBackups;
@@ -16,11 +14,6 @@ use Throwable;
 class MigrateTiptapContent extends Command
 {
     use DiscoversModels;
-
-    /**
-     * The cast v4 removed, by name: a column still cast as it is not migrated
-     */
-    protected const REMOVED_CAST = 'Jiannius\\Atom\\Casts\\AsEditorContent';
 
     /**
      * Rows are read this many at a time (by primary key)
@@ -1001,65 +994,6 @@ class MigrateTiptapContent extends Command
     }
 
     /**
-     * The connections that may hold backups, by their resolved name (so the
-     * default connection is one, whether a model names it or not): the default
-     * one and every connection a discovered model uses. A connection that cannot
-     * be resolved is a problem, never skipped.
-     *
-     * @return array<int, string|null> the name to hand EditorBackups::on()
-     */
-    protected function connectionNames(): array
-    {
-        $names = [DB::connection()->getName() => null];
-
-        foreach ($this->getModels() as $class) {
-            $model = null;
-
-            try {
-                $model = $this->resolveModel($class);
-
-                if ($model) {
-                    $names[$model->getConnection()->getName()] = $model->getConnectionName();
-                }
-            }
-            catch (\InvalidArgumentException $e) {
-                // a connection this config does not define cannot hold backups this config wrote: a model
-                // without an editor column on one is skipped with a warning, one with a column is a problem
-                if ($model && ! $this->hasEditorColumn($model)) {
-                    if (isset($this->output)) {
-                        $this->warn($class.': '.EditorBackups::describe($e).' (no editor column, so it is skipped)');
-                    }
-
-                    continue;
-                }
-
-                $this->problems[] = $class.': '.EditorBackups::describe($e);
-            }
-            catch (Throwable $e) {
-                $this->problems[] = $class.': '.EditorBackups::describe($e);
-            }
-        }
-
-        return array_values($names);
-    }
-
-    /**
-     * Whether a model casts any column as AsTiptapContent, or as the removed AsEditorContent
-     */
-    protected function hasEditorColumn(Model $model): bool
-    {
-        foreach ($model->getCasts() as $cast) {
-            $name = is_string($cast) ? Str::before($cast, ':') : '';
-
-            if ($name !== '' && (strcasecmp(ltrim($name, '\\'), self::REMOVED_CAST) === 0 || is_a($name, AsTiptapContent::class, true))) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * The models with an AsTiptapContent column, found the way purge finds them:
      * every class under app/Models plus --path, narrowed by --model and --column.
      * A column still cast as the removed AsEditorContent is recorded, not
@@ -1086,22 +1020,13 @@ class MigrateTiptapContent extends Command
                     continue;
                 }
 
-                $columns = [];
+                $casts = $this->castColumns($model);
 
-                foreach ($model->getCasts() as $column => $cast) {
-                    $name = is_string($cast) ? Str::before($cast, ':') : '';
-
-                    if ($name === '') {
-                        continue;
-                    }
-
-                    if (strcasecmp(ltrim($name, '\\'), self::REMOVED_CAST) === 0) {
-                        $this->legacyCasts[$class][] = $column;
-                    }
-                    elseif (is_a($name, AsTiptapContent::class, true) && (! $columnFilter || in_array($column, $columnFilter, true))) {
-                        $columns[] = $column;
-                    }
+                foreach ($casts['removed'] as $column) {
+                    $this->legacyCasts[$class][] = $column;
                 }
+
+                $columns = array_values(array_filter($casts['tiptap'], fn ($column) => ! $columnFilter || in_array($column, $columnFilter, true)));
 
                 if (! $columns) {
                     continue;

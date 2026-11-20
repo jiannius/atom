@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -386,6 +387,32 @@ describe('atom:purge-editor-images timing', function () {
 });
 
 describe('atom:purge-editor-images scope', function () {
+    it('prints the same report on a dry run, and tolerates an unlistable disk when no column is found', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'tiptap-kept.jpg', 'tiptap-orphan.jpg');
+        DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc('https://cdn.test/tenant/editor/tiptap-kept.jpg')]);
+
+        $this->assertSame(0, Artisan::call('atom:purge-editor-images', ['--dry-run' => true]));
+        $output = Artisan::output();
+
+        expect($output)->toContain("Scanned 5 model(s) with editor content columns:\n")
+            ->toContain("  App\\Models\\PurgeTiptapArticle: doc (tiptap)\n")
+            ->toContain("Would delete: [tiptap_disk] tenant/editor/tiptap-orphan.jpg\n")
+            ->toContain("Dry run: 1 file(s) would be deleted. Nothing was changed.\n");
+
+        // no editor column found: an unlistable disk is not a problem, nothing is touched
+        $this->app->useAppPath(__DIR__.'/../Fixtures/NoSuchApp');
+        $disk = Mockery::mock(\Illuminate\Filesystem\FilesystemAdapter::class);
+        $disk->shouldReceive('getConfig')->andReturn([]);
+        $disk->shouldReceive('files')->andThrow(new RuntimeException('listing exploded'));
+        Storage::set('tiptap_disk', $disk);
+
+        $this->assertSame(0, Artisan::call('atom:purge-editor-images'));
+        expect(Artisan::output())
+            ->toContain("Scanned 0 model(s) with editor content columns:\n")
+            ->toContain('No model column casts to AsTiptapContent. Nothing was moved or deleted.')
+            ->not->toContain('listing exploded');
+    });
+
     it('reports the models and columns it scanned', function () {
         DB::table('purge_legacy_posts')->insert(['body' => purgeLegacyHtml()]);
 
@@ -436,6 +463,19 @@ describe('atom:purge-editor-images scope', function () {
             ->assertFailed();
 
         $real->assertExists('tenant/editor/orphan.jpg');
+    });
+
+    it('aborts without deleting anything when the editor disk cannot be resolved', function () {
+        purgeEditorFiles('tiptap_disk', 'tenant/editor', 'orphan.jpg');
+        DB::table('purge_tiptap_articles')->insert(['doc' => purgeTiptapDoc()]);
+        config(['atom.editor.disk' => 'no_such_disk']);
+
+        $this->artisan('atom:purge-editor-images')
+            ->expectsOutputToContain('disk [no_such_disk]:')
+            ->assertFailed();
+
+        Storage::disk('tiptap_disk')->assertExists('tenant/editor/orphan.jpg');
+        Storage::disk('local')->assertMissing('editor-purged/orphan.jpg');
     });
 
     it('finds a model declared after another class in the same file', function () {

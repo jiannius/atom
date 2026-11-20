@@ -1,0 +1,23 @@
+atom upgrade check
+What each check means: g
+Scanned 0 file(s) in app/, resources/, routes/, modules/, config/, database/. Read only: nothing was written.
+A finding is a candidate from a text scan, not a proof: check the receiver of a date method, and the file.
+The report and --output quote up to 160 characters of each matching line: treat the file like source code.
+
+COMPONENTS THAT USE AtomComponent (0)
+-----------------------------------
+
+Traits needed: none
+
+<atom:...> TAGS IN USE (0 distinct, 0 uses)
+----------------------
+
+CLAUDE.md / AGENTS.md atom section
+----------------------------------
+not found: no CLAUDE.md or AGENTS.md here
+
+SUMMARY
+-------
+0 finding(s) in 0 of 0 checks: .
+The codemod will fix 0 and only report 0.
+0 component(s) use AtomComponent; 0 AsEditorContent cast(s); 0 <atom:editor*> tag(s).

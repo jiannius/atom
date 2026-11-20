@@ -1,0 +1,12 @@
+atom design check
+The rules: "Design rules" and "Patterns" in the atom-components skill (`php artisan boost:install` writes it into your agent's skills).
+Scanned 0 Blade and 0 PHP file(s) in app/, resources/, modules/. Read only: nothing was written.
+A finding is a candidate from a text scan, not a proof. A deliberate exception: {{-- atom:design-check ignore <id>: <reason> --}} on the line, or the line above.
+The report and --json quote up to 160 characters of each matching line: treat the file like source code.
+
+NOT CHECKED (left to a person)
+------------------------------
+
+SUMMARY
+-------
+0 finding(s) in 0 of 0 checks: 0 break, 0 review, 0 info; 0 suppressed.

@@ -65,11 +65,6 @@ class PurgeEditorImages extends Command
     protected const URLDECODE_MAX_BYTES = 1048576;
 
     /**
-     * The cast v4 removed, by name: a column still cast as it aborts the run
-     */
-    protected const REMOVED_CAST = 'Jiannius\\Atom\\Casts\\AsEditorContent';
-
-    /**
      * Backups are read this many at a time
      */
     protected const BACKUP_CHUNK = 200;
@@ -87,17 +82,14 @@ class PurgeEditorImages extends Command
     protected $description = 'Purge unused editor images from the disk';
 
     /**
-     * The casts found on at least one model column, by name: 'tiptap' for
-     * AsTiptapContent.
-     *
-     * @var array<string, bool>
+     * Whether at least one model column casts to AsTiptapContent
      */
-    protected array $castsInUse = [];
+    protected bool $editorColumnFound = false;
 
     /**
-     * The editor columns found, by model class: column => 'tiptap'.
+     * The editor columns found, by model class.
      *
-     * @var array<string, array<string, string>>
+     * @var array<string, array<int, string>>
      */
     protected array $scanned = [];
 
@@ -169,14 +161,14 @@ class PurgeEditorImages extends Command
         }
 
         $this->problems = [];
-        $this->castsInUse = [];
+        $this->editorColumnFound = false;
         $this->scanned = [];
         $this->scannedBackups = 0;
 
         // list the files BEFORE reading the database: an image saved while the
         // scan runs is then not in the list, so it can never be called unreferenced
-        $snapshots = $this->snapshotDisks();
-        $this->indexNeedles($this->buildNeedles($snapshots));
+        $snapshot = $this->snapshotDisk();
+        $this->indexNeedles($this->buildNeedles($snapshot['files'] ?? collect()));
         $this->classFiles = [];
 
         // the whole scan happens here, before anything is moved or deleted: a
@@ -186,10 +178,9 @@ class PurgeEditorImages extends Command
 
         $this->reportScanned();
 
-        foreach (array_keys($this->getDisks()) as $name) {
-            if (isset($snapshots[$name]['error'])) {
-                $this->problems[] = 'disk ['.$name.']: '.$snapshots[$name]['error'];
-            }
+        // a disk that cannot be listed only matters when a model uses the cast
+        if ($this->editorColumnFound && isset($snapshot['error'])) {
+            $this->problems[] = 'disk ['.$snapshot['name'].']: '.$snapshot['error'];
         }
 
         if (count($this->problems)) {
@@ -201,7 +192,7 @@ class PurgeEditorImages extends Command
             return self::FAILURE;
         }
 
-        if (empty($this->castsInUse)) {
+        if (! $this->editorColumnFound) {
             $this->warn('No model column casts to AsTiptapContent. Nothing was moved or deleted.');
             return self::SUCCESS;
         }
@@ -213,38 +204,39 @@ class PurgeEditorImages extends Command
         $recent = 0;
         $failed = 0;
 
-        foreach ($this->getDisks() as $name => $disk) {
-            foreach ($snapshots[$name]['files'] as $path) {
-                // file names are unique (random-timestamp.ext), and a src may or may not carry
-                // the disk's folder (a CDN origin path, a url config), so match on the name alone
-                if ($referenced->has(basename($path))) {
+        $name = $snapshot['name'];
+        $disk = $snapshot['disk'];
+
+        foreach ($snapshot['files'] as $path) {
+            // file names are unique (random-timestamp.ext), and a src may or may not carry
+            // the disk's folder (a CDN origin path, a url config), so match on the name alone
+            if ($referenced->has(basename($path))) {
+                continue;
+            }
+
+            try {
+                if ($cutoff !== null && $disk->lastModified($path) > $cutoff) {
+                    $recent++;
                     continue;
                 }
 
-                try {
-                    if ($cutoff !== null && $disk->lastModified($path) > $cutoff) {
-                        $recent++;
-                        continue;
-                    }
-
-                    if ($dry) {
-                        $this->line('Would delete: ['.$name.'] '.$path);
-                        $handled++;
-                        continue;
-                    }
-
-                    // move the unused file to editor-purged folder just in case we need it later,
-                    // and only delete it once that copy is safely written
-                    $this->moveToPurgedFolder($path, $disk);
-                    $disk->delete($path);
-
-                    $this->info('Deleted: ['.$name.'] '.$path);
+                if ($dry) {
+                    $this->line('Would delete: ['.$name.'] '.$path);
                     $handled++;
+                    continue;
                 }
-                catch (Throwable $e) {
-                    $this->error('Kept ['.$name.'] '.$path.': '.$e->getMessage());
-                    $failed++;
-                }
+
+                // move the unused file to editor-purged folder just in case we need it later,
+                // and only delete it once that copy is safely written
+                $this->moveToPurgedFolder($path, $disk);
+                $disk->delete($path);
+
+                $this->info('Deleted: ['.$name.'] '.$path);
+                $handled++;
+            }
+            catch (Throwable $e) {
+                $this->error('Kept ['.$name.'] '.$path.': '.$e->getMessage());
+                $failed++;
             }
         }
 
@@ -262,27 +254,24 @@ class PurgeEditorImages extends Command
     }
 
     /**
-     * List the files of the disk the cast writes to, by disk name. A disk that
-     * cannot be listed is recorded, not thrown: it only matters if a model uses
-     * the cast.
+     * List the files of the disk the cast writes to. A disk that cannot be
+     * listed is recorded, not thrown: it only matters if a model uses the cast.
      *
-     * @return array<string, array{disk?: Filesystem, files?: Collection, error?: string}>
+     * @return array{name: string, disk?: Filesystem, files?: Collection, error?: string}
      */
-    protected function snapshotDisks(): array
+    protected function snapshotDisk(): array
     {
-        $snapshots = [];
-
         $name = null;
 
         try {
             $name = AsTiptapContent::diskName();
-            $snapshots[$name] = ['disk' => AsTiptapContent::disk(), 'files' => $this->getStorageFiles(AsTiptapContent::disk())];
+            $disk = $this->getDisk();
+
+            return ['name' => $name, 'disk' => $disk, 'files' => $this->getStorageFiles($disk)];
         }
         catch (Throwable $e) {
-            $snapshots[$name ?? AsTiptapContent::class] = ['error' => $e->getMessage()];
+            return ['name' => $name ?? AsTiptapContent::class, 'error' => $e->getMessage()];
         }
-
-        return $snapshots;
     }
 
     /**
@@ -293,28 +282,12 @@ class PurgeEditorImages extends Command
         $this->info('Scanned '.count($this->scanned).' model(s) with editor content columns:');
 
         foreach ($this->scanned as $class => $columns) {
-            $this->line('  '.$class.': '.collect($columns)->map(fn ($kind, $column) => $column.' ('.$kind.')')->join(', '));
+            $this->line('  '.$class.': '.collect($columns)->map(fn ($column) => $column.' (tiptap)')->join(', '));
         }
 
         if ($this->scannedBackups) {
             $this->line('  '.$this->scannedBackups.' backup(s) of migrated values (a restore may need their images)');
         }
-    }
-
-    /**
-     * Get the disks to scan, by name: the disk the cast writes to, when a model uses it
-     *
-     * @return array<string, Filesystem>
-     */
-    public function getDisks(): array
-    {
-        $disks = [];
-
-        if ($this->castsInUse['tiptap'] ?? false) {
-            $disks[AsTiptapContent::diskName()] = AsTiptapContent::disk();
-        }
-
-        return $disks;
     }
 
     /**
@@ -325,29 +298,27 @@ class PurgeEditorImages extends Command
      * it, in both hex cases, since a truncated JSON document holds that form
      * and cannot be decoded
      *
-     * @param  array<string, array{files?: Collection}>  $snapshots
+     * @param  Collection<int, string>  $files  the listed file paths
      * @return array<string, array<int, string>>
      */
-    protected function buildNeedles(array $snapshots): array
+    protected function buildNeedles(Collection $files): array
     {
         $needles = [];
 
-        foreach ($snapshots as $snapshot) {
-            foreach ($snapshot['files'] ?? [] as $path) {
-                $name = basename($path);
-                $forms = [$name, rawurlencode($name), urlencode($name)];
-                $json = json_encode($name, JSON_UNESCAPED_SLASHES);
+        foreach ($files as $path) {
+            $name = basename($path);
+            $forms = [$name, rawurlencode($name), urlencode($name)];
+            $json = json_encode($name, JSON_UNESCAPED_SLASHES);
 
-                if ($json !== false && substr($json, 1, -1) !== $name) {
-                    $json = substr($json, 1, -1);
-                    $forms[] = $json;
-                    $forms[] = preg_replace_callback('/\\\\u[0-9a-f]{4}/', fn ($hex) => '\\u'.strtoupper(substr($hex[0], 2)), $json);
-                }
+            if ($json !== false && substr($json, 1, -1) !== $name) {
+                $json = substr($json, 1, -1);
+                $forms[] = $json;
+                $forms[] = preg_replace_callback('/\\\\u[0-9a-f]{4}/', fn ($hex) => '\\u'.strtoupper(substr($hex[0], 2)), $json);
+            }
 
-                foreach ($forms as $needle) {
-                    if (! in_array($name, $needles[$needle] ?? [], true)) {
-                        $needles[$needle][] = $name;
-                    }
+            foreach ($forms as $needle) {
+                if (! in_array($name, $needles[$needle] ?? [], true)) {
+                    $needles[$needle][] = $name;
                 }
             }
         }
@@ -650,20 +621,8 @@ class PurgeEditorImages extends Command
                 $columns = $this->getEditorColumns($model);
 
                 // a backup keeps protecting its images whatever the model casts today, so every
-                // discovered model's connection is looked at, by its resolved name (the default is one).
-                // A connection this config does not define cannot hold backups this config wrote, so a
-                // model without an editor column on one is warned about and skipped; one with a column
-                // is still a problem, since its rows cannot be read.
-                try {
-                    $connections[$model->getConnection()->getName()] = $model->getConnectionName();
-                }
-                catch (\InvalidArgumentException $e) {
-                    if (! empty($columns)) {
-                        throw $e;
-                    }
-
-                    $this->warn($class.': '.EditorBackups::describe($e).' (no editor column, so it is skipped)');
-
+                // discovered model's connection is looked at (see addConnection())
+                if (! $this->addConnection($connections, $model, $class, ! empty($columns))) {
                     continue;
                 }
 
@@ -675,12 +634,12 @@ class PurgeEditorImages extends Command
 
                 $read = 0;
 
-                foreach ($this->getRows($model, array_keys($columns)) as $row) {
+                foreach ($this->getRows($model, $columns) as $row) {
                     if (++$read % self::PROGRESS_EVERY === 0) {
                         $this->info('  '.$class.': '.$read.' row(s) read');
                     }
 
-                    foreach (array_keys($columns) as $column) {
+                    foreach ($columns as $column) {
                         try {
                             $this->collectImages($reader, $row, $column, $row->getRawOriginal($column), $images);
                         }
@@ -785,35 +744,26 @@ class PurgeEditorImages extends Command
     }
 
     /**
-     * Get the editor content columns of a model, as column => 'tiptap', and
-     * remember which casts were seen. A column still cast as the removed
-     * AsEditorContent is a problem, not a column to skip: its images would look
-     * unreferenced, so the run is aborted until the host switches the cast and
-     * runs atom:tiptap-migrate.
+     * Get the editor content columns of a model, and remember that one was
+     * found. A column still cast as the removed AsEditorContent is a problem,
+     * not a column to skip: its images would look unreferenced, so the run is
+     * aborted until the host switches the cast and runs atom:tiptap-migrate.
      *
-     * @return array<string, string>
+     * @return array<int, string>
      */
     protected function getEditorColumns(Model $model): array
     {
-        $columns = [];
+        $casts = $this->castColumns($model);
 
-        foreach ($model->getCasts() as $column => $cast) {
-            $class = is_string($cast) ? str($cast)->before(':')->toString() : null;
-
-            if (!$class) {
-                continue;
-            }
-
-            if (strcasecmp(ltrim($class, '\\'), self::REMOVED_CAST) === 0) {
-                $this->problems[] = $model::class.'::'.$column.' is still cast as the removed AsEditorContent: switch it to AsTiptapContent and run atom:tiptap-migrate';
-            }
-            elseif (is_a($class, AsTiptapContent::class, true)) {
-                $columns[$column] = 'tiptap';
-                $this->castsInUse['tiptap'] = true;
-            }
+        foreach ($casts['removed'] as $column) {
+            $this->problems[] = $model::class.'::'.$column.' is still cast as the removed AsEditorContent: switch it to AsTiptapContent and run atom:tiptap-migrate';
         }
 
-        return $columns;
+        if ($casts['tiptap']) {
+            $this->editorColumnFound = true;
+        }
+
+        return $casts['tiptap'];
     }
 
     /**
