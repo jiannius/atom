@@ -53,7 +53,8 @@ if ($disabledBy === 'inherited' && $type !== 'file') {
 {{-- A tag cannot be opened and closed under two separate @if directives, so the control is captured once and printed either bare or inside
      the field (the label and caption), instead of once per type under each of the two. The same goes for the affix box around a text
      control. Every @if and @endif below sits on a line of its own: a directive glued to the word before it is not seen by
-     Livewire's morph markers (#263). --}}
+     Livewire's morph markers (#263). A bare control ends with the line break and indent it always printed, so a page that
+     pins its bytes (the table toolbar's golden) reads the same. --}}
 @php ob_start(); @endphp
 @if (in_array($type, ['text', 'password', 'number']))
     @if ($prefix || $suffix)
@@ -96,7 +97,7 @@ if ($disabledBy === 'inherited' && $type !== 'file') {
         @endif
     </atom:uploader>
 @endif
-@php $control = ob_get_clean(); @endphp
+@php $control = rtrim(ob_get_clean())."\n    "; @endphp
 
 @if (trim($control) === '')
     {{-- a type nothing draws prints nothing, not an empty field around it --}}
@@ -111,5 +112,4 @@ if ($disabledBy === 'inherited' && $type !== 'file') {
         {!! $control !!}
     </atom:input.field>
 @else
-    {!! $control !!}
-@endif
+    {!! $control !!}@endif
