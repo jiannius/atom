@@ -143,3 +143,14 @@ it('prints as many end markers as start markers under Livewire, for every type a
         }
     }
 });
+
+it('prints nothing for a type nothing draws, with or without a label, under Livewire as well', function (string $attrs) {
+    $html = inputWrapMarkers('<atom:input type="url" wire:model="a" '.$attrs.' />')['html'];
+
+    expect($html)->not->toContain('<input')->not->toContain('<label')->not->toContain('Name')->not->toContain('Hint');
+})->with([
+    'bare' => '',
+    'label' => 'label="Name"',
+    'caption' => 'caption="Hint"',
+    'label and caption' => 'label="Name" caption="Hint"',
+]);

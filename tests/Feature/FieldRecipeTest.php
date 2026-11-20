@@ -185,3 +185,28 @@ it('gives every control the disabled variants of a client-driven disabled, and t
         expectFieldTokens($matrix["{$control} / default"], "{$control} / default", $control === 'input-otp' ? ['rounded-control', 'border'] : ['rounded-control', 'border', 'text-sm', 'w-full']);
     }
 });
+
+it('draws a disabled textarea, native select and range picker disabled even when invalid, through their own variants', function () {
+    $matrix = fieldRecipeMatrix();
+
+    // what makes each one disabled, which sorts above its plain border: a textarea and the range picker read the marker (a form's disabled is `readonly`, which `:disabled` does not
+    // match), the native select its <select>'s own `:disabled` (a disabled form disables it)
+    $variants = [
+        'textarea' => ['[&[data-atom-disabled]]:border-border', '[&[data-atom-disabled]]:bg-surface-sunken', '[&[data-atom-disabled]]:text-fg-subtle', '[&[data-atom-disabled]]:cursor-not-allowed'],
+        'date-range' => ['[[data-atom-disabled]_&]:border-border', '[[data-atom-disabled]_&]:bg-surface-sunken', '[[data-atom-disabled]_&]:text-fg-subtle', '[[data-atom-disabled]_&]:cursor-not-allowed'],
+        'select-native' => ['has-[select:disabled]:border-border', 'has-[select:disabled]:bg-surface-sunken', 'has-[select:disabled]:text-fg-subtle', 'has-[select:disabled]:cursor-not-allowed'],
+    ];
+
+    foreach ($variants as $control => $tokens) {
+        foreach (['disabled', 'form-disabled', 'invalid-disabled'] as $state) {
+            expectFieldTokens($matrix["{$control} / {$state}"], "{$control} / {$state}", $tokens);
+        }
+
+        // and the invalid one is still drawn invalid where it is not disabled
+        expectFieldTokens($matrix["{$control} / invalid"], "{$control} / invalid", ['border-danger-fg']);
+    }
+
+    // a focused one keeps its focus border under the variant: the focus variant is stacked after it
+    expectFieldTokens($matrix['textarea / invalid-disabled'], 'textarea / invalid-disabled', ['[&[data-atom-disabled]]:focus-visible:border-danger-fg']);
+    expectFieldTokens($matrix['date-range / invalid-disabled'], 'date-range / invalid-disabled', ['[[data-atom-disabled]_&]:focus-visible:border-danger-fg']);
+});

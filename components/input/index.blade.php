@@ -41,6 +41,10 @@ if ($inputId) {
 // handling, and `file` takes no `readonly` (it means nothing on a file input).
 $disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
 
+/* the types the chain below draws: any other prints nothing, not an empty field around it (the captured markup cannot tell, a Livewire view
+   prints its morph markers even for a branch nothing takes) */
+$drawn = in_array($type, ['text', 'password', 'number', 'tel', 'color', 'email', 'file'], true);
+
 if ($type !== 'color') {
     $merges['data-atom-disabled'] = $disabledBy;
 }
@@ -99,8 +103,8 @@ if ($disabledBy === 'inherited' && $type !== 'file') {
 @endif
 @php $control = rtrim(ob_get_clean())."\n    "; @endphp
 
-@if (trim($control) === '')
-    {{-- a type nothing draws prints nothing, not an empty field around it --}}
+@if (! $drawn)
+    {{-- a type nothing draws prints nothing --}}
 @elseif ($label || $caption)
     <atom:input.field
     :for="$inputId"
