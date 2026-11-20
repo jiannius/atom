@@ -1,0 +1,103 @@
+<nav class="py-2 px-4 flex flex-wrap items-center justify-between gap-3 tabular-nums sticky bottom-0 z-10 -mt-px border-t border-border bg-surface/95 backdrop-blur-sm sm:pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] max-sm:static [body:has([data-atom-save-bar])_&amp;]:static" role="navigation" aria-label="Pagination Navigation" x-on:paginate="document.querySelector(&#039;body&#039;).scrollIntoView()" data-atom-table-pager="data-atom-table-pager">
+<div class="py-2 text-xs text-fg-muted"> Showing 61 to 80 of 2000 rows </div>
+<div x-data="dropdown({ locked: false, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" data-atom-dropdown>
+<button class="group/button relative items-center justify-center overflow-hidden inline-flex max-w-full whitespace-nowrap font-medium transition-colors disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [&amp;.is-loading]:opacity-50 [&amp;.is-loading]:pointer-events-none bg-transparent border border-transparent text-fg-muted hover:bg-fg/5 hover:text-fg text-sm h-control-sm px-2.5 gap-1.5 rounded-control" type="button" data-atom-button>
+<div class="absolute inset-0 items-center justify-center hidden group-[.is-loading]/button:flex ">
+<span aria-hidden="true" class="inline-flex shrink-0 *:w-full *:h-full size-4" data-atom-icon>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+<style> .spinner_ajPY { transform-origin: center; animation: spinner_AtaB 1s infinite linear } @keyframes spinner_AtaB { 100% { transform: rotate(360deg) } } </style>
+<path d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity=".25" />
+<path d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z" class="spinner_ajPY" />
+</svg>
+</span>
+</div>
+<div class="inline-flex min-w-0 max-w-full items-center gap-2 justify-center group-[.is-loading]/button:opacity-0 ">
+<span x-text="$wire._table.max_rows">
+</span>
+<span>rows</span>
+<span>/ page</span>
+<span aria-hidden="true" class="inline-flex shrink-0 size-5 *:w-full *:h-full" data-atom-icon>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+<path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clip-rule="evenodd">
+</path>
+</svg>
+</span>
+</div>
+</button>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" wire:click="$set('_table.max_rows', 50)">
+<div class="grow leading-tight whitespace-nowrap truncate"> 50 rows / page </div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" wire:click="$set('_table.max_rows', 100)">
+<div class="grow leading-tight whitespace-nowrap truncate"> 100 rows / page </div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" wire:click="$set('_table.max_rows', 200)">
+<div class="grow leading-tight whitespace-nowrap truncate"> 200 rows / page </div>
+</button>
+<button type="button" role="menuitem" data-atom-menu-item="data-atom-menu-item" class="flex items-center gap-2 w-full min-h-control py-1 px-2.5 rounded-nav text-left text-sm focus-visible:-outline-offset-2 disabled:pointer-events-none disabled:cursor-default disabled:opacity-50 [:where([data-atom-menu]_&amp;)]:my-px first:[:where([data-atom-menu]_&amp;)]:mt-0 last:[:where([data-atom-menu]_&amp;)]:mb-0 text-fg hover:bg-fg/[0.06] focus-visible:bg-fg/[0.06]" wire:click="$set('_table.max_rows', 400)">
+<div class="grow leading-tight whitespace-nowrap truncate"> 400 rows / page </div>
+</button>
+</div>
+</div>
+<div>
+<span class="relative z-0 inline-flex gap-1 rtl:flex-row-reverse">
+<button type="button" wire:click="previousPage('page')" x-on:click="$dispatch('paginate')" dusk="previousPage.after" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="&amp;laquo; Previous">
+<svg class="size-4" fill="currentColor" viewBox="0 0 20 20">
+<path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+</svg>
+</button>
+<button type="button" wire:click="gotoPage(1, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 1">
+<span>1</span>
+</button>
+<button type="button" wire:click="gotoPage(2, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 2">
+<span>2</span>
+</button>
+<button type="button" wire:click="gotoPage(3, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 3">
+<span>3</span>
+</button>
+<span aria-current="page" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums cursor-default border border-border-strong bg-neutral-bg text-fg">
+<span>4</span>
+</span>
+<button type="button" wire:click="gotoPage(5, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 5">
+<span>5</span>
+</button>
+<button type="button" wire:click="gotoPage(6, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 6">
+<span>6</span>
+</button>
+<button type="button" wire:click="gotoPage(7, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 7">
+<span>7</span>
+</button>
+<button type="button" wire:click="gotoPage(8, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 8">
+<span>8</span>
+</button>
+<button type="button" wire:click="gotoPage(9, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 9">
+<span>9</span>
+</button>
+<button type="button" wire:click="gotoPage(10, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 10">
+<span>10</span>
+</button>
+<div x-data="dropdown({ locked: true, placement: 'bottom-start', })" class="group/dropdown [:where(&amp;)]:relative [:where(&amp;_[data-atom-menu])]:transition [:where(&amp;_[data-atom-menu])]:duration-300 [:where(&amp;_[data-atom-menu])]:ease-in-out [:where(&amp;_[data-atom-menu])]:opacity-0 [:where(&amp;[data-open]_[data-atom-menu])]:opacity-100" data-atom-dropdown>
+<button type="button" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums cursor-pointer text-fg-muted transition-colors hover:text-fg" aria-label="Has more pages"> ... </button>
+<div role="menu" class="[:where(&amp;)]:min-w-48 p-1 text-fg rounded-panel shadow-pop border border-border-strong bg-surface-raised" data-atom-menu popover>
+<div x-data="{ page: null }" x-intersect="$root.querySelector('input').focus()" class="flex items-center gap-2 px-3 text-sm">
+<div class="shrink-0">Go to page</div>
+<div class="grow">
+<input type="number" x-model="page" x-on:keydown.enter.stop.prevent="$wire.gotoPage(page, 'page'); $root.parentNode.hidePopover()" class="h-control-sm w-20 rounded-control border border-control-border bg-surface px-2 text-sm tabular-nums" placeholder="1" />
+</div>
+</div>
+</div>
+</div>
+<button type="button" wire:click="gotoPage(99, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 99">
+<span>99</span>
+</button>
+<button type="button" wire:click="gotoPage(100, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 100">
+<span>100</span>
+</button>
+<button type="button" wire:click="nextPage('page')" x-on:click="$dispatch('paginate')" dusk="nextPage.after" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Next &amp;raquo;">
+<svg class="size-4" fill="currentColor" viewBox="0 0 20 20">
+<path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+</svg>
+</button>
+</span>
+</div>
+</nav>

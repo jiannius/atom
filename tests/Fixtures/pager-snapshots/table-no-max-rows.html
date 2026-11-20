@@ -1,0 +1,47 @@
+<nav class="py-2 px-4 flex flex-wrap items-center justify-between gap-3 tabular-nums sticky bottom-0 z-10 -mt-px border-t border-border bg-surface/95 backdrop-blur-sm sm:pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] max-sm:static [body:has([data-atom-save-bar])_&amp;]:static" role="navigation" aria-label="Pagination Navigation" x-on:paginate="document.querySelector(&#039;body&#039;).scrollIntoView()" data-atom-table-pager="data-atom-table-pager">
+<div class="py-2 text-xs text-fg-muted"> Showing 81 to 100 of 200 rows </div>
+<div>
+<span class="relative z-0 inline-flex gap-1 rtl:flex-row-reverse">
+<button type="button" wire:click="previousPage('page')" x-on:click="$dispatch('paginate')" dusk="previousPage.after" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="&amp;laquo; Previous">
+<svg class="size-4" fill="currentColor" viewBox="0 0 20 20">
+<path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+</svg>
+</button>
+<button type="button" wire:click="gotoPage(1, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 1">
+<span>1</span>
+</button>
+<button type="button" wire:click="gotoPage(2, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 2">
+<span>2</span>
+</button>
+<button type="button" wire:click="gotoPage(3, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 3">
+<span>3</span>
+</button>
+<button type="button" wire:click="gotoPage(4, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 4">
+<span>4</span>
+</button>
+<span aria-current="page" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums cursor-default border border-border-strong bg-neutral-bg text-fg">
+<span>5</span>
+</span>
+<button type="button" wire:click="gotoPage(6, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 6">
+<span>6</span>
+</button>
+<button type="button" wire:click="gotoPage(7, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 7">
+<span>7</span>
+</button>
+<button type="button" wire:click="gotoPage(8, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 8">
+<span>8</span>
+</button>
+<button type="button" wire:click="gotoPage(9, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 9">
+<span>9</span>
+</button>
+<button type="button" wire:click="gotoPage(10, 'page')" x-on:click="$dispatch('paginate')" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Go to page 10">
+<span>10</span>
+</button>
+<button type="button" wire:click="nextPage('page')" x-on:click="$dispatch('paginate')" dusk="nextPage.after" class="inline-flex h-control min-w-(--atom-control-h) shrink-0 items-center justify-center rounded-control px-1.5 text-sm font-medium leading-5 tabular-nums text-fg-muted transition-colors hover:bg-fg/[0.05] hover:text-fg" aria-label="Next &amp;raquo;">
+<svg class="size-4" fill="currentColor" viewBox="0 0 20 20">
+<path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+</svg>
+</button>
+</span>
+</div>
+</nav>
