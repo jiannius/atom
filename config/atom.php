@@ -9,6 +9,9 @@
 return [
     'timezone' => env('TIMEZONE'),
 
+    // The neutral tint of every page (`paper`, the warm default, `slate`, `graphite`, `sage`, `mist` or `blush`). <atom:html tint> and the layouts' `tint` win.
+    'tint' => null,
+
     // Which fields a form marks: 'required' draws an asterisk on a required field, 'optional' draws "(optional)" on the others. <atom:form marker> wins.
     'form' => [
         'marker' => 'required',

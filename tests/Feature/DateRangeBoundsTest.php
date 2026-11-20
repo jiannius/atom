@@ -455,7 +455,7 @@ describe('the viewer\'s timezone', function () {
 
     it('ships a config/atom.php that the service provider merges, and fills timezone from TIMEZONE', function () {
         expect(config('atom'))->toHaveKey('timezone')
-            ->and(require __DIR__.'/../../config/atom.php')->toBe(['timezone' => env('TIMEZONE'), 'form' => ['marker' => 'required']]);
+            ->and(require __DIR__.'/../../config/atom.php')->toBe(['timezone' => env('TIMEZONE'), 'tint' => null, 'form' => ['marker' => 'required']]);
 
         $_ENV['TIMEZONE'] = $_SERVER['TIMEZONE'] = 'Asia/Seoul';
 

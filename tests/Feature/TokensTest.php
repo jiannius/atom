@@ -33,7 +33,8 @@ function tokenBlock(string $css, string $selector): array
 {
     $pattern = str_replace(', ', ',\s*', preg_quote($selector, '/'));
 
-    preg_match_all('/(?:^|[}\s])'.$pattern.'\s*\{([^{}]*)\}/m', $css, $blocks);
+    // the selector must open the rule, so `.dark` is not read out of `[data-atom-tint="x"] .dark`
+    preg_match_all('/(?:^|[{}])\s*'.$pattern.'\s*\{([^{}]*)\}/', $css, $blocks);
 
     $out = [];
 
@@ -494,4 +495,132 @@ describe('type, radius and the integration file', function () {
     it('is not loaded by <atom:html>: a host imports it through its own Tailwind build', function () {
         expect(renderBlade('<atom:html :vite="false">x</atom:html>'))->not->toContain('atom.tailwind');
     });
+});
+
+// A tint swaps the hue of the neutral roles and ramps. Each is laid over the paper defaults, so a role it leaves out (the
+// light surfaces, the tones, the focus) is the default's.
+const TOKEN_TINTS = ['paper', 'slate', 'graphite', 'sage', 'mist', 'blush'];
+
+/**
+ * A tint's light values (the ramps and --atom-tint-* read as the roles they feed) and its dark values (--atom-tint-dark-*
+ * read the same way), then each laid over the theme it overrides.
+ *
+ * @return array{0: array<string, string>, 1: array<string, string>, light: array<string, string>, dark: array<string, string>}
+ */
+function tintBlocks(string $tint): array
+{
+    $css = tokenCss();
+    $light = [];
+    $dark = [];
+
+    foreach (tokenBlock($css, '[data-atom-tint="'.$tint.'"]') as $name => $value) {
+        match (true) {
+            str_starts_with($name, '--atom-tint-dark-') => $dark['--atom-'.substr($name, 17)] = $value,
+            str_starts_with($name, '--atom-tint-') => $light['--atom-'.substr($name, 12)] = $value,
+            default => $light[$name] = $value,
+        };
+    }
+
+    return [$light, $dark, 'light' => $light + tokenBlock($css, ':root'), 'dark' => $dark + tokenBlock($css, '.dark')];
+}
+
+describe('tints', function () {
+    it('turns every tint variable into its role in one shared rule per theme, with the default as the fallback', function () {
+        $css = tokenCss();
+        $sharedLight = tokenBlock($css, '[data-atom-tint]');
+        $sharedDark = tokenBlock($css, '.dark[data-atom-tint], .dark [data-atom-tint], [data-atom-tint] .dark');
+        $root = tokenBlock($css, ':root');
+        $rootDark = tokenBlock($css, '.dark');
+        [$light, $dark] = tintBlocks('paper');
+        $roles = array_filter(array_keys($light), fn (string $name) => str_starts_with($name, '--atom-'));
+
+        expect(array_keys($sharedLight))->toBe(array_values($roles))
+            ->and(array_keys($sharedDark))->toBe(array_keys($dark));
+
+        foreach ($sharedLight as $name => $value) {
+            expect($value)->toBe('var(--atom-tint-'.substr($name, 7).', '.$root[$name].')', $name);
+        }
+
+        foreach ($sharedDark as $name => $value) {
+            expect($value)->toBe('var(--atom-tint-dark-'.substr($name, 7).', '.$rootDark[$name].')', $name);
+        }
+
+        // no per-tint selector may set a role itself: only the shared rules do, so the nearest tint wins by inheritance
+        expect(preg_match('/\[data-atom-tint="[a-z-]+"\][^{]*\.dark|\.dark[^{,]*\[data-atom-tint="/', $css))->toBe(0);
+    });
+
+    it('defines the same tokens in every tint, and every light-tint role again in dark', function () {
+        [$paperLight, $paperDark] = tintBlocks('paper');
+
+        expect($paperLight)->not->toBeEmpty()->and($paperDark)->not->toBeEmpty();
+
+        foreach (TOKEN_TINTS as $tint) {
+            [$light, $dark] = tintBlocks($tint);
+
+            expect(array_keys($light))->toBe(array_keys($paperLight), "$tint light")
+                ->and(array_keys($dark))->toBe(array_keys($paperDark), "$tint dark");
+
+            // a role the light block sets on <html> and the dark block missed would keep its light value on a dark page
+            foreach (array_keys($light) as $name) {
+                if (str_starts_with($name, '--atom-')) {
+                    expect(array_key_exists($name, $dark))->toBeTrue("$tint dark misses $name");
+                }
+            }
+        }
+    });
+
+    it('restates the defaults as paper, so a subtree can return to them', function () {
+        [$light, $dark] = tintBlocks('paper');
+        $css = tokenCss();
+        $root = tokenBlock($css, ':root');
+        $rootDark = tokenBlock($css, '.dark');
+        preg_match('/@theme static \{(.*?)\n\}/s', $css, $theme);
+        $ramp = tokenBlock(':root {'.$theme[1].'}', ':root');
+
+        foreach ($light as $name => $value) {
+            expect($value)->toBe(str_starts_with($name, '--color-') ? $ramp[$name] : $root[$name], $name);
+        }
+
+        foreach ($dark as $name => $value) {
+            expect($value)->toBe($rootDark[$name], $name);
+        }
+    });
+
+    it('keeps the zinc and gray ramps equal', function (string $tint) {
+        [$light] = tintBlocks($tint);
+
+        foreach ([50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as $step) {
+            expect($light['--color-gray-'.$step])->toBe($light['--color-zinc-'.$step]);
+        }
+    })->with(TOKEN_TINTS);
+
+    it('keeps the foreground roles above 4.5:1 on every ground, and the neutral pair', function (string $tint) {
+        $blocks = tintBlocks($tint);
+
+        foreach (['light', 'dark'] as $theme) {
+            $block = $blocks[$theme];
+
+            foreach (['fg', 'fg-muted', 'fg-subtle'] as $text) {
+                foreach (['canvas', 'surface', 'surface-sunken', 'surface-raised'] as $ground) {
+                    $ratio = tokenContrast(tokenLuminance(tokenHex($block, $text)), tokenLuminance(tokenHex($block, $ground)));
+
+                    expect($ratio)->toBeGreaterThanOrEqual(4.5, "$tint: $text on $ground ($theme) is {$ratio}:1");
+                }
+            }
+
+            $ratio = tokenContrast(tokenLuminance(tokenHex($block, 'neutral-bg')), tokenLuminance(tokenHex($block, 'neutral-fg')));
+
+            expect($ratio)->toBeGreaterThanOrEqual(4.5, "$tint: neutral ($theme) is {$ratio}:1");
+        }
+    })->with(TOKEN_TINTS);
+
+    it('keeps the dark control border at 3:1 on every ground', function (string $tint) {
+        $dark = tintBlocks($tint)['dark'];
+
+        foreach (['canvas', 'surface', 'surface-sunken', 'surface-raised'] as $ground) {
+            $ratio = tokenContrast(tokenLuminance(tokenHex($dark, 'control-border')), tokenLuminance(tokenHex($dark, $ground)));
+
+            expect($ratio)->toBeGreaterThanOrEqual(3.0, "$tint: control-border on $ground is {$ratio}:1");
+        }
+    })->with(TOKEN_TINTS);
 });

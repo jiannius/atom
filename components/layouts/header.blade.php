@@ -3,6 +3,7 @@
     'title' => '',
     'dark' => false,
     'density' => 'compact',
+    'tint' => null,
     'scripts' => [],
     'styles' => [],
     'vite' => ['resources/css/app.css', 'resources/js/app.js'],
@@ -55,6 +56,7 @@ $trailEmpty = isset($crumbs)
 :title="$title"
 :dark="$dark"
 :density="$density"
+:tint="$tint"
 :styles="$styles"
 :scripts="$scripts"
 :vite="$vite"

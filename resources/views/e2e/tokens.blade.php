@@ -1,6 +1,6 @@
 @php
 // ?tw=floor|latest opts in to the consumer build (tests/consumer/build.mjs); ?density=compact|comfortable; ?fonts=0 passes fonts=false; ?dark=1 turns the
-// dark class on; ?accent=%23rrggbb sets --color-accent the way a host does in its @theme.
+// dark class on; ?accent=%23rrggbb sets --color-accent the way a host does in its @theme; ?tint=slate (any name) is <atom:html tint>.
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : null;
 $density = in_array(request()->query('density'), ['compact', 'comfortable'], true) ? request()->query('density') : 'compact';
 $accent = preg_match('/^#[0-9a-f]{6}$/i', (string) request()->query('accent')) ? request()->query('accent') : null;
@@ -20,7 +20,7 @@ $roles = [
 ];
 @endphp
 
-<atom:html title="E2E: Tokens" :vite="[]" :dark="request()->query('dark') === '1'" :density="$density" :fonts="request()->query('fonts') === '0' ? false : 'geist'" :styles="$tw ? ['/atom/e2e/consumer-css/'.$tw] : []">
+<atom:html title="E2E: Tokens" :vite="[]" :dark="request()->query('dark') === '1'" :density="$density" :fonts="request()->query('fonts') === '0' ? false : 'geist'" :tint="request()->query('tint')" :styles="$tw ? ['/atom/e2e/consumer-css/'.$tw] : []">
 @if ($accent)
 <style>:root { --color-accent: {{ $accent }}; }</style>
 @endif
@@ -114,6 +114,15 @@ $roles = [
         <button type="button" class="h-control rounded-control bg-accent px-3 text-sm font-medium text-accent-foreground" data-testid="island-accent-button">Primary action</button>
         <button type="button" class="h-control rounded-control border border-border-strong bg-surface px-3 text-sm" data-testid="island-focus">Focus me</button>
     </section>
+
+    {{-- a sage subtree inside the page, in the page's own theme --}}
+    <section class="rounded-panel border bg-canvas p-3 text-fg" data-atom-tint="sage" data-testid="tint-island">
+        <span class="inline-block rounded-control bg-zinc-100 px-2 text-sm" data-testid="tint-island-zinc">zinc-100</span>
+        <div class="dark rounded-control bg-canvas p-2 text-fg" data-testid="tint-island-dark">dark inside sage</div>
+    </section>
+
+    {{-- a dark sage island that carries its own tint --}}
+    <section class="dark rounded-panel bg-canvas p-3 text-fg" data-atom-tint="sage" data-testid="tint-dark-self">dark sage</section>
 </div>
 
 @livewireScripts
