@@ -15,7 +15,7 @@
 
 <div
 x-data
-x-on:click="$event.target.closest?.('[data-atom-confirm]') || {!! \Jiannius\Atom\Atom::TRIGGER_DISABLED_GUARD !!} atom.confirm(@js(app('atom')->triggerPayload($variant, $heading, $subheading ?? $message, $html, [
+x-on:click="$event.target.closest?.('[data-atom-confirm]') || {{ \Jiannius\Atom\Atom::TRIGGER_DISABLED_GUARD }} atom.confirm(@js(app('atom')->triggerPayload($variant, $heading, $subheading ?? $message, $html, [
     'buttonConfirm' => t($buttonConfirm),
     'buttonCancel' => t($buttonCancel),
     'password' => $password ?? false,

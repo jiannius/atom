@@ -13,7 +13,7 @@
 
 <div
 x-data
-x-on:click="{!! \Jiannius\Atom\Atom::TRIGGER_DISABLED_GUARD !!} atom.toast(@js(app('atom')->triggerPayload($variant, $heading, $subheading ?? $message, $html, [
+x-on:click="{{ \Jiannius\Atom\Atom::TRIGGER_DISABLED_GUARD }} atom.toast(@js(app('atom')->triggerPayload($variant, $heading, $subheading ?? $message, $html, [
     'position' => $position,
     'align' => $align,
     'delay' => $delay,

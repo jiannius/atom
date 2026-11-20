@@ -14,9 +14,9 @@ $name ??= app('atom')->currentComponentName();
 {{ $attributes->class('contents') }}
 x-data
 @if ($slide)
-x-on:click="{!! \Jiannius\Atom\Atom::TRIGGER_DISABLED_GUARD !!} atom.modal(@js($name)).slide(@js($slide))"
+x-on:click="{{ \Jiannius\Atom\Atom::TRIGGER_DISABLED_GUARD }} atom.modal(@js($name)).slide(@js($slide))"
 @else
-x-on:click="{!! \Jiannius\Atom\Atom::TRIGGER_DISABLED_GUARD !!} atom.modal(@js($name)).show()"
+x-on:click="{{ \Jiannius\Atom\Atom::TRIGGER_DISABLED_GUARD }} atom.modal(@js($name)).show()"
 @endif
 @if ($shortcut && $slide)
 x-on:keydown.{{ $shortcut }}.document="$event.preventDefault(); atom.modal(@js($name)).slide(@js($slide))"
