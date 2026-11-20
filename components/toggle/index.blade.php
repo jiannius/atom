@@ -27,7 +27,7 @@ $merges = [
             <div class="shrink-0 pt-0.5">
                 <input type="checkbox" class="peer sr-only" {{ $attributes->except('class')->merge($merges) }}>
 
-                <atom:choice._indicator kind="toggle" />
+                <atom:checkbox._indicator kind="toggle" />
             </div>
     
             <div class="text-fg">

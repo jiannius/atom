@@ -33,9 +33,9 @@ if ($disabledBy) {
     <label {{ $attributes->only('class')->class('group/checkbox min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3') }} data-atom-checkbox data-atom-tile>
         <input type="checkbox" class="sr-only peer" {{ $attributes->except('class')->merge($merges) }}>
 
-        <atom:choice._indicator kind="checkbox" tile />
+        <atom:checkbox._indicator kind="checkbox" tile />
 
-        <atom:choice._tile-body :content="$content" :caption="$caption" />
+        <atom:checkbox._tile-body :content="$content" :caption="$caption" />
 
         <atom:error>{{ t($error) }}</atom:error>
     </label>
@@ -54,7 +54,7 @@ if ($disabledBy) {
             ])>
                 <input type="checkbox" class="sr-only peer" {{ $attributes->except('class')->merge($merges) }}>
 
-                <atom:choice._indicator kind="checkbox" />
+                <atom:checkbox._indicator kind="checkbox" />
             </div>
             
             @if ($slot->isNotEmpty())

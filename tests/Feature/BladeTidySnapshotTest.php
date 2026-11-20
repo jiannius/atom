@@ -107,11 +107,12 @@ function tidyBadgeCases(): array
         'hex icon' => '<atom:badge color="#00ff88" icon="add" size="lg">New</atom:badge>',
         'hex label' => '<atom:badge color="#336699" label="Paid" class="extra" id="h" data-x="1"/>',
         'hex style' => '<atom:badge color="#336699" style="margin: 1px">New</atom:badge>',
+        'hex style, characters to escape' => '<atom:badge color="#336699" :style="$st">New</atom:badge>',
         'hex enum' => '<atom:badge :status="$h"/>',
         'inline' => 'Use <atom:badge>New</atom:badge>. And <atom:badge color="#ff0000">New</atom:badge>.',
     ];
 
-    return array_map(fn (string $template) => fn () => renderBlade($template, ['s' => tidyEnum('info'), 'h' => tidyEnum('#123456')]), $templates);
+    return array_map(fn (string $template) => fn () => renderBlade($template, ['s' => tidyEnum('info'), 'h' => tidyEnum('#123456'), 'st' => 'content: "a"; --x: <b> & c']), $templates);
 }
 
 enum TidyState: string
@@ -216,8 +217,8 @@ function normaliseTidy(string $html): string
     $html = preg_replace('#(</main>).*#s', '$1', $html);
     $html = preg_replace('/\s+/', ' ', trim($html));
 
-    // a space before the `>` that ends a tag is not output a reader sees
-    $html = preg_replace('/(?<=["\'\w-]) >/', '>', $html);
+    // a space before the `>` that ends an opening tag is not output a reader sees (a `>` inside an attribute value is left alone)
+    $html = preg_replace_callback('/<[a-zA-Z][\w:.-]*(?:\s+[^\s"\'=<>]+(?:=(?:"[^"]*"|\'[^\']*\'))?)*\s*>/', fn (array $tag) => preg_replace('/\s+>$/', '>', $tag[0]), $html);
 
     return preg_replace('/>\s*</', ">\n<", $html);
 }
@@ -258,6 +259,16 @@ it('keeps the markup of the tidied components', function (string $group) {
         expect($html)->toBe($expected[$name], $name);
     }
 })->with(['layouts', 'badge', 'choice', 'toolbar']);
+
+// Docs lists every top-level entry of components/ as a component, so a directory that holds only partials (a fake `<atom:choice>`) shows up in
+// /atom/docs with nothing to render. Only the icon gallery and the shells' `layouts` (their own docs pages) have no index file.
+it('lists only components the docs can render', function () {
+    $docs = app(Jiannius\Atom\Services\Docs::class);
+    $without = $docs->components()->filter(fn (array $component) => $docs->file($component['name']) === null)->pluck('name')->sort()->values()->all();
+
+    expect($docs->components()->count())->toBeGreaterThan(50)
+        ->and($without)->toBe(['icon', 'layouts']);
+});
 
 it('renders the same twice (no random id in a snapshot)', function (string $group) {
     expect(tidySnapshotOf(tidyGroups()[$group]))->toBe(tidySnapshotOf(tidyGroups()[$group]));

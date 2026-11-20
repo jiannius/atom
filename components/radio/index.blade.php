@@ -22,9 +22,9 @@ $content = $slot->isNotEmpty() ? $slot : ($label ? t($label) : null);
     <label {{ $attributes->only('class')->class('group/radio min-w-0 cursor-pointer rounded-panel border border-border bg-surface p-3') }} data-atom-radio data-atom-tile>
         <input type="radio" class="sr-only peer" {{ $attributes->except('class')->merge(['disabled' => $disabledBy ? true : null, 'data-atom-disabled' => $disabledBy]) }}>
 
-        <atom:choice._indicator kind="radio" tile />
+        <atom:checkbox._indicator kind="radio" tile />
 
-        <atom:choice._tile-body :content="$content" :caption="$caption" />
+        <atom:checkbox._tile-body :content="$content" :caption="$caption" />
     </label>
 @else
 <label {{ $attributes->only('class')->class('group/radio inline-block') }} data-atom-radio>
@@ -40,7 +40,7 @@ $content = $slot->isNotEmpty() ? $slot : ($label ? t($label) : null);
         ])>
             <input type="radio" class="sr-only peer" {{ $attributes->except('class')->merge(['disabled' => $disabledBy ? true : null, 'data-atom-disabled' => $disabledBy]) }}>
 
-            <atom:choice._indicator kind="radio" />
+            <atom:checkbox._indicator kind="radio" />
         </div>
 
         @if ($slot->isNotEmpty())

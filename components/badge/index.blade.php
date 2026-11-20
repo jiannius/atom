@@ -53,7 +53,7 @@ $classes = Arr::toCssClasses([
 {{-- The same element either way: a hex badge carries its colours in `style` (the caller's `style` folded into it), a tone badge keeps the caller's `style`
      among its attributes and names its tone. `$before` and `$after` are what the badge adds around its `data-atom-badge` mark, after the caller's attributes. --}}
 @php
-$before = new \Illuminate\View\ComponentAttributeBag($hex ? ['style' => $style] : []);
+$before = new \Illuminate\View\ComponentAttributeBag($hex ? ['style' => e($style)] : []);
 $after = new \Illuminate\View\ComponentAttributeBag($hex ? [] : ['data-tone' => $tone]);
 @endphp
 <div
