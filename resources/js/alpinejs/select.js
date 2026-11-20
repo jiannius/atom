@@ -37,9 +37,9 @@ export default (config) => {
         selectValue: config.multiple ? [] : null,
         // an `add` filter in an inline bar draws its own chip (helpers/filter-chip.js); set when the select starts
         selfChip: false,
-        // A multiple select's options ticked from the list, so a value stays named once a search has filtered its option out of
-        // `options` (the list stays open and keeps its search, so the next search drops what was ticked before it). Only what
-        // is still in the value is kept.
+        // A multiple select's options for the values it holds (ticked from the list, or named by the list before a fetch
+        // replaced it), so a value stays named once a search has filtered its option out of `options` (the list stays open and
+        // keeps its search, so the next search drops what was ticked before it). Only what is still in the value is kept.
         picked: [],
 
         get isEmpty () {
@@ -225,6 +225,13 @@ export default (config) => {
                     this.$root.querySelector('[data-atom-select-search]')?.focus({ preventScroll: true })
                     this.resetActive()
                 })
+            }
+
+            // what the value is named by now, before a search can filter it out of the list
+            if (config.multiple) {
+                let named = this.selectedOptions
+
+                this.picked = [...this.picked.filter(opt => !named.some(item => item.value == opt.value)), ...named]
             }
 
             if (this.callback) {

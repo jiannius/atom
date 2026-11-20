@@ -187,6 +187,51 @@ test('a multiple listbox stays open while three tags are ticked, and a deselect 
   await expect.poll(() => isOpen(page, 'tags')).toBe(false)
 })
 
+test('a value held before the list opened stays named when a search filters its option out, ticking and closing included', async ({ page }) => {
+  await expect(trigger(page, 'colours')).toContainText('Green')
+
+  // by the keyboard: the middle of the trigger is a chip, whose minus would untick it
+  await trigger(page, 'colours').focus()
+  await page.keyboard.press('Enter')
+  await settled(page, 'colours')
+
+  // a search that leaves Green out of the list
+  await search(page, 'colours').pressSequentially('ed')
+  await expect(menu(page, 'colours').locator('[data-atom-option]')).toHaveCount(1)
+  await expect(trigger(page, 'colours')).toContainText('Green')
+
+  await tick(page, () => option(page, 'colours', 'Red').click(), ['green', 'red'], 'colours')
+  await expect(trigger(page, 'colours')).toContainText('Green')
+  await expect(trigger(page, 'colours')).toContainText('Red')
+
+  await page.keyboard.press('Escape')
+  await expect.poll(() => isOpen(page, 'colours')).toBe(false)
+  await expect(trigger(page, 'colours')).toContainText('Green')
+  await expect(trigger(page, 'colours')).toContainText('Red')
+
+  // a search closed without a tick
+  await trigger(page, 'colours').focus()
+  await page.keyboard.press('Enter')
+  await settled(page, 'colours')
+  await search(page, 'colours').pressSequentially('blu')
+  await expect(menu(page, 'colours').locator('[data-atom-option]')).toHaveCount(1)
+  await expect(trigger(page, 'colours')).toContainText('Green')
+  await expect(trigger(page, 'colours')).toContainText('Red')
+  await page.keyboard.press('Escape')
+  await expect.poll(() => isOpen(page, 'colours')).toBe(false)
+  await expect(trigger(page, 'colours')).toContainText('Green')
+  await expect(trigger(page, 'colours')).toContainText('Red')
+
+  // opened again: everything listed, both ticked
+  await trigger(page, 'colours').focus()
+  await page.keyboard.press('Enter')
+  await settled(page, 'colours')
+  await expect(menu(page, 'colours').locator('[data-atom-option]')).toHaveCount(5)
+  await expect(option(page, 'colours', 'Green')).toHaveAttribute('aria-selected', 'true')
+  await expect(option(page, 'colours', 'Red')).toHaveAttribute('aria-selected', 'true')
+  expect((await server(page)).colours).toEqual(['green', 'red'])
+})
+
 test('a multiple listbox without a search ticks by Enter and by click and keeps the focus on its trigger', async ({ page }) => {
   await trigger(page, 'sizes').focus()
   await page.keyboard.press('Enter')

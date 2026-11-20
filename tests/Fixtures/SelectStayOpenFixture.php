@@ -24,6 +24,13 @@ class SelectStayOpenFixture extends Component
     /** @var array<int, string> */
     public array $sizes = [];
 
+    /**
+     * Holds a value before the list is first opened, as an edit form does.
+     *
+     * @var array<int, string>
+     */
+    public array $colours = ['green'];
+
     /** @var array<int, string> */
     public array $codes = [];
 
