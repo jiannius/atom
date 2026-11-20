@@ -28,9 +28,11 @@ function expectPagerSnapshot(string $name, string $template, array $data): void
     $path = __DIR__.'/../Fixtures/pager-snapshots/'.$name.'.html';
     $html = normalisePager(renderBlade($template, $data));
 
-    if (getenv('UPDATE_PAGER_SNAPSHOTS') || ! file_exists($path)) {
+    if (getenv('UPDATE_PAGER_SNAPSHOTS')) {
         file_put_contents($path, $html);
     }
+
+    expect(file_exists($path))->toBeTrue("no snapshot at {$path}: run with UPDATE_PAGER_SNAPSHOTS=1 to write it");
 
     expect($html)->toBe(file_get_contents($path));
 }
@@ -85,5 +87,16 @@ describe('pager snapshots', function () {
         expect($labels($html))->toBe(['Prev', 'Next'])
             ->and($labels(renderBlade('<atom:pagination :paginator="$p"/>', ['p' => pagerOf(5)])))->toBe(['Prev', 'Next'])
             ->and($html)->not->toContain('laquo')->not->toContain('raquo');
+    });
+
+    it('keeps the standalone pager\'s own props off the table pager\'s nav', function () {
+        $html = renderBlade('<atom:table.pagination :paginate="$p" simple summary="0" paginator="x"/>', ['p' => pagerOf(5)]);
+        $nav = domQuery($html, '//nav')[0];
+
+        expect($nav->hasAttribute('simple'))->toBeFalse()
+            ->and($nav->hasAttribute('summary'))->toBeFalse()
+            ->and($nav->hasAttribute('paginator'))->toBeFalse()
+            ->and($html)->toContain('wire:click="gotoPage(')
+            ->and($html)->toContain('Showing');
     });
 });

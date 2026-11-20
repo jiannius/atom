@@ -10,7 +10,7 @@ app('atom')->requireTrait(\Livewire\WithPagination::class, '<atom:table.paginati
 @endphp
 
 {{-- The table's pager is the standalone one, pinned by default, with the rows-per-page menu between the summary and the page links. --}}
-<atom:pagination :paginator="$paginate" :sticky="$sticky" {{ $attributes->merge(['data-atom-table-pager' => true]) }}>
+<atom:pagination :paginator="$paginate" :sticky="$sticky" {{ $attributes->except(['summary', 'simple', 'paginator'])->merge(['data-atom-table-pager' => true]) }}>
     <x-slot:rows>
         @if ($maxRows)
             <atom:dropdown>
