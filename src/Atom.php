@@ -8,6 +8,8 @@ use Illuminate\Support\Js;
 use Jiannius\Atom\Contracts\WebAction;
 use Jiannius\Atom\Services\Asset;
 use Jiannius\Atom\Services\Broadcast;
+use Jiannius\Atom\Services\ModalHandle;
+use Jiannius\Atom\Services\PanelHandle;
 use Jiannius\Atom\Services\Recaptcha;
 use Jiannius\Atom\Services\Sitemap;
 
@@ -196,24 +198,7 @@ class Atom
      */
     public function modal($name)
     {
-        return new class ($name) {
-            public function __construct(public $name) {}
-
-            public function show()
-            {
-                app('livewire')->current()->dispatch('atom-modal-show', name: $this->name);
-            }
-
-            public function slide($position = null)
-            {
-                app('livewire')->current()->dispatch('atom-modal-show', name: $this->name, variant: 'slide', position: $position);
-            }
-
-            public function close()
-            {
-                app('livewire')->current()->dispatch('atom-modal-close', name: $this->name);
-            }
-        };
+        return new ModalHandle($name);
     }
 
     /**
@@ -221,19 +206,7 @@ class Atom
      */
     public function command($name)
     {
-        return new class ($name) {
-            public function __construct(public $name) {}
-
-            public function show()
-            {
-                app('livewire')->current()->dispatch('atom-command-show', name: $this->name);
-            }
-
-            public function close()
-            {
-                app('livewire')->current()->dispatch('atom-command-close', name: $this->name);
-            }
-        };
+        return new PanelHandle($name);
     }
 
     /**
