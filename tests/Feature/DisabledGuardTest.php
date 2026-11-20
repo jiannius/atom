@@ -30,7 +30,6 @@ const NOT_VALUE_CONTROLS = [
     'calendar/index' => 'a grid of events; the signature is a message about the removed `x-model`, and it has no value of its own to disable',
     'command/index' => 'the palette\'s search box: it filters a list and writes no model',
     'pagination' => '"Go to page" box in a navigation popover: moves the page, changes no record data',
-    'table/pagination' => '"Go to page" box in a navigation popover: moves the page, changes no record data',
     'table/row' => 'its click guard names `[contenteditable]` (and fields, buttons) only to skip a click that lands on one inside the row; the row holds no value of its own',
     'table/views' => '`x-modelable` carries which saved view is open: navigation, not record data',
     'tabs/index' => '`x-modelable` carries which tab is open: navigation, not record data',
