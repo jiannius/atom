@@ -21,14 +21,10 @@ $hasAddButton = $attributes->get('x-on:add') || $attributes->wire('add')->value(
 // because a form is also where a select that filters nothing lives. The bar
 // variants (select.filter, date-picker.range) register on the strength of a
 // wire:model alone; here the flag is the opt-in and the model is the chip's key.
-$filterKey = $tableFilter
-    ? ($attributes->wire('model')->value() ?: $attributes->get('data-filter-key'))
-    : null;
+$filterKey = $tableFilter ? \Jiannius\Atom\Services\TableFilterChip::key($attributes) : null;
 
 // Without a name the chip renders as "null: Red", so fall back to the field.
-$filterLabel = $filterKey
-    ? t($tableFilterLabel ?: (string) str($filterKey)->afterLast('.')->headline())
-    : null;
+$filterLabel = $filterKey ? \Jiannius\Atom\Services\TableFilterChip::label($filterKey, $tableFilterLabel) : null;
 
 /* The field recipe (see input/general); the trigger grows with its chips, never below the control token. */
 $classes = Arr::toCssClasses([
@@ -77,18 +73,17 @@ x-on:keydown.end.prevent.stop="end()"
 x-on:keydown.escape.stop=""
 data-atom-select-listbox
 @if ($filterKey)
-x-init="
-    const emit = () => $dispatch('table-filter:set', {
-        key: @js($filterKey),
-        label: @js($filterLabel),
+x-init="atom.tableFilter.register({ $dispatch, $nextTick, $watch }, {
+    key: @js($filterKey),
+    label: @js($filterLabel),
+    watch: 'selectValue',
+    detail: () => ({
         display: isEmpty ? null : (@js((bool) $multiple)
             ? (selectedOptions.length > 1 ? selectedOptions.length + ' {{ t('selected') }}' : (selectedOptions[0]?.label ?? null))
             : (selectedOptions?.label ?? null)),
-    });
-    $nextTick(emit);
-    $watch('selectValue', () => { $nextTick(emit); $dispatch('table-filter:changed') });
-"
-x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clear()"
+    }),
+})"
+x-on:table-filter:do-clear.window="atom.tableFilter.cleared($event, @js($filterKey)) && clear()"
 @endif
 class="group/select w-full"
 {{ $attributes->except(['class', 'aria-labelledby']) }}>

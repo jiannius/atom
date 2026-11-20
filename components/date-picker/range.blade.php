@@ -13,7 +13,7 @@
    Alpine binds. The look is picked from the marker by CSS (`[[data-atom-disabled]_&]:`) for the same reason. */
 $disabledBy = $attributes->get('data-atom-disabled');
 
-$filterKey = $attributes->wire('model')->value() ?: $attributes->get('data-filter-key');
+$filterKey = \Jiannius\Atom\Services\TableFilterChip::key($attributes);
 
 /* The field recipe (see input/general); two 16px icons (clear, calendar) sit at the end. */
 $classes = Arr::toCssClasses([
@@ -55,12 +55,13 @@ x-bind:data-atom-filter-active="chipState ? '' : null"
 data-atom-date-range
 @if ($filterKey) data-atom-filter-key="{{ $filterKey }}" @endif
 @if ($filterKey)
-x-init="
-    const emit = () => $dispatch('table-filter:set', { key: @js($filterKey), label: @js(t($placeholder)), display: dateRangeValue ? dateRangeString : null, operator: @js(t('is')), self: selfChip });
-    $nextTick(emit);
-    $watch('dateRangeValue', () => { $nextTick(emit); $dispatch('table-filter:changed') });
-"
-x-on:table-filter:do-clear.window="$event.detail.key === @js($filterKey) && clear()"
+x-init="atom.tableFilter.register({ $dispatch, $nextTick, $watch }, {
+    key: @js($filterKey),
+    label: @js(t($placeholder)),
+    watch: 'dateRangeValue',
+    detail: () => ({ display: dateRangeValue ? dateRangeString : null, operator: @js(t('is')), self: selfChip }),
+})"
+x-on:table-filter:do-clear.window="atom.tableFilter.cleared($event, @js($filterKey)) && clear()"
 @endif
 {{ $attributes->except(['class', 'placeholder', 'disabled']) }}>
     <atom:dropdown x-on:open="setCalendarDates(); setCalendarRange();" locked :class="$add ? 'flex items-center' : ''" x-bind:data-atom-table-filter-chip="chipState ? '' : null">
