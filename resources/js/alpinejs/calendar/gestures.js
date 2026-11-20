@@ -1,4 +1,4 @@
-import { addDays, dateOf, diffDays, minuteOf, timeOf } from './dates.js'
+import { addDays, clamp, dateOf, diffDays, minuteOf, pad, timeOf } from './dates.js'
 import { DAY_MINUTES } from './grid.js'
 
 // What a pointer gesture on <atom:calendar> works out from where it is, as pure functions: no DOM, no Alpine, no clock. The factory reads
@@ -9,10 +9,6 @@ export const DRAG_THRESHOLD = 5
 
 // How long a finger has to stay where it is, in ms, before a touch is a gesture and not a scroll
 export const LONG_PRESS = 500
-
-const pad = (n) => String(n).padStart(2, '0')
-
-const clamp = (value, low, high) => Math.min(Math.max(value, low), high)
 
 // The index of the box whose width holds `x`, or the nearest end when it is outside all of them: a drag that leaves the grid
 // sideways stays on its last column. `rects` are { left, right } in the order they are drawn.

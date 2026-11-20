@@ -1,5 +1,7 @@
+import withDisabled from '../helpers/disabled'
+
 export default (config) => {
-    return {
+    return withDisabled({
         code: config.code,
         number: null,
         telValue: null,
@@ -13,11 +15,6 @@ export default (config) => {
 
         get options () {
             return Array.from(this.$root.querySelectorAll('option')).map(opt => (opt.getAttribute('value')))
-        },
-
-        // Disabled is the marker the server prints on the root, read when a handler runs (never x-data: a morph does not rebuild it).
-        get disabled () {
-            return this.$root.hasAttribute('data-atom-disabled')
         },
 
         init () {
@@ -70,5 +67,5 @@ export default (config) => {
             this.shownCode = code
             this.telValue = value
         },
-    }
+    })
 }

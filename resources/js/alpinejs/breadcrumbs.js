@@ -1,4 +1,4 @@
-import onMorphed from '../helpers/morphed'
+import onMorphed, { stopMorphed } from '../helpers/morphed'
 
 export default (config) => {
     return {
@@ -27,13 +27,12 @@ export default (config) => {
 
             // A page.header can also appear after navigation, when a Livewire update renders it (an `@if ($record)`, a lazy
             // component), so read it again after every morph. Kept on the element, so a re-run init() drops its earlier registration.
-            this.$root._atomBreadcrumbsStopMorph?.()
-            this.$root._atomBreadcrumbsStopMorph = onMorphed(() => {
+            onMorphed(() => {
                 this.readItems()
                 this.readPageHeader()
                 this.fit()
                 this.syncHeader()
-            })
+            }, { owner: this.$root, key: '_atomBreadcrumbsStopMorph' })
 
             // The room the trail has changes with the window, the shell's bar and the web font, none of which is a Livewire
             // event. The root is `w-full`, so its width is the room whatever the crumbs are: observing it cannot loop.
@@ -70,8 +69,7 @@ export default (config) => {
         },
 
         destroy () {
-            this.$root._atomBreadcrumbsStopMorph?.()
-            this.$root._atomBreadcrumbsStopMorph = null
+            stopMorphed(this.$root, '_atomBreadcrumbsStopMorph')
             this.$root._atomBreadcrumbsStopWatching?.()
             this.$root._atomBreadcrumbsStopWatching = null
         },

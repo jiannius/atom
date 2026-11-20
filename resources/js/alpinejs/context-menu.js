@@ -1,3 +1,5 @@
+import floatingui from '../helpers/floatingui'
+
 export default (config = {}) => ({
     cleanup: null,
     locked: config.locked,
@@ -72,7 +74,7 @@ export default (config = {}) => ({
             this.$root.setAttribute('data-open', '')
         }
 
-        this.cleanup = atom.floatingui(anchor, this.popover, {
+        this.cleanup = floatingui(anchor, this.popover, {
             placement: 'bottom-start',
             // The panel's corner sits a little over the pointer, not at it: the menu opens on the press
             // and its popover closes on a release outside it, so a release over the rounded corner (outside

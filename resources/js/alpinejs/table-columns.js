@@ -1,4 +1,4 @@
-import onMorphed from '../helpers/morphed'
+import onMorphed, { stopMorphed } from '../helpers/morphed'
 import engine from '../helpers/table-columns'
 
 // The column picker (components/table/columns.blade.php). It owns no state about the columns: the table's engine
@@ -63,13 +63,11 @@ export default () => {
 
             // A morph can bring a new column set or a new table (a change through the engine is the root's window listener). The stop
             // function is kept on the element so a re-run init() drops the old one.
-            root._atomStopColumns?.()
-            root._atomStopColumns = onMorphed(() => this.read())
+            onMorphed(() => this.read(), { owner: root, key: '_atomStopColumns' })
         },
 
         destroy () {
-            root?._atomStopColumns?.()
-            if (root) root._atomStopColumns = null
+            stopMorphed(root, '_atomStopColumns')
         },
 
         read () {

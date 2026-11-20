@@ -1,3 +1,4 @@
+import step from '../helpers/step'
 import floatingui from '../helpers/floatingui'
 
 export default (config = {}) => ({
@@ -43,8 +44,8 @@ export default (config = {}) => ({
         return false
     },
 
-    arrowUp () { this.pointer = ((this.pointer + this.filteredOptions.length) - 1) % this.filteredOptions.length; this.scroll() },
-    arrowDown () { this.pointer = (this.pointer + 1) % this.filteredOptions.length; this.scroll() },
+    arrowUp () { this.pointer = step(this.pointer, -1, this.filteredOptions.length); this.scroll() },
+    arrowDown () { this.pointer = step(this.pointer, 1, this.filteredOptions.length); this.scroll() },
 
     scroll () {
         const ul = this.$refs.dropdown.querySelector('ul')

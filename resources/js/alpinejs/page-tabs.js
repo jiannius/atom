@@ -1,4 +1,4 @@
-import onMorphed from '../helpers/morphed'
+import onMorphed, { stopMorphed } from '../helpers/morphed'
 
 // <atom:page.tabs>: a strip that scrolls sideways when its tabs do not fit. Two things for the reader on a phone:
 // the current tab is brought into view when the strip appears (a record's "Messages" tab was off-screen at 390px with nothing to
@@ -47,13 +47,10 @@ export default () => ({
         this.watch()
         document.fonts?.ready.then(() => this.list?.isConnected && this.settle())
 
-        this.$root._atomPageTabsStopMorph?.()
-        this.$root._atomPageTabsStopMorph = onMorphed((el) => {
-            if (! el || el.contains(this.$root) || this.$root.contains(el)) {
-                this.watch()
-                this.update()
-            }
-        })
+        onMorphed(() => {
+            this.watch()
+            this.update()
+        }, { owner: this.$root, key: '_atomPageTabsStopMorph', scope: this.$root, nested: true })
     },
 
     /**
@@ -79,6 +76,6 @@ export default () => ({
         this.list?.removeEventListener('scroll', this.update)
         TOUCH.forEach((type) => this.list?.removeEventListener(type, this.touch))
         this.observer?.disconnect()
-        this.$root._atomPageTabsStopMorph?.()
+        stopMorphed(this.$root, '_atomPageTabsStopMorph')
     },
 })

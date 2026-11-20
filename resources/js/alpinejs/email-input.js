@@ -1,16 +1,11 @@
 import empty from '../helpers/empty'
+import withDisabled from '../helpers/disabled'
 
 export default (config) => {
-    return {
+    return withDisabled({
         text: null,
         pointer: null,
         emailInputValue: [],
-
-        // Disabled is the marker the server prints on the root, read when a handler runs (never x-data: a morph does not rebuild it).
-        // A disabled control writes nothing to its model on any gesture: every way to add, remove or clear asks first.
-        get disabled () {
-            return this.$root.hasAttribute('data-atom-disabled')
-        },
 
         get options () {
             return config.options
@@ -80,5 +75,5 @@ export default (config) => {
         validate (val) {
             return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)
         },
-    }
+    })
 }

@@ -1,17 +1,11 @@
-export default (config = {}) => ({
+import withDisabled from '../helpers/disabled'
+
+export default (config = {}) => withDisabled({
     length: config.length ?? 6,
     submit: config.submit ?? null,
     code: '',
     digits: [],
     _completed: null,
-
-    /**
-     * Whether the server marked this field disabled (its own `disabled`, or a disabled form's). Read from the DOM at event time, never held in `x-data`:
-     * a morph re-renders the marker and does not rebuild the factory. Not reactive, so a binding must not read it.
-     */
-    get disabled () {
-        return this.$root.hasAttribute('data-atom-disabled')
-    },
 
     init () {
         this.digits = Array.from({ length: this.length }, () => '')

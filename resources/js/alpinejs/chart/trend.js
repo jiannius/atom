@@ -1,69 +1,32 @@
-import { seriesColor, canvasOf } from './colors'
+import { seriesColor } from './colors'
+import chartFactory from './factory'
 
-export default (config) => {
-    // the theme listener and the first-render timer belong outside the component, so destroy() can take them off
-    let onTheme = null
-    let timer = null
-    let rendered = false
-    let destroyed = false
-
-    return {
-        chart: null,
-
-        init () {
-            import('apexcharts').then(ApexCharts => {
-                // the element went before the library arrived
-                if (destroyed || !this.$el.isConnected) return
-
-                this.chart = new ApexCharts.default(canvasOf(this.$el), {
-                    chart: {
-                        type: 'area',
-                        height: '100%',
-                        sparkline: { enabled: true },
-                    },
-                    series: [{ data: config.data }],
-                    fill: {
-                        type: 'solid',
-                        opacity: 0.2,
-                    },
-                    stroke: {
-                        width: 1,
-                        curve: 'smooth',
-                    },
-                    tooltip: {
-                        enabled: false,
-                    },
-                    colors: [this.getColor()],
-                })
-
-                timer = setTimeout(() => {
-                    if (!this.$el.isConnected) return
-
-                    this.chart.render()
-                    rendered = true
-                }, 200)
-
-                onTheme = () => {
-                    if (this.$el.isConnected && rendered) this.chart.updateOptions({ colors: [this.getColor()] })
-                }
-
-                document.addEventListener('darkmode-changed', onTheme)
-            })
+export default (config) => chartFactory({
+    options: (component) => ({
+        chart: {
+            type: 'area',
+            height: '100%',
+            sparkline: { enabled: true },
         },
-
-        destroy () {
-            destroyed = true
-            clearTimeout(timer)
-
-            if (onTheme) document.removeEventListener('darkmode-changed', onTheme)
-
-            onTheme = null
-            rendered = false
+        series: [{ data: config.data }],
+        fill: {
+            type: 'solid',
+            opacity: 0.2,
         },
-
-        /** The sparkline's ink: a tone (`success`, `danger`, `neutral`...; `green`, `red` and `gray` still read as theirs) or a hex. */
-        getColor () {
-            return seriesColor(config.color, 'neutral', this.$el)
+        stroke: {
+            width: 1,
+            curve: 'smooth',
         },
-    }
-}
+        tooltip: {
+            enabled: false,
+        },
+        colors: [component.getColor()],
+    }),
+    restyle: (component) => component.chart.updateOptions({ colors: [component.getColor()] }),
+    delay: 200,
+}, {
+    /** The sparkline's ink: a tone (`success`, `danger`, `neutral`...; `green`, `red` and `gray` still read as theirs) or a hex. */
+    getColor () {
+        return seriesColor(config.color, 'neutral', this.$el)
+    },
+})

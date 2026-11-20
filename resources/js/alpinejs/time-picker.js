@@ -1,28 +1,20 @@
 import dayjs from 'dayjs'
 import { zoneOf } from '../helpers/zone'
-
-const pad = (n) => String(n).padStart(2, '0')
+import withDisabled from '../helpers/disabled'
+import { pad } from './calendar/dates.js'
 
 export default (config = {}) => {
     // A full date-time value is read and written as the wall clock in `config.timezone` (a date-picker's); a bare time never is.
     const zone = zoneOf(config.timezone)
 
-    return {
+    return withDisabled({
         hr: null,
         min: null,
         am: null,
         timePickerValue: null,
 
-        /**
-         * Whether the server marked this picker disabled (its own `disabled`, or a disabled form's). Read from the DOM at event time, never held in `x-data`:
-         * a morph re-renders the marker and does not rebuild the factory. Not reactive, so a binding must not read it. The picker a date picker or a range
-         * holds in its panel carries no state of its own (the panel is wire:ignore'd, so it would keep the state of the first render): it follows the marker of
-         * the picker around it, which a morph does update.
-         */
-        get disabled () {
-            return this.$root.hasAttribute('data-atom-disabled')
-                || !!this.$root.closest('[data-atom-date-picker][data-atom-disabled], [data-atom-date-range][data-atom-disabled]')
-        },
+        // `disabled` (helpers/disabled.js) also follows the marker of the date picker or range around it: the picker one holds in its panel carries
+        // no state of its own (the panel is wire:ignore'd, so it would keep the state of the first render).
 
         get format () {
             if (!this.timePickerValue) return null
@@ -56,9 +48,11 @@ export default (config = {}) => {
         },
 
         parse () {
-            this.hr = this.timePickerObject?.format('hh') || '--'
-            this.min = this.timePickerObject?.format('mm') || '--'
-            this.am = this.timePickerObject?.format('A') || 'AM'
+            let time = this.timePickerObject
+
+            this.hr = time?.format('hh') || '--'
+            this.min = time?.format('mm') || '--'
+            this.am = time?.format('A') || 'AM'
         },
 
         // Only digits count: fullwidth digits fold to ASCII, everything else is dropped.
@@ -106,33 +100,27 @@ export default (config = {}) => {
         // is lazy (it commits on change), so it is stale until the field is left, and the
         // arrow keys must step from what is on screen.
         up (key, typed) {
-            if (this.disabled) return
-
-            let hr = +this.digits(key === 'hr' ? typed ?? this.hr : this.hr) || 0
-            let min = +this.digits(key === 'min' ? typed ?? this.min : this.min) || 0
-
-            if (key === 'hr') {
-                this.hr = hr >= 12 ? 1 : hr + 1
-            } else if (key === 'min') {
-                this.min = min >= 59 ? 0 : min + 1
-            } else if (key === 'am') {
-                this.am = this.am === 'AM' ? 'PM' : 'AM'
-            }
+            this.stepBy(key, 1, typed)
         },
 
         down (key, typed) {
+            this.stepBy(key, -1, typed)
+        },
+
+        // One arrow press on the hour, the minute or AM/PM: the hour runs 1 to 12 and the minute 0 to 59, both wrapping.
+        stepBy (key, dir, typed) {
             if (this.disabled) return
 
             let hr = +this.digits(key === 'hr' ? typed ?? this.hr : this.hr) || 0
             let min = +this.digits(key === 'min' ? typed ?? this.min : this.min) || 0
 
             if (key === 'hr') {
-                this.hr = hr <= 1 ? 12 : hr - 1
+                this.hr = dir > 0 ? (hr >= 12 ? 1 : hr + 1) : (hr <= 1 ? 12 : hr - 1)
             } else if (key === 'min') {
-                this.min = min <= 0 ? 59 : min - 1
+                this.min = dir > 0 ? (min >= 59 ? 0 : min + 1) : (min <= 0 ? 59 : min - 1)
             } else if (key === 'am') {
                 this.am = this.am === 'AM' ? 'PM' : 'AM'
             }
         }
-    }
+    }, { also: (self) => !!self.$root.closest('[data-atom-date-picker][data-atom-disabled], [data-atom-date-range][data-atom-disabled]') })
 }

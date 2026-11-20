@@ -15,19 +15,12 @@
 //
 // The shell calls sync() when its own state changes; `attributes` are the attributes the observer should also watch (a body flag),
 // and `listen(sync)` may subscribe to something else (a media query) and return the function that unsubscribes.
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+export const FOCUSABLE = 'a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 /**
  * A modal dialog is open (showModal()): the document is blocked by the browser itself.
  */
-const modalOpen = () => {
-    try {
-        return !!document.querySelector('dialog[open]:modal')
-    }
-    catch (e) {
-        return !!document.querySelector('dialog[open]')
-    }
-}
+const modalOpen = () => !!document.querySelector('dialog[open]:modal')
 
 const shown = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden'
 

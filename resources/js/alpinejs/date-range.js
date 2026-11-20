@@ -1,15 +1,16 @@
 import Pikaday from 'pikaday'
 import dayjs from 'dayjs'
 import { drawsOwnChip } from '../helpers/filter-chip'
-import onMorphed from '../helpers/morphed'
+import onMorphed, { stopMorphed } from '../helpers/morphed'
 import { parseTypedDate, splitTypedRange } from '../helpers/typed-date'
 import { zoneOf } from '../helpers/zone'
+import withDisabled from '../helpers/disabled'
 
 export default (config) => {
     // With `config.timezone` the pickers read and write the wall clock in that zone (helpers/zone.js); without one, the browser's.
     const zone = zoneOf(config.timezone)
 
-    return {
+    return withDisabled({
         pikaday: [],
         endValue: null,
         startValue: null,
@@ -20,15 +21,6 @@ export default (config) => {
         // The root is wire:ignore'd, so a morph never reaches its attributes: helpers/morphed.js carries the marker, and the callback below reads it again.
         // Bindings read this; handlers read `disabled`, the DOM at event time.
         off: null,
-
-        /**
-         * Whether the server marked this range disabled (its own `disabled`, or a disabled form's). Read from the DOM at event time, never held in `x-data`.
-         * Not reactive, so a binding reads `off`. The dropdown reads the same marker and opens nothing; this keeps the range from writing through the paths
-         * that do not need the panel (typing, the clear x, a preset, a Pikaday select, the filter bar's clear).
-         */
-        get disabled () {
-            return this.$root.hasAttribute('data-atom-disabled')
-        },
 
         get chipState () {
             return this.selfChip && !!this.dateRangeValue
@@ -85,12 +77,13 @@ export default (config) => {
         },
 
         init () {
-            this.off = this.$root.getAttribute('data-atom-disabled')
+            const readOff = () => {
+                this.off = this.$root.getAttribute('data-atom-disabled')
+            }
 
-            this.$root._atomDateRangeStopMorph?.()
-            this.$root._atomDateRangeStopMorph = onMorphed((el) => {
-                if (!el || el.contains(this.$root)) this.off = this.$root.getAttribute('data-atom-disabled')
-            })
+            readOff()
+
+            onMorphed(readOff, { owner: this.$root, key: '_atomDateRangeStopMorph', scope: this.$root })
 
             this.selfChip = !!config.add && drawsOwnChip(this.$root)
 
@@ -250,7 +243,7 @@ export default (config) => {
         },
 
         destroy () {
-            this.$root._atomDateRangeStopMorph?.()
+            stopMorphed(this.$root, '_atomDateRangeStopMorph')
             this.destroyCalendar()
         },
 
@@ -306,5 +299,5 @@ export default (config) => {
             this.pikaday[0].show()
             this.pikaday[1].show()
         },
-    }
+    })
 }

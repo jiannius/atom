@@ -1,14 +1,13 @@
-export default (config = {}) => ({
+import withDisabled from '../helpers/disabled'
+
+export default (config = {}) => withDisabled({
     count: Number(config.count ?? 5),
     half: !!config.half,
     clearable: !!config.clearable,
     value: Number(config.value ?? 0),
     hover: null,
 
-    /** Disabled, or a display-only rating: the server draws both from the markup (`data-atom-disabled` on the root, `data-atom-rating-readonly` on the track), read when the user acts and never held in x-data. */
-    get locked () {
-        return this.$root.hasAttribute('data-atom-disabled') || this.$refs.track?.hasAttribute('data-atom-rating-readonly')
-    },
+    // `locked` (helpers/disabled.js): disabled, or a display-only rating (`data-atom-rating-readonly` on the track), both read when the user acts.
 
     /** The value to paint — the hovered preview while pointing, else the committed value. */
     get display () {
@@ -70,4 +69,4 @@ export default (config = {}) => ({
         e.preventDefault()
         this.value = v
     },
-})
+}, { name: 'locked', also: (self) => self.$refs.track?.hasAttribute('data-atom-rating-readonly') })
