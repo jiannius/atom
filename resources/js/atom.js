@@ -2,6 +2,7 @@ import helpers from './helpers'
 import formErrors from './helpers/form-errors'
 import dialogEscape from './helpers/dialog-escape'
 import confirmGate from './helpers/confirm-gate'
+import rowsToggle from './helpers/rows-toggle'
 import accordion from './alpinejs/accordion'
 import command from './alpinejs/command'
 import modal from './alpinejs/modal'
@@ -67,6 +68,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('chartBar', chartBar)
     Alpine.data('chartArea', chartArea)
     Alpine.data('chartTrend', chartTrend)
+    Alpine.directive('atom-rows-toggle', rowsToggle)
     Alpine.magic('clipboard', clipboard)
     Alpine.plugin(Autosize)
     Alpine.plugin(intersect)

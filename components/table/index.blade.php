@@ -76,25 +76,10 @@ $frameless = (bool) $frameless;
 $stripClasses = $frameless ? 'border-b px-3 py-2.5' : '';
 
 // `rows-toggle-when-selected`: while anything is ticked, a click on a row that has a checkbox cell ticks or unticks that row instead of opening
-// it (its `href`, `wire:navigate`, `wire:click` or `x-on:click`), so a stray click cannot throw the selection away. Two capture listeners on the
-// table root, read at click time: the row itself prints nothing for it, and a table without the prop prints no listener. A click on a
-// control inside the row (the guard the row's href handler uses), Ctrl or Cmd with a click or Enter (a new tab keeps this page, and its
-// selection) and a middle click are left alone. Enter on a focused row ticks it. The tick is the checkbox's own click, so select-all mode
-// and sticky selection behave as for a click on the box (that click lands on the box itself, which the guard skips, so it is not read again).
-// What would open the row right after the last tick went is swallowed, not passed on: a second click of a double-click (`e.detail > 1`), an
-// auto-repeated Enter (`e.repeat`: the first press unticked the last row, the repeat would find nothing ticked), and a click that ends a
-// drag-select of the row's text (a selection that starts or ends in this row; one elsewhere on the page does not count) while rows are ticked. Each is stopped on a toggle row only, and does not tick.
+// it. The behaviour is the `x-atom-rows-toggle` directive (resources/js/helpers/rows-toggle.js), given the selector of the controls a click is
+// left to; the row itself prints nothing for it, and a table without the prop prints no directive.
 $rowsToggle = (bool) $rowsToggleWhenSelected;
-$rowsToggleTicked = '$wire._table?.checkboxes?.length || $wire._table?.select_all';
-$rowsToggleClick = $rowsToggle
-    ? "(e) => { if (e.ctrlKey || e.metaKey) return; const row = e.composedPath().find((n) => n.nodeType === 1 && n.hasAttribute('data-atom-table-row')); const box = row?.querySelector('[data-atom-table-checkbox]'); if (!box || row.closest('[data-atom-table]') !== e.currentTarget) return; ".\Jiannius\Atom\Services\Attributes::rowGuard('row')." const ticked = !!($rowsToggleTicked); const sel = window.getSelection(); if (e.detail > 1 || (ticked && sel && !sel.isCollapsed && sel.rangeCount && (row.contains(sel.anchorNode) || row.contains(sel.focusNode)))) { e.stopPropagation(); e.preventDefault(); return } if (!ticked) return; e.stopPropagation(); e.preventDefault(); box.click() }"
-    : '';
-$rowsToggleEnter = $rowsToggle
-    ? "(e) => { if (e.ctrlKey || e.metaKey || !e.target.matches('[data-atom-table-row]') || e.target.closest('[data-atom-table]') !== e.currentTarget) return; const box = e.target.querySelector('[data-atom-table-checkbox]'); if (!box) return; if (e.repeat) { e.stopPropagation(); e.preventDefault(); return } if (!($rowsToggleTicked)) return; e.stopPropagation(); e.preventDefault(); box.click() }"
-    : '';
-
-$rowsToggleAttributes = $rowsToggle ? ['x-on:click.capture' => $rowsToggleClick, 'x-on:keydown.enter.capture' => $rowsToggleEnter, 'data-atom-rows-toggle' => true] : [];
-
+$rowsToggleAttributes = $rowsToggle ? ['x-atom-rows-toggle' => json_encode(\Jiannius\Atom\Services\Attributes::ROW_INTERACTIVE), 'data-atom-rows-toggle' => true] : [];
 
 $checkedUsed = isset($checked) && ($hasChecked || $checked !== $checkedBefore);
 $checkedAccent = $checkedUsed && $checked->attributes->get('tone') === 'accent';
