@@ -286,7 +286,7 @@ class="group/select w-full"
                     role="option"
                     x-bind:aria-selected="isSelected(option) ? 'true' : 'false'"
                     x-bind:data-label="option.label"
-                    x-on:click="select(option)"
+                    x-on:click="select(option); stayOpen && $event.stopPropagation()"
                     x-bind:class="isSelected(option) && 'bg-fg/10'"
                     data-atom-option
                     class="{{ $optionClasses }}">

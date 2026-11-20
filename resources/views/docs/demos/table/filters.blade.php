@@ -1,7 +1,7 @@
 <div x-data class="space-y-8">
     {{-- chips="inline": each active filter is a sentence pill ahead of the controls that are not set, in the same wrapping row. `add`
          draws a select or a date range as a dashed "+ Customer" pill that is also its own chip once it has a value: click the chip
-         to open the same menu, and its x clears it. A multiple select stays open while you tick, reads "is any of" and names two
+         to open the same menu, and its x clears it. A multiple select stays open while you tick (any multiple select does, not only a chip), reads "is any of" and names two
          values before it counts. The More filters button counts the active filters in its slot. --}}
     <atom:table.filters chips="inline">
         <atom:table.search placeholder="Search" />
