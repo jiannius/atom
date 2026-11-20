@@ -4,11 +4,13 @@ namespace Jiannius\Atom\Commands;
 
 use Illuminate\Console\Command;
 use InvalidArgumentException;
+use Jiannius\Atom\Commands\Concerns\PrintsScanReport;
 use Jiannius\Atom\Services\DesignCheck as Scanner;
-use Symfony\Component\Console\Output\OutputInterface;
 
 class DesignCheck extends Command
 {
+    use PrintsScanReport;
+
     protected $signature = 'atom:design-check
         {--json : Print the result as JSON (every check, even at zero) instead of the report}
         {--all : List every finding of every check (the report shows the first 10)}
@@ -22,11 +24,7 @@ class DesignCheck extends Command
      */
     public function handle(): int
     {
-        $root = (string) ($this->option('path') ?: base_path());
-
-        if (! is_dir($root)) {
-            $this->error('Not a directory: '.$root);
-
+        if (($root = $this->scanRoot()) === null) {
             return self::FAILURE;
         }
 
@@ -65,12 +63,9 @@ class DesignCheck extends Command
             return self::FAILURE;
         }
 
-        $content = $this->option('json')
-            ? json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE)."\n"
-            : $scanner->format($result, $this->option('all') ? null : 10);
-
-        // raw: a matching line may hold <info> or <error>, which the console would read as a style
-        $this->output->write($content, false, OutputInterface::OUTPUT_RAW);
+        $this->raw($this->option('json')
+            ? $this->scanJson($result)
+            : $scanner->format($result, $this->option('all') ? null : 10));
 
         return self::SUCCESS;
     }

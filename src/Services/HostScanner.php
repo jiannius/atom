@@ -131,6 +131,57 @@ abstract class HostScanner
     }
 
     /**
+     * A report heading and its underline. $rule is the underline's width when it
+     * is not the title's: the upgrade report's older headings are ruled at a fixed
+     * width, kept so that report stays byte for byte what it was.
+     *
+     * @return array<int, string>
+     */
+    protected function heading(string $title, ?int $rule = null): array
+    {
+        return [$title, str_repeat('-', $rule ?? mb_strlen($title))];
+    }
+
+    /**
+     * The NOT READ block of a report: a heading, one line per path left unread,
+     * and a blank line
+     *
+     * @param  array<int, array{path: string, reason: string}>  $skipped
+     * @return array<int, string>
+     */
+    protected function notReadLines(array $skipped, ?int $rule = null): array
+    {
+        $out = $this->heading('NOT READ ('.count($skipped).')', $rule);
+
+        foreach ($skipped as $item) {
+            $out[] = $item['path'].'  ('.$item['reason'].')';
+        }
+
+        $out[] = '';
+
+        return $out;
+    }
+
+    /**
+     * The first $limit of $items as report lines (all when $limit is null), then
+     * "... and N more (use --all)" when some were left out
+     *
+     * @param  array<int|string, mixed>  $items
+     * @param  \Closure(mixed): string  $line  the full line for one item
+     * @return array<int, string>
+     */
+    protected function limitedLines(array $items, ?int $limit, \Closure $line, string $indent = '', string $hint = 'use --all'): array
+    {
+        $out = array_map($line, array_values($limit === null ? $items : array_slice($items, 0, $limit)));
+
+        if ($limit !== null && count($items) > $limit) {
+            $out[] = $indent.'... and '.(count($items) - $limit).' more ('.$hint.')';
+        }
+
+        return $out;
+    }
+
+    /**
      * The files to read: [absolute path, relative path, 'app'|'tests', kind]
      *
      * @return \Generator<int, array{0: string, 1: string, 2: string, 3: string}>

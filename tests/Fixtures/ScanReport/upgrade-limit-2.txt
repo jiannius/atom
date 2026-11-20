@@ -1,0 +1,63 @@
+atom upgrade check (installed 3.38.2)
+What each check means: UPGRADE.md
+Scanned 40 file(s) in app/, resources/, routes/, modules/, config/, database/ and 5 in tests/. Read only: nothing was written.
+A finding is a candidate from a text scan, not a proof: check the receiver of a date method, and the file.
+The report and --output quote up to 160 characters of each matching line: treat the file like source code.
+
+NOT READ (2)
+-----------
+node_modules  (dependencies)
+big.js  (minified)
+
+PUBLISHED ATOM VIEWS (1): re-diff against v4
+------------------------------------------------
+resources/views/vendor/atom/button.blade.php
+
+BREAKS AT RUNTIME
+-----------------
+[date-pretty] 3 in app, 2 in tests - pretty() is gone
+    Dates; the codemod: reports it only
+    a.php:1  ->pretty()  <- a note
+    b.php:2  ->pretty()
+    ... and 3 more (use --all)
+
+VISUAL CHANGE
+-------------
+[heading-weight] 1 in app - Headings
+    Type; the codemod: fixes it
+    v.blade.php:6  h1
+
+REVIEW
+------
+[only-tests] 0 in app, 1 in tests - Tests only
+    Tests; the codemod: reports it only
+    (tests) t.php:2  x
+
+COMPONENTS THAT USE AtomComponent (2)
+-----------------------------------
+app/Livewire/A.php:8  needs WithTable, WithModal  (already has WithTable)  [via 2 partial(s)]  <- one; two
+app/Livewire/B.php:9  needs (none: drop AtomComponent)
+
+A TRAIT CALLED AtomComponent THAT IS NOT ATOM'S (1): check whether it wraps atom's
+---------------------------------------------
+(tests) t.php:3  uses App\Traits\AtomComponent
+
+Traits needed: WithTable 1, WithModal 1
+
+<atom:...> TAGS IN USE (2 distinct, 13 uses)
+----------------------
+atom:button                      12 in 4 file(s)  restyled: 2
+atom:icon.add                     1 in 1 file(s)
+
+CLAUDE.md / AGENTS.md atom section
+----------------------------------
+CLAUDE.md: diverged: 2 line(s) only in yours, 3 only in the installed one; installed has e.g. "new line"; yours has e.g. "old line". Run `php artisan boost:install` to refresh it.
+AGENTS.md: in sync with the installed version
+OTHER.md: could not compare (unreadable)
+MORE.md: not found: no atom block in this file
+
+SUMMARY
+-------
+4 finding(s) in 3 of 4 checks (+ 3 in tests): 3 breaks at runtime, 1 visual change, 0 review.
+The codemod will fix 1 and only report 3.
+2 component(s) use AtomComponent; 1 AsEditorContent cast(s); 0 <atom:editor*> tag(s).

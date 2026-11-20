@@ -1972,19 +1972,11 @@ class UpgradeCheck extends HostScanner
         $out[] = '';
 
         if ($result['skipped']) {
-            $out[] = 'NOT READ ('.count($result['skipped']).')';
-            $out[] = '-----------';
-
-            foreach ($result['skipped'] as $skipped) {
-                $out[] = $skipped['path'].'  ('.$skipped['reason'].')';
-            }
-
-            $out[] = '';
+            $out = array_merge($out, $this->notReadLines($result['skipped'], 11));
         }
 
         if ($result['published_views']) {
-            $out[] = 'PUBLISHED ATOM VIEWS ('.count($result['published_views']).'): re-diff against v4';
-            $out[] = '------------------------------------------------';
+            $out = array_merge($out, $this->heading('PUBLISHED ATOM VIEWS ('.count($result['published_views']).'): re-diff against v4', 48));
 
             foreach ($result['published_views'] as $view) {
                 $out[] = $view;
@@ -2006,38 +1998,30 @@ class UpgradeCheck extends HostScanner
                 continue;
             }
 
-            $out[] = strtoupper($severity);
-            $out[] = str_repeat('-', strlen($severity));
+            $out = array_merge($out, $this->heading(strtoupper($severity)));
 
             foreach ($present as $check) {
                 $out[] = '['.$check['id'].'] '.$check['count'].' in app'.($check['tests_count'] ? ', '.$check['tests_count'].' in tests' : '').' - '.$check['title'];
                 $out[] = '    '.$check['section'].'; the codemod: '.($check['codemod'] === 'auto' ? 'fixes it' : 'reports it only');
 
-                $shown = 0;
+                $findings = [];
 
                 foreach (['app', 'tests'] as $scope) {
-                    foreach (array_filter($check['findings'], fn ($finding) => $finding['scope'] === $scope) as $finding) {
-                        if ($limit !== null && $shown >= $limit) {
-                            break 2;
-                        }
-
-                        $out[] = '    '.($scope === 'tests' ? '(tests) ' : '').($finding['line'] ? $finding['file'].':'.$finding['line'] : '(app)').'  '.$finding['text'].(isset($finding['note']) ? '  <- '.$finding['note'] : '');
-                        $shown++;
-                    }
+                    array_push($findings, ...array_filter($check['findings'], fn ($finding) => $finding['scope'] === $scope));
                 }
 
-                $total = $check['count'] + $check['tests_count'];
-
-                if ($limit !== null && $total > $shown) {
-                    $out[] = '    ... and '.($total - $shown).' more (use --all)';
-                }
+                $out = array_merge($out, $this->limitedLines(
+                    $findings,
+                    $limit,
+                    fn ($finding) => '    '.($finding['scope'] === 'tests' ? '(tests) ' : '').($finding['line'] ? $finding['file'].':'.$finding['line'] : '(app)').'  '.$finding['text'].(isset($finding['note']) ? '  <- '.$finding['note'] : ''),
+                    '    ',
+                ));
             }
 
             $out[] = '';
         }
 
-        $out[] = 'COMPONENTS THAT USE AtomComponent ('.count($result['components']).')';
-        $out[] = '-----------------------------------';
+        $out = array_merge($out, $this->heading('COMPONENTS THAT USE AtomComponent ('.count($result['components']).')', 35));
 
         foreach ($result['components'] as $component) {
             $traits = $component['traits'] ? implode(', ', $component['traits']) : '(none: drop AtomComponent)';
@@ -2049,8 +2033,7 @@ class UpgradeCheck extends HostScanner
 
         if ($result['host_atom_components'] ?? []) {
             $out[] = '';
-            $out[] = 'A TRAIT CALLED AtomComponent THAT IS NOT ATOM\'S ('.count($result['host_atom_components']).'): check whether it wraps atom\'s';
-            $out[] = '---------------------------------------------';
+            $out = array_merge($out, $this->heading('A TRAIT CALLED AtomComponent THAT IS NOT ATOM\'S ('.count($result['host_atom_components']).'): check whether it wraps atom\'s', 45));
 
             foreach ($result['host_atom_components'] as $host) {
                 $out[] = ($host['scope'] === 'tests' ? '(tests) ' : '').$host['file'].':'.$host['line'].'  uses '.$host['name'];
@@ -2068,16 +2051,14 @@ class UpgradeCheck extends HostScanner
 
         $out[] = 'Traits needed: '.($counts ? implode(', ', array_map(fn ($trait, $n) => $trait.' '.$n, array_keys($counts), $counts)) : 'none');
         $out[] = '';
-        $out[] = '<atom:...> TAGS IN USE ('.count($result['tags']).' distinct, '.array_sum(array_column($result['tags'], 'count')).' uses)';
-        $out[] = '----------------------';
+        $out = array_merge($out, $this->heading('<atom:...> TAGS IN USE ('.count($result['tags']).' distinct, '.array_sum(array_column($result['tags'], 'count')).' uses)', 22));
 
         foreach ($result['tags'] as $name => $tag) {
             $out[] = str_pad($name, 28).' '.str_pad((string) $tag['count'], 6, ' ', STR_PAD_LEFT).' in '.$tag['files'].' file(s)'.($tag['restyled'] ? '  restyled: '.$tag['restyled'] : '');
         }
 
         $out[] = '';
-        $out[] = 'CLAUDE.md / AGENTS.md atom section';
-        $out[] = '----------------------------------';
+        $out = array_merge($out, $this->heading('CLAUDE.md / AGENTS.md atom section'));
         $guideline = $result['guideline'];
 
         if (! $guideline['files']) {
@@ -2098,8 +2079,7 @@ class UpgradeCheck extends HostScanner
 
         $summary = $result['summary'];
         $out[] = '';
-        $out[] = 'SUMMARY';
-        $out[] = '-------';
+        $out = array_merge($out, $this->heading('SUMMARY'));
         $out[] = $summary['findings'].' finding(s) in '.$summary['checks_with_findings'].' of '.$summary['checks'].' checks'.($summary['tests_findings'] ? ' (+ '.$summary['tests_findings'].' in tests)' : '').': '
             .collect($summary['by_severity'])->map(fn ($n, $severity) => $n.' '.$severity)->implode(', ').'.';
         $out[] = 'The codemod will fix '.$summary['by_codemod']['auto'].' and only report '.$summary['by_codemod']['report'].'.';
