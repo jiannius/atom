@@ -18,24 +18,15 @@
      is a persisted <atom:breadcrumbs> whose markup is always there, and it prints nothing for one crumb above a page.header or
      for none. breadcrumbs.js turns data-atom-header-empty on and off on it, and the server starts it on when it already knows the
      trail is one crumb above a page.header ($trailEmpty), so the first frame has no empty bar. --}}
-{{-- A host's User model may have no public initials() method (or one that returns no usable string): the initials are then derived from the display name,
-     and an avatar, name or email the model refuses to read (MissingAttributeException only) reads as null. --}}
+{{-- The signed-in user as the shell shows it (avatar, name, initials; the email is read when the account menu asks): see Services\ShellUser. --}}
 @php
-$user = auth()->user();
-$read = function (string $attribute) use ($user) {
-    try {
-        return isset($user->{$attribute}) ? $user->{$attribute} : null;
-    } catch (\Illuminate\Database\Eloquent\MissingAttributeException) {
-        return null;
-    }
-};
-$avatar = $read('avatar');
-$name = $read('name');
-$initials = $user && method_exists($user, 'initials') && (new \ReflectionMethod($user, 'initials'))->isPublic() ? $user->initials() : null;
-$initials = is_string($initials) || $initials instanceof \Stringable ? trim((string) $initials) : null;
-$initials = $user && blank($initials)
-    ? str((string) $name)->squish()->initials()->take(2)->upper()->toString()
-    : $initials;
+$shell = \Jiannius\Atom\Services\ShellUser::from(auth()->user());
+$avatar = $shell->avatar;
+$name = $shell->name;
+$initials = $shell->initials;
+
+/* Where the logo links to. */
+$home = '/app';
 
 /* The account menu opens from the brand row (`account="brand"`, the default) or from the row at the foot of the sidebar
    (`account="end"`). Either way it needs a `dropdown` slot; without one the brand row stays a plain link. */
@@ -205,7 +196,7 @@ $trailEmpty = $crumbsOnly
 
                     <atom:layouts._sidebar-circle anchor="center"/>
                 @else
-                    <a href="/app" class="ms-2 flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
+                    <a href="{{ $home }}" class="ms-2 flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground" aria-label="{{ t('Home') }}" wire:navigate>
                         @if (isset($logo) && $present($logo))
                             {{ $logo }}
                         @else
@@ -239,7 +230,7 @@ $trailEmpty = $crumbsOnly
             </div>
         @else
             <div class="relative">
-                <a href="/app" class="flex items-center gap-[9px] px-2 pb-3 pt-1.5" wire:navigate>
+                <a href="{{ $home }}" class="flex items-center gap-[9px] px-2 pb-3 pt-1.5" wire:navigate>
                     <div class="flex size-[26px] shrink-0 items-center justify-center rounded-control bg-accent text-accent-foreground">
                         @if (isset($logo) && $present($logo))
                             {{ $logo }}
@@ -300,7 +291,7 @@ $trailEmpty = $crumbsOnly
                                     {{ $name }}
                                 </div>
                                 <div class="truncate text-xs text-fg-subtle">
-                                    {{ $read('email') }}
+                                    {{ $shell->email() }}
                                 </div>
                             </div>
                         </div>
@@ -397,7 +388,7 @@ $trailEmpty = $crumbsOnly
          name it in aria-controls; atom.css gives its root no box, and it is a top-layer popover, so it needs no place of its own. --}}
     @isset ($dropdown)
         <atom:dropdown remote>
-            <atom:layouts._account-menu :id="$menuId" :avatar="$avatar" :name="$name" :email="$read('email')" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
+            <atom:layouts._account-menu :id="$menuId" :avatar="$avatar" :name="$name" :email="$shell->email()" :initials="$initials" :profile="$profile ?? null" :theme="$showTheme">
                 {{ $dropdown }}
             </atom:layouts._account-menu>
         </atom:dropdown>

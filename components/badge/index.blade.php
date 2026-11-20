@@ -50,56 +50,36 @@ $classes = Arr::toCssClasses([
 ]);
 @endphp
 
-@if ($hex)
-    <div
-    @class([
-        $classes,
-        $attributes->get('class', 'max-w-xs')
-    ])
-    {{ $attributes->except(['class', 'style']) }}
-    style="{{ $style }}"
-    data-atom-badge>
-        @if ($icon)
-            <x-dynamic-component :component="'atom::icon.'.$icon" @class([$size === 'lg' ? 'size-4' : 'size-3.5'])/>
-        @endif
+{{-- The same element either way: a hex badge carries its colours in `style` (the caller's `style` folded into it), a tone badge keeps the caller's `style`
+     among its attributes and names its tone. `$before` and `$after` are what the badge adds around its `data-atom-badge` mark, after the caller's attributes. --}}
+@php
+$before = new \Illuminate\View\ComponentAttributeBag($hex ? ['style' => e($style)] : []);
+$after = new \Illuminate\View\ComponentAttributeBag($hex ? [] : ['data-tone' => $tone]);
+@endphp
+<div
+@class([
+    $classes,
+    $attributes->get('class', 'max-w-xs'),
+])
+{{ $hex ? $attributes->except(['class', 'style']) : $attributes->except('class') }}
+{{ $before }}
+data-atom-badge
+{{ $after }}>
+    @if ($icon)
+        <x-dynamic-component :component="'atom::icon.'.$icon" @class([$size === 'lg' ? 'size-4' : 'size-3.5'])/>
+    @endif
 
-        @if ($slot->isNotEmpty())
-            {{ $slot }}
-        @else
-            <div class="grow truncate">
-                @if ($label)
-                    {{ t($label) }}
-                @elseif (is_enum($status))
-                    {{ $status->label() }}
-                @elseif (data_get($status, 'label'))
-                    {{ data_get($status, 'label') }}
-                @endif
-            </div>
-        @endif
-    </div>@else
-    <div
-    @class([
-        $classes,
-        $attributes->get('class', 'max-w-xs'),
-    ])
-    {{ $attributes->except('class') }}
-    data-atom-badge
-    data-tone="{{ $tone }}">
-        @if ($icon)
-            <x-dynamic-component :component="'atom::icon.'.$icon" @class([$size === 'lg' ? 'size-4' : 'size-3.5'])/>
-        @endif
-
-        @if ($slot->isNotEmpty())
-            {{ $slot }}
-        @else
-            <div class="grow truncate">
-                @if ($label)
-                    {{ t($label) }}
-                @elseif (is_enum($status))
-                    {{ $status->label() }}
-                @elseif (data_get($status, 'label'))
-                    {{ data_get($status, 'label') }}
-                @endif
-            </div>
-        @endif
-    </div>@endif
+    @if ($slot->isNotEmpty())
+        {{ $slot }}
+    @else
+        <div class="grow truncate">
+            @if ($label)
+                {{ t($label) }}
+            @elseif (is_enum($status))
+                {{ $status->label() }}
+            @elseif (data_get($status, 'label'))
+                {{ data_get($status, 'label') }}
+            @endif
+        </div>
+    @endif
+</div>@php /* the file's last newline stays out of the output (#179) */ @endphp
