@@ -7,16 +7,19 @@ import onMorphed, { stopMorphed } from '../helpers/morphed'
 // The reader's own gesture on the strip wins: once they have scrolled it, a resize or a morph that leaves the current item where it
 // was does not scroll it back. The factory is on the slot's own element, so a morph that replaces the slot runs init() again;
 // the morph callback is kept on the element so a re-run replaces it and listeners are removed in destroy().
+// The navlist is looked up every time it is needed (list()), never kept from init(): a slot that prints its navlist later (an `@if`
+// that turns true on a round trip) or a morph that replaces the navlist element (a changed `wire:key`) leaves this scope alive with
+// no list or a detached one. So the gesture listeners sit on the slot's own element (in the capture phase, so an event that does not
+// bubble still reaches them; one listener per type, whichever navlist is inside), and the resize observer is moved to the navlist that is
+// there after each morph.
 const TOUCH = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin']
+const LISTENER = { passive: true, capture: true }
 
 export default () => ({
     init () {
-        this.list = this.$el.querySelector('[data-atom-navlist]')
-
-        if (! this.list) return
-
         this.touched = false
         this.seen = this.key()
+        this.watched = null
 
         // a wheel counts only when it moves the strip sideways (deltaX, or shift): a vertical one is the page scrolling under the pointer
         this.touch = (event) => {
@@ -33,17 +36,19 @@ export default () => ({
             this.reveal()
         }
 
-        TOUCH.forEach((type) => this.list.addEventListener(type, this.touch, { passive: true }))
+        TOUCH.forEach((type) => this.$el.addEventListener(type, this.touch, LISTENER))
         document.addEventListener('livewire:navigated', this.navigated)
-
-        this.settle()
 
         // the strip appears when the row narrows (the list is resized), and the items change width when a web font arrives
         this.observer = typeof ResizeObserver === 'function' ? new ResizeObserver(this.settle) : null
-        this.observer?.observe(this.list)
-        document.fonts?.ready.then(() => this.list?.isConnected && this.settle())
+        this.watch()
+        this.settle()
+        document.fonts?.ready.then(() => this.$el.isConnected && this.settle())
 
         onMorphed(() => {
+            // a navlist that is a new element starts at the left edge, whatever the reader did to the one it replaced
+            if (this.watch()) this.touched = false
+
             // a current item that is not the one the strip was showing is a navigation: it is brought into view whatever the reader did before
             const key = this.key()
 
@@ -57,10 +62,33 @@ export default () => ({
     },
 
     /**
+     * The navlist in the slot now (null when it is not printed)
+     */
+    list () {
+        return this.$el.querySelector('[data-atom-navlist]')
+    },
+
+    /**
+     * Point the resize observer at the navlist that is there; true when it is another element than the one it watched
+     */
+    watch () {
+        const list = this.list()
+
+        if (list === this.watched) return false
+
+        this.observer?.disconnect()
+        this.watched = list
+
+        if (list) this.observer?.observe(list)
+
+        return true
+    },
+
+    /**
      * What names the current item (its href, else its text), so two renders of the same item read alike
      */
     key () {
-        const current = this.list?.querySelector('[aria-current="page"]')
+        const current = this.list()?.querySelector('[aria-current="page"]')
 
         return current ? (current.getAttribute('href') ?? current.textContent.trim()) : null
     },
@@ -70,7 +98,7 @@ export default () => ({
      * navlist does not scroll sideways
      */
     reveal () {
-        const list = this.list
+        const list = this.list()
 
         if (! list || getComputedStyle(list).overflowX !== 'auto' || list.scrollWidth <= list.clientWidth + 1) return
 
@@ -87,7 +115,7 @@ export default () => ({
     },
 
     destroy () {
-        TOUCH.forEach((type) => this.list?.removeEventListener(type, this.touch))
+        TOUCH.forEach((type) => this.$el.removeEventListener(type, this.touch, LISTENER))
         document.removeEventListener('livewire:navigated', this.navigated)
         this.observer?.disconnect()
         stopMorphed(this.$el, '_atomPageColumnsNavStopMorph')

@@ -107,11 +107,13 @@ describe('save bar', function () {
         $bar = domQuery(renderBlade('<atom:form.actions bar />'), '//*[@data-atom-save-bar]')[0];
         $classes = domClasses($bar);
 
-        expect($classes)->toContain('sticky', 'isolate', 'z-10', 'flex-wrap', 'gap-2', 'rounded-panel', 'border', 'border-border', 'bg-surface', 'shadow-pop', 'pe-4', 'py-3', 'ps-[calc(1rem_+_var(--atom-page-nav-offset,0px))]', 'ms-[calc(var(--atom-page-nav-offset,0px)_*_-1)]')
+        expect($classes)->toContain('sticky', 'isolate', 'z-10', 'flex-wrap', 'gap-2', 'rounded-panel', 'border', 'border-border', 'bg-surface', 'shadow-pop', 'px-4', 'py-3')
             ->and(implode(' ', $classes))->toContain('bottom-[calc(0.75rem_+_env(safe-area-inset-bottom,0px))]')
             // no blur, no transparency, no pseudo-element strip, no bleed, no hairline above it
             ->and(implode(' ', $classes))->not->toContain('before:')->not->toContain('after:')->not->toContain('backdrop-blur')->not->toContain('bg-surface/')
-            ->and($classes)->not->toContain('border-t', '-bottom-6', 'bottom-0', 'justify-between', '[&>:only-child]:ms-auto');
+            ->and($classes)->not->toContain('border-t', '-bottom-6', 'bottom-0', 'justify-between', '[&>:only-child]:ms-auto')
+            // the nav's pull is a rule in atom.css, not a utility here: a host's px-* or mx-* on the bar must keep winning (`ps-`/`pe-` sort after `px-`)
+            ->and(implode(' ', $classes))->not->toMatch('/(^| )(ps|pe|ms|me)-/');
     });
 
     it('leaves no strip behind in atom.css: no bleed variables, clip-path or box-shadow spread on the bar', function () {
@@ -119,17 +121,19 @@ describe('save bar', function () {
 
         expect($css)->not->toContain('--atom-bar-left')->not->toContain('--atom-bar-right')
             ->and($css)->not->toContain('100vmax')
-            ->and($css)->not->toMatch('/\\[data-atom-save-bar\\][^{]*\\{/');
+            // the one rule a save bar has there is the pull under a page.columns nav (two `margin-inline-start` declarations, in `@layer base`, so a host utility wins)
+            ->and(preg_match_all('/^\\s*\\[data-atom-save-bar\\][^{]*\\{([^}]*)\\}/m', $css, $rules))->toBe(2)
+            ->and(array_map('trim', $rules[1]))->each->toMatch('/^margin-inline-start: [^;]+;$/');
     });
 
-    it('takes the page\'s bottom room as its own, less the 0.75rem it floats by, and has no gutter margin or padding but the nav column\'s', function () {
+    it('takes the page\'s bottom room as its own, less the 0.75rem it floats by, and has no gutter margin or padding utility', function () {
         $html = renderBlade('<atom:form.actions bar />');
         $classes = implode(' ', domClasses(domQuery($html, '//*[@data-atom-save-bar]')[0]));
 
         expect($classes)->toContain('mb-[calc((var(--atom-page-pb,0px)_-_0.75rem_-_env(safe-area-inset-bottom,0px))*-1)]')
             ->and($classes)->not->toContain('--atom-gutter')
-            // the one inline margin and padding it has reaches back under a page.columns nav: 0px (nothing changes) without one
-            ->and(array_values(array_filter(domClasses(domQuery($html, '//*[@data-atom-save-bar]')[0]), fn ($c) => preg_match('/^(ms|me|ps|pe)-\[/', $c) && ! str_contains($c, '--atom-page-nav-offset'))))->toBe([]);
+            // the one inline margin it has, the pull under a page.columns nav, is a rule in atom.css (0px, so nothing changes, without a nav)
+            ->and(array_values(array_filter(domClasses(domQuery($html, '//*[@data-atom-save-bar]')[0]), fn ($c) => preg_match('/^(ms|me|ps|pe)-/', $c))))->toBe([]);
     });
 
     it('prints the start slot at the start, and the buttons at the end', function () {

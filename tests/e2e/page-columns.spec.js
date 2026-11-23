@@ -478,7 +478,19 @@ test.describe('page.columns, the nav slot', () => {
   const WITH_RAIL = (NAV + GAP + RAIL + GAP) / 0.4
 
   const navBox = (page) => box(page.locator('[data-atom-page-columns-nav] [data-atom-navlist]'))
-  const offset = (page) => page.locator('[data-atom-page-columns-main]').evaluate((el) => getComputedStyle(el).getPropertyValue('--atom-page-nav-offset').trim())
+  // the offset is a calc() of the nav's width and the gap, so it is read as the width a probe takes from it, not as the string
+  const offset = (page) => page.locator('[data-atom-page-columns-main]').evaluate((el) => {
+    const probe = document.createElement('div')
+
+    probe.style.cssText = 'width: var(--atom-page-nav-offset, 0px); height: 1px'
+    el.appendChild(probe)
+
+    const width = probe.getBoundingClientRect().width
+
+    probe.remove()
+
+    return `${Math.round(width)}px`
+  })
 
   test('beside the main column from a row 768px wide: a 200px column, 22px between them, the offset 222px', async ({ page }) => {
     await open(page, { shell: 'header', width: 1000, query: '&nav=1&rail=0' })
@@ -759,7 +771,7 @@ test.describe('page.columns, the nav slot as a strip', () => {
 })
 
 // `form.actions bar` in the main column: with a nav beside it the bar spans nav and content (it starts where the nav does, ends where the main column
-// does) and its start slot and buttons sit where they do in a bar with no nav. The offset is `--atom-page-nav-offset`, a utility on the bar.
+// does) and its start slot and buttons sit where they do in a bar with no nav. The offset is `--atom-page-nav-offset`, read by two rules in atom.css (`@layer base`).
 test.describe('page.columns, the save bar with a nav beside the main column', () => {
   const bar = (page) => page.getByTestId('bar')
   const PAD = 16

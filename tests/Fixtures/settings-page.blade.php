@@ -8,7 +8,10 @@ $workspace = ['general' => 'General', 'members' => 'Members', 'billing' => 'Bill
 
     <atom:page.columns data-testid="columns">
         <x-slot:nav>
-            <atom:navlist aria-label="Settings sections">
+            @if (! $navReady)
+                <p data-testid="nav-pending">Loading sections</p>
+            @else
+            <atom:navlist aria-label="Settings sections" wire:key="settings-nav-{{ $navRevision }}">
                 <atom:navlist.group heading="Account">
                     @foreach ($account as $key => $label)
                         <atom:navlist.item as="button" wire:click="select('{{ $key }}')" :current="$section === $key" data-testid="nav-{{ $key }}">{{ $label }}</atom:navlist.item>
@@ -21,6 +24,7 @@ $workspace = ['general' => 'General', 'members' => 'Members', 'billing' => 'Bill
                     @endforeach
                 </atom:navlist.group>
             </atom:navlist>
+            @endif
         </x-slot:nav>
 
         <atom:form wire:submit="save" data-testid="settings-form">
@@ -43,5 +47,12 @@ $workspace = ['general' => 'General', 'members' => 'Members', 'billing' => 'Bill
                 <atom:button type="button" variant="ghost" data-testid="settings-cancel">Cancel</atom:button>
             </atom:form.actions>
         </atom:form>
+
+        <atom:modal name="settings-modal" data-testid="settings-modal">
+            <atom:form.actions bar data-testid="modal-bar">
+                <x-slot:start><span data-testid="modal-start">In a modal</span></x-slot:start>
+                <atom:button type="button" data-testid="modal-ok">Ok</atom:button>
+            </atom:form.actions>
+        </atom:modal>
     </atom:page.columns>
 </atom:page>

@@ -31,12 +31,13 @@
        PRIMARY FIRST, as in <atom:form.modal> (the submit, which is the screen's one primary action; then a secondary save, then a ghost
        Cancel, then a danger action); full width on a phone, the submit growing.
        In a settings screen (the `nav` slot of <atom:page.columns>) the form sits in the main column beside the nav, and the bar spans
-       both: `--atom-page-nav-offset`, which the main column sets to the nav's 200px and the gap while the nav is beside it (and 0 when
-       the nav is stacked above, or there is none, and outside a page.columns: the fallback is 0px), pulls the bar's start edge back
-       under the nav (`ms-`) and is added to its start padding (`ps-`), so its card is as wide as nav plus content while the start slot, the
-       "Unsaved changes" label and the buttons stay where they are in a bar that has no nav beside it. They are utilities on the bar, not a rule in
-       atom.css: the padding has to outrank the `px-` the bar would otherwise carry, and a rule in `@layer base` would not. `--atom-page-pb` is
-       untouched, so the bottom room above is the same.
+       both: `--atom-page-nav-offset`, which the main column sets to the nav's width and the gap while the nav is beside it (and 0 when
+       the nav is stacked above, or there is none, outside a page.columns, and inside a dialog or popover in the main column: the
+       fallback is 0px), pulls the bar's start edge back under the nav and is added to the start margin of the start slot and the "Unsaved
+       changes" label, so the card is as wide as nav plus content while the start slot, the label and the buttons stay where they are in a
+       bar that has no nav beside it. Both are two rules in atom.css (`@layer base`), not utilities on the bar, so the bar carries only its
+       own `px-4` and a `px-*` or `mx-*` of the host's on it wins as it always did. `--atom-page-pb` is untouched, so the bottom room above
+       is the same.
        Put it last inside the page's form, and give the page its own bottom room (<atom:page> does). A bottom <atom:toast> sits above
        the card while one is on screen (helpers/toast-lift.js).
      The bleed of `sticky` in a modal rests on the p-6 the modal draws: a sticky element is held inside its scroll
@@ -53,8 +54,7 @@ $stickyBar = $sticky && ! $bar;
 <div {{ $attributes->class([
     'flex items-center',
     'justify-between gap-2 [&>:only-child]:ms-auto' => ! $bar,
-    'sticky isolate z-10 flex-wrap gap-2 rounded-panel border border-border bg-surface pe-4 ps-[calc(1rem_+_var(--atom-page-nav-offset,0px))] py-3 shadow-pop' => $bar,
-    'ms-[calc(var(--atom-page-nav-offset,0px)_*_-1)]' => $bar,
+    'sticky isolate z-10 flex-wrap gap-2 rounded-panel border border-border bg-surface px-4 py-3 shadow-pop' => $bar,
     'bottom-[calc(0.75rem_+_env(safe-area-inset-bottom,0px))] mb-[calc((var(--atom-page-pb,0px)_-_0.75rem_-_env(safe-area-inset-bottom,0px))*-1)]' => $bar,
     'sticky -bottom-6 z-10 bg-surface -mx-6 px-6 pt-4 pb-6 -mb-6 border-t mt-auto' => $stickyBar,
 ]) }} data-atom-form-actions @if ($bar) data-atom-save-bar @endif>

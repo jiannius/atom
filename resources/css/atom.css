@@ -1618,10 +1618,11 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
 @layer base {
     [data-atom-page-columns] {
         container-type: inline-size;
+        container-name: atom-page-columns;
         display: flex;
         flex-wrap: wrap;
         align-items: flex-start;
-        gap: 22px;
+        gap: var(--atom-page-columns-gap, 22px);
         width: 100%;
         min-width: 0;
     }
@@ -1649,7 +1650,7 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
         top: calc(var(--atom-shell-bar-h, 0px) + 1rem);
     }
 
-    @container (min-width: 855px) {
+    @container atom-page-columns (min-width: 855px) {
         [data-atom-page-columns]:not([data-has-nav]) > [data-atom-page-columns-rail][data-sticky] {
             --atom-rail-bleed: 6px;
             box-sizing: border-box;
@@ -1675,23 +1676,38 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
        it on its own from 555px (200 + 22 + the main column's 60%), so the container query, not the wrap, is the switch.
        With a nav the sticky rail is beside the main column from 1410px, not 855px ((200 + 22 + 320 + 22) / 0.4), so its rule is written
        for both cases; tests/e2e/page-columns.spec.js and settings-page.spec.js hold the numbers together.
-       `--atom-page-nav-offset` is set on the main column: 222px (the nav's 200px and the gap) while the nav is beside it, 0 otherwise
+       The row is a NAMED container (`atom-page-columns`) and every query here and in the strip rules below names it, so a container of the
+       host's own inside the slot (a `@container` wrapper around the navlist) cannot be the one the switch reads. `--atom-page-nav-offset`
+       is set on the main column: the nav's width and the row's gap (`--atom-page-nav-width`, 200px, and `--atom-page-columns-gap`, 22px,
+       which a host sets on the row, `[--atom-page-columns-gap:2rem]`, and the offset follows; a `gap-8` utility moves the gap but not the
+       offset, and the 768px / 1410px switches are numbers a query cannot take from a variable) while the nav is beside it, 0 otherwise
        (a container query styles what is inside the container, so the row itself cannot carry it; a page.columns inside a main column
-       starts again from 0). A save bar in the main column reads it (form.actions). */
+       starts again from 0, and a dialog, a popover and a rail or nav inside the main column reset it, since a custom property inherits
+       into everything there). A save bar in the main column reads it (form.actions: atom.css below holds the bar's two rules).
+       The pinned save bar is a card at the foot of the window, over what is under it, and the nav, stuck 1rem under the top, would
+       run behind it: a row that holds a bar (`:has()`) shortens the nav by `--atom-save-bar-room` (4.5rem: the nav's own 1rem to the
+       window's edge plus this room clear a bar up to 4.75rem tall that floats 0.75rem above the edge, which is the card with the default
+       buttons at 3.4rem and one with a large button; a host with a taller bar sets it on the row) and the home-indicator inset, so the
+       last item can be scrolled above the bar. Before the page has scrolled the nav is below its stuck place and its end can be behind the
+       bar: the page's own scroll brings it up. */
     [data-atom-page-columns-nav] {
         flex: 0 0 100%;
         min-width: 0;
     }
 
-    [data-atom-page-columns-main] {
+    [data-atom-page-columns-main],
+    [data-atom-page-columns-nav],
+    [data-atom-page-columns-rail],
+    dialog,
+    [popover] {
         --atom-page-nav-offset: 0px;
     }
 
-    @container (min-width: 768px) {
+    @container atom-page-columns (min-width: 768px) {
         [data-atom-page-columns-nav] {
             --atom-nav-bleed: 6px;
             box-sizing: border-box;
-            flex-basis: calc(200px + 2 * var(--atom-nav-bleed));
+            flex-basis: calc(var(--atom-page-nav-width, 200px) + 2 * var(--atom-nav-bleed));
             margin: calc(-1 * var(--atom-nav-bleed));
             padding: var(--atom-nav-bleed);
             position: sticky;
@@ -1702,12 +1718,16 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
             overscroll-behavior: contain;
         }
 
+        [data-atom-page-columns][data-has-nav]:has([data-atom-save-bar]) > [data-atom-page-columns-nav] {
+            max-height: calc(100dvh - var(--atom-shell-bar-h, 0px) - 2rem + 2 * var(--atom-nav-bleed) - var(--atom-save-bar-room, 4.5rem) - env(safe-area-inset-bottom, 0px));
+        }
+
         [data-atom-page-columns][data-has-nav] > [data-atom-page-columns-main] {
-            --atom-page-nav-offset: 222px;
+            --atom-page-nav-offset: calc(var(--atom-page-nav-width, 200px) + var(--atom-page-columns-gap, 22px));
         }
     }
 
-    @container (min-width: 1410px) {
+    @container atom-page-columns (min-width: 1410px) {
         [data-atom-page-columns][data-has-nav] > [data-atom-page-columns-rail][data-sticky] {
             --atom-rail-bleed: 6px;
             box-sizing: border-box;
@@ -1724,6 +1744,22 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
     }
 }
 
+/* form.actions `bar` in a page.columns main column that has a nav beside it: the card reaches back under the nav and its content stays where
+   the content starts. `--atom-page-nav-offset` (set on the main column, 0px anywhere else: no page.columns, a stacked nav, a dialog or
+   a popover in the main column) pulls the card's start edge back by the nav and its gap, and the same distance is added to the start
+   slot's (or the bare "Unsaved changes" label's) start margin, so label and buttons sit where they do in a bar that has no nav. They are
+   rules in `@layer base` on purpose, not `ms-` / `ps-` utilities on the bar: a utility of the host's (`px-6`, `mx-2`, `-mx-6`) on the bar
+   keeps winning exactly as it did before there was a nav, and the bar's own `px-4` is the only padding it carries. */
+@layer base {
+    [data-atom-save-bar] {
+        margin-inline-start: calc(var(--atom-page-nav-offset, 0px) * -1);
+    }
+
+    [data-atom-save-bar] > :is([data-atom-form-actions-start], [data-atom-form-dirty]) {
+        margin-inline-start: var(--atom-page-nav-offset, 0px);
+    }
+}
+
 /* page.columns `nav` slot, stacked above the main column (a row narrower than 768px, the complement of the query that puts it beside):
    the navlist is a strip, a row of items that scrolls sideways, instead of a tall column the reader scrolls past to reach the form.
    The groups and their items wrapper are `display: contents`, so every item is one flex child of the navlist; the group labels and an
@@ -1734,7 +1770,7 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
    negative margin keep a focus ring at the strip's edge from being cut by the scroll box. The scrollbar stays, slim (a plain wheel
    over the strip scrolls the page, so a mouse needs it to reach the items past the edge: as the tab strip's, which also fades its
    edges and hides its bar on a touch screen; this strip does neither). */
-@container not (min-width: 768px) {
+@container atom-page-columns not (min-width: 768px) {
     [data-atom-page-columns-nav] [data-atom-navlist] {
         flex-direction: row;
         align-items: center;
@@ -1780,7 +1816,7 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
 }
 
 @supports not selector(::-webkit-scrollbar) {
-    @container not (min-width: 768px) {
+    @container atom-page-columns not (min-width: 768px) {
         [data-atom-page-columns-nav] [data-atom-navlist] {
             scrollbar-width: thin;
         }
