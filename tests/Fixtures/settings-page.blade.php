@@ -9,11 +9,13 @@ $workspace = ['general' => 'General', 'members' => 'Members', 'billing' => 'Bill
 <atom:page data-testid="settings-page">
     <atom:page.header title="Settings" />
 
+    @if ($persist === 'columns') @persist('settings-columns') @endif
     <atom:page.columns data-testid="columns">
         <x-slot:nav>
             @if (! $navReady)
                 <p data-testid="nav-pending">Loading sections</p>
             @else
+            @if ($persist === 'nav') @persist('settings-nav') @endif
             <atom:navlist aria-label="Settings sections" wire:key="settings-nav-{{ $navRevision }}">
                 <atom:navlist.group heading="Account">
                     @foreach ($account as $key => $label)
@@ -35,6 +37,7 @@ $workspace = ['general' => 'General', 'members' => 'Members', 'billing' => 'Bill
                     @endforeach
                 </atom:navlist.group>
             </atom:navlist>
+            @if ($persist === 'nav') @endpersist @endif
             @endif
         </x-slot:nav>
 
@@ -66,4 +69,5 @@ $workspace = ['general' => 'General', 'members' => 'Members', 'billing' => 'Bill
             </atom:form.actions>
         </atom:modal>
     </atom:page.columns>
+    @if ($persist === 'columns') @endpersist @endif
 </atom:page>

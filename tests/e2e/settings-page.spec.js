@@ -55,6 +55,35 @@ const offsetIn = (locator) => locator.evaluate((el) => {
   return width
 })
 
+// counts the listeners added to and removed from `document` for `livewire:navigated`, and from the nav slot element, whatever page they were on
+const spyOnListeners = (page) => page.addInitScript(() => {
+  window.__listeners = { document: { add: 0, remove: 0 }, slot: { add: {}, remove: {} } }
+
+  for (const [name, bucket] of [['addEventListener', 'add'], ['removeEventListener', 'remove']]) {
+    const original = EventTarget.prototype[name]
+
+    EventTarget.prototype[name] = function (type, ...rest) {
+      if (this === document && type === 'livewire:navigated') window.__listeners.document[bucket]++
+
+      if (this instanceof Element && this.hasAttribute('data-atom-page-columns-nav')) {
+        window.__listeners.slot[bucket][type] = (window.__listeners.slot[bucket][type] ?? 0) + 1
+      }
+
+      return original.call(this, type, ...rest)
+    }
+  }
+})
+const GESTURES = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin']
+const liveListeners = (page) => page.evaluate((types) => {
+  const l = window.__listeners
+
+  return {
+    document: l.document.add - l.document.remove,
+    slot: Object.fromEntries(types.map((type) => [type, (l.slot.add[type] ?? 0) - (l.slot.remove[type] ?? 0)])),
+    added: l.document.add,
+  }
+}, GESTURES)
+
 for (const tw of ['latest', 'floor']) {
   test.describe(`settings page, ${tw} consumer build`, () => {
     test('1440px: the nav is a column beside the forms, and the save bar spans both with its content where the forms start', async ({ page }) => {
@@ -377,23 +406,7 @@ test.describe('settings page, the strip and a Livewire round trip', () => {
 // `livewire:navigated` cannot tell a factory that listens for the real one from one that does not.
 test.describe('settings page, a real wire:navigate between two settings pages', () => {
   test('the new page\'s current item is in its strip, the page is not scrolled sideways, and nothing is listening twice after three navigations', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.__listeners = { document: { add: 0, remove: 0 }, slot: { add: {}, remove: {} } }
-
-      for (const [name, bucket] of [['addEventListener', 'add'], ['removeEventListener', 'remove']]) {
-        const original = EventTarget.prototype[name]
-
-        EventTarget.prototype[name] = function (type, ...rest) {
-          if (this === document && type === 'livewire:navigated') window.__listeners.document[bucket]++
-
-          if (this instanceof Element && this.hasAttribute('data-atom-page-columns-nav')) {
-            window.__listeners.slot[bucket][type] = (window.__listeners.slot[bucket][type] ?? 0) + 1
-          }
-
-          return original.call(this, type, ...rest)
-        }
-      }
-    })
+    await spyOnListeners(page)
     await open(page, { width: 390, query: '&links=1&section=profile' })
 
     // a mark on the document: a full page load would lose it, a wire:navigate keeps it
@@ -402,16 +415,8 @@ test.describe('settings page, a real wire:navigate between two settings pages', 
     await expect.poll(() => inside(page.getByTestId('nav-profile'))).toBe(true)
     expect(await strip(page).evaluate((el) => el.scrollLeft)).toBe(0)
 
-    const tags = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin']
-    const live = () => page.evaluate((types) => {
-      const l = window.__listeners
-
-      return {
-        document: l.document.add - l.document.remove,
-        slot: Object.fromEntries(types.map((type) => [type, (l.slot.add[type] ?? 0) - (l.slot.remove[type] ?? 0)])),
-        added: l.document.add,
-      }
-    }, tags)
+    const live = () => liveListeners(page)
+    const tags = GESTURES
 
     const first = await live()
 
@@ -444,6 +449,68 @@ test.describe('settings page, a real wire:navigate between two settings pages', 
     await expect.poll(async () => (await live()).document).toBe(first.document)
     await expect.poll(async () => (await live()).slot).toEqual(first.slot)
     expect((await live()).added, 'the factories did listen again, once per page').toBeGreaterThanOrEqual(first.added + 3)
+  })
+
+  // A navlist that survives a navigation (the host wraps it in @persist). The slot around it is part of page.columns, so it is a new element each time
+  // and its factory's init() brings the (persisted, so unchanged: nothing re-renders `aria-current` in it) current item into the strip.
+  test('a persisted navlist is the same element after a navigation, and the new slot shows its current item', async ({ page }) => {
+    await spyOnListeners(page)
+    await open(page, { width: 390, query: '&links=1&persist=nav&section=domains' })
+    await page.evaluate(() => { window.__sameDocument = true; document.querySelector('[data-atom-page-columns-nav] [data-atom-navlist]').dataset.mark = 'kept'; document.querySelector('[data-atom-page-columns-nav]').dataset.mark = 'old slot' })
+    await expect.poll(() => inside(current(page))).toBe(true)
+
+    const first = await liveListeners(page)
+
+    for (const to of ['profile', 'security']) {
+      await strip(page).evaluate((el) => { el.scrollLeft = 0 })
+      await page.getByTestId(`nav-${to}`).click()
+      await expect(page).toHaveURL(new RegExp(`section=${to}`))
+
+      expect(await page.evaluate(() => window.__sameDocument === true), 'a wire:navigate, not a page load').toBe(true)
+      expect(await strip(page).evaluate((el) => el.dataset.mark), 'the navlist is the one the first page printed').toBe('kept')
+      expect(await page.locator('[data-atom-page-columns-nav]').evaluate((el) => el.dataset.mark ?? 'new'), 'the slot around it is the new page\'s').toBe('new')
+      await expect(page.getByTestId('nav-domains')).toHaveAttribute('aria-current', 'page')
+      await expect.poll(() => inside(current(page))).toBe(true)
+      expect(await page.evaluate(() => window.scrollX)).toBe(0)
+      expect(await noSideScroll(page)).toBe(true)
+    }
+
+    await expect.poll(async () => (await liveListeners(page)).slot).toEqual(first.slot)
+    await expect.poll(async () => (await liveListeners(page)).document).toBe(first.document)
+  })
+
+  // The whole page.columns persisted (the only way the slot's own element, and its factory, survive): nothing re-renders in it, so the current item is the one
+  // the first page printed. The reader scrolls the strip to its start (a gesture: the factory stops bringing the current item back after a resize) and
+  // follows a link; only the real `livewire:navigated` is what brings it back.
+  test('a nav slot that survives a navigation (page.columns in @persist) brings its current item back into view after the reader scrolled away', async ({ page }) => {
+    await spyOnListeners(page)
+    await open(page, { width: 390, query: '&links=1&persist=columns&section=domains' })
+    await page.evaluate(() => { window.__sameDocument = true; document.querySelector('[data-atom-page-columns-nav]').dataset.mark = 'kept' })
+    await expect.poll(() => inside(current(page))).toBe(true)
+    expect(await strip(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
+
+    const first = await liveListeners(page)
+
+    for (const to of ['profile', 'security']) {
+      // the reader's own scroll and press on the strip: the factory leaves it where they put it
+      await strip(page).evaluate((el) => { el.scrollLeft = 0 })
+      await page.getByTestId(`nav-${to}`).click()
+      await expect(page).toHaveURL(new RegExp(`section=${to}`))
+
+      expect(await page.evaluate(() => window.__sameDocument === true), 'a wire:navigate, not a page load').toBe(true)
+      expect(await page.locator('[data-atom-page-columns-nav]').evaluate((el) => el.dataset.mark), 'the same slot element').toBe('kept')
+      await expect(page.getByTestId('nav-domains')).toHaveAttribute('aria-current', 'page')
+
+      // the navigation hands the current item back to the factory: it is in the strip again, by the strip alone
+      await expect.poll(() => inside(current(page)), `after following ${to}`).toBe(true)
+      expect(await strip(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
+      expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 0])
+      expect(await noSideScroll(page)).toBe(true)
+    }
+
+    // nothing stacked: the one factory is the only listener, on the slot and on document
+    expect(await liveListeners(page)).toMatchObject({ document: first.document, slot: first.slot })
+    expect((await liveListeners(page)).added, 'and it did not listen again').toBe(first.added)
   })
 })
 
