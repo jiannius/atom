@@ -7,7 +7,8 @@
 
     <p>
         See the whole thing built on a record (header, status, stats, record tabs, empty states):
-        <a class="underline" href="{{ route('atom.docs.pattern', 'record-page') }}">Record page</a>.
+        <a class="underline" href="{{ route('atom.docs.pattern', 'record-page') }}">Record page</a>. A settings screen, with a column of navigation beside the forms and one save bar across both:
+        <a class="underline" href="{{ route('atom.docs.pattern', 'settings-page') }}">Settings page</a>.
     </p>
 </div>
 
@@ -25,6 +26,11 @@ view="atom::docs.demos.page.tabs"/>
 title="Main column and rail"
 description="No breakpoint: the rail (a 320px aside, 14px between its cards) sits beside the main column while that keeps 60% of the row, and under it, full width, when it no longer fits, so a collapsed sidebar or the top-nav shell brings it beside sooner. sticky pins it under the shell's bar while it is beside the main column; label names the aside."
 view="atom::docs.demos.page.columns"/>
+
+<atom:docs.example
+title="A settings screen: a nav beside the forms"
+description="The nav slot is a 200px column of navigation before the main column, from a row 768px wide; narrower, it is a row above the main column and the navlist a strip that scrolls sideways, with the current item kept in view. Put an atom:navlist in it (a plain div holds it: the navlist is the landmark, so give it an aria-label). A save bar (atom:form.actions bar) in the main column spans nav and forms while its buttons stay where the content starts."
+view="atom::docs.demos.page.columns-nav"/>
 
 <atom:docs.example
 title="In a modal or a slide-over"

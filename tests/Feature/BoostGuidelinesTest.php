@@ -530,6 +530,7 @@ describe('lists, forms and the timeline in the docs', function () {
             ->and($skill)->toContain('docs/patterns/list-page.blade.php')
             ->and($skill)->toContain('document-page.blade.php')
             ->and($skill)->toContain('form-page.blade.php')
+            ->and($skill)->toContain('settings-page.blade.php')
             ->and($skill)->toContain('slide-over-form.blade.php');
     });
 
@@ -587,7 +588,7 @@ describe('lists, forms and the timeline in the docs', function () {
     it('points the skill only at pattern pages and demos that exist', function () {
         $skill = boostFile('skills/atom-components/SKILL.blade.php');
 
-        foreach (['list-page', 'document-page', 'form-page', 'slide-over-form'] as $name) {
+        foreach (['list-page', 'document-page', 'form-page', 'settings-page', 'slide-over-form'] as $name) {
             expect(file_exists(__DIR__.'/../../resources/views/docs/patterns/'.$name.'.blade.php'))->toBeTrue($name);
             expect($skill)->toContain($name.'.blade.php');
         }
