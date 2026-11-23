@@ -1,5 +1,7 @@
 @php
 $account = ['profile' => 'Profile', 'security' => 'Security', 'notifications' => 'Notifications', 'sessions' => 'Sessions', 'tokens' => 'API tokens'];
+// ?links=1: each item is a link that wire:navigate-s to this page with `section` set (a real navigation), carrying the rest of the query
+$href = fn (string $key) => '/atom/e2e/shell-settings?'.http_build_query([...$carry, 'section' => $key]);
 $workspace = ['general' => 'General', 'members' => 'Members', 'billing' => 'Billing', 'integrations' => 'Integrations', 'audit' => 'Audit log', 'domains' => 'Domains'];
 @endphp
 
@@ -15,13 +17,21 @@ $workspace = ['general' => 'General', 'members' => 'Members', 'billing' => 'Bill
             <atom:navlist aria-label="Settings sections" wire:key="settings-nav-{{ $navRevision }}">
                 <atom:navlist.group heading="Account">
                     @foreach ($account as $key => $label)
-                        <atom:navlist.item as="button" wire:click="select('{{ $key }}')" :current="$section === $key" data-testid="nav-{{ $key }}">{{ $label }}</atom:navlist.item>
+                        @if ($links)
+                            <atom:navlist.item :href="$href($key)" wire:navigate :current="$section === $key" data-testid="nav-{{ $key }}">{{ $label }}</atom:navlist.item>
+                        @else
+                            <atom:navlist.item as="button" wire:click="select('{{ $key }}')" :current="$section === $key" data-testid="nav-{{ $key }}">{{ $label }}</atom:navlist.item>
+                        @endif
                     @endforeach
                 </atom:navlist.group>
 
                 <atom:navlist.group heading="Workspace" expandable :expanded="false">
                     @foreach ($workspace as $key => $label)
-                        <atom:navlist.item as="button" wire:click="select('{{ $key }}')" :current="$section === $key" data-testid="nav-{{ $key }}">{{ $label }}</atom:navlist.item>
+                        @if ($links)
+                            <atom:navlist.item :href="$href($key)" wire:navigate :current="$section === $key" data-testid="nav-{{ $key }}">{{ $label }}</atom:navlist.item>
+                        @else
+                            <atom:navlist.item as="button" wire:click="select('{{ $key }}')" :current="$section === $key" data-testid="nav-{{ $key }}">{{ $label }}</atom:navlist.item>
+                        @endif
                     @endforeach
                 </atom:navlist.group>
             </atom:navlist>

@@ -156,6 +156,70 @@ for (const tw of ['latest', 'floor']) {
       expect(last.bottom, `last item bottom ${last.bottom}, bar top ${bar.y}`).toBeLessThanOrEqual(bar.y)
     })
 
+    test('rtl, 1440px: the nav is on the inline-start (right) side, and the save bar spans both with its content where the forms start', async ({ page }) => {
+      await open(page, { width: 1440, tw, query: '&dir=rtl' })
+
+      expect(await page.evaluate(() => document.documentElement.dir)).toBe('rtl')
+
+      const nav = await box(strip(page))
+      const main = await box(page.locator('[data-atom-page-columns-main]'))
+      const bar = await box(page.getByTestId('settings-bar'))
+      const start = await box(page.getByTestId('settings-start'))
+      const cancel = await box(page.getByTestId('settings-cancel'))
+      const save = await box(page.getByTestId('settings-save'))
+
+      expect(Math.abs(nav.width - NAV), `nav ${nav.width}`).toBeLessThanOrEqual(0.5)
+      expect(nav.x, 'the nav is on the right of the forms').toBeGreaterThanOrEqual(main.right)
+      expect(Math.abs(nav.x - main.right - GAP)).toBeLessThanOrEqual(1)
+      expect(nav.y, 'the nav is on the forms\' top line').toBeLessThanOrEqual(main.y + 1)
+
+      // mirrored: the bar ends where the nav ends (its right edge) and starts where the forms start (their left edge)
+      expect(Math.abs(bar.right - nav.right), 'the bar reaches the nav\'s outer edge').toBeLessThanOrEqual(1)
+      expect(Math.abs(bar.x - main.x), 'the bar ends at the forms\' far edge').toBeLessThanOrEqual(1)
+      expect(Math.abs(start.right - (main.right - PAD - 1)), 'its label starts at the forms\' inline-start edge (right), not under the nav').toBeLessThanOrEqual(1)
+      expect(Math.abs(cancel.x - (main.x + PAD + 1)), 'its buttons end at the forms\' inline-end edge (left)').toBeLessThanOrEqual(1)
+      expect(save.x).toBeGreaterThanOrEqual(cancel.right)
+      expect(await noSideScroll(page)).toBe(true)
+    })
+
+    test('rtl, 390px: the strip scrolls, the current item (last of the list, so at the far left) is revealed inside it, and the page does not scroll', async ({ page }) => {
+      await open(page, { width: 390, tw, query: '&dir=rtl' })
+
+      const nav = await box(page.locator('[data-atom-page-columns-nav]'))
+      const main = await box(page.locator('[data-atom-page-columns-main]'))
+      const bar = await box(page.getByTestId('settings-bar'))
+      const start = await box(page.getByTestId('settings-start'))
+
+      expect(Math.abs(main.y - nav.bottom - GAP)).toBeLessThanOrEqual(1)
+
+      const state = await strip(page).evaluate((el) => ({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, scrollLeft: el.scrollLeft }))
+
+      expect(state.scrollWidth).toBeGreaterThan(state.clientWidth + 100)
+      // RTL scrollLeft is signed (zero at the start edge, negative as it scrolls): only its size says the strip moved
+      expect(Math.abs(state.scrollLeft)).toBeGreaterThan(0)
+      await expect(current(page)).toHaveCount(1)
+      await expect(current(page)).toHaveText('Domains')
+      expect(await inside(current(page))).toBe(true)
+      expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 0])
+      expect(await noSideScroll(page)).toBe(true)
+
+      // the plain bar: the forms' width, the label at its padding edge (the right one)
+      expect(Math.abs(bar.x - main.x)).toBeLessThanOrEqual(1)
+      expect(Math.abs(bar.right - main.right)).toBeLessThanOrEqual(1)
+      expect(Math.abs(start.right - (main.right - PAD - 1))).toBeLessThanOrEqual(1)
+
+      // scrolled back to where the row starts, the first item is at the right edge and the current one (the last, at the left) is out of the strip
+      await strip(page).evaluate((el) => { el.scrollLeft = 0 })
+
+      const room = await box(strip(page))
+
+      expect(Math.abs((await box(items(page).first())).right - room.right), 'the row starts at the right').toBeLessThanOrEqual(8)
+      expect(await inside(current(page))).toBe(false)
+      await page.evaluate(() => document.dispatchEvent(new Event('livewire:navigated')))
+      await expect.poll(() => inside(current(page))).toBe(true)
+      expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 0])
+    })
+
     test('a px-* or mx-* a host puts on the bar still wins, with the nav beside the forms and without', async ({ page }) => {
       for (const width of [1440, 390]) {
         await open(page, { width, tw })
@@ -305,6 +369,81 @@ test.describe('settings page, the strip and a Livewire round trip', () => {
     const bar = await box(page.getByTestId('settings-bar'))
 
     expect(Math.abs(bar.x - nav.x)).toBeLessThanOrEqual(1)
+  })
+})
+
+// A real `wire:navigate`: the nav items are links (?links=1) to this same screen with another `section`, so Livewire fetches the page and swaps the body. The
+// slot of the new page is a new element with its own factory (init() runs, the old one's destroy() ran), and the spec above that dispatches a synthetic
+// `livewire:navigated` cannot tell a factory that listens for the real one from one that does not.
+test.describe('settings page, a real wire:navigate between two settings pages', () => {
+  test('the new page\'s current item is in its strip, the page is not scrolled sideways, and nothing is listening twice after three navigations', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__listeners = { document: { add: 0, remove: 0 }, slot: { add: {}, remove: {} } }
+
+      for (const [name, bucket] of [['addEventListener', 'add'], ['removeEventListener', 'remove']]) {
+        const original = EventTarget.prototype[name]
+
+        EventTarget.prototype[name] = function (type, ...rest) {
+          if (this === document && type === 'livewire:navigated') window.__listeners.document[bucket]++
+
+          if (this instanceof Element && this.hasAttribute('data-atom-page-columns-nav')) {
+            window.__listeners.slot[bucket][type] = (window.__listeners.slot[bucket][type] ?? 0) + 1
+          }
+
+          return original.call(this, type, ...rest)
+        }
+      }
+    })
+    await open(page, { width: 390, query: '&links=1&section=profile' })
+
+    // a mark on the document: a full page load would lose it, a wire:navigate keeps it
+    await page.evaluate(() => { window.__sameDocument = true })
+    await expect(page.getByTestId('nav-profile')).toHaveAttribute('aria-current', 'page')
+    await expect.poll(() => inside(page.getByTestId('nav-profile'))).toBe(true)
+    expect(await strip(page).evaluate((el) => el.scrollLeft)).toBe(0)
+
+    const tags = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin']
+    const live = () => page.evaluate((types) => {
+      const l = window.__listeners
+
+      return {
+        document: l.document.add - l.document.remove,
+        slot: Object.fromEntries(types.map((type) => [type, (l.slot.add[type] ?? 0) - (l.slot.remove[type] ?? 0)])),
+        added: l.document.add,
+      }
+    }, tags)
+
+    const first = await live()
+
+    expect(first.document, 'the first page\'s factory listens once').toBeGreaterThanOrEqual(1)
+    for (const type of tags) expect(first.slot[type], type).toBe(1)
+
+    // profile -> domains (the last item: the strip has to scroll to show it), domains -> profile (back to the first), profile -> domains
+    for (const [from, to] of [['profile', 'domains'], ['domains', 'profile'], ['profile', 'domains']]) {
+      await page.evaluate((id) => { document.querySelector('[data-atom-page-columns-nav]').dataset.old = id }, from)
+      await page.getByTestId(`nav-${to}`).click()
+      await expect(page).toHaveURL(new RegExp(`section=${to}`))
+      await expect(page.getByTestId(`nav-${to}`)).toHaveAttribute('aria-current', 'page')
+
+      // the body was swapped for the new page's (a new slot element, not the old one carried over), and the document was not reloaded
+      await expect.poll(() => page.locator('[data-atom-page-columns-nav]').evaluate((el) => el.dataset.old ?? 'new')).toBe('new')
+      expect(await page.evaluate(() => window.__sameDocument === true), 'a wire:navigate, not a page load').toBe(true)
+
+      await expect.poll(() => inside(page.getByTestId(`nav-${to}`)), `${from} -> ${to}`).toBe(true)
+
+      const left = await strip(page).evaluate((el) => el.scrollLeft)
+
+      if (to === 'domains') expect(left, 'the strip was scrolled to the last item').toBeGreaterThan(0)
+      else expect(left, 'the first item needs no scrolling').toBe(0)
+
+      expect(await page.evaluate(() => window.scrollX), 'the page is not scrolled sideways').toBe(0)
+      expect(await noSideScroll(page)).toBe(true)
+    }
+
+    // each navigation made a new factory (listeners were added) and the old one's destroy() took its own away: the live count is where it began
+    await expect.poll(async () => (await live()).document).toBe(first.document)
+    await expect.poll(async () => (await live()).slot).toEqual(first.slot)
+    expect((await live()).added, 'the factories did listen again, once per page').toBeGreaterThanOrEqual(first.added + 3)
   })
 })
 
