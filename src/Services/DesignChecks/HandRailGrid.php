@@ -77,7 +77,7 @@ class HandRailGrid extends PageRule
 
     /**
      * Whether the fixed track comes first and its first child, or a child of that, is a navigation (a `<nav>`, `<atom:navlist>` or `<atom:tabs>`): a settings
-     * page's side menu, which `<atom:page.columns>` (a rail after the main column) does not replace
+     * page's side menu, which is not a rail (it is the `nav` slot of `<atom:page.columns>`; `hand-settings-nav` reads a hand-built one's selectors)
      */
     protected function hasSideNav(File $file, array $node): bool
     {

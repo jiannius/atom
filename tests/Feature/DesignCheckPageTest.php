@@ -9,7 +9,7 @@ use Jiannius\Atom\Tests\Support\DesignHost;
  */
 
 describe('page and header: the severities and groups', function () {
-    it('is review for the four layout rules, info for the two nits and break for the persisted trail', function (string $id, string $severity) {
+    it('is review for the five layout rules, info for the two nits and break for the persisted trail', function (string $id, string $severity) {
         $rule = (new DesignCheck)->rules()[$id];
 
         expect($rule::SEVERITY)->toBe($severity)->and($rule::GROUP)->toBe('Page and header');
@@ -18,6 +18,7 @@ describe('page and header: the severities and groups', function () {
         ['hand-crumbs', DesignCheck::REVIEW],
         ['own-sidebar-toggle', DesignCheck::REVIEW],
         ['hand-rail-grid', DesignCheck::REVIEW],
+        ['hand-settings-nav', DesignCheck::REVIEW],
         ['page-tabs', DesignCheck::INFO],
         ['page-block-margin', DesignCheck::INFO],
         ['persisted-static-crumbs', DesignCheck::BREAK],
@@ -26,7 +27,8 @@ describe('page and header: the severities and groups', function () {
     it('runs the persisted trail on a view read as text only, and no other of them', function () {
         $rules = (new DesignCheck)->rules();
 
-        expect($rules['persisted-static-crumbs']->structural())->toBeFalse();
+        expect($rules['persisted-static-crumbs']->structural())->toBeFalse()
+            ->and($rules['hand-settings-nav']->structural())->toBeFalse();
 
         foreach (['page-header', 'hand-crumbs', 'own-sidebar-toggle', 'page-tabs', 'hand-rail-grid', 'page-block-margin'] as $id) {
             expect($rules[$id]->structural())->toBeTrue();
@@ -132,6 +134,23 @@ describe('page-block-margin', function () {
 
     it('does not take a margin that adds no room, or one on another slot', function () {
         expect(DesignHost::scanSource('<atom:page><div class="m-0 mt-0 mb-auto my-0"/><x-slot:other><div class="mt-4"/></x-slot:other></atom:page>', 'page-block-margin'))->toBe([]);
+    });
+});
+
+describe('hand-settings-nav', function () {
+    it('names what it saw: a selector into the navlist, or a gutter override', function () {
+        expect(DesignHost::notes('<div class="[&_[data-atom-navlist-item]]:w-auto"></div>', 'hand-settings-nav'))
+            ->toBe([1 => '`[&_[data-atom-navlist-item]]:w-auto` (a selector into the navlist\'s internals)'])
+            ->and(DesignHost::notes('<div class="lg:[--atom-gutter-e:0px]"></div>', 'hand-settings-nav'))
+            ->toBe([1 => '`lg:[--atom-gutter-e:0px]` (a gutter override)']);
+    });
+
+    it('does not flag the page\'s other variables, another component\'s internals or the settings nav written as the slot', function () {
+        foreach (['[--atom-page-pb:80px]', '[&_[data-atom-table]]:w-full', '[--atom-gutter:0px]', 'gutter-s'] as $class) {
+            expect(DesignHost::scanSource("<atom:page><div class=\"{$class}\"></div></atom:page>", 'hand-settings-nav'))->toBe([], $class);
+        }
+
+        expect(DesignHost::scanSource('<atom:page><atom:page.columns><x-slot:nav><atom:navlist><atom:navlist.item>a</atom:navlist.item></atom:navlist></x-slot:nav>x</atom:page.columns></atom:page>', 'hand-settings-nav'))->toBe([]);
     });
 });
 
