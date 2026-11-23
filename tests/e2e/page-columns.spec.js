@@ -740,6 +740,17 @@ test.describe('page.columns, the nav slot as a strip', () => {
     expect(await strip(page).evaluate((el) => el.scrollLeft)).toBe(0)
   })
 
+  test('an item is as wide as its text, not the strip: four items in a 650px row stay short', async ({ page }) => {
+    await open(page, { shell: 'header', width: 700, query: '&nav=1&rail=0&navitems=4' })
+
+    const widths = await page.locator('[data-atom-page-columns-nav] [data-atom-navlist-item]').evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().width)))
+    const row = await strip(page).evaluate((el) => el.clientWidth)
+
+    expect(row).toBeGreaterThan(550)
+    // together they take about half the row (a w-full item shrunk to fit would fill it)
+    expect(widths.reduce((a, b) => a + b, 0), `widths ${widths}, row ${row}`).toBeLessThan(row * 0.7)
+  })
+
   test('the strip is there for a header shell too, and a current item at the start does not scroll it', async ({ page }) => {
     await open(page, { shell: 'header', width: 390, query: '&nav=1&rail=0&navitems=12&navcurrent=1' })
 

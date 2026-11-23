@@ -152,6 +152,17 @@ test.describe('settings page, the strip and a Livewire round trip', () => {
     expect(await strip(page).evaluate((el) => el.scrollLeft)).toBe(0)
   })
 
+  test('a morph that moves the current item brings it into view even after the reader scrolled the strip', async ({ page }) => {
+    await open(page, { width: 390, query: '&section=profile' })
+
+    // the reader's gesture on the strip (it stops the strip being scrolled back by a morph that changes nothing)
+    await strip(page).evaluate((el) => el.dispatchEvent(new Event('pointerdown')))
+    await page.evaluate(() => window.Livewire.all().find((c) => c.name === 'atom-e2e-settings-page').$wire.select('domains'))
+
+    await expect(page.getByTestId('nav-domains')).toHaveAttribute('aria-current', 'page')
+    await expect.poll(() => inside(page.getByTestId('nav-domains'))).toBe(true)
+  })
+
   test('the collapsed group opens and closes beside the forms, and the strip needs no disclosure', async ({ page }) => {
     await open(page, { width: 1440 })
 
