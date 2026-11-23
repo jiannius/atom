@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 // The patterns overview (/atom/docs/patterns): every pattern page with when to use it, reachable from the docs nav and the
 // docs index, and each link opens its page.
 
-const PATTERNS = ['app-shell-sidebar', 'app-shell-header', 'record-page', 'list-page', 'document-page', 'form-page', 'slide-over-form']
+const PATTERNS = ['app-shell-sidebar', 'app-shell-header', 'record-page', 'list-page', 'document-page', 'form-page', 'settings-page', 'slide-over-form']
 
 test('lists every pattern page with a link, when to use it and the file to read', async ({ page }) => {
   const errors = []

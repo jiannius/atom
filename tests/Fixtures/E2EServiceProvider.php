@@ -84,6 +84,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-form-dirty-child', FormDirtyChildFixture::class);
         Livewire::component('atom-e2e-url-filters', UrlFiltersFixture::class);
         Livewire::component('atom-e2e-shell-actions', ShellActionsFixture::class);
+        Livewire::component('atom-e2e-settings-page', SettingsPageFixture::class);
         Livewire::component('atom-e2e-account-menu', AccountMenuFixture::class);
         Livewire::component('atom-e2e-page-header-slide', PageHeaderSlideFixture::class);
         Livewire::component('atom-e2e-card-panel', CardPanelFixture::class);
@@ -223,6 +224,8 @@ class E2EServiceProvider extends ServiceProvider
             'styles' => in_array($request->query('tw'), ['floor', 'latest'], true) ? ['/atom/e2e/consumer-css/'.$request->query('tw')] : [],
         ]));
         Route::middleware('web')->get('/atom/e2e/shell-editor', fn () => view('atom::e2e.shell-editor'));
+        // The settings screen (page.columns with a nav slot), a Livewire component in the sidebar shell: ?tw=floor|latest, ?section=<key>
+        Route::middleware('web')->get('/atom/e2e/shell-settings', fn () => view('atom::e2e.shell-settings'));
         Route::middleware('web')->get('/atom/e2e/tokens', fn () => view('atom::e2e.tokens'));
         // The restyled controls (V4-3a), on the consumer's Tailwind: ?tw, ?density, ?dark=1, ?accent, ?section
         Route::middleware('web')->get('/atom/e2e/controls', fn () => view('atom::e2e.controls'));

@@ -26,6 +26,7 @@ import breadcrumbs from './alpinejs/breadcrumbs'
 import headerShell from './alpinejs/header-shell'
 import sidebarDrawer from './alpinejs/sidebar-drawer'
 import pageTabs from './alpinejs/page-tabs'
+import pageColumnsNav from './alpinejs/page-columns-nav'
 import tableCount from './alpinejs/table-count'
 import tableChecked from './alpinejs/table-checked'
 import tableColumns from './alpinejs/table-columns'
@@ -57,6 +58,7 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('headerShell', headerShell)
     Alpine.data('sidebarDrawer', sidebarDrawer)
     Alpine.data('pageTabs', pageTabs)
+    Alpine.data('pageColumnsNav', pageColumnsNav)
     Alpine.data('tableCount', tableCount)
     Alpine.data('tableChecked', tableChecked)
     Alpine.data('tableColumns', tableColumns)

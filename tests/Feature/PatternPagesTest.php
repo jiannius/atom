@@ -95,6 +95,23 @@ describe('pattern pages', function () {
             ->and(domQuery($html, '//*[@data-testid="shell-search"]')[0]->textContent)->toContain('⌘');
     });
 
+    it('draws the settings page as a page.columns with a nav slot, the forms beside it and the save bar last in the form', function () {
+        request()->query->set('section', 'billing');
+
+        $html = view('atom::docs.patterns.settings-page')->render();
+        $columns = '//main//*[@data-atom-page-columns][@data-has-nav]';
+        $current = domQuery($html, $columns.'/*[@data-atom-page-columns-nav]//*[@data-atom-navlist-item][@aria-current="page"]');
+
+        expect(domQuery($html, $columns.'/*[@data-atom-page-columns-nav]/nav[@data-atom-navlist][@aria-label="Settings sections"]'))->toHaveCount(1)
+            ->and(domQuery($html, $columns.'/*[@data-atom-page-columns-nav]//*[@data-atom-navlist-group]'))->toHaveCount(2)
+            ->and($current)->toHaveCount(1)
+            ->and(trim($current[0]->textContent))->toBe('Billing')
+            ->and(domQuery($html, $columns.'/*[@data-atom-page-columns-main]/form//*[@data-atom-card]'))->not->toBeEmpty()
+            ->and(domQuery($html, $columns.'/*[@data-atom-page-columns-main]/form/*[last()][@data-atom-save-bar]'))->toHaveCount(1)
+            // nothing hand-built for it: no arbitrary variant into the navlist's internals
+            ->and(domQuery($html, '//main//*[contains(@class, "data-atom-navlist")]'))->toBeEmpty();
+    });
+
     it('does not choke on a page query that is an array', function (string $name) {
         request()->query->set('page', ['x']);
 
@@ -193,6 +210,7 @@ describe('docs navigation', function () {
             ->toContain('List page')
             ->toContain('Document page')
             ->toContain('Form page')
+            ->toContain('Settings page')
             ->toContain('Slide-over form')
             ->toContain('Overview')
             ->toContain('/atom/docs/patterns/app-shell-header');

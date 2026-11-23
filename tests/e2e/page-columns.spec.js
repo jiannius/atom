@@ -34,7 +34,8 @@ const box = (locator) => locator.evaluate((el) => {
 const layout = async (page) => ({
   columns: await box(page.locator('[data-atom-page-columns]')),
   main: await box(page.locator('[data-atom-page-columns-main]')),
-  rail: await box(page.locator('[data-atom-page-columns-rail]')),
+  // none with ?rail=0
+  rail: (await page.locator('[data-atom-page-columns-rail]').count()) ? await box(page.locator('[data-atom-page-columns-rail]')) : null,
 })
 
 // nudge the window until the row of columns is the width asked for (the row is the window less the shell and the gutters)
@@ -464,5 +465,367 @@ test.describe('page.columns, a host utility beats the base', () => {
 
     expect(await page.locator('[data-atom-page-columns]').evaluate((el) => getComputedStyle(el).rowGap)).toBe('22px')
     expect(await page.locator('[data-atom-page-columns-rail]').evaluate((el) => getComputedStyle(el).position)).toBe('sticky')
+  })
+})
+
+// The `nav` slot (a settings screen's column of navigation). It follows the room like the rail: a 200px column beside the main column from a row 768px
+// wide (22px between them), a row of its own above it below that. Beside, it is sticky under the bar like a sticky rail (6px of bleed inside, the content
+// on the 200px), and `--atom-page-nav-offset` on the main column is 222px; stacked or without a nav, 0. With a rail too, the rail is beside the main column
+// from 1410px (200 + 22 + 320 + 22, over 0.4) instead of 855px.
+test.describe('page.columns, the nav slot', () => {
+  const NAV = 200
+  const NAV_SWITCH = 768
+  const WITH_RAIL = (NAV + GAP + RAIL + GAP) / 0.4
+
+  const navBox = (page) => box(page.locator('[data-atom-page-columns-nav] [data-atom-navlist]'))
+  // the offset is a calc() of the nav's width and the gap, so it is read as the width a probe takes from it, not as the string
+  const offset = (page) => page.locator('[data-atom-page-columns-main]').evaluate((el) => {
+    const probe = document.createElement('div')
+
+    probe.style.cssText = 'width: var(--atom-page-nav-offset, 0px); height: 1px'
+    el.appendChild(probe)
+
+    const width = probe.getBoundingClientRect().width
+
+    probe.remove()
+
+    return `${Math.round(width)}px`
+  })
+
+  test('beside the main column from a row 768px wide: a 200px column, 22px between them, the offset 222px', async ({ page }) => {
+    await open(page, { shell: 'header', width: 1000, query: '&nav=1&rail=0' })
+
+    for (const target of [900, 780]) {
+      await setRowWidth(page, target)
+
+      const nav = await navBox(page)
+      const l = await layout(page)
+
+      expect(Math.abs(nav.width - NAV), `row ${l.columns.width}: nav ${nav.width}`).toBeLessThanOrEqual(0.5)
+      expect(Math.abs(nav.x - l.columns.x), 'the nav starts at the row').toBeLessThanOrEqual(1)
+      expect(Math.abs(l.main.x - nav.right - GAP), 'the gap between them').toBeLessThanOrEqual(1)
+      expect(Math.abs(l.main.right - l.columns.right), 'the main column takes the rest').toBeLessThanOrEqual(1)
+      expect(Math.abs(nav.y - l.main.y), 'on one top line').toBeLessThanOrEqual(1)
+      expect(await offset(page)).toBe('222px')
+    }
+
+    expect(await page.locator('[data-atom-page-columns]').getAttribute('data-has-nav')).not.toBeNull()
+    expect(await noSideScroll(page)).toBe(true)
+  })
+
+  test('a row of its own above the main column below 768px: full width, 22px over it, no offset', async ({ page }) => {
+    await open(page, { shell: 'header', width: 1000, query: '&nav=1&rail=0' })
+
+    for (const target of [760, 600, 358]) {
+      await setRowWidth(page, target)
+
+      const nav = await box(page.locator('[data-atom-page-columns-nav]'))
+      const l = await layout(page)
+
+      expect(Math.abs(nav.width - l.columns.width), `row ${l.columns.width}`).toBeLessThanOrEqual(1)
+      expect(Math.abs(l.main.y - nav.bottom - GAP), 'the gap under it').toBeLessThanOrEqual(1)
+      expect(Math.abs(l.main.width - l.columns.width)).toBeLessThanOrEqual(1)
+      expect(await offset(page)).toBe('0px')
+      expect(await noSideScroll(page)).toBe(true)
+    }
+  })
+
+  test('the switch is the 768px container query: beside at 770, stacked at 766 (the row, not the window)', async ({ page }) => {
+    await open(page, { shell: 'header', width: 900, query: '&nav=1&rail=0' })
+
+    for (const [target, expected] of [[770, 'beside'], [766, 'stacked']]) {
+      await setRowWidth(page, target)
+
+      const nav = await box(page.locator('[data-atom-page-columns-nav]'))
+      const l = await layout(page)
+
+      expect(nav.bottom <= l.main.y + 1 ? 'stacked' : 'beside', `row ${l.columns.width}`).toBe(expected)
+    }
+  })
+
+  test('a page.columns without a nav has no offset and no data-has-nav', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query: '&rail=0' })
+
+    expect(await page.locator('[data-atom-page-columns]').getAttribute('data-has-nav')).toBeNull()
+    expect(await offset(page)).toBe('0px')
+    await expect(page.locator('[data-atom-page-columns-nav]')).toHaveCount(0)
+  })
+
+  test('nav, main and rail: all three side by side from 1410px, the rail under both below it', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1700, query: '&nav=1&sticky=1&tall=1' })
+
+    await setRowWidth(page, 1420, 800)
+
+    let l = await layout(page)
+    let nav = await navBox(page)
+
+    expect(placement(l), `row ${l.columns.width}`).toBe('beside')
+    expect(Math.abs(nav.width - NAV)).toBeLessThanOrEqual(0.5)
+    expect(Math.abs(l.main.x - nav.right - GAP)).toBeLessThanOrEqual(1)
+    expect(Math.abs(l.rail.width - (RAIL + 2 * BLEED)), 'the rail with its bleed').toBeLessThanOrEqual(0.5)
+    expect(Math.abs(l.rail.right - BLEED - l.columns.right)).toBeLessThanOrEqual(1)
+    expect(l.main.width, 'main keeps 60%').toBeGreaterThanOrEqual(l.columns.width * 0.6 - 1)
+    expect(await page.locator('[data-atom-page-columns-rail]').evaluate((el) => getComputedStyle(el).overflowY)).toBe('auto')
+
+    await setRowWidth(page, 1400, 800)
+
+    l = await layout(page)
+    nav = await navBox(page)
+
+    // the nav stays beside the main column; the rail wraps under both, full width, plain content (no inner scroll or bleed)
+    expect(placement(l), `row ${l.columns.width}`).toBe('below')
+    expect(Math.abs(l.main.x - nav.right - GAP)).toBeLessThanOrEqual(1)
+    expect(Math.abs(l.rail.width - l.columns.width)).toBeLessThanOrEqual(1)
+    expect(Math.abs(l.rail.y - l.main.bottom - GAP)).toBeLessThanOrEqual(1)
+    expect(await page.locator('[data-atom-page-columns-rail]').evaluate((el) => { const cs = getComputedStyle(el); return { overflowY: cs.overflowY, padding: cs.paddingTop, margin: cs.marginTop } })).toEqual({ overflowY: 'visible', padding: '0px', margin: '0px' })
+    expect(WITH_RAIL).toBe(1410)
+    expect(await noSideScroll(page)).toBe(true)
+  })
+
+  test('a row that is narrow wraps nav, main and rail as three rows', async ({ page }) => {
+    await open(page, { shell: 'header', width: 600, query: '&nav=1&sticky=1' })
+
+    const nav = await box(page.locator('[data-atom-page-columns-nav]'))
+    const l = await layout(page)
+
+    expect(nav.bottom).toBeLessThanOrEqual(l.main.y + 1)
+    expect(l.main.bottom).toBeLessThanOrEqual(l.rail.y + 1)
+  })
+
+  for (const [shell, crumbs] of [['sidebar', true], ['header', false]]) {
+    test(`${shell} shell: the nav beside the main column stays 1rem under the bar while the page scrolls, and never leaves the columns`, async ({ page }) => {
+      await open(page, { shell, width: 1440, query: `&nav=1&tall=1&rail=0${crumbs ? '&crumbs=1' : ''}` })
+
+      const bar = await page.evaluate(() => {
+        const probe = document.createElement('div')
+
+        probe.style.cssText = 'position:absolute;height:var(--atom-shell-bar-h,0px);width:1px'
+        document.body.append(probe)
+
+        const h = probe.getBoundingClientRect().height
+
+        probe.remove()
+
+        return h
+      })
+
+      expect(bar > 0).toBe(true)
+
+      for (const y of [400, 900, 1500]) {
+        await page.evaluate((to) => window.scrollTo(0, to), y)
+        await page.waitForTimeout(50)
+
+        const item = await box(page.locator('[data-atom-page-columns-nav] [data-atom-navlist-item]').first())
+
+        expect(Math.abs(item.y - (bar + 16)), `scrolled ${y}: first item top ${item.y}, bar ${bar}`).toBeLessThanOrEqual(1)
+      }
+
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+      await page.waitForTimeout(50)
+
+      const l = await layout(page)
+      const nav = await box(page.locator('[data-atom-page-columns-nav]'))
+
+      expect(nav.bottom - BLEED).toBeLessThanOrEqual(l.columns.bottom + 1)
+    })
+  }
+
+  test('the 6px of padding and the negative margin keep the navlist on the 200px and the row\'s edge', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query: '&nav=1&rail=0' })
+
+    const style = await page.locator('[data-atom-page-columns-nav]').evaluate((el) => { const cs = getComputedStyle(el); return { padding: cs.paddingLeft, margin: cs.marginLeft, position: cs.position, overflowY: cs.overflowY } })
+
+    expect(style).toEqual({ padding: '6px', margin: '-6px', position: 'sticky', overflowY: 'auto' })
+  })
+
+  test('a nav taller than the window scrolls inside itself, and its last item is reached by Tab', async ({ page }) => {
+    await open(page, { shell: 'header', width: 1440, height: 400, query: '&nav=1&rail=0&tall=1&navitems=30' })
+
+    const nav = page.locator('[data-atom-page-columns-nav]')
+    const state = await nav.evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, innerHeight: window.innerHeight }))
+
+    expect(state.scrollHeight).toBeGreaterThan(state.clientHeight + 100)
+    expect(state.clientHeight).toBeLessThan(state.innerHeight)
+
+    const last = page.locator('[data-atom-page-columns-nav] [data-atom-navlist-item]').last()
+
+    await page.evaluate(() => window.scrollTo(0, 300))
+    await last.focus()
+    expect(await last.evaluate((el) => { const r = el.getBoundingClientRect(); const n = el.closest('[data-atom-page-columns-nav]').getBoundingClientRect(); return r.top >= n.top - 2 && r.bottom <= n.bottom + 2 })).toBe(true)
+    expect(await page.evaluate(() => window.scrollY), 'the page stayed where it was').toBe(300)
+  })
+
+  test('a host utility on the nav slot wins over the base', async ({ page }) => {
+    await open(page, { shell: 'header', width: 1440, query: '&nav=1&rail=0&navhost=1' })
+
+    expect(await page.locator('[data-atom-page-columns-nav]').evaluate((el) => getComputedStyle(el).position)).toBe('static')
+  })
+})
+
+// Below 768px of row the navlist in the nav slot is a strip: one row of items that scrolls sideways, group labels and disclosures hidden, a collapsed
+// group's items shown, the current item scrolled into the strip's box (the strip, never the page).
+test.describe('page.columns, the nav slot as a strip', () => {
+  const query = '&nav=1&rail=0&navitems=12&navgroups=1&navcurrent=11&tall=1'
+  const strip = (page) => page.locator('[data-atom-page-columns-nav] [data-atom-navlist]')
+  const inside = (page, item) => item.evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    const s = el.closest('[data-atom-navlist]').getBoundingClientRect()
+
+    return r.left >= s.left - 0.5 && r.right <= s.right + 0.5
+  })
+
+  test('390px: one row of items that scrolls sideways, no group label or disclosure, the collapsed group\'s items shown', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 390, query })
+
+    const items = page.locator('[data-atom-page-columns-nav] [data-atom-navlist-item]')
+
+    expect(await items.count()).toBe(12)
+
+    const tops = await items.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)))
+
+    expect(new Set(tops).size, `tops ${tops}`).toBe(1)
+
+    for (const sel of ['[data-atom-navlist-group-label]', '[data-atom-navlist-group-toggle]', '[data-atom-navlist-group-trigger]']) {
+      for (const el of await page.locator(`[data-atom-page-columns-nav] ${sel}`).all()) await expect(el).toBeHidden()
+    }
+
+    // the "Workspace" group starts collapsed (expandable, expanded=false): its items are in the strip all the same
+    await expect(page.getByTestId('nav-item').nth(7)).toBeVisible()
+
+    const state = await strip(page).evaluate((el) => { const cs = getComputedStyle(el); return { overflowX: cs.overflowX, overflowY: cs.overflowY, direction: cs.flexDirection, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth } })
+
+    expect(state).toMatchObject({ overflowX: 'auto', overflowY: 'hidden', direction: 'row' })
+    expect(state.scrollWidth).toBeGreaterThan(state.clientWidth + 50)
+    expect(await noSideScroll(page)).toBe(true)
+
+    // items keep their text on one line, at their own width
+    expect(await items.evaluateAll((els) => els.every((el) => getComputedStyle(el).whiteSpace === 'nowrap' && el.getBoundingClientRect().width < 200))).toBe(true)
+  })
+
+  test('beside the main column it is the sidebar\'s column again: group labels shown, the collapsed group closed, nothing scrolls sideways', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query })
+
+    await expect(page.locator('[data-atom-page-columns-nav] [data-atom-navlist-group-label]:not([data-for-header])').first()).toBeVisible()
+    await expect(page.locator('[data-atom-page-columns-nav] [data-atom-navlist-group-toggle]')).toBeVisible()
+    await expect(page.getByTestId('nav-item').nth(7)).toBeHidden()
+
+    const state = await strip(page).evaluate((el) => { const cs = getComputedStyle(el); return { direction: cs.flexDirection, overflowX: cs.overflowX, scrollLeft: el.scrollLeft } })
+
+    expect(state).toEqual({ direction: 'column', overflowX: 'visible', scrollLeft: 0 })
+  })
+
+  test('the current item is scrolled into the strip when it appears, and the page does not move', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 390, query })
+
+    const current = page.locator('[data-atom-page-columns-nav] [aria-current="page"]')
+
+    await expect(current).toHaveCount(1)
+    await expect.poll(() => strip(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
+    expect(await inside(page, current)).toBe(true)
+    expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 0])
+  })
+
+  test('after a navigation or a morph that finds the strip scrolled back, the current item is brought into view without moving the page', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 390, query })
+
+    const current = page.locator('[data-atom-page-columns-nav] [aria-current="page"]')
+
+    await page.evaluate(() => { window.scrollTo(0, 150); document.querySelector('[data-atom-page-columns-nav] [data-atom-navlist]').scrollLeft = 0 })
+    expect(await inside(page, current)).toBe(false)
+
+    await page.evaluate(() => document.dispatchEvent(new Event('livewire:navigated')))
+
+    await expect.poll(() => inside(page, current)).toBe(true)
+    expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 150])
+  })
+
+  test('a reader who scrolled the strip is not scrolled back by a resize', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 390, query })
+
+    const current = page.locator('[data-atom-page-columns-nav] [aria-current="page"]')
+
+    await expect.poll(() => inside(page, current)).toBe(true)
+    await strip(page).evaluate((el) => { el.dispatchEvent(new Event('pointerdown')); el.scrollLeft = 0 })
+    await page.setViewportSize({ width: 380, height: 900 })
+    await page.waitForTimeout(150)
+
+    expect(await strip(page).evaluate((el) => el.scrollLeft)).toBe(0)
+  })
+
+  test('an item is as wide as its text, not the strip: four items in a 650px row stay short', async ({ page }) => {
+    await open(page, { shell: 'header', width: 700, query: '&nav=1&rail=0&navitems=4' })
+
+    const widths = await page.locator('[data-atom-page-columns-nav] [data-atom-navlist-item]').evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().width)))
+    const row = await strip(page).evaluate((el) => el.clientWidth)
+
+    expect(row).toBeGreaterThan(550)
+    // together they take about half the row (a w-full item shrunk to fit would fill it)
+    expect(widths.reduce((a, b) => a + b, 0), `widths ${widths}, row ${row}`).toBeLessThan(row * 0.7)
+  })
+
+  test('the strip is there for a header shell too, and a current item at the start does not scroll it', async ({ page }) => {
+    await open(page, { shell: 'header', width: 390, query: '&nav=1&rail=0&navitems=12&navcurrent=1' })
+
+    expect(await strip(page).evaluate((el) => [el.scrollWidth > el.clientWidth, el.scrollLeft])).toEqual([true, 0])
+  })
+})
+
+// `form.actions bar` in the main column: with a nav beside it the bar spans nav and content (it starts where the nav does, ends where the main column
+// does) and its start slot and buttons sit where they do in a bar with no nav. The offset is `--atom-page-nav-offset`, read by two rules in atom.css (`@layer base`).
+test.describe('page.columns, the save bar with a nav beside the main column', () => {
+  const bar = (page) => page.getByTestId('bar')
+  const PAD = 16
+
+  test('1440px: the bar starts at the nav and ends at the main column; its content starts where the main column does, plus the bar\'s own padding', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query: '&nav=1&rail=0&bar=1' })
+
+    const l = await layout(page)
+    const nav = await box(page.locator('[data-atom-page-columns-nav] [data-atom-navlist]'))
+    const card = await box(bar(page))
+    const start = await box(page.getByTestId('bar-start'))
+    const save = await box(page.getByTestId('bar-save'))
+    const cancel = await box(page.getByTestId('bar-cancel'))
+
+    // a border of 1px sits between the card's edge and its padding
+    expect(Math.abs(card.x - nav.x), 'the bar starts where the nav does').toBeLessThanOrEqual(1)
+    expect(Math.abs(card.right - l.main.right), 'and ends where the main column does').toBeLessThanOrEqual(1)
+    expect(Math.abs(start.x - (l.main.x + PAD + 1)), 'the start slot is where it is in a content-only bar').toBeLessThanOrEqual(1)
+    expect(Math.abs(cancel.right - (l.main.right - PAD - 1)), 'the buttons end where they do in a content-only bar').toBeLessThanOrEqual(1)
+    expect(save.right).toBeLessThanOrEqual(cancel.x)
+    expect(await noSideScroll(page)).toBe(true)
+  })
+
+  test('the same bar in a page.columns with no nav is the plain bar: as wide as the main column, nothing to offset', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query: '&rail=0&bar=1' })
+
+    const l = await layout(page)
+    const card = await box(bar(page))
+    const start = await box(page.getByTestId('bar-start'))
+
+    expect(Math.abs(card.x - l.main.x)).toBeLessThanOrEqual(1)
+    expect(Math.abs(card.right - l.main.right)).toBeLessThanOrEqual(1)
+    expect(Math.abs(start.x - (l.main.x + PAD + 1))).toBeLessThanOrEqual(1)
+  })
+
+  test('390px: the nav is a strip above the main column and the bar is the plain bar', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 390, query: '&nav=1&rail=0&bar=1' })
+
+    const l = await layout(page)
+    const card = await box(bar(page))
+    const start = await box(page.getByTestId('bar-start'))
+
+    expect(Math.abs(card.x - l.main.x)).toBeLessThanOrEqual(1)
+    expect(Math.abs(card.right - l.main.right)).toBeLessThanOrEqual(1)
+    expect(Math.abs(start.x - (l.main.x + PAD + 1))).toBeLessThanOrEqual(1)
+  })
+
+  test('the bar stays on the screen while the page scrolls, over the nav\'s column, with the bottom room unchanged', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, height: 800, query: '&nav=1&rail=0&bar=1' })
+
+    const card = await bar(page).evaluate((el) => { const r = el.getBoundingClientRect(); return { bottom: r.bottom, marginBottom: getComputedStyle(el).marginBottom } })
+
+    // stuck 0.75rem above the bottom of the window, as without a nav
+    expect(Math.abs(800 - card.bottom - 12)).toBeLessThanOrEqual(1)
+    expect(parseFloat(card.marginBottom)).toBeCloseTo(-(120 - 12), 0)
   })
 })
