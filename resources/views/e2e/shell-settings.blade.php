@@ -1,7 +1,7 @@
 @php
 // The settings screen (page.columns with a `nav` slot) in the sidebar shell, as a Livewire component so a round trip morphs the nav.
 // ?tw=floor|latest is the consumer build (default latest); ?section=<key> is the current item (default: the last of the list); ?nav=late prints the slot without its navlist until $wire.showNav();
-// ?dir=rtl writes dir="rtl" on <html> before the page is drawn; ?links=1 makes the nav items links that wire:navigate to this page again (the query is carried); ?persist=nav wraps the navlist in @persist, ?persist=columns the whole page.columns (the nav slot's own element then survives a navigation).
+// ?dir=rtl writes dir="rtl" on <html> from a script that runs while the page's body is parsed (before the page is laid out, not before the layout's own markup); ?links=1 makes the nav items links that wire:navigate to this page again (the query is carried); ?persist=nav wraps the navlist in @persist, ?persist=columns the whole page.columns (the nav slot's own element then survives a navigation).
 Auth::setUser(new \Illuminate\Auth\GenericUser(['id' => 1, 'name' => 'Alex Doe', 'email' => 'alex@example.com', 'avatar' => null]));
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
 $section = is_string(request()->query('section')) ? request()->query('section') : 'domains';

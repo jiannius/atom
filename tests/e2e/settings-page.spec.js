@@ -32,7 +32,8 @@ const inside = (item) => item.evaluate((el) => {
   const r = el.getBoundingClientRect()
   const s = el.closest('[data-atom-navlist]').getBoundingClientRect()
 
-  return r.left >= s.left - 0.5 && r.right <= s.right + 0.5
+  // a box-less element (display: none, detached) is nowhere, not inside
+  return r.width > 0 && r.height > 0 && r.left >= s.left - 0.5 && r.right <= s.right + 0.5
 })
 const noSideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
@@ -55,32 +56,53 @@ const offsetIn = (locator) => locator.evaluate((el) => {
   return width
 })
 
-// counts the listeners added to and removed from `document` for `livewire:navigated`, and from the nav slot element, whatever page they were on
+// A registry of the listeners that are EFFECTIVELY registered on `document` (for `livewire:navigated`) and on every nav slot element (`data-atom-page-columns-nav`),
+// kept the way the DOM keeps them: an entry is target + type + capture + the listener, adding the same one again changes nothing, and removing deletes only an exact
+// match. A `removeEventListener` with another function, or without the `capture` the listener was added with, removes nothing, so a destroy() that leaks (as a
+// call-counting spy would not see) leaves the entry in the registry. Slot elements stay in it once detached: their entries are the leak. `added` counts every
+// new entry on `document`, over all the pages of the run.
 const spyOnListeners = (page) => page.addInitScript(() => {
-  window.__listeners = { document: { add: 0, remove: 0 }, slot: { add: {}, remove: {} } }
+  const registry = { targets: new Map(), added: 0 }
+  const capture = (options) => (typeof options === 'boolean' ? options : !!options?.capture)
+  const watched = (target, type) => (target === document ? type === 'livewire:navigated' : target instanceof Element && target.hasAttribute('data-atom-page-columns-nav'))
+  const originalAdd = EventTarget.prototype.addEventListener
+  const originalRemove = EventTarget.prototype.removeEventListener
 
-  for (const [name, bucket] of [['addEventListener', 'add'], ['removeEventListener', 'remove']]) {
-    const original = EventTarget.prototype[name]
+  window.__registry = registry
 
-    EventTarget.prototype[name] = function (type, ...rest) {
-      if (this === document && type === 'livewire:navigated') window.__listeners.document[bucket]++
+  EventTarget.prototype.addEventListener = function (type, listener, options) {
+    if (listener && watched(this, type)) {
+      const entries = registry.targets.get(this) ?? new Map()
+      const key = `${type}|${capture(options)}`
+      const set = entries.get(key) ?? new Set()
 
-      if (this instanceof Element && this.hasAttribute('data-atom-page-columns-nav')) {
-        window.__listeners.slot[bucket][type] = (window.__listeners.slot[bucket][type] ?? 0) + 1
-      }
+      if (! set.has(listener) && this === document) registry.added++
 
-      return original.call(this, type, ...rest)
+      set.add(listener)
+      entries.set(key, set)
+      registry.targets.set(this, entries)
     }
+
+    return originalAdd.call(this, type, listener, options)
+  }
+
+  EventTarget.prototype.removeEventListener = function (type, listener, options) {
+    registry.targets.get(this)?.get(`${type}|${capture(options)}`)?.delete(listener)
+
+    return originalRemove.call(this, type, listener, options)
   }
 })
 const GESTURES = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin']
+// what is registered now: `document` is the `livewire:navigated` listeners on it, `slot` the listeners of each gesture type on all the slot elements there ever were
 const liveListeners = (page) => page.evaluate((types) => {
-  const l = window.__listeners
+  const { targets, added } = window.__registry
+  const size = (target, type) => [...(targets.get(target) ?? new Map())].filter(([key]) => key.startsWith(`${type}|`)).reduce((sum, [, set]) => sum + set.size, 0)
+  const slots = [...targets.keys()].filter((target) => target !== document)
 
   return {
-    document: l.document.add - l.document.remove,
-    slot: Object.fromEntries(types.map((type) => [type, (l.slot.add[type] ?? 0) - (l.slot.remove[type] ?? 0)])),
-    added: l.document.add,
+    document: size(document, 'livewire:navigated'),
+    slot: Object.fromEntries(types.map((type) => [type, slots.reduce((sum, slot) => sum + size(slot, type), 0)])),
+    added,
   }
 }, GESTURES)
 
@@ -404,6 +426,9 @@ test.describe('settings page, the strip and a Livewire round trip', () => {
 // A real `wire:navigate`: the nav items are links (?links=1) to this same screen with another `section`, so Livewire fetches the page and swaps the body. The
 // slot of the new page is a new element with its own factory (init() runs, the old one's destroy() ran), and the spec above that dispatches a synthetic
 // `livewire:navigated` cannot tell a factory that listens for the real one from one that does not.
+// Mind what the tests of this describe prove: the first two (a plain navigation, and a persisted navlist) pass through the NEW slot's init(), which brings the
+// current item into the strip whether or not the factory listens for `livewire:navigated`; they hold the real navigation, the reveal and that no listener is left
+// behind. Only the last (page.columns in @persist, where the slot and its factory survive) proves the `livewire:navigated` listener itself.
 test.describe('settings page, a real wire:navigate between two settings pages', () => {
   test('the new page\'s current item is in its strip, the page is not scrolled sideways, and nothing is listening twice after three navigations', async ({ page }) => {
     await spyOnListeners(page)
@@ -451,8 +476,9 @@ test.describe('settings page, a real wire:navigate between two settings pages', 
     expect((await live()).added, 'the factories did listen again, once per page').toBeGreaterThanOrEqual(first.added + 3)
   })
 
-  // A navlist that survives a navigation (the host wraps it in @persist). The slot around it is part of page.columns, so it is a new element each time
-  // and its factory's init() brings the (persisted, so unchanged: nothing re-renders `aria-current` in it) current item into the strip.
+  // A navlist that survives a navigation (the host wraps it in @persist). The slot around it is part of page.columns, so it is a new element each time, and
+  // THE NEW SLOT'S init() brings the current item into the strip: this test passes with or without the factory's `livewire:navigated` listener (it holds the
+  // persisted navlist, the reveal and that no listener is left behind; the page.columns-in-@persist test below is the one that proves the listener).
   test('a persisted navlist is the same element after a navigation, and the new slot shows its current item', async ({ page }) => {
     await spyOnListeners(page)
     await open(page, { width: 390, query: '&links=1&persist=nav&section=domains' })
@@ -469,8 +495,9 @@ test.describe('settings page, a real wire:navigate between two settings pages', 
       expect(await page.evaluate(() => window.__sameDocument === true), 'a wire:navigate, not a page load').toBe(true)
       expect(await strip(page).evaluate((el) => el.dataset.mark), 'the navlist is the one the first page printed').toBe('kept')
       expect(await page.locator('[data-atom-page-columns-nav]').evaluate((el) => el.dataset.mark ?? 'new'), 'the slot around it is the new page\'s').toBe('new')
-      await expect(page.getByTestId('nav-domains')).toHaveAttribute('aria-current', 'page')
+      await expect(current(page)).toHaveCount(1)
       await expect.poll(() => inside(current(page))).toBe(true)
+      expect(await strip(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
       expect(await page.evaluate(() => window.scrollX)).toBe(0)
       expect(await noSideScroll(page)).toBe(true)
     }
@@ -479,8 +506,24 @@ test.describe('settings page, a real wire:navigate between two settings pages', 
     await expect.poll(async () => (await liveListeners(page)).document).toBe(first.document)
   })
 
-  // The whole page.columns persisted (the only way the slot's own element, and its factory, survive): nothing re-renders in it, so the current item is the one
-  // the first page printed. The reader scrolls the strip to its start (a gesture: the factory stops bringing the current item back after a resize) and
+  // Livewire's @persist contract, written down as it IS, not as it should be: the old element is kept as it was, so a persisted navlist still marks the page it was
+  // first rendered on as current, whatever page it is on now. A host that persists its nav has to move `aria-current` itself; atom does not. The tests around this one
+  // do not depend on it: they follow whichever item is current.
+  test('a persisted navlist keeps the aria-current of the page it was first rendered on (Livewire @persist; hosts must update it)', async ({ page }) => {
+    await open(page, { width: 390, query: '&links=1&persist=nav&section=domains' })
+    await expect(page.getByTestId('nav-domains')).toHaveAttribute('aria-current', 'page')
+
+    await strip(page).evaluate((el) => { el.scrollLeft = 0 })
+    await page.getByTestId('nav-profile').click()
+    await expect(page).toHaveURL(/section=profile/)
+
+    // the page is the profile one now (its link was followed), and the persisted navlist still says domains: documented current behaviour, not a wish
+    await expect(page.getByTestId('nav-domains')).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByTestId('nav-profile')).not.toHaveAttribute('aria-current', 'page')
+  })
+
+  // The whole page.columns persisted (the only way the slot's own element, and its factory, survive): Livewire keeps the old element, so the current item is the
+  // one the first page printed (see the test above; this test follows whichever item is current and does not rely on it). The reader scrolls the strip to its start (a gesture: the factory stops bringing the current item back after a resize) and
   // follows a link; only the real `livewire:navigated` is what brings it back.
   test('a nav slot that survives a navigation (page.columns in @persist) brings its current item back into view after the reader scrolled away', async ({ page }) => {
     await spyOnListeners(page)
@@ -499,7 +542,7 @@ test.describe('settings page, a real wire:navigate between two settings pages', 
 
       expect(await page.evaluate(() => window.__sameDocument === true), 'a wire:navigate, not a page load').toBe(true)
       expect(await page.locator('[data-atom-page-columns-nav]').evaluate((el) => el.dataset.mark), 'the same slot element').toBe('kept')
-      await expect(page.getByTestId('nav-domains')).toHaveAttribute('aria-current', 'page')
+      await expect(current(page)).toHaveCount(1)
 
       // the navigation hands the current item back to the factory: it is in the strip again, by the strip alone
       await expect.poll(() => inside(current(page)), `after following ${to}`).toBe(true)
@@ -647,21 +690,7 @@ test.describe('settings page, a navlist that is not the one init() saw', () => {
   })
 
   test('one listener per gesture type on the slot, all of them removed when the slot goes', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.__listeners = { add: {}, remove: {} }
-
-      for (const [name, bucket] of [['addEventListener', 'add'], ['removeEventListener', 'remove']]) {
-        const original = EventTarget.prototype[name]
-
-        EventTarget.prototype[name] = function (type, ...rest) {
-          if (this instanceof Element && this.hasAttribute('data-atom-page-columns-nav')) {
-            window.__listeners[bucket][type] = (window.__listeners[bucket][type] ?? 0) + 1
-          }
-
-          return original.call(this, type, ...rest)
-        }
-      }
-    })
+    await spyOnListeners(page)
     await open(page, { width: 390 })
 
     // three round trips (morphs) and the slot is still the same element with the same listeners
@@ -670,16 +699,12 @@ test.describe('settings page, a navlist that is not the one init() saw', () => {
       await expect(page.getByTestId(`nav-${section}`)).toHaveAttribute('aria-current', 'page')
     }
 
-    const types = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin']
-    const added = await page.evaluate(() => window.__listeners.add)
+    const live = await liveListeners(page)
 
-    for (const type of types) expect(added[type], `added ${type}`).toBe(1)
+    for (const type of GESTURES) expect(live.slot[type], `registered ${type}`).toBe(1)
 
+    // the slot goes: every one of them is removed, with the capture it was added with (registered listeners, not calls to removeEventListener)
     await page.locator('[data-atom-page-columns-nav]').evaluate((el) => el.remove())
-    await expect.poll(() => page.evaluate(() => window.__listeners.remove.pointerdown ?? 0)).toBe(1)
-
-    const removed = await page.evaluate(() => window.__listeners.remove)
-
-    for (const type of types) expect(removed[type], `removed ${type}`).toBe(1)
+    await expect.poll(async () => Object.values((await liveListeners(page)).slot)).toEqual(GESTURES.map(() => 0))
   })
 })
