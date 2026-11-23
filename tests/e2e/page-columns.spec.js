@@ -649,3 +649,100 @@ test.describe('page.columns, the nav slot', () => {
     expect(await page.locator('[data-atom-page-columns-nav]').evaluate((el) => getComputedStyle(el).position)).toBe('static')
   })
 })
+
+// Below 768px of row the navlist in the nav slot is a strip: one row of items that scrolls sideways, group labels and disclosures hidden, a collapsed
+// group's items shown, the current item scrolled into the strip's box (the strip, never the page).
+test.describe('page.columns, the nav slot as a strip', () => {
+  const query = '&nav=1&rail=0&navitems=12&navgroups=1&navcurrent=11&tall=1'
+  const strip = (page) => page.locator('[data-atom-page-columns-nav] [data-atom-navlist]')
+  const inside = (page, item) => item.evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    const s = el.closest('[data-atom-navlist]').getBoundingClientRect()
+
+    return r.left >= s.left - 0.5 && r.right <= s.right + 0.5
+  })
+
+  test('390px: one row of items that scrolls sideways, no group label or disclosure, the collapsed group\'s items shown', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 390, query })
+
+    const items = page.locator('[data-atom-page-columns-nav] [data-atom-navlist-item]')
+
+    expect(await items.count()).toBe(12)
+
+    const tops = await items.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().top)))
+
+    expect(new Set(tops).size, `tops ${tops}`).toBe(1)
+
+    for (const sel of ['[data-atom-navlist-group-label]', '[data-atom-navlist-group-toggle]', '[data-atom-navlist-group-trigger]']) {
+      for (const el of await page.locator(`[data-atom-page-columns-nav] ${sel}`).all()) await expect(el).toBeHidden()
+    }
+
+    // the "Workspace" group starts collapsed (expandable, expanded=false): its items are in the strip all the same
+    await expect(page.getByTestId('nav-item').nth(7)).toBeVisible()
+
+    const state = await strip(page).evaluate((el) => { const cs = getComputedStyle(el); return { overflowX: cs.overflowX, overflowY: cs.overflowY, direction: cs.flexDirection, scrollWidth: el.scrollWidth, clientWidth: el.clientWidth } })
+
+    expect(state).toMatchObject({ overflowX: 'auto', overflowY: 'hidden', direction: 'row' })
+    expect(state.scrollWidth).toBeGreaterThan(state.clientWidth + 50)
+    expect(await noSideScroll(page)).toBe(true)
+
+    // items keep their text on one line, at their own width
+    expect(await items.evaluateAll((els) => els.every((el) => getComputedStyle(el).whiteSpace === 'nowrap' && el.getBoundingClientRect().width < 200))).toBe(true)
+  })
+
+  test('beside the main column it is the sidebar\'s column again: group labels shown, the collapsed group closed, nothing scrolls sideways', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query })
+
+    await expect(page.locator('[data-atom-page-columns-nav] [data-atom-navlist-group-label]:not([data-for-header])').first()).toBeVisible()
+    await expect(page.locator('[data-atom-page-columns-nav] [data-atom-navlist-group-toggle]')).toBeVisible()
+    await expect(page.getByTestId('nav-item').nth(7)).toBeHidden()
+
+    const state = await strip(page).evaluate((el) => { const cs = getComputedStyle(el); return { direction: cs.flexDirection, overflowX: cs.overflowX, scrollLeft: el.scrollLeft } })
+
+    expect(state).toEqual({ direction: 'column', overflowX: 'visible', scrollLeft: 0 })
+  })
+
+  test('the current item is scrolled into the strip when it appears, and the page does not move', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 390, query })
+
+    const current = page.locator('[data-atom-page-columns-nav] [aria-current="page"]')
+
+    await expect(current).toHaveCount(1)
+    await expect.poll(() => strip(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
+    expect(await inside(page, current)).toBe(true)
+    expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 0])
+  })
+
+  test('after a navigation or a morph that finds the strip scrolled back, the current item is brought into view without moving the page', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 390, query })
+
+    const current = page.locator('[data-atom-page-columns-nav] [aria-current="page"]')
+
+    await page.evaluate(() => { window.scrollTo(0, 150); document.querySelector('[data-atom-page-columns-nav] [data-atom-navlist]').scrollLeft = 0 })
+    expect(await inside(page, current)).toBe(false)
+
+    await page.evaluate(() => document.dispatchEvent(new Event('livewire:navigated')))
+
+    await expect.poll(() => inside(page, current)).toBe(true)
+    expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 150])
+  })
+
+  test('a reader who scrolled the strip is not scrolled back by a resize', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 390, query })
+
+    const current = page.locator('[data-atom-page-columns-nav] [aria-current="page"]')
+
+    await expect.poll(() => inside(page, current)).toBe(true)
+    await strip(page).evaluate((el) => { el.dispatchEvent(new Event('pointerdown')); el.scrollLeft = 0 })
+    await page.setViewportSize({ width: 380, height: 900 })
+    await page.waitForTimeout(150)
+
+    expect(await strip(page).evaluate((el) => el.scrollLeft)).toBe(0)
+  })
+
+  test('the strip is there for a header shell too, and a current item at the start does not scroll it', async ({ page }) => {
+    await open(page, { shell: 'header', width: 390, query: '&nav=1&rail=0&navitems=12&navcurrent=1' })
+
+    expect(await strip(page).evaluate((el) => [el.scrollWidth > el.clientWidth, el.scrollLeft])).toEqual([true, 0])
+  })
+})

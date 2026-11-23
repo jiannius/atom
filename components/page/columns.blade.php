@@ -36,7 +36,7 @@ $railAttributes = $hasRail
 
 <div {{ $attributes }} data-atom-page-columns @if ($hasNav) data-has-nav @endif>
     @if ($hasNav)
-        <div {{ $navAttributes }} data-atom-page-columns-nav>
+        <div {{ $navAttributes }} x-data="pageColumnsNav" data-atom-page-columns-nav>
             {{ $nav }}
         </div>
     @endif

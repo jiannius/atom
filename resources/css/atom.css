@@ -1724,6 +1724,69 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
     }
 }
 
+/* page.columns `nav` slot, stacked above the main column (a row narrower than 768px, the complement of the query that puts it beside):
+   the navlist is a strip, a row of items that scrolls sideways, instead of a tall column the reader scrolls past to reach the form.
+   The groups and their items wrapper are `display: contents`, so every item is one flex child of the navlist; the group labels and an
+   expandable group's disclosure are hidden (a strip has no room for a heading), and a collapsed group still shows its items:
+   `x-show` hides it with an inline `display: none`, which only `!important` beats. The current item keeps navlist's own style
+   (`data-current`); the pageColumnsNav factory scrolls the strip, never the page, so it is in view. Unlayered, like the header shell's
+   restyle above, so it beats the `flex-col`, `w-full` and `overflow-visible` utilities the markup carries. 3px of padding with a
+   negative margin keep a focus ring at the strip's edge from being cut by the scroll box. The scrollbar stays, slim (a plain wheel
+   over the strip scrolls the page, so a mouse needs it to reach the items past the edge: as the tab strip's, which also fades its
+   edges and hides its bar on a touch screen; this strip does neither). */
+@container not (min-width: 768px) {
+    [data-atom-page-columns-nav] [data-atom-navlist] {
+        flex-direction: row;
+        align-items: center;
+        gap: 4px;
+        margin: -3px;
+        padding: 3px;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    [data-atom-page-columns-nav] [data-atom-navlist-group],
+    [data-atom-page-columns-nav] [data-atom-navlist-section] {
+        display: contents;
+    }
+
+    [data-atom-page-columns-nav] [data-atom-navlist-group-items] {
+        display: contents !important;
+    }
+
+    [data-atom-page-columns-nav] [data-atom-navlist-group-label],
+    [data-atom-page-columns-nav] [data-atom-navlist-group-toggle] {
+        display: none;
+    }
+
+    [data-atom-page-columns-nav] [data-atom-navlist-item] {
+        width: auto;
+        flex: none;
+        white-space: nowrap;
+    }
+
+    [data-atom-page-columns-nav] [data-atom-navlist-item] > [data-content] {
+        flex: none;
+    }
+
+    [data-atom-page-columns-nav] [data-atom-navlist]::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    [data-atom-page-columns-nav] [data-atom-navlist]::-webkit-scrollbar-thumb {
+        border-radius: 3px;
+        background-color: var(--atom-border-strong, currentColor);
+    }
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    @container not (min-width: 768px) {
+        [data-atom-page-columns-nav] [data-atom-navlist] {
+            scrollbar-width: thin;
+        }
+    }
+}
+
 /* A page that prints its own <h1> (page.header at level 1) replaces the layout's hidden fallback, so a screen reader
    meets one h1. The fallback stays for a page without one. A page.header inside a modal is level 2 and does not match. */
 [data-atom-main]:has(h1[data-atom-page-header-title]) > [data-atom-page-title] {

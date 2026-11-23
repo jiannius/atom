@@ -1,6 +1,6 @@
 @php
 // ?shell=sidebar|header puts the page in an app shell (default sidebar); ?tw=floor|latest is the consumer build; ?rail=0 leaves the rail out
-// ?crumbs=1 puts a crumb in the sidebar shell's bar, so the bar is drawn (empty, it is not, and --atom-shell-bar-h is 0); ?sticky=1 makes the rail sticky; ?wide=1 puts a 12-column frameless table (about 1500px of cells) in a panel in the main column, ?wide=2 the same table framed and bare, a direct child of the main column; ?long=1 adds a block whose content cannot wrap (a 1800px line), which must not widen the main column; ?tall=1 makes the main column 2400px tall; ?railtall=1 adds twelve cards with a button each to the rail (taller than a short window); ?gap=8|4 puts `gap-8` or `gap-4` on the tag; ?widecard=1 adds a rail card holding a 700px block; ?nav=1 adds a nav slot (a navlist of four items, ?navitems=30 for thirty, ?navhost=1 puts `static` on the slot); ?host=1 puts host utilities on the tag (`gap-8`) and on the rail (`static`)
+// ?crumbs=1 puts a crumb in the sidebar shell's bar, so the bar is drawn (empty, it is not, and --atom-shell-bar-h is 0); ?sticky=1 makes the rail sticky; ?wide=1 puts a 12-column frameless table (about 1500px of cells) in a panel in the main column, ?wide=2 the same table framed and bare, a direct child of the main column; ?long=1 adds a block whose content cannot wrap (a 1800px line), which must not widen the main column; ?tall=1 makes the main column 2400px tall; ?railtall=1 adds twelve cards with a button each to the rail (taller than a short window); ?gap=8|4 puts `gap-8` or `gap-4` on the tag; ?widecard=1 adds a rail card holding a 700px block; ?nav=1 adds a nav slot (a navlist of four items, ?navitems=30 for thirty, ?navhost=1 puts `static` on the slot, ?navcurrent=N marks item N current, ?navgroups=1 splits the items into a group "Account" (the first six) and a collapsed expandable group "Workspace" (the rest)); ?host=1 puts host utilities on the tag (`gap-8`) and on the rail (`static`)
 Auth::setUser(new \Illuminate\Auth\GenericUser(['id' => 1, 'name' => 'Alex Doe', 'email' => 'alex@example.com', 'avatar' => null]));
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
 $shell = request()->query('shell') === 'header' ? 'header' : 'sidebar';
@@ -17,6 +17,9 @@ $gap = match (request()->query('gap')) { '8' => 'gap-8', '4' => 'gap-4', default
 $widecard = request()->query('widecard') === '1';
 $nav = request()->query('nav') === '1';
 $navItems = max(4, (int) request()->query('navitems', 4));
+$navCurrent = (int) request()->query('navcurrent', 0);
+$navGroups = request()->query('navgroups') === '1';
+$navLabel = fn (int $item) => ['Profile', 'Security', 'Notifications', 'Billing'][$item - 1] ?? 'Section '.$item;
 @endphp
 
 <x-dynamic-component :component="'atom::layouts.'.$shell" title="E2E: page columns" :vite="[]" :styles="['/atom/e2e/consumer-css/'.$tw]">
@@ -35,9 +38,22 @@ $navItems = max(4, (int) request()->query('navitems', 4));
             @if ($nav)
                 <x-slot:nav data-testid="nav" :class="request()->query('navhost') === '1' ? 'static' : ''">
                     <atom:navlist>
-                        @foreach (range(1, $navItems) as $item)
-                            <atom:navlist.item href="?nav=1#item-{{ $item }}" data-testid="nav-item">{{ ['Profile', 'Security', 'Notifications', 'Billing'][$item - 1] ?? 'Section '.$item }}</atom:navlist.item>
-                        @endforeach
+                        @if ($navGroups)
+                            <atom:navlist.group heading="Account">
+                                @foreach (range(1, min(6, $navItems)) as $item)
+                                    <atom:navlist.item href="?nav=1#item-{{ $item }}" :current="$navCurrent === $item" data-testid="nav-item">{{ $navLabel($item) }}</atom:navlist.item>
+                                @endforeach
+                            </atom:navlist.group>
+                            <atom:navlist.group heading="Workspace" expandable :expanded="false">
+                                @foreach (range(7, max(7, $navItems)) as $item)
+                                    <atom:navlist.item href="?nav=1#item-{{ $item }}" :current="$navCurrent === $item" data-testid="nav-item">{{ $navLabel($item) }}</atom:navlist.item>
+                                @endforeach
+                            </atom:navlist.group>
+                        @else
+                            @foreach (range(1, $navItems) as $item)
+                                <atom:navlist.item href="?nav=1#item-{{ $item }}" :current="$navCurrent === $item" data-testid="nav-item">{{ $navLabel($item) }}</atom:navlist.item>
+                            @endforeach
+                        @endif
                     </atom:navlist>
                 </x-slot:nav>
             @endif
