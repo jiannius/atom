@@ -20,7 +20,7 @@
     </section>
 
     {{-- the look-alikes --}}
-    {{-- a side menu in a fixed first track is not a rail: it sits left of the content, which a rail never does --}}
+    {{-- a side menu in a fixed first track is not a rail: it sits left of the content, which a rail never does; hand-settings-nav reports it instead --}}
     <div class="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]"><nav><a href="#">Profile</a></nav><div>Main</div></div>
     <div class="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]"><atom:navlist><atom:navlist.item>Profile</atom:navlist.item></atom:navlist><div>Main</div></div>
     <div class="grid gap-8 md:grid-cols-[13rem_minmax(0,1fr)]"><atom:tabs><atom:tab>Profile</atom:tab></atom:tabs><div>Main</div></div>

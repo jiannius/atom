@@ -152,6 +152,29 @@ describe('hand-settings-nav', function () {
 
         expect(DesignHost::scanSource('<atom:page><atom:page.columns><x-slot:nav><atom:navlist><atom:navlist.item>a</atom:navlist.item></atom:navlist></x-slot:nav>x</atom:page.columns></atom:page>', 'hand-settings-nav'))->toBe([]);
     });
+
+    it('reports the plain settings grid that hand-rail-grid leaves alone, once and under its own id', function () {
+        $grid = '<atom:page><div class="grid md:grid-cols-[13rem_1fr]"><atom:navlist><atom:navlist.item>a</atom:navlist.item></atom:navlist><div>Main</div></div></atom:page>';
+
+        expect(DesignHost::notes($grid, 'hand-settings-nav'))->toBe([1 => 'a grid with a navigation as its fixed first track (a hand-built settings layout?)'])
+            ->and(DesignHost::scanSource($grid, 'hand-rail-grid'))->toBe([]);
+
+        // a rail beside the main column is the other check's, and is not this one's
+        $rail = '<atom:page><div class="grid lg:grid-cols-[minmax(0,1fr)_20rem]"><div>Main</div><nav>Index</nav></div></atom:page>';
+
+        expect(DesignHost::scanSource($rail, 'hand-settings-nav'))->toBe([])
+            ->and(DesignHost::scanSource($rail, 'hand-rail-grid'))->toHaveCount(1);
+    });
+
+    it('reads a grid only in a view whose tags balance (a text read has no tree), and still reads the class tokens', function () {
+        $grid = '<atom:page><div class="grid md:grid-cols-[13rem_1fr] [&_[data-atom-navlist-item]]:w-auto"><nav>a</nav><div>Main</div></div><atom:card></atom:page>';
+
+        expect(DesignHost::notes($grid, 'hand-settings-nav'))->toBe([1 => '`[&_[data-atom-navlist-item]]:w-auto` (a selector into the navlist\'s internals)']);
+    });
+
+    it('words its fix as a review, not a verdict', function () {
+        expect((new Jiannius\Atom\Services\DesignChecks\HandSettingsNav)->fix())->toContain('Review it')->toContain('ignore it');
+    });
 });
 
 describe('hand-rail-grid', function () {

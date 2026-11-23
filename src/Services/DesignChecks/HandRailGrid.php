@@ -45,10 +45,40 @@ class HandRailGrid extends PageRule
 
     public function detect(): string
     {
-        return 'An element in an `<atom:page>`, outside a card, panel, table, form, modal or description list (a form around the whole page does not count, and a `<form>` that is itself the grid does), whose classes (static, or a literal in `:class`) hold a two-track `grid-cols-[...]` of a flexible track (`1fr` or `minmax(0,1fr)`) and a fixed one of 12rem or 192px and more, with any variant but one that sends it to the children (`*:`, `[&>div]:`), and that has a block among its children (a `div`, `section`, `aside`, an atom or host component: a key and its value in two `span`s is no rail). A narrower fixed track (a column of figures) is not a rail, and neither is a fixed first track whose first child, or a child of that, is a `<nav>`, `<atom:navlist>` or `<atom:tabs>` (a side menu). A grid built from a bound class, or a `grid-template-columns` style, is not seen.';
+        return 'An element in an `<atom:page>`, outside a card, panel, table, form, modal or description list (a form around the whole page does not count, and a `<form>` that is itself the grid does), whose classes (static, or a literal in `:class`) hold a two-track `grid-cols-[...]` of a flexible track (`1fr` or `minmax(0,1fr)`) and a fixed one of 12rem or 192px and more, with any variant but one that sends it to the children (`*:`, `[&>div]:`), and that has a block among its children (a `div`, `section`, `aside`, an atom or host component: a key and its value in two `span`s is no rail). A narrower fixed track (a column of figures) is not a rail, and neither is a fixed first track whose first child, or a child of that, is a `<nav>`, `<atom:navlist>` or `<atom:tabs>` (a side menu: `hand-settings-nav` reports that grid instead). A grid built from a bound class, or a `grid-template-columns` style, is not seen.';
     }
 
     public function find(File $file, Context $context): iterable
+    {
+        foreach ($this->grids($file) as [$node, $sideNav]) {
+            if (! $sideNav) {
+                yield [$node['offset'], null];
+            }
+        }
+    }
+
+    /**
+     * The hand-built settings grids: the ones `find()` leaves to `hand-settings-nav` because the fixed track comes first and holds a
+     * navigation (the offsets in `$file->text()`, one per grid)
+     *
+     * @return iterable<int, int>
+     */
+    public function settingsGrids(File $file): iterable
+    {
+        foreach ($this->grids($file) as [$node, $sideNav]) {
+            if ($sideNav) {
+                yield $node['offset'];
+            }
+        }
+    }
+
+    /**
+     * The grids of a file that read as a hand-built rail layout (a page's two-track grid outside a box, holding a block), each with
+     * whether its fixed track comes first and holds a navigation
+     *
+     * @return iterable<int, array{0: array, 1: bool}>
+     */
+    protected function grids(File $file): iterable
     {
         $outline = $file->outline();
 
@@ -59,11 +89,11 @@ class HandRailGrid extends PageRule
 
             $page = $this->pageOf($file, $node);
 
-            if ($page === null || $this->isBoxItself($node) || $this->insideBox($file, $node, $page) || ! $this->hasBlockChild($file, $node) || $this->hasSideNav($file, $node)) {
+            if ($page === null || $this->isBoxItself($node) || $this->insideBox($file, $node, $page) || ! $this->hasBlockChild($file, $node)) {
                 continue;
             }
 
-            yield [$node['offset'], null];
+            yield [$node, $this->hasSideNav($file, $node)];
         }
     }
 
@@ -76,8 +106,9 @@ class HandRailGrid extends PageRule
     }
 
     /**
-     * Whether the fixed track comes first and its first child, or a child of that, is a navigation (a `<nav>`, `<atom:navlist>` or `<atom:tabs>`): a settings
-     * page's side menu, which is not a rail (it is the `nav` slot of `<atom:page.columns>`; `hand-settings-nav` reads a hand-built one's selectors)
+     * Whether the fixed track comes first and its first child, or a child of that, is a navigation (a `<nav>`, `<atom:navlist>` or `<atom:tabs>`): a
+     * side menu, which is not a rail but the `nav` slot of `<atom:page.columns>`. It is not left alone: `hand-settings-nav` reports such a grid
+     * (`settingsGrids()`), so a hand-built settings layout is flagged once, under that id, and never silently
      */
     protected function hasSideNav(File $file, array $node): bool
     {
