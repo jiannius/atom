@@ -4,7 +4,7 @@ import onMorphed, { stopMorphed } from '../helpers/morphed'
 // screen's current item can be past the edge of it: the strip is scrolled, never the page (`scrollIntoView` would move the page too), so
 // the current item is fully inside it when the strip appears, after a `wire:navigate` (a nav that survives it) and after a Livewire
 // morph that changes the current item. Beside the main column the navlist does not scroll sideways and nothing here moves.
-// The reader's own gesture on the strip wins: once they have scrolled it, a resize or a morph that leaves the current item where it
+// The reader's own gesture on the strip (not on other content of the slot) wins: once they have scrolled it, a resize or a morph that leaves the current item where it
 // was does not scroll it back. The factory is on the slot's own element, so a morph that replaces the slot runs init() again;
 // the morph callback is kept on the element so a re-run replaces it and listeners are removed in destroy().
 // The navlist is looked up every time it is needed (list()), never kept from init(): a slot that prints its navlist later (an `@if`
@@ -23,6 +23,9 @@ export default () => ({
 
         // a wheel counts only when it moves the strip sideways (deltaX, or shift): a vertical one is the page scrolling under the pointer
         this.touch = (event) => {
+            // only a gesture on the navlist: the slot may hold other content (a search field or a heading above it), which is not the strip
+            if (! (event.target instanceof Element) || ! event.target.closest('[data-atom-navlist]')) return
+
             if (event.type === 'wheel' && event.deltaX === 0 && ! event.shiftKey) return
 
             this.touched = true

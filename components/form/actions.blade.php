@@ -36,8 +36,10 @@
        fallback is 0px), pulls the bar's start edge back under the nav and is added to the start margin of the start slot and the "Unsaved
        changes" label, so the card is as wide as nav plus content while the start slot, the label and the buttons stay where they are in a
        bar that has no nav beside it. Both are two rules in atom.css (`@layer base`), not utilities on the bar, so the bar carries only its
-       own `px-4` and a `px-*` or `mx-*` of the host's on it wins as it always did. `--atom-page-pb` is untouched, so the bottom room above
-       is the same.
+       own `px-4` and a `px-*` of the host's on it wins as it always did. A margin utility of the host's (`ms-*`, `mx-*`) on the bar beats
+       the pull but not the label's margin, which is a rule of its own: on a bar in a nav row add `[--atom-page-nav-offset:0px]` to the
+       same bar and both go (a margin utility on the `start` slot likewise replaces the label's margin: write the offset into it,
+       `ms-[calc(var(--atom-page-nav-offset,0px)+1rem)]`). `--atom-page-pb` is untouched, so the bottom room above is the same.
        Put it last inside the page's form, and give the page its own bottom room (<atom:page> does). A bottom <atom:toast> sits above
        the card while one is on screen (helpers/toast-lift.js).
      The bleed of `sticky` in a modal rests on the p-6 the modal draws: a sticky element is held inside its scroll

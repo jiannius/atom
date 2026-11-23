@@ -174,10 +174,41 @@ for (const tw of ['latest', 'floor']) {
         expect(Math.abs(cancel.right - (main.right - 24 - 1)), `${width}px buttons`).toBeLessThanOrEqual(1)
       }
 
-      // a margin of the host's: its own margin replaces the nav's pull, and nothing else moves
+      // a margin utility of the host's on the bar beats the pull, and the label's own margin does not know it lost (documented): the label is
+      // 222px right of where it would be; `[--atom-page-nav-offset:0px]` on the same bar clears both
       await open(page, { width: 1440, tw })
-      await page.getByTestId('settings-bar').evaluate((el) => el.classList.add('ms-2'))
-      expect(await page.getByTestId('settings-bar').evaluate((el) => getComputedStyle(el).marginInlineStart)).toBe('8px')
+
+      const bar = page.getByTestId('settings-bar')
+      const where = async () => {
+        const b = await box(bar)
+        const s = await box(page.getByTestId('settings-start'))
+        const m = await box(page.locator('[data-atom-page-columns-main]'))
+
+        return { bar: b, label: s.x - b.x, main: m }
+      }
+
+      await bar.evaluate((el) => el.classList.add('ms-2'))
+      expect(await bar.evaluate((el) => getComputedStyle(el).marginInlineStart)).toBe('8px')
+
+      const lost = await where()
+
+      expect(Math.abs(lost.bar.x - (lost.main.x + 8)), 'the host margin replaced the pull').toBeLessThanOrEqual(1)
+      expect(Math.abs(lost.label - (PAD + 1 + NAV + GAP)), 'the label keeps its offset: the documented trap').toBeLessThanOrEqual(1)
+
+      await bar.evaluate((el) => el.classList.add('[--atom-page-nav-offset:0px]'))
+
+      const cleared = await where()
+
+      expect(Math.abs(cleared.bar.x - (cleared.main.x + 8))).toBeLessThanOrEqual(1)
+      expect(Math.abs(cleared.label - (PAD + 1)), 'one variable on the bar clears the pull and the label together').toBeLessThanOrEqual(1)
+
+      // a margin utility on the start slot replaces the label's margin: the offset written into it keeps the label in place
+      await open(page, { width: 1440, tw })
+      await page.locator('[data-atom-form-actions-start]').first().evaluate((el) => el.classList.add('ms-[calc(var(--atom-page-nav-offset,0px)+1rem)]'))
+
+      const slot = await where()
+
+      expect(Math.abs(slot.label - (PAD + 1 + NAV + GAP + 16))).toBeLessThanOrEqual(1)
     })
   })
 }
@@ -216,6 +247,27 @@ test.describe('settings page, the strip and a Livewire round trip', () => {
     await page.waitForTimeout(300)
 
     expect(await strip(page).evaluate((el) => el.scrollLeft)).toBe(0)
+  })
+
+  test('a gesture on other content of the slot is not the reader scrolling the strip: a resize still brings the current item into view', async ({ page }) => {
+    await open(page, { width: 390 })
+
+    await expect.poll(() => strip(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
+
+    // a search field a host put above the navlist, used; and the strip scrolled back by the page, not the reader
+    await page.locator('[data-atom-page-columns-nav]').evaluate((el) => {
+      const field = document.createElement('input')
+
+      field.dataset.testid = 'slot-search'
+      el.insertBefore(field, el.firstChild)
+    })
+    await page.getByTestId('slot-search').click()
+    await page.keyboard.type('abc')
+    await strip(page).evaluate((el) => { el.scrollLeft = 0 })
+    await page.setViewportSize({ width: 380, height: 800 })
+
+    await expect.poll(() => inside(current(page))).toBe(true)
+    expect(await strip(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
   })
 
   test('a morph that moves the current item brings it into view even after the reader scrolled the strip', async ({ page }) => {

@@ -1748,8 +1748,13 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
    the content starts. `--atom-page-nav-offset` (set on the main column, 0px anywhere else: no page.columns, a stacked nav, a dialog or
    a popover in the main column) pulls the card's start edge back by the nav and its gap, and the same distance is added to the start
    slot's (or the bare "Unsaved changes" label's) start margin, so label and buttons sit where they do in a bar that has no nav. They are
-   rules in `@layer base` on purpose, not `ms-` / `ps-` utilities on the bar: a utility of the host's (`px-6`, `mx-2`, `-mx-6`) on the bar
-   keeps winning exactly as it did before there was a nav, and the bar's own `px-4` is the only padding it carries. */
+   rules in `@layer base` on purpose, not `ms-` / `ps-` utilities on the bar: a `px-*` of the host's on the bar keeps winning exactly as it
+   did before there was a nav (the bar's own `px-4` is the only padding it carries, and the label's margin stands in for the nav's
+   share of it). A margin utility of the host's on the bar (`ms-2`, `mx-2`, `-mx-6`) beats the pull, but the label's margin is a
+   separate rule that does not know it lost: the bar is then content-wide and its label 222px right. Both rules read the one variable, so
+   a host that puts such a margin on a bar in a nav row clears both with `[--atom-page-nav-offset:0px]` on the same bar (the bar is the
+   scope the label inherits from). The same for a margin utility on the `start` slot: it beats the label's margin, so write it as
+   `ms-[calc(var(--atom-page-nav-offset,0px)+1rem)]`, or put the space inside the slot. */
 @layer base {
     [data-atom-save-bar] {
         margin-inline-start: calc(var(--atom-page-nav-offset, 0px) * -1);

@@ -3,6 +3,7 @@ $account = ['profile' => 'Profile', 'security' => 'Security', 'notifications' =>
 $workspace = ['general' => 'General', 'members' => 'Members', 'billing' => 'Billing', 'integrations' => 'Integrations', 'audit' => 'Audit log', 'domains' => 'Domains'];
 @endphp
 
+{{-- the consumer build scans this file: [--atom-page-nav-offset:0px] ms-2 ms-[calc(var(--atom-page-nav-offset,0px)+1rem)] --}}
 <atom:page data-testid="settings-page">
     <atom:page.header title="Settings" />
 
