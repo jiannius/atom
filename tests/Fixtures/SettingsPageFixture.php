@@ -22,6 +22,15 @@ class SettingsPageFixture extends Component
     /** @var int bumps the navlist's `wire:key`, so a morph replaces the element */
     public int $navRevision = 0;
 
+    /** @var bool whether the nav items are links that `wire:navigate` to this page again (`?links=1`), not buttons that call select() */
+    public bool $links = false;
+
+    /** @var string what is wrapped in `@persist` (`?persist=nav`: the navlist, `?persist=columns`: the whole page.columns), so a wire:navigate keeps the element; '' for nothing */
+    public string $persist = '';
+
+    /** @var array<string, string> the query the links carry from page to page (the consumer build, the direction) */
+    public array $carry = [];
+
     /**
      * Move the current item: the nav is morphed, nothing navigates.
      */

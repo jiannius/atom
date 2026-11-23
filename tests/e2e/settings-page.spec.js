@@ -32,7 +32,8 @@ const inside = (item) => item.evaluate((el) => {
   const r = el.getBoundingClientRect()
   const s = el.closest('[data-atom-navlist]').getBoundingClientRect()
 
-  return r.left >= s.left - 0.5 && r.right <= s.right + 0.5
+  // a box-less element (display: none, detached) is nowhere, not inside
+  return r.width > 0 && r.height > 0 && r.left >= s.left - 0.5 && r.right <= s.right + 0.5
 })
 const noSideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
@@ -54,6 +55,56 @@ const offsetIn = (locator) => locator.evaluate((el) => {
 
   return width
 })
+
+// A registry of the listeners that are EFFECTIVELY registered on `document` (for `livewire:navigated`) and on every nav slot element (`data-atom-page-columns-nav`),
+// kept the way the DOM keeps them: an entry is target + type + capture + the listener, adding the same one again changes nothing, and removing deletes only an exact
+// match. A `removeEventListener` with another function, or without the `capture` the listener was added with, removes nothing, so a destroy() that leaks (as a
+// call-counting spy would not see) leaves the entry in the registry. Slot elements stay in it once detached: their entries are the leak. `added` counts every
+// new entry on `document`, over all the pages of the run.
+const spyOnListeners = (page) => page.addInitScript(() => {
+  const registry = { targets: new Map(), added: 0 }
+  const capture = (options) => (typeof options === 'boolean' ? options : !!options?.capture)
+  const watched = (target, type) => (target === document ? type === 'livewire:navigated' : target instanceof Element && target.hasAttribute('data-atom-page-columns-nav'))
+  const originalAdd = EventTarget.prototype.addEventListener
+  const originalRemove = EventTarget.prototype.removeEventListener
+
+  window.__registry = registry
+
+  EventTarget.prototype.addEventListener = function (type, listener, options) {
+    if (listener && watched(this, type)) {
+      const entries = registry.targets.get(this) ?? new Map()
+      const key = `${type}|${capture(options)}`
+      const set = entries.get(key) ?? new Set()
+
+      if (! set.has(listener) && this === document) registry.added++
+
+      set.add(listener)
+      entries.set(key, set)
+      registry.targets.set(this, entries)
+    }
+
+    return originalAdd.call(this, type, listener, options)
+  }
+
+  EventTarget.prototype.removeEventListener = function (type, listener, options) {
+    registry.targets.get(this)?.get(`${type}|${capture(options)}`)?.delete(listener)
+
+    return originalRemove.call(this, type, listener, options)
+  }
+})
+const GESTURES = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin']
+// what is registered now: `document` is the `livewire:navigated` listeners on it, `slot` the listeners of each gesture type on all the slot elements there ever were
+const liveListeners = (page) => page.evaluate((types) => {
+  const { targets, added } = window.__registry
+  const size = (target, type) => [...(targets.get(target) ?? new Map())].filter(([key]) => key.startsWith(`${type}|`)).reduce((sum, [, set]) => sum + set.size, 0)
+  const slots = [...targets.keys()].filter((target) => target !== document)
+
+  return {
+    document: size(document, 'livewire:navigated'),
+    slot: Object.fromEntries(types.map((type) => [type, slots.reduce((sum, slot) => sum + size(slot, type), 0)])),
+    added,
+  }
+}, GESTURES)
 
 for (const tw of ['latest', 'floor']) {
   test.describe(`settings page, ${tw} consumer build`, () => {
@@ -154,6 +205,70 @@ for (const tw of ['latest', 'floor']) {
 
       expect(Math.abs(bar.bottom - (360 - 12)), 'the bar is pinned 0.75rem above the window edge').toBeLessThanOrEqual(1)
       expect(last.bottom, `last item bottom ${last.bottom}, bar top ${bar.y}`).toBeLessThanOrEqual(bar.y)
+    })
+
+    test('rtl, 1440px: the nav is on the inline-start (right) side, and the save bar spans both with its content where the forms start', async ({ page }) => {
+      await open(page, { width: 1440, tw, query: '&dir=rtl' })
+
+      expect(await page.evaluate(() => document.documentElement.dir)).toBe('rtl')
+
+      const nav = await box(strip(page))
+      const main = await box(page.locator('[data-atom-page-columns-main]'))
+      const bar = await box(page.getByTestId('settings-bar'))
+      const start = await box(page.getByTestId('settings-start'))
+      const cancel = await box(page.getByTestId('settings-cancel'))
+      const save = await box(page.getByTestId('settings-save'))
+
+      expect(Math.abs(nav.width - NAV), `nav ${nav.width}`).toBeLessThanOrEqual(0.5)
+      expect(nav.x, 'the nav is on the right of the forms').toBeGreaterThanOrEqual(main.right)
+      expect(Math.abs(nav.x - main.right - GAP)).toBeLessThanOrEqual(1)
+      expect(nav.y, 'the nav is on the forms\' top line').toBeLessThanOrEqual(main.y + 1)
+
+      // mirrored: the bar ends where the nav ends (its right edge) and starts where the forms start (their left edge)
+      expect(Math.abs(bar.right - nav.right), 'the bar reaches the nav\'s outer edge').toBeLessThanOrEqual(1)
+      expect(Math.abs(bar.x - main.x), 'the bar ends at the forms\' far edge').toBeLessThanOrEqual(1)
+      expect(Math.abs(start.right - (main.right - PAD - 1)), 'its label starts at the forms\' inline-start edge (right), not under the nav').toBeLessThanOrEqual(1)
+      expect(Math.abs(cancel.x - (main.x + PAD + 1)), 'its buttons end at the forms\' inline-end edge (left)').toBeLessThanOrEqual(1)
+      expect(save.x).toBeGreaterThanOrEqual(cancel.right)
+      expect(await noSideScroll(page)).toBe(true)
+    })
+
+    test('rtl, 390px: the strip scrolls, the current item (last of the list, so at the far left) is revealed inside it, and the page does not scroll', async ({ page }) => {
+      await open(page, { width: 390, tw, query: '&dir=rtl' })
+
+      const nav = await box(page.locator('[data-atom-page-columns-nav]'))
+      const main = await box(page.locator('[data-atom-page-columns-main]'))
+      const bar = await box(page.getByTestId('settings-bar'))
+      const start = await box(page.getByTestId('settings-start'))
+
+      expect(Math.abs(main.y - nav.bottom - GAP)).toBeLessThanOrEqual(1)
+
+      const state = await strip(page).evaluate((el) => ({ scrollWidth: el.scrollWidth, clientWidth: el.clientWidth, scrollLeft: el.scrollLeft }))
+
+      expect(state.scrollWidth).toBeGreaterThan(state.clientWidth + 100)
+      // RTL scrollLeft is signed (zero at the start edge, negative as it scrolls): only its size says the strip moved
+      expect(Math.abs(state.scrollLeft)).toBeGreaterThan(0)
+      await expect(current(page)).toHaveCount(1)
+      await expect(current(page)).toHaveText('Domains')
+      expect(await inside(current(page))).toBe(true)
+      expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 0])
+      expect(await noSideScroll(page)).toBe(true)
+
+      // the plain bar: the forms' width, the label at its padding edge (the right one)
+      expect(Math.abs(bar.x - main.x)).toBeLessThanOrEqual(1)
+      expect(Math.abs(bar.right - main.right)).toBeLessThanOrEqual(1)
+      expect(Math.abs(start.right - (main.right - PAD - 1))).toBeLessThanOrEqual(1)
+
+      // scrolled back to where the row starts, the first item is at the right edge and the current one (the last, at the left) is out of the strip
+      await strip(page).evaluate((el) => { el.scrollLeft = 0 })
+
+      const room = await box(strip(page))
+
+      expect(Math.abs((await box(items(page).first())).right - room.right), 'the row starts at the right').toBeLessThanOrEqual(8)
+      expect(await inside(current(page))).toBe(false)
+      await page.evaluate(() => document.dispatchEvent(new Event('livewire:navigated')))
+      await expect.poll(() => inside(current(page))).toBe(true)
+      expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 0])
     })
 
     test('a px-* or mx-* a host puts on the bar still wins, with the nav beside the forms and without', async ({ page }) => {
@@ -308,6 +423,140 @@ test.describe('settings page, the strip and a Livewire round trip', () => {
   })
 })
 
+// A real `wire:navigate`: the nav items are links (?links=1) to this same screen with another `section`, so Livewire fetches the page and swaps the body. The
+// slot of the new page is a new element with its own factory (init() runs, the old one's destroy() ran), and the spec above that dispatches a synthetic
+// `livewire:navigated` cannot tell a factory that listens for the real one from one that does not.
+// Mind what the tests of this describe prove: the first two (a plain navigation, and a persisted navlist) pass through the NEW slot's init(), which brings the
+// current item into the strip whether or not the factory listens for `livewire:navigated`; they hold the real navigation, the reveal and that no listener is left
+// behind. Only the last (page.columns in @persist, where the slot and its factory survive) proves the `livewire:navigated` listener itself.
+test.describe('settings page, a real wire:navigate between two settings pages', () => {
+  test('the new page\'s current item is in its strip, the page is not scrolled sideways, and nothing is listening twice after three navigations', async ({ page }) => {
+    await spyOnListeners(page)
+    await open(page, { width: 390, query: '&links=1&section=profile' })
+
+    // a mark on the document: a full page load would lose it, a wire:navigate keeps it
+    await page.evaluate(() => { window.__sameDocument = true })
+    await expect(page.getByTestId('nav-profile')).toHaveAttribute('aria-current', 'page')
+    await expect.poll(() => inside(page.getByTestId('nav-profile'))).toBe(true)
+    expect(await strip(page).evaluate((el) => el.scrollLeft)).toBe(0)
+
+    const live = () => liveListeners(page)
+    const tags = GESTURES
+
+    const first = await live()
+
+    expect(first.document, 'the first page\'s factory listens once').toBeGreaterThanOrEqual(1)
+    for (const type of tags) expect(first.slot[type], type).toBe(1)
+
+    // profile -> domains (the last item: the strip has to scroll to show it), domains -> profile (back to the first), profile -> domains
+    for (const [from, to] of [['profile', 'domains'], ['domains', 'profile'], ['profile', 'domains']]) {
+      await page.evaluate((id) => { document.querySelector('[data-atom-page-columns-nav]').dataset.old = id }, from)
+      await page.getByTestId(`nav-${to}`).click()
+      await expect(page).toHaveURL(new RegExp(`section=${to}`))
+      await expect(page.getByTestId(`nav-${to}`)).toHaveAttribute('aria-current', 'page')
+
+      // the body was swapped for the new page's (a new slot element, not the old one carried over), and the document was not reloaded
+      await expect.poll(() => page.locator('[data-atom-page-columns-nav]').evaluate((el) => el.dataset.old ?? 'new')).toBe('new')
+      expect(await page.evaluate(() => window.__sameDocument === true), 'a wire:navigate, not a page load').toBe(true)
+
+      await expect.poll(() => inside(page.getByTestId(`nav-${to}`)), `${from} -> ${to}`).toBe(true)
+
+      const left = await strip(page).evaluate((el) => el.scrollLeft)
+
+      if (to === 'domains') expect(left, 'the strip was scrolled to the last item').toBeGreaterThan(0)
+      else expect(left, 'the first item needs no scrolling').toBe(0)
+
+      expect(await page.evaluate(() => window.scrollX), 'the page is not scrolled sideways').toBe(0)
+      expect(await noSideScroll(page)).toBe(true)
+    }
+
+    // each navigation made a new factory (listeners were added) and the old one's destroy() took its own away: the live count is where it began
+    await expect.poll(async () => (await live()).document).toBe(first.document)
+    await expect.poll(async () => (await live()).slot).toEqual(first.slot)
+    expect((await live()).added, 'the factories did listen again, once per page').toBeGreaterThanOrEqual(first.added + 3)
+  })
+
+  // A navlist that survives a navigation (the host wraps it in @persist). The slot around it is part of page.columns, so it is a new element each time, and
+  // THE NEW SLOT'S init() brings the current item into the strip: this test passes with or without the factory's `livewire:navigated` listener (it holds the
+  // persisted navlist, the reveal and that no listener is left behind; the page.columns-in-@persist test below is the one that proves the listener).
+  test('a persisted navlist is the same element after a navigation, and the new slot shows its current item', async ({ page }) => {
+    await spyOnListeners(page)
+    await open(page, { width: 390, query: '&links=1&persist=nav&section=domains' })
+    await page.evaluate(() => { window.__sameDocument = true; document.querySelector('[data-atom-page-columns-nav] [data-atom-navlist]').dataset.mark = 'kept'; document.querySelector('[data-atom-page-columns-nav]').dataset.mark = 'old slot' })
+    await expect.poll(() => inside(current(page))).toBe(true)
+
+    const first = await liveListeners(page)
+
+    for (const to of ['profile', 'security']) {
+      await strip(page).evaluate((el) => { el.scrollLeft = 0 })
+      await page.getByTestId(`nav-${to}`).click()
+      await expect(page).toHaveURL(new RegExp(`section=${to}`))
+
+      expect(await page.evaluate(() => window.__sameDocument === true), 'a wire:navigate, not a page load').toBe(true)
+      expect(await strip(page).evaluate((el) => el.dataset.mark), 'the navlist is the one the first page printed').toBe('kept')
+      expect(await page.locator('[data-atom-page-columns-nav]').evaluate((el) => el.dataset.mark ?? 'new'), 'the slot around it is the new page\'s').toBe('new')
+      await expect(current(page)).toHaveCount(1)
+      await expect.poll(() => inside(current(page))).toBe(true)
+      expect(await strip(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
+      expect(await page.evaluate(() => window.scrollX)).toBe(0)
+      expect(await noSideScroll(page)).toBe(true)
+    }
+
+    await expect.poll(async () => (await liveListeners(page)).slot).toEqual(first.slot)
+    await expect.poll(async () => (await liveListeners(page)).document).toBe(first.document)
+  })
+
+  // Livewire's @persist contract, written down as it IS, not as it should be: the old element is kept as it was, so a persisted navlist still marks the page it was
+  // first rendered on as current, whatever page it is on now. A host that persists its nav has to move `aria-current` itself; atom does not. The tests around this one
+  // do not depend on it: they follow whichever item is current.
+  test('a persisted navlist keeps the aria-current of the page it was first rendered on (Livewire @persist; hosts must update it)', async ({ page }) => {
+    await open(page, { width: 390, query: '&links=1&persist=nav&section=domains' })
+    await expect(page.getByTestId('nav-domains')).toHaveAttribute('aria-current', 'page')
+
+    await strip(page).evaluate((el) => { el.scrollLeft = 0 })
+    await page.getByTestId('nav-profile').click()
+    await expect(page).toHaveURL(/section=profile/)
+
+    // the page is the profile one now (its link was followed), and the persisted navlist still says domains: documented current behaviour, not a wish
+    await expect(page.getByTestId('nav-domains')).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByTestId('nav-profile')).not.toHaveAttribute('aria-current', 'page')
+  })
+
+  // The whole page.columns persisted (the only way the slot's own element, and its factory, survive): Livewire keeps the old element, so the current item is the
+  // one the first page printed (see the test above; this test follows whichever item is current and does not rely on it). The reader scrolls the strip to its start (a gesture: the factory stops bringing the current item back after a resize) and
+  // follows a link; only the real `livewire:navigated` is what brings it back.
+  test('a nav slot that survives a navigation (page.columns in @persist) brings its current item back into view after the reader scrolled away', async ({ page }) => {
+    await spyOnListeners(page)
+    await open(page, { width: 390, query: '&links=1&persist=columns&section=domains' })
+    await page.evaluate(() => { window.__sameDocument = true; document.querySelector('[data-atom-page-columns-nav]').dataset.mark = 'kept' })
+    await expect.poll(() => inside(current(page))).toBe(true)
+    expect(await strip(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
+
+    const first = await liveListeners(page)
+
+    for (const to of ['profile', 'security']) {
+      // the reader's own scroll and press on the strip: the factory leaves it where they put it
+      await strip(page).evaluate((el) => { el.scrollLeft = 0 })
+      await page.getByTestId(`nav-${to}`).click()
+      await expect(page).toHaveURL(new RegExp(`section=${to}`))
+
+      expect(await page.evaluate(() => window.__sameDocument === true), 'a wire:navigate, not a page load').toBe(true)
+      expect(await page.locator('[data-atom-page-columns-nav]').evaluate((el) => el.dataset.mark), 'the same slot element').toBe('kept')
+      await expect(current(page)).toHaveCount(1)
+
+      // the navigation hands the current item back to the factory: it is in the strip again, by the strip alone
+      await expect.poll(() => inside(current(page)), `after following ${to}`).toBe(true)
+      expect(await strip(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
+      expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([0, 0])
+      expect(await noSideScroll(page)).toBe(true)
+    }
+
+    // nothing stacked: the one factory is the only listener, on the slot and on document
+    expect(await liveListeners(page)).toMatchObject({ document: first.document, slot: first.slot })
+    expect((await liveListeners(page)).added, 'and it did not listen again').toBe(first.added)
+  })
+})
+
 test.describe('settings page, what the offset and the strip rules do not reach', () => {
   test('the offset is the nav and the gap, and a host\'s own width or gap on the row moves it with them', async ({ page }) => {
     await open(page, { width: 1440 })
@@ -441,21 +690,7 @@ test.describe('settings page, a navlist that is not the one init() saw', () => {
   })
 
   test('one listener per gesture type on the slot, all of them removed when the slot goes', async ({ page }) => {
-    await page.addInitScript(() => {
-      window.__listeners = { add: {}, remove: {} }
-
-      for (const [name, bucket] of [['addEventListener', 'add'], ['removeEventListener', 'remove']]) {
-        const original = EventTarget.prototype[name]
-
-        EventTarget.prototype[name] = function (type, ...rest) {
-          if (this instanceof Element && this.hasAttribute('data-atom-page-columns-nav')) {
-            window.__listeners[bucket][type] = (window.__listeners[bucket][type] ?? 0) + 1
-          }
-
-          return original.call(this, type, ...rest)
-        }
-      }
-    })
+    await spyOnListeners(page)
     await open(page, { width: 390 })
 
     // three round trips (morphs) and the slot is still the same element with the same listeners
@@ -464,16 +699,12 @@ test.describe('settings page, a navlist that is not the one init() saw', () => {
       await expect(page.getByTestId(`nav-${section}`)).toHaveAttribute('aria-current', 'page')
     }
 
-    const types = ['wheel', 'touchstart', 'pointerdown', 'keydown', 'focusin']
-    const added = await page.evaluate(() => window.__listeners.add)
+    const live = await liveListeners(page)
 
-    for (const type of types) expect(added[type], `added ${type}`).toBe(1)
+    for (const type of GESTURES) expect(live.slot[type], `registered ${type}`).toBe(1)
 
+    // the slot goes: every one of them is removed, with the capture it was added with (registered listeners, not calls to removeEventListener)
     await page.locator('[data-atom-page-columns-nav]').evaluate((el) => el.remove())
-    await expect.poll(() => page.evaluate(() => window.__listeners.remove.pointerdown ?? 0)).toBe(1)
-
-    const removed = await page.evaluate(() => window.__listeners.remove)
-
-    for (const type of types) expect(removed[type], `removed ${type}`).toBe(1)
+    await expect.poll(async () => Object.values((await liveListeners(page)).slot)).toEqual(GESTURES.map(() => 0))
   })
 })

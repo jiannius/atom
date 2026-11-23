@@ -829,3 +829,148 @@ test.describe('page.columns, the save bar with a nav beside the main column', ()
     expect(parseFloat(card.marginBottom)).toBeCloseTo(-(120 - 12), 0)
   })
 })
+
+// A page.columns inside the main column of another (?nested=main|rail|nav, over the outer `?nav=1&bar=1`). `--atom-page-nav-offset` is set on the OUTER main
+// column, and a custom property inherits into everything under it, so atom.css resets it on every `[data-atom-page-columns-main]`, `-nav` and `-rail` (and on a
+// dialog and a popover): the inner row then starts from 0, and sets its own offset on its own main column only when it has a nav of its own beside it.
+test.describe('page.columns, the save bar in a page.columns inside the main column of one with a nav', () => {
+  const PAD = 16
+  const NAV = 200
+  const NAV_GAP = 22
+
+  // the width a probe takes from `--atom-page-nav-offset` where it is put: the offset as a number
+  const offsetIn = (locator) => locator.evaluate((el) => {
+    const probe = document.createElement('div')
+
+    probe.style.cssText = 'width: var(--atom-page-nav-offset, 0px); height: 1px'
+    el.appendChild(probe)
+
+    const width = probe.getBoundingClientRect().width
+
+    probe.remove()
+
+    return width
+  })
+  const marginStart = (locator) => locator.evaluate((el) => getComputedStyle(el).marginInlineStart)
+
+  for (const tw of ['latest', 'floor']) {
+    test(`${tw}: a bar in the inner main column gets no pull (the inner main resets the offset), and its label sits at its own padding edge; the outer bar keeps its pull`, async ({ page }) => {
+      await open(page, { shell: 'sidebar', width: 1440, tw, query: '&nav=1&rail=0&bar=1&nested=main' })
+
+      const outerMain = page.locator('[data-atom-page-columns-main]').first()
+      const innerMain = page.getByTestId('inner-columns').locator('> [data-atom-page-columns-main]')
+
+      expect(await offsetIn(outerMain), 'the outer main has the outer nav\'s offset').toBe(NAV + NAV_GAP)
+      expect(await offsetIn(innerMain), 'the inner main starts again from 0').toBe(0)
+      expect(await offsetIn(page.getByTestId('inner-rail')), 'and so does the inner rail').toBe(0)
+
+      const inner = await box(innerMain)
+      const card = await box(page.getByTestId('inner-bar'))
+      const start = await box(page.getByTestId('inner-start'))
+      const save = await box(page.getByTestId('inner-save'))
+      const cancel = await box(page.getByTestId('inner-cancel'))
+
+      expect(await marginStart(page.getByTestId('inner-bar')), 'no pull back under a nav that is not beside it').toBe('0px')
+      expect(await marginStart(page.getByTestId('inner-start')), 'the label has no extra margin').toBe('0px')
+      expect(Math.abs(card.x - inner.x), 'the inner bar is the inner main column\'s width').toBeLessThanOrEqual(1)
+      expect(Math.abs(card.right - inner.right)).toBeLessThanOrEqual(1)
+      expect(Math.abs(start.x - (inner.x + PAD + 1)), 'its label sits at its own padding edge').toBeLessThanOrEqual(1)
+      expect(Math.abs(cancel.right - (inner.right - PAD - 1))).toBeLessThanOrEqual(1)
+      expect(save.right).toBeLessThanOrEqual(cancel.x)
+
+      // it does not reach back under the outer nav
+      const outerNav = await box(page.locator('[data-atom-page-columns-nav] [data-atom-navlist]').first())
+
+      expect(card.x).toBeGreaterThanOrEqual(outerNav.right)
+
+      // the outer bar, in the same page, still spans the outer nav and the outer main column
+      const outer = await box(outerMain)
+      const outerCard = await box(page.getByTestId('bar'))
+      const outerStart = await box(page.getByTestId('bar-start'))
+
+      expect(Math.abs(outerCard.x - outerNav.x), 'the outer bar still starts at the outer nav').toBeLessThanOrEqual(1)
+      expect(Math.abs(outerCard.right - outer.right)).toBeLessThanOrEqual(1)
+      expect(Math.abs(outerStart.x - (outer.x + PAD + 1))).toBeLessThanOrEqual(1)
+      expect(await noSideScroll(page)).toBe(true)
+    })
+  }
+
+  test('a bar in the inner rail is the plain bar too: the rail resets the offset, so it is the rail\'s width with its label at its padding edge', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query: '&nav=1&rail=0&bar=1&nested=rail' })
+
+    const rail = page.getByTestId('inner-rail')
+
+    expect(await offsetIn(page.locator('[data-atom-page-columns-main]').first())).toBe(NAV + NAV_GAP)
+    expect(await offsetIn(rail), 'the rail starts again from 0').toBe(0)
+    expect(await marginStart(page.getByTestId('inner-bar'))).toBe('0px')
+
+    const r = await box(rail)
+    const card = await box(page.getByTestId('inner-bar'))
+    const start = await box(page.getByTestId('inner-start'))
+
+    // the rail is 320px wide, and 6px of it is not content only when it is the sticky one (this one is not)
+    expect(Math.abs(card.x - r.x), 'the bar starts at the rail\'s edge, not under the outer nav').toBeLessThanOrEqual(1)
+    expect(Math.abs(card.right - r.right)).toBeLessThanOrEqual(1)
+    expect(Math.abs(start.x - (r.x + PAD + 1))).toBeLessThanOrEqual(1)
+  })
+
+  test('an inner page.columns with a nav of its own gets its own offset: its bar spans the inner nav and the inner main column, whatever the outer row has', async ({ page }) => {
+    // the outer row has a nav and a bar too: the two offsets do not add up
+    await open(page, { shell: 'sidebar', width: 1440, query: '&nav=1&rail=0&bar=1&nested=nav' })
+
+    const outerMain = page.locator('[data-atom-page-columns-main]').first()
+    const innerMain = page.getByTestId('inner-columns').locator('> [data-atom-page-columns-main]')
+
+    expect(await offsetIn(outerMain)).toBe(NAV + NAV_GAP)
+    expect(await offsetIn(innerMain), 'the inner nav\'s width and gap, not the outer one\'s added to it').toBe(NAV + NAV_GAP)
+    expect(await offsetIn(page.getByTestId('inner-nav')), 'the inner nav itself is not under the offset').toBe(0)
+
+    const nav = await box(page.getByTestId('inner-nav').locator('[data-atom-navlist]'))
+    const main = await box(innerMain)
+    const card = await box(page.getByTestId('inner-bar'))
+    const start = await box(page.getByTestId('inner-start'))
+    const cancel = await box(page.getByTestId('inner-cancel'))
+
+    expect(main.x - nav.right, 'the inner nav is beside the inner main column').toBeGreaterThan(0)
+    expect(Math.abs(card.x - nav.x), 'the inner bar starts at the inner nav').toBeLessThanOrEqual(1)
+    expect(Math.abs(card.right - main.right), 'and ends at the inner main column').toBeLessThanOrEqual(1)
+    expect(Math.abs(start.x - (main.x + PAD + 1)), 'its label starts where the inner forms do').toBeLessThanOrEqual(1)
+    expect(Math.abs(cancel.right - (main.right - PAD - 1))).toBeLessThanOrEqual(1)
+
+    // and the outer bar is where it was
+    const outerNav = await box(page.locator('[data-atom-page-columns-nav] [data-atom-navlist]').first())
+    const outerCard = await box(page.getByTestId('bar'))
+
+    expect(Math.abs(outerCard.x - outerNav.x)).toBeLessThanOrEqual(1)
+    expect(await noSideScroll(page)).toBe(true)
+  })
+
+  test('an inner nav under a row with no nav of its own outside: the inner offset is the only one', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query: '&rail=0&nested=nav' })
+
+    expect(await offsetIn(page.locator('[data-atom-page-columns-main]').first()), 'no outer nav, no outer offset').toBe(0)
+    expect(await offsetIn(page.getByTestId('inner-columns').locator('> [data-atom-page-columns-main]'))).toBe(NAV + NAV_GAP)
+
+    const nav = await box(page.getByTestId('inner-nav').locator('[data-atom-navlist]'))
+    const card = await box(page.getByTestId('inner-bar'))
+
+    expect(Math.abs(card.x - nav.x)).toBeLessThanOrEqual(1)
+  })
+
+  test('390px: the inner nav is a strip above the inner main column, so its offset is 0 and the bar is the plain bar', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 390, query: '&nav=1&rail=0&bar=1&nested=nav' })
+
+    const innerMain = page.getByTestId('inner-columns').locator('> [data-atom-page-columns-main]')
+
+    expect(await offsetIn(innerMain)).toBe(0)
+
+    const main = await box(innerMain)
+    const card = await box(page.getByTestId('inner-bar'))
+    const start = await box(page.getByTestId('inner-start'))
+
+    expect(Math.abs(card.x - main.x)).toBeLessThanOrEqual(1)
+    expect(Math.abs(card.right - main.right)).toBeLessThanOrEqual(1)
+    expect(Math.abs(start.x - (main.x + PAD + 1))).toBeLessThanOrEqual(1)
+    expect(await noSideScroll(page)).toBe(true)
+  })
+})
