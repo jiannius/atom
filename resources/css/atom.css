@@ -1650,7 +1650,65 @@ html.dark [data-atom-calendar-dot][data-atom-calendar-hex] {
     }
 
     @container (min-width: 855px) {
-        [data-atom-page-columns-rail][data-sticky] {
+        [data-atom-page-columns]:not([data-has-nav]) > [data-atom-page-columns-rail][data-sticky] {
+            --atom-rail-bleed: 6px;
+            box-sizing: border-box;
+            flex-basis: calc(320px + 2 * var(--atom-rail-bleed));
+            max-width: 100%;
+            margin: calc(-1 * var(--atom-rail-bleed));
+            padding: var(--atom-rail-bleed);
+            top: calc(var(--atom-shell-bar-h, 0px) + 1rem - var(--atom-rail-bleed));
+            max-height: calc(100dvh - var(--atom-shell-bar-h, 0px) - 2rem + 2 * var(--atom-rail-bleed));
+            overflow-x: clip;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+    }
+
+    /* page.columns `nav` slot: a column of navigation before the main column (a settings screen: groups of links on the left, the forms
+       on the right). The slot is a <div data-atom-page-columns-nav>, not a <nav>: the navlist in it is the landmark. The row carries
+       `data-has-nav` (set by the blade, so nothing here depends on :has()). Like the rail it follows the room the columns have, not the
+       window: from a row 768px wide the nav is a 200px column beside the main column (200 + the 22px gap leave the main column at least
+       546px there, the narrowest form column that still reads as one), under the shell's bar like a sticky rail and scrolling inside
+       itself when it is taller than the window leaves (6px of padding that a negative margin takes back, so the clip does not cut a focus
+       ring at its edge, as the rail's); below that it takes a row of its own, full width, above the main column. The flex row would wrap
+       it on its own from 555px (200 + 22 + the main column's 60%), so the container query, not the wrap, is the switch.
+       With a nav the sticky rail is beside the main column from 1410px, not 855px ((200 + 22 + 320 + 22) / 0.4), so its rule is written
+       for both cases; tests/e2e/page-columns.spec.js and settings-page.spec.js hold the numbers together.
+       `--atom-page-nav-offset` is set on the main column: 222px (the nav's 200px and the gap) while the nav is beside it, 0 otherwise
+       (a container query styles what is inside the container, so the row itself cannot carry it; a page.columns inside a main column
+       starts again from 0). A save bar in the main column reads it (form.actions). */
+    [data-atom-page-columns-nav] {
+        flex: 0 0 100%;
+        min-width: 0;
+    }
+
+    [data-atom-page-columns-main] {
+        --atom-page-nav-offset: 0px;
+    }
+
+    @container (min-width: 768px) {
+        [data-atom-page-columns-nav] {
+            --atom-nav-bleed: 6px;
+            box-sizing: border-box;
+            flex-basis: calc(200px + 2 * var(--atom-nav-bleed));
+            margin: calc(-1 * var(--atom-nav-bleed));
+            padding: var(--atom-nav-bleed);
+            position: sticky;
+            top: calc(var(--atom-shell-bar-h, 0px) + 1rem - var(--atom-nav-bleed));
+            max-height: calc(100dvh - var(--atom-shell-bar-h, 0px) - 2rem + 2 * var(--atom-nav-bleed));
+            overflow-x: clip;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        [data-atom-page-columns][data-has-nav] > [data-atom-page-columns-main] {
+            --atom-page-nav-offset: 222px;
+        }
+    }
+
+    @container (min-width: 1410px) {
+        [data-atom-page-columns][data-has-nav] > [data-atom-page-columns-rail][data-sticky] {
             --atom-rail-bleed: 6px;
             box-sizing: border-box;
             flex-basis: calc(320px + 2 * var(--atom-rail-bleed));

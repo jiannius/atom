@@ -34,7 +34,8 @@ const box = (locator) => locator.evaluate((el) => {
 const layout = async (page) => ({
   columns: await box(page.locator('[data-atom-page-columns]')),
   main: await box(page.locator('[data-atom-page-columns-main]')),
-  rail: await box(page.locator('[data-atom-page-columns-rail]')),
+  // none with ?rail=0
+  rail: (await page.locator('[data-atom-page-columns-rail]').count()) ? await box(page.locator('[data-atom-page-columns-rail]')) : null,
 })
 
 // nudge the window until the row of columns is the width asked for (the row is the window less the shell and the gutters)
@@ -464,5 +465,187 @@ test.describe('page.columns, a host utility beats the base', () => {
 
     expect(await page.locator('[data-atom-page-columns]').evaluate((el) => getComputedStyle(el).rowGap)).toBe('22px')
     expect(await page.locator('[data-atom-page-columns-rail]').evaluate((el) => getComputedStyle(el).position)).toBe('sticky')
+  })
+})
+
+// The `nav` slot (a settings screen's column of navigation). It follows the room like the rail: a 200px column beside the main column from a row 768px
+// wide (22px between them), a row of its own above it below that. Beside, it is sticky under the bar like a sticky rail (6px of bleed inside, the content
+// on the 200px), and `--atom-page-nav-offset` on the main column is 222px; stacked or without a nav, 0. With a rail too, the rail is beside the main column
+// from 1410px (200 + 22 + 320 + 22, over 0.4) instead of 855px.
+test.describe('page.columns, the nav slot', () => {
+  const NAV = 200
+  const NAV_SWITCH = 768
+  const WITH_RAIL = (NAV + GAP + RAIL + GAP) / 0.4
+
+  const navBox = (page) => box(page.locator('[data-atom-page-columns-nav] [data-atom-navlist]'))
+  const offset = (page) => page.locator('[data-atom-page-columns-main]').evaluate((el) => getComputedStyle(el).getPropertyValue('--atom-page-nav-offset').trim())
+
+  test('beside the main column from a row 768px wide: a 200px column, 22px between them, the offset 222px', async ({ page }) => {
+    await open(page, { shell: 'header', width: 1000, query: '&nav=1&rail=0' })
+
+    for (const target of [900, 780]) {
+      await setRowWidth(page, target)
+
+      const nav = await navBox(page)
+      const l = await layout(page)
+
+      expect(Math.abs(nav.width - NAV), `row ${l.columns.width}: nav ${nav.width}`).toBeLessThanOrEqual(0.5)
+      expect(Math.abs(nav.x - l.columns.x), 'the nav starts at the row').toBeLessThanOrEqual(1)
+      expect(Math.abs(l.main.x - nav.right - GAP), 'the gap between them').toBeLessThanOrEqual(1)
+      expect(Math.abs(l.main.right - l.columns.right), 'the main column takes the rest').toBeLessThanOrEqual(1)
+      expect(Math.abs(nav.y - l.main.y), 'on one top line').toBeLessThanOrEqual(1)
+      expect(await offset(page)).toBe('222px')
+    }
+
+    expect(await page.locator('[data-atom-page-columns]').getAttribute('data-has-nav')).not.toBeNull()
+    expect(await noSideScroll(page)).toBe(true)
+  })
+
+  test('a row of its own above the main column below 768px: full width, 22px over it, no offset', async ({ page }) => {
+    await open(page, { shell: 'header', width: 1000, query: '&nav=1&rail=0' })
+
+    for (const target of [760, 600, 358]) {
+      await setRowWidth(page, target)
+
+      const nav = await box(page.locator('[data-atom-page-columns-nav]'))
+      const l = await layout(page)
+
+      expect(Math.abs(nav.width - l.columns.width), `row ${l.columns.width}`).toBeLessThanOrEqual(1)
+      expect(Math.abs(l.main.y - nav.bottom - GAP), 'the gap under it').toBeLessThanOrEqual(1)
+      expect(Math.abs(l.main.width - l.columns.width)).toBeLessThanOrEqual(1)
+      expect(await offset(page)).toBe('0px')
+      expect(await noSideScroll(page)).toBe(true)
+    }
+  })
+
+  test('the switch is the 768px container query: beside at 770, stacked at 766 (the row, not the window)', async ({ page }) => {
+    await open(page, { shell: 'header', width: 900, query: '&nav=1&rail=0' })
+
+    for (const [target, expected] of [[770, 'beside'], [766, 'stacked']]) {
+      await setRowWidth(page, target)
+
+      const nav = await box(page.locator('[data-atom-page-columns-nav]'))
+      const l = await layout(page)
+
+      expect(nav.bottom <= l.main.y + 1 ? 'stacked' : 'beside', `row ${l.columns.width}`).toBe(expected)
+    }
+  })
+
+  test('a page.columns without a nav has no offset and no data-has-nav', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query: '&rail=0' })
+
+    expect(await page.locator('[data-atom-page-columns]').getAttribute('data-has-nav')).toBeNull()
+    expect(await offset(page)).toBe('0px')
+    await expect(page.locator('[data-atom-page-columns-nav]')).toHaveCount(0)
+  })
+
+  test('nav, main and rail: all three side by side from 1410px, the rail under both below it', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1700, query: '&nav=1&sticky=1&tall=1' })
+
+    await setRowWidth(page, 1420, 800)
+
+    let l = await layout(page)
+    let nav = await navBox(page)
+
+    expect(placement(l), `row ${l.columns.width}`).toBe('beside')
+    expect(Math.abs(nav.width - NAV)).toBeLessThanOrEqual(0.5)
+    expect(Math.abs(l.main.x - nav.right - GAP)).toBeLessThanOrEqual(1)
+    expect(Math.abs(l.rail.width - (RAIL + 2 * BLEED)), 'the rail with its bleed').toBeLessThanOrEqual(0.5)
+    expect(Math.abs(l.rail.right - BLEED - l.columns.right)).toBeLessThanOrEqual(1)
+    expect(l.main.width, 'main keeps 60%').toBeGreaterThanOrEqual(l.columns.width * 0.6 - 1)
+    expect(await page.locator('[data-atom-page-columns-rail]').evaluate((el) => getComputedStyle(el).overflowY)).toBe('auto')
+
+    await setRowWidth(page, 1400, 800)
+
+    l = await layout(page)
+    nav = await navBox(page)
+
+    // the nav stays beside the main column; the rail wraps under both, full width, plain content (no inner scroll or bleed)
+    expect(placement(l), `row ${l.columns.width}`).toBe('below')
+    expect(Math.abs(l.main.x - nav.right - GAP)).toBeLessThanOrEqual(1)
+    expect(Math.abs(l.rail.width - l.columns.width)).toBeLessThanOrEqual(1)
+    expect(Math.abs(l.rail.y - l.main.bottom - GAP)).toBeLessThanOrEqual(1)
+    expect(await page.locator('[data-atom-page-columns-rail]').evaluate((el) => { const cs = getComputedStyle(el); return { overflowY: cs.overflowY, padding: cs.paddingTop, margin: cs.marginTop } })).toEqual({ overflowY: 'visible', padding: '0px', margin: '0px' })
+    expect(WITH_RAIL).toBe(1410)
+    expect(await noSideScroll(page)).toBe(true)
+  })
+
+  test('a row that is narrow wraps nav, main and rail as three rows', async ({ page }) => {
+    await open(page, { shell: 'header', width: 600, query: '&nav=1&sticky=1' })
+
+    const nav = await box(page.locator('[data-atom-page-columns-nav]'))
+    const l = await layout(page)
+
+    expect(nav.bottom).toBeLessThanOrEqual(l.main.y + 1)
+    expect(l.main.bottom).toBeLessThanOrEqual(l.rail.y + 1)
+  })
+
+  for (const [shell, crumbs] of [['sidebar', true], ['header', false]]) {
+    test(`${shell} shell: the nav beside the main column stays 1rem under the bar while the page scrolls, and never leaves the columns`, async ({ page }) => {
+      await open(page, { shell, width: 1440, query: `&nav=1&tall=1&rail=0${crumbs ? '&crumbs=1' : ''}` })
+
+      const bar = await page.evaluate(() => {
+        const probe = document.createElement('div')
+
+        probe.style.cssText = 'position:absolute;height:var(--atom-shell-bar-h,0px);width:1px'
+        document.body.append(probe)
+
+        const h = probe.getBoundingClientRect().height
+
+        probe.remove()
+
+        return h
+      })
+
+      expect(bar > 0).toBe(true)
+
+      for (const y of [400, 900, 1500]) {
+        await page.evaluate((to) => window.scrollTo(0, to), y)
+        await page.waitForTimeout(50)
+
+        const item = await box(page.locator('[data-atom-page-columns-nav] [data-atom-navlist-item]').first())
+
+        expect(Math.abs(item.y - (bar + 16)), `scrolled ${y}: first item top ${item.y}, bar ${bar}`).toBeLessThanOrEqual(1)
+      }
+
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+      await page.waitForTimeout(50)
+
+      const l = await layout(page)
+      const nav = await box(page.locator('[data-atom-page-columns-nav]'))
+
+      expect(nav.bottom - BLEED).toBeLessThanOrEqual(l.columns.bottom + 1)
+    })
+  }
+
+  test('the 6px of padding and the negative margin keep the navlist on the 200px and the row\'s edge', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query: '&nav=1&rail=0' })
+
+    const style = await page.locator('[data-atom-page-columns-nav]').evaluate((el) => { const cs = getComputedStyle(el); return { padding: cs.paddingLeft, margin: cs.marginLeft, position: cs.position, overflowY: cs.overflowY } })
+
+    expect(style).toEqual({ padding: '6px', margin: '-6px', position: 'sticky', overflowY: 'auto' })
+  })
+
+  test('a nav taller than the window scrolls inside itself, and its last item is reached by Tab', async ({ page }) => {
+    await open(page, { shell: 'header', width: 1440, height: 400, query: '&nav=1&rail=0&tall=1&navitems=30' })
+
+    const nav = page.locator('[data-atom-page-columns-nav]')
+    const state = await nav.evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight, innerHeight: window.innerHeight }))
+
+    expect(state.scrollHeight).toBeGreaterThan(state.clientHeight + 100)
+    expect(state.clientHeight).toBeLessThan(state.innerHeight)
+
+    const last = page.locator('[data-atom-page-columns-nav] [data-atom-navlist-item]').last()
+
+    await page.evaluate(() => window.scrollTo(0, 300))
+    await last.focus()
+    expect(await last.evaluate((el) => { const r = el.getBoundingClientRect(); const n = el.closest('[data-atom-page-columns-nav]').getBoundingClientRect(); return r.top >= n.top - 2 && r.bottom <= n.bottom + 2 })).toBe(true)
+    expect(await page.evaluate(() => window.scrollY), 'the page stayed where it was').toBe(300)
+  })
+
+  test('a host utility on the nav slot wins over the base', async ({ page }) => {
+    await open(page, { shell: 'header', width: 1440, query: '&nav=1&rail=0&navhost=1' })
+
+    expect(await page.locator('[data-atom-page-columns-nav]').evaluate((el) => getComputedStyle(el).position)).toBe('static')
   })
 })

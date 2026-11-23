@@ -327,4 +327,48 @@ describe('page.columns', function () use ($evil) {
             ->and(domQuery($html, '//aside')[0]->getAttribute('aria-label'))->toBe($evil)
             ->and(domClasses(domQuery($html, '//*[@data-atom-page-columns]')[0]))->toContain('gap-8');
     });
+
+    it('prints the nav slot as a plain div before the main column, and the rail after it', function () {
+        $html = renderBlade('<atom:page.columns><p id="m">Main</p><x-slot:rail label="L"><p id="r">Rail</p></x-slot:rail><x-slot:nav><p id="n">Nav</p></x-slot:nav></atom:page.columns>');
+        $columns = domQuery($html, '//*[@data-atom-page-columns]')[0];
+        $nav = domQuery($html, '//*[@data-atom-page-columns]/*[@data-atom-page-columns-nav]')[0];
+
+        // a <div>, not a <nav>: the navlist in it is the landmark
+        expect($nav->tagName)->toBe('div')
+            ->and($nav->textContent)->toContain('Nav')
+            ->and(domQuery($html, '//*[@data-atom-page-columns-nav]//p[@id="n"]'))->toHaveCount(1)
+            ->and(domQuery($html, '//*[@data-atom-page-columns-main]//p[@id="n"]'))->toBeEmpty()
+            ->and($columns->firstElementChild->hasAttribute('data-atom-page-columns-nav'))->toBeTrue()
+            ->and($columns->firstElementChild->nextElementSibling->hasAttribute('data-atom-page-columns-main'))->toBeTrue()
+            ->and($columns->lastElementChild->hasAttribute('data-atom-page-columns-rail'))->toBeTrue();
+    });
+
+    it('marks the row data-has-nav only when a nav is drawn', function () {
+        $has = fn (string $html) => domQuery($html, '//*[@data-atom-page-columns][@data-has-nav]');
+
+        expect($has(renderBlade('<atom:page.columns>m<x-slot:nav>n</x-slot:nav></atom:page.columns>')))->toHaveCount(1)
+            ->and($has(renderBlade('<atom:page.columns>m</atom:page.columns>')))->toBeEmpty()
+            ->and($has(renderBlade('<atom:page.columns>m<x-slot:rail label="L">r</x-slot:rail></atom:page.columns>')))->toBeEmpty();
+    });
+
+    it('draws no nav column for an empty nav slot, or one that is only false blocks', function () {
+        $empty = renderBlade('<atom:page.columns>m<x-slot:nav></x-slot:nav></atom:page.columns>');
+        $blocks = renderBlade('<atom:page.columns>m<x-slot:nav>@if (false) <p>x</p> @endif</x-slot:nav></atom:page.columns>');
+
+        foreach ([$empty, $blocks] as $html) {
+            expect(domQuery($html, '//*[@data-atom-page-columns-nav]'))->toBeEmpty()
+                ->and(domQuery($html, '//*[@data-atom-page-columns][@data-has-nav]'))->toBeEmpty()
+                ->and(domQuery($html, '//*[@data-atom-page-columns-main]'))->toHaveCount(1);
+        }
+    });
+
+    it('passes the nav slot\'s attributes to its column, escaped once', function () use ($evil) {
+        $html = renderBlade('<atom:page.columns>m<x-slot:nav :data-x="$e" class="mt-2" aria-label="Settings sections">n</x-slot:nav></atom:page.columns>', ['e' => $evil]);
+        $nav = domQuery($html, '//*[@data-atom-page-columns-nav]')[0];
+
+        expect(domQuery($html, '//img'))->toBeEmpty()
+            ->and($nav->getAttribute('data-x'))->toBe($evil)
+            ->and($nav->getAttribute('class'))->toBe('mt-2')
+            ->and($nav->getAttribute('aria-label'))->toBe('Settings sections');
+    });
 });

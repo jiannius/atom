@@ -1,6 +1,6 @@
 @php
 // ?shell=sidebar|header puts the page in an app shell (default sidebar); ?tw=floor|latest is the consumer build; ?rail=0 leaves the rail out
-// ?crumbs=1 puts a crumb in the sidebar shell's bar, so the bar is drawn (empty, it is not, and --atom-shell-bar-h is 0); ?sticky=1 makes the rail sticky; ?wide=1 puts a 12-column frameless table (about 1500px of cells) in a panel in the main column, ?wide=2 the same table framed and bare, a direct child of the main column; ?long=1 adds a block whose content cannot wrap (a 1800px line), which must not widen the main column; ?tall=1 makes the main column 2400px tall; ?railtall=1 adds twelve cards with a button each to the rail (taller than a short window); ?gap=8|4 puts `gap-8` or `gap-4` on the tag; ?widecard=1 adds a rail card holding a 700px block; ?host=1 puts host utilities on the tag (`gap-8`) and on the rail (`static`)
+// ?crumbs=1 puts a crumb in the sidebar shell's bar, so the bar is drawn (empty, it is not, and --atom-shell-bar-h is 0); ?sticky=1 makes the rail sticky; ?wide=1 puts a 12-column frameless table (about 1500px of cells) in a panel in the main column, ?wide=2 the same table framed and bare, a direct child of the main column; ?long=1 adds a block whose content cannot wrap (a 1800px line), which must not widen the main column; ?tall=1 makes the main column 2400px tall; ?railtall=1 adds twelve cards with a button each to the rail (taller than a short window); ?gap=8|4 puts `gap-8` or `gap-4` on the tag; ?widecard=1 adds a rail card holding a 700px block; ?nav=1 adds a nav slot (a navlist of four items, ?navitems=30 for thirty, ?navhost=1 puts `static` on the slot); ?host=1 puts host utilities on the tag (`gap-8`) and on the rail (`static`)
 Auth::setUser(new \Illuminate\Auth\GenericUser(['id' => 1, 'name' => 'Alex Doe', 'email' => 'alex@example.com', 'avatar' => null]));
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
 $shell = request()->query('shell') === 'header' ? 'header' : 'sidebar';
@@ -15,6 +15,8 @@ $railtall = request()->query('railtall') === '1';
 $host = request()->query('host') === '1';
 $gap = match (request()->query('gap')) { '8' => 'gap-8', '4' => 'gap-4', default => '' };
 $widecard = request()->query('widecard') === '1';
+$nav = request()->query('nav') === '1';
+$navItems = max(4, (int) request()->query('navitems', 4));
 @endphp
 
 <x-dynamic-component :component="'atom::layouts.'.$shell" title="E2E: page columns" :vite="[]" :styles="['/atom/e2e/consumer-css/'.$tw]">
@@ -30,6 +32,16 @@ $widecard = request()->query('widecard') === '1';
         <atom:page.header title="Work order WO-1042" />
 
         <atom:page.columns :class="$host ? 'gap-8' : $gap" data-testid="columns">
+            @if ($nav)
+                <x-slot:nav data-testid="nav" :class="request()->query('navhost') === '1' ? 'static' : ''">
+                    <atom:navlist>
+                        @foreach (range(1, $navItems) as $item)
+                            <atom:navlist.item href="?nav=1#item-{{ $item }}" data-testid="nav-item">{{ ['Profile', 'Security', 'Notifications', 'Billing'][$item - 1] ?? 'Section '.$item }}</atom:navlist.item>
+                        @endforeach
+                    </atom:navlist>
+                </x-slot:nav>
+            @endif
+
             <div class="rounded-panel border bg-surface p-4" data-testid="main-block">Main column block</div>
 
             @if ($wide)
