@@ -107,7 +107,7 @@ describe('save bar', function () {
         $bar = domQuery(renderBlade('<atom:form.actions bar />'), '//*[@data-atom-save-bar]')[0];
         $classes = domClasses($bar);
 
-        expect($classes)->toContain('sticky', 'isolate', 'z-10', 'flex-wrap', 'gap-2', 'rounded-panel', 'border', 'border-border', 'bg-surface', 'shadow-pop', 'px-4', 'py-3')
+        expect($classes)->toContain('sticky', 'isolate', 'z-10', 'flex-wrap', 'gap-2', 'rounded-panel', 'border', 'border-border', 'bg-surface', 'shadow-pop', 'pe-4', 'py-3', 'ps-[calc(1rem_+_var(--atom-page-nav-offset,0px))]', 'ms-[calc(var(--atom-page-nav-offset,0px)_*_-1)]')
             ->and(implode(' ', $classes))->toContain('bottom-[calc(0.75rem_+_env(safe-area-inset-bottom,0px))]')
             // no blur, no transparency, no pseudo-element strip, no bleed, no hairline above it
             ->and(implode(' ', $classes))->not->toContain('before:')->not->toContain('after:')->not->toContain('backdrop-blur')->not->toContain('bg-surface/')
@@ -122,13 +122,14 @@ describe('save bar', function () {
             ->and($css)->not->toMatch('/\\[data-atom-save-bar\\][^{]*\\{/');
     });
 
-    it('takes the page\'s bottom room as its own, less the 0.75rem it floats by, and has no gutter margin or padding', function () {
+    it('takes the page\'s bottom room as its own, less the 0.75rem it floats by, and has no gutter margin or padding but the nav column\'s', function () {
         $html = renderBlade('<atom:form.actions bar />');
         $classes = implode(' ', domClasses(domQuery($html, '//*[@data-atom-save-bar]')[0]));
 
         expect($classes)->toContain('mb-[calc((var(--atom-page-pb,0px)_-_0.75rem_-_env(safe-area-inset-bottom,0px))*-1)]')
             ->and($classes)->not->toContain('--atom-gutter')
-            ->and($classes)->not->toContain('ms-[')->not->toContain('me-[')->not->toContain('ps-[')->not->toContain('pe-[');
+            // the one inline margin and padding it has reaches back under a page.columns nav: 0px (nothing changes) without one
+            ->and(array_values(array_filter(domClasses(domQuery($html, '//*[@data-atom-save-bar]')[0]), fn ($c) => preg_match('/^(ms|me|ps|pe)-\[/', $c) && ! str_contains($c, '--atom-page-nav-offset'))))->toBe([]);
     });
 
     it('prints the start slot at the start, and the buttons at the end', function () {

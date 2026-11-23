@@ -746,3 +746,63 @@ test.describe('page.columns, the nav slot as a strip', () => {
     expect(await strip(page).evaluate((el) => [el.scrollWidth > el.clientWidth, el.scrollLeft])).toEqual([true, 0])
   })
 })
+
+// `form.actions bar` in the main column: with a nav beside it the bar spans nav and content (it starts where the nav does, ends where the main column
+// does) and its start slot and buttons sit where they do in a bar with no nav. The offset is `--atom-page-nav-offset`, a utility on the bar.
+test.describe('page.columns, the save bar with a nav beside the main column', () => {
+  const bar = (page) => page.getByTestId('bar')
+  const PAD = 16
+
+  test('1440px: the bar starts at the nav and ends at the main column; its content starts where the main column does, plus the bar\'s own padding', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query: '&nav=1&rail=0&bar=1' })
+
+    const l = await layout(page)
+    const nav = await box(page.locator('[data-atom-page-columns-nav] [data-atom-navlist]'))
+    const card = await box(bar(page))
+    const start = await box(page.getByTestId('bar-start'))
+    const save = await box(page.getByTestId('bar-save'))
+    const cancel = await box(page.getByTestId('bar-cancel'))
+
+    // a border of 1px sits between the card's edge and its padding
+    expect(Math.abs(card.x - nav.x), 'the bar starts where the nav does').toBeLessThanOrEqual(1)
+    expect(Math.abs(card.right - l.main.right), 'and ends where the main column does').toBeLessThanOrEqual(1)
+    expect(Math.abs(start.x - (l.main.x + PAD + 1)), 'the start slot is where it is in a content-only bar').toBeLessThanOrEqual(1)
+    expect(Math.abs(cancel.right - (l.main.right - PAD - 1)), 'the buttons end where they do in a content-only bar').toBeLessThanOrEqual(1)
+    expect(save.right).toBeLessThanOrEqual(cancel.x)
+    expect(await noSideScroll(page)).toBe(true)
+  })
+
+  test('the same bar in a page.columns with no nav is the plain bar: as wide as the main column, nothing to offset', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, query: '&rail=0&bar=1' })
+
+    const l = await layout(page)
+    const card = await box(bar(page))
+    const start = await box(page.getByTestId('bar-start'))
+
+    expect(Math.abs(card.x - l.main.x)).toBeLessThanOrEqual(1)
+    expect(Math.abs(card.right - l.main.right)).toBeLessThanOrEqual(1)
+    expect(Math.abs(start.x - (l.main.x + PAD + 1))).toBeLessThanOrEqual(1)
+  })
+
+  test('390px: the nav is a strip above the main column and the bar is the plain bar', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 390, query: '&nav=1&rail=0&bar=1' })
+
+    const l = await layout(page)
+    const card = await box(bar(page))
+    const start = await box(page.getByTestId('bar-start'))
+
+    expect(Math.abs(card.x - l.main.x)).toBeLessThanOrEqual(1)
+    expect(Math.abs(card.right - l.main.right)).toBeLessThanOrEqual(1)
+    expect(Math.abs(start.x - (l.main.x + PAD + 1))).toBeLessThanOrEqual(1)
+  })
+
+  test('the bar stays on the screen while the page scrolls, over the nav\'s column, with the bottom room unchanged', async ({ page }) => {
+    await open(page, { shell: 'sidebar', width: 1440, height: 800, query: '&nav=1&rail=0&bar=1' })
+
+    const card = await bar(page).evaluate((el) => { const r = el.getBoundingClientRect(); return { bottom: r.bottom, marginBottom: getComputedStyle(el).marginBottom } })
+
+    // stuck 0.75rem above the bottom of the window, as without a nav
+    expect(Math.abs(800 - card.bottom - 12)).toBeLessThanOrEqual(1)
+    expect(parseFloat(card.marginBottom)).toBeCloseTo(-(120 - 12), 0)
+  })
+})

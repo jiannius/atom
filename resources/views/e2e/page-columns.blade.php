@@ -1,6 +1,6 @@
 @php
 // ?shell=sidebar|header puts the page in an app shell (default sidebar); ?tw=floor|latest is the consumer build; ?rail=0 leaves the rail out
-// ?crumbs=1 puts a crumb in the sidebar shell's bar, so the bar is drawn (empty, it is not, and --atom-shell-bar-h is 0); ?sticky=1 makes the rail sticky; ?wide=1 puts a 12-column frameless table (about 1500px of cells) in a panel in the main column, ?wide=2 the same table framed and bare, a direct child of the main column; ?long=1 adds a block whose content cannot wrap (a 1800px line), which must not widen the main column; ?tall=1 makes the main column 2400px tall; ?railtall=1 adds twelve cards with a button each to the rail (taller than a short window); ?gap=8|4 puts `gap-8` or `gap-4` on the tag; ?widecard=1 adds a rail card holding a 700px block; ?nav=1 adds a nav slot (a navlist of four items, ?navitems=30 for thirty, ?navhost=1 puts `static` on the slot, ?navcurrent=N marks item N current, ?navgroups=1 splits the items into a group "Account" (the first six) and a collapsed expandable group "Workspace" (the rest)); ?host=1 puts host utilities on the tag (`gap-8`) and on the rail (`static`)
+// ?crumbs=1 puts a crumb in the sidebar shell's bar, so the bar is drawn (empty, it is not, and --atom-shell-bar-h is 0); ?sticky=1 makes the rail sticky; ?wide=1 puts a 12-column frameless table (about 1500px of cells) in a panel in the main column, ?wide=2 the same table framed and bare, a direct child of the main column; ?long=1 adds a block whose content cannot wrap (a 1800px line), which must not widen the main column; ?tall=1 makes the main column 2400px tall; ?railtall=1 adds twelve cards with a button each to the rail (taller than a short window); ?gap=8|4 puts `gap-8` or `gap-4` on the tag; ?widecard=1 adds a rail card holding a 700px block; ?nav=1 adds a nav slot (a navlist of four items, ?navitems=30 for thirty, ?navhost=1 puts `static` on the slot, ?navcurrent=N marks item N current, ?navgroups=1 splits the items into a group "Account" (the first six) and a collapsed expandable group "Workspace" (the rest)); ?bar=1 adds a form with a save bar (`form.actions bar dirty`, over 1600px of form) to the main column, ?host=1 puts host utilities on the tag (`gap-8`) and on the rail (`static`)
 Auth::setUser(new \Illuminate\Auth\GenericUser(['id' => 1, 'name' => 'Alex Doe', 'email' => 'alex@example.com', 'avatar' => null]));
 $tw = in_array(request()->query('tw'), ['floor', 'latest'], true) ? request()->query('tw') : 'latest';
 $shell = request()->query('shell') === 'header' ? 'header' : 'sidebar';
@@ -16,6 +16,7 @@ $host = request()->query('host') === '1';
 $gap = match (request()->query('gap')) { '8' => 'gap-8', '4' => 'gap-4', default => '' };
 $widecard = request()->query('widecard') === '1';
 $nav = request()->query('nav') === '1';
+$bar = request()->query('bar') === '1';
 $navItems = max(4, (int) request()->query('navitems', 4));
 $navCurrent = (int) request()->query('navcurrent', 0);
 $navGroups = request()->query('navgroups') === '1';
@@ -104,6 +105,18 @@ $navLabel = fn (int $item) => ['Profile', 'Security', 'Notifications', 'Billing'
 
             @if ($tall)
                 <div class="h-[2400px] rounded-panel border bg-surface p-4" data-testid="tall-block">A long main column</div>
+            @endif
+
+            @if ($bar)
+                <atom:form x-on:submit.prevent data-testid="form">
+                    <atom:input label="Name" name="name" value="Acme" />
+                    <div class="h-[1600px]" data-testid="form-tall">A long form</div>
+                    <atom:form.actions bar dirty data-testid="bar">
+                        <x-slot:start><span data-testid="bar-start">3 changes</span></x-slot:start>
+                        <atom:button type="submit" data-testid="bar-save">Save</atom:button>
+                        <atom:button variant="ghost" type="button" data-testid="bar-cancel">Cancel</atom:button>
+                    </atom:form.actions>
+                </atom:form>
             @endif
 
             @if ($rail)
