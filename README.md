@@ -1734,7 +1734,7 @@ class Article extends Model
 }
 ```
 
-What it does on save: it walks the document's image nodes, resizes each Livewire temporary upload (`/livewire-{hash}/preview-file/...`) with Intervention Image (max width 1000, quality 80), persists it to `config('atom.editor.disk')` (the default disk when unset) under `<configured folder>/editor/`, rewrites the URL, and stores the JSON. A model can define `tiptapStoreImage(string $tmpPath, string $key): string` to store the image itself.
+What it does on save: it walks the document's image nodes, resizes each Livewire temporary upload (`/livewire-{hash}/preview-file/...`) with Intervention Image (max width 1000, quality 80), persists it to `config('atom.editor.disk')` (the default disk when unset) under `<configured folder>/editor/`, rewrites the URL, and stores the JSON. The temporary file is read through Livewire's own temporary disk and directory, and only when the src names a file with the name Livewire generates; anything else is left as it is. A model can define `tiptapStoreImage(string $tmpPath, string $key): string` to store the image itself (it is only called for a jpeg, png, gif or webp upload; any other file keeps its temporary URL); `$tmpPath` is a local copy (with an extension taken from the file's content) that atom deletes afterwards.
 
 `get()` also reads what the old `AsEditorContent` cast (removed in v4) stored, `serialize()`d HTML, without instantiating any class, so a column can hold both until you move it with `atom:tiptap-migrate`.
 
