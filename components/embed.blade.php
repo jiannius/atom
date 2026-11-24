@@ -102,7 +102,7 @@ $merges = [
     </video>
 @elseif ($type === 'youtube')
     {{-- sandboxed: the player needs its scripts and its own origin, nothing else of the page, and a caller cannot loosen it --}}
-    <iframe src="https://www.youtube-nocookie.com/embed/{{ $youtubeId }}" {{ $attributes->except(['sandbox', 'srcdoc', 'src'])->class($classes)->merge($merges) }} sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"></iframe>
+    <iframe src="https://www.youtube-nocookie.com/embed/{{ $youtubeId }}" {{ $attributes->filter(fn ($value, $key) => ! in_array(strtolower((string) $key), ['sandbox', 'srcdoc', 'src'], true))->class($classes)->merge($merges) }} sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"></iframe>
 @elseif ($type === 'icon')
     <div {{ $attributes->class($classes)->merge($merges) }}>
         @if ($icon instanceof \Illuminate\Contracts\Support\Htmlable) {{ $icon }}

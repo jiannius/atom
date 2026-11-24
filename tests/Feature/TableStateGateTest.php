@@ -21,7 +21,11 @@ dataset('bad max rows', [
     'over the cap' => [501],
     'huge' => [10_000_000],
     'text' => ['abc'],
-    'numeric string' => ['50'],
+    'numeric string over the cap' => ['501'],
+    'zero string' => ['0'],
+    'padded string' => [' 50'],
+    'four digits' => ['1000'],
+    'float string' => ['50.5'],
     'float' => [50.5],
     'array' => [[50]],
     'bool' => [true],
@@ -36,6 +40,20 @@ it('refuses a max_rows carried by a wholesale _table update', function ($value) 
         ->set('_table', ['sort' => ['column' => null, 'direction' => null], 'max_rows' => $value])
         ->assertForbidden();
 })->with('bad max rows');
+
+it('lets a select send max_rows as a numeric string, and reads it as that number', function () {
+    Item::factory()->count(3)->create();
+
+    $test = Livewire::test(TableFixture::class)->set('_table.max_rows', '2')->assertOk();
+
+    expect(withLivewireContext($test->instance(), fn ($c) => $c->items())->perPage())->toBe(2);
+
+    Livewire::test(TableFixture::class)->set('_table', ['sort' => ['column' => null, 'direction' => null], 'max_rows' => '50'])->assertOk();
+});
+
+it('refuses a wholesale _table that is not an array', function ($value) {
+    Livewire::test(TableFixture::class)->set('_table', $value)->assertForbidden();
+})->with(['string' => ['x'], 'null' => [null], 'int' => [5], 'bool' => [false]]);
 
 it('refuses a write below max_rows', function () {
     Livewire::test(TableFixture::class)->set('_table.max_rows.0', 50)->assertForbidden();
@@ -176,7 +194,9 @@ it('sorts a visible column of a model that hides others', function () {
 });
 
 it('decides which columns a client may sort on', function (string $column, array $hidden, array $visible, bool $expected) {
-    $model = (new class extends Model {})->setHidden($hidden)->setVisible($visible);
+    $model = (new class extends Model {
+        protected $table = 'items';
+    })->setHidden($hidden)->setVisible($visible);
 
     expect(TableSort::isSortable($model, $column))->toBe($expected);
 })->with([
@@ -189,4 +209,103 @@ it('decides which columns a client may sort on', function (string $column, array
     'visible listed' => ['amount', [], ['amount'], true],
     'visible, not listed' => ['created_at', [], ['amount'], false],
     'visible json path' => ['amount->x', [], ['amount'], true],
+    'visible, behind the model table' => ['items.amount', [], ['amount'], true],
+    'visible, behind the model table in another case' => ['ITEMS.amount', [], ['amount'], true],
+    'visible, behind another table' => ['orders.amount', [], ['amount'], false],
+    'hidden, behind the model table' => ['items.password', ['password'], [], false],
+    'the table name alone is not a column of it' => ['items', [], ['amount'], false],
+    // the identifier shape: a denylist on a raw string let these through to orderBy()
+    'leading space' => [' password', ['password'], [], false],
+    'trailing space' => ['password ', ['password'], [], false],
+    'trailing newline' => ["password\n", ['password'], [], false],
+    'backticked' => ['`password`', ['password'], [], false],
+    'quoted' => ['"password"', ['password'], [], false],
+    'aliased' => ['password as x', ['password'], [], false],
+    'aliased, other column' => ['amount as x', [], [], false],
+    'a function' => ['lower(amount)', [], [], false],
+    'a subquery' => ['(select 1)', [], [], false],
+    'a comma' => ['amount,password', [], [], false],
+    'empty' => ['', [], [], false],
+    'a leading digit' => ['1amount', [], [], false],
+    'a hyphen' => ['my-column', [], [], false],
+    'a semicolon' => ['amount;', [], [], false],
+    'a plain column with an underscore' => ['created_at', [], [], true],
+    'a dotted column' => ['items.created_at', [], [], true],
+    'json path' => ['data->a->b', [], [], true],
+    'json path with a quote' => ['data->\'a', [], [], false],
+    'json path hidden at the root' => ['password->a', ['password'], [], false],
+    'json path hidden below' => ['data->password', ['password'], [], false],
 ]);
+
+it('drops a client sort on a column that is not a plain name, and the default order shows', function (string $column) {
+    $first = Item::factory()->create(['name' => 'a']);
+    $second = Item::factory()->create(['name' => 'b']);
+
+    $test = Livewire::test(TableFixture::class)
+        ->set('_table.sort.column', $column)
+        ->set('_table.sort.direction', 'asc');
+
+    $ids = withLivewireContext($test->instance(), fn ($c) => $c->items()->pluck('id')->all());
+
+    expect($ids)->toBe([$second->id, $first->id]);
+})->with([' name', 'name ', "name\n", '`name`', 'name as x', 'lower(name)', 'name,id']);
+
+it('sorts a column qualified with the model table', function () {
+    $model = new class extends Model {
+        protected $table = 'items';
+
+        protected $visible = ['amount'];
+    };
+
+    Item::factory()->create(['amount' => 5]);
+    Item::factory()->create(['amount' => 1]);
+
+    $test = Livewire::test(TableFixture::class)
+        ->set('_table.sort.column', 'items.amount')
+        ->set('_table.sort.direction', 'asc');
+
+    expect(withLivewireContext($test->instance(), fn () => $model::query()->toTable()->pluck('amount')->all()))->toBe([1, 5]);
+});
+
+it('says once per process and column that a client sort column was dropped', function () {
+    $model = new class extends Model {
+        protected $table = 'items';
+
+        protected $hidden = ['created_at'];
+    };
+
+    $test = Livewire::test(TableFixture::class)
+        ->set('_table.sort.column', 'created_at')
+        ->set('_table.sort.direction', 'asc');
+
+    // a class name that no earlier test in this process has used, so its first drop is the one logged
+    $lines = [];
+    \Illuminate\Support\Facades\Log::listen(function ($message) use (&$lines) {
+        $lines[] = [$message->level, $message->context];
+    });
+
+    withLivewireContext($test->instance(), function () use ($model) {
+        $model::query()->toTable();
+        $model::query()->toTable();
+    });
+
+    expect($lines)->toHaveCount(1)
+        ->and($lines[0][0])->toBe('debug')
+        ->and($lines[0][1]['column'])->toBe('created_at')
+        ->and($lines[0][1]['model'])->toBe(get_class($model));
+});
+
+it('does not log a drop for a signed raw sort or a sortable column', function () {
+    $lines = [];
+    \Illuminate\Support\Facades\Log::listen(function ($message) use (&$lines) {
+        $lines[] = $message;
+    });
+
+    $test = Livewire::test(TableFixture::class)
+        ->set('_table.sort.column', 'amount')
+        ->set('_table.sort.direction', 'asc');
+
+    withLivewireContext($test->instance(), fn ($c) => $c->items());
+
+    expect($lines)->toBe([]);
+});

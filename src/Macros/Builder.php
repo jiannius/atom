@@ -114,6 +114,7 @@ class Builder
                 && $this instanceof \Illuminate\Database\Eloquent\Builder
                 && !TableSort::isSortable($this->getModel(), $sortColumn)
             ) {
+                TableSort::noteDropped($this->getModel(), $sortColumn);
                 $sortColumn = null;
             }
 

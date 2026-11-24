@@ -8,6 +8,12 @@ use Illuminate\Validation\ValidationException;
 
 class Recaptcha
 {
+    /** Google's published reCAPTCHA v2 test site key and secret: always pass, and answer with the hostname `testkey.google.com`. */
+    protected const TEST_KEYS = [
+        '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI',
+        '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe',
+    ];
+
     /**
      * Verify a reCAPTCHA v3 token.
      *
@@ -71,7 +77,7 @@ class Recaptcha
         // returns the hostname the widget ran on; skipped when it does not send one.
         $hostname = data_get($result, 'hostname');
 
-        if (is_string($hostname) && $hostname !== '' && strcasecmp($hostname, request()->getHost()) !== 0) {
+        if (is_string($hostname) && $hostname !== '' && !$this->isOurHostname($hostname)) {
             $this->reject();
         }
 
@@ -79,6 +85,29 @@ class Recaptcha
         if ($action && ($returned = data_get($result, 'action')) && $returned !== $action) {
             $this->reject();
         }
+    }
+
+    /**
+     * Whether a hostname Google returned is this site's: the request's host or the host of `app.url`, compared
+     * without case and without a trailing dot (`Example.com.` is `example.com`). Behind a proxy that is not in
+     * TrustProxies the request's host is the internal one, which is why `app.url` is accepted too. Google's
+     * published v2 test keys always answer `testkey.google.com`, so with one of them configured the check is skipped.
+     */
+    protected function isOurHostname(string $hostname) : bool
+    {
+        $normalise = fn (?string $host) => rtrim(strtolower(trim((string) $host)), '.');
+
+        if (in_array(config('services.recaptcha.secret_key'), self::TEST_KEYS, true)
+            || in_array(config('services.recaptcha.site_key'), self::TEST_KEYS, true)) {
+            return true;
+        }
+
+        $allowed = array_filter([
+            $normalise(request()->getHost()),
+            $normalise(parse_url((string) config('app.url'), PHP_URL_HOST) ?: null),
+        ]);
+
+        return in_array($normalise($hostname), $allowed, true);
     }
 
     /**

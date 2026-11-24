@@ -95,6 +95,54 @@ describe('verify — fail closed', function () {
         Http::assertSentCount(1);
     });
 
+    it('compares the hostname without case and without a trailing dot, on both sides', function () {
+        $host = request()->getHost();
+
+        Http::fake(['*' => Http::response(['success' => true, 'score' => 0.9, 'hostname' => strtoupper($host).'.'])]);
+        recaptcha()->verify('token');
+
+        config(['app.url' => 'https://App.Example.test.']);
+        Http::fake(['*' => Http::response(['success' => true, 'score' => 0.9, 'hostname' => 'app.example.test'])]);
+        recaptcha()->verify('token');
+
+        Http::assertSentCount(1);
+    });
+
+    it('normalises the request host too, not only the one google returns', function () {
+        app()->instance('request', \Illuminate\Http\Request::create('https://Shop.Example.test./signup'));
+        config(['app.url' => 'http://unrelated.test']);
+        Http::fake(['*' => Http::response(['success' => true, 'score' => 0.9, 'hostname' => 'shop.example.test'])]);
+
+        recaptcha()->verify('token');
+
+        Http::assertSentCount(1);
+    });
+
+    it('accepts the host of app.url as well as the request host (a proxy that is not trusted)', function () {
+        config(['app.url' => 'https://shop.example.test']);
+        Http::fake(['*' => Http::response(['success' => true, 'score' => 0.9, 'hostname' => 'shop.example.test'])]);
+
+        recaptcha()->verify('token');
+
+        Http::assertSentCount(1);
+    });
+
+    it('still refuses a hostname that is neither', function () {
+        config(['app.url' => 'https://shop.example.test']);
+        Http::fake(['*' => Http::response(['success' => true, 'score' => 0.9, 'hostname' => 'shop.example.test.evil.test'])]);
+
+        expect(fn () => recaptcha()->verify('token'))->toThrow(ValidationException::class);
+    });
+
+    it('skips the hostname check with google\'s published test keys, which answer testkey.google.com', function ($key) {
+        config(['services.recaptcha.secret_key' => $key === 'secret' ? '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe' : 'secret', 'services.recaptcha.site_key' => $key === 'site' ? '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI' : 'real-site-key']);
+        Http::fake(['*' => Http::response(['success' => true, 'score' => 0.9, 'hostname' => 'testkey.google.com'])]);
+
+        recaptcha()->verify('token');
+
+        Http::assertSentCount(1);
+    })->with(['secret', 'site']);
+
     it('does not check the hostname when google sends none', function () {
         Http::fake(['*' => Http::response(['success' => true, 'score' => 0.9])]);
 

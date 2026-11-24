@@ -197,6 +197,13 @@ describe('embed', function () {
         'embed with a trailing path' => ['https://www.youtube.com/embed/dQw4w9WgXcQ/../x'],
     ]);
 
+    it('drops a sandbox, srcdoc or src attribute whatever its case', function () {
+        $html = Blade::render('<atom:embed src="https://youtu.be/dQw4w9WgXcQ" SANDBOX="allow-top-navigation" SrcDoc="<b>x</b>" SRC="https://evil.test/" />');
+
+        expect(strtolower($html))->not->toContain('allow-top-navigation')->not->toContain('srcdoc')->not->toContain('evil.test')
+            ->toContain('src="https://www.youtube-nocookie.com/embed/dqw4w9wgxcq"');
+    });
+
     it('lets a caller neither loosen the sandbox nor add a srcdoc', function () {
         $html = Blade::render('<atom:embed src="https://youtu.be/dQw4w9WgXcQ" sandbox="allow-top-navigation" srcdoc="<script>alert(1)</script>" />');
 

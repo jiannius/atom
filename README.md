@@ -380,7 +380,11 @@ any of this: it is a listener on Livewire's `update` event for every component t
 `WithTable`, registered to run before any `updating*` hook of yours (so a hook that saves a sort
 preference never sees an unsigned `raw:` value), and no host method can shadow it. A URL is read
 into a property through no update event, so a `WithTable` component that puts `_table` in its
-`queryString` or a `#[Url]` throws at mount. Your own modules installed as Composer path packages
+`queryString` or a `#[Url]` throws at mount. **A sort on a hidden column does nothing.** `toTable()` sorts by a client-chosen
+column only when it is a plain column name (`name`, `items.name`, `data->key`), is not in the model's `$hidden`, and is in `$visible` when
+that is set (the model's own table prefix does not count against it); otherwise the default order shows and one `Log::debug` line per
+process names the column. Many models hide `created_at` and `updated_at`: to keep them sortable, declare the column as
+`<atom:table.column sort="raw:created_at">` (signed, so the gate does not touch it) or take it out of `$hidden`. Your own modules installed as Composer path packages
 are skipped by the `breadcrumbs()` guard, like any package: give them the trait yourself.
 
 **Yours to define:** `breadcrumbs` (optional), `tableQuery` (required for `tableSelection()`),
