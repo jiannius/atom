@@ -102,11 +102,78 @@ describe('embed', function () {
     });
 
     it('titles the youtube iframe for screen readers', function () {
-        $html = Blade::render('<atom:embed src="https://www.youtube.com/watch?v=abc" />');
+        $html = Blade::render('<atom:embed src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />');
 
         expect($html)
             ->toContain('<iframe')
             ->toContain('title="Embedded video"');
+    });
+
+    it('frames a rebuilt, sandboxed YouTube embed and nothing the URL carried', function (string $src) {
+        $html = Blade::render('<atom:embed :src="$src" class="aspect-video" />', compact('src'));
+
+        expect($html)
+            ->toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"')
+            ->toContain('sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"')
+            ->toContain('referrerpolicy="strict-origin-when-cross-origin"')
+            ->not->toContain('evil')
+            ->not->toContain('autoplay');
+    })->with([
+        'watch' => ['https://www.youtube.com/watch?v=dQw4w9WgXcQ'],
+        'watch with more query' => ['https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=x&autoplay=1&t=9#evil'],
+        'bare host' => ['https://youtube.com/watch?v=dQw4w9WgXcQ'],
+        'mobile host' => ['https://m.youtube.com/watch?v=dQw4w9WgXcQ'],
+        'uppercase host' => ['https://WWW.YOUTUBE.COM/watch?v=dQw4w9WgXcQ'],
+        'protocol-relative' => ['//www.youtube.com/watch?v=dQw4w9WgXcQ'],
+        'short link' => ['https://youtu.be/dQw4w9WgXcQ?si=evil'],
+        'embed path' => ['https://www.youtube.com/embed/dQw4w9WgXcQ'],
+        'nocookie host' => ['https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1'],
+        'shorts' => ['https://www.youtube.com/shorts/dQw4w9WgXcQ'],
+    ]);
+
+    it('does not frame a /watch URL on a host that is not YouTube', function (string $src) {
+        $html = Blade::render('<atom:embed :src="$src" />', compact('src'));
+
+        expect($html)->not->toContain('<iframe')->not->toContain('evil')
+            // the file icon, as for any source the embed does not know
+            ->toContain('text-muted');
+    })->with([
+        'other host' => ['https://evil.test/watch?v=dQw4w9WgXcQ'],
+        'host that only contains it' => ['https://www.youtube.com.evil.test/watch?v=dQw4w9WgXcQ'],
+        'a subdomain of it' => ['https://evil.youtube.com/watch?v=dQw4w9WgXcQ'],
+        'a look-alike' => ['https://www.youtube.co/watch?v=dQw4w9WgXcQ'],
+        'userinfo' => ['https://www.youtube.com@evil.test/watch?v=dQw4w9WgXcQ'],
+        'host in the query' => ['https://evil.test/watch?v=dQw4w9WgXcQ&u=www.youtube.com'],
+        'no host' => ['/watch?v=dQw4w9WgXcQ'],
+        'page-embedding path on evil host' => ['https://evil.test/embed/dQw4w9WgXcQ'],
+    ]);
+
+    it('does not frame a YouTube URL that has no 11-character video id', function (string $src) {
+        $html = Blade::render('<atom:embed :src="$src" />', compact('src'));
+
+        expect($html)->not->toContain('<iframe');
+    })->with([
+        'short id' => ['https://www.youtube.com/watch?v=abc'],
+        'no id' => ['https://www.youtube.com/watch'],
+        'array id' => ['https://www.youtube.com/watch?v[]=dQw4w9WgXcQ'],
+        'id with markup' => ['https://www.youtube.com/watch?v=dQw4w9WgXc"'],
+        'long id' => ['https://www.youtube.com/watch?v=dQw4w9WgXcQQ'],
+        'other path' => ['https://www.youtube.com/results?v=dQw4w9WgXcQ'],
+        'embed with a trailing path' => ['https://www.youtube.com/embed/dQw4w9WgXcQ/../x'],
+    ]);
+
+    it('drops a sandbox, srcdoc or src attribute whatever its case', function () {
+        $html = Blade::render('<atom:embed src="https://youtu.be/dQw4w9WgXcQ" SANDBOX="allow-top-navigation" SrcDoc="<b>x</b>" SRC="https://evil.test/" />');
+
+        expect(strtolower($html))->not->toContain('allow-top-navigation')->not->toContain('srcdoc')->not->toContain('evil.test')
+            ->toContain('src="https://www.youtube-nocookie.com/embed/dqw4w9wgxcq"');
+    });
+
+    it('lets a caller neither loosen the sandbox nor add a srcdoc', function () {
+        $html = Blade::render('<atom:embed src="https://youtu.be/dQw4w9WgXcQ" sandbox="allow-top-navigation" srcdoc="<script>alert(1)</script>" />');
+
+        expect($html)->not->toContain('allow-top-navigation')->not->toContain('srcdoc')
+            ->toContain('sandbox="allow-scripts allow-same-origin');
     });
 
     it('falls back to an icon without erroring on a null source', function () {
