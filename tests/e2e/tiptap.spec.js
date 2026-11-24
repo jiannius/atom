@@ -199,3 +199,53 @@ test('an image float / width that is not a safe value renders no style', async (
   expect(legit).toContain('width: 50%')
   expect(legit).toContain('float: right')
 })
+
+// Colour, highlight, alignment and font size write the stored value into `style`. The server renderer validates each
+// (Tiptap\StyleValue and the Atom* extensions); the editor must drop the same values rather than print them.
+test('a stored colour, highlight, alignment or font size that is not safe renders no style', async ({ page }) => {
+  await page.goto('/atom/docs/tiptap')
+  const editor = basicEditor(page)
+  await waitForEditor(editor)
+
+  await editor.evaluate((el) => {
+    const ed = el.closest('[x-data]')._x_dataStack[0].editor()
+    ed.commands.setContent({ type: 'doc', content: [
+      { type: 'paragraph', attrs: { textAlign: 'left; position:fixed; inset:0; background:url(//evil.test/x)' }, content: [
+        { type: 'text', text: 'hostile-align' },
+      ] },
+      { type: 'paragraph', content: [
+        { type: 'text', text: 'hostile-color', marks: [{ type: 'textStyle', attrs: { color: 'red; position:fixed; background:url(//evil.test/x)' } }] },
+        { type: 'text', text: 'hostile-size', marks: [{ type: 'textStyle', attrs: { fontSize: '12px; position:fixed' } }] },
+        { type: 'text', text: 'hostile-mark', marks: [{ type: 'highlight', attrs: { color: 'yellow; position:fixed; background:url(//evil.test/x)' } }] },
+      ] },
+      { type: 'paragraph', attrs: { textAlign: 'center' }, content: [
+        { type: 'text', text: 'ok-color', marks: [{ type: 'textStyle', attrs: { color: '#ff0000' } }] },
+        { type: 'text', text: 'ok-rgb', marks: [{ type: 'textStyle', attrs: { color: 'rgb(0, 128, 0)' } }] },
+        { type: 'text', text: 'ok-size', marks: [{ type: 'textStyle', attrs: { fontSize: '1.25rem' } }] },
+        { type: 'text', text: 'ok-mark', marks: [{ type: 'highlight', attrs: { color: 'yellow' } }] },
+      ] },
+    ] })
+  })
+
+  const content = editor.locator('.editor-content')
+  await expect(content.locator('p')).toHaveCount(3)
+
+  // nothing hostile reaches any inline style, anywhere in the editor
+  const styles = await content.evaluate((el) => [...el.querySelectorAll('[style]')].map((n) => n.getAttribute('style')))
+  for (const style of styles) {
+    expect(style).not.toMatch(/position|url\(|inset|evil/i)
+  }
+  expect(await content.locator('p').nth(0).getAttribute('style')).toBeNull()
+  expect(await content.locator('[data-color*="position"]').count()).toBe(0)
+  for (const t of ['hostile-color', 'hostile-size', 'hostile-mark']) {
+    expect(await content.getByText(t).evaluate((n) => n.getAttribute('style') ?? '')).toBe('')
+  }
+
+  // valid values still render
+  expect(await content.locator('p').nth(2).getAttribute('style')).toContain('text-align: center')
+  expect(await content.getByText('ok-color').getAttribute('style')).toMatch(/color: (#ff0000|rgb\(255, 0, 0\))/)
+  expect(await content.getByText('ok-rgb').getAttribute('style')).toContain('color: rgb(0, 128, 0)')
+  expect(await content.getByText('ok-size').getAttribute('style')).toContain('font-size: 1.25rem')
+  const mark = await content.locator('mark', { hasText: 'ok-mark' }).getAttribute('style')
+  expect(mark).toContain('background-color: yellow')
+})

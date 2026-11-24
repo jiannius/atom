@@ -26,6 +26,88 @@ const safeWidth = v => {
     return m && +m[1] >= 1 && +m[1] <= (m[2] === '%' ? 100 : 5000) ? v.trim() : null
 }
 
+// Mirrors Tiptap\StyleValue::color / fontSize (PHP). Stored content is untrusted (a client can save any JSON), and the stock
+// Color, Highlight, TextAlign and FontSize write the stored value into `style` verbatim, so `red; background:url(//x)` or
+// `left; position:fixed; inset:0` would reach the editor's DOM. Only a value that passes these reaches an attribute.
+const NAMED_COLORS = new Set([
+    'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 'bisque', 'black', 'blanchedalmond', 'blue',
+    'blueviolet', 'brown', 'burlywood', 'cadetblue', 'chartreuse', 'chocolate', 'coral', 'cornflowerblue', 'cornsilk',
+    'crimson', 'cyan', 'darkblue', 'darkcyan', 'darkgoldenrod', 'darkgray', 'darkgreen', 'darkgrey', 'darkkhaki',
+    'darkmagenta', 'darkolivegreen', 'darkorange', 'darkorchid', 'darkred', 'darksalmon', 'darkseagreen',
+    'darkslateblue', 'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet', 'deeppink', 'deepskyblue',
+    'dimgray', 'dimgrey', 'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen', 'fuchsia', 'gainsboro',
+    'ghostwhite', 'gold', 'goldenrod', 'gray', 'green', 'greenyellow', 'grey', 'honeydew', 'hotpink', 'indianred',
+    'indigo', 'ivory', 'khaki', 'lavender', 'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral',
+    'lightcyan', 'lightgoldenrodyellow', 'lightgray', 'lightgreen', 'lightgrey', 'lightpink', 'lightsalmon',
+    'lightseagreen', 'lightskyblue', 'lightslategray', 'lightslategrey', 'lightsteelblue', 'lightyellow', 'lime',
+    'limegreen', 'linen', 'magenta', 'maroon', 'mediumaquamarine', 'mediumblue', 'mediumorchid', 'mediumpurple',
+    'mediumseagreen', 'mediumslateblue', 'mediumspringgreen', 'mediumturquoise', 'mediumvioletred', 'midnightblue',
+    'mintcream', 'mistyrose', 'moccasin', 'navajowhite', 'navy', 'oldlace', 'olive', 'olivedrab', 'orange',
+    'orangered', 'orchid', 'palegoldenrod', 'palegreen', 'paleturquoise', 'palevioletred', 'papayawhip',
+    'peachpuff', 'peru', 'pink', 'plum', 'powderblue', 'purple', 'rebeccapurple', 'red', 'rosybrown', 'royalblue',
+    'saddlebrown', 'salmon', 'sandybrown', 'seagreen', 'seashell', 'sienna', 'silver', 'skyblue', 'slateblue',
+    'slategray', 'slategrey', 'snow', 'springgreen', 'steelblue', 'tan', 'teal', 'thistle', 'tomato', 'turquoise',
+    'violet', 'wheat', 'white', 'whitesmoke', 'yellow', 'yellowgreen', 'transparent', 'currentcolor',
+])
+const COLOR_NUM = '\\d{1,3}(?:\\.\\d+)?'
+const COLOR_ALPHA = '(?:\\d*\\.)?\\d+%?'
+const COLOR_HUE = '-?\\d+(?:\\.\\d+)?(?:deg|grad|rad|turn)?'
+const COLOR_PATTERNS = [
+    /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i,
+    new RegExp(`^rgba?\\(\\s*${COLOR_NUM}%?\\s*,\\s*${COLOR_NUM}%?\\s*,\\s*${COLOR_NUM}%?\\s*(?:,\\s*${COLOR_ALPHA}\\s*)?\\)$`, 'i'),
+    new RegExp(`^rgba?\\(\\s*${COLOR_NUM}%?\\s+${COLOR_NUM}%?\\s+${COLOR_NUM}%?\\s*(?:\\/\\s*${COLOR_ALPHA}\\s*)?\\)$`, 'i'),
+    new RegExp(`^hsla?\\(\\s*${COLOR_HUE}\\s*,\\s*${COLOR_NUM}%\\s*,\\s*${COLOR_NUM}%\\s*(?:,\\s*${COLOR_ALPHA}\\s*)?\\)$`, 'i'),
+    new RegExp(`^hsla?\\(\\s*${COLOR_HUE}\\s+${COLOR_NUM}%\\s+${COLOR_NUM}%\\s*(?:\\/\\s*${COLOR_ALPHA}\\s*)?\\)$`, 'i'),
+]
+const safeColor = v => {
+    if (typeof v !== 'string') return null
+    const value = v.trim()
+    return COLOR_PATTERNS.some(re => re.test(value)) || NAMED_COLORS.has(value.toLowerCase()) ? value : null
+}
+const safeFontSize = v => {
+    const m = typeof v === 'string' && v.trim().match(/^(\d{1,3}(?:\.\d+)?)(px|em|rem)$/i)
+    if (!m) return null
+    const [min, max] = m[2].toLowerCase() === 'px' ? [1, 999] : [0.1, 20]
+    return +m[1] >= min && +m[1] <= max ? v.trim() : null
+}
+const TEXT_ALIGNMENTS = ['left', 'center', 'right', 'justify']
+
+const SafeColor = Color.extend({
+    addGlobalAttributes () {
+        const global = this.parent()
+        global[0].attributes.color.renderHTML = a => (safeColor(a.color) ? { style: `color: ${safeColor(a.color)}` } : {})
+        return global
+    },
+})
+
+const SafeFontSize = FontSize.extend({
+    addGlobalAttributes () {
+        const global = this.parent()
+        global[0].attributes.fontSize.renderHTML = a => (safeFontSize(a.fontSize) ? { style: `font-size: ${safeFontSize(a.fontSize)}` } : {})
+        return global
+    },
+})
+
+const SafeHighlight = Highlight.extend({
+    addAttributes () {
+        const attributes = this.parent?.() || {}
+        if (attributes.color) {
+            attributes.color.renderHTML = a => (safeColor(a.color)
+                ? { 'data-color': safeColor(a.color), style: `background-color: ${safeColor(a.color)}; color: inherit` }
+                : {})
+        }
+        return attributes
+    },
+})
+
+const SafeTextAlign = TextAlign.extend({
+    addGlobalAttributes () {
+        const global = this.parent()
+        global[0].attributes.textAlign.renderHTML = a => (TEXT_ALIGNMENTS.includes(a.textAlign) ? { style: `text-align: ${a.textAlign}` } : {})
+        return global
+    },
+})
+
 // Image with float/align/width attributes (ported from v2; .extend stable in v3)
 const ImageExtended = Image.extend({
     addAttributes () {
@@ -94,15 +176,15 @@ const DisableEnterKeyExtension = Extension.create({
 window.Tiptap = ({ element, config, bubbleMenus = {}, disableEnterKey = false, mentionTemplate }) => {
     const extensions = [
         StarterKit.configure({ link: { openOnClick: false } }),
-        Color,
-        FontSize,
-        Highlight.configure({ multicolor: true }),
+        SafeColor,
+        SafeFontSize,
+        SafeHighlight.configure({ multicolor: true }),
         ImageExtended,
         Placeholder.configure({ placeholder: config.placeholder }),
         Subscript,
         Superscript,
         TableKit.configure({ table: { resizable: true } }),
-        TextAlign.configure({ types: ['heading', 'paragraph'] }),
+        SafeTextAlign.configure({ types: ['heading', 'paragraph'] }),
         TextStyle,
         Youtube,
         disableEnterKey ? DisableEnterKeyExtension : null,
