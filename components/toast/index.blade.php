@@ -54,7 +54,7 @@ x-data="{
         let url = atom.safeUrl(this.config.url)
 
         if (navigate) Livewire.navigate(navigate)
-        else if (url) window.open(url, '_blank')
+        else if (url) window.open(url, '_blank', 'noopener')
     },
 }"
 x-on:atom-toast-show.window="showToast"

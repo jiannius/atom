@@ -6,10 +6,14 @@ use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Jiannius\Atom\Casts\Concerns\ReadsTemporaryUploads;
 use Jiannius\Atom\Tiptap\Content;
+use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 
 class AsEditorContent implements CastsAttributes
 {
+    use ReadsTemporaryUploads;
+
     /**
      * Cast the given value.
      *
@@ -47,32 +51,58 @@ class AsEditorContent implements CastsAttributes
             }
         }
 
+        $persisted = [];
+
         foreach ($tmps as $url) {
-            $base = head(explode('?', $url));
-            $tmpname = str($base)->afterLast('/')->toString();
-            $tmppath = storage_path('app/private/'.config('livewire.temporary_file_upload.directory').'/'.$tmpname);
+            $name = $this->temporaryName($url);
 
-            if (file_exists($tmppath)) {
-                // resize image
-                $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
-                $image = $manager->read($tmppath);
-                $image->scaleDown(width: 1000);
-                $image->save(quality: 80);
+            if (! $name) {
+                continue;
+            }
 
-                // save to disk
-                $disk = static::disk();
-                $folder = static::folder();
-                $extension = pathinfo($tmppath, PATHINFO_EXTENSION);
-                $filename = strtolower(str()->random(20)).'-'.time().'.'.$extension;
-                $path = $disk->putFileAs($folder, $tmppath, $filename, 'public');
-                $value = str($value)->replace($url, $disk->url($path))->toString();
+            if (! array_key_exists($name, $persisted)) {
+                $persisted[$name] = $this->persist($name);
+            }
 
-                // delete temporary file
-                unlink($tmppath);
+            if ($persisted[$name]) {
+                $value = str($value)->replace($url, $persisted[$name])->toString();
             }
         }
 
         return $value ? serialize($value) : null;
+    }
+
+    /**
+     * Persist one Livewire temporary upload (resized, jpeg, png, gif or webp
+     * only) and return its URL, or null to leave the src as it is: the file is
+     * missing, is not one of those types, or does not decode.
+     */
+    protected function persist(string $name): ?string
+    {
+        $copy = $this->localCopy($name);
+
+        if (! $copy) {
+            return null;
+        }
+
+        [$local, $mime] = $copy;
+
+        try {
+            $extension = static::IMAGE_EXTENSIONS[$mime] ?? null;
+            $url = $extension ? $this->storeImage($local, $extension) : null;
+        }
+        finally {
+            @unlink($local);
+        }
+
+        if ($url) {
+            FileUploadConfiguration::storage()->delete([
+                FileUploadConfiguration::path($name, false),
+                FileUploadConfiguration::path($name.'.json', false),
+            ]);
+        }
+
+        return $url;
     }
 
     /**

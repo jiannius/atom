@@ -254,6 +254,7 @@ num(0.065)->currency(maxPrecision: 6);    // → "0.065" (at least 2 decimals, a
 - Reserved state buckets:
   - `$_breadcrumbs` — auto-populated from your optional `breadcrumbs($crumbs)` method.
   - `$_table` — sort, checkboxes, select-all, max rows, show-trashed (consumed by `<atom:table>` — see [Table selection](#table-selection)).
+  - `$_tableTrashed` — locked; true once the table rendered its trashed toggle, which is what lets the browser turn the trashed view on.
   - `$_editor.images` — temporary upload URLs for the rich text editor.
 - Short methods that delegate to `app('atom')`:
 
@@ -288,7 +289,7 @@ reason; the prefix *is* the protection.
 
 | | Invoked by | Breaks |
 | --- | --- | --- |
-| `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
+| `$_breadcrumbs`, `$_table`, `$_tableTrashed`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
 | `mountAtomComponent`, `updatedAtomComponent`, `updatingAtomComponent` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear, the `raw:` table-sort signature gate |
 | `resetTableCheckboxes`, `selectAllTableMatching`, `toggleTableShowSelected`, `clearTableSelectAll` | atom's markup, by name | the checked-bar buttons no-op |
 | `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed` | each other, and your own `items()` | bulk actions target the wrong rows |
@@ -478,6 +479,8 @@ A suggested mapping when a heading *is* structural: `xl` → `level="1"` (only o
 | `<atom:lightbox>` | Image lightbox; click any `<img>` inside to zoom. |
 
 The four window-level overlays (`alert`, `toast`, `confirm`) are usually dropped **once** in your root layout — drop them in `<atom:layouts.sidebar>` or near `<atom:html>` and dispatch from anywhere.
+
+**`html` is a trusted pass-through** on `toast`, `alert` and `confirm` (and their `.trigger` tags): it is printed with `x-html` untouched, so wrap every interpolated user or database value in `e()` (`html: '<b>'.e($user->name).'</b>'`). `heading`, `subheading` and `message` are always text.
 
 ### Layout & navigation
 
@@ -1114,8 +1117,8 @@ class Article extends Model
 
 What it does on save:
 
-1. Scans the HTML for Livewire temporary preview URLs (`/livewire-{hash}/preview-file/...`).
-2. Resizes each via Intervention Image (max width 1000, quality 80).
+1. Scans the HTML for Livewire temporary preview URLs (`/livewire-{hash}/preview-file/...`). The file is read through Livewire's own temporary disk and directory, and only when the src names a file with the name Livewire generates; anything else is left as it is.
+2. Resizes each via Intervention Image (max width 1000, quality 80). Only a jpeg, png, gif or webp is stored (the extension comes from the file's content); any other file keeps its temporary URL.
 3. Persists to `Storage::disk(env('FILESYSTEM_DISK'))` under `<configured folder>/editor/`.
 4. Rewrites the URLs back into the HTML, serializes the result.
 
@@ -1333,6 +1336,18 @@ class Search implements WebAction
 ```
 
 Actions without `authorize()` are callable by anyone, including guests — which is right for something like `GetOptions` (country and dial-code lists on public forms) and wrong for almost everything else. An action inheriting from an opted-in parent inherits the contract.
+
+### Upgrading to 3.38.3
+
+**This is a security release. Upgrade soon if users can write to an editor column, or if any of your tables, forms or embeds take values from the browser.** It carries the fixes of atom 4.0.0-beta.49 that apply to 3.x.
+
+- **Editor images (`AsTiptapContent` and `AsEditorContent`).** A crafted image `src` could make the cast read a file of the attacker's choosing from the private disk and publish it in the editor folder (or hand it to `tiptapStoreImage()`), and with Livewire's default config a real upload was never found. The temporary file is now read through Livewire's own temporary disk and directory, only for a name Livewire generates, and only a jpeg, png, gif or webp is stored (the extension comes from the file's content; any other file keeps its temporary URL). **If you define `tiptapStoreImage(string $tmpPath, string $key)`**, `$tmpPath` is now a local copy atom deletes afterwards, and the hook is only called for those four types. A client-sent serialized string over `Content::SANITIZE_MAX_BYTES` is dropped before `unserialize()`.
+- **`$_table.max_rows` and `$_table.show_trashed` are checked on every browser update.** `max_rows` must be a whole number from 1 to 500 (the pager menu offers 50 to 400). `show_trashed` can be turned on only when the table rendered its trashed toggle (`<atom:table trashed>` or `<atom:table.trashed>`), recorded in the new locked `$_tableTrashed`. **A component with a trashed toggle of its own** (a custom button calling `$wire.set('_table.show_trashed', true)` or `$toggle('_table.show_trashed')`) now gets a 403: set `$this->_tableTrashed = true;` in `mount()`. `toTable()` also no longer 500s when `show_trashed` is on for a model without `SoftDeletes`, and it clamps a `max_rows` PHP code left unusable. The refusal message is "Invalid table state." (it was "Invalid table sort."). A page left open across the deploy has no `$_tableTrashed` in its snapshot, so its first click on the trashed toggle gets a 403 until the page is reloaded.
+- **A client-chosen sort column must be a plain column name outside the model's `$hidden` and inside a non-empty `$visible`** (the rule `filter()` uses). Anything else is ignored and the default order shows; a debug log line names it once per process. An `orderBy` on a password or token column was a row-order oracle. A column your table sorts on that the model hides (a hidden `created_at`, say) must be declared `<atom:table.column sort="raw:created_at">` instead, which is signed by atom and stays allowed.
+- **reCAPTCHA fails closed on a missing token.** With `services.recaptcha.secret_key` set, `verifyRecaptcha()` now rejects a missing, empty or non-string token (a client can leave it out) and a Google answer whose `hostname` is neither the request's host nor the host of `app.url` (compared without case or trailing dot; skipped for Google's published v2 test keys). **Set the site key together with the secret**: a form with no site key mints no token, so every submit is refused. It still fails open with no secret, a bad secret or Google unreachable.
+- **`<atom:embed>` frames YouTube only.** A video is recognised by its host (`youtube.com`, `www.`, `m.`, `youtu.be`, `www.youtube-nocookie.com`) and an 11-character id, and what is framed is rebuilt as `https://www.youtube-nocookie.com/embed/<id>` with `sandbox`, `referrerpolicy` and `loading="lazy"`. Any other URL with a `/watch` path used to be framed as given; it now shows the file icon. A `sandbox`, `srcdoc` or `src` attribute on the tag is dropped. A watch link with a start time or a playlist loses them.
+- **The editor itself** (`<atom:tiptap>`) no longer writes a stored colour, highlight, alignment or font size that fails the same allow-lists as the server renderer into `style`. Rebuild your assets if you copy `dist/`.
+- **Smaller:** the JSON-LD in `<atom:html :jsonld>` is encoded with explicit `JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES` (a slash in a URL is no longer escaped); a toast's `url` and the lightbox download open with `noopener`; `GET /atom/.` and `/atom/..` answer 404 (they were a 500); `GetOptions` treats a `filters` that is not an array as none (it was a 500). **`html` on `toast`, `alert` and `confirm` is trusted** (printed with `x-html`): escape every interpolated value with `e()`.
 
 ### Upgrading to 3.38.0
 

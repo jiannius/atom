@@ -135,6 +135,42 @@ class Atom
     }
 
     /**
+     * Record that the component being rendered shows a trashed toggle, so the update gate
+     * lets the browser set `_table.show_trashed` (see AtomComponent::$_tableTrashed).
+     */
+    public function allowTableTrashed() : void
+    {
+        $component = $this->renderingComponent();
+
+        if ($component && is_using_trait($component, \Jiannius\Atom\Traits\AtomComponent::class) && !$component->_tableTrashed) {
+            $component->_tableTrashed = true;
+        }
+    }
+
+    /**
+     * The Livewire component whose view is rendering now, or null outside one.
+     */
+    protected function renderingComponent() : ?object
+    {
+        if (!property_exists(\Livewire\Mechanisms\HandleComponents\HandleComponents::class, 'renderStack')) {
+            return null;
+        }
+
+        $current = app('livewire')->current() ?: null;
+
+        if (!$current) {
+            return null;
+        }
+
+        $stack = \Livewire\Mechanisms\HandleComponents\HandleComponents::$renderStack;
+        $top = end($stack) ?: null;
+
+        return $top === $current
+            ? $top
+            : (app('view')->shared('__livewire') === $current ? $current : null);
+    }
+
+    /**
      * Trigger modal from anywhere in the application
      */
     public function modal($name)

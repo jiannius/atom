@@ -6,10 +6,14 @@ use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
+use Jiannius\Atom\Casts\Concerns\ReadsTemporaryUploads;
 use Jiannius\Atom\Tiptap\Content;
+use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 
 class AsTiptapContent implements CastsAttributes
 {
+    use ReadsTemporaryUploads;
+
     /**
      * Read a stored value. New rows are Tiptap JSON (returned as-is). Legacy
      * rows were stored by the v2 AsEditorContent cast as serialize()'d HTML —
@@ -52,11 +56,20 @@ class AsTiptapContent implements CastsAttributes
             return $this->storableNonJson($value);
         }
 
-        $this->walkImages($doc, function (array &$node) use ($model, $key) {
+        $persisted = [];
+
+        $this->walkImages($doc, function (array &$node) use ($model, $key, &$persisted) {
             $src = $node['attrs']['src'] ?? null;
 
             if ($src && $this->isTemporaryUpload($src)) {
-                $node['attrs']['src'] = $this->persist($model, $key, $src);
+                $name = $this->temporaryName($src);
+                $url = ($name ? $persisted[$name] ?? null : null) ?? $this->persist($model, $key, $src);
+
+                if ($name && $url !== $src) {
+                    $persisted[$name] = $url;
+                }
+
+                $node['attrs']['src'] = $url;
             }
         });
 
@@ -68,10 +81,15 @@ class AsTiptapContent implements CastsAttributes
      * renderer only emits schema nodes). A PHP-serialized string never is: the
      * value can arrive from the browser, so a serialized string is unwrapped to
      * the HTML it holds, and anything else it holds (an object, array, scalar)
-     * is dropped.
+     * is dropped. One longer than Content::SANITIZE_MAX_BYTES is dropped unread:
+     * unserialize() costs about 30 times its input in memory.
      */
     protected function storableNonJson(string $value): ?string
     {
+        if (strlen($value) > Content::SANITIZE_MAX_BYTES && preg_match('/^[abdisSOCErRN][:;]/', $value)) {
+            return null;
+        }
+
         [$serialized, $unserialized] = Content::unserialize($value);
 
         if (! $serialized) {
@@ -236,38 +254,46 @@ class AsTiptapContent implements CastsAttributes
 
     /**
      * Persist a temporary upload to permanent storage and return its URL.
-     * A model may override persistence via tiptapStoreImage($tmpPath, $key).
+     * A model may override persistence via tiptapStoreImage($tmpPath, $key),
+     * which gets a local copy of the file, and only for a jpeg, png, gif or
+     * webp. A src that is not a Livewire temporary file, or a file that is not
+     * one of those, is left as it is.
      */
     protected function persist(Model $model, string $key, string $src): string
     {
-        $base = head(explode('?', $src));
-        $tmpname = str($base)->afterLast('/')->toString();
-        $tmppath = storage_path('app/private/'.config('livewire.temporary_file_upload.directory').'/'.$tmpname);
+        $name = $this->temporaryName($src);
+        $copy = $name ? $this->localCopy($name) : null;
 
-        if (! file_exists($tmppath)) {
+        if (! $copy) {
             return $src;
         }
 
-        if (method_exists($model, 'tiptapStoreImage')) {
-            $url = $model->tiptapStoreImage($tmppath, $key);
-            @unlink($tmppath);
+        [$local, $mime] = $copy;
 
-            return $url;
+        try {
+            $extension = static::IMAGE_EXTENSIONS[$mime] ?? null;
+
+            if (! $extension) {
+                return $src;
+            }
+
+            $url = method_exists($model, 'tiptapStoreImage')
+                ? $model->tiptapStoreImage($local, $key)
+                : $this->storeImage($local, $extension);
+        }
+        finally {
+            @unlink($local);
         }
 
-        $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
-        $image = $manager->read($tmppath);
-        $image->scaleDown(width: 1000);
-        $image->save(quality: 80);
+        if (! $url) {
+            return $src;
+        }
 
-        $disk = static::disk();
-        $folder = static::folder();
-        $extension = pathinfo($tmppath, PATHINFO_EXTENSION);
-        $filename = strtolower(str()->random(20)).'-'.time().'.'.$extension;
-        $path = $disk->putFileAs($folder, $tmppath, $filename, 'public');
+        FileUploadConfiguration::storage()->delete([
+            FileUploadConfiguration::path($name, false),
+            FileUploadConfiguration::path($name.'.json', false),
+        ]);
 
-        @unlink($tmppath);
-
-        return $disk->url($path);
+        return $url;
     }
 }

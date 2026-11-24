@@ -5,6 +5,8 @@
 ])
 
 @php
+app('atom')->allowTableTrashed();
+
 $label ??= $variant === 'voided' ? 'Show voided' : 'Show archived';
 $icon ??= $variant === 'voided' ? 'delete' : 'archive';
 @endphp

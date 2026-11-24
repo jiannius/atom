@@ -3,6 +3,7 @@
 namespace Jiannius\Atom\Traits;
 
 use Jiannius\Atom\Services\TableSort;
+use Livewire\Attributes\Locked;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
@@ -21,6 +22,15 @@ trait AtomComponent
         'show_trashed' => false,
         'show_selected' => false,
     ];
+
+    /**
+     * Whether the table rendered its trashed toggle (`<atom:table trashed>`,
+     * `<atom:table.trashed>`). Only then does the update gate let a client set
+     * `_table.show_trashed`; a component with a toggle of its own sets this to
+     * true in mount(). Locked: the browser cannot flip it.
+     */
+    #[Locked]
+    public bool $_tableTrashed = false;
 
     public $_editor = [
         'images' => [],
@@ -77,48 +87,17 @@ trait AtomComponent
      * refuse anything that would leave either leaf non-string (an array, or
      * a deeper path such as "_table.sort.column.0") — toTable() only expects
      * a string there, and a non-string used to reach str() and crash the
-     * request (500) rather than being rejected (403).
+     * request (500) rather than being rejected (403). The rest of "_table" is
+     * gated the same way: "max_rows" must be a whole number from 1 to 500 (it
+     * is the page size), "show_trashed" a bool that is true only when the
+     * table rendered its trashed toggle ($_tableTrashed), and the whole bucket
+     * an array (see TableSort::isUnsafeUpdate()).
      */
     public function updatingAtomComponent($name, $value)
     {
-        if ($this->isUnsafeTableSortUpdate($name, $value)) {
-            abort(403, 'Invalid table sort.');
+        if (is_string($name) && str_starts_with($name, '_table') && TableSort::isUnsafeUpdate($name, $value, (bool) $this->_tableTrashed)) {
+            abort(403, 'Invalid table state.');
         }
-    }
-
-    /**
-     * Whether a client-driven update to $name (new value $value) would leave
-     * "_table.sort.column" or "_table.sort.direction" unsafe: non-string, or
-     * a string "raw:" column with no valid signature.
-     */
-    protected function isUnsafeTableSortUpdate($name, $value) : bool
-    {
-        // A path deeper than the leaf itself (e.g. "_table.sort.column.0")
-        // can only turn that leaf into an array — no legitimate update ever
-        // needs to reach this deep.
-        if (str_starts_with($name, '_table.sort.column.') || str_starts_with($name, '_table.sort.direction.')) {
-            return true;
-        }
-
-        $column = match ($name) {
-            '_table.sort.column' => $value,
-            '_table.sort' => data_get($value, 'column'),
-            '_table' => data_get($value, 'sort.column'),
-            default => null,
-        };
-
-        if ($column !== null && (!is_string($column) || TableSort::isUnsafeFromClient($column))) {
-            return true;
-        }
-
-        $direction = match ($name) {
-            '_table.sort.direction' => $value,
-            '_table.sort' => data_get($value, 'direction'),
-            '_table' => data_get($value, 'sort.direction'),
-            default => null,
-        };
-
-        return $direction !== null && !is_string($direction);
     }
 
     /**
@@ -328,8 +307,9 @@ trait AtomComponent
 
     /**
      * Verify the reCAPTCHA token carried by <atom:form recaptcha>.
-     * Throws a validation error when the token resolves to a bot; fails open
-     * (does nothing) when recaptcha is not configured or cannot be reached.
+     * Throws a validation error when the token resolves to a bot, or is missing
+     * while a secret is configured; fails open (does nothing) when recaptcha is
+     * not configured (no secret) or Google cannot be reached.
      */
     public function verifyRecaptcha(?string $action = null, ?float $minScore = null) : void
     {

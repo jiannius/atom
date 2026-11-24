@@ -145,7 +145,7 @@ it('declares its own state under an underscore prefix', function () {
 
     $properties->each(fn ($name) => expect($name)->toStartWith('_'));
 
-    expect($properties->all())->toBe(['_breadcrumbs', '_table', '_editor', '_recaptcha']);
+    expect($properties->all())->toBe(['_breadcrumbs', '_table', '_tableTrashed', '_editor', '_recaptcha']);
 });
 
 /**
