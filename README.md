@@ -1114,8 +1114,8 @@ class Article extends Model
 
 What it does on save:
 
-1. Scans the HTML for Livewire temporary preview URLs (`/livewire-{hash}/preview-file/...`).
-2. Resizes each via Intervention Image (max width 1000, quality 80).
+1. Scans the HTML for Livewire temporary preview URLs (`/livewire-{hash}/preview-file/...`). The file is read through Livewire's own temporary disk and directory, and only when the src names a file with the name Livewire generates; anything else is left as it is.
+2. Resizes each via Intervention Image (max width 1000, quality 80). Only a jpeg, png, gif or webp is stored (the extension comes from the file's content); any other file keeps its temporary URL.
 3. Persists to `Storage::disk(env('FILESYSTEM_DISK'))` under `<configured folder>/editor/`.
 4. Rewrites the URLs back into the HTML, serializes the result.
 
