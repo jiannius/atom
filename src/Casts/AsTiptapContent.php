@@ -66,11 +66,20 @@ class AsTiptapContent implements CastsAttributes
             return $this->storableNonJson($value);
         }
 
-        $this->walkImages($doc, function (array &$node) use ($model, $key) {
+        $persisted = [];
+
+        $this->walkImages($doc, function (array &$node) use ($model, $key, &$persisted) {
             $src = $node['attrs']['src'] ?? null;
 
             if ($src && $this->isTemporaryUpload($src)) {
-                $node['attrs']['src'] = $this->persist($model, $key, $src);
+                $name = $this->temporaryName($src);
+                $url = ($name ? $persisted[$name] ?? null : null) ?? $this->persist($model, $key, $src);
+
+                if ($name && $url !== $src) {
+                    $persisted[$name] = $url;
+                }
+
+                $node['attrs']['src'] = $url;
             }
         });
 
@@ -87,7 +96,7 @@ class AsTiptapContent implements CastsAttributes
      */
     protected function storableNonJson(string $value): ?string
     {
-        if (strlen($value) > Content::SANITIZE_MAX_BYTES && preg_match('/^[abdisOCEN][:;]/', $value)) {
+        if (strlen($value) > Content::SANITIZE_MAX_BYTES && preg_match('/^[abdisSOCErRN][:;]/', $value)) {
             return null;
         }
 
@@ -259,7 +268,7 @@ class AsTiptapContent implements CastsAttributes
      * src comes from the browser, so the last URL segment is only ever used as a
      * name inside Livewire's temporary directory, and only when it has the shape
      * Livewire generates (a random token, an optional "-meta<base64>-" part and
-     * an extension): a "..", an empty name, a separator or any other file's name
+     * an extension, which may be empty or odd when it came from the client): a "..", an empty name, a separator or any other file's name
      * is refused here.
      */
     protected function temporaryName(string $src): ?string
@@ -267,7 +276,7 @@ class AsTiptapContent implements CastsAttributes
         $path = preg_split('/[?#]/', $src, 2)[0];
         $name = rawurldecode(substr($path, (int) strrpos($path, '/') + 1));
 
-        return preg_match('/^[A-Za-z0-9]{20,}(?:-meta[A-Za-z0-9+_=]*-)?\.[A-Za-z0-9]{1,10}$/D', $name) ? $name : null;
+        return preg_match('/^[A-Za-z0-9]{20,}(?:-meta[A-Za-z0-9+_=]*-)?\.[A-Za-z0-9_-]{0,20}$/D', $name) ? $name : null;
     }
 
     /**
@@ -328,8 +337,9 @@ class AsTiptapContent implements CastsAttributes
     /**
      * Persist a temporary upload to permanent storage and return its URL.
      * A model may override persistence via tiptapStoreImage($tmpPath, $key),
-     * which gets a local copy of the file. A src that is not a Livewire
-     * temporary file, or a file that is not an image, is left as it is.
+     * which gets a local copy of the file, and only for a jpeg, png, gif or
+     * webp. A src that is not a Livewire temporary file, or a file that is not
+     * one of those, is left as it is.
      */
     protected function persist(Model $model, string $key, string $src): string
     {
@@ -343,15 +353,15 @@ class AsTiptapContent implements CastsAttributes
         [$local, $mime] = $copy;
 
         try {
-            if (method_exists($model, 'tiptapStoreImage')) {
-                $url = $model->tiptapStoreImage($local, $key);
-            }
-            elseif ($extension = static::IMAGE_EXTENSIONS[$mime] ?? null) {
-                $url = $this->storeImage($local, $extension);
-            }
-            else {
+            $extension = static::IMAGE_EXTENSIONS[$mime] ?? null;
+
+            if (! $extension) {
                 return $src;
             }
+
+            $url = method_exists($model, 'tiptapStoreImage')
+                ? $model->tiptapStoreImage($local, $key)
+                : $this->storeImage($local, $extension);
         }
         finally {
             @unlink($local);
@@ -361,14 +371,18 @@ class AsTiptapContent implements CastsAttributes
             return $src;
         }
 
-        FileUploadConfiguration::storage()->delete(FileUploadConfiguration::path($name, false));
+        FileUploadConfiguration::storage()->delete([
+            FileUploadConfiguration::path($name, false),
+            FileUploadConfiguration::path($name.'.json', false),
+        ]);
 
         return $url;
     }
 
     /**
      * Resize an image (max width 1000, quality 80) and store it on the editor
-     * disk. Returns null for a file that has an image type but cannot be decoded.
+     * disk. Returns null for a file that has an image type but cannot be decoded; a
+     * driver that is missing or misconfigured throws.
      */
     protected function storeImage(string $local, string $extension): ?string
     {
@@ -378,7 +392,7 @@ class AsTiptapContent implements CastsAttributes
             $image->scaleDown(width: 1000);
             $image->save(quality: 80);
         }
-        catch (\Throwable) {
+        catch (\Intervention\Image\Exceptions\DecoderException) {
             return null;
         }
 

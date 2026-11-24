@@ -68,12 +68,12 @@ describe('AsTiptapContent', function () {
             public function tiptapStoreImage($tmpPath, $key) { static::$received = [$tmpPath, file_get_contents($tmpPath)]; return 'https://cdn/overridden.png'; }
         };
 
-        $name = tiptapTemporaryUpload('not really an image');
+        $name = tiptapTemporaryUpload($png = tiptapPng());
 
         $out = json_decode((new AsTiptapContent)->set($model, 'body', tiptapDoc(tiptapPreviewSrc($name)), []), true);
 
         expect($out['content'][0]['attrs']['src'])->toBe('https://cdn/overridden.png')
-            ->and($model::$received[1])->toBe('not really an image')
+            ->and($model::$received[1])->toBe($png)
             ->and(FileUploadConfiguration::storage()->exists(FileUploadConfiguration::path($name, false)))->toBeFalse();
     });
 
@@ -189,6 +189,91 @@ describe('AsTiptapContent', function () {
             ->and(castSet($html))->toBeNull();
     });
 
+    it('drops an oversized string that starts like any serialized type', function (string $prefix) {
+        $value = $prefix.str_repeat('x', Jiannius\Atom\Tiptap\Content::SANITIZE_MAX_BYTES + 1);
+
+        expect(castSet($value))->toBeNull();
+    })->with(['a:', 'b:', 'd:', 'i:', 's:', 'S:', 'O:', 'C:', 'E:', 'r:', 'R:', 'N;']);
+
+    it('persists names Livewire may generate, whatever the client extension', function (string $name) {
+        tiptapTemporaryUpload(tiptapPng(), $name);
+
+        $out = json_decode(castSet(tiptapDoc(tiptapPreviewSrc($name))), true);
+
+        expect($out['content'][0]['attrs']['src'])->toEndWith('.png')
+            ->and(Storage::disk('editor-images')->allFiles())->toHaveCount(1);
+    })->with([
+        'bin' => str_repeat('a', 40).'.bin',
+        'mixed case token' => 'aBcDeFgHiJkLmNoPqRsTuVwXyZaBcD.bin',
+        'meta name' => 'aBcDeFgHiJkLmNoPqRsTuVwXyZ1234-meta'.'Zm9vX2Jhci5qcGc='.'-.bin',
+        'meta name with slash and plus' => 'aBcDeFgHiJkLmNoPqRsTuVwXyZ1234-meta'.'Zm9v_YmFy+Lm=='.'-.bin',
+        'empty extension' => str_repeat('a', 40).'.',
+        'dashed extension' => str_repeat('a', 40).'.tar-gz',
+        'underscore extension' => str_repeat('a', 40).'.my_ext',
+        'long extension' => str_repeat('a', 40).'.abcdefghijklmnop',
+    ]);
+
+    it('finds uploads under a non-default temp directory', function () {
+        config(['livewire.temporary_file_upload.directory' => 'custom/uploads']);
+
+        $name = tiptapTemporaryUpload(tiptapPng());
+        $out = json_decode(castSet(tiptapDoc(tiptapPreviewSrc($name))), true);
+
+        expect($out['content'][0]['attrs']['src'])->toEndWith('.png')
+            ->and(FileUploadConfiguration::path($name, false))->toStartWith('custom/uploads/')
+            ->and(FileUploadConfiguration::storage()->exists(FileUploadConfiguration::path($name, false)))->toBeFalse();
+    });
+
+    it('persists the same temp upload used twice in one document to the same url', function () {
+        $name = tiptapTemporaryUpload(tiptapPng());
+        $src = tiptapPreviewSrc($name);
+        $doc = json_encode(['type' => 'doc', 'content' => [
+            ['type' => 'image', 'attrs' => ['src' => $src]],
+            ['type' => 'paragraph', 'content' => [['type' => 'image', 'attrs' => ['src' => $src.'?expires=1']]]],
+        ]]);
+
+        $out = json_decode(castSet($doc), true);
+
+        expect($out['content'][0]['attrs']['src'])->toEndWith('.png')
+            ->and($out['content'][1]['content'][0]['attrs']['src'])->toBe($out['content'][0]['attrs']['src'])
+            ->and(Storage::disk('editor-images')->allFiles())->toHaveCount(1);
+    });
+
+    it('deletes the Livewire meta sidecar with the temp file', function () {
+        $name = tiptapTemporaryUpload(tiptapPng());
+        FileUploadConfiguration::storage()->put(FileUploadConfiguration::path($name.'.json', false), '{}');
+
+        castSet(tiptapDoc(tiptapPreviewSrc($name)));
+
+        expect(FileUploadConfiguration::storage()->exists(FileUploadConfiguration::path($name.'.json', false)))->toBeFalse();
+    });
+
+    it('leaves a corrupt image alone without reporting it', function () {
+        $name = tiptapTemporaryUpload(substr(tiptapPng(), 0, 40));
+        $doc = tiptapDoc(tiptapPreviewSrc($name));
+
+        expect(castSet($doc))->toBe($doc)
+            ->and(Storage::disk('editor-images')->allFiles())->toBeEmpty();
+    });
+
+    it('does not hand tiptapStoreImage a file that is not a stored image type', function (string $contents) {
+        $model = new class extends Model {
+            protected $casts = ['body' => AsTiptapContent::class];
+            public static int $calls = 0;
+            public function tiptapStoreImage($tmpPath, $key) { static::$calls++; return 'https://cdn/x.png'; }
+        };
+
+        $doc = tiptapDoc(tiptapPreviewSrc(tiptapTemporaryUpload($contents)));
+
+        expect((new AsTiptapContent)->set($model, 'body', $doc, []))->toBe($doc)
+            ->and($model::$calls)->toBe(0);
+    })->with([
+        'text' => 'plain text',
+        'html' => '<html><script>alert(1)</script></html>',
+        'pdf' => "%PDF-1.4\n1 0 obj\n<<>>\nendobj",
+        'svg' => '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+    ]);
+
     it('hands tiptapStoreImage a local copy with an extension taken from the content', function () {
         $model = new class extends Model {
             protected $casts = ['body' => AsTiptapContent::class];
@@ -243,9 +328,9 @@ function tiptapPng(): string
 /**
  * Put a file into Livewire's temp disk under a name Livewire would generate and return the name.
  */
-function tiptapTemporaryUpload(string $contents): string
+function tiptapTemporaryUpload(string $contents, ?string $name = null): string
 {
-    $name = strtolower(str()->random(40)).'.bin';
+    $name ??= strtolower(str()->random(40)).'.bin';
 
     FileUploadConfiguration::storage()->put(FileUploadConfiguration::path($name, false), $contents);
 
