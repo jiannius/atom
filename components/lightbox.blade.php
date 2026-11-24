@@ -55,7 +55,7 @@ data-atom-lightbox>
 
                         <div x-show="item.name" x-text="item.name" class="text-sm font-medium"></div>
 
-                        <atom:button icon="download" x-on:click="atom.safeUrl(item.url) && window.open(item.url, '_blank')">
+                        <atom:button icon="download" x-on:click="atom.safeUrl(item.url) && window.open(item.url, '_blank', 'noopener')">
                             {{ t('Download') }}
                         </atom:button>
                     </div>
