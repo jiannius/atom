@@ -41,7 +41,8 @@ class Asset
 
             $path = __DIR__.'/../../dist/assets/'.$file;
 
-            if (!file_exists($path)) abort(404);
+            // is_file, not file_exists: `/atom/.` and `/atom/..` name the directory, which exists and cannot be served (a 500)
+            if (!is_file($path)) abort(404);
 
             return response()->file($path, [
                 'Content-Type' => $type,
