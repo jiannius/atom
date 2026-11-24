@@ -1,10 +1,16 @@
 <?php
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Jiannius\Atom\Casts\AsTiptapContent;
+use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 
 beforeEach(function () {
-    config(['livewire.temporary_file_upload.directory' => 'livewire-tmp']);
+    // Livewire ships a null directory and falls back to livewire-tmp itself: do not force it here.
+    config(['livewire.temporary_file_upload.directory' => null]);
+
+    Storage::fake('editor-images');
+    config(['atom.editor.disk' => 'editor-images']);
 });
 
 class TiptapCastModel extends Model
@@ -58,20 +64,190 @@ describe('AsTiptapContent', function () {
     it('uses the model tiptapStoreImage override when present', function () {
         $model = new class extends Model {
             protected $casts = ['body' => AsTiptapContent::class];
-            public function tiptapStoreImage($tmpPath, $key) { return 'https://cdn/overridden.png'; }
+            public static array $received = [];
+            public function tiptapStoreImage($tmpPath, $key) { static::$received = [$tmpPath, file_get_contents($tmpPath)]; return 'https://cdn/overridden.png'; }
         };
 
-        $dir = config('livewire.temporary_file_upload.directory');
-        $tmp = storage_path('app/private/'.$dir);
-        if (! is_dir($tmp)) { mkdir($tmp, 0777, true); }
-        file_put_contents($tmp.'/test-temp.png', 'x');
+        $name = tiptapTemporaryUpload('not really an image');
 
-        $json = json_encode(['type' => 'doc', 'content' => [
-            ['type' => 'image', 'attrs' => ['src' => '/livewire-abc/preview-file/test-temp.png']],
-        ]]);
+        $out = json_decode((new AsTiptapContent)->set($model, 'body', tiptapDoc(tiptapPreviewSrc($name)), []), true);
 
-        $out = json_decode((new AsTiptapContent)->set($model, 'body', $json, []), true);
+        expect($out['content'][0]['attrs']['src'])->toBe('https://cdn/overridden.png')
+            ->and($model::$received[1])->toBe('not really an image')
+            ->and(FileUploadConfiguration::storage()->exists(FileUploadConfiguration::path($name, false)))->toBeFalse();
+    });
 
-        expect($out['content'][0]['attrs']['src'])->toBe('https://cdn/overridden.png');
+    it('persists a real upload under the default (null) temp directory, with an extension from its mime', function () {
+        $name = tiptapTemporaryUpload(tiptapPng());
+
+        $out = json_decode(castSet(tiptapDoc(tiptapPreviewSrc($name).'?expires=1&signature=abc')), true);
+        $src = $out['content'][0]['attrs']['src'];
+
+        expect($src)->not->toContain('preview-file')
+            ->and($src)->toEndWith('.png')
+            ->and(Storage::disk('editor-images')->allFiles())->toHaveCount(1)
+            ->and(FileUploadConfiguration::storage()->exists(FileUploadConfiguration::path($name, false)))->toBeFalse();
+    });
+
+    it('leaves a temp upload that is not an image as it is', function () {
+        $name = tiptapTemporaryUpload('plain text, not an image');
+        $doc = tiptapDoc(tiptapPreviewSrc($name));
+
+        expect(castSet($doc))->toBe($doc)
+            ->and(Storage::disk('editor-images')->allFiles())->toBeEmpty()
+            ->and(FileUploadConfiguration::storage()->exists(FileUploadConfiguration::path($name, false)))->toBeTrue();
+    });
+
+    it('leaves a src that names a file outside Livewire\'s temp directory alone', function (string $file) {
+        $private = storage_path('app/private');
+        @mkdir($private, 0777, true);
+        file_put_contents($private.'/receipt-123.jpg', tiptapPng());
+
+        $model = new class extends Model {
+            protected $casts = ['body' => AsTiptapContent::class];
+            public static int $calls = 0;
+            public function tiptapStoreImage($tmpPath, $key) { static::$calls++; return 'https://cdn/stolen.png'; }
+        };
+
+        $doc = tiptapDoc('https://x.test/livewire-x/preview-file/'.$file);
+
+        try {
+            expect(castSet($doc))->toBe($doc)
+                ->and((new AsTiptapContent)->set($model, 'body', $doc, []))->toBe($doc)
+                ->and($model::$calls)->toBe(0)
+                ->and(file_exists($private.'/receipt-123.jpg'))->toBeTrue()
+                ->and(Storage::disk('editor-images')->allFiles())->toBeEmpty();
+        } finally {
+            @unlink($private.'/receipt-123.jpg');
+        }
+    })->with([
+        'a private file' => 'receipt-123.jpg',
+        'dot dot' => '..',
+        'dot' => '.',
+        'empty' => '',
+        'traversal' => '../receipt-123.jpg',
+        'encoded traversal' => '..%2Freceipt-123.jpg',
+        'double encoded' => '%252e%252e',
+        'a directory name' => 'livewire-tmp',
+        'backslash' => '..\\receipt-123.jpg',
+        'nul byte' => 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bin%00.jpg',
+    ]);
+
+    it('does not read a well-named file that sits beside the temp directory instead of in it', function () {
+        $name = str_repeat('c', 40).'.jpg';
+        $private = storage_path('app/private');
+        @mkdir($private, 0777, true);
+        file_put_contents($private.'/'.$name, tiptapPng());
+        FileUploadConfiguration::storage()->put($name, tiptapPng());
+        $doc = tiptapDoc(tiptapPreviewSrc($name));
+
+        try {
+            expect(castSet($doc))->toBe($doc)
+                ->and(file_exists($private.'/'.$name))->toBeTrue()
+                ->and(FileUploadConfiguration::storage()->exists($name))->toBeTrue()
+                ->and(Storage::disk('editor-images')->allFiles())->toBeEmpty();
+        } finally {
+            @unlink($private.'/'.$name);
+        }
+    });
+
+    it('never hands tiptapStoreImage a directory, even one named like a temp file', function () {
+        $model = new class extends Model {
+            protected $casts = ['body' => AsTiptapContent::class];
+            public static int $calls = 0;
+            public function tiptapStoreImage($tmpPath, $key) { static::$calls++; return 'x'; }
+        };
+
+        $name = str_repeat('a', 40).'.bin';
+        FileUploadConfiguration::storage()->makeDirectory(FileUploadConfiguration::path($name, false));
+        $doc = tiptapDoc(tiptapPreviewSrc($name));
+
+        expect((new AsTiptapContent)->set($model, 'body', $doc, []))->toBe($doc)
+            ->and($model::$calls)->toBe(0);
+    });
+
+    it('refuses a temp file whose real path leaves the temp directory', function () {
+        $storage = FileUploadConfiguration::storage();
+        file_put_contents($storage->path('outside.png'), tiptapPng());
+
+        $name = str_repeat('b', 40).'.bin';
+        $directory = $storage->path(FileUploadConfiguration::path('', false));
+        @mkdir($directory, 0777, true);
+        symlink($storage->path('outside.png'), $directory.'/'.$name);
+        $doc = tiptapDoc(tiptapPreviewSrc($name));
+
+        expect(castSet($doc))->toBe($doc)
+            ->and(Storage::disk('editor-images')->allFiles())->toBeEmpty();
+    });
+
+    it('drops a client-sent serialized string over the size limit without unserializing it', function () {
+        $big = str_repeat('O:1:"A":0:{}', 20000);
+        $html = serialize('<p>'.str_repeat('a', Jiannius\Atom\Tiptap\Content::SANITIZE_MAX_BYTES).'</p>');
+
+        expect(strlen($big))->toBeGreaterThan(Jiannius\Atom\Tiptap\Content::SANITIZE_MAX_BYTES)
+            ->and(castSet($big))->toBeNull()
+            ->and(castSet($html))->toBeNull();
+    });
+
+    it('hands tiptapStoreImage a local copy with an extension taken from the content', function () {
+        $model = new class extends Model {
+            protected $casts = ['body' => AsTiptapContent::class];
+            public static string $path = '';
+            public function tiptapStoreImage($tmpPath, $key) { static::$path = $tmpPath; return 'https://cdn/a.png'; }
+        };
+
+        (new AsTiptapContent)->set($model, 'body', tiptapDoc(tiptapPreviewSrc(tiptapTemporaryUpload(tiptapPng()))), []);
+
+        expect($model::$path)->toEndWith('.png')->and(file_exists($model::$path))->toBeFalse();
+    });
+
+    it('leaves an image type it does not store alone', function () {
+        $image = imagecreatetruecolor(8, 8);
+        ob_start();
+        imagebmp($image);
+        $name = tiptapTemporaryUpload(ob_get_clean());
+        $doc = tiptapDoc(tiptapPreviewSrc($name));
+
+        expect(castSet($doc))->toBe($doc)
+            ->and(Storage::disk('editor-images')->allFiles())->toBeEmpty();
+    });
+
+    it('still unwraps a small serialized HTML string and keeps long plain HTML', function () {
+        expect(castSet(serialize('<p>hi</p>')))->toBe('<p>hi</p>');
+
+        $html = '<p>'.str_repeat('a', Jiannius\Atom\Tiptap\Content::SANITIZE_MAX_BYTES + 10).'</p>';
+
+        expect(castSet($html))->toBe($html);
     });
 });
+
+function tiptapDoc(string $src): string
+{
+    return json_encode(['type' => 'doc', 'content' => [['type' => 'image', 'attrs' => ['src' => $src]]]]);
+}
+
+function tiptapPreviewSrc(string $name): string
+{
+    return 'https://app.test/livewire-abc123/preview-file/'.$name;
+}
+
+function tiptapPng(): string
+{
+    $image = imagecreatetruecolor(8, 8);
+    ob_start();
+    imagepng($image);
+
+    return ob_get_clean();
+}
+
+/**
+ * Put a file into Livewire's temp disk under a name Livewire would generate and return the name.
+ */
+function tiptapTemporaryUpload(string $contents): string
+{
+    $name = strtolower(str()->random(40)).'.bin';
+
+    FileUploadConfiguration::storage()->put(FileUploadConfiguration::path($name, false), $contents);
+
+    return $name;
+}
