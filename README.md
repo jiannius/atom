@@ -326,7 +326,7 @@ A component takes only the state it uses, each from its own trait in `Jiannius\A
 
 | Trait | Brings | Use it for |
 | --- | --- | --- |
-| `WithTable` | `$_table` (sort, checkboxes, select-all, max rows, show-trashed), the table methods, the `raw:` sort gate, and Livewire's `WithPagination` (`toTable()` always paginates, so a table list needs both) | `<atom:table>` and `toTable()` sorting, see [Table selection](#table-selection) |
+| `WithTable` | `$_table` (sort, checkboxes, select-all, max rows, show-trashed), the table methods, the update gate (a signed `raw:` sort; `max_rows` from 1 to 500; `show_trashed` only once the table rendered its trashed toggle, or your own toggle set the locked `$_tableTrashed` in `mount()`), and Livewire's `WithPagination` (`toTable()` always paginates, so a table list needs both) | `<atom:table>` and `toTable()` sorting, see [Table selection](#table-selection) |
 | `WithBreadcrumbs` | `$_breadcrumbs`, built on mount from your optional `breadcrumbs($crumbs)` method | `<atom:breadcrumbs>` |
 | `WithEditor` | `$_editor.images` and Livewire's `WithFileUploads` | `<atom:tiptap>` with image upload |
 | `WithRecaptcha` | `$_recaptcha` and `verifyRecaptcha()` | `<atom:form recaptcha>` |
@@ -364,7 +364,7 @@ reason; the prefix *is* the protection.
 
 | | Invoked by | Breaks |
 | --- | --- | --- |
-| `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
+| `$_breadcrumbs`, `$_table`, `$_tableTrashed`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
 | `mountWithBreadcrumbs`, `updatedWithEditor`, `updatedWithTable` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear |
 | `resetTableCheckboxes`, `selectAllTableMatching`, `toggleTableShowSelected`, `clearTableSelectAll` | atom's markup, by name | the checked-bar buttons no-op |
 | `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed` | each other, and your own `items()` | bulk actions target the wrong rows |
