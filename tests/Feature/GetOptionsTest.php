@@ -43,6 +43,24 @@ it('still serves the package option sets to a guest', function () {
     expect($response->json())->not->toBeEmpty();
 });
 
+it('treats filters that are not an array as none, instead of a 500', function ($filters) {
+    $response = $this->postJson('/atom/action/get-options', ['name' => 'dialcodes', 'filters' => $filters]);
+
+    $response->assertOk();
+    expect($response->json())->not->toBeEmpty();
+})->with([
+    'string' => ['value'],
+    'number' => [5],
+    'true' => [true],
+    'empty string' => [''],
+]);
+
+it('still reads the selected values of array filters', function () {
+    $response = $this->postJson('/atom/action/get-options', ['name' => 'dialcodes', 'filters' => ['value' => ['MY'], 'exclude' => []]]);
+
+    $response->assertOk();
+});
+
 it('does not invoke a method the request named but the class did not declare', function () {
     $action = new GetOptionsSubclass();
 
