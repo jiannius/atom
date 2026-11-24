@@ -402,3 +402,12 @@ it('names WithUrlFilters in the always-on guideline but keeps its detail in the 
     expect(boostFile('guidelines/core.blade.php'))->toContain('`WithUrlFilters`')
         ->and(boostFile('guidelines/core.blade.php'))->not->toContain('urlFiltersExcept');
 });
+
+it('tells hosts that the html of toast, alert and confirm is trusted and must be escaped', function () {
+    $readme = file_get_contents(__DIR__.'/../../README.md');
+
+    expect(boostFile('guidelines/core.blade.php'))->toContain('toast, alert, confirm')
+        ->and(boostFile('skills/atom-components/SKILL.blade.php'))->toContain('`html` is a trusted pass-through')
+        ->and($readme)->toContain('`html` is a trusted pass-through')
+        ->and($readme)->toContain("e(\$user->name)");
+});
