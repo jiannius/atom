@@ -28,8 +28,8 @@ trait ReadsTemporaryUploads
      * src comes from the browser, so the last URL segment is only ever used as a
      * name inside Livewire's temporary directory, and only when it has the shape
      * Livewire generates (a random token, an optional "-meta<base64>-" part and
-     * an extension, which may be empty or odd when it came from the client): a "..", an empty name, a separator or any other file's name
-     * is refused here.
+     * an extension, which may be empty or odd when it came from the client): a
+     * "..", an empty name, a separator or any other file's name is refused here.
      */
     protected function temporaryName(string $src): ?string
     {

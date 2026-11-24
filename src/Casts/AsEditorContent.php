@@ -7,8 +7,8 @@ use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 use Jiannius\Atom\Casts\Concerns\ReadsTemporaryUploads;
-use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 use Jiannius\Atom\Tiptap\Content;
+use Livewire\Features\SupportFileUploads\FileUploadConfiguration;
 
 class AsEditorContent implements CastsAttributes
 {
