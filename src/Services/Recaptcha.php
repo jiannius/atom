@@ -12,18 +12,25 @@ class Recaptcha
      * Verify a reCAPTCHA v3 token.
      *
      * Fails CLOSED (throws ValidationException) when the token resolves to a
-     * bot: an explicit token failure or a score below the threshold.
+     * bot: a missing, empty or non-string token (a client can post any value,
+     * or none, so a secret being configured means a token is required), an
+     * explicit token failure, a score below the threshold, an action that is
+     * not the one asked for, or a token Google minted for another hostname.
      *
      * Fails OPEN (allows the submit) when verification cannot complete:
-     * recaptcha not configured, no token minted client-side, a misconfigured
-     * secret, or Google being unreachable — so an outage never locks users out.
+     * recaptcha not configured (no secret), a misconfigured secret, or Google
+     * being unreachable — so an outage never locks users out.
      */
-    public function verify(?string $token, ?string $action = null, ?float $minScore = null) : void
+    public function verify(mixed $token, ?string $action = null, ?float $minScore = null) : void
     {
         $secret = config('services.recaptcha.secret_key');
 
-        if (!$secret || !$token) {
+        if (!$secret) {
             return;
+        }
+
+        if (!is_string($token) || trim($token) === '') {
+            $this->reject();
         }
 
         $endpoint = config('services.recaptcha.api_endpoint') ?: 'https://www.google.com/recaptcha/api/siteverify';
@@ -57,6 +64,14 @@ class Recaptcha
         $score = data_get($result, 'score');
 
         if ($score !== null && $score < $minScore) {
+            $this->reject();
+        }
+
+        // A token minted on another site is not this form's, whatever its score. Google
+        // returns the hostname the widget ran on; skipped when it does not send one.
+        $hostname = data_get($result, 'hostname');
+
+        if (is_string($hostname) && $hostname !== '' && strcasecmp($hostname, request()->getHost()) !== 0) {
             $this->reject();
         }
 

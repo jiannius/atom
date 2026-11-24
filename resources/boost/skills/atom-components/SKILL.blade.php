@@ -82,11 +82,11 @@ new class extends Component {
 **reCAPTCHA v3.** Add the `recaptcha` prop to protect a submit: `<atom:form wire:submit="create" recaptcha>` (or `recaptcha="signup"` to set the score action). It mints a token client-side, attaches it to the component, then runs the submit. In the Livewire method, verify it (the component must use the `WithRecaptcha` trait):
 ```php
 public function create() {
-    $this->verifyRecaptcha();   // throws a validation error on a bot; no-op if recaptcha is unconfigured
+    $this->verifyRecaptcha();   // throws a validation error on a bot or a missing token; no-op only if no secret is configured
     // ...
 }
 ```
-Requires `config('services.recaptcha.site_key' / 'secret_key' / 'min_score')` and a built site (consumers run their Tailwind/Vite build). With no site key configured the form behaves as a normal `wire:submit` form.
+Requires `config('services.recaptcha.site_key' / 'secret_key' / 'min_score')` and a built site (consumers run their Tailwind/Vite build). With no site key configured the form behaves as a normal `wire:submit` form and mints no token, so a configured secret without the site key refuses every submit: set both or neither. `verifyRecaptcha()` fails closed on a missing, empty or non-string token and on a response whose hostname is not the request's; it fails open only with no secret, a bad secret or Google unreachable.
 
 **Error toast.** A failed submit (the Livewire method ends with validation errors) shows a danger toast headed "Please check the form", so a long form that hides its errors off screen doesn't look like it did nothing.
 

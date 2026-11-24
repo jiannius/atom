@@ -442,6 +442,18 @@ Then on v4: `<atom:editor*>` becomes `<atom:tiptap*>`, with the same props. A co
 
 **atom:upgrade:** Automated: `editor-tag`. Reported: `editor-cast`, `editor-content-static`. The codemod renames `<atom:editor>`, `<atom:editor.chat>` and `<atom:editor.content>` (opening, closing and self-closing, and the `<x-atom::editor*>` spelling) to `tiptap`, leaving Blade comments and other tags such as `<atom:editor-toolbar>` alone. It does not touch a cast, and it does not migrate data: it refuses to write at all while `php artisan atom:tiptap-migrate --status` is not ready (see "The order", step 4).
 
+## Security hardening: table state, reCAPTCHA, dev login
+
+**A client can no longer set `_table.max_rows` or `_table.show_trashed` to anything.** `max_rows` must be a whole number from 1 to 500 (the pager menu offers 50 to 400) and `toTable()` clamps a stored value the same way (a bigger `max_rows` prop entry is capped at 500; pass `toTable($filters, $maxRows)` for a size above it). `show_trashed` is refused (403) unless the table rendered its trashed toggle (`<atom:table trashed>` or `<atom:table.trashed>`). A component with a toggle of its own, a button that writes `_table.show_trashed`, must set `$this->_tableTrashed = true;` in `mount()`. `toTable()` also ignores `show_trashed` on a model without `SoftDeletes` (it was a 500), and a plain sort column that is in the model's `$hidden`, or not in a non-empty `$visible` (the rule `filter()` uses), is no longer sorted on.
+
+**`verifyRecaptcha()` fails closed on a missing token.** With `services.recaptcha.secret_key` set, a token that is missing, empty or not a string is a bot (it used to skip the check, so a client could simply leave the token out), and so is a response whose `hostname` is not the request's. No secret still means no check, and an outage of Google's API or a bad secret still lets the submit through. A form that sets `recaptcha` needs `services.recaptcha.site_key` as well as the secret, or no token is ever minted and every submit is refused.
+
+**The dev login needs `config('atom.dev_login')`.** `/atom/dev/login` was open on any `local` environment; it now also needs `ATOM_DEV_LOGIN=true` (`config/atom.php`, default `false`). Without it the route is not registered and the dev-login UI is not rendered. Set it in the `.env` of a development machine that uses the login.
+
+**`<atom:embed>` frames YouTube only.** A URL whose host is not `youtube.com`, `www.youtube.com`, `m.youtube.com`, `youtu.be` or `www.youtube-nocookie.com` renders no iframe; a YouTube one is rebuilt as `https://www.youtube-nocookie.com/embed/<id>` with `sandbox` and a `referrerpolicy`.
+
+**atom:upgrade:** Automated: none. Reported: none. These are behaviour changes with no code to rewrite; check the three above by hand.
+
 ## Breaks a test (every restyle section)
 
 Each restyled section above ends with a "Breaks a test" paragraph that names the classes and selectors the restyle changed. A test that asserts the text `--` for an empty `<atom:dd>`, that an empty table cell is empty, or that a blank labelled header fact is absent, fails after beta.36: look for `[data-atom-missing]` (the mark) instead. `atom:upgrade-check` reads `tests/` for those names (and for `dialog button`) and reports them apart from the app's findings; nothing rewrites a test. A test line that names a heading with `font-medium`, or with `font-semibold` and a negation ("a small heading is not semibold"), is reported too: every heading is now semibold.
