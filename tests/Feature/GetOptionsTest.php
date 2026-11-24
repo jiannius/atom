@@ -18,6 +18,24 @@ it('does not 500 on an unknown option name', function () {
     expect($response->json())->toBe([]);
 });
 
+it('treats filters that are not an array as none, instead of a 500', function ($filters) {
+    $response = $this->postJson('/atom/action/get-options', ['name' => 'dialcodes', 'filters' => $filters]);
+
+    $response->assertOk();
+    expect($response->json())->not->toBeEmpty();
+})->with([
+    'string' => ['value'],
+    'number' => [5],
+    'true' => [true],
+    'empty string' => [''],
+]);
+
+it('still reads the selected values of array filters', function () {
+    $response = $this->postJson('/atom/action/get-options', ['name' => 'dialcodes', 'filters' => ['value' => ['MY'], 'exclude' => []]]);
+
+    $response->assertOk();
+});
+
 // testbench's default cache store is `database`, whose table isn't migrated
 // here — see the same note in FilterMacroTest.
 it('does not cache a declared option set that has no file behind it', function () {

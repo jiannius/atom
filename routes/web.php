@@ -9,9 +9,13 @@ use Jiannius\Atom\Services\Docs;
 
 if (app()->environment('local')) {
     Route::middleware('web')->group(function () {
-        // Local-only sign-in for <atom:dev-login>. POST, never GET: a GET that signs in can be fired from another site or by a
+        // Local-only sign-in for <atom:dev-login>, and only where the host turned it on (`atom.dev_login`, env ATOM_DEV_LOGIN):
+        // an environment that happens to be `local` (a staging box, a shared dev server) is not enough to open an
+        // unauthenticated route that signs in as any account. POST, never GET: a GET that signs in can be fired from another site or by a
         // prefetcher, and the CSRF middleware cannot check it. The parameter is not called "user", which a host may bind globally.
-        Route::post('/atom/dev/login/{atomUser?}', fn (Request $request, ?string $atomUser = null) => DevLogin::login($request, $atomUser))->name('atom.dev.login');
+        if (DevLogin::enabled()) {
+            Route::post('/atom/dev/login/{atomUser?}', fn (Request $request, ?string $atomUser = null) => DevLogin::login($request, $atomUser))->name('atom.dev.login');
+        }
 
         // Minimal fixture page for E2E testing — renders just the filters bar near the
         // top of the page so FloatingUI dropdown menus stay within the viewport.

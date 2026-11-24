@@ -97,22 +97,7 @@ class Atom
      */
     public function requireTrait(string $trait, string $for) : void
     {
-        if (!property_exists(\Livewire\Mechanisms\HandleComponents\HandleComponents::class, 'renderStack')) {
-            return;
-        }
-
-        $current = app('livewire')->current() ?: null;
-
-        if (!$current) {
-            return;
-        }
-
-        $stack = \Livewire\Mechanisms\HandleComponents\HandleComponents::$renderStack;
-        $top = end($stack) ?: null;
-
-        $component = $top === $current
-            ? $top
-            : (app('view')->shared('__livewire') === $current ? $current : null);
+        $component = $this->renderingComponent();
 
         if (!$component || is_using_trait($component, $trait)) {
             return;
@@ -122,6 +107,42 @@ class Atom
             '%s needs the %s trait: add `use \\%s;` to %s.',
             $for, class_basename($trait), $trait, get_class($component),
         ));
+    }
+
+    /**
+     * Record that the component being rendered shows a trashed toggle, so the update gate
+     * lets the browser set `_table.show_trashed` (see WithTable::$_tableTrashed).
+     */
+    public function allowTableTrashed() : void
+    {
+        $component = $this->renderingComponent();
+
+        if ($component && is_using_trait($component, \Jiannius\Atom\Traits\WithTable::class) && !$component->_tableTrashed) {
+            $component->_tableTrashed = true;
+        }
+    }
+
+    /**
+     * The Livewire component whose view is rendering now, or null outside one.
+     */
+    protected function renderingComponent() : ?object
+    {
+        if (!property_exists(\Livewire\Mechanisms\HandleComponents\HandleComponents::class, 'renderStack')) {
+            return null;
+        }
+
+        $current = app('livewire')->current() ?: null;
+
+        if (!$current) {
+            return null;
+        }
+
+        $stack = \Livewire\Mechanisms\HandleComponents\HandleComponents::$renderStack;
+        $top = end($stack) ?: null;
+
+        return $top === $current
+            ? $top
+            : (app('view')->shared('__livewire') === $current ? $current : null);
     }
 
     /**

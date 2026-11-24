@@ -37,7 +37,7 @@ composer require jiannius/atom
 
 The service provider (`Jiannius\Atom\AtomServiceProvider`) auto-registers via Laravel's package discovery. It will:
 
-- Mount its routes under `/atom/*` (asset serving + action endpoint), plus the local-only docs and `POST /atom/dev/login` (registered only when `APP_ENV=local`).
+- Mount its routes under `/atom/*` (asset serving + action endpoint), plus the local-only docs and `POST /atom/dev/login` (registered only when `APP_ENV=local` and `ATOM_DEV_LOGIN=true`).
 - Register all components under the `atom` view namespace.
 - Install the `<atom:...>` Blade tag compiler.
 - Mix macros onto `Eloquent\Builder`, `Query\Builder`, `Request`, `Str`, `Stringable`, `Arr` and `Livewire\Component`.
@@ -320,13 +320,13 @@ reach an action through `atom.action(...)` with the action opted into `WebAction
 $this->confirm(heading: ['Block :name?', ['name' => $user->name]], onAccepted: 'block');
 ```
 
-The pair works for `subheading`, for an entry of `message`, and in the props of `<atom:toast.trigger>`, `<atom:alert.trigger>` and `<atom:confirm.trigger>` (`:heading="['Block :name?', ['name' => $name]]"`). An `Htmlable` is passed through untranslated, for compatibility, and is displayed as plain text like any other value (these three show `heading`, `subheading` and `message` as text, never as HTML, so its tags show). For markup use the `html` option.
+The pair works for `subheading`, for an entry of `message`, and in the props of `<atom:toast.trigger>`, `<atom:alert.trigger>` and `<atom:confirm.trigger>` (`:heading="['Block :name?', ['name' => $name]]"`). An `Htmlable` is passed through untranslated, for compatibility, and is displayed as plain text like any other value (these three show `heading`, `subheading` and `message` as text, never as HTML, so its tags show). For markup use the `html` option, and note what it is: **`html` is a trusted pass-through.** `toast`, `alert` and `confirm` print it with `x-html`, untouched, so you own escaping it. Wrap every user or database value you put in it with `e()` (`html: '<b>'.e($user->name).'</b> was blocked'`); an unescaped name, title or message is script in your page. Prefer `heading`, `subheading` and `message`, which are always shown as text.
 
 A component takes only the state it uses, each from its own trait in `Jiannius\Atom\Traits\`:
 
 | Trait | Brings | Use it for |
 | --- | --- | --- |
-| `WithTable` | `$_table` (sort, checkboxes, select-all, max rows, show-trashed), the table methods, the `raw:` sort gate, and Livewire's `WithPagination` (`toTable()` always paginates, so a table list needs both) | `<atom:table>` and `toTable()` sorting, see [Table selection](#table-selection) |
+| `WithTable` | `$_table` (sort, checkboxes, select-all, max rows, show-trashed), the table methods, the update gate (a signed `raw:` sort; `max_rows` from 1 to 500; `show_trashed` only once the table rendered its trashed toggle, or your own toggle set the locked `$_tableTrashed` in `mount()`), and Livewire's `WithPagination` (`toTable()` always paginates, so a table list needs both) | `<atom:table>` and `toTable()` sorting, see [Table selection](#table-selection) |
 | `WithBreadcrumbs` | `$_breadcrumbs`, built on mount from your optional `breadcrumbs($crumbs)` method | `<atom:breadcrumbs>` |
 | `WithEditor` | `$_editor.images` and Livewire's `WithFileUploads` | `<atom:tiptap>` with image upload |
 | `WithRecaptcha` | `$_recaptcha` and `verifyRecaptcha()` | `<atom:form recaptcha>` |
@@ -364,7 +364,7 @@ reason; the prefix *is* the protection.
 
 | | Invoked by | Breaks |
 | --- | --- | --- |
-| `$_breadcrumbs`, `$_table`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
+| `$_breadcrumbs`, `$_table`, `$_tableTrashed`, `$_editor`, `$_recaptcha` | the `toTable()` macro and the blades | sort, pagination, checkboxes |
 | `mountWithBreadcrumbs`, `updatedWithEditor`, `updatedWithTable` | Livewire, by convention | breadcrumbs, editor uploads, trashed-toggle clear |
 | `resetTableCheckboxes`, `selectAllTableMatching`, `toggleTableShowSelected`, `clearTableSelectAll` | atom's markup, by name | the checked-bar buttons no-op |
 | `tableSelection`, `tableSelectionQuery`, `tableRowsQuery`, `getTableCheckboxes`, `isTableSelectAll`, `isTableShowSelected`, `isTableShowTrashed` | each other, and your own `items()` | bulk actions target the wrong rows |
@@ -380,7 +380,11 @@ any of this: it is a listener on Livewire's `update` event for every component t
 `WithTable`, registered to run before any `updating*` hook of yours (so a hook that saves a sort
 preference never sees an unsigned `raw:` value), and no host method can shadow it. A URL is read
 into a property through no update event, so a `WithTable` component that puts `_table` in its
-`queryString` or a `#[Url]` throws at mount. Your own modules installed as Composer path packages
+`queryString` or a `#[Url]` throws at mount. **A sort on a hidden column does nothing.** `toTable()` sorts by a client-chosen
+column only when it is a plain column name (`name`, `items.name`, `data->key`), is not in the model's `$hidden`, and is in `$visible` when
+that is set (the model's own table prefix does not count against it); otherwise the default order shows and one `Log::debug` line per
+process names the column. Many models hide `created_at` and `updated_at`: to keep them sortable, declare the column as
+`<atom:table.column sort="raw:created_at">` (signed, so the gate does not touch it) or take it out of `$hidden`. Your own modules installed as Composer path packages
 are skipped by the `breadcrumbs()` guard, like any package: give them the trait yourself.
 
 **Yours to define:** `breadcrumbs` (optional), `tableQuery` (required for `tableSelection()`),
@@ -991,8 +995,8 @@ there's no server-side or cross-device state.
 | `<atom:copy>` | `value` — copy-to-clipboard button. Flips to a check when the copy succeeds and to a cross when the browser refuses it. |
 | `<atom:darkmode-toggle>` | Dark-mode switcher. Needs the page to pass `dark` to `<atom:html>` or its layout — without it `window.darkmode()` is never defined. Both shells put a Light / Dark / System row in the account menu when `dark` is set, and draw this toggle in the bar only when they have no `dropdown` slot (or never, with `:theme-switcher="false"`). |
 | `<atom:dd>` | A label (muted) and its value (an empty one draws the "—" mark; `filler="n/a"` prints your own text, `:filler="false"` nothing). `label`, `block` (stack them), `filler`. Wrap several in `<atom:dd.group cols="1\|2\|3\|4">` (anything else is one column). |
-| `<atom:dev-login>` | `limit` (5), `label` (`name`) — buttons that sign in as one of your first accounts, local environment only. See [Signing in during local development](#signing-in-during-local-development). |
-| `<atom:embed>` | `src`, `icon`, `file` — embeds image / video / YouTube / file preview. |
+| `<atom:dev-login>` | `limit` (5), `label` (`name`) — buttons that sign in as one of your first accounts, local environment with `ATOM_DEV_LOGIN=true` only. See [Signing in during local development](#signing-in-during-local-development). |
+| `<atom:embed>` | `src`, `icon`, `file` — embeds image / video / YouTube / file preview. A YouTube URL (`youtube.com`, `www.`/`m.youtube.com`, `youtu.be`, `www.youtube-nocookie.com`; `/watch?v=`, `/embed/`, `/shorts/` or `/live/` with an 11-character id) is rebuilt as a sandboxed `youtube-nocookie.com/embed/<id>` iframe; any other host shows the file icon, not a frame. |
 | `<atom:error>` | Plain error message slot. |
 | `<atom:html>` | Page boilerplate (see [Page boilerplate](#page-boilerplate)). |
 | `<atom:sharer>` | `sites` (array), `url`, `title` — social share buttons. atom does not bundle [sharer.js](https://ellisonleao.github.io/sharer.js): load it on the page (`<script src="https://cdn.jsdelivr.net/npm/sharer.js@0.5.4/sharer.js"></script>`) or the share buttons do nothing (the copy-link button works without it). The default sites (`facebook`, `twitter-x`, `linkedin`, `whatsapp`, `telegram`, `email`) were checked against sharer.js 0.5.4; a site needs an atom icon of the same name. |
@@ -2229,7 +2233,7 @@ The native variant prints `label` into `<option>`, and escapes it.
 
 ## Signing in during local development
 
-`<atom:dev-login />` prints a "Local development" separator and one "Log in as ..." button per account, so you can sign in on a login page without typing a password. It exists only when `APP_ENV=local`: the route (`POST /atom/dev/login/{atomUser?}`, named `atom.dev.login`) is registered when the routes file loads, as `/atom/docs` is, and the component prints nothing and runs no query in any other environment. The route exists in every app that runs with `APP_ENV=local`.
+`<atom:dev-login />` prints a "Local development" separator and one "Log in as ..." button per account, so you can sign in on a login page without typing a password. It exists only when `APP_ENV=local` **and** `config('atom.dev_login')` is on (`ATOM_DEV_LOGIN=true` in the `.env` of the machine that uses it; the default is off): the route (`POST /atom/dev/login/{atomUser?}`, named `atom.dev.login`) is registered when the routes file loads, and the component prints nothing and runs no query otherwise. An environment that is `local` by accident (a staging box, a shared dev server) therefore does not hand out sessions. The docs routes (`/atom/docs`) need only `APP_ENV=local`.
 
 ```blade
 <atom:form wire:submit="submit">...</atom:form>

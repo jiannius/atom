@@ -71,7 +71,7 @@ $tint = is_string($tint) && preg_match('/^[a-z0-9-]+\z/', strtolower($tint)) ? s
 
 @stack('meta')
 
-@if (!$noindex && $jsonld)<script type="application/ld+json">@json($jsonld)</script>@endif
+@if (!$noindex && $jsonld)<script type="application/ld+json">@json($jsonld, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES)</script>@endif
 @if (!$noindex && $hreflang)<link rel="alternate" href="{{ url()->current() }}" hreflang="{{ $hreflang }}"/>@endif
 @if (!$noindex && $canonical)<link rel="canonical" href="{{ $canonical }}" />@endif
 

@@ -9,6 +9,10 @@
 return [
     'timezone' => env('TIMEZONE'),
 
+    // `POST /atom/dev/login` and `<atom:dev-login>`: sign in as one of your accounts without a password. Needs this on AND `APP_ENV=local`; off by
+    // default, so an environment that is `local` by accident does not hand out sessions. Turn it on in the `.env` of a development machine only.
+    'dev_login' => env('ATOM_DEV_LOGIN', false),
+
     // The neutral tint of every page (`paper`, the warm default, `slate`, `graphite`, `sage`, `mist` or `blush`). <atom:html tint> and the layouts' `tint` win.
     'tint' => null,
 

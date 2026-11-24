@@ -22,6 +22,15 @@ use LogicException;
 class DevLogin
 {
     /**
+     * Whether the dev login exists here: a `local` environment AND `atom.dev_login` turned on.
+     */
+    public static function enabled(): bool
+    {
+        return app()->environment('local')
+            && filter_var(config('atom.dev_login'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
      * The default guard, which must be a session guard: dev login signs a user into it.
      */
     public static function guard(): StatefulGuard

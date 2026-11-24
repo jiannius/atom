@@ -202,6 +202,15 @@ it('tells hosts that an option set html key is trusted and must be escaped', fun
         ->and($skill)->toContain('stored XSS');
 });
 
+it('tells hosts that the html of toast, alert and confirm is trusted and must be escaped', function () {
+    $readme = file_get_contents(__DIR__.'/../../README.md');
+
+    expect(boostFile('guidelines/core.blade.php'))->toContain('toast, alert, confirm')
+        ->and(boostFile('skills/atom-components/SKILL.blade.php'))->toContain('`html` is a trusted pass-through')
+        ->and($readme)->toContain('`html` is a trusted pass-through')
+        ->and($readme)->toContain("e(\$user->name)");
+});
+
 it('documents the components that need a script, a flag or a colour the source does not show', function () {
     $skill = boostFile('skills/atom-components/SKILL.blade.php');
 

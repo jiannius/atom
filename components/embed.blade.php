@@ -40,11 +40,37 @@ if ($src) {
     }
 }
 
+// A video is YouTube only when the URL's host is one of YouTube's: a path of `/watch` on any other host is just a link.
+// What is framed is rebuilt from the 11-character video id alone (privacy-enhanced host), never the URL as given, so
+// nothing else in it (a query, a fragment, another host) reaches the iframe.
+$youtubeId = null;
+
+if ($src) {
+    $parts = parse_url((string) $src) ?: [];
+    $host = strtolower((string) ($parts['host'] ?? ''));
+    $path = (string) ($parts['path'] ?? '');
+    $idPattern = '[A-Za-z0-9_-]{11}';
+
+    if (in_array($host, ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'www.youtube-nocookie.com'], true)) {
+        if ($path === '/watch') {
+            parse_str((string) ($parts['query'] ?? ''), $query);
+            $candidate = $query['v'] ?? null;
+            $youtubeId = is_string($candidate) && preg_match("/^{$idPattern}$/", $candidate) ? $candidate : null;
+        }
+        elseif (preg_match("#^/(?:embed|shorts|live)/({$idPattern})/?$#", $path, $matches)) {
+            $youtubeId = $matches[1];
+        }
+    }
+    elseif ($host === 'youtu.be' && preg_match("#^/({$idPattern})/?$#", $path, $matches)) {
+        $youtubeId = $matches[1];
+    }
+}
+
 $urlpath = $src ? (parse_url($src)['path'] ?? '') : '';
 $type = Arr::pick([
     'image' => str($urlpath)->endsWith(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg', '.tiff']),
     'video' => str($urlpath)->endsWith(['.mp4', '.ogg', '.mpeg', '.avi']),
-    'youtube' => str($urlpath)->startsWith(['/watch']),
+    'youtube' => $youtubeId !== null,
     'icon' => !empty($icon),
 ]);
 
@@ -60,6 +86,7 @@ $merges = [
         'frameborder' => '0',
         'referrerpolicy' => 'strict-origin-when-cross-origin',
         'allowfullscreen' => true,
+        'loading' => 'lazy',
     ] : []),
     ...($type === 'video' ? [
         'controls' => true,
@@ -74,7 +101,8 @@ $merges = [
         <source src="{{ $src }}" type="video/mp4">
     </video>
 @elseif ($type === 'youtube')
-    <iframe src="{{ $src }}" {{ $attributes->class($classes)->merge($merges) }}></iframe>
+    {{-- sandboxed: the player needs its scripts and its own origin, nothing else of the page, and a caller cannot loosen it --}}
+    <iframe src="https://www.youtube-nocookie.com/embed/{{ $youtubeId }}" {{ $attributes->filter(fn ($value, $key) => ! in_array(strtolower((string) $key), ['sandbox', 'srcdoc', 'src'], true))->class($classes)->merge($merges) }} sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox"></iframe>
 @elseif ($type === 'icon')
     <div {{ $attributes->class($classes)->merge($merges) }}>
         @if ($icon instanceof \Illuminate\Contracts\Support\Htmlable) {{ $icon }}

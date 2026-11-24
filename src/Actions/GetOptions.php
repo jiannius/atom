@@ -293,7 +293,9 @@ class GetOptions implements WebAction
     public function handle($params)
     {
         $this->name = data_get($params, 'name');
-        $this->filters = data_get($params, 'filters');
+        // the endpoint is unauthenticated and `filters` comes from the request: a string, number or bool is no filters
+        $filters = data_get($params, 'filters');
+        $this->filters = is_array($filters) ? $filters : null;
         $this->selected = $this->filters ? (array)Arr::pull($this->filters, 'value') : [];
         $this->exclude = $this->filters ? (array)Arr::pull($this->filters, 'exclude') : [];
 

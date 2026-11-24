@@ -166,7 +166,7 @@ it('declares its own state under an underscore prefix, one bucket per trait', fu
         ->map(fn ($property) => $property->getName())
         ->all();
 
-    expect($state(WithTable::class))->toBe(['_table', 'paginators']);   // paginators: Livewire's WithPagination
+    expect($state(WithTable::class))->toBe(['_table', '_tableTrashed', 'paginators']);   // _tableTrashed: locked, set by the trashed toggle; paginators: Livewire's WithPagination
     expect($state(WithBreadcrumbs::class))->toBe(['_breadcrumbs']);
     expect($state(WithEditor::class))->toBe(['_editor']);
     expect($state(WithRecaptcha::class))->toBe(['_recaptcha']);
