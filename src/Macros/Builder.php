@@ -65,8 +65,26 @@ class Builder
             $sortDirection = data_get($config, 'sort.direction');
             $sortDirection = is_string($sortDirection) ? $sortDirection : 'asc';
 
-            $showTrashed = data_get($config, 'show_trashed');
-            $maxRows ??= data_get($config, 'max_rows') ?? 100;
+            // `_table.show_trashed` and `_table.max_rows` are as the client sent them unless the
+            // update gate (AtomComponent::updatingAtomComponent()) refused it; a model without SoftDeletes
+            // has no onlyTrashed() to call (a 500), and the page size is clamped to a sane whole number.
+            $showTrashed = (bool) data_get($config, 'show_trashed')
+                && $this instanceof \Illuminate\Database\Eloquent\Builder
+                && in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses_recursive($this->getModel()), true);
+            $maxRows ??= TableSort::rows(data_get($config, 'max_rows'));
+
+            // a client-set plain sort column never reaches a hidden or non-visible column: `orderBy` on
+            // a password or token column is a row-order oracle for its value (a `raw:` sort is signed
+            // by the host's own column declaration and is not this)
+            if (
+                $sortColumn
+                && !str_starts_with($sortColumn, 'raw:')
+                && $this instanceof \Illuminate\Database\Eloquent\Builder
+                && !TableSort::isSortable($this->getModel(), $sortColumn)
+            ) {
+                TableSort::noteDropped($this->getModel(), $sortColumn);
+                $sortColumn = null;
+            }
 
             if ($sortColumn) {
                 // a user-chosen sort overrides any default ordering on the query —

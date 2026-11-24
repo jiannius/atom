@@ -5,6 +5,7 @@ use Illuminate\Support\ViewErrorBag;
 use Jiannius\Atom\Tests\Fixtures\Item;
 use Jiannius\Atom\Tests\Fixtures\StickyTableFixture;
 use Jiannius\Atom\Tests\Fixtures\TableFixture;
+use Jiannius\Atom\Tests\Fixtures\TableTrashedFixture;
 use Livewire\Livewire;
 
 beforeEach(fn () => view()->share('errors', new ViewErrorBag));
@@ -89,7 +90,7 @@ describe('checkbox markup', function () {
 
 describe('clear on trashed toggle', function () {
     it('clears both selection modes when the trashed view is toggled', function () {
-        $test = Livewire::test(TableFixture::class)
+        $test = Livewire::test(TableTrashedFixture::class)
             ->set('_table.checkboxes', [1, 2])
             ->set('_table.select_all', true)
             ->set('_table.show_trashed', true);

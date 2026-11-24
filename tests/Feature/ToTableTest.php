@@ -2,6 +2,7 @@
 
 use Jiannius\Atom\Tests\Fixtures\Item;
 use Jiannius\Atom\Tests\Fixtures\TableFixture;
+use Jiannius\Atom\Tests\Fixtures\TableTrashedFixture;
 use Livewire\Livewire;
 
 it('defaults to latest id ordering when unsorted', function () {
@@ -33,7 +34,7 @@ it('shows only trashed when show_trashed is true', function () {
     $trashed = Item::factory()->create();
     $trashed->delete();
 
-    $test = Livewire::test(TableFixture::class)->set('_table.show_trashed', true);
+    $test = Livewire::test(TableTrashedFixture::class)->set('_table.show_trashed', true);
     $ids = withLivewireContext($test->instance(), fn ($c) => $c->items()->pluck('id')->all());
 
     expect($ids)->toBe([$trashed->id]);
