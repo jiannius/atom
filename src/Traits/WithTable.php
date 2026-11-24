@@ -2,6 +2,7 @@
 
 namespace Jiannius\Atom\Traits;
 
+use Livewire\Attributes\Locked;
 use Livewire\WithPagination;
 
 /**
@@ -30,6 +31,15 @@ trait WithTable
         'show_trashed' => false,
         'show_selected' => false,
     ];
+
+    /**
+     * Whether the table rendered its trashed toggle (`<atom:table trashed>`,
+     * `<atom:table.trashed>`). Only then does the update gate let a client set
+     * `_table.show_trashed`; a component with a toggle of its own sets this to true
+     * in mount(). Locked: the browser cannot flip it.
+     */
+    #[Locked]
+    public bool $_tableTrashed = false;
 
     /**
      * Update the table state

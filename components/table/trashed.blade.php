@@ -6,6 +6,7 @@
 
 @php
 app('atom')->requireTrait(\Jiannius\Atom\Traits\WithTable::class, '<atom:table.trashed>');
+app('atom')->allowTableTrashed();
 
 $label ??= $variant === 'voided' ? 'Show voided' : 'Show archived';
 $icon ??= $variant === 'voided' ? 'delete' : 'archive';

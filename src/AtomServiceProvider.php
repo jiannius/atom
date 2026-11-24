@@ -202,7 +202,8 @@ class AtomServiceProvider extends ServiceProvider
      */
     protected function registerComponentGuards() : void
     {
-        // The signed raw: sort gate (issue #54). Livewire fires `update` for every client
+        // The signed raw: sort gate (issue #54), which also refuses a `_table.max_rows` outside 1 to 500 and a
+        // `_table.show_trashed` the table never offered. Livewire fires `update` for every client
         // update of a property path, before the value is written, and an event listener
         // cannot be shadowed by a method of the host component the way a trait hook can.
         // `before`, not `on`: a host's own updating(), updatingTable() or
@@ -213,9 +214,9 @@ class AtomServiceProvider extends ServiceProvider
                 && str_starts_with($path, '_table')
                 // inline, not is_using_trait(): that helper is guarded by function_exists(), so a host's own definition would decide this gate
                 && in_array(\Jiannius\Atom\Traits\WithTable::class, class_uses_recursive($component), true)
-                && \Jiannius\Atom\Services\TableSort::isUnsafeUpdate($path, $value)
+                && \Jiannius\Atom\Services\TableSort::isUnsafeUpdate($path, $value, (bool) ($component->_tableTrashed ?? false))
             ) {
-                abort(403, 'Invalid table sort.');
+                abort(403, 'Invalid table state.');
             }
         });
 

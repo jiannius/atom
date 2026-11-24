@@ -10,6 +10,12 @@ namespace Jiannius\Atom\Services;
  */
 class TableSort
 {
+    /** Rows per page when `_table.max_rows` is missing or unusable. */
+    public const DEFAULT_ROWS = 100;
+
+    /** The most rows per page a client may ask for (the pager menu offers 50 to 400). */
+    public const MAX_ROWS = 500;
+
     /**
      * Sign a raw sort expression for the client-facing "_table.sort.column"
      * value. Keeps the "raw:" prefix toTable() dispatches on, followed by a
@@ -42,9 +48,13 @@ class TableSort
      * "_table.sort" and "_table" wholesale are all checked, and so is a path deeper than
      * the leaf ("_table.sort.column.0"), which can only turn that leaf into an array.
      */
-    public static function isUnsafeUpdate(string $name, mixed $value) : bool
+    public static function isUnsafeUpdate(string $name, mixed $value, bool $trashedAllowed = false) : bool
     {
         if (str_starts_with($name, '_table.sort.column.') || str_starts_with($name, '_table.sort.direction.')) {
+            return true;
+        }
+
+        if (static::isUnsafeRowsOrTrashed($name, $value, $trashedAllowed)) {
             return true;
         }
 
@@ -67,6 +77,87 @@ class TableSort
         };
 
         return $direction !== null && !is_string($direction);
+    }
+
+    /**
+     * Whether a client update would leave `_table.max_rows` or `_table.show_trashed`
+     * unusable: `max_rows` must be a whole number from 1 to MAX_ROWS (it is the
+     * page size handed to paginate()), and `show_trashed` a bool, and true only
+     * when the table rendered its trashed toggle (WithTable::$_tableTrashed): a
+     * client must not list a model's soft-deleted rows the host never offered.
+     * A path deeper than the leaf only turns it into an array, so it is refused too.
+     */
+    protected static function isUnsafeRowsOrTrashed(string $name, mixed $value, bool $trashedAllowed) : bool
+    {
+        if (str_starts_with($name, '_table.max_rows.') || str_starts_with($name, '_table.show_trashed.')) {
+            return true;
+        }
+
+        $rows = match ($name) {
+            '_table.max_rows' => [$value],
+            '_table' => is_array($value) && array_key_exists('max_rows', $value) ? [$value['max_rows']] : [],
+            default => [],
+        };
+
+        foreach ($rows as $rowsValue) {
+            if (!is_int($rowsValue) || $rowsValue < 1 || $rowsValue > static::MAX_ROWS) {
+                return true;
+            }
+        }
+
+        $trashed = match ($name) {
+            '_table.show_trashed' => [$value],
+            '_table' => is_array($value) && array_key_exists('show_trashed', $value) ? [$value['show_trashed']] : [],
+            default => [],
+        };
+
+        foreach ($trashed as $trashedValue) {
+            if ($trashedValue !== null && !is_bool($trashedValue)) {
+                return true;
+            }
+
+            if ($trashedValue === true && !$trashedAllowed) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The page size toTable() uses for a `_table.max_rows` value: a whole number
+     * from 1 to MAX_ROWS, a numeric string included; anything else (an array,
+     * text, zero, a negative, a huge number) is the default or the cap.
+     */
+    public static function rows(mixed $value) : int
+    {
+        if (is_string($value) && preg_match('/^\d{1,9}$/', $value)) {
+            $value = (int) $value;
+        }
+
+        if (!is_int($value) || $value < 1) {
+            return static::DEFAULT_ROWS;
+        }
+
+        return min($value, static::MAX_ROWS);
+    }
+
+    /**
+     * Whether a model's column may be sorted on from the client's say-so: every
+     * `.` / `->` segment must be outside `$hidden`, and the first outside a
+     * non-empty `$visible` (the same rule filter() applies, case-folded).
+     */
+    public static function isSortable(\Illuminate\Database\Eloquent\Model $model, string $column) : bool
+    {
+        $segments = array_map('strtolower', preg_split('/\.|->/', $column));
+        $hidden = array_map('strtolower', $model->getHidden());
+        $visible = array_map('strtolower', $model->getVisible());
+
+        if (array_intersect($segments, $hidden)) {
+            return false;
+        }
+
+        return !$visible || in_array($segments[0], $visible, true);
     }
 
     /**
