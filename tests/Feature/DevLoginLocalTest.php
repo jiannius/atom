@@ -290,6 +290,59 @@ it('prints nothing when the sign-in route is missing, as after a route cache bui
         ->and(trim(renderBlade('<atom:dev-login />')))->toBe('');
 });
 
+// `local` alone is not enough: a staging or shared dev box can be local by accident. The host turns the login on (`atom.dev_login`).
+it('is off until atom.dev_login is on, whatever the environment says', function ($value, bool $on) {
+    config(['atom.dev_login' => $value]);
+
+    expect(DevLogin::enabled())->toBe($on);
+})->with([
+    'true' => [true, true],
+    '"1"' => ['1', true],
+    'false' => [false, false],
+    'null' => [null, false],
+    '"false"' => ['false', false],
+    '"0"' => ['0', false],
+    'empty' => ['', false],
+]);
+
+it('ships with the dev login off', function () {
+    expect(require __DIR__.'/../../config/atom.php')->toHaveKey('dev_login', false);
+});
+
+it('registers no sign-in route in local when atom.dev_login is off', function () {
+    config(['atom.dev_login' => false]);
+    Route::setRoutes(new RouteCollection);
+    require __DIR__.'/../../routes/web.php';
+    Route::getRoutes()->refreshNameLookups();
+
+    expect(Route::has('atom.dev.login'))->toBeFalse();
+
+    $this->post('/atom/dev/login/'.$this->alex->id)->assertNotFound();
+    expect(Auth::check())->toBeFalse();
+
+    // the rest of the local-only routes are still there
+    expect(Route::has('atom.docs'))->toBeTrue();
+});
+
+it('registers the sign-in route in local when atom.dev_login is on', function () {
+    config(['atom.dev_login' => true]);
+    Route::setRoutes(new RouteCollection);
+    require __DIR__.'/../../routes/web.php';
+    Route::getRoutes()->refreshNameLookups();
+
+    expect(Route::has('atom.dev.login'))->toBeTrue();
+});
+
+it('prints no buttons and runs no query in local when atom.dev_login is off, even with the route there', function () {
+    config(['atom.dev_login' => false]);
+    session()->start();
+    DB::enableQueryLog();
+
+    expect(Route::has('atom.dev.login'))->toBeTrue()
+        ->and(trim(renderBlade('<atom:dev-login />')))->toBe('')
+        ->and(DB::getQueryLog())->toBe([]);
+});
+
 it('leaves out accounts a global scope hides (soft-deleted), in the list and at sign-in', function () {
     config(['auth.providers.users.model' => DevLoginSoftMember::class]);
     Auth::forgetGuards();

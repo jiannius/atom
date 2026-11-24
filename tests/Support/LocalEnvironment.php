@@ -13,6 +13,8 @@ trait LocalEnvironment
         parent::defineEnvironment($app);
 
         $app['env'] = 'local';
+        // the dev login is also behind its own switch (`atom.dev_login`); a test of it turns it on, the one that checks it is off turns it back off
+        $app['config']->set('atom.dev_login', true);
         // The .env that `testbench serve` leaves behind sets the cookie driver.
         $app['config']->set('session.driver', 'array');
     }
