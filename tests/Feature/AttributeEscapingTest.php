@@ -154,7 +154,7 @@ describe('embed', function () {
         'bare relative image' => ['storage/a.png', 'img'],
         'protocol-relative image' => ['//cdn.test/a.png', 'img'],
         'https video' => ['https://cdn.test/a.mp4', 'video'],
-        'youtube' => ['https://www.youtube.com/watch?v=abc', 'iframe'],
+        'youtube' => ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'iframe'],
         'uppercase scheme' => ['HTTPS://cdn.test/a.png', 'img'],
         // a colon that is not a scheme (a space or slash comes first) is just a file name
         'colon after a space' => ['Report 2024: final.png', 'img'],
@@ -242,15 +242,16 @@ describe('embed', function () {
             ->and(attributeEscapingNames(attributeEscapingElements($html, 'video')[0]))->not->toContain('onerror');
     });
 
-    it('keeps a hostile YouTube source inside its iframe', function () {
-        $src = 'https://www.youtube.com/watch"onerror="alert(1)"x=\'<>&';
+    it('keeps a hostile YouTube source out of its iframe', function () {
+        $src = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&x="onerror="alert(1)"x=\'<>&';
 
         $html = Blade::render('<atom:embed :src="$src" />', compact('src'));
         $frames = attributeEscapingElements($html, 'iframe');
 
+        // the iframe's src is rebuilt from the video id, so nothing of the hostile tail is in it
         expect($frames)->toHaveCount(1)
             ->and(attributeEscapingNames($frames[0]))->not->toContain('onerror')
-            ->and($frames[0]->getAttribute('src'))->toBe($src);
+            ->and($frames[0]->getAttribute('src'))->toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
     });
 });
 
