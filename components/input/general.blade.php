@@ -12,8 +12,10 @@
 @php
 $step = $step ?: ($type === 'number' ? 'any' : null);
 
-/* A `loading` slot is a spinner (or any status glyph) pinned to the field's right edge, drawn over the suffix and hidden by Livewire's
-   wire:loading on the slot tag. While it shows, the clear button steps aside (it sits in the same corner). */
+/* A `loading` slot is a spinner (or any status glyph) pinned to the input box's own right edge, for the general input only (text, password,
+   number; tel and color do not read it). Show it with `wire:loading.flex` on the slot tag: a bare `wire:loading` writes inline-block, which
+   breaks the centring and the clear button's hide. While it shows only the clear button steps aside (it sits in the same corner); the copy
+   button, the password eye, an icon suffix and `actions` are not hidden. */
 $hasLoading = isset($loading) && $loading->hasActualContent();
 
 /* 'self', or 'inherited' from a disabled <atom:form> (a read-only field, not a disabled one), printed by the input tag as `data-atom-disabled`. The look

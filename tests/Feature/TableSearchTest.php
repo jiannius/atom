@@ -102,7 +102,8 @@ it('renders a scoped loading spinner that keeps rows visible', function () {
     view()->share('errors', new \Illuminate\Support\ViewErrorBag);
     $html = Blade::render('<atom:table.search wire:model="filters.search" />');
 
-    expect($html)->toContain('wire:loading')
+    expect($html)->toContain('wire:loading.flex')
+        ->and($html)->toContain('data-atom-input-loading')
         ->and($html)->toContain('wire:target="$refresh"')
         ->and($html)->toContain('data-atom-table-search');
 });

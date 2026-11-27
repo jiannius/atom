@@ -128,6 +128,30 @@ for (const tw of ['latest', 'floor']) {
       ['tel country chevron', 'tel', 'tel-tall', FIRST, (c) => c.locator(BOX).last()],
     ]
 
+    // The colour input is drawn by the same <atom:input> as the loader, inside a Livewire component: its swatch and box must survive the
+    // morph markers the tag's own @if blocks print (an `isNotEmpty()` slot check once swapped both for nothing).
+    for (const [id, taller] of [['color', false], ['color-tall', true]]) {
+      test(`colour input (${id}): box, swatch and brush icon are drawn, the icon is centred${taller ? ' at the standard offset' : ''}`, async ({ page }) => {
+        await open(page, tw)
+        const field = page.locator(`[data-case="${id}"]`)
+        const box = field.locator('input[type="text"][readonly]')
+
+        await expect(box).toBeVisible()
+        await expect(field.locator('[x-show="color"]')).toHaveCount(1)
+
+        const trigger = field.locator('[data-atom-dropdown-trigger]')
+        const input = await rect(box)
+        const brush = await rect(trigger.locator('svg'))
+
+        if (taller) {
+          expect(input.height).toBeGreaterThan(40)
+          expect(brush.top - input.top).toBeCloseTo(8, 0)
+        } else {
+          expect(Math.abs(brush.mid - input.mid)).toBeLessThanOrEqual(0.5)
+        }
+      })
+    }
+
     for (const [name, standard, taller, icon, field] of icons) {
       test(`${name}: centred at standard height${taller ? ', pinned when taller' : ''}`, async ({ page }) => {
         await open(page, tw)

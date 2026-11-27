@@ -24,4 +24,6 @@
     <div data-case="time"><atom:time-picker /></div>
     <div data-case="tel"><atom:input type="tel" /></div>
     <div data-case="tel-tall"><atom:input type="tel" class="h-12!" /></div>
+    <div data-case="color"><atom:input type="color" name="c" /></div>
+    <div data-case="color-tall"><atom:input type="color" class="h-12!" name="c2" /></div>
 </div>

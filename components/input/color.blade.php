@@ -33,7 +33,7 @@ data-atom-disabled="{{ $disabledBy }}"
 data-atom-color-input>
     <atom:dropdown>
         <div class="relative" data-atom-dropdown-trigger>
-            @if ($slot->isNotEmpty())
+            @if ($slot->hasActualContent())
                 {{ $slot }}
             @else
                 <div class="absolute top-0 left-0 h-control px-2.5 flex items-center justify-center">
