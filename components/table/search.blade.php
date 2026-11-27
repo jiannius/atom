@@ -95,17 +95,15 @@ x-on:table-filter:do-clear.window="
 @endif
 @if ($filterKey) data-atom-filter-key="{{ $filterKey }}" @endif
 data-atom-table-search>
+    {{-- The spinner is the input's own `loading` slot, so it is pinned to the input box (not the label/caption/error
+         block around it) and replaces the clear button while it shows. Scoped to the search's own $refresh so it only
+         spins on search, not on pagination/sort. Rows stay visible (no skeleton swap). --}}
     <atom:input
         icon="search"
         {{ $attributes->except('class')->merge($merges) }}
-        x-on:keyup.enter.prevent="{!! $onEnter !!}" />
-
-    {{-- Scoped to the search's own $refresh so it only spins on search, not on
-         pagination/sort. Rows stay visible (no skeleton swap). --}}
-    <div
-    wire:loading
-    wire:target="$refresh"
-    class="absolute inset-y-0 right-0 z-1 flex items-center pr-3 text-fg-subtle">
-        <atom:icon.loading class="size-4" />
-    </div>
+        x-on:keyup.enter.prevent="{!! $onEnter !!}">
+        <x-slot:loading wire:loading.flex wire:target="$refresh">
+            <atom:icon.loading class="size-4" />
+        </x-slot:loading>
+    </atom:input>
 </div>

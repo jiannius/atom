@@ -32,7 +32,7 @@ x-modelable="telValue"
 class="group/input relative w-full"
 {{ $attributes->except(['id', 'class', 'placeholder', 'required', 'invalid', 'disabled', 'readonly']) }}
 data-atom-input-tel>
-    <div class="absolute top-0 bottom-0 left-0 w-[9rem] flex items-center gap-2">
+    <div class="absolute top-0 h-control left-0 w-[9rem] flex items-center gap-2">
         <div class="relative w-full">
             <select
             x-model="code"
@@ -48,7 +48,7 @@ data-atom-input-tel>
                 @endforeach
             </select>
 
-            <div class="pointer-events-none absolute top-0 bottom-0 right-0 pr-2 flex items-center justify-center">
+            <div class="pointer-events-none absolute top-0 h-control right-0 pr-2 flex items-center justify-center">
                 <atom:icon.dropdown class="size-4 text-fg-subtle" />
             </div>
         </div>

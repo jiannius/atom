@@ -60,6 +60,7 @@ class E2EServiceProvider extends ServiceProvider
         Livewire::component('atom-e2e-select-placeholder', SelectPlaceholderFixture::class);
         Livewire::component('atom-e2e-table-loading', TableLoadingFixture::class);
         Livewire::component('atom-e2e-table-only', TableOnlyFixture::class);
+        Livewire::component('atom-e2e-input-loader', InputLoaderFixture::class);
         Livewire::component('atom-e2e-table-search-chip', TableSearchChipFixture::class);
         Livewire::component('atom-e2e-table-search-chip-live', TableSearchChipLiveFixture::class);
         Livewire::component('atom-e2e-date-range-morph', DateRangeMorphFixture::class);
@@ -150,6 +151,8 @@ class E2EServiceProvider extends ServiceProvider
         Route::middleware('web')->get('/atom/e2e/table-totals-livewire', fn () => view('atom::e2e.table-totals-livewire'));
         Route::middleware('web')->get('/atom/e2e/table-cell-morph', fn () => view('atom::e2e.table-cell-morph'));
         Route::middleware('web')->get('/atom/e2e/pager-morph', fn () => view('atom::e2e.pager-morph'));
+        // In-field loader and icons, standard height and taller, on the consumer's Tailwind: ?tw=floor|latest, ?density=compact|comfortable
+        Route::middleware('web')->get('/atom/e2e/input-loader', fn () => view('atom::e2e.input-loader'));
         Route::middleware('web')->get('/atom/e2e/table-search-chip', fn () => view('atom::e2e.table-search-chip'));
         Route::middleware('web')->get('/atom/e2e/table-search-chip-live', fn () => view('atom::e2e.table-search-chip-live'));
         Route::middleware('web')->get('/atom/e2e/breadcrumbs', fn () => view('atom::e2e.breadcrumbs'));

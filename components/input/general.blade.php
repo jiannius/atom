@@ -12,6 +12,12 @@
 @php
 $step = $step ?: ($type === 'number' ? 'any' : null);
 
+/* A `loading` slot is a spinner (or any status glyph) pinned to the input box's own right edge, for the general input only (text, password,
+   number; tel and color do not read it). Show it with `wire:loading.flex` on the slot tag: a bare `wire:loading` writes inline-block, which
+   breaks the centring and the clear button's hide. While it shows only the clear button steps aside (it sits in the same corner); the copy
+   button, the password eye, an icon suffix and `actions` are not hidden. */
+$hasLoading = isset($loading) && $loading->hasActualContent();
+
 /* 'self', or 'inherited' from a disabled <atom:form> (a read-only field, not a disabled one), printed by the input tag as `data-atom-disabled`. The look
    comes from that as plain utilities, so a form's field is drawn as one with its own `disabled` (the `disabled:` variants stay, for a client-driven `disabled`),
    and a focus border still beats the faint one. */
@@ -32,13 +38,13 @@ $classes = Arr::toCssClasses([
     'group-has-[[data-atom-error]]/field:border-danger-fg' => ! $disabledBy,
     'group-has-[[data-atom-error]]/field:focus-visible:border-danger-fg',
     $icon ? 'pl-8' : 'pl-2.5',
-    $copyable || $clearable || $iconSuffix || $type === 'password' ? 'pr-8' : 'pr-2.5',
+    $copyable || $clearable || $iconSuffix || $hasLoading || $type === 'password' ? 'pr-8' : 'pr-2.5',
 ]);
 @endphp
 
 <div class="group/input relative" data-atom-input>
     @if ($icon)
-        <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pl-2.5 left-0">
+        <div class="z-1 pointer-events-none absolute top-0 h-control flex items-center justify-center text-fg-subtle pl-2.5 left-0">
             <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4" />
         </div>
     @endif
@@ -50,7 +56,7 @@ $classes = Arr::toCssClasses([
     ]) }}>
 
     @if ($type === 'password')
-        <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pr-1 right-0">
+        <div class="z-1 absolute top-0 h-control flex items-center justify-center text-fg-subtle pr-1 right-0">
             <button
             type="button"
             x-data="{ show: false }"
@@ -66,7 +72,7 @@ $classes = Arr::toCssClasses([
             </button>
         </div>
     @elseif ($copyable || $clearable || $iconSuffix)
-        <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pr-1 right-0">
+        <div class="z-1 absolute top-0 h-control flex items-center justify-center text-fg-subtle pr-1 right-0">
             @if ($copyable)
                 <atom:tooltip content="Copy to clipboard">
                     <atom:copy x-bind:data-copy-value="$el.closest('[data-atom-input]').querySelector('input').value">
@@ -98,7 +104,7 @@ $classes = Arr::toCssClasses([
                     $nextTick(() => input.focus())
                 }"
                 aria-label="{{ t('Clear') }}"
-                class="size-6 flex items-center justify-center rounded-nav cursor-pointer hover:text-fg">
+                class="size-6 flex items-center justify-center rounded-nav cursor-pointer hover:text-fg group-has-[[data-atom-input-loading][style*='display:_flex']]/input:hidden">
                     <atom:icon.close class="size-4"/>
                 </button>
             @elseif ($iconSuffix)
@@ -109,10 +115,16 @@ $classes = Arr::toCssClasses([
         </div>
     @elseif (isset($actions) && $actions->hasActualContent())
         <div {{ $actions->attributes->class([
-            'z-1 absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pr-1.5 right-0',
+            'z-1 absolute top-0 h-control flex items-center justify-center text-fg-subtle pr-1.5 right-0',
             '[&_button]:flex [&_button]:items-center [&_button]:justify-center [&_button]:text-fg-muted [&_button]:rounded-nav [&_button]:p-1 [&_button]:hover:bg-fg/5',
         ]) }}>
             {{ $actions }}
+        </div>
+    @endif
+
+    @if ($hasLoading)
+        <div {{ $loading->attributes->class('pointer-events-none z-1 absolute top-0 right-0 h-control flex items-center pr-2.5 text-fg-subtle') }} data-atom-input-loading>
+            {{ $loading }}
         </div>
     @endif
 </div>

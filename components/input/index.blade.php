@@ -41,6 +41,10 @@ if ($inputId) {
 // handling, and `file` takes no `readonly` (it means nothing on a file input).
 $disabledBy = \Jiannius\Atom\Services\Attributes::disabledBy($attributes);
 
+/* the `loading` slot goes to the general input only, and without an @if around the slot tag: under Livewire its morph markers would print into
+   the default $slot of the component that receives it. The general input checks hasActualContent() before it draws the box. */
+$loadingAttributes = isset($loading) ? $loading->attributes : new \Illuminate\View\ComponentAttributeBag;
+
 /* the types the chain below draws: any other prints nothing, not an empty field around it (the captured markup cannot tell, a Livewire view
    prints its morph markers even for a branch nothing takes) */
 $drawn = in_array($type, ['text', 'password', 'number', 'tel', 'color', 'email', 'file'], true);
@@ -66,12 +70,14 @@ if ($disabledBy === 'inherited' && $type !== 'file') {
             <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
                 {{ $slot }}
                 <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
+                <x-slot:loading :attributes="$loadingAttributes">{{ $loading ?? '' }}</x-slot:loading>
             </x-dynamic-component>
         </atom:input.prefix>
     @else
         <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
             {{ $slot }}
             <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
+            <x-slot:loading :attributes="$loadingAttributes">{{ $loading ?? '' }}</x-slot:loading>
         </x-dynamic-component>
     @endif
 @elseif (in_array($type, ['tel', 'color']))

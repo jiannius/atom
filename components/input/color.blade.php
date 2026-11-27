@@ -33,10 +33,10 @@ data-atom-disabled="{{ $disabledBy }}"
 data-atom-color-input>
     <atom:dropdown>
         <div class="relative" data-atom-dropdown-trigger>
-            @if ($slot->isNotEmpty())
+            @if ($slot->hasActualContent())
                 {{ $slot }}
             @else
-                <div class="absolute top-0 left-0 bottom-0 px-2.5 flex items-center justify-center">
+                <div class="absolute top-0 left-0 h-control px-2.5 flex items-center justify-center">
                     <div x-show="color" x-bind:style="{ backgroundColor: color }" class="size-4 rounded-full border border-border-strong"></div>
                 </div>
 
@@ -47,7 +47,7 @@ data-atom-color-input>
                 @if ($disabledBy === 'self') disabled @endif
                 {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['id', 'class', 'placeholder']) }}>
 
-                <div class="absolute top-0 right-0 bottom-0 flex items-center justify-center text-fg-subtle px-2.5">
+                <div class="absolute top-0 right-0 h-control flex items-center justify-center text-fg-subtle px-2.5">
                     <atom:icon.brush class="size-4" />
                 </div>
             @endif
