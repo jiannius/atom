@@ -131,7 +131,7 @@ x-on:keyup.space.prevent=""
                 <atom:icon.chevron-down x-show="chipState" x-cloak class="-ms-0.5 size-3 text-fg-muted" />
             @else
             @if ($icon)
-                <div class="z-1 pointer-events-none absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pl-2.5 left-0">
+                <div class="z-1 pointer-events-none absolute top-0 h-control flex items-center justify-center text-fg-subtle pl-2.5 left-0">
                     <x-dynamic-component :component="'atom::icon.'.$icon" class="size-4" />
                 </div>
             @endif

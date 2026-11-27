@@ -50,7 +50,7 @@ data-atom-date-picker
                 {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['id', 'class', 'placeholder']) }}
                 @if ($disabledBy === 'self') disabled @elseif ($disabledBy) readonly @endif>
 
-                <div class="z-1 absolute top-0 bottom-0 right-0 flex items-center gap-2 pr-2.5 text-fg-subtle">
+                <div class="z-1 absolute top-0 h-control right-0 flex items-center gap-2 pr-2.5 text-fg-subtle">
                     @if (! $disabledBy)
                         <div x-show="datePickerValue" x-on:click.stop="clear()" class="flex items-center justify-center h-full hover:text-fg">
                             <atom:icon.close class="size-4" />

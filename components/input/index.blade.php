@@ -66,18 +66,27 @@ if ($disabledBy === 'inherited' && $type !== 'file') {
             <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
                 {{ $slot }}
                 <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
+                @if (isset($loading) && $loading->hasActualContent())
+                    <x-slot:loading :attributes="$loading->attributes">{{ $loading }}</x-slot:loading>
+                @endif
             </x-dynamic-component>
         </atom:input.prefix>
     @else
         <x-dynamic-component component="atom::input.general" :attributes="$attributes->merge($merges)">
             {{ $slot }}
             <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
+            @if (isset($loading) && $loading->hasActualContent())
+                <x-slot:loading :attributes="$loading->attributes">{{ $loading }}</x-slot:loading>
+            @endif
         </x-dynamic-component>
     @endif
 @elseif (in_array($type, ['tel', 'color']))
     <x-dynamic-component :component="'atom::input.'.$type" :attributes="$attributes->merge($merges)">
         {{ $slot }}
         <x-slot:actions>{{ $actions ?? '' }}</x-slot:actions>
+        @if (isset($loading) && $loading->hasActualContent())
+            <x-slot:loading :attributes="$loading->attributes">{{ $loading }}</x-slot:loading>
+        @endif
     </x-dynamic-component>
 @elseif ($type === 'email')
     @if ($attributes->get('multiple') || $attributes->has('options'))

@@ -108,7 +108,7 @@ $labelId = $label ? \Jiannius\Atom\Services\Attributes::fieldId($attributes, 'at
             class="appearance-none w-8 text-center bg-transparent focus-visible:outline-none" readonly>
         </div>
 
-        <div class="z-1 absolute top-0 bottom-0 flex items-center justify-center text-fg-subtle pr-2.5 right-0">
+        <div class="z-1 absolute -top-px h-control flex items-center justify-center text-fg-subtle pr-2.5 right-0">
             <atom:icon.clock class="size-4" />
         </div>
     </div>

@@ -100,7 +100,7 @@ test.describe('table loading overlay', () => {
 
     expect(count).toBeGreaterThan(0)
     expect(await page.locator('[data-atom-table-loading]').count()).toBeGreaterThan(0)
-    expect(await page.locator('[data-atom-table-search] [wire\\:loading]').count()).toBeGreaterThan(0)
+    expect(await page.locator('[data-atom-table-search] [wire\\:loading\\.flex]').count()).toBeGreaterThan(0)
 
     // KEY ASSERTION: each one holds itself down. At its default display the table
     // overlay veils the whole table permanently and the search box keeps a spinner

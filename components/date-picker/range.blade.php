@@ -112,7 +112,7 @@ x-on:table-filter:do-clear.window="atom.tableFilter.cleared($event, @js($filterK
             {{ $attributes->class($classes)->merge(['placeholder' => t($placeholder)])->only(['class', 'placeholder']) }}
             @if ($disabledBy === 'self') disabled @elseif ($disabledBy) readonly @endif>
 
-            <div x-cloak class="z-1 absolute top-0 bottom-0 right-0 flex items-center gap-2 pr-2.5 text-fg-subtle">
+            <div x-cloak class="z-1 absolute top-0 h-control right-0 flex items-center gap-2 pr-2.5 text-fg-subtle">
                 <div x-show="dateRangeValue && !off" x-on:click.stop="clear()" class="flex items-center justify-center h-full hover:text-fg">
                     <atom:icon.close class="size-4" />
                 </div>
